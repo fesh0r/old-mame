@@ -1607,6 +1607,14 @@ void m6847_video_changed(void)
  *
  *************************************/
 
+int m6847_get_horizontal_sync(void)
+{
+	mame_time fire_time = mame_timer_firetime(m6847->hs_fall_timer);
+	return compare_mame_times(fire_time, mame_timer_get_time()) > 0;
+}
+
+
+
 static void set_horizontal_sync(void)
 {
 	mame_time fire_time = mame_timer_firetime(m6847->hs_fall_timer);
@@ -1614,6 +1622,16 @@ static void set_horizontal_sync(void)
 	if (m6847->horizontal_sync_callback)
 		m6847->horizontal_sync_callback(!horizontal_sync);
 }
+
+
+
+int m6847_get_field_sync(void)
+{
+	mame_time fire_time = mame_timer_firetime(m6847->fs_fall_timer);
+	return compare_mame_times(fire_time, mame_timer_get_time()) > 0;
+}
+
+
 
 static void set_field_sync(void)
 {
@@ -1955,6 +1973,7 @@ void m6847_init(const m6847_config *cfg)
 VIDEO_UPDATE(m6847)
 {
 	int row, i;
+	UINT32 rc = 0;
 
 	/* if we have a custom palette, check to see if it has changed */
 	if (!m6847->dirty && m6847->has_custom_palette)
@@ -1988,8 +2007,9 @@ VIDEO_UPDATE(m6847)
 	else
 	{
 		/* skip this frame */
-		*do_skip = TRUE;
+		rc = UPDATE_HAS_NOT_CHANGED;
 	}
+	return rc;
 }
 
 

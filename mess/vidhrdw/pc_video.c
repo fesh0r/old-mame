@@ -72,6 +72,7 @@ struct crtc6845 *pc_video_start(const struct crtc6845_config *config,
 
 VIDEO_UPDATE( pc_video )
 {
+	UINT32 rc = 0;
 	int w = 0, h = 0;
 	pc_video_update_proc video_update;
 
@@ -91,13 +92,13 @@ VIDEO_UPDATE( pc_video )
 			pc_current_height = h;
 			pc_anythingdirty = 1;
 
-			if (pc_current_width > Machine->drv->screen_width)
-				pc_current_width = Machine->drv->screen_width;
-			if (pc_current_height > Machine->drv->screen_height)
-				pc_current_height = Machine->drv->screen_height;
+			if (pc_current_width > Machine->drv->screen[0].maxwidth)
+				pc_current_width = Machine->drv->screen[0].maxwidth;
+			if (pc_current_height > Machine->drv->screen[0].maxheight)
+				pc_current_height = Machine->drv->screen[0].maxheight;
 
 			if ((pc_current_width > 100) && (pc_current_height > 100))
-				set_visible_area(0, pc_current_width-1, 0, pc_current_height-1);
+				set_visible_area(0, 0, pc_current_width-1, 0, pc_current_height-1);
 
 			fillbitmap(bitmap, 0, cliprect);
 		}
@@ -107,10 +108,12 @@ VIDEO_UPDATE( pc_video )
 		if (tmpbitmap)
 		{
 			copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
-			*do_skip = !pc_anythingdirty;
+			if (!pc_anythingdirty)
+				rc = UPDATE_HAS_NOT_CHANGED;
 			pc_anythingdirty = 0;
 		}
 	}
+	return rc;
 }
 
 

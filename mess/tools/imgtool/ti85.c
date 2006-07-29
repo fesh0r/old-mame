@@ -59,13 +59,13 @@ typedef struct {
 } ti85b_file;
 
 typedef struct {
-	imgtool_imageenum base;
+	imgtool_directory base;
 	ti85_file *image;
 	int index;
 } ti85_iterator;
 
 typedef struct {
-	imgtool_imageenum base;
+	imgtool_directory base;
 	ti85b_file *image;
 	int index;
 } ti85b_iterator;
@@ -88,22 +88,22 @@ static struct OptionTemplate ti85_createoptions[] =
 #define TI85_OPTION_COMMENT	0
 
 static void ti85_file_info(imgtool_image *img, char *string, const int len);
-static int ti85_file_init(const struct ImageModule *mod, imgtool_stream *f, imgtool_image **outimg);
+static int ti85_file_init(const imgtool_module *mod, imgtool_stream *f, imgtool_image **outimg);
 static void ti85_file_exit(imgtool_image *img);
-static int ti85_file_beginenum(imgtool_image *img, imgtool_imageenum **outenum);
-static int ti85_file_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent);
-static void ti85_file_closeenum(imgtool_imageenum *enumeration);
+static int ti85_file_beginenum(imgtool_image *img, imgtool_directory **outenum);
+static int ti85_file_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent);
+static void ti85_file_closeenum(imgtool_directory *enumeration);
 static int ti85_file_readfile(imgtool_image *img, const char *fname, imgtool_stream *destf);
 static int ti85_file_writefile(imgtool_image *img, const char *fname, imgtool_stream *sourcef, const ResolvedOption *options_);
 static int ti85_file_deletefile(imgtool_image *img, const char *fname);
-static int ti85_file_create(const struct ImageModule *mod, imgtool_stream *f, const ResolvedOption *options_);
+static int ti85_file_create(const imgtool_module *mod, imgtool_stream *f, const ResolvedOption *options_);
 
 static void ti85b_file_info(imgtool_image *img, char *string, const int len);
-static int ti85b_file_init(const struct ImageModule *mod, imgtool_stream *f, imgtool_image **outimg);
+static int ti85b_file_init(const imgtool_module *mod, imgtool_stream *f, imgtool_image **outimg);
 static void ti85b_file_exit(imgtool_image *img);
-static int ti85b_file_beginenum(imgtool_image *img, imgtool_imageenum **outenum);
-static int ti85b_file_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent);
-static void ti85b_file_closeenum(imgtool_imageenum *enumeration);
+static int ti85b_file_beginenum(imgtool_image *img, imgtool_directory **outenum);
+static int ti85b_file_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent);
+static void ti85b_file_closeenum(imgtool_directory *enumeration);
 
 
 #define TI85FILE(name,human_name,extension) \
@@ -187,7 +187,7 @@ IMAGEMODULE(
 	NULL
 )
 
-static int ti85_file_init(const struct ImageModule *mod, imgtool_stream *f, imgtool_image **outimg)
+static int ti85_file_init(const imgtool_module *mod, imgtool_stream *f, imgtool_image **outimg)
 {
 	ti85_file *file;
 
@@ -270,7 +270,7 @@ static void ti85_file_info(imgtool_image *img, char *string, const int len)
 	if (checksum!=file_checksum) strcat (string, " (BAD)");
 }
 
-static int ti85_file_beginenum(imgtool_image *img, imgtool_imageenum **outenum)
+static int ti85_file_beginenum(imgtool_image *img, imgtool_directory **outenum)
 {
 	ti85_file *file=(ti85_file*)img;
 	ti85_iterator *iter;
@@ -285,7 +285,7 @@ static int ti85_file_beginenum(imgtool_image *img, imgtool_imageenum **outenum)
 	return 0;
 }
 
-static int ti85_file_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
+static int ti85_file_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent)
 {
 	ti85_iterator *iter=(ti85_iterator*)enumeration;
 
@@ -308,7 +308,7 @@ static int ti85_file_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *en
 	return 0;
 }
 
-static void ti85_file_closeenum(imgtool_imageenum *enumeration)
+static void ti85_file_closeenum(imgtool_directory *enumeration)
 {
 	free(enumeration);
 }
@@ -423,7 +423,7 @@ static int ti85_file_deletefile(imgtool_image *img, const char *fname)
 	return 0;
 }
 
-static int ti85_file_create(const struct ImageModule *mod, imgtool_stream *f, const ResolvedOption *options_)
+static int ti85_file_create(const imgtool_module *mod, imgtool_stream *f, const ResolvedOption *options_)
 {
 
 	ti85_header header = {	{'*','*','T','I','8','5','*','*'},
@@ -442,7 +442,7 @@ static int ti85_file_create(const struct ImageModule *mod, imgtool_stream *f, co
 	return 0;
 }
 
-static int ti85b_file_init(const struct ImageModule *mod, imgtool_stream *f, imgtool_image **outimg)
+static int ti85b_file_init(const imgtool_module *mod, imgtool_stream *f, imgtool_image **outimg)
 {
 	ti85b_file *file;
 
@@ -508,7 +508,7 @@ static void ti85b_file_info(imgtool_image *img, char *string, const int len)
 	if (checksum!=file_checksum) strcat (string, " (BAD)");
 }
 
-static int ti85b_file_beginenum(imgtool_image *img, imgtool_imageenum **outenum)
+static int ti85b_file_beginenum(imgtool_image *img, imgtool_directory **outenum)
 {
 	ti85b_file *file=(ti85b_file*)img;
 	ti85b_iterator *iter;
@@ -523,7 +523,7 @@ static int ti85b_file_beginenum(imgtool_image *img, imgtool_imageenum **outenum)
 	return 0;
 }
 
-static int ti85b_file_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
+static int ti85b_file_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent)
 {
 	ti85b_iterator *iter=(ti85b_iterator*)enumeration;
 
@@ -553,7 +553,7 @@ static int ti85b_file_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *e
 	return 0;
 }
 
-static void ti85b_file_closeenum(imgtool_imageenum *enumeration)
+static void ti85b_file_closeenum(imgtool_directory *enumeration)
 {
 	free(enumeration);
 }

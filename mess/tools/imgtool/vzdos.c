@@ -95,7 +95,7 @@ static UINT16 chksum16(UINT8 *buffer, int len)
 /* returns the offset where the actual sector data starts */
 static imgtoolerr_t vzdos_get_data_start(imgtool_image *img, int track, int sector, int *start)
 {
-	int ret;
+	imgtoolerr_t ret;
 	UINT8 buffer[25]; /* enough to read the sector header */
 
 	ret = floppy_read_sector(imgtool_floppy(img), 0, track, sector_order[sector], 0, &buffer, sizeof(buffer));
@@ -388,11 +388,11 @@ static imgtoolerr_t vzdos_write_formatted_sector(imgtool_image *img, int track, 
 	Imgtool module code
 *********************************************************************/
 
-static imgtoolerr_t vzdos_diskimage_beginenum(imgtool_imageenum *enumeration, const char *path)
+static imgtoolerr_t vzdos_diskimage_beginenum(imgtool_directory *enumeration, const char *path)
 {
 	vz_iterator *iter;
 
-	iter = (vz_iterator *) img_enum_extrabytes(enumeration);
+	iter = (vz_iterator *) imgtool_directory_extrabytes(enumeration);
 	if (!iter) return IMGTOOLERR_OUTOFMEMORY;
 
 	iter->index = 1;
@@ -401,9 +401,9 @@ static imgtoolerr_t vzdos_diskimage_beginenum(imgtool_imageenum *enumeration, co
 	return IMGTOOLERR_SUCCESS;
 }
 
-static imgtoolerr_t vzdos_diskimage_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
+static imgtoolerr_t vzdos_diskimage_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent)
 {
-	vz_iterator *iter = (vz_iterator *) img_enum_extrabytes(enumeration);
+	vz_iterator *iter = (vz_iterator *) imgtool_directory_extrabytes(enumeration);
 
 	if (iter->eof == 1 || iter->index > MAX_DIRENTS) {
 	
@@ -415,7 +415,7 @@ static imgtoolerr_t vzdos_diskimage_nextenum(imgtool_imageenum *enumeration, img
 		int ret, len;
 		vzdos_dirent dirent;
 
-		ret = vzdos_get_dirent(img_enum_image(enumeration), iter->index - 1, &dirent);
+		ret = vzdos_get_dirent(imgtool_directory_image(enumeration), iter->index - 1, &dirent);
 		
 		if (dirent.ftype == 0x00) {
 			iter->eof = 1;
@@ -451,20 +451,22 @@ static imgtoolerr_t vzdos_diskimage_nextenum(imgtool_imageenum *enumeration, img
 	return IMGTOOLERR_SUCCESS;
 }
 
-static void vzdos_diskimage_closeenum(imgtool_imageenum *enumeration)
+static void vzdos_diskimage_closeenum(imgtool_directory *enumeration)
 {
 	free(enumeration);
 }
 
 /* TRK 0 sector 15 is used to hold the track map of the disk with one bit
    corresponding to a sector used. */
-static imgtoolerr_t vzdos_diskimage_freespace(imgtool_image *img, UINT64 *size)
+static imgtoolerr_t vzdos_diskimage_freespace(imgtool_partition *partition, UINT64 *size)
 {
-	int ret, i;
+	imgtoolerr_t ret;
+	int i;
+	imgtool_image *image = imgtool_partition_image(partition);
 	UINT8 c, v, buffer[DATA_SIZE + 2];
 	*size = 0;
 
-	ret = vzdos_read_sector_data(img, 0, 15, buffer);
+	ret = vzdos_read_sector_data(image, 0, 15, buffer);
 	if (ret) return ret;
 
 	for (i = 0; i < DATA_SIZE; i++) {
@@ -479,9 +481,11 @@ static imgtoolerr_t vzdos_diskimage_freespace(imgtool_image *img, UINT64 *size)
 	return IMGTOOLERR_SUCCESS;
 }
 
-static imgtoolerr_t vzdos_diskimage_readfile(imgtool_image *image, const char *filename, const char *fork, imgtool_stream *destf)
+static imgtoolerr_t vzdos_diskimage_readfile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *destf)
 {
-	int ret, filesize, track, sector;
+	imgtoolerr_t ret;
+	imgtool_image *image = imgtool_partition_image(partition);
+	int filesize, track, sector;
 	vzdos_dirent ent;
 	UINT8 buffer[DATA_SIZE + 2];
 		
@@ -523,9 +527,11 @@ static imgtoolerr_t vzdos_diskimage_readfile(imgtool_image *image, const char *f
 }
 
 /* deletes directory entry, clears trackmap entries and sectors */
-static imgtoolerr_t vzdos_diskimage_deletefile(imgtool_image *img, const char *fname)
+static imgtoolerr_t vzdos_diskimage_deletefile(imgtool_partition *partition, const char *fname)
 {
-	int ret, index, filesize, track, sector, next_track, next_sector;
+	imgtoolerr_t ret;
+	imgtool_image *img = imgtool_partition_image(partition);
+	int index, filesize, track, sector, next_track, next_sector;
 	vzdos_dirent entry, next_entry;
 	UINT8 buffer[DATA_SIZE + 2];
 
@@ -603,9 +609,11 @@ static imgtoolerr_t vzdos_diskimage_deletefile(imgtool_image *img, const char *f
 	return IMGTOOLERR_SUCCESS;
 }
 
-static imgtoolerr_t vzdos_writefile(imgtool_image *img, int offset, imgtool_stream *sourcef, vzdos_dirent *entry)
+static imgtoolerr_t vzdos_writefile(imgtool_partition *partition, int offset, imgtool_stream *sourcef, vzdos_dirent *entry)
 {
-	int ret, index, track, sector, toread, next_track, next_sector;
+	imgtoolerr_t ret;
+	imgtool_image *img = imgtool_partition_image(partition);
+	int index, track, sector, toread, next_track, next_sector;
 	vzdos_dirent temp_entry;
 	UINT64 filesize = 0, freespace = 0;
 	UINT8 buffer[DATA_SIZE + 2];
@@ -621,7 +629,7 @@ static imgtoolerr_t vzdos_writefile(imgtool_image *img, int offset, imgtool_stre
 	ret = vzdos_get_dirent_fname(img, filename, &temp_entry);
 	if (!ret) {
 		/* file already exists, delete it */
-		ret = vzdos_diskimage_deletefile(img, filename);
+		ret = vzdos_diskimage_deletefile(partition, filename);
 		if (ret) return ret;
 	} else if (ret != IMGTOOLERR_FILENOTFOUND) {
 		/* another error occured, return it */
@@ -634,7 +642,7 @@ static imgtoolerr_t vzdos_writefile(imgtool_image *img, int offset, imgtool_stre
 	/* check if there is enough space */
 	filesize = stream_size(sourcef) - offset;
 
-	ret = vzdos_diskimage_freespace(img, &freespace);
+	ret = vzdos_diskimage_freespace(partition, &freespace);
 	if (ret) return ret;
 
 	if (filesize > freespace)
@@ -700,9 +708,10 @@ static imgtoolerr_t vzdos_writefile(imgtool_image *img, int offset, imgtool_stre
 }
 
 /* create a new file or overwrite a file */
-static imgtoolerr_t vzdos_diskimage_writefile(imgtool_image *img, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *opts)
+static imgtoolerr_t vzdos_diskimage_writefile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *opts)
 {
-	int ret, ftype;
+	imgtoolerr_t ret;
+	int ftype;
 	vzdos_dirent entry;
 
 	/* TODO: check for leading spaces and strip */
@@ -734,15 +743,16 @@ static imgtoolerr_t vzdos_diskimage_writefile(imgtool_image *img, const char *fi
 	memcpy(&entry.fname, filename, strlen(filename));		
 
 	/* write file to disk */
-	ret = vzdos_writefile(img, 0, sourcef, &entry);
+	ret = vzdos_writefile(partition, 0, sourcef, &entry);
 	if (ret) return ret;
 	
 	return IMGTOOLERR_SUCCESS;
 }
 
-static imgtoolerr_t vzdos_diskimage_suggesttransfer(imgtool_image *image, const char *fname, imgtool_transfer_suggestion *suggestions, size_t suggestions_length)
+static imgtoolerr_t vzdos_diskimage_suggesttransfer(imgtool_partition *partition, const char *fname, imgtool_transfer_suggestion *suggestions, size_t suggestions_length)
 {
-	int ret;
+	imgtoolerr_t ret;
+	imgtool_image *image = imgtool_partition_image(partition);
 	vzdos_dirent entry;
 	
 	if (fname) {
@@ -807,9 +817,10 @@ static imgtoolerr_t vzdos_diskimage_create(imgtool_image *img, imgtool_stream *s
 	Imgtool vz filter code
 *********************************************************************/
 
-static imgtoolerr_t vzsnapshot_readfile(imgtool_image *image, const char *filename, const char *fork, imgtool_stream *destf)
+static imgtoolerr_t vzsnapshot_readfile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *destf)
 {
-	int ret;
+	imgtoolerr_t ret;
+	imgtool_image *image = imgtool_partition_image(partition);
 	vzdos_dirent entry;
 	UINT8 header[24];
 	
@@ -844,15 +855,16 @@ static imgtoolerr_t vzsnapshot_readfile(imgtool_image *image, const char *filena
 	stream_write(destf, header, sizeof(header));
 
 	/* write data to file */
-	ret = vzdos_diskimage_readfile(image, filename, "", destf);
+	ret = vzdos_diskimage_readfile(partition, filename, "", destf);
 	if (ret) return ret;
 
 	return IMGTOOLERR_SUCCESS;
 }
 
-static imgtoolerr_t vzsnapshot_writefile(imgtool_image *image, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *opts)
+static imgtoolerr_t vzsnapshot_writefile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *opts)
 {
-	int ret, fnameopt;
+	imgtoolerr_t ret;
+	int fnameopt;
 	vzdos_dirent entry;
 	UINT8 header[24];
 
@@ -878,7 +890,7 @@ static imgtoolerr_t vzsnapshot_writefile(imgtool_image *image, const char *filen
 	}
 	
 	/* write file to disk */
-	ret = vzdos_writefile(image, 24, sourcef, &entry);
+	ret = vzdos_writefile(partition, 24, sourcef, &entry);
 	if (ret) return ret;
 
 	return IMGTOOLERR_SUCCESS;
@@ -925,13 +937,23 @@ W	E & F Word Pro with Patch 3.3 File	        End Addr D000H
 W	Russell Harrison Word Pro File              Except above two	
 */
 
-static void vzdos_module_populate(UINT32 state, union imgtoolinfo *info)
+void vzdos_get_info(const imgtool_class *imgclass, UINT32 state, union imgtoolinfo *info)
 {
 	switch(state)
 	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case IMGTOOLINFO_INT_PREFER_UCASE:					info->i = 1; break;
-		case IMGTOOLINFO_INT_ENUM_EXTRA_BYTES:				info->i = sizeof(vz_iterator); break;
+		case IMGTOOLINFO_INT_DIRECTORY_EXTRA_BYTES:				info->i = sizeof(vz_iterator); break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case IMGTOOLINFO_STR_NAME:							strcpy(info->s = imgtool_temp_str(), "vzdos"); break;
+		case IMGTOOLINFO_STR_DESCRIPTION:					strcpy(info->s = imgtool_temp_str(), "VZ-DOS format"); break;
+		case IMGTOOLINFO_STR_FILE:							strcpy(info->s = imgtool_temp_str(), __FILE__); break;
+		case IMGTOOLINFO_STR_WRITEFILE_OPTSPEC:				strcpy(info->s = imgtool_temp_str(), "T[0]-2;F[0]-1"); break;
 		case IMGTOOLINFO_STR_EOLN:							info->s = NULL; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case IMGTOOLINFO_PTR_MAKE_CLASS:					info->make_class = imgtool_floppy_make_class; break;
 		case IMGTOOLINFO_PTR_OPEN:							info->open = NULL; break;
 		case IMGTOOLINFO_PTR_BEGIN_ENUM:					info->begin_enum = vzdos_diskimage_beginenum; break;
 		case IMGTOOLINFO_PTR_NEXT_ENUM:						info->next_enum = vzdos_diskimage_nextenum; break;
@@ -939,11 +961,9 @@ static void vzdos_module_populate(UINT32 state, union imgtoolinfo *info)
 		case IMGTOOLINFO_PTR_READ_FILE:						info->read_file = vzdos_diskimage_readfile; break;
 		case IMGTOOLINFO_PTR_WRITE_FILE:					info->write_file = vzdos_diskimage_writefile; break;
 		case IMGTOOLINFO_PTR_DELETE_FILE:					info->delete_file = vzdos_diskimage_deletefile; break;
-		case IMGTOOLINFO_PTR_CREATE:						info->create = vzdos_diskimage_create; break;
+		case IMGTOOLINFO_PTR_FLOPPY_CREATE:					info->create = vzdos_diskimage_create; break;
 		case IMGTOOLINFO_PTR_WRITEFILE_OPTGUIDE:			info->writefile_optguide = vzdos_writefile_optionguide; break;
-		case IMGTOOLINFO_STR_WRITEFILE_OPTSPEC:				strcpy(info->s = imgtool_temp_str(), "T[0]-2;F[0]-1"); break;
 		case IMGTOOLINFO_PTR_SUGGEST_TRANSFER:				info->suggest_transfer = vzdos_diskimage_suggesttransfer; break;
+		case IMGTOOLINFO_PTR_FLOPPY_FORMAT:					info->p = (void *) floppyoptions_vz; break;
 	}
 }
-
-FLOPPYMODULE(vzdos, "VZ-DOS format", vz, vzdos_module_populate)

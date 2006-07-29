@@ -9,11 +9,6 @@
 #include "debug/debugcpu.h"
 #endif
 
-int osd_init(void)
-{
-	return 0;
-}
-
 int osd_create_display(const osd_create_params *params, UINT32 *rgb_components)
 {
 	rgb_components[0] = 0xff0000;
@@ -146,6 +141,28 @@ void osd_image_load_status_changed(mess_image *img, int is_final_unload)
 {
 }
 
+osd_lock *osd_lock_alloc(void)
+{
+	return (osd_lock *) ~0;
+}
+
+void osd_lock_acquire(osd_lock *lock)
+{
+}
+
+int osd_lock_try(osd_lock *lock)
+{
+	return TRUE;
+}
+
+void osd_lock_release(osd_lock *lock)
+{
+}
+
+void osd_lock_free(osd_lock *lock)
+{
+}
+
 #if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
 void osd_wait_for_debugger(void)
 {
@@ -177,7 +194,7 @@ void *osd_alloc_executable(size_t size)
 //	osd_free_executable
 //============================================================
 
-void osd_free_executable(void *ptr)
+void osd_free_executable(void *ptr, size_t size)
 {
 #ifdef WIN32
 	VirtualFree(ptr, 0, MEM_RELEASE);

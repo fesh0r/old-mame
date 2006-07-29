@@ -13,7 +13,11 @@
 #include "tapedlg.h"
 #include "mess.h"
 #include "messres.h"
-#include "windows/window.h"
+#ifdef NEW_RENDER
+#include "window.h"
+#else
+#include "windold.h"
+#endif
 
 //============================================================
 //	PARAMETERS
@@ -119,15 +123,27 @@ void tapedialog_init(void)
 }
 
 //============================================================
+//	is_windowed
+//============================================================
+
+#ifdef NEW_RENDER
+static int is_windowed(void)	{ return video_config.windowed; }
+#else
+static int is_windowed(void)	{ return win_window_mode; }
+#endif
+
+
+
+//============================================================
 //	tapedialog_show
 //============================================================
 
-void tapedialog_show(int id)
+void tapedialog_show(HWND wnd, int id)
 {
 	extern HMODULE win_resource_module(void);
 
-	if (!win_window_mode)
-		win_toggle_full_screen();
+	if (!is_windowed())
+		winwindow_toggle_full_screen();
 
 	if (tape_dialogs[id].window)
 	{
@@ -136,7 +152,7 @@ void tapedialog_show(int id)
 	else
 	{
 		CreateDialogParam(win_resource_module(), MAKEINTRESOURCE(IDD_TAPEDIALOG),
-			win_video_window, tapedialog_dlgproc, id);
+			wnd, tapedialog_dlgproc, id);
 	}
 }
 #endif /* HAS_WAVE */

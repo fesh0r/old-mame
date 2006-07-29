@@ -301,11 +301,12 @@ static void update_common(mame_bitmap *bitmap,
 static VIDEO_UPDATE( tm990_189 )
 {
 	update_common(bitmap, 580, 150, 110, 508, 387, 456, 507, 478, Machine->pens[1], Machine->pens[0]);
+	return 0;
 }
 
 static VIDEO_UPDATE( tm990_189_v )
 {
-	video_update_tms9928a(screen, bitmap, cliprect, do_skip);
+	video_update_tms9928a(screen, bitmap, cliprect);
 
 	plot_box(bitmap, LED_display_window_left, LED_display_window_top, LED_display_window_width, LED_display_window_height, Machine->pens[1]);
 	update_common(bitmap,
@@ -314,6 +315,7 @@ static VIDEO_UPDATE( tm990_189_v )
 					LED_display_window_left+80, LED_display_window_top+16,
 					LED_display_window_left+128, LED_display_window_top+16,
 					Machine->pens[6], Machine->pens[1]);
+	return 0;
 }
 
 /*
@@ -781,7 +783,6 @@ static MACHINE_DRIVER_START(tm990_189)
 	/*MDRV_INTERLEAVE(interleave)*/
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	/*MDRV_ASPECT_RATIO(num, den)*/
 	MDRV_SCREEN_SIZE(750, 532)
 	MDRV_VISIBLE_AREA(0, 750-1, 0, 532-1)
 
@@ -827,12 +828,12 @@ static MACHINE_DRIVER_START(tm990_189_v)
 
 	/* NPW 27-Feb-2006 - ewwww gross!!! maybe this can be fixed when 
 	 * multimonitor support is added?*/
-	LED_display_window_left = machine->default_visible_area.min_x;
-	LED_display_window_top = machine->default_visible_area.max_y;
-	LED_display_window_width = machine->default_visible_area.max_x - machine->default_visible_area.min_x;
+	LED_display_window_left = machine->screen[0].default_visible_area.min_x;
+	LED_display_window_top = machine->screen[0].default_visible_area.max_y;
+	LED_display_window_width = machine->screen[0].default_visible_area.max_x - machine->screen[0].default_visible_area.min_x;
 	LED_display_window_height = 32;
-	machine->default_visible_area.max_y += 32;
-	machine->screen_height += 32;
+	machine->screen[0].default_visible_area.max_y += 32;
+	machine->screen[0].maxheight += 32;
 
 	/* sound hardware */
 	/* one two-level buzzer */

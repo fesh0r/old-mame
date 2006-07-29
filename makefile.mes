@@ -46,7 +46,7 @@ endif
 NEW_DEBUGGER = 1
 
 # uncomment next line to use the new rendering system
-# NEW_RENDER = 1
+NEW_RENDER = 1
 
 # uncomment next line to use DRC MIPS3 engine
 X86_MIPS3_DRC = 1
@@ -118,9 +118,7 @@ EXE = .exe
 AR = @ar
 CC = @gcc
 LD = @gcc
-ASM = @nasm
 HHC = @-hhc
-ASMFLAGS = -f coff
 MD = -mkdir.exe
 RM = @rm -f
 
@@ -199,10 +197,6 @@ OBJ = obj/$(NAME)
 
 DEFS = -DX86_ASM -DLSB_FIRST -DINLINE="static __inline__" -Dasm=__asm__ -DCRLF=3
 
-ifndef MSVC_BUILD
-DEFS += -Dalloca=__builtin_alloca
-endif
-
 ifdef PTR64
 DEFS += -DPTR64
 endif
@@ -247,7 +241,7 @@ EMULATORALL = $(EMULATORCLI)
 
 endif
 
-CFLAGS = -std=gnu89 -Imess -Isrc -Isrc/includes -Isrc/$(MAMEOS) -Imess/$(MAMEOS)
+CFLAGS = -std=gnu89 -Imess -Isrc -Isrc/includes -Isrc/$(MAMEOS) -I$(OBJ)/mess/layout -I$(OBJ)/layout -Imess/$(MAMEOS)
 
 ifdef SYMBOLS
 CFLAGS += -O0 -Wall -Wno-unused -g
@@ -303,11 +297,21 @@ VPATH = src $(wildcard src/cpu/*)
 # define the standard object directories
 #-------------------------------------------------
 
-OBJDIRS = obj $(OBJ) $(OBJ)/cpu $(OBJ)/sound $(OBJ)/$(MAMEOS) \
-	$(OBJ)/drivers $(OBJ)/machine $(OBJ)/vidhrdw $(OBJ)/sndhrdw $(OBJ)/debug $(OBJ)/xml2info
+OBJDIRS = \
+	obj \
+	$(OBJ) \
+	$(OBJ)/cpu \
+	$(OBJ)/sound \
+	$(OBJ)/debug \
+	$(OBJ)/drivers \
+	$(OBJ)/layout \
+	$(OBJ)/machine \
+	$(OBJ)/sndhrdw \
+	$(OBJ)/vidhrdw \
+	$(OBJ)/$(MAMEOS) \
 
 OBJDIRS += 	$(OBJ)/mess         $(OBJ)/mess/$(MAMEOS)			\
-		$(OBJ)/mess/expat										\
+		$(OBJ)/mess/expat	$(OBJ)/mess/layout					\
 		$(OBJ)/mess/cpu		$(OBJ)/mess/devices					\
 		$(OBJ)/mess/systems $(OBJ)/mess/machine					\
 		$(OBJ)/mess/vidhrdw $(OBJ)/mess/sndhrdw					\
@@ -447,21 +451,15 @@ endif
 
 #############################################################################
 
-romcmp$(EXE): $(OBJ)/romcmp.o $(OBJ)/unzip.o
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(ZLIB) $(LIBS) -o $@
+file2str$(EXE): $(OBJ)/file2str.o $(OSDBGOBJS)
 
-chdman$(EXE): $(OBJ)/chdman.o $(OBJ)/chd.o $(OBJ)/chdcd.o $(OBJ)/cdrom.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o $(OSTOOLOBJS) $(ZLIB) $(OSDBGOBJS)
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+romcmp$(EXE): $(OBJ)/romcmp.o $(OBJ)/unzip.o $(ZLIB) $(OSDBGOBJS)
+
+chdman$(EXE): $(OBJ)/chdman.o $(OBJ)/chd.o $(OBJ)/chdcd.o $(OBJ)/cdrom.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o $(ZLIB) $(OSTOOLOBJS) $(OSDBGOBJS)
 
 xml2info$(EXE): $(OBJ)/xml2info.o $(EXPAT) $(OSDBGOBJS)
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
 
-dat2html$(EXE): $(DAT2HTML_OBJS) $(OSDBGOBJS)
-	@echo Compiling $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ -o $@
+jedutil$(EXE): $(OBJ)/jedutil.o $(OBJ)/jedparse.o $(OSDBGOBJS)
 
 messdocs$(EXE): $(MESSDOCS_OBJS) $(OBJ)/mess/windows/dirutils.o $(OSDBGOBJS)
 	@echo Compiling $@...
@@ -476,11 +474,8 @@ wimgtool$(EXE): $(WIMGTOOL_OBJS) $(PLATFORM_TOOL_OBJS) $(ZLIB) $(OSDBGOBJS)
 	$(LD) $(LDFLAGS) $(OSTOOLOBJS) $(OSDBGLDFLAGS) $(LIBS) $(WINDOWS_PROGRAM) $^ $(ZLIB) $(LIBS) -lcomctl32 -lshlwapi -o $@
 
 messtest$(EXE):	$(OBJS) $(COREOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $(MESSTEST_OBJS) $(OSTOOLOBJS) \
-		$(OBJ)/windows/asmtile.o				\
 		$(OBJ)/windows/ticker.o					\
 		$(OBJ)/windows/fileio.o					\
-		$(OBJ)/windows/rc.o						\
-		$(OBJ)/windows/misc.o					\
 		$(OBJ)/windows/winalloc.o				\
 		$(OBJ)/mess/windows/dirio.o				\
 		$(OBJ)/mess/windows/dirutils.o			\
@@ -530,6 +525,10 @@ $(OBJ)/%.s: src/%.c
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -S $< -o $@
 
+$(OBJ)/%.lh: src/%.lay file2str$(EXE)
+	@echo Converting $<...
+	@file2str$(EXE) $< $@ layout_$(basename $(notdir $<))
+
 $(OBJ)/mess/%.o: mess/%.c
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -c $< -o $@
@@ -541,6 +540,10 @@ $(OBJ)/mess/%.pp: mess/%.c
 $(OBJ)/mess/%.S: mess/%.c
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -S $< -o $@
+
+$(OBJ)/mess/%.lh: mess/%.lay file2str$(EXE)
+	@echo Converting $<...
+	@file2str$(EXE) $< $@ layout_$(basename $(notdir $<))
 
 $(OBJ)/%.a:
 	@echo Archiving $@...

@@ -401,6 +401,10 @@ VIDEO_UPDATE( coco3 )
 {
 	int i, row;
 	UINT32 *line;
+	UINT32 rc = 0;
+
+	/* choose video type */
+	video->video_type = screen ? 1 : 0;
 
 	/* set all of the palette colors */
 	for (i = 0; i < 16; i++)
@@ -409,9 +413,9 @@ VIDEO_UPDATE( coco3 )
 	if (video->legacy_video)
 	{
 		/* legacy CoCo 1/2 graphics */
-		video_update_m6847(screen, bitmap, cliprect, do_skip);
+		rc = video_update_m6847(screen, bitmap, cliprect);
 
-		if (!*do_skip)
+		if ((rc & UPDATE_HAS_NOT_CHANGED) == 0)
 		{
 			/* need to double up all pixels */
 			for (row = cliprect->min_y; row <= cliprect->max_y; row++)
@@ -427,18 +431,16 @@ VIDEO_UPDATE( coco3 )
 		/* CoCo 3 graphics */
 		if (video->dirty)
 		{
-			/* placing this here, so its only read once */
-			video->video_type = (UINT8) readinputportbytag("video_type");
-			
 			for (row = cliprect->min_y; row <= cliprect->max_y; row++)
 				coco3_render_scanline(bitmap, row);
 			video->dirty = FALSE;
 		}
 		else
 		{
-			*do_skip = TRUE;
+			rc = UPDATE_HAS_NOT_CHANGED;
 		}
 	}
+	return rc;
 }
 
 

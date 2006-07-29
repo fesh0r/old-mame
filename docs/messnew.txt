@@ -1,3 +1,75 @@
+0.107
+
+NOTE: This is the first full release of MESS with the new rendering
+system. Before freaking out that things don't work the way you
+expected, please read the docs/newvideo.txt file that gives some
+suggestions for how to set up your base configuration. If you still
+encounter issues, then run your system with the -v option and post
+about your problem at http://www.mess.org
+
+
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+(none)
+
+
+
+System Driver Changes:
+----------------------
+- [AMSTRAD] Preliminary CPC+ support, and support for .cpr cartridge images.
+  [Barry Rodewald]
+
+- [ATOM] Fixed regression introduced in 0.106.  (bug #894) [Nate Woods]
+
+- [ATOMEB] Fixed regression introduced in 0.106.  (bug #898) [Nate Woods]
+
+- [BBCA] Fixed regression introduced in 0.106.  (bug #893) [Nate Woods]
+
+- [COCO] Fixed a subtle problem when creating DMK disk images.  (bug #864)
+  [Nate Woods]
+
+- [COCO3P] Fixed video.  (bug #886) [Nate Woods]
+
+- [DGNBETA] Fixed regression introduced in 0.106.  (bug #896) [Nate Woods]
+
+- [GAMEBOY] Fixed aspect ratio.  [Justin Kerk]
+
+- [LVIV] Changed to use selectable BIOSes.  [incog]
+
+- [MBEE] Fixed reset.  [Robbert, R. Belmont]
+
+- [PC1350] Fixed regression introduced in 0.106.  (bug #900) [Nate Woods]
+
+- [T1000HX] Fixed invisible text regression introduced in 0.106.  (bug #899)
+  [Nate Woods]
+
+
+
+User Interface Changes:
+-----------------------
+- Added a "System Information" menu item to the classic UI.  (bug #888) [Nate
+  Woods]
+
+
+
+Imgtool Changes:
+----------------
+- Major internal changes to how Imgtool modules are specified, and introduced
+  a concept of partitions.  Partitions are not exposed to the UI yet.  Expect
+  regressions.  [Nate Woods]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.107.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Fixed natural keyboard support for certain keys.  (bug #885) [Nate Woods]
+
+
+
 0.106
 
 New System Drivers Supported (in no particular order):

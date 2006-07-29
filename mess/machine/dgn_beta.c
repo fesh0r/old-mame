@@ -119,11 +119,8 @@ static void d_pia2_irq_b(int state);
 
 static void cpu0_recalc_irq(int state);
 static void cpu0_recalc_firq(int state);
-static void cpu0_recalc_nmi(int state);
 
-static void cpu1_recalc_irq(int state);
 static void cpu1_recalc_firq(int state);
-static void cpu1_recalc_nmi(int state);
 
 static	int Keyboard[NoKeyrows];		/* Keyboard bit array */
 static int RowShifter;				/* shift register to select row */
@@ -833,15 +830,7 @@ static void cpu0_recalc_firq(int state)
 	
 }
 
-static void cpu0_recalc_nmi(int state)
-{
-}
-
 /* CPU 1 */
-
-static void cpu1_recalc_irq(int state)
-{
-}
 
 static void cpu1_recalc_firq(int state)
 {
@@ -851,9 +840,6 @@ static void cpu1_recalc_firq(int state)
 		cpunum_set_input_line(1, M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
-static void cpu1_recalc_nmi(int state)
-{
-}
 
 
 /********************************************************************************************/
@@ -1032,6 +1018,7 @@ MACHINE_START( dgnbeta )
 #endif
 
 	add_reset_callback(dgnbeta_reset);
+	dgnbeta_reset();
 	return 0;
 }
 

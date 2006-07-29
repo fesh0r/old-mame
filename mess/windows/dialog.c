@@ -10,7 +10,7 @@
 
 #include "dialog.h"
 #include "mame.h"
-#include "../windows/window.h"
+#include "windold.h"
 #include "ui_text.h"
 #include "inputx.h"
 #include "utils.h"
@@ -18,6 +18,7 @@
 #include "mscommon.h"
 #include "pool.h"
 #include "winutils.h"
+#include "windows/input.h"
 
 #ifdef UNDER_CE
 #include "invokegx.h"
@@ -112,14 +113,6 @@ struct seqselect_stuff
 	int record_first_insert; 
 };
 
-
-
-//============================================================
-//	IMPORTS
-//============================================================
-
-// from input.c
-extern void win_poll_input(void);
 
 
 //============================================================
@@ -1133,7 +1126,7 @@ static INT_PTR CALLBACK seqselect_wndproc(HWND editwnd, UINT msg, WPARAM wparam,
 		if (wparam == TIMER_ID)
 		{
 			// we are in the middle of selecting a seq; we need to poll
-			win_poll_input();
+			wininput_poll();
 
 			ret = seq_read_async(&stuff->newcode, stuff->record_first_insert);
 			if (ret >= 0)
@@ -1562,10 +1555,6 @@ static void before_display_dialog(void)
 #ifdef UNDER_CE
 	// on WinCE, suspend GAPI
 	gx_suspend();
-#else
-	// on Windows, suspend DirectX
-//	extern int win_suspend_directx;
-//	win_suspend_directx = 1;
 #endif
 
 	// disable sound while in the dialog
@@ -1588,10 +1577,6 @@ static void after_display_dialog(void)
 #ifdef UNDER_CE
 	// on WinCE, resume GAPI
 	gx_resume();
-#else
-	// on Windows, suspend DirectX
-//	extern int win_suspend_directx;
-//	win_suspend_directx = 0;
 #endif
 
 	// reenable timer
@@ -1607,7 +1592,7 @@ static void after_display_dialog(void)
 //	win_dialog_runmodal
 //============================================================
 
-void win_dialog_runmodal(dialog_box *dialog)
+void win_dialog_runmodal(HWND wnd, dialog_box *dialog)
 {
 	struct _dialog_box *di;
 	
@@ -1620,9 +1605,9 @@ void win_dialog_runmodal(dialog_box *dialog)
 	// show the dialog
 	before_display_dialog();
 	if (GetVersion() & 0x80000000)
-		DialogBoxIndirectParamA(NULL, di->handle, win_video_window, dialog_proc, (LPARAM) di);
+		DialogBoxIndirectParamA(NULL, di->handle, wnd, dialog_proc, (LPARAM) di);
 	else
-		DialogBoxIndirectParamW(NULL, di->handle, win_video_window, dialog_proc, (LPARAM) di);
+		DialogBoxIndirectParamW(NULL, di->handle, wnd, dialog_proc, (LPARAM) di);
 	after_display_dialog();
 }
 

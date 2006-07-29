@@ -127,49 +127,42 @@ typedef struct concept_iterator
 static imgtoolerr_t concept_image_init(imgtool_image *img, imgtool_stream *f);
 static void concept_image_exit(imgtool_image *img);
 static void concept_image_info(imgtool_image *img, char *string, size_t len);
-static imgtoolerr_t concept_image_beginenum(imgtool_imageenum *enumeration, const char *path);
-static imgtoolerr_t concept_image_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent);
-static void concept_image_closeenum(imgtool_imageenum *enumeration);
-static imgtoolerr_t concept_image_freespace(imgtool_image *img, UINT64 *size);
-static imgtoolerr_t concept_image_readfile(imgtool_image *img, const char *filename, const char *fork, imgtool_stream *destf);
-/*static imgtoolerr_t concept_image_writefile(imgtool_image *img, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions);
-static imgtoolerr_t concept_image_deletefile(imgtool_image *img, const char *filename);
-static imgtoolerr_t concept_image_create(const struct ImageModule *mod, imgtool_stream *f, option_resolution *createoptions);*/
+static imgtoolerr_t concept_image_beginenum(imgtool_directory *enumeration, const char *path);
+static imgtoolerr_t concept_image_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent);
+static void concept_image_closeenum(imgtool_directory *enumeration);
+static imgtoolerr_t concept_image_freespace(imgtool_partition *partition, UINT64 *size);
+static imgtoolerr_t concept_image_readfile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *destf);
+/*static imgtoolerr_t concept_image_writefile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions);
+static imgtoolerr_t concept_image_deletefile(imgtool_partition *partition, const char *filename);
+static imgtoolerr_t concept_image_create(const imgtool_module *mod, imgtool_stream *f, option_resolution *createoptions);*/
 
-imgtoolerr_t concept_createmodule(imgtool_library *library)
+void concept_get_info(const imgtool_class *imgclass, UINT32 state, union imgtoolinfo *info)
 {
-	imgtoolerr_t err;
-	struct ImageModule *module;
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case IMGTOOLINFO_INT_IMAGE_EXTRA_BYTES:				info->i = sizeof(concept_image); break;
+		case IMGTOOLINFO_INT_DIRECTORY_EXTRA_BYTES:				info->i = sizeof(concept_iterator); break;
 
-	err = imgtool_library_createmodule(library, "concept", &module);
-	if (err)
-		return err;
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case IMGTOOLINFO_STR_NAME:							strcpy(info->s = imgtool_temp_str(), "concept"); break;
+		case IMGTOOLINFO_STR_DESCRIPTION:					strcpy(info->s = imgtool_temp_str(), "Concept floppy disk image"); break;
+		case IMGTOOLINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = imgtool_temp_str(), "img"); break;
+		case IMGTOOLINFO_STR_EOLN:							strcpy(info->s = imgtool_temp_str(), "\r"); break;
 
-	module->description				= "Concept floppy disk image";
-	module->extensions				= "img\0";
-	module->eoln					= EOLN_CR;
-	module->image_extra_bytes		= sizeof(concept_image);
-	module->imageenum_extra_bytes	= sizeof(concept_iterator);
-
-	module->open					= concept_image_init;
-	module->close					= concept_image_exit;
-	module->info					= concept_image_info;
-	module->begin_enum				= concept_image_beginenum;
-	module->next_enum				= concept_image_nextenum;
-	module->close_enum				= concept_image_closeenum;
-	module->free_space				= concept_image_freespace;
-	module->read_file				= concept_image_readfile;
-	/*module->write_file				= concept_image_writefile;
-	module->delete_file				= concept_image_deletefile;
-	module->create					= concept_image_create;*/
-
-	/*module->createimage_optguide	= ...;
-	module->createimage_optspec		= ...;
-	module->writefile_optguide		= ...;
-	module->writefile_optspec		= ...;*/
-	/*module->extra					= NULL;*/
-
-	return IMGTOOLERR_SUCCESS;
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case IMGTOOLINFO_PTR_OPEN:							info->open = concept_image_init; break;
+		case IMGTOOLINFO_PTR_CLOSE:							info->close = concept_image_exit; break;
+		case IMGTOOLINFO_PTR_INFO:							info->info = concept_image_info; break;
+		case IMGTOOLINFO_PTR_BEGIN_ENUM:					info->begin_enum = concept_image_beginenum; break;
+		case IMGTOOLINFO_PTR_NEXT_ENUM:						info->next_enum = concept_image_nextenum; break;
+		case IMGTOOLINFO_PTR_CLOSE_ENUM:					info->close_enum = concept_image_closeenum; break;
+		case IMGTOOLINFO_PTR_FREE_SPACE:					info->free_space = concept_image_freespace; break;
+		case IMGTOOLINFO_PTR_READ_FILE:						info->read_file = concept_image_readfile; break;
+		case IMGTOOLINFO_PTR_WRITE_FILE:					/* info->write_file = concept_image_writefile */; break;
+		case IMGTOOLINFO_PTR_DELETE_FILE:					/* info->delete_file = concept_image_deletefile */; break;
+		case IMGTOOLINFO_PTR_CREATE:						/* info->create = concept_image_create */; break;
+	}
 }
 
 /*
@@ -263,7 +256,7 @@ static int get_catalog_entry(concept_image *image, const unsigned char *filename
 */
 static imgtoolerr_t concept_image_init(imgtool_image *img, imgtool_stream *f)
 {
-	concept_image *image = (concept_image *) img_extrabytes(img);
+	concept_image *image = (concept_image *) imgtool_image_extra_bytes(img);
 	int reply;
 	int i;
 	unsigned totphysrecs;
@@ -298,7 +291,7 @@ static imgtoolerr_t concept_image_init(imgtool_image *img, imgtool_stream *f)
 */
 static void concept_image_exit(imgtool_image *img)
 {
-	/*concept_image *image = (concept_image *) img_extrabytes(img);*/
+	/*concept_image *image = (concept_image *) imgtool_image_extra_bytes(img);*/
 }
 
 /*
@@ -308,7 +301,7 @@ static void concept_image_exit(imgtool_image *img)
 */
 static void concept_image_info(imgtool_image *img, char *string, size_t len)
 {
-	concept_image *image = (concept_image *) img_extrabytes(img);
+	concept_image *image = (concept_image *) imgtool_image_extra_bytes(img);
 	char vol_name[8];
 
 	memcpy(vol_name, image->dev_dir.vol_hdr.volname + 1, image->dev_dir.vol_hdr.volname[0]);
@@ -320,12 +313,12 @@ static void concept_image_info(imgtool_image *img, char *string, size_t len)
 /*
 	Open the disk catalog for enumeration 
 */
-static imgtoolerr_t concept_image_beginenum(imgtool_imageenum *enumeration, const char *path)
+static imgtoolerr_t concept_image_beginenum(imgtool_directory *enumeration, const char *path)
 {
 	concept_iterator *iter;
 
-	iter = (concept_iterator *) img_enum_extrabytes(enumeration);
-	iter->image = (concept_image *) img_extrabytes(img_enum_image(enumeration));
+	iter = (concept_iterator *) imgtool_directory_extrabytes(enumeration);
+	iter->image = (concept_image *) imgtool_image_extra_bytes(imgtool_directory_image(enumeration));
 	iter->index = 0;
 	return IMGTOOLERR_SUCCESS;
 }
@@ -333,9 +326,9 @@ static imgtoolerr_t concept_image_beginenum(imgtool_imageenum *enumeration, cons
 /*
 	Enumerate disk catalog next entry
 */
-static imgtoolerr_t concept_image_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
+static imgtoolerr_t concept_image_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent)
 {
-	concept_iterator *iter = (concept_iterator *) img_enum_extrabytes(enumeration);
+	concept_iterator *iter = (concept_iterator *) imgtool_directory_extrabytes(enumeration);
 
 
 	ent->corrupt = 0;
@@ -394,15 +387,16 @@ static imgtoolerr_t concept_image_nextenum(imgtool_imageenum *enumeration, imgto
 /*
 	Free enumerator
 */
-static void concept_image_closeenum(imgtool_imageenum *enumeration)
+static void concept_image_closeenum(imgtool_directory *enumeration)
 {
 }
 
 /*
 	Compute free space on disk image
 */
-static imgtoolerr_t concept_image_freespace(imgtool_image *img, UINT64 *size)
+static imgtoolerr_t concept_image_freespace(imgtool_partition *partition, UINT64 *size)
 {
+	imgtool_image *img = imgtool_partition_image(partition);
 	concept_image *image = (concept_image*) img;
 	int free_blocks;
 	int i;
@@ -426,9 +420,10 @@ static imgtoolerr_t concept_image_freespace(imgtool_image *img, UINT64 *size)
 /*
 	Extract a file from a concept_image.
 */
-static imgtoolerr_t concept_image_readfile(imgtool_image *img, const char *filename, const char *fork, imgtool_stream *destf)
+static imgtoolerr_t concept_image_readfile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *destf)
 {
-	concept_image *image = (concept_image *) img_extrabytes(img);
+	imgtool_image *img = imgtool_partition_image(partition);
+	concept_image *image = (concept_image *) imgtool_image_extra_bytes(img);
 	size_t filename_len = strlen(filename);
 	unsigned char concept_fname[16];
 	int catalog_index;
@@ -462,7 +457,7 @@ static imgtoolerr_t concept_image_readfile(imgtool_image *img, const char *filen
 /*
 	Add a file to a concept_image.
 */
-static imgtoolerr_t concept_image_writefile(imgtool_image *img, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions)
+static imgtoolerr_t concept_image_writefile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions)
 {
 	/* ... */
 
@@ -472,7 +467,7 @@ static imgtoolerr_t concept_image_writefile(imgtool_image *img, const char *file
 /*
 	Delete a file from a concept_image.
 */
-static imgtoolerr_t concept_image_deletefile(imgtool_image *img, const char *filename)
+static imgtoolerr_t concept_image_deletefile(imgtool_partition *partition, const char *filename)
 {
 	/* ... */
 
@@ -482,7 +477,7 @@ static imgtoolerr_t concept_image_deletefile(imgtool_image *img, const char *fil
 /*
 	Create a blank concept_image.
 */
-static imgtoolerr_t concept_image_create(const struct ImageModule *mod, imgtool_stream *f, option_resolution *createoptions)
+static imgtoolerr_t concept_image_create(const imgtool_module *mod, imgtool_stream *f, option_resolution *createoptions)
 {
 	/* ... */
 

@@ -48,7 +48,7 @@ static imgtoolerr_t convert_stream_eolns(imgtool_stream *source, imgtool_stream 
 
 
 
-static imgtoolerr_t ascii_readfile(imgtool_image *image, const char *filename, const char *fork, imgtool_stream *destf)
+static imgtoolerr_t ascii_readfile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *destf)
 {
 	imgtoolerr_t err;
 	imgtool_stream *mem_stream;
@@ -60,7 +60,7 @@ static imgtoolerr_t ascii_readfile(imgtool_image *image, const char *filename, c
 		goto done;
 	}
 
-	err = img_module(image)->read_file(image, filename, fork, mem_stream);
+	err = imgtool_partition_read_file(partition, filename, fork, mem_stream, NULL);
 	if (err)
 		goto done;
 
@@ -77,11 +77,13 @@ done:
 
 
 
-static imgtoolerr_t ascii_writefile(imgtool_image *image, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *opts)
+static imgtoolerr_t ascii_writefile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *opts)
 {
 	imgtoolerr_t err;
 	imgtool_stream *mem_stream = NULL;
+	const char *eoln;
 
+	/* create a stream */
 	mem_stream = stream_open_mem(NULL, 0);
 	if (!mem_stream)
 	{
@@ -89,12 +91,14 @@ static imgtoolerr_t ascii_writefile(imgtool_image *image, const char *filename, 
 		goto done;
 	}
 
-	err = convert_stream_eolns(sourcef, mem_stream, img_module(image)->eoln);
+	eoln = imgtool_partition_get_info_string(partition, IMGTOOLINFO_STR_EOLN);
+
+	err = convert_stream_eolns(sourcef, mem_stream, eoln);
 	if (err)
 		goto done;
 	stream_seek(mem_stream, SEEK_SET, 0);
 
-	err = img_module(image)->write_file(image, filename, fork, mem_stream, opts);
+	err = imgtool_partition_write_file(partition, filename, fork, mem_stream, opts, NULL);
 	if (err)
 		goto done;
 

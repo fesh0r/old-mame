@@ -17,6 +17,10 @@
 #include "sound/wavwrite.h"
 #include "vidhrdw/generic.h"
 
+#ifdef NEW_RENDER
+#include "render.h"
+#endif
+
 #ifdef WIN32
 #include "windows/parallel.h"
 #endif
@@ -138,6 +142,10 @@ static void *wavptr;
 static UINT32 samples_this_frame;
 static int seen_first_update;
 
+#ifdef NEW_RENDER
+static render_target *target;
+#endif
+
 /* command list */
 static mess_pile command_pile;
 static memory_pool command_pool;
@@ -152,12 +160,13 @@ static void dump_screenshot(int write_file)
 {
 	mame_file *fp;
 	char buf[128];
-	mame_bitmap *bitmap;
-	int x, y, is_blank;
+	int is_blank = 0;
+	int scrnum;
+	UINT32 screenmask;
+#ifndef NEW_RENDER
+	int x, y;
 	pen_t color;
-	extern mame_bitmap *scrbitmap[8];
-
-	bitmap = artwork_get_ui_bitmap();
+#endif
 
 	if (write_file)
 	{
@@ -168,15 +177,36 @@ static void dump_screenshot(int write_file)
 		fp = mame_fopen(Machine->gamedrv->name, buf, FILETYPE_SCREENSHOT, 1);
 		if (fp)
 		{
-			save_screen_snapshot_as(fp, bitmap);
-			mame_fclose(fp);
-			report_message(MSG_INFO, "Saved screenshot as %s", buf);
+#ifdef NEW_RENDER
+			screenmask = render_get_live_screens_mask();
+#else
+			screenmask = 1;
+#endif
+
+			if (screenmask != 0)
+			{
+				/* choose a screen */
+				for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
+				{
+					if (screenmask & (1 << scrnum))
+						break;
+				}
+
+				snapshot_save_screen_indexed(fp, scrnum);
+				mame_fclose(fp);
+				report_message(MSG_INFO, "Saved screenshot as %s", buf);
+			}
+			else
+			{
+				report_message(MSG_INFO, "Could not save screenshot; no live screen");
+			}
 		}
 
 		if (screenshot_num >= 0)
 			screenshot_num++;
 	}
 
+#if 0
 	/* check to see if bitmap is blank */
 	bitmap = scrbitmap[0];
 	is_blank = 1;
@@ -189,6 +219,7 @@ static void dump_screenshot(int write_file)
 				is_blank = 0;
 		}
 	}
+#endif
 	if (is_blank)
 	{
 		had_failure = TRUE;
@@ -238,8 +269,9 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	options.skip_warnings = 1;
 	options.disable_normal_ui = 1;
 	options.ram = current_testcase.ram;
-	options.vector_intensity = 1.5;
+#ifndef NEW_RENDER
 	options.use_artwork = 1;
+#endif
 	options.samplerate = 44100;
 	options.mame_debug = 1;
 
@@ -299,6 +331,17 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 
 
 
+int osd_init(void)
+{
+#ifdef NEW_RENDER
+	target = render_target_alloc(NULL, FALSE);
+	render_target_set_orientation(target, 0);
+#endif
+	return 0;
+}
+
+
+
 int osd_start_audio_stream(int stereo)
 {
 	char buf[256];
@@ -312,7 +355,7 @@ int osd_start_audio_stream(int stereo)
 	{
 		wavptr = NULL;
 	}
-	samples_this_frame = (int) ((double)Machine->sample_rate / (double)Machine->refresh_rate);
+	samples_this_frame = (int) ((double)Machine->sample_rate / (double)Machine->refresh_rate[0]);
 	return samples_this_frame;
 }
 
@@ -491,6 +534,29 @@ static void command_switch(void)
 {
 	input_port_entry *switch_name;
 	input_port_entry *switch_setting;
+
+#ifdef NEW_RENDER
+	/* special hack until we support video targets natively */
+	if (!strcmp(current_command->u.switch_args.name, "Video type"))
+	{
+		render_target *target = render_target_get_indexed(0);
+		int view_index = 0;
+		const char *view_name;
+
+		while((view_name = render_target_get_view_name(target, view_index)) != NULL)
+		{
+			if (!strcmp(view_name, current_command->u.switch_args.value))
+				break;
+			view_index++;
+		}
+		
+		if (view_name)
+		{
+			render_target_set_view(target, view_index);
+			return;
+		}
+	}
+#endif
 
 	find_switch(current_command->u.switch_args.name, current_command->u.switch_args.value,
 		IPT_DIPSWITCH_NAME, IPT_DIPSWITCH_SETTING, &switch_name, &switch_setting);
@@ -817,30 +883,41 @@ static const struct command_procmap_entry commands[] =
 	{ MESSTEST_COMMAND_END,				command_end }
 };
 
-void osd_update_video_and_audio(mame_display *display)
+#ifndef NEW_RENDER
+void osd_update_video_and_audio(struct _mame_display *display)
+#else
+int osd_update(mame_time emutime)
+#endif
 {
 	int i;
 	double time_limit;
 	double current_time;
 	int cpunum;
 
+#ifdef NEW_RENDER
+	render_target_get_primitives(target);
+#else
 	/* if the visible area has changed, update it */
 	if (display->changed_flags & GAME_VISIBLE_AREA_CHANGED)
 	{
 		ui_set_visible_area(display->game_visible_area.min_x, display->game_visible_area.min_y,
 			display->game_visible_area.max_x, display->game_visible_area.max_y);
 	}
+#endif
 
 	/* is this the first update?  if so, eat it */
 	if (!seen_first_update)
 	{
 		seen_first_update = TRUE;
-		return;
+		goto done;
 	}
 
 	/* if we have already aborted or completed, our work is done */
 	if ((state == STATE_ABORTED) || (state == STATE_DONE))
-		return;
+	{
+		mame_schedule_exit();
+		goto done;
+	}
 
 	/* have we hit the time limit? */
 	current_time = timer_get_time();
@@ -850,7 +927,7 @@ void osd_update_video_and_audio(mame_display *display)
 	{
 		state = STATE_ABORTED;
 		report_message(MSG_FAILURE, "Time limit of %.2f seconds exceeded", time_limit);
-		return;
+		goto done;
 	}
 
 	/* update the runtime hash */
@@ -887,6 +964,11 @@ void osd_update_video_and_audio(mame_display *display)
 
 		current_command++;
 	}
+
+done:
+#ifdef NEW_RENDER
+	return FALSE;
+#endif
 }
 
 

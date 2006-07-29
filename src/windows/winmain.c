@@ -218,6 +218,10 @@ int osd_init(void)
 	if (result == 0)
 		result = wininput_init();
 
+#ifdef MESS
+	if (result == 0)
+		result = win_parallel_init();
+#endif
 	add_exit_callback(osd_exit);
 
 	if (win_erroroslog)

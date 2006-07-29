@@ -5237,12 +5237,12 @@ static imgtoolerr_t get_comment(mac_l2_imgref *l2_img, UINT16 id, mac_str255 com
 
 static void mac_image_exit(imgtool_image *img);
 static void mac_image_info(imgtool_image *img, char *string, size_t len);
-static imgtoolerr_t mac_image_beginenum(imgtool_imageenum *enumeration, const char *path);
-static imgtoolerr_t mac_image_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent);
-static void mac_image_closeenum(imgtool_imageenum *enumeration);
-static imgtoolerr_t mac_image_freespace(imgtool_image *img, UINT64 *size);
-static imgtoolerr_t mac_image_readfile(imgtool_image *img, const char *filename, const char *fork, imgtool_stream *destf);
-static imgtoolerr_t mac_image_writefile(imgtool_image *img, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions);
+static imgtoolerr_t mac_image_beginenum(imgtool_directory *enumeration, const char *path);
+static imgtoolerr_t mac_image_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent);
+static void mac_image_closeenum(imgtool_directory *enumeration);
+static imgtoolerr_t mac_image_freespace(imgtool_partition *partition, UINT64 *size);
+static imgtoolerr_t mac_image_readfile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *destf);
+static imgtoolerr_t mac_image_writefile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions);
 
 /*
 	close a mfs/hfs image
@@ -5298,10 +5298,10 @@ typedef struct mac_iterator
 /*
 	Open the disk catalog for enumeration 
 */
-static imgtoolerr_t mac_image_beginenum(imgtool_imageenum *enumeration, const char *path)
+static imgtoolerr_t mac_image_beginenum(imgtool_directory *enumeration, const char *path)
 {
-	mac_l2_imgref *image = get_imgref(img_enum_image(enumeration));
-	mac_iterator *iter = (mac_iterator *) img_enum_extrabytes(enumeration);
+	mac_l2_imgref *image = get_imgref(imgtool_directory_image(enumeration));
+	mac_iterator *iter = (mac_iterator *) imgtool_directory_extrabytes(enumeration);
 	imgtoolerr_t err = IMGTOOLERR_UNEXPECTED;
 
 	iter->format = image->format;
@@ -5507,10 +5507,10 @@ static imgtoolerr_t hfs_image_nextenum(mac_iterator *iter, imgtool_dirent *ent)
 /*
 	Enumerate disk catalog next entry
 */
-static imgtoolerr_t mac_image_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
+static imgtoolerr_t mac_image_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent)
 {
 	imgtoolerr_t err;
-	mac_iterator *iter = (mac_iterator *) img_enum_extrabytes(enumeration);
+	mac_iterator *iter = (mac_iterator *) imgtool_directory_extrabytes(enumeration);
 
 	switch (iter->format)
 	{
@@ -5533,8 +5533,9 @@ static imgtoolerr_t mac_image_nextenum(imgtool_imageenum *enumeration, imgtool_d
 /*
 	Compute free space on disk image in bytes
 */
-static imgtoolerr_t mac_image_freespace(imgtool_image *image, UINT64 *size)
+static imgtoolerr_t mac_image_freespace(imgtool_partition *partition, UINT64 *size)
 {
+	imgtool_image *image = imgtool_partition_image(partition);
 	*size = ((UINT64) get_imgref(image)->freeABs) * 512;
 	return IMGTOOLERR_SUCCESS;
 }
@@ -5570,9 +5571,10 @@ static imgtoolerr_t mac_get_comment(mac_l2_imgref *image, mac_str255 filename, c
 /*
 	Extract a file from a disk image.
 */
-static imgtoolerr_t mac_image_readfile(imgtool_image *img, const char *fpath, const char *fork, imgtool_stream *destf)
+static imgtoolerr_t mac_image_readfile(imgtool_partition *partition, const char *fpath, const char *fork, imgtool_stream *destf)
 {
 	imgtoolerr_t err;
+	imgtool_image *img = imgtool_partition_image(partition);
 	mac_l2_imgref *image = get_imgref(img);
 	UINT32 parID;
 	mac_str255 filename;
@@ -5620,8 +5622,9 @@ static imgtoolerr_t mac_image_readfile(imgtool_image *img, const char *fpath, co
 /*
 	Add a file to a disk image.
 */
-static imgtoolerr_t mac_image_writefile(imgtool_image *img, const char *fpath, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions)
+static imgtoolerr_t mac_image_writefile(imgtool_partition *partition, const char *fpath, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions)
 {
+	imgtool_image *img = imgtool_partition_image(partition);
 	mac_l2_imgref *image = get_imgref(img);
 	UINT32 parID;
 	mac_str255 filename;
@@ -5694,13 +5697,14 @@ static imgtoolerr_t mac_image_writefile(imgtool_image *img, const char *fpath, c
 
 
 
-static imgtoolerr_t mac_image_listforks(imgtool_image *img, const char *path, imgtool_forkent *ents, size_t len)
+static imgtoolerr_t mac_image_listforks(imgtool_partition *partition, const char *path, imgtool_forkent *ents, size_t len)
 {
 	imgtoolerr_t err;
 	UINT32 parID;
 	mac_str255 filename;
 	mac_dirent cat_info;
 	int fork_num = 0;
+	imgtool_image *img = imgtool_partition_image(partition);
 	mac_l2_imgref *image = get_imgref(img);
 
 	/* resolve path and fetch file info from directory/catalog */
@@ -5731,9 +5735,10 @@ static imgtoolerr_t mac_image_listforks(imgtool_image *img, const char *path, im
 
 
 
-static imgtoolerr_t mac_image_getattrs(imgtool_image *img, const char *path, const UINT32 *attrs, imgtool_attribute *values)
+static imgtoolerr_t mac_image_getattrs(imgtool_partition *partition, const char *path, const UINT32 *attrs, imgtool_attribute *values)
 {
 	imgtoolerr_t err;
+	imgtool_image *img = imgtool_partition_image(partition);
 	UINT32 parID;
 	mac_str255 filename;
 	mac_dirent cat_info;
@@ -5798,12 +5803,13 @@ static imgtoolerr_t mac_image_getattrs(imgtool_image *img, const char *path, con
 
 
 
-static imgtoolerr_t mac_image_setattrs(imgtool_image *img, const char *path, const UINT32 *attrs, const imgtool_attribute *values)
+static imgtoolerr_t mac_image_setattrs(imgtool_partition *partition, const char *path, const UINT32 *attrs, const imgtool_attribute *values)
 {
 	imgtoolerr_t err;
 	UINT32 parID;
 	mac_str255 filename;
 	mac_dirent cat_info;
+	imgtool_image *img = imgtool_partition_image(partition);
 	mac_l2_imgref *image = get_imgref(img);
 	int i;
 
@@ -6064,7 +6070,7 @@ static int load_icon(UINT32 *dest, const void *resource_fork, UINT64 resource_fo
 
 
 
-static imgtoolerr_t mac_image_geticoninfo(imgtool_image *image, const char *path, imgtool_iconinfo *iconinfo)
+static imgtoolerr_t mac_image_geticoninfo(imgtool_partition *partition, const char *path, imgtool_iconinfo *iconinfo)
 {
 	static const UINT32 mac_palette_1bpp[2] = { 0xFFFFFF, 0x000000 };
 
@@ -6146,7 +6152,7 @@ static imgtoolerr_t mac_image_geticoninfo(imgtool_image *image, const char *path
 		== (sizeof(attr_values) / sizeof(attr_values[0])));
 
 	/* first retrieve type and creator code */
-	err = mac_image_getattrs(image, path, attrs, attr_values);
+	err = mac_image_getattrs(partition, path, attrs, attr_values);
 	if (err)
 		goto done;
 	type_code = (UINT32) attr_values[0].i;
@@ -6166,7 +6172,7 @@ static imgtoolerr_t mac_image_geticoninfo(imgtool_image *image, const char *path
 	}
 
 	/* read in the resource fork */
-	err = mac_image_readfile(image, path, "RESOURCE_FORK", stream);
+	err = mac_image_readfile(partition, path, "RESOURCE_FORK", stream);
 	if (err)
 		goto done;
 	resource_fork = stream_getptr(stream);
@@ -6270,12 +6276,13 @@ done:
  *
  *************************************/
 
-static imgtoolerr_t mac_image_suggesttransfer(imgtool_image *img, const char *path, imgtool_transfer_suggestion *suggestions, size_t suggestions_length)
+static imgtoolerr_t mac_image_suggesttransfer(imgtool_partition *partition, const char *path, imgtool_transfer_suggestion *suggestions, size_t suggestions_length)
 {
 	imgtoolerr_t err;
 	UINT32 parID;
 	mac_str255 filename;
 	mac_dirent cat_info;
+	imgtool_image *img = imgtool_partition_image(partition);
 	mac_l2_imgref *image = get_imgref(img);
 	mac_filecategory_t file_category = MAC_FILECATEGORY_DATA;
 
@@ -6303,16 +6310,22 @@ static imgtoolerr_t mac_image_suggesttransfer(imgtool_image *img, const char *pa
  *
  *************************************/
 
-static void mac_module_populate(UINT32 state, union imgtoolinfo *info)
+static void generic_mac_get_info(const imgtool_class *imgclass, UINT32 state, union imgtoolinfo *info)
 {
 	switch(state)
 	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case IMGTOOLINFO_INT_OPEN_IS_STRICT:				info->i = 1; break;
 		case IMGTOOLINFO_INT_IMAGE_EXTRA_BYTES:				info->i = sizeof(struct mac_l2_imgref); break;
-		case IMGTOOLINFO_INT_ENUM_EXTRA_BYTES:				info->i = sizeof(struct mac_iterator); break;
-		case IMGTOOLINFO_STR_EOLN:							strcpy(info->s = imgtool_temp_str(), "\r"); break;
+		case IMGTOOLINFO_INT_DIRECTORY_EXTRA_BYTES:				info->i = sizeof(struct mac_iterator); break;
 		case IMGTOOLINFO_INT_PATH_SEPARATOR:				info->i = ':'; break;
 
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case IMGTOOLINFO_STR_FILE:							strcpy(info->s = imgtool_temp_str(), __FILE__); break;
+		case IMGTOOLINFO_STR_EOLN:							strcpy(info->s = imgtool_temp_str(), "\r"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case IMGTOOLINFO_PTR_MAKE_CLASS:					info->make_class = imgtool_floppy_make_class; break;
 		case IMGTOOLINFO_PTR_CLOSE:							/* info->close = mac_image_exit */; break;
 		case IMGTOOLINFO_PTR_INFO:							info->info = mac_image_info; break;
 		case IMGTOOLINFO_PTR_BEGIN_ENUM:					info->begin_enum = mac_image_beginenum; break;
@@ -6324,36 +6337,42 @@ static void mac_module_populate(UINT32 state, union imgtoolinfo *info)
 		case IMGTOOLINFO_PTR_SET_ATTRS:						info->set_attrs = mac_image_setattrs; break;
 		case IMGTOOLINFO_PTR_GET_ICON_INFO:					info->get_iconinfo = mac_image_geticoninfo; break;
 		case IMGTOOLINFO_PTR_SUGGEST_TRANSFER:				info->suggest_transfer = mac_image_suggesttransfer; break;
+		case IMGTOOLINFO_PTR_FLOPPY_FORMAT:					info->p = (void *) floppyoptions_apple35_mac; break;
 	}
 }
 
 
 
-static void mac_mfs_module_populate(UINT32 state, union imgtoolinfo *info)
+void mac_mfs_get_info(const imgtool_class *imgclass, UINT32 state, union imgtoolinfo *info)
 {
 	switch(state)
 	{
-		case IMGTOOLINFO_PTR_CREATE:						info->create = mfs_image_create; break;
-		case IMGTOOLINFO_PTR_OPEN:							info->open = mfs_image_open; break;
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case IMGTOOLINFO_STR_NAME:							strcpy(info->s = imgtool_temp_str(), "mac_mfs"); break;
+		case IMGTOOLINFO_STR_DESCRIPTION:					strcpy(info->s = imgtool_temp_str(), "Mac MFS Floppy"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case IMGTOOLINFO_PTR_FLOPPY_CREATE:					info->create = mfs_image_create; break;
+		case IMGTOOLINFO_PTR_FLOPPY_OPEN:					info->open = mfs_image_open; break;
 		case IMGTOOLINFO_PTR_WRITE_FILE:					info->write_file = mac_image_writefile; break;
-		default: mac_module_populate(state, info); break;
+
+		default: generic_mac_get_info(imgclass, state, info); break;
 	}
 }
 
 
 
-static void mac_hfs_module_populate(UINT32 state, union imgtoolinfo *info)
+void mac_hfs_get_info(const imgtool_class *imgclass, UINT32 state, union imgtoolinfo *info)
 {
 	switch(state)
 	{
-		case IMGTOOLINFO_PTR_OPEN:							info->open = hfs_image_open; break;
-		default: mac_module_populate(state, info); break;
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case IMGTOOLINFO_STR_NAME:							strcpy(info->s = imgtool_temp_str(), "mac_hfs"); break;
+		case IMGTOOLINFO_STR_DESCRIPTION:					strcpy(info->s = imgtool_temp_str(), "Mac HFS Floppy"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case IMGTOOLINFO_PTR_FLOPPY_OPEN:					info->open = hfs_image_open; break;
+
+		default: generic_mac_get_info(imgclass, state, info); break;
 	}
 }
-
-
-
-FLOPPYMODULE(mac_mfs, "Mac MFS Floppy", apple35_mac, mac_mfs_module_populate)
-FLOPPYMODULE(mac_hfs, "Mac HFS Floppy", apple35_mac, mac_hfs_module_populate)
-
-

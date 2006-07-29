@@ -46,6 +46,7 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
+#ifdef MESS
 typedef struct _callback_item callback_item;
 struct _callback_item
 {
@@ -55,6 +56,7 @@ struct _callback_item
 		void		(*full_refresh)(void);
 	} func;
 };
+#endif
 
 
 
@@ -102,7 +104,9 @@ static int movie_frame = 0;
 
 /* misc other statics */
 static UINT32 leds_status;
+#ifdef MESS
 static callback_item *full_refresh_callback_list;
+#endif
 
 /* artwork callbacks */
 #ifndef NEW_RENDER
@@ -113,10 +117,6 @@ static artwork_callbacks mame_artwork_callbacks =
 	artwork_load_artwork_file
 };
 #endif
-#endif
-
-#ifdef MESS
-int mess_skip_this_frame;
 #endif
 
 
@@ -149,7 +149,9 @@ static void recompute_visible_areas(void);
 int video_init(void)
 {
 	movie_file = NULL;
+#ifdef MESS
 	full_refresh_callback_list = NULL;
+#endif
 	movie_frame = 0;
 
 #ifndef NEW_RENDER
@@ -709,6 +711,9 @@ void schedule_full_refresh(void)
 void force_partial_update(int scrnum, int scanline)
 {
 	rectangle clip = eff_visible_area[scrnum];
+#if defined(MESS) && !defined(NEW_RENDER)
+	callback_item *cb;
+#endif
 
 	LOG_PARTIAL_UPDATES(("Partial: force_partial_update(%d,%d): ", scrnum, scanline));
 
@@ -740,6 +745,10 @@ void force_partial_update(int scrnum, int scanline)
 	if (full_refresh_pending && last_partial_scanline[scrnum] == 0)
 	{
 		fillbitmap(scrbitmap[0][curbitmap[0]], get_black_pen(), NULL);
+#ifdef MESS
+		for (cb = full_refresh_callback_list; cb; cb = cb->next)
+			(*cb->func.full_refresh)();
+#endif
 		full_refresh_pending = 0;
 	}
 #endif
@@ -773,6 +782,29 @@ void force_partial_update(int scrnum, int scanline)
 
 
 /*-------------------------------------------------
+    add_full_refresh_callback - request callback on
+	full refesh
+-------------------------------------------------*/
+
+#ifdef MESS
+void add_full_refresh_callback(void (*callback)(void))
+{
+	callback_item *cb, **cur;
+
+	assert_always(mame_get_phase() == MAME_PHASE_INIT, "Can only call add_full_refresh_callback at init time!");
+
+	cb = auto_malloc(sizeof(*cb));
+	cb->func.full_refresh = callback;
+	cb->next = NULL;
+
+	for (cur = &full_refresh_callback_list; *cur; cur = &(*cur)->next) ;
+	*cur = cb;
+}
+#endif
+
+
+
+/*-------------------------------------------------
     reset_partial_updates - reset partial updates
     at the start of each frame
 -------------------------------------------------*/
@@ -802,12 +834,6 @@ void update_video_and_audio(void)
 #ifndef NEW_RENDER
 	/* fill in our portion of the display */
 	current_display.changed_flags = 0;
-
-#ifdef MESS
-	if (mess_skip_this_frame == 1)
-		current_display.changed_flags |= GAME_OPTIONAL_FRAMESKIP;
-	mess_skip_this_frame = -1;
-#endif /* MESS */
 
 	/* set the main game bitmap */
 	current_display.game_bitmap = scrbitmap[0][curbitmap[0]];

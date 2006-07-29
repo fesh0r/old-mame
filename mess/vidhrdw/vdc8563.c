@@ -417,8 +417,8 @@ static void vdc8563_monotext_screenrefresh (mame_bitmap *bitmap, int full_refres
 	int h=CRTC6845_CHAR_LINES;
 	int height=CRTC6845_CHAR_HEIGHT;
 
-	rect.min_x=Machine->visible_area.min_x;
-	rect.max_x=Machine->visible_area.max_x;
+	rect.min_x=Machine->visible_area[0].min_x;
+	rect.max_x=Machine->visible_area[0].max_x;
 	if (full_refresh) {
 		memset(vdc.dirty+vdc.videoram_start, 1, vdc.videoram_size);
 	}
@@ -458,8 +458,8 @@ static void vdc8563_text_screenrefresh (mame_bitmap *bitmap, int full_refresh)
 	int height=CRTC6845_CHAR_HEIGHT;
 	UINT8 ch;
 
-	rect.min_x=Machine->visible_area.min_x;
-	rect.max_x=Machine->visible_area.max_x;
+	rect.min_x=Machine->visible_area[0].min_x;
+	rect.max_x=Machine->visible_area[0].max_x;
 	if (full_refresh) {
 		memset(vdc.dirty+vdc.videoram_start, 1, vdc.videoram_size);
 	}
@@ -501,8 +501,8 @@ static void vdc8563_graphic_screenrefresh (mame_bitmap *bitmap, int full_refresh
 	int h=CRTC6845_CHAR_LINES;
 	int height=CRTC6845_CHAR_HEIGHT;
 
-	rect.min_x=Machine->visible_area.min_x;
-	rect.max_x=Machine->visible_area.max_x;
+	rect.min_x=Machine->visible_area[0].min_x;
+	rect.max_x=Machine->visible_area[0].max_x;
 	if (full_refresh) {
 		memset(vdc.dirty, 1, vdc.mask+1);
 	}
@@ -531,7 +531,7 @@ VIDEO_UPDATE( vdc8563 )
 	int i;
 	int full_refresh = 1;
 
-	if (!vdc.rastering) return;
+	if (!vdc.rastering) return 0;
 	vdc8563_time();
 
 	full_refresh|=vdc.changed;
@@ -565,4 +565,5 @@ VIDEO_UPDATE( vdc8563 )
 	}
 
 	vdc.changed=0;
+	return 0;
 }

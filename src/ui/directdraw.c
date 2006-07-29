@@ -19,6 +19,7 @@
  ***************************************************************************/
 
 #define WIN32_LEAN_AND_MEAN
+
 #include <windows.h>
 
 #ifndef _MSC_VER
@@ -353,7 +354,11 @@ static BOOL WINAPI DDEnumOldInfo(GUID FAR *lpGUID,
 
 static HRESULT CALLBACK EnumDisplayModesCallback(LPDDSURFACEDESC pddsd, LPVOID Context)
 {
+#ifdef _MSC_VER
+	DWORD dwDepth = pddsd->ddpfPixelFormat.dwRGBBitCount;
+#else
 	DWORD dwDepth = pddsd->ddpfPixelFormat.DUMMYUNIONNAMEN(1).dwRGBBitCount;
+#endif
 
 	struct tDisplayModes* pDisplayModes = (struct tDisplayModes*)Context;
 	if (dwDepth == 16
@@ -377,7 +382,11 @@ static HRESULT CALLBACK EnumDisplayModesCallback2(DDSURFACEDESC2* pddsd2, LPVOID
 {
 	struct tDisplayModes* pDisplayModes = (struct tDisplayModes*)Context;
 
+#ifdef _MSC_VER
+	DWORD dwDepth = pddsd2->ddpfPixelFormat.dwRGBBitCount;
+#else
 	DWORD dwDepth = pddsd2->DUMMYUNIONNAMEN(4).ddpfPixelFormat.DUMMYUNIONNAMEN(1).dwRGBBitCount;
+#endif
 
 	if (dwDepth == 16
 	||	dwDepth == 24
@@ -386,10 +395,18 @@ static HRESULT CALLBACK EnumDisplayModesCallback2(DDSURFACEDESC2* pddsd2, LPVOID
 		pDisplayModes->m_Modes[pDisplayModes->m_nNumModes].m_dwWidth   = pddsd2->dwWidth;
 		pDisplayModes->m_Modes[pDisplayModes->m_nNumModes].m_dwHeight  = pddsd2->dwHeight;
 		pDisplayModes->m_Modes[pDisplayModes->m_nNumModes].m_dwBPP	   = dwDepth;
+#ifdef _MSC_VER
+		pDisplayModes->m_Modes[pDisplayModes->m_nNumModes].m_dwRefresh = pddsd2->dwRefreshRate;
+#else
 		pDisplayModes->m_Modes[pDisplayModes->m_nNumModes].m_dwRefresh = pddsd2->DUMMYUNIONNAMEN(2).dwRefreshRate;
+#endif
 		pDisplayModes->m_nNumModes++;
 
+#ifdef _MSC_VER
+		if (pddsd2->dwRefreshRate != 0)
+#else
 		if (pddsd2->DUMMYUNIONNAMEN(2).dwRefreshRate != 0)
+#endif
 			g_bRefresh = TRUE;
 	}
 	

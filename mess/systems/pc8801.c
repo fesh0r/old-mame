@@ -1,6 +1,6 @@
 /***************************************************************************
 
-  $Id: pc8801.c,v 1.47 2006/03/12 17:20:25 wfp Exp $
+  $Id: pc8801.c,v 1.49 2006/07/16 19:46:03 npwoods Exp $
 
 ***************************************************************************/
 
@@ -526,9 +526,8 @@ static MACHINE_DRIVER_START( pc88srl )
 	MDRV_MACHINE_RESET( pc88srl )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER
-		| VIDEO_PIXEL_ASPECT_RATIO_1_2)
-	MDRV_ASPECT_RATIO(8,5)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/*MDRV_ASPECT_RATIO(8,5)*/
 	MDRV_SCREEN_SIZE(640, 200)
 	MDRV_VISIBLE_AREA(0, 640-1, 0, 200-1)
 	MDRV_GFXDECODE( gfxdecodeinfo )
@@ -557,7 +556,7 @@ static MACHINE_DRIVER_START( pc88srh )
 	MDRV_MACHINE_RESET( pc88srh )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_ASPECT_RATIO(8, 5)
+	/*MDRV_ASPECT_RATIO(8, 5)*/
 	MDRV_SCREEN_SIZE(640, 400)
 	MDRV_VISIBLE_AREA(0, 640-1, 0, 400-1)
 MACHINE_DRIVER_END

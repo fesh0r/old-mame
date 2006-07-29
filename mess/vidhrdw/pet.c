@@ -79,9 +79,10 @@ VIDEO_UPDATE( pet )
 		{
 			drawgfx(bitmap,Machine->gfx[pet_font],
 					videoram[i], 0, 0, 0, 8*x,8*y,
-					&Machine->visible_area,TRANSPARENCY_NONE,0);
+					&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 		}
 	}
+	return 0;
 }
 
 //  commodore pet crtc video circuit for 40 columns display (standard crtc6845)
@@ -99,9 +100,10 @@ VIDEO_UPDATE( pet40 )
 		{
 			drawgfx(bitmap,Machine->gfx[pet_font],
 					videoram[i], 0, 0, 0, 8*x,height*y,
-					&Machine->visible_area,TRANSPARENCY_NONE,0);
+					&Machine->visible_area[0],TRANSPARENCY_NONE,0);
 		}
 	}
+	return 0;
 }
 
 // special hardware to allow crtc programmed for pet 40 column mode! to generate
@@ -115,8 +117,8 @@ VIDEO_UPDATE( pet80 )
 	int height=crtc6845_get_char_height(crtc6845);
 	int start=crtc6845_get_start(crtc6845)&0x3ff;
 
-	rect.min_x = Machine->visible_area.min_x;
-	rect.max_x = Machine->visible_area.max_x;
+	rect.min_x = Machine->visible_area[0].min_x;
+	rect.max_x = Machine->visible_area[0].max_x;
 
 	for (y=0, rect.min_y=0, rect.max_y=height-1, i=start; y<h;
 		 y++, rect.min_y+=height, rect.max_y+=height)
@@ -132,5 +134,6 @@ VIDEO_UPDATE( pet80 )
 					&rect,TRANSPARENCY_NONE,0);
 		}
 	}
+	return 0;
 }
 

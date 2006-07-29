@@ -264,7 +264,7 @@ static imgtoolerr_t prepare_dirent(struct rsdos_dirent *ent, const char *fname)
 
 
 
-static imgtoolerr_t rsdos_diskimage_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
+static imgtoolerr_t rsdos_diskimage_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent)
 {
 	floperr_t ferr;
 	imgtoolerr_t err;
@@ -274,8 +274,8 @@ static imgtoolerr_t rsdos_diskimage_nextenum(imgtool_imageenum *enumeration, img
 	char fname[13];
 	imgtool_image *image;
 
-	image = img_enum_image(enumeration);
-	rsenum = (struct rsdos_direnum *) img_enum_extrabytes(enumeration);
+	image = imgtool_directory_image(enumeration);
+	rsenum = (struct rsdos_direnum *) imgtool_directory_extrabytes(enumeration);
 
 	/* Did we hit the end of file before? */
 	if (rsenum->eof)
@@ -329,15 +329,16 @@ eof:
 
 
 
-static imgtoolerr_t rsdos_diskimage_freespace(imgtool_image *img, UINT64 *size)
+static imgtoolerr_t rsdos_diskimage_freespace(imgtool_partition *partition, UINT64 *size)
 {
 	floperr_t ferr;
 	UINT8 i;
 	size_t s = 0;
 	UINT8 granule_count;
 	UINT8 granule_map[MAX_GRANULEMAP_SIZE];
+	imgtool_image *image = imgtool_partition_image(partition);
 
-	ferr = get_granule_map(img, granule_map, &granule_count);
+	ferr = get_granule_map(image, granule_map, &granule_count);
 	if (ferr)
 		return imgtool_floppy_error(ferr);
 
@@ -387,11 +388,12 @@ static imgtoolerr_t delete_entry(imgtool_image *img, struct rsdos_dirent *ent, i
 
 
 
-static imgtoolerr_t rsdos_diskimage_readfile(imgtool_image *img, const char *fname, const char *fork, imgtool_stream *destf)
+static imgtoolerr_t rsdos_diskimage_readfile(imgtool_partition *partition, const char *fname, const char *fork, imgtool_stream *destf)
 {
 	imgtoolerr_t err;
 	struct rsdos_dirent ent;
 	size_t size;
+	imgtool_image *img = imgtool_partition_image(partition);
 
 	err = lookup_rsdos_file(img, fname, &ent, NULL);
 	if (err)
@@ -409,10 +411,11 @@ static imgtoolerr_t rsdos_diskimage_readfile(imgtool_image *img, const char *fna
 
 
 
-static imgtoolerr_t rsdos_diskimage_writefile(imgtool_image *img, const char *fname, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions)
+static imgtoolerr_t rsdos_diskimage_writefile(imgtool_partition *partition, const char *fname, const char *fork, imgtool_stream *sourcef, option_resolution *writeoptions)
 {
 	floperr_t ferr;
 	imgtoolerr_t err;
+	imgtool_image *img = imgtool_partition_image(partition);
 	struct rsdos_dirent ent, ent2;
 	size_t i;
 	UINT64 sz;
@@ -422,20 +425,20 @@ static imgtoolerr_t rsdos_diskimage_writefile(imgtool_image *img, const char *fn
 	UINT8 granule_count;
 	UINT8 granule_map[MAX_GRANULEMAP_SIZE];
 
-	/* Can we write to this image? */
+	/* can we write to this image? */
 	if (floppy_is_read_only(imgtool_floppy(img)))
 		return IMGTOOLERR_READONLY;
 
-	err = rsdos_diskimage_freespace(img, &freespace);
+	err = rsdos_diskimage_freespace(partition, &freespace);
 	if (err)
 		return err;
 
-	/* Is there enough space? */
+	/* is there enough space? */
 	sz = stream_size(sourcef);
 	if (sz > freespace)
 		return IMGTOOLERR_NOSPACE;
 
-	/* Setup our directory entry */
+	/* setup our directory entry */
 	err = prepare_dirent(&ent, fname);
 	if (err)
 		return err;
@@ -513,24 +516,26 @@ static imgtoolerr_t rsdos_diskimage_writefile(imgtool_image *img, const char *fn
 
 
 
-static imgtoolerr_t rsdos_diskimage_deletefile(imgtool_image *img, const char *fname)
+static imgtoolerr_t rsdos_diskimage_deletefile(imgtool_partition *partition, const char *fname)
 {
 	imgtoolerr_t err;
+	imgtool_image *image = imgtool_partition_image(partition);
 	int pos;
 	struct rsdos_dirent ent;
 
-	err = lookup_rsdos_file(img, fname, &ent, &pos);
+	err = lookup_rsdos_file(image, fname, &ent, &pos);
 	if (err)
 		return err;
 
-	return delete_entry(img, &ent, pos);
+	return delete_entry(image, &ent, pos);
 }
 
 
 
-static imgtoolerr_t rsdos_diskimage_suggesttransfer(imgtool_image *image, const char *fname, imgtool_transfer_suggestion *suggestions, size_t suggestions_length)
+static imgtoolerr_t rsdos_diskimage_suggesttransfer(imgtool_partition *partition, const char *fname, imgtool_transfer_suggestion *suggestions, size_t suggestions_length)
 {
 	imgtoolerr_t err;
+	imgtool_image *image = imgtool_partition_image(partition);
 	struct rsdos_dirent ent;
 	int pos;
 
@@ -589,13 +594,23 @@ OPTION_GUIDE_END
 
 
 
-static void coco_rsdos_module_populate(UINT32 state, union imgtoolinfo *info)
+void rsdos_get_info(const imgtool_class *imgclass, UINT32 state, union imgtoolinfo *info)
 {
 	switch(state)
 	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case IMGTOOLINFO_INT_PREFER_UCASE:					info->i = 1; break;
-		case IMGTOOLINFO_INT_ENUM_EXTRA_BYTES:				info->i = sizeof(struct rsdos_direnum); break;
+		case IMGTOOLINFO_INT_DIRECTORY_EXTRA_BYTES:				info->i = sizeof(struct rsdos_direnum); break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case IMGTOOLINFO_STR_NAME:							strcpy(info->s = imgtool_temp_str(), "rsdos"); break;
+		case IMGTOOLINFO_STR_DESCRIPTION:					strcpy(info->s = imgtool_temp_str(), "RS-DOS format"); break;
+		case IMGTOOLINFO_STR_FILE:							strcpy(info->s = imgtool_temp_str(), __FILE__); break;
 		case IMGTOOLINFO_STR_EOLN:							strcpy(info->s = imgtool_temp_str(), "\r"); break;
+		case IMGTOOLINFO_STR_WRITEFILE_OPTSPEC:				strcpy(info->s = imgtool_temp_str(), "T0-[2]-3;M0-[1]"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case IMGTOOLINFO_PTR_MAKE_CLASS:					info->make_class = imgtool_floppy_make_class; break;
 		case IMGTOOLINFO_PTR_NEXT_ENUM:						info->next_enum = rsdos_diskimage_nextenum; break;
 		case IMGTOOLINFO_PTR_FREE_SPACE:					info->free_space = rsdos_diskimage_freespace; break;
 		case IMGTOOLINFO_PTR_READ_FILE:						info->read_file = rsdos_diskimage_readfile; break;
@@ -603,11 +618,6 @@ static void coco_rsdos_module_populate(UINT32 state, union imgtoolinfo *info)
 		case IMGTOOLINFO_PTR_DELETE_FILE:					info->delete_file = rsdos_diskimage_deletefile; break;
 		case IMGTOOLINFO_PTR_SUGGEST_TRANSFER:				info->suggest_transfer = rsdos_diskimage_suggesttransfer; break;
 		case IMGTOOLINFO_PTR_WRITEFILE_OPTGUIDE:			info->writefile_optguide = coco_rsdos_writefile_optionguide; break;
-		case IMGTOOLINFO_STR_WRITEFILE_OPTSPEC:				strcpy(info->s = imgtool_temp_str(), "T0-[2]-3;M0-[1]"); break;
+		case IMGTOOLINFO_PTR_FLOPPY_FORMAT:					info->p = (void *) floppyoptions_coco; break;
 	}
 }
-
-
-
-FLOPPYMODULE(rsdos, "RS-DOS format", coco, coco_rsdos_module_populate)
-

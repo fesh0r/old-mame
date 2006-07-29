@@ -652,7 +652,7 @@ VIDEO_START( vic2 )
 {
 	int i;
 
-	vic2.bitmap = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height);
+	vic2.bitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
 
 	if (vic2.vic3) {
 		vic2.screen[0] = (UINT8*)auto_malloc (sizeof (UINT8) * 216 * 656 / 8);
@@ -1339,6 +1339,7 @@ VIDEO_UPDATE( vic2 )
 {
 	if (vic2.on)
 		copybitmap(bitmap, vic2.bitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
+	return 0;
 }
 
 static PALETTE_INIT( vic2 )

@@ -19,7 +19,8 @@ typedef enum
 	CREATE_DIR
 } creation_policy_t;
 
-struct os9_diskinfo
+typedef struct _os9_diskinfo os9_diskinfo;
+struct _os9_diskinfo
 {
 	UINT32 total_sectors;
 	UINT32 sectors_per_track;
@@ -117,9 +118,9 @@ static void place_string(void *ptr, size_t offset, size_t length, const char *s)
 
 static imgtoolerr_t os9_locate_lsn(imgtool_image *image, UINT32 lsn, UINT32 *head, UINT32 *track, UINT32 *sector)
 {
-	const struct os9_diskinfo *disk_info;
+	const os9_diskinfo *disk_info;
 
-	disk_info = (const struct os9_diskinfo *) imgtool_floppy_extrabytes(image);
+	disk_info = (const os9_diskinfo *) imgtool_floppy_extrabytes(image);
 	if (lsn > disk_info->total_sectors)
 		return IMGTOOLERR_CORRUPTIMAGE;
 
@@ -174,9 +175,9 @@ static UINT32 os9_lookup_lsn(imgtool_image *img,
 {
 	int i;
 	UINT32 lsn;
-	const struct os9_diskinfo *disk_info;
+	const os9_diskinfo *disk_info;
 
-	disk_info = (const struct os9_diskinfo *) imgtool_floppy_extrabytes(img);
+	disk_info = (const os9_diskinfo *) imgtool_floppy_extrabytes(img);
 	lsn = *index / disk_info->sector_size;
 
 	i = 0;
@@ -225,10 +226,10 @@ static imgtoolerr_t os9_decode_file_header(imgtool_image *image,
 	imgtoolerr_t err;
 	UINT32 attributes, count;
 	int max_entries, i;
-	const struct os9_diskinfo *disk_info;
+	const os9_diskinfo *disk_info;
 	UINT8 header[256];
 
-	disk_info = (const struct os9_diskinfo *) imgtool_floppy_extrabytes(image);
+	disk_info = (const os9_diskinfo *) imgtool_floppy_extrabytes(image);
 
 	err = os9_read_lsn(image, lsn, 0, header, sizeof(header));
 	if (err)
@@ -274,10 +275,10 @@ static imgtoolerr_t os9_decode_file_header(imgtool_image *image,
 static imgtoolerr_t os9_allocate_lsn(imgtool_image *image, UINT32 *lsn)
 {
 	UINT32 i;
-	struct os9_diskinfo *disk_info;
+	os9_diskinfo *disk_info;
 	UINT8 b, mask;
 
-	disk_info = (struct os9_diskinfo *) imgtool_floppy_extrabytes(image);
+	disk_info = (os9_diskinfo *) imgtool_floppy_extrabytes(image);
 
 	for (i = 0; i < disk_info->total_sectors; i++)
 	{
@@ -299,9 +300,9 @@ static imgtoolerr_t os9_allocate_lsn(imgtool_image *image, UINT32 *lsn)
 static imgtoolerr_t os9_deallocate_lsn(imgtool_image *image, UINT32 lsn)
 {
 	UINT8 mask;
-	struct os9_diskinfo *disk_info;
+	os9_diskinfo *disk_info;
 
-	disk_info = (struct os9_diskinfo *) imgtool_floppy_extrabytes(image);
+	disk_info = (os9_diskinfo *) imgtool_floppy_extrabytes(image);
 	mask = 1 << (7 - (lsn % 8));
 	disk_info->allocation_bitmap[lsn / 8] &= ~mask;
 	return os9_write_lsn(image, 1, 0, disk_info->allocation_bitmap, disk_info->allocation_bitmap_bytes);
@@ -311,11 +312,11 @@ static imgtoolerr_t os9_deallocate_lsn(imgtool_image *image, UINT32 lsn)
 
 static UINT32 os9_get_free_lsns(imgtool_image *image)
 {
-	const struct os9_diskinfo *disk_info;
+	const os9_diskinfo *disk_info;
 	UINT32 i, free_lsns;
 	UINT8 b;
 
-	disk_info = (const struct os9_diskinfo *) imgtool_floppy_extrabytes(image);
+	disk_info = (const os9_diskinfo *) imgtool_floppy_extrabytes(image);
 	free_lsns = 0;
 
 	for (i = 0; i < disk_info->total_sectors; i++)
@@ -346,7 +347,7 @@ static imgtoolerr_t os9_set_file_size(imgtool_image *image,
 	struct os9_fileinfo *file_info, UINT32 new_size)
 {
 	imgtoolerr_t err;
-	const struct os9_diskinfo *disk_info;
+	const os9_diskinfo *disk_info;
 	UINT32 new_lsn_count, current_lsn_count;
 	UINT32 free_lsns, lsn, i;
 	int sector_map_length = -1;
@@ -356,7 +357,7 @@ static imgtoolerr_t os9_set_file_size(imgtool_image *image,
 	if (file_info->file_size == new_size)
 		return IMGTOOLERR_SUCCESS;
 
-	disk_info = (const struct os9_diskinfo *) imgtool_floppy_extrabytes(image);
+	disk_info = (const os9_diskinfo *) imgtool_floppy_extrabytes(image);
 
 	free_lsns = os9_get_free_lsns(image);
 	current_lsn_count = (file_info->file_size + disk_info->sector_size - 1) / disk_info->sector_size;
@@ -468,9 +469,9 @@ static imgtoolerr_t os9_lookup_path(imgtool_image *img, const char *path,
 	UINT8 entry[32];
 	UINT8 block[64];
 	char *filename;
-	const struct os9_diskinfo *disk_info;
+	const os9_diskinfo *disk_info;
 
-	disk_info = (const struct os9_diskinfo *) imgtool_floppy_extrabytes(img);
+	disk_info = (const os9_diskinfo *) imgtool_floppy_extrabytes(img);
 	current_lsn = disk_info->root_dir_lsn;
 
 	if (parent_lsn)
@@ -577,13 +578,13 @@ static imgtoolerr_t os9_diskimage_open(imgtool_image *image, imgtool_stream *str
 {
 	imgtoolerr_t err;
 	floperr_t ferr;
-	struct os9_diskinfo *info;
+	os9_diskinfo *info;
 	UINT32 track_size_in_sectors, attributes, i;
 	UINT8 header[256];
 	UINT32 allocation_bitmap_lsns;
 	UINT8 b, mask;
 
-	info = (struct os9_diskinfo *) imgtool_floppy_extrabytes(image);
+	info = (os9_diskinfo *) imgtool_floppy_extrabytes(image);
 
 	ferr = floppy_read_sector(imgtool_floppy(image), 0, 0, 1, 0, header, sizeof(header));
 	if (ferr)
@@ -620,7 +621,7 @@ static imgtoolerr_t os9_diskimage_open(imgtool_image *image, imgtool_stream *str
 		return IMGTOOLERR_CORRUPTIMAGE;
 
 	/* is the allocation bitmap too big? */
-	info->allocation_bitmap = img_malloc(image, info->allocation_bitmap_bytes);
+	info->allocation_bitmap = imgtool_image_malloc(image, info->allocation_bitmap_bytes);
 	if (!info->allocation_bitmap)
 		return IMGTOOLERR_OUTOFMEMORY;
 	memset(info->allocation_bitmap, 0, info->allocation_bitmap_bytes);
@@ -782,14 +783,14 @@ done:
 
 
 
-static imgtoolerr_t os9_diskimage_beginenum(imgtool_imageenum *enumeration, const char *path)
+static imgtoolerr_t os9_diskimage_beginenum(imgtool_directory *enumeration, const char *path)
 {
 	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
 	struct os9_direnum *os9enum;
 	imgtool_image *image;
 
-	image = img_enum_image(enumeration);
-	os9enum = (struct os9_direnum *) img_enum_extrabytes(enumeration);
+	image = imgtool_directory_image(enumeration);
+	os9enum = (struct os9_direnum *) imgtool_directory_extrabytes(enumeration);
 
 	err = os9_lookup_path(image, path, CREATE_NONE, &os9enum->dir_info, NULL, NULL, NULL);
 	if (err)
@@ -808,7 +809,7 @@ done:
 
 
 
-static imgtoolerr_t os9_diskimage_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
+static imgtoolerr_t os9_diskimage_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent)
 {
 	struct os9_direnum *os9enum;
 	UINT32 lsn, index;
@@ -818,8 +819,8 @@ static imgtoolerr_t os9_diskimage_nextenum(imgtool_imageenum *enumeration, imgto
 	struct os9_fileinfo file_info;
 	imgtool_image *image;
 
-	image = img_enum_image(enumeration);
-	os9enum = (struct os9_direnum *) img_enum_extrabytes(enumeration);
+	image = imgtool_directory_image(enumeration);
+	os9enum = (struct os9_direnum *) imgtool_directory_extrabytes(enumeration);
 
 	do
 	{
@@ -847,7 +848,7 @@ static imgtoolerr_t os9_diskimage_nextenum(imgtool_imageenum *enumeration, imgto
 
 	/* read file attributes */
 	lsn = pick_integer_be(dir_entry, 29, 3);
-	err = os9_decode_file_header(img_enum_image(enumeration), lsn, &file_info);
+	err = os9_decode_file_header(imgtool_directory_image(enumeration), lsn, &file_info);
 	if (err)
 		return err;
 
@@ -871,13 +872,14 @@ static imgtoolerr_t os9_diskimage_nextenum(imgtool_imageenum *enumeration, imgto
 
 
 
-static imgtoolerr_t os9_diskimage_freespace(imgtool_image *img, UINT64 *size)
+static imgtoolerr_t os9_diskimage_freespace(imgtool_partition *partition, UINT64 *size)
 {
-	const struct os9_diskinfo *disk_info;
+	imgtool_image *image = imgtool_partition_image(partition);
+	const os9_diskinfo *disk_info;
 	UINT32 free_lsns;
 
-	disk_info = (const struct os9_diskinfo *) imgtool_floppy_extrabytes(img);
-	free_lsns = os9_get_free_lsns(img);
+	disk_info = (const os9_diskinfo *) imgtool_floppy_extrabytes(image);
+	free_lsns = os9_get_free_lsns(image);
 
 	*size = free_lsns * disk_info->sector_size;
 	return IMGTOOLERR_SUCCESS;
@@ -885,17 +887,18 @@ static imgtoolerr_t os9_diskimage_freespace(imgtool_image *img, UINT64 *size)
 
 
 
-static imgtoolerr_t os9_diskimage_readfile(imgtool_image *img, const char *filename, const char *fork, imgtool_stream *destf)
+static imgtoolerr_t os9_diskimage_readfile(imgtool_partition *partition, const char *filename, const char *fork, imgtool_stream *destf)
 {
 	imgtoolerr_t err;
-	const struct os9_diskinfo *disk_info;
+	imgtool_image *img = imgtool_partition_image(partition);
+	const os9_diskinfo *disk_info;
 	struct os9_fileinfo file_info;
 	UINT8 buffer[256];
 	int i, j;
 	UINT32 file_size;
 	UINT32 used_size;
 
-	disk_info = (const struct os9_diskinfo *) imgtool_floppy_extrabytes(img);
+	disk_info = (const os9_diskinfo *) imgtool_floppy_extrabytes(img);
 
 	err = os9_lookup_path(img, filename, CREATE_NONE, &file_info, NULL, NULL, NULL);
 	if (err)
@@ -922,9 +925,10 @@ static imgtoolerr_t os9_diskimage_readfile(imgtool_image *img, const char *filen
 
 
 
-static imgtoolerr_t os9_diskimage_writefile(imgtool_image *image, const char *path, const char *fork, imgtool_stream *sourcef, option_resolution *opts)
+static imgtoolerr_t os9_diskimage_writefile(imgtool_partition *partition, const char *path, const char *fork, imgtool_stream *sourcef, option_resolution *opts)
 {
 	imgtoolerr_t err;
+	imgtool_image *image = imgtool_partition_image(partition);
 	struct os9_fileinfo file_info;
 	size_t write_size;
 	void *buf = NULL;
@@ -932,9 +936,9 @@ static imgtoolerr_t os9_diskimage_writefile(imgtool_image *image, const char *pa
 	UINT32 lsn = 0;
 	UINT32 count = 0;
 	UINT32 sz;
-	const struct os9_diskinfo *disk_info;
+	const os9_diskinfo *disk_info;
 
-	disk_info = (const struct os9_diskinfo *) imgtool_floppy_extrabytes(image);
+	disk_info = (const os9_diskinfo *) imgtool_floppy_extrabytes(image);
 
 	buf = malloc(disk_info->sector_size);
 	if (!buf)
@@ -983,18 +987,19 @@ done:
 
 
 
-static imgtoolerr_t os9_diskimage_delete(imgtool_image *image, const char *path,
+static imgtoolerr_t os9_diskimage_delete(imgtool_partition *partition, const char *path,
 	unsigned int delete_directory)
 {
 	imgtoolerr_t err;
-	const struct os9_diskinfo *disk_info;
+	imgtool_image *image = imgtool_partition_image(partition);
+	const os9_diskinfo *disk_info;
 	struct os9_fileinfo file_info;
 	UINT32 dirent_lsn, dirent_index;
 	UINT32 entry_lsn, entry_index;
 	UINT32 i, j, lsn;
 	UINT8 b;
 
-	disk_info = (const struct os9_diskinfo *) imgtool_floppy_extrabytes(image);
+	disk_info = (const os9_diskinfo *) imgtool_floppy_extrabytes(image);
 
 	err = os9_lookup_path(image, path, CREATE_NONE, &file_info, NULL, &dirent_lsn, &dirent_index);
 	if (err)
@@ -1064,16 +1069,17 @@ static imgtoolerr_t os9_diskimage_delete(imgtool_image *image, const char *path,
 
 
 
-static imgtoolerr_t os9_diskimage_deletefile(imgtool_image *image, const char *path)
+static imgtoolerr_t os9_diskimage_deletefile(imgtool_partition *partition, const char *path)
 {
-	return os9_diskimage_delete(image, path, 0);
+	return os9_diskimage_delete(partition, path, 0);
 }
 
 
 
-static imgtoolerr_t os9_diskimage_createdir(imgtool_image *image, const char *path)
+static imgtoolerr_t os9_diskimage_createdir(imgtool_partition *partition, const char *path)
 {
 	imgtoolerr_t err;
+	imgtool_image *image = imgtool_partition_image(partition);
 	struct os9_fileinfo file_info;
 	UINT8 dir_data[64];
 	UINT32 parent_lsn;
@@ -1102,25 +1108,34 @@ done:
 
 
 
-static imgtoolerr_t os9_diskimage_deletedir(imgtool_image *image, const char *path)
+static imgtoolerr_t os9_diskimage_deletedir(imgtool_partition *partition, const char *path)
 {
-	return os9_diskimage_delete(image, path, 1);
+	return os9_diskimage_delete(partition, path, 1);
 }
 
 
 
-static void coco_os9_module_populate(UINT32 state, union imgtoolinfo *info)
+void os9_get_info(const imgtool_class *imgclass, UINT32 state, union imgtoolinfo *info)
 {
 	switch(state)
 	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case IMGTOOLINFO_INT_INITIAL_PATH_SEPARATOR:		info->i = 1; break;
 		case IMGTOOLINFO_INT_OPEN_IS_STRICT:				info->i = 1; break;
-		case IMGTOOLINFO_INT_IMAGE_EXTRA_BYTES:				info->i = sizeof(struct os9_diskinfo); break;
-		case IMGTOOLINFO_INT_ENUM_EXTRA_BYTES:				info->i = sizeof(struct os9_direnum); break;
-		case IMGTOOLINFO_STR_EOLN:							strcpy(info->s = imgtool_temp_str(), "\r"); break;
+		case IMGTOOLINFO_INT_IMAGE_EXTRA_BYTES:				info->i = sizeof(os9_diskinfo); break;
+		case IMGTOOLINFO_INT_DIRECTORY_EXTRA_BYTES:				info->i = sizeof(struct os9_direnum); break;
 		case IMGTOOLINFO_INT_PATH_SEPARATOR:				info->i = '/'; break;
-		case IMGTOOLINFO_PTR_CREATE:						info->create = os9_diskimage_create; break;
-		case IMGTOOLINFO_PTR_OPEN:							info->open = os9_diskimage_open; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case IMGTOOLINFO_STR_NAME:							strcpy(info->s = imgtool_temp_str(), "os9"); break;
+		case IMGTOOLINFO_STR_DESCRIPTION:					strcpy(info->s = imgtool_temp_str(), "OS-9 format"); break;
+		case IMGTOOLINFO_STR_FILE:							strcpy(info->s = imgtool_temp_str(), __FILE__); break;
+		case IMGTOOLINFO_STR_EOLN:							strcpy(info->s = imgtool_temp_str(), "\r"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case IMGTOOLINFO_PTR_MAKE_CLASS:					info->make_class = imgtool_floppy_make_class; break;
+		case IMGTOOLINFO_PTR_FLOPPY_CREATE:					info->create = os9_diskimage_create; break;
+		case IMGTOOLINFO_PTR_FLOPPY_OPEN:					info->open = os9_diskimage_open; break;
 		case IMGTOOLINFO_PTR_BEGIN_ENUM:					info->begin_enum = os9_diskimage_beginenum; break;
 		case IMGTOOLINFO_PTR_NEXT_ENUM:						info->next_enum = os9_diskimage_nextenum; break;
 		case IMGTOOLINFO_PTR_FREE_SPACE:					info->free_space = os9_diskimage_freespace; break;
@@ -1129,9 +1144,6 @@ static void coco_os9_module_populate(UINT32 state, union imgtoolinfo *info)
 		case IMGTOOLINFO_PTR_DELETE_FILE:					info->delete_file = os9_diskimage_deletefile; break;
 		case IMGTOOLINFO_PTR_CREATE_DIR:					info->create_dir = os9_diskimage_createdir; break;
 		case IMGTOOLINFO_PTR_DELETE_DIR:					info->delete_dir = os9_diskimage_deletedir; break;
+		case IMGTOOLINFO_PTR_FLOPPY_FORMAT:					info->p = (void *) floppyoptions_coco; break;
 	}
 }
-
-
-
-FLOPPYMODULE(os9, "OS-9 format", coco, coco_os9_module_populate)

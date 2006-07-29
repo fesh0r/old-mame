@@ -13,12 +13,13 @@
 #include "osdepend.h"
 #include "library.h"
 #include "pool.h"
+#include "mame.h"
 
 struct _imgtool_library
 {
 	memory_pool pool;
-	struct ImageModule *first;
-	struct ImageModule *last;
+	imgtool_module *first;
+	imgtool_module *last;
 };
 
 
@@ -46,12 +47,88 @@ void imgtool_library_close(imgtool_library *library)
 
 
 
-const struct ImageModule *imgtool_library_unlink(imgtool_library *library,
+static void imgtool_library_add_class(imgtool_library *library, const imgtool_class *imgclass)
+{
+	imgtool_module *module;
+
+	/* allocate the module and place it in the chain */
+	module = auto_malloc(sizeof(*module));
+	memset(module, 0, sizeof(*module));
+	module->previous = library->last;
+	if (library->last)
+		library->last->next = module;
+	else
+		library->first = module;
+	library->last = module;
+
+	module->imgclass					= *imgclass;
+	module->name						= auto_strdup(imgtool_get_info_string(imgclass, IMGTOOLINFO_STR_NAME));
+	module->description					= auto_strdup(imgtool_get_info_string(imgclass, IMGTOOLINFO_STR_DESCRIPTION));
+	module->extensions					= auto_strdup(imgtool_get_info_string(imgclass, IMGTOOLINFO_STR_FILE_EXTENSIONS));
+	module->eoln						= auto_strdup_allow_null(imgtool_get_info_string(imgclass, IMGTOOLINFO_STR_EOLN));
+	module->initial_path_separator		= imgtool_get_info_int(imgclass, IMGTOOLINFO_INT_INITIAL_PATH_SEPARATOR) ? 1 : 0;
+	module->open_is_strict				= imgtool_get_info_int(imgclass, IMGTOOLINFO_INT_OPEN_IS_STRICT) ? 1 : 0;
+	module->tracks_are_called_cylinders	= imgtool_get_info_int(imgclass, IMGTOOLINFO_INT_TRACKS_ARE_CALLED_CYLINDERS) ? 1 : 0;
+	module->writing_untested			= imgtool_get_info_int(imgclass, IMGTOOLINFO_INT_WRITING_UNTESTED) ? 1 : 0;
+	module->creation_untested			= imgtool_get_info_int(imgclass, IMGTOOLINFO_INT_CREATION_UNTESTED) ? 1 : 0;
+	module->open						= (imgtoolerr_t (*)(imgtool_image *, imgtool_stream *)) imgtool_get_info_fct(imgclass, IMGTOOLINFO_PTR_OPEN);
+	module->create						= (imgtoolerr_t (*)(imgtool_image *, imgtool_stream *, option_resolution *)) imgtool_get_info_fct(imgclass, IMGTOOLINFO_PTR_CREATE);
+	module->close						= (void (*)(imgtool_image *)) imgtool_get_info_fct(imgclass, IMGTOOLINFO_PTR_CLOSE);
+	module->info						= (void (*)(imgtool_image *, char *, size_t)) imgtool_get_info_fct(imgclass, IMGTOOLINFO_PTR_INFO);
+	module->read_block					= (imgtoolerr_t (*)(imgtool_image *, void *, UINT64)) imgtool_get_info_fct(imgclass, IMGTOOLINFO_PTR_READ_BLOCK);
+	module->write_block					= (imgtoolerr_t (*)(imgtool_image *, const void *, UINT64)) imgtool_get_info_fct(imgclass, IMGTOOLINFO_PTR_WRITE_BLOCK);
+	module->block_size					= imgtool_get_info_int(imgclass, IMGTOOLINFO_INT_BLOCK_SIZE);
+	module->createimage_optguide		= (const struct OptionGuide *) imgtool_get_info_ptr(imgclass, IMGTOOLINFO_PTR_CREATEIMAGE_OPTGUIDE);
+	module->createimage_optspec			= auto_strdup_allow_null(imgtool_get_info_ptr(imgclass, IMGTOOLINFO_STR_CREATEIMAGE_OPTSPEC));
+	module->image_extra_bytes			+= imgtool_get_info_int(imgclass, IMGTOOLINFO_INT_IMAGE_EXTRA_BYTES);
+}
+
+
+
+void imgtool_library_add(imgtool_library *library, imgtool_get_info get_info)
+{
+	int (*make_class)(int index, imgtool_class *imgclass);
+	imgtool_class imgclass;
+	int i, result;
+
+	/* try this class */
+	memset(&imgclass, 0, sizeof(imgclass));
+	imgclass.get_info = get_info;
+
+	/* do we have derived getinfo functions? */
+	make_class = (int (*)(int index, imgtool_class *imgclass))
+		imgtool_get_info_fct(&imgclass, IMGTOOLINFO_PTR_MAKE_CLASS);
+
+	if (make_class)
+	{
+		i = 0;
+		do
+		{
+			/* clear out the class */
+			memset(&imgclass, 0, sizeof(imgclass));
+			imgclass.get_info = get_info;
+
+			/* make the class */
+			result = make_class(i++, &imgclass);
+			if (result)
+				imgtool_library_add_class(library, &imgclass);
+		}
+		while(result);
+	}
+	else
+	{
+		imgtool_library_add_class(library, &imgclass);
+	}
+}
+
+
+
+const imgtool_module *imgtool_library_unlink(imgtool_library *library,
 	const char *module)
 {
-	struct ImageModule *m;
-	struct ImageModule **previous;
-	struct ImageModule **next;
+	imgtool_module *m;
+	imgtool_module **previous;
+	imgtool_module **next;
 
 	for (m = library->first; m; m = m->next)
 	{
@@ -71,8 +148,8 @@ const struct ImageModule *imgtool_library_unlink(imgtool_library *library,
 
 
 
-static int module_compare(const struct ImageModule *m1,
-	const struct ImageModule *m2, imgtool_libsort_t sort)
+static int module_compare(const imgtool_module *m1,
+	const imgtool_module *m2, imgtool_libsort_t sort)
 {
 	int rc = 0;
 	switch(sort)
@@ -91,11 +168,11 @@ static int module_compare(const struct ImageModule *m1,
 
 void imgtool_library_sort(imgtool_library *library, imgtool_libsort_t sort)
 {
-	struct ImageModule *m1;
-	struct ImageModule *m2;
-	struct ImageModule *target;
-	struct ImageModule **before;
-	struct ImageModule **after;
+	imgtool_module *m1;
+	imgtool_module *m2;
+	imgtool_module *target;
+	imgtool_module **before;
+	imgtool_module **after;
 
 	for (m1 = library->first; m1; m1 = m1->next)
 	{
@@ -129,44 +206,10 @@ void imgtool_library_sort(imgtool_library *library, imgtool_libsort_t sort)
 
 
 
-imgtoolerr_t imgtool_library_createmodule(imgtool_library *library,
-	const char *module_name, struct ImageModule **module)
-{
-	struct ImageModule *newmodule;
-	char *alloc_module_name;
-
-	newmodule = pool_malloc(&library->pool, sizeof(struct ImageModule));
-	if (!newmodule)
-		goto outofmemory;
-
-	alloc_module_name = pool_strdup(&library->pool, module_name);
-	if (!alloc_module_name)
-		goto outofmemory;
-
-	memset(newmodule, 0, sizeof(*newmodule));
-	newmodule->previous = library->last;
-	newmodule->name = alloc_module_name;
-
-	if (library->last)
-		library->last->next = newmodule;
-	else
-		library->first = newmodule;
-	library->last = newmodule;
-
-	*module = newmodule;
-	return IMGTOOLERR_SUCCESS;
-
-outofmemory:
-	*module = NULL;
-	return IMGTOOLERR_OUTOFMEMORY;
-}
-
-
-
-const struct ImageModule *imgtool_library_findmodule(
+const imgtool_module *imgtool_library_findmodule(
 	imgtool_library *library, const char *module_name)
 {
-	const struct ImageModule *module;
+	const imgtool_module *module;
 
 	assert(library);
 	module = library->first;
@@ -177,16 +220,16 @@ const struct ImageModule *imgtool_library_findmodule(
 
 
 
-struct ImageModule *imgtool_library_iterate(imgtool_library *library, const struct ImageModule *module)
+imgtool_module *imgtool_library_iterate(imgtool_library *library, const imgtool_module *module)
 {
 	return module ? module->next : library->first;
 }
 
 
 
-struct ImageModule *imgtool_library_index(imgtool_library *library, int i)
+imgtool_module *imgtool_library_index(imgtool_library *library, int i)
 {
-	struct ImageModule *module;
+	imgtool_module *module;
 	module = library->first;
 	while(module && i--)
 		module = module->next;

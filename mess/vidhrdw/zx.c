@@ -46,8 +46,7 @@ void zx_ula_bkgnd(int color)
 	{
 		int y, new_x, new_y;
 		rectangle r;
-		extern mame_bitmap *scrbitmap[8];
-		mame_bitmap *bitmap = scrbitmap[0];
+		mame_bitmap *bitmap = tmpbitmap;
 
 		new_y = cpu_getscanline();
 		new_x = cpu_gethorzbeampos();
@@ -66,15 +65,15 @@ void zx_ula_bkgnd(int color)
 			else
 			{
 				r.min_x = old_x;
-				r.max_x = Machine->visible_area.max_x;
+				r.max_x = Machine->visible_area[0].max_x;
 				r.min_y = r.max_y = y;
 				fillbitmap(bitmap, Machine->pens[color], &r);
 				old_x = 0;
 			}
-			if (++y == Machine->drv->screen_height)
+			if (++y == Machine->drv->screen[0].maxheight)
 				y = 0;
 		}
-		old_x = (new_x + 1) % Machine->drv->screen_width;
+		old_x = (new_x + 1) % Machine->drv->screen[0].maxwidth;
 		old_y = new_y;
 		old_c = color;
 		DAC_data_w(0, color ? 255 : 0);
@@ -98,14 +97,14 @@ static void zx_ula_nmi(int param)
 	 * An NMI is issued on the ZX81 every 64us for the blanked
 	 * scanlines at the top and bottom of the display.
 	 */
-	rectangle r = Machine->visible_area;
-	extern mame_bitmap *scrbitmap[8];
+	rectangle r = Machine->visible_area[0];
+	mame_bitmap *bitmap = tmpbitmap;
 
 	r.min_y = r.max_y = cpu_getscanline();
-	fillbitmap(scrbitmap[0], Machine->pens[1], &r);
+	fillbitmap(bitmap, Machine->pens[1], &r);
 	logerror("ULA %3d[%d] NMI, R:$%02X, $%04x\n", cpu_getscanline(), ula_scancode_count, (unsigned) cpunum_get_reg(0, Z80_R), (unsigned) cpunum_get_reg(0, Z80_PC));
 	cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
-	if (++ula_scanline_count == Machine->drv->screen_height)
+	if (++ula_scanline_count == Machine->drv->screen[0].maxheight)
 		ula_scanline_count = 0;
 }
 
@@ -124,15 +123,14 @@ static void zx_ula_irq(int param)
 		if (++ula_scancode_count == 8)
 			ula_scancode_count = 0;
 		cpunum_set_input_line(0, 0, PULSE_LINE);
-		if (++ula_scanline_count == Machine->drv->screen_height)
+		if (++ula_scanline_count == Machine->drv->screen[0].maxheight)
 			ula_scanline_count = 0;
 	}
 }
 
 int zx_ula_r(int offs, int region)
 {
-	extern mame_bitmap *scrbitmap[8];
-	mame_bitmap *bitmap = scrbitmap[0];
+	mame_bitmap *bitmap = tmpbitmap;
 	int x, y, chr, data, ireg, rreg, cycles, offs0 = offs, halted = 0;
 	UINT8 *chrgen, *rom = memory_region(REGION_CPU1);
 	UINT16 *scanline;
@@ -192,7 +190,7 @@ VIDEO_START( zx )
 	return video_start_generic_bitmapped();
 }
 
-VIDEO_UPDATE( zx )
+VIDEO_EOF( zx )
 {
 	/* decrement video synchronization counter */
 	if (ula_frame_vsync)

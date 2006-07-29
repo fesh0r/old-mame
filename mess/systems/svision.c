@@ -292,6 +292,7 @@ static VIDEO_UPDATE( svision )
 			line += 4;
 		}
 	}
+	return 0;
 }
 
 static INTERRUPT_GEN( svision_frame_int )
@@ -329,7 +330,7 @@ static MACHINE_DRIVER_START( svision )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)	/* lcd */
-	MDRV_ASPECT_RATIO(160, 160)
+	/*MDRV_ASPECT_RATIO(160, 160)*/
 	MDRV_SCREEN_SIZE(160, 160)
 	MDRV_VISIBLE_AREA(0, 160-1, 0, 160-1)
 	MDRV_PALETTE_LENGTH(sizeof(svision_palette) / (sizeof(svision_palette[0]) * 3))

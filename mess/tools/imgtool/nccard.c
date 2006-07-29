@@ -7,16 +7,16 @@
 
 /* NC Card image handling code by Kevin Thacker. February 2001 */
 
-static int nc_card_image_init(const struct ImageModule *mod, imgtool_stream *f, imgtool_image **outimg);
+static int nc_card_image_init(const imgtool_module *mod, imgtool_stream *f, imgtool_image **outimg);
 static void nc_card_image_exit(imgtool_image *img);
 static size_t nc_card_image_freespace(imgtool_image *img);
 static int nc_card_image_readfile(imgtool_image *img, const char *fname, imgtool_stream *destf);
 static int nc_card_image_writefile(imgtool_image *img, const char *fname, imgtool_stream *sourcef, const ResolvedOption *options_);
 static int nc_card_image_deletefile(imgtool_image *img, const char *fname);
-static int nc_card_image_create(const struct ImageModule *mod, imgtool_stream *f, const ResolvedOption *options_);
-static int nc_card_image_beginenum(imgtool_image *img, imgtool_imageenum **outenum);
-static int nc_card_image_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent);
-static void nc_card_image_closeenum(imgtool_imageenum *enumeration);
+static int nc_card_image_create(const imgtool_module *mod, imgtool_stream *f, const ResolvedOption *options_);
+static int nc_card_image_beginenum(imgtool_image *img, imgtool_directory **outenum);
+static int nc_card_image_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent);
+static void nc_card_image_closeenum(imgtool_directory *enumeration);
 
 IMAGEMODULE(
 	nccard,
@@ -417,7 +417,7 @@ struct nc_card_image
 	struct nc_memcard memcard;
 };
 
-static int nc_card_image_init(const struct ImageModule *mod, imgtool_stream *f, imgtool_image **outimg)
+static int nc_card_image_init(const imgtool_module *mod, imgtool_stream *f, imgtool_image **outimg)
 {
 	struct nc_card_image *nc_card;
 
@@ -483,7 +483,7 @@ static size_t nc_card_image_freespace(imgtool_image *img)
 
 /* create a empty image */
 /* in this case a formatted image */
-static int nc_card_image_create(const struct ImageModule *mod, imgtool_stream *f, const ResolvedOption *options_)
+static int nc_card_image_create(const imgtool_module *mod, imgtool_stream *f, const ResolvedOption *options_)
 {
 	int code;
 
@@ -723,7 +723,7 @@ eod is 1 if end of directory (no more blocks) or 0 if not end of directory */
 
 struct nc_card_direnum 
 {
-	imgtool_imageenum base;
+	imgtool_directory base;
 	/* card image */
 	struct nc_card_image *img;
 	/* directory block index */
@@ -735,7 +735,7 @@ struct nc_card_direnum
 };
 
 
-static int nc_card_image_beginenum(imgtool_image *img, imgtool_imageenum **outenum)
+static int nc_card_image_beginenum(imgtool_image *img, imgtool_directory **outenum)
 {
 	struct nc_card_image *nc_card = (struct nc_card_image *)img;
 	struct nc_card_direnum *card_enum;
@@ -759,7 +759,7 @@ static int nc_card_image_beginenum(imgtool_image *img, imgtool_imageenum **outen
 	return 0;
 }
 
-static int nc_card_image_nextenum(imgtool_imageenum *enumeration, imgtool_dirent *ent)
+static int nc_card_image_nextenum(imgtool_directory *enumeration, imgtool_dirent *ent)
 {
 	struct nc_card_direnum *card_enum = (struct nc_card_direnum *) enumeration;
 
@@ -874,7 +874,7 @@ static int nc_card_image_nextenum(imgtool_imageenum *enumeration, imgtool_dirent
 	return 0;
 }
 
-static void nc_card_image_closeenum(imgtool_imageenum *enumeration)
+static void nc_card_image_closeenum(imgtool_directory *enumeration)
 {
 	free(enumeration);
 }

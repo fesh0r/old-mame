@@ -232,7 +232,7 @@ static WRITE8_HANDLER ( pio_port_c_w )
 	case 8:
 		data = ne556_out[1] ? 0x01 : 0x00;
 		data |= readinputport(12);	/* get joystick ports */
-		if (cpu_gethorzbeampos() >= Machine->visible_area.max_x - 32)
+		if (cpu_gethorzbeampos() >= Machine->visible_area[0].max_x - 32)
 			data |= 0x80;
 		LOG(1,"mz700_e008_r",("%02X\n", data));
         break;
@@ -269,13 +269,6 @@ static void bank1_RAM(UINT8 *mem)
 	memory_set_bankptr(1, &mem[0x00000]);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MRA8_BANK1);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MWA8_BANK1);
-}
-
-static void bank1_NOP(UINT8 *mem)
-{
-    memory_set_bankptr(1, &mem[0x00000]);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MRA8_NOP);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MWA8_NOP);
 }
 
 static void bank1_ROM(UINT8 *mem)
@@ -340,13 +333,6 @@ static void bank5_RAM(UINT8 *mem)
 	memory_set_bankptr(5, &mem[0x0c000]);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xCFFF, 0, 0, MRA8_BANK5);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xCFFF, 0, 0, MWA8_BANK5);
-}
-
-static void bank5_VID(UINT8 *mem)
-{
-	memory_set_bankptr(5, &mem[0x11000]);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xCFFF, 0, 0, MRA8_BANK5);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xCFFF, 0, 0, pcgram_w);
 }
 
 

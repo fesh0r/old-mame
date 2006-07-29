@@ -209,7 +209,7 @@ double apple1_vh_dsp_time_to_ready (void)
 		   still use it to find what fraction of the current scanline
 		   period has elapsed. */
 		double current_hfrac = cpu_gethorzbeampos() /
-							   Machine->drv->screen_width;
+							   Machine->drv->screen[0].maxwidth;
 		if (current_hfrac < cursor_hfrac)
 			return scanline_period * (cursor_hfrac - current_hfrac);
 	}
@@ -248,4 +248,5 @@ VIDEO_UPDATE( apple1 )
 {
 	apple1_vh_cursor_blink();
 	terminal_draw(bitmap, NULL, apple1_terminal);
+	return 0;
 }

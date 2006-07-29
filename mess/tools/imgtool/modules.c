@@ -1,16 +1,24 @@
+/***************************************************************************
+
+	modules.c
+
+	List of Imgtool modules
+
+***************************************************************************/
+
 #include "modules.h"
 
 #ifndef MODULES_RECURSIVE
 #define MODULES_RECURSIVE
 
 /* step 1: declare all external references */
-#define MODULE(name)	extern imgtoolerr_t name##_createmodule(imgtool_library *library);
+#define MODULE(name)	extern void name##_get_info(const imgtool_class *imgclass, UINT32 state, union imgtoolinfo *info);
 #include "modules.c"
 #undef MODULE
 
 /* step 2: define the modules[] array */
-#define MODULE(name)	name##_createmodule,
-static imgtoolerr_t (*modules[])(imgtool_library *library) =
+#define MODULE(name)	name##_get_info,
+static void (*modules[])(const imgtool_class *imgclass, UINT32 state, union imgtoolinfo *info) =
 {
 #include "modules.c"
 };
@@ -21,7 +29,7 @@ imgtoolerr_t imgtool_create_cannonical_library(int omit_untested, imgtool_librar
 	imgtoolerr_t err;
 	size_t i;
 	imgtool_library *lib;
-	struct ImageModule *module;
+	imgtool_module *module;
 
 	/* list of modules that we drop */
 	static const char *irrelevant_modules[] =
@@ -36,12 +44,9 @@ imgtoolerr_t imgtool_create_cannonical_library(int omit_untested, imgtool_librar
 		goto error;
 	}
 
+	/* create all modules */
 	for (i = 0; i < sizeof(modules) / sizeof(modules[0]); i++)
-	{
-		err = modules[i](lib);
-		if (err)
-			goto error;
-	}
+		imgtool_library_add(lib, modules[i]);
 
 	/* remove irrelevant modules */
 	for (i = 0; i < sizeof(irrelevant_modules)
@@ -58,12 +63,6 @@ imgtoolerr_t imgtool_create_cannonical_library(int omit_untested, imgtool_librar
 		{
 			if (module->writing_untested)
 			{
-				module->write_file = NULL;
-				module->delete_file = NULL;
-				module->create_dir = NULL;
-				module->delete_dir = NULL;
-				module->writefile_optguide = NULL;
-				module->writefile_optspec = NULL;
 				module->write_sector = NULL;
 			}
 			if (module->creation_untested)
@@ -95,7 +94,11 @@ MODULE(mess_hd)
 MODULE(rsdos)
 MODULE(vzdos)
 MODULE(os9)
-MODULE(ti99)
+MODULE(ti99_old)
+MODULE(ti99_v9t9)
+MODULE(ti99_pc99fm)
+MODULE(ti99_pc99mfm)
+MODULE(ti99_ti99hd)
 MODULE(ti990)
 MODULE(fat)
 MODULE(pc_chd)

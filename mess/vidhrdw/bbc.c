@@ -279,7 +279,7 @@ WRITE8_HANDLER ( videoULA_w )
 
 	// emulation refresh optimisation
 	video_refresh=1;
-	force_partial_update(cpu_getscanline() - 1);
+	force_partial_update(0, cpu_getscanline() - 1);
 
 //	logerror("setting videoULA %s at %.4x size:%.4x\n",image_filename(image), addr, size);
 	logerror("setting videoULA %.4x to:%.4x   at :%d \n",data,offset,cpu_getscanline() );
@@ -592,7 +592,7 @@ VIDEO_UPDATE( bbc )
 	long c;
 	int full_refresh;
 
-logerror ("Box %d by %d \n",cliprect->min_y,cliprect->max_y);
+	//logerror ("Box %d by %d \n",cliprect->min_y,cliprect->max_y);
 
 	c = 0; // this is used to time out the screen redraw, in the case that the 6845 is in some way out state.
 	full_refresh = 1;
@@ -638,6 +638,7 @@ logerror ("Box %d by %d \n",cliprect->min_y,cliprect->max_y);
 	// redrawn the screen so reset video_refresh
 	video_refresh=0;
 
+	return 0;
 }
 
 void bbc_frameclock(void)
@@ -669,6 +670,7 @@ VIDEO_START( bbca )
 	set_pixel_lookup();
 	set_video_memory_lookups(16);
 	crtc6845_config(&BBC6845);
+	saa505x_config(&BBCsaa5050);
 
 	BBC_Video_RAM= memory_region(REGION_CPU1);
 	vidmem_RAM=vidmem;

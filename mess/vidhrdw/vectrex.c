@@ -188,8 +188,9 @@ VIDEO_UPDATE( vectrex )
 		i = (i+1) % MAX_POINTS;
 	}
 
-	video_update_vector(screen, bitmap, &Machine->visible_area, do_skip);
+	video_update_vector(screen, bitmap, &Machine->visible_area[0]);
 	vector_clear_list();
+	return 0;
 }
 
 /*********************************************************************
@@ -254,19 +255,19 @@ VIDEO_START( vectrex )
 {
 	int width, height;
 
-	width = Machine->drv->screen_width;
-	height = Machine->drv->screen_height;
+	width = Machine->drv->screen[0].maxwidth;
+	height = Machine->drv->screen[0].maxheight;
 
-	x_center=((Machine->visible_area.max_x
-		  -Machine->visible_area.min_x) / 2) << VEC_SHIFT;
-	y_center=((Machine->visible_area.max_y
-		  -Machine->visible_area.min_y) / 2 - 10) << VEC_SHIFT;
-	x_max = Machine->visible_area.max_x << VEC_SHIFT;
-	y_max = Machine->visible_area.max_y << VEC_SHIFT;
+	x_center=((Machine->visible_area[0].max_x
+		  -Machine->visible_area[0].min_x) / 2) << VEC_SHIFT;
+	y_center=((Machine->visible_area[0].max_y
+		  -Machine->visible_area[0].min_y) / 2 - 10) << VEC_SHIFT;
+	x_max = Machine->visible_area[0].max_x << VEC_SHIFT;
+	y_max = Machine->visible_area[0].max_y << VEC_SHIFT;
 
 	via_config(0, &vectrex_via6522_interface);
 	via_reset();
-	z_factor =  translucency? 1.5: 2;
+	z_factor = 2;
 
 	imager_freq = 1;
 
@@ -512,16 +513,16 @@ VIDEO_START( raaspec )
 	if (video_start_vector())
 		return 1;
 
-	x_center=((Machine->visible_area.max_x
-		  -Machine->visible_area.min_x)/2) << VEC_SHIFT;
-	y_center=((Machine->visible_area.max_y
-		  -Machine->visible_area.min_y)/2-10) << VEC_SHIFT;
-	x_max = Machine->visible_area.max_x << VEC_SHIFT;
-	y_max = Machine->visible_area.max_y << VEC_SHIFT;
+	x_center=((Machine->visible_area[0].max_x
+		  -Machine->visible_area[0].min_x)/2) << VEC_SHIFT;
+	y_center=((Machine->visible_area[0].max_y
+		  -Machine->visible_area[0].min_y)/2-10) << VEC_SHIFT;
+	x_max = Machine->visible_area[0].max_x << VEC_SHIFT;
+	y_max = Machine->visible_area[0].max_y << VEC_SHIFT;
 
 	via_config(0, &spectrum1_via6522_interface);
 	via_reset();
-	z_factor =  translucency? 1.5:2;
+	z_factor = 2;
 
 	raaspec_led_w (0, 0xff);
 	return 0;

@@ -942,7 +942,7 @@ VIDEO_START( ted7360 )
 	cursorelement->colortable = cursorcolortable;
 	cursorcolortable[1] = Machine->pens[1];
 	cursorelement->total_colors = 2;
-	ted7360_bitmap = auto_bitmap_alloc(Machine->drv->screen_width, Machine->drv->screen_height);
+	ted7360_bitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
 	add_exit_callback(ted7360_video_stop);
 	return 0;
 }
@@ -1219,4 +1219,5 @@ INTERRUPT_GEN( ted7360_raster_interrupt )
 VIDEO_UPDATE( ted7360 )
 {
 	copybitmap(bitmap, ted7360_bitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
+	return 0;
 }
