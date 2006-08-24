@@ -1,3 +1,54 @@
+0.108
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Thomson computer family  [Antoine Mine]
+
+
+
+System Driver Changes:
+----------------------
+- [C128] Fixed regression introduced in 0.106.  (bug #895) [Nate Woods]
+
+- [COMPIS] Fixed regression introduced in 0.106.  (bug #909) [Nate Woods]
+
+- [CPCPLUS] Added sound DMA emulation, improved the soft scroll registers and
+  various other little things to make more games actually work.  [Barry
+  Rodewald]
+  
+- [EP128] Fixed regression introduced in 0.106.  (bug #908) [Nate Woods]
+
+- [NES] Various improvements, such as timing and PPU improvements.  (bug #816)
+  [Brad Oliver]
+  
+- [SPECTRUM] Added TZX/TAP cassette format support.  [Wilbert Pol]
+
+
+
+User Interface Changes:
+-----------------------
+- Fixed UI toggle message to work reasonably with the new renderer/UI system.
+  [R. Belmont]
+
+
+
+Imgtool Changes:
+----------------
+- More refactoring; FAT partition support now internally separate from floppy
+  and hard drive code.  PC hard drive module now named "pc_chd" and not
+  explicitly tied to FAT.  [Nate Woods]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.108.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Made cassette .wav file loading slightly more tolerant.  [Nate Woods]
+
+
+
 0.107
 
 NOTE: This is the first full release of MESS with the new rendering

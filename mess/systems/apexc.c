@@ -489,9 +489,7 @@ static PALETTE_INIT( apexc )
 
 static VIDEO_START( apexc )
 {
-	if ((apexc_bitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth,Machine->drv->screen[0].maxheight)) == NULL)
-		return 1;
-
+	apexc_bitmap = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height);
 	fillbitmap(apexc_bitmap, Machine->pens[0], &/*Machine->visible_area*/teletyper_window);
 	return 0;
 }
@@ -510,7 +508,7 @@ static void apexc_draw_led(mame_bitmap *bitmap, int x, int y, int state)
 static void apexc_draw_char(mame_bitmap *bitmap, char character, int x, int y, int color)
 {
 	drawgfx(bitmap, Machine->gfx[0], character-32, color, 0, 0,
-				x+1, y, &Machine->visible_area[0], TRANSPARENCY_PEN, 0);
+				x+1, y, &Machine->screen[0].visarea, TRANSPARENCY_PEN, 0);
 }
 
 /* write a string on screen */

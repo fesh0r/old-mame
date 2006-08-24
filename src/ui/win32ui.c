@@ -823,7 +823,6 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	else
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -input_directory \"%s\"",GetInpDir());
 
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -hiscore_directory \"%s\"",  GetHiDir());
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -state_directory \"%s\"",    GetStateDir());
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -artpath \"%s\"",	GetArtDir());
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -snapshot_directory \"%s\"", GetImgDir());
@@ -837,7 +836,7 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	if (DriverHasOptionalBIOS(nGameIndex))
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -bios %s",pOpts->bios);
 	if (pOpts->cheat)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -c %d",                   pOpts->cheat );
+        sprintf(&pCmdLine[strlen(pCmdLine)], " -%sc",                   pOpts->cheat ? "" : "no" );
 	/* save states and input recording */
 	if (g_pSaveStateName != NULL)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -state \"%s\"",          g_pSaveStateName);
@@ -930,19 +929,14 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -flicker %f",                pOpts->f_flicker);
 	}
 	/* Artwork options*/
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sart",                     pOpts->use_artwork  ? "" : "no");
-	if (pOpts->use_artwork == TRUE)
-	{
-		if (pOpts->artwork_crop)
-			sprintf(&pCmdLine[strlen(pCmdLine)], " -%sartcrop",            pOpts->artwork_crop ? "" : "no");
-		if (pOpts->backdrops)
-			sprintf(&pCmdLine[strlen(pCmdLine)], " -%sbackdrop",            pOpts->backdrops ? "" : "no");
-		if (pOpts->overlays)
-			sprintf(&pCmdLine[strlen(pCmdLine)], " -%soverlay",             pOpts->overlays ? "" : "no");
-		if (pOpts->bezels)
-			sprintf(&pCmdLine[strlen(pCmdLine)], " -%sbezel",               pOpts->bezels ? "" : "no");
-	}
-
+	if (pOpts->artwork_crop)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sartcrop",            pOpts->artwork_crop ? "" : "no");
+	if (pOpts->backdrops)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sbackdrop",            pOpts->backdrops ? "" : "no");
+	if (pOpts->overlays)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -%soverlay",             pOpts->overlays ? "" : "no");
+	if (pOpts->bezels)
+		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sbezel",               pOpts->bezels ? "" : "no");
 	/* Core Sound options*/
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ssound",                   pOpts->enable_sound ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -sr %d",                     pOpts->samplerate);
@@ -974,12 +968,6 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -trackball \"%s\"",          pOpts->trackball);
 	if (strlen(pOpts->lightgun_device) > 0)
 		sprintf(&pCmdLine[strlen(pCmdLine)], " -lightgun_device \"%s\"",    pOpts->lightgun_device);
-	if (pOpts->leds)
-	{
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sleds",					pOpts->leds ? "" : "no");
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -led_mode %s",				pOpts->ledmode );
-	}
-
 	dprintf("Launching MAME32:");
 	dprintf("%s\n",pCmdLine);
 }
@@ -1184,7 +1172,6 @@ int Mame32Main(HINSTANCE    hInstance,
 {
 	dprintf("MAME32 starting\n");
 
-	options.gui_host = 1;
 	use_gui_romloading = TRUE;
 
 	if (__argc != 1)
@@ -1826,6 +1813,11 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	extern const char *mameinfo_filename;
 	LONG common_control_version = GetCommonControlVersion();
 	int validity_failed = 0;
+	int argc = 0;
+	char *args[4];
+	char **argv = args;
+	char pModule[_MAX_PATH];
+	char name[_MAX_PATH];
 
 	srand((unsigned)time(NULL));
 
@@ -1835,6 +1827,14 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 
 	init_resource_tracking();
 	begin_resource_tracking();
+
+	strcpy( name, drivers[0]->name );
+	GetModuleFileName(GetModuleHandle(NULL), pModule, _MAX_PATH);
+	argv[argc++] = pModule;
+	argv[argc++] = name;
+	cli_frontend_init(argc, argv );
+
+
 
 	// Count the number of games
 	game_count = 0;
@@ -2212,6 +2212,7 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 
 	return TRUE;
 }
+
 
 static void Win32UI_exit()
 {
@@ -5974,7 +5975,7 @@ static void AdjustMetrics(void)
 	}
 
 	SetWindowArea(&area);
-	SetWindowPos(hMain, 0, area.x, area.y, area.width, area.height, SWP_NOZORDER | SWP_SHOWWINDOW);
+	SetWindowPos(hMain, 0, area.x, area.y, area.width, area.height, SWP_NOZORDER | SWP_SHOWWINDOW | SWP_NOACTIVATE);
 }
 
 

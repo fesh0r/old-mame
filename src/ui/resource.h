@@ -109,7 +109,6 @@
 #define IDC_LOG                         1017
 #define IDC_ARTWORK_CROP                1018
 #define IDC_OVERLAYS                    1019
-#define IDC_LEDS                        1020
 #define IDC_BEZELS                      1021
 #define IDC_SLEEP                       1022
 #define IDC_GAMMA                       1023
@@ -233,9 +232,7 @@
 #define IDC_SYNCREFRESH                 1141
 #define IDC_USE_MOUSE                   1143
 #define IDC_THROTTLE                    1144
-#define IDC_RESDEPTH                    1145
 #define IDC_VOLUMETEXT                  1146
-#define IDC_RESDEPTHTEXT                1147
 #define IDC_REFRESH                     1148
 #define IDC_REFRESHTEXT                 1149
 #define IDC_EFFECT                      1150
@@ -287,7 +284,6 @@
 #define IDC_RELOAD                      1198
 #define IDC_DUAL_LIGHTGUN               1199
 #define IDC_NOOFFSET_CLONES             1200
-#define IDC_LEDMODE                     1201
 #define IDC_HISTORY_TAB                 1202
 #define IDC_GAME_CAPTION                1203
 #define IDC_SCREENSHOT_BORDERSIZE       1204

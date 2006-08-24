@@ -88,9 +88,6 @@ static int movie_frame;
 
 /* misc other statics */
 static UINT32 leds_status;
-#ifdef MESS
-static callback_item *full_refresh_callback_list;
-#endif
 
 
 

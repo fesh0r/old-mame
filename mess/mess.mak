@@ -318,6 +318,7 @@ DRVLIBS = \
 	$(OBJ)/tatung.a \
 	$(OBJ)/teamconc.a \
 	$(OBJ)/telmac.a \
+	$(OBJ)/thomson.a \
 	$(OBJ)/ti85.a \
 	$(OBJ)/ti99.a \
 	$(OBJ)/tiger.a \
@@ -391,7 +392,7 @@ $(OBJ)/nintendo.a:					\
 	$(OBJ)/mess/machine/gb.o		\
 	$(OBJ)/mess/systems/gb.o		\
 	$(OBJ)/mess/machine/nes_mmc.o	\
-	$(OBJ)/vidhrdw/ppu2c03b.o		\
+	$(OBJ)/mess/vidhrdw/ppu2c0x.o	\
 	$(OBJ)/mess/vidhrdw/nes.o		\
 	$(OBJ)/mess/machine/nes.o		\
 	$(OBJ)/mess/systems/nes.o		\
@@ -507,6 +508,7 @@ $(OBJ)/sinclair.a: \
 	$(OBJ)/mess/machine/spectrum.o		\
 	$(OBJ)/mess/formats/zx81_p.o		\
 	$(OBJ)/mess/systems/ql.o		\
+	$(OBJ)/mess/formats/tzx_cas.o		\
 
 $(OBJ)/apple.a:   \
 	$(OBJ)/mess/vidhrdw/apple2.o		\
@@ -958,6 +960,15 @@ $(OBJ)/be.a:						\
 	$(OBJ)/machine/intelfsh.o		\
 	$(OBJ)/machine/53c810.o
 
+$(OBJ)/thomson.a:			\
+	$(OBJ)/mess/machine/mc6846.o	\
+	$(OBJ)/mess/systems/thomson.o   \
+	$(OBJ)/mess/machine/thomson.o   \
+	$(OBJ)/mess/vidhrdw/thomson.o   \
+	$(OBJ)/mess/devices/thomflop.o \
+	$(OBJ)/mess/formats/thom_dsk.o \
+	$(OBJ)/mess/formats/thom_cas.o
+
 $(OBJ)/tiger.a:				\
 	$(OBJ)/mess/systems/gamecom.o	\
 	$(OBJ)/mess/machine/gamecom.o	\
@@ -986,7 +997,7 @@ COREOBJS +=							\
 	$(OBJ)/mess/inputx.o			\
 	$(OBJ)/mess/unicode.o			\
 	$(OBJ)/mess/artworkx.o			\
-	$(OBJ)/mess/mesintrf.o			\
+	$(OBJ)/mess/uimess.o			\
 	$(OBJ)/mess/filemngr.o			\
 	$(OBJ)/mess/tapectrl.o			\
 	$(OBJ)/mess/compcfg.o			\
@@ -996,7 +1007,7 @@ COREOBJS +=							\
 	$(OBJ)/mess/pool.o				\
 	$(OBJ)/mess/cheatms.o			\
 	$(OBJ)/mess/opresolv.o			\
-	$(OBJ)/mess/mui_text.o			\
+	$(OBJ)/mess/muitext.o			\
 	$(OBJ)/mess/infomess.o			\
 	$(OBJ)/mess/formats/ioprocs.o	\
 	$(OBJ)/mess/formats/flopimg.o	\

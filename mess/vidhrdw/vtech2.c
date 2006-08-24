@@ -131,7 +131,7 @@ VIDEO_UPDATE( laser )
 
     if( full_refresh )
 	{
-		fillbitmap(bitmap, Machine->pens[(laser_bg_mode >> 4) & 15], &Machine->visible_area[0]);
+		fillbitmap(bitmap, Machine->pens[(laser_bg_mode >> 4) & 15], &Machine->screen[0].visarea);
 		memset(dirtybuffer, 1, videoram_size);
     }
 
@@ -158,7 +158,7 @@ VIDEO_UPDATE( laser )
 						sx = BORDER_H/2 + x * 8;
                         code = videoram[offs];
 						drawgfx(bitmap,Machine->gfx[2],code,color,0,0,sx,sy,
-                            &Machine->visible_area[0],TRANSPARENCY_NONE,0);
+                            &Machine->screen[0].visarea,TRANSPARENCY_NONE,0);
                         dirtybuffer[offs] = 0;
                     }
                 }
@@ -183,7 +183,7 @@ VIDEO_UPDATE( laser )
                         code = videoram[offs];
 						color = videoram[offs+1];
 						drawgfx(bitmap,Machine->gfx[3],code,color,0,0,sx,sy,
-                            &Machine->visible_area[0],TRANSPARENCY_NONE,0);
+                            &Machine->screen[0].visarea,TRANSPARENCY_NONE,0);
 						dirtybuffer[offs] = dirtybuffer[offs+1] = 0;
                     }
                 }
@@ -207,7 +207,7 @@ VIDEO_UPDATE( laser )
 						sx = BORDER_H/2 + x * 8;
                         code = videoram[offs];
 						drawgfx(bitmap,Machine->gfx[5],code,0,0,0,sx,sy,
-                            &Machine->visible_area[0],TRANSPARENCY_NONE,0);
+                            &Machine->screen[0].visarea,TRANSPARENCY_NONE,0);
 						dirtybuffer[offs] = 0;
                     }
                 }
@@ -232,7 +232,7 @@ VIDEO_UPDATE( laser )
 						sx = BORDER_H/2 + x * 8;
                         code = videoram[offs];
 						drawgfx(bitmap,Machine->gfx[6],code,0,0,0,sx,sy,
-                            &Machine->visible_area[0],TRANSPARENCY_NONE,0);
+                            &Machine->screen[0].visarea,TRANSPARENCY_NONE,0);
 						dirtybuffer[offs] = 0;
                     }
                 }
@@ -256,7 +256,7 @@ VIDEO_UPDATE( laser )
 						sx = BORDER_H/2 + x * 16;
                         code = videoram[offs];
 						drawgfx(bitmap,Machine->gfx[3],code,color,0,0,sx,sy,
-                            &Machine->visible_area[0],TRANSPARENCY_NONE,0);
+                            &Machine->screen[0].visarea,TRANSPARENCY_NONE,0);
                         dirtybuffer[offs] = 0;
                     }
                 }
@@ -281,7 +281,7 @@ VIDEO_UPDATE( laser )
                         code = videoram[offs];
 						color = videoram[offs+1];
 						drawgfx(bitmap,Machine->gfx[4],code,color,0,0,sx,sy,
-                            &Machine->visible_area[0],TRANSPARENCY_NONE,0);
+                            &Machine->screen[0].visarea,TRANSPARENCY_NONE,0);
 						dirtybuffer[offs] = dirtybuffer[offs+1] = 0;
                     }
                 }
@@ -307,7 +307,7 @@ VIDEO_UPDATE( laser )
 						sx = BORDER_H/2 + x * 8;
                         code = videoram[0x3800+offs];
 						drawgfx(bitmap,Machine->gfx[0],code,color,0,0,sx,sy,
-                            &Machine->visible_area[0],TRANSPARENCY_NONE,0);
+                            &Machine->screen[0].visarea,TRANSPARENCY_NONE,0);
                         dirtybuffer[offs] = 0;
                     }
                 }
@@ -329,7 +329,7 @@ VIDEO_UPDATE( laser )
                         code = videoram[0x3800+offs];
                         color = videoram[0x3801+offs];
 						drawgfx(bitmap,Machine->gfx[1],code,color,0,0,sx,sy,
-                            &Machine->visible_area[0],TRANSPARENCY_NONE,0);
+                            &Machine->screen[0].visarea,TRANSPARENCY_NONE,0);
                         dirtybuffer[0x3800+offs] = dirtybuffer[0x3801+offs] = 0;
                     }
                 }
@@ -339,7 +339,7 @@ VIDEO_UPDATE( laser )
 
 	if( laser_frame_time > 0 )
 	{
-		ui_popup("%s", laser_frame_message);
+		popmessage("%s", laser_frame_message);
 	}
 	return 0;
 }
@@ -348,7 +348,6 @@ WRITE8_HANDLER( laser_bg_mode_w )
 {
     if (laser_bg_mode != data)
     {
-        schedule_full_refresh();
         laser_bg_mode = data;
 		logerror("laser border:$%X mode:$%X\n", data >> 4, data & 15);
     }
@@ -358,7 +357,6 @@ WRITE8_HANDLER( laser_two_color_w )
 {
 	if (laser_two_color != data)
 	{
-		schedule_full_refresh();
 		laser_two_color = data;
 		logerror("laser foreground:$%X background:$%X\n", data >> 4, data & 15);
     }

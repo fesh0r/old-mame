@@ -1,6 +1,15 @@
-#include "mesintrf.h"
+/*********************************************************************
+
+	uimess.c
+
+	MESS supplement to ui.c.
+
+*********************************************************************/
+
 #include "mame.h"
-#include "ui_text.h"
+#include "uitext.h"
+#include "uimenu.h"
+#include "uimess.h"
 #include "input.h"
 
 int mess_pause_for_ui = 0;
@@ -14,10 +23,8 @@ int mess_ui_active(void)
 void mess_ui_update(void)
 {
 	static int ui_toggle_key = 0;
-	static int ui_display_count = 30;
 
-	char buf[2048];
-	int id;
+	int id, toggled = 0;
 	const struct IODevice *dev;
 
 	/* traditional MESS interface */
@@ -27,61 +34,44 @@ void mess_ui_update(void)
 		{
 			if( !ui_toggle_key )
 			{
+				toggled = 1;
 				ui_toggle_key = 1;
 				ui_active = !ui_active;
-				ui_display_count = 30;
-				schedule_full_refresh();
 			}
 		}
 		else
 		{
+			if (ui_toggle_key)
+			{
+				toggled = 1;
+			}
 			ui_toggle_key = 0;
 		}
 
 		if (ui_active)
 		{
-			if( ui_display_count > 0 )
+			if (toggled)
 			{
-					buf[0] = 0;
-					strcpy(buf,ui_getstring (UI_keyb1));
-					strcat(buf,"\n");
-					strcat(buf,ui_getstring (UI_keyb2));
-					strcat(buf,"\n");
-					strcat(buf,ui_getstring (UI_keyb3));
-					strcat(buf,"\n");
-					strcat(buf,ui_getstring (UI_keyb5));
-					strcat(buf,"\n");
-					strcat(buf,ui_getstring (UI_keyb2));
-					strcat(buf,"\n");
-					strcat(buf,ui_getstring (UI_keyb7));
-					strcat(buf,"\n");
-					ui_draw_message_window(buf);
-
-				if( --ui_display_count == 0 )
-					schedule_full_refresh();
+				popmessage("%s\n%s\n%s\n%s\n%s\n%s\n",
+					ui_getstring(UI_keyb1),
+					ui_getstring(UI_keyb2),
+					ui_getstring(UI_keyb3),
+					ui_getstring(UI_keyb5),
+					ui_getstring(UI_keyb2),
+					ui_getstring(UI_keyb7));
 			}
 		}
 		else
 		{
-			if( ui_display_count > 0 )
+			if (toggled)
 			{
-					buf[0] = 0;
-					strcpy(buf,ui_getstring (UI_keyb1));
-					strcat(buf,"\n");
-					strcat(buf,ui_getstring (UI_keyb2));
-					strcat(buf,"\n");
-					strcat(buf,ui_getstring (UI_keyb4));
-					strcat(buf,"\n");
-					strcat(buf,ui_getstring (UI_keyb6));
-					strcat(buf,"\n");
-					strcat(buf,ui_getstring (UI_keyb2));
-					strcat(buf,"\n");
-					strcat(buf,ui_getstring (UI_keyb7));
-					strcat(buf,"\n");
-					ui_draw_message_window(buf);
-
-				if( --ui_display_count == 0 )
-					schedule_full_refresh();
+				popmessage("%s\n%s\n%s\n%s\n%s\n%s\n",
+					ui_getstring(UI_keyb1),
+					ui_getstring(UI_keyb2),
+					ui_getstring(UI_keyb4),
+					ui_getstring(UI_keyb6),
+					ui_getstring(UI_keyb2),
+					ui_getstring(UI_keyb7));
 			}
 		}
 	}

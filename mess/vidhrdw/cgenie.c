@@ -34,9 +34,7 @@ VIDEO_START( cgenie )
 	if( video_start_generic() != 0 )
         return 1;
 
-    dlybitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
-	if( !dlybitmap )
-		return 1;
+    dlybitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
 
     cleanbuffer = (UINT8*)auto_malloc(64 * 32 * 8);
 	memset(cleanbuffer, 0, 64 * 32 * 8);
@@ -70,8 +68,6 @@ static void cgenie_offset_xy(void)
 	if( off_y > 128 )
 		off_y = 128;
 
-	schedule_full_refresh();
-
 // logerror("cgenie offset x:%d  y:%d\n", off_x, off_y);
 }
 
@@ -94,7 +90,6 @@ WRITE8_HANDLER ( cgenie_register_w )
 		case 1:
 			if( crt.horizontal_displayed == data )
 				break;
-			schedule_full_refresh();
 			crt.horizontal_displayed = data;
 			break;
 		case 2:
@@ -121,7 +116,6 @@ WRITE8_HANDLER ( cgenie_register_w )
 		case 6:
 			if( crt.vertical_displayed == data )
 				break;
-			schedule_full_refresh();
 			crt.vertical_displayed = data;
 			break;
 		case 7:
@@ -286,7 +280,7 @@ static void cgenie_refresh_monitor(mame_bitmap * bitmap, int full_refresh)
 
 	if( crt.vertical_displayed == 0 || crt.horizontal_displayed == 0 )
 	{
-		fillbitmap(bitmap, Machine->remapped_colortable[0], &Machine->visible_area[0]);
+		fillbitmap(bitmap, Machine->remapped_colortable[0], &Machine->screen[0].visarea);
 	}
 	else
 	{
@@ -297,7 +291,7 @@ static void cgenie_refresh_monitor(mame_bitmap * bitmap, int full_refresh)
 		if( full_refresh )
 		{
 			full_refresh = 0;
-			fillbitmap(bitmap, Machine->remapped_colortable[0], &Machine->visible_area[0]);
+			fillbitmap(bitmap, Machine->remapped_colortable[0], &Machine->screen[0].visarea);
 			for( i = offset; i < offset + size; i++ )
 				dirtybuffer[i] = 1;
 		}
@@ -380,8 +374,8 @@ static void cgenie_refresh_tv_set(mame_bitmap * bitmap, int full_refresh)
 
     if( crt.vertical_displayed == 0 || crt.horizontal_displayed == 0 )
 	{
-		fillbitmap(tmpbitmap, Machine->remapped_colortable[0], &Machine->visible_area[0]);
-		fillbitmap(dlybitmap, Machine->remapped_colortable[0], &Machine->visible_area[0]);
+		fillbitmap(tmpbitmap, Machine->remapped_colortable[0], &Machine->screen[0].visarea);
+		fillbitmap(dlybitmap, Machine->remapped_colortable[0], &Machine->screen[0].visarea);
 	}
 	else
 	{
@@ -392,8 +386,8 @@ static void cgenie_refresh_tv_set(mame_bitmap * bitmap, int full_refresh)
 		if( full_refresh )
 		{
 			full_refresh = 0;
-			fillbitmap(tmpbitmap, Machine->remapped_colortable[0], &Machine->visible_area[0]);
-			fillbitmap(dlybitmap, Machine->remapped_colortable[0], &Machine->visible_area[0]);
+			fillbitmap(tmpbitmap, Machine->remapped_colortable[0], &Machine->screen[0].visarea);
+			fillbitmap(dlybitmap, Machine->remapped_colortable[0], &Machine->screen[0].visarea);
 			for (i = offset; i < offset + size; i++)
 				dirtybuffer[i] = 1;
 		}
@@ -474,9 +468,9 @@ static void cgenie_refresh_tv_set(mame_bitmap * bitmap, int full_refresh)
 	}
 	update_all = 0;
 	copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0,
-		&Machine->visible_area[0], TRANSPARENCY_NONE, 0);
+		&Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
 	copybitmap(bitmap, dlybitmap, 0, 0, 1, 0,
-		&Machine->visible_area[0], TRANSPARENCY_COLOR, 0);
+		&Machine->screen[0].visarea, TRANSPARENCY_COLOR, 0);
 }
 
 /***************************************************************************

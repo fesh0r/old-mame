@@ -942,7 +942,7 @@ VIDEO_START( ted7360 )
 	cursorelement->colortable = cursorcolortable;
 	cursorcolortable[1] = Machine->pens[1];
 	cursorelement->total_colors = 2;
-	ted7360_bitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
+	ted7360_bitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
 	add_exit_callback(ted7360_video_stop);
 	return 0;
 }
@@ -1049,7 +1049,7 @@ static void ted7360_drawlines (int first, int last)
 
 	lastline = last;
 
-	if (skip_this_frame ())
+	if (video_skip_this_frame ())
 		return;
 
 	/* top part of display not rastered */

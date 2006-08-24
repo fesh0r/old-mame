@@ -179,7 +179,6 @@ typedef struct
 	int    audio_latency;
 
 	/* Misc artwork options */
-	BOOL   use_artwork;
 	BOOL   backdrops;
 	BOOL   overlays;
 	BOOL   bezels;
@@ -362,7 +361,6 @@ typedef struct
     char*    nvramdir;
     char*    memcarddir;
     char*    inpdir;
-    char*    hidir;
     char*    statedir;
     char*    artdir;
     char*    imgdir;
@@ -549,9 +547,6 @@ void SetIniDir(const char *path);
 
 const char* GetCfgDir(void);
 void SetCfgDir(const char* path);
-
-const char* GetHiDir(void);
-void SetHiDir(const char* path);
 
 const char* GetNvramDir(void);
 void SetNvramDir(const char* path);
