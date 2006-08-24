@@ -605,7 +605,7 @@ static WRITE16_HANDLER( neogeo_video_w )
 	int line = RASTER_LINES - cpu_getiloops();
 
 	/* If Video RAM changes force a partial update to the previous line */
-	force_partial_update(0, line-24); // tuned by ssideki4 / msyogui
+	video_screen_update_partial(0, line-24); // tuned by ssideki4 / msyogui
 
 
 	offset &=0x7;
@@ -787,7 +787,7 @@ static READ8_HANDLER( z80_port_r )
 {
 	char buf[80];
 	sprintf(buf,"%05x %05x %05x %05x",bank[0],bank[1],bank[2],bank[3]);
-	ui_popup(buf);
+	popmessage(buf);
 }
 #endif
 

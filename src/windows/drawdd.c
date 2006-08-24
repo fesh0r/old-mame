@@ -21,6 +21,7 @@
 
 // MAME headers
 #include "render.h"
+#include "rendutil.h"
 #include "options.h"
 
 // OSD headers
@@ -170,14 +171,14 @@ static void get_adapter_for_monitor(dd_info *dd, win_monitor_info *monitor);
 static void pick_best_mode(win_window_info *window);
 
 // rendering
-void drawdd_rgb888_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
-void drawdd_bgr888_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
-void drawdd_rgb565_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
-void drawdd_rgb555_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
-void drawdd_rgb888_nr_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
-void drawdd_bgr888_nr_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
-void drawdd_rgb565_nr_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
-void drawdd_rgb555_nr_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
+static void drawdd_rgb888_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
+static void drawdd_bgr888_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
+static void drawdd_rgb565_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
+static void drawdd_rgb555_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
+static void drawdd_rgb888_nr_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
+static void drawdd_bgr888_nr_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
+static void drawdd_rgb565_nr_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
+static void drawdd_rgb555_nr_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
 
 
 
@@ -251,7 +252,7 @@ static int drawdd_window_init(win_window_info *window)
 	// allocate memory for our structures
 	dd = malloc_or_die(sizeof(*dd));
 	memset(dd, 0, sizeof(*dd));
-	window->dxdata = dd;
+	window->drawdata = dd;
 
 	// configure the adapter for the mode we want
 	if (config_adapter_mode(window))
@@ -277,7 +278,7 @@ error:
 
 static void drawdd_window_destroy(win_window_info *window)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 
 	// skip if nothing
 	if (dd == NULL)
@@ -288,7 +289,7 @@ static void drawdd_window_destroy(win_window_info *window)
 
 	// free the memory in the window
 	free(dd);
-	window->dxdata = NULL;
+	window->drawdata = NULL;
 }
 
 
@@ -299,7 +300,7 @@ static void drawdd_window_destroy(win_window_info *window)
 
 static const render_primitive_list *drawdd_window_get_primitives(win_window_info *window)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 	compute_blit_surface_size(window);
 	render_target_set_bounds(window->target, dd->blitwidth, dd->blitheight, 0);
 	return render_target_get_primitives(window->target);
@@ -313,7 +314,7 @@ static const render_primitive_list *drawdd_window_get_primitives(win_window_info
 
 static int drawdd_window_draw(win_window_info *window, HDC dc, int update)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 	const render_primitive *prim;
 	int usemembuffer = FALSE;
 	HRESULT result;
@@ -443,7 +444,7 @@ static int drawdd_window_draw(win_window_info *window, HDC dc, int update)
 
 static int ddraw_create(win_window_info *window)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 	HRESULT result;
 	int verify;
 
@@ -510,7 +511,7 @@ error:
 
 static int ddraw_create_surfaces(win_window_info *window)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 	HRESULT result;
 
 	// make a description of the primary surface
@@ -633,7 +634,7 @@ error:
 
 static void ddraw_delete(win_window_info *window)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 
 	// free surfaces
 	ddraw_delete_surfaces(window);
@@ -660,7 +661,7 @@ static void ddraw_delete(win_window_info *window)
 
 static void ddraw_delete_surfaces(win_window_info *window)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 
 	// release the gamma control
 	if (dd->gamma != NULL)
@@ -733,7 +734,7 @@ static int ddraw_verify_caps(dd_info *dd)
 
 static int ddraw_test_cooperative(win_window_info *window)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 	HRESULT result;
 
 	// check our current status; if we lost the device, punt to GDI
@@ -803,7 +804,7 @@ static HRESULT create_surface(dd_info *dd, DDSURFACEDESC2 *desc, IDirectDrawSurf
 
 static int create_clipper(win_window_info *window)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 	HRESULT result;
 
 	// create a clipper for the primary surface
@@ -840,7 +841,7 @@ static int create_clipper(win_window_info *window)
 
 static void compute_blit_surface_size(win_window_info *window)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 	INT32 newwidth, newheight;
 	int xscale, yscale;
 	RECT client;
@@ -964,7 +965,7 @@ static void calc_fullscreen_margins(win_window_info *window, DWORD desc_width, D
 
 static void blit_to_primary(win_window_info *window, int srcwidth, int srcheight)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 	IDirectDrawSurface7 *target = (dd->back != NULL) ? dd->back : dd->primary;
 	win_monitor_info *monitor = winwindow_video_window_monitor(window, NULL);
 	DDBLTFX blitfx = { sizeof(DDBLTFX) };
@@ -1100,7 +1101,7 @@ static void blit_to_primary(win_window_info *window, int srcwidth, int srcheight
 static int config_adapter_mode(win_window_info *window)
 {
 	DDDEVICEIDENTIFIER2 identifier;
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 	HRESULT result;
 
 	// choose the monitor number
@@ -1229,7 +1230,7 @@ static HRESULT WINAPI enum_modes_callback(LPDDSURFACEDESC2 desc, LPVOID context)
 {
 	float size_score, refresh_score, final_score;
 	mode_enum_info *einfo = context;
-	dd_info *dd = einfo->window->dxdata;
+	dd_info *dd = einfo->window->drawdata;
 
 	// skip non-32 bit modes
 	if (desc->ddpfPixelFormat.dwRGBBitCount != 32)
@@ -1251,18 +1252,18 @@ static HRESULT WINAPI enum_modes_callback(LPDDSURFACEDESC2 desc, LPVOID context)
 		size_score = 2.0f;
 
 	// compute refresh score
-	refresh_score = 1.0f / (1.0f + fabs((double)desc->dwRefreshRate - Machine->refresh_rate[0]));
+	refresh_score = 1.0f / (1.0f + fabs((double)desc->dwRefreshRate - Machine->screen[0].refresh));
+
+	// if refresh is smaller than we'd like, it only scores up to 0.1
+	if ((double)desc->dwRefreshRate < Machine->screen[0].refresh)
+		refresh_score *= 0.1;
 
 	// if we're looking for a particular refresh, make sure it matches
 	if (desc->dwRefreshRate == einfo->window->refresh)
-		refresh_score = 1.0f;
+		refresh_score = 2.0f;
 
-	// if refresh is smaller than we'd like, it only scores up to 0.1
-	if ((double)desc->dwRefreshRate < Machine->refresh_rate[0])
-		refresh_score *= 0.1;
-
-	// weight size highest, followed by depth and refresh
-	final_score = (size_score * 100.0 + refresh_score) / 101.0;
+	// weight size and refresh equally
+	final_score = size_score + refresh_score;
 
 	// best so far?
 	verbose_printf("  %4dx%4d@%3dHz -> %f\n", (int)desc->dwWidth, (int)desc->dwHeight, (int)desc->dwRefreshRate, final_score * 1000.0f);
@@ -1284,7 +1285,7 @@ static HRESULT WINAPI enum_modes_callback(LPDDSURFACEDESC2 desc, LPVOID context)
 
 static void pick_best_mode(win_window_info *window)
 {
-	dd_info *dd = window->dxdata;
+	dd_info *dd = window->drawdata;
 	mode_enum_info einfo;
 	HRESULT result;
 

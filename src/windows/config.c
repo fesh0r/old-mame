@@ -22,12 +22,9 @@
 #include "options.h"
 
 #include "winmain.h"
-#ifndef NEW_RENDER
-#include "videoold.h"
-#else
 #include "video.h"
 #include "render.h"
-#endif
+#include "rendutil.h"
 
 #ifdef NEW_DEBUGGER
 #include "debug/debugcpu.h"
@@ -93,10 +90,6 @@ static void setup_record(const char *filename, const game_driver *driver);
 static char *extract_base_name(const char *name, char *dest, int destsize);
 static char *extract_path(const char *name, char *dest, int destsize);
 
-#ifndef NEW_RENDER
-static void set_old_video_options(const game_driver *driver);
-#endif
-
 
 
 //============================================================
@@ -157,7 +150,6 @@ static const options_entry windows_opts[] =
 	{ "nvram_directory",          "nvram",    0,                 "directory to save nvram contents" },
 	{ "memcard_directory",        "memcard",  0,                 "directory to save memory card contents" },
 	{ "input_directory",          "inp",      0,                 "directory to save input device logs" },
-	{ "hiscore_directory",        "hi",       0,                 "directory to save hiscores" },
 	{ "state_directory",          "sta",      0,                 "directory to save states" },
 	{ "artpath;artwork_directory","artwork",  0,                 "path to artwork files" },
 	{ "snapshot_directory",       "snap",     0,                 "directory to save screenshots" },
@@ -186,10 +178,10 @@ static const options_entry windows_opts[] =
 	{ "oslog",                    "0",        OPTION_BOOLEAN,    "output error.log data to the system debugger" },
 	{ "verbose;v",                "0",        OPTION_BOOLEAN,    "display additional diagnostic information" },
 #ifdef MAME_DEBUG
-	{ "debug;d",                  "0",        OPTION_BOOLEAN,    "enable/disable debugger" },
+	{ "debug;d",                  "1",        OPTION_BOOLEAN,    "enable/disable debugger" },
 	{ "debugscript",              NULL,       0,                 "script for debugger" },
 #else
-	{ "debug;d",                  "0",        OPTION_DEPRECATED, "(debugger-only command)" },
+	{ "debug;d",                  "1",        OPTION_DEPRECATED, "(debugger-only command)" },
 	{ "debugscript",              NULL,       OPTION_DEPRECATED, "(debugger-only command)" },
 #endif
 
@@ -237,24 +229,29 @@ static const options_entry windows_opts[] =
 
 	// per-window options
 	{ NULL,                       NULL,       OPTION_HEADER,     "PER-WINDOW VIDEO OPTIONS" },
-	{ "screen0;screen",           "auto",     0,                 "explicit name of the first screen; 'auto' here will try to make a best guess" },
-	{ "aspect0;screen_aspect",    "auto",     0,                 "aspect ratio of the first screen; 'auto' here will try to make a best guess" },
-	{ "resolution0;resolution;r0;r", "auto",  0,                 "preferred resolution of the first screen; format is <width>x<height>[x<depth>[@<refreshrate>]] or 'auto'" },
-	{ "view0;view",               "auto",     0,                 "preferred view for the first screen" },
+	{ "screen",                   "auto",     0,                 "explicit name of the first screen; 'auto' here will try to make a best guess" },
+	{ "aspect;screen_aspect",     "auto",     0,                 "aspect ratio for all screens; 'auto' here will try to make a best guess" },
+	{ "resolution;r",             "auto",     0,                 "preferred resolution for all screens; format is <width>x<height>[@<refreshrate>] or 'auto'" },
+	{ "view",                     "auto",     0,                 "preferred view for all screens" },
+
+	{ "screen0",                  "auto",     0,                 "explicit name of the first screen; 'auto' here will try to make a best guess" },
+	{ "aspect0",                  "auto",     0,                 "aspect ratio of the first screen; 'auto' here will try to make a best guess" },
+	{ "resolution0;r0",           "auto",     0,                 "preferred resolution of the first screen; format is <width>x<height>[@<refreshrate>] or 'auto'" },
+	{ "view0",                    "auto",     0,                 "preferred view for the first screen" },
 
 	{ "screen1",                  "auto",     0,                 "explicit name of the second screen; 'auto' here will try to make a best guess" },
 	{ "aspect1",                  "auto",     0,                 "aspect ratio of the second screen; 'auto' here will try to make a best guess" },
-	{ "resolution1;r1",           "auto",     0,                 "preferred resolution of the second screen; format is <width>x<height>[x<depth>[@<refreshrate>]] or 'auto'" },
+	{ "resolution1;r1",           "auto",     0,                 "preferred resolution of the second screen; format is <width>x<height>[@<refreshrate>] or 'auto'" },
 	{ "view1",                    "auto",     0,                 "preferred view for the second screen" },
 
 	{ "screen2",                  "auto",     0,                 "explicit name of the third screen; 'auto' here will try to make a best guess" },
 	{ "aspect2",                  "auto",     0,                 "aspect ratio of the third screen; 'auto' here will try to make a best guess" },
-	{ "resolution2;r2",           "auto",     0,                 "preferred resolution of the third screen; format is <width>x<height>[x<depth>[@<refreshrate>]] or 'auto'" },
+	{ "resolution2;r2",           "auto",     0,                 "preferred resolution of the third screen; format is <width>x<height>[@<refreshrate>] or 'auto'" },
 	{ "view2",                    "auto",     0,                 "preferred view for the third screen" },
 
 	{ "screen3",                  "auto",     0,                 "explicit name of the fourth screen; 'auto' here will try to make a best guess" },
 	{ "aspect3",                  "auto",     0,                 "aspect ratio of the fourth screen; 'auto' here will try to make a best guess" },
-	{ "resolution3;r3",           "auto",     0,                 "preferred resolution of the fourth screen; format is <width>x<height>[x<depth>[@<refreshrate>]] or 'auto'" },
+	{ "resolution3;r3",           "auto",     0,                 "preferred resolution of the fourth screen; format is <width>x<height>[@<refreshrate>] or 'auto'" },
 	{ "view3",                    "auto",     0,                 "preferred view for the fourth screen" },
 
 	// full screen options
@@ -279,7 +276,6 @@ static const options_entry windows_opts[] =
 
 	// artwork options
 	{ NULL,                       NULL,       OPTION_HEADER,     "ARTWORK OPTIONS" },
-	{ "artwork;art",              "1",        OPTION_BOOLEAN,    "enable external artwork, if available" },
 	{ "artwork_crop;artcrop",     "0",        OPTION_BOOLEAN,    "crop artwork to game screen size" },
 	{ "use_backdrops;backdrop",   "1",        OPTION_BOOLEAN,    "enable backdrops if artwork is enabled and available" },
 	{ "use_overlays;overlay",     "1",        OPTION_BOOLEAN,    "enable overlays if artwork is enabled and available" },
@@ -315,10 +311,6 @@ static const options_entry windows_opts[] =
 #ifdef MESS
 	{ "mouse_device",             "mouse",    0,                 "enable (keyboard|mouse|joystick) if a mouse control is present" },
 #endif
-
-	{ NULL,                       NULL,       OPTION_HEADER,     "OUTPUT DEVICE OPTIONS" },
-	{ "keyboard_leds;leds",       "1",        OPTION_BOOLEAN,    "enable keyboard LED emulation" },
-	{ "led_mode",                 "ps/2",     0,                 "LED mode (PS/2|USB)" },
 
 	{ NULL }
 };
@@ -656,9 +648,6 @@ static void extract_options(const game_driver *driver, machine_config *drv)
 	memset(&options, 0, sizeof(options));
 
 	// video options
-#ifndef NEW_RENDER
-	set_old_video_options(driver);
-#else
 	video_orientation = ROT0;
 
 	// override if no rotation requested
@@ -678,7 +667,6 @@ static void extract_options(const game_driver *driver, machine_config *drv)
 		video_orientation ^= ORIENTATION_FLIP_X;
 	if (options_get_bool("flipy", TRUE))
 		video_orientation ^= ORIENTATION_FLIP_Y;
-#endif
 
 	// brightness
 	options.brightness = options_get_float_range("brightness", TRUE, 0.1f, 2.0f);
@@ -867,96 +855,3 @@ static char *extract_path(const char *name, char *dest, int destsize)
 	}
 	return dest;
 }
-
-
-
-
-
-#ifndef NEW_RENDER
-static void set_old_video_options(const game_driver *driver)
-{
-	// first start with the game's built in orientation
-	int orientation = driver->flags & ORIENTATION_MASK;
-
-	options.ui_orientation = orientation;
-
-	if (options.ui_orientation & ORIENTATION_SWAP_XY)
-	{
-		// if only one of the components is inverted, switch them
-		if ((options.ui_orientation & ROT180) == ORIENTATION_FLIP_X ||
-				(options.ui_orientation & ROT180) == ORIENTATION_FLIP_Y)
-			options.ui_orientation ^= ROT180;
-	}
-
-	// override if no rotation requested
-	if (!options_get_bool("rotate", TRUE))
-		orientation = options.ui_orientation = ROT0;
-
-	// rotate right
-	if (options_get_bool("ror", TRUE))
-	{
-		// if only one of the components is inverted, switch them
-		if ((orientation & ROT180) == ORIENTATION_FLIP_X ||
-				(orientation & ROT180) == ORIENTATION_FLIP_Y)
-			orientation ^= ROT180;
-
-		orientation ^= ROT90;
-	}
-
-	// rotate left
-	if (options_get_bool("rol", TRUE))
-	{
-		// if only one of the components is inverted, switch them
-		if ((orientation & ROT180) == ORIENTATION_FLIP_X ||
-				(orientation & ROT180) == ORIENTATION_FLIP_Y)
-			orientation ^= ROT180;
-
-		orientation ^= ROT270;
-	}
-
-	// auto-rotate right (e.g. for rotating lcds), based on original orientation
-	if (options_get_bool("autoror", TRUE) && (driver->flags & ORIENTATION_SWAP_XY) )
-	{
-		// if only one of the components is inverted, switch them
-		if ((orientation & ROT180) == ORIENTATION_FLIP_X ||
-				(orientation & ROT180) == ORIENTATION_FLIP_Y)
-			orientation ^= ROT180;
-
-		orientation ^= ROT90;
-	}
-
-	// auto-rotate left (e.g. for rotating lcds), based on original orientation
-	if (options_get_bool("autorol", TRUE) && (driver->flags & ORIENTATION_SWAP_XY) )
-	{
-		// if only one of the components is inverted, switch them
-		if ((orientation & ROT180) == ORIENTATION_FLIP_X ||
-				(orientation & ROT180) == ORIENTATION_FLIP_Y)
-			orientation ^= ROT180;
-
-		orientation ^= ROT270;
-	}
-
-	// flip X/Y
-	if (options_get_bool("flipx", TRUE))
-		orientation ^= ORIENTATION_FLIP_X;
-	if (options_get_bool("flipy", TRUE))
-		orientation ^= ORIENTATION_FLIP_Y;
-
-	blit_flipx = ((orientation & ORIENTATION_FLIP_X) != 0);
-	blit_flipy = ((orientation & ORIENTATION_FLIP_Y) != 0);
-	blit_swapxy = ((orientation & ORIENTATION_SWAP_XY) != 0);
-
-	if( options.vector_width == 0 && options.vector_height == 0 )
-	{
-		options.vector_width = 640;
-		options.vector_height = 480;
-	}
-	if( blit_swapxy )
-	{
-		int temp;
-		temp = options.vector_width;
-		options.vector_width = options.vector_height;
-		options.vector_height = temp;
-	}
-}
-#endif

@@ -15,6 +15,7 @@
 #include "png.h"
 #include "harddisk.h"
 #include "config.h"
+#include "ui.h"
 #include <stdarg.h>
 #include <ctype.h>
 
@@ -24,9 +25,7 @@
 
 
 /***************************************************************************
-
-    Global variables
-
+    GLOBAL VARIABLES
 ***************************************************************************/
 
 /* disks */
@@ -40,9 +39,7 @@ static int total_rom_load_warnings;
 
 
 /***************************************************************************
-
-    Hard disk handling
-
+    HARD DISK HANDLING
 ***************************************************************************/
 
 chd_file *get_disk_handle(int diskindex)
@@ -53,9 +50,7 @@ chd_file *get_disk_handle(int diskindex)
 
 
 /***************************************************************************
-
-    ROM loading code
-
+    ROM LOADING
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -374,7 +369,6 @@ static void verify_length_and_hash(rom_load_data *romdata, const char *name, UIN
 
 static int display_loading_rom_message(const char *name, rom_load_data *romdata)
 {
-#ifdef NEW_RENDER
 	char buffer[200];
 
 	if (name != NULL)
@@ -383,7 +377,6 @@ static int display_loading_rom_message(const char *name, rom_load_data *romdata)
 		sprintf(buffer, "Loading Complete");
 
 	ui_set_startup_text(buffer, FALSE);
-#endif
 	return osd_display_loading_rom_message(name, romdata);
 }
 

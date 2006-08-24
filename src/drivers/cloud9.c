@@ -95,8 +95,11 @@
 #include "cloud9.h"
 
 
-
 #define MASTER_CLOCK	(10000000)
+
+#define PIXEL_CLOCK		(MASTER_CLOCK/2)
+#define HTOTAL			(320)
+#define VTOTAL			(256)
 
 
 
@@ -142,7 +145,7 @@ static void clock_irq(int param)
 	}
 
 	/* force an update now */
-	force_partial_update(0, cpu_getscanline());
+	video_screen_update_partial(0, cpu_getscanline());
 
 	/* find the next edge */
 	schedule_next_irq(param);
@@ -165,6 +168,8 @@ static UINT32 get_vblank(void *param)
 
 static MACHINE_START( cloud9 )
 {
+	rectangle visarea;
+
 	/* initialize globals */
 	syncprom = memory_region(REGION_PROMS) + 0x000;
 
@@ -184,7 +189,11 @@ static MACHINE_START( cloud9 )
 	assert(cloud9_vblank_end < cloud9_vblank_start);
 
 	/* reconfigure the visible area to match */
-	set_visible_area(0, Machine->visible_area[0].min_x, Machine->visible_area[0].max_x, cloud9_vblank_end + 1, cloud9_vblank_start);
+	visarea.min_x = 0;
+	visarea.max_x = 255;
+	visarea.min_y = cloud9_vblank_end + 1;
+	visarea.max_y = cloud9_vblank_start;
+	video_screen_configure(0, 320, 256, &visarea, (float)PIXEL_CLOCK / (float)VTOTAL / (float)HTOTAL);
 
 	/* create a timer for IRQs and set up the first callback */
 	irq_timer = timer_alloc(clock_irq);
@@ -421,22 +430,9 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const gfx_layout spritelayout =
-{
-	16,16,
-	RGN_FRAC(1,4),
-	4,
-	{ RGN_FRAC(3,4), RGN_FRAC(2,4), RGN_FRAC(1,4), RGN_FRAC(0,4) },
-	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
-	{ 0*8, 2*8, 4*8, 6*8, 8*8, 10*8, 12*8, 14*8,
-			16*8, 18*8, 20*8, 22*8, 24*8, 26*8, 28*8, 30*8 },
-	32*8
-};
-
-
 static const gfx_decode gfxdecodeinfo[] =
 {
-	{ REGION_GFX1, 0x0000, &spritelayout, 0, 4 },
+	{ REGION_GFX1, 0x0000, &gfx_16x16x4_planar, 0, 4 },
 	{ -1 }
 };
 
@@ -468,9 +464,6 @@ static MACHINE_DRIVER_START( cloud9 )
 	MDRV_CPU_ADD_TAG("main", M6502, MASTER_CLOCK/8)
 	MDRV_CPU_PROGRAM_MAP(cloud9_map,0)
 
-	MDRV_FRAMES_PER_SECOND((float)(MASTER_CLOCK/2) / 320.0f / 256.0f)
-	MDRV_VBLANK_DURATION(0)		/* VBLANK is handled manually */
-
 	MDRV_MACHINE_START(cloud9)
 	MDRV_MACHINE_RESET(cloud9)
 	MDRV_NVRAM_HANDLER(cloud9)
@@ -478,10 +471,14 @@ static MACHINE_DRIVER_START( cloud9 )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(320, 256)
-	MDRV_VISIBLE_AREA(0, 255, 0, 231)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(64)
+
+	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_REFRESH_RATE((float)PIXEL_CLOCK / (float)VTOTAL / (float)HTOTAL)
+	MDRV_SCREEN_MAXSIZE(HTOTAL, VTOTAL)
+	MDRV_SCREEN_VBLANK_TIME(0)			/* VBLANK is handled manually */
+	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 231)
 
 	MDRV_VIDEO_START(cloud9)
 	MDRV_VIDEO_UPDATE(cloud9)

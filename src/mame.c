@@ -32,6 +32,9 @@
                 - calls state_init() [state.c] to initialize save state system
                 - calls state_save_allow_registration() [state.c] to allow registrations
                 - calls drawgfx_init() [drawgfx.c] to initialize rendering globals
+                - calls palette_init() [palette.c] to initialize palette system
+                - calls render_init() [render.c] to initialize the rendering system
+                - calls ui_init() [ui.c] to initialize the user interface
                 - calls generic_machine_init() [machine/generic.c] to initialize generic machine structures
                 - calls generic_video_init() [vidhrdw/generic.c] to initialize generic video structures
                 - calls osd_init() [osdepend.h] to do platform-specific initialization
@@ -42,7 +45,6 @@
                 - calls memory_init() [memory.c] to process the game's memory maps
                 - calls cpuexec_init() [cpuexec.c] to initialize the CPUs
                 - calls cpuint_init() [cpuint.c] to initialize the CPU interrupts
-                - calls hiscore_init() [hiscore.c] to initialize the hiscores
                 - calls saveload_init() [mame.c] to set up for save/load
                 - calls the driver's DRIVER_INIT callback
                 - calls sound_init() [sound.c] to start the audio system
@@ -54,7 +56,7 @@
 
             - calls config_load_settings() [config.c] to load the configuration file
             - calls nvram_load [machine/generic.c] to load NVRAM
-            - calls ui_init() [usrintrf.c] to initialize the user interface
+            - calls ui_init() [ui.c] to initialize the user interface
             - begins resource tracking (level 2)
             - calls soft_reset() [mame.c] to reset all systems
 
@@ -75,13 +77,10 @@
 #include "driver.h"
 #include "config.h"
 #include "cheat.h"
-#include "hiscore.h"
 #include "debugger.h"
 #include "profiler.h"
-
-#ifdef NEW_RENDER
 #include "render.h"
-#endif
+#include "ui.h"
 
 #if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
 #include "debug/debugcon.h"
@@ -130,7 +129,7 @@ struct _callback_item
 
 
 /***************************************************************************
-    GLOBALS
+    GLOBAL VARIABLES
 ***************************************************************************/
 
 /* the active machine */
@@ -225,7 +224,7 @@ const char *memory_region_names[REGION_MAX] =
 
 
 /***************************************************************************
-    PROTOTYPES
+    FUNCTION PROTOTYPES
 ***************************************************************************/
 
 extern int mame_validitychecks(int game);
@@ -245,9 +244,7 @@ static void logfile_callback(const char *buffer);
 
 
 /***************************************************************************
-
-    Core system management
-
+    CORE IMPLEMENTATION
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -445,9 +442,7 @@ void add_pause_callback(void (*callback)(int))
 
 
 /***************************************************************************
-
-    Global System States
-
+    GLOBAL SYSTEM STATES
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -575,9 +570,7 @@ int mame_is_paused(void)
 
 
 /***************************************************************************
-
-    Memory region code
-
+    MEMORY REGIONS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -701,9 +694,7 @@ UINT32 memory_region_flags(int num)
 
 
 /***************************************************************************
-
-    Miscellaneous bits & pieces
-
+    MISCELLANEOUS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -726,6 +717,25 @@ void CLIB_DECL fatalerror(const char *text, ...)
   		longjmp(fatal_error_jmpbuf, 1);
 	else
 		exit(-1);
+}
+
+
+/*-------------------------------------------------
+    popmessage - pop up a user-visible message
+-------------------------------------------------*/
+
+void CLIB_DECL popmessage(const char *text, ...)
+{
+	extern void CLIB_DECL ui_popup(const char *text, ...) ATTR_PRINTF(1,2);
+	va_list arg;
+
+	/* dump to the buffer */
+	va_start(arg, text);
+	vsnprintf(giant_string_buffer, GIANT_STRING_BUFFER_SIZE, text, arg);
+	va_end(arg);
+
+	/* pop it in the UI */
+	ui_popup("%s", giant_string_buffer);
 }
 
 
@@ -821,9 +831,7 @@ UINT32 mame_rand(void)
 
 
 /***************************************************************************
-
-    Internal initialization logic
-
+    INTERNAL INITIALIZATION LOGIC
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -844,7 +852,7 @@ static void create_machine(int game)
 	Machine->drv = &internal_drv;
 	expand_machine_driver(Machine->gamedrv->drv, &internal_drv);
 	for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
-		Machine->refresh_rate[scrnum] = Machine->drv->screen[scrnum].refresh_rate;
+		Machine->screen[scrnum] = Machine->drv->screen[scrnum].defstate;
 
 	/* copy some settings into easier-to-handle variables */
 	Machine->record_file = options.record;
@@ -858,17 +866,6 @@ static void create_machine(int game)
 
 	/* initialize the samplerate */
 	Machine->sample_rate = options.samplerate;
-
-#ifndef NEW_RENDER
-	/* update the vector width/height with defaults */
-	if (options.vector_width == 0)
-		options.vector_width = 640;
-	if (options.vector_height == 0)
-		options.vector_height = 480;
-
-	/* get orientation right */
-	Machine->ui_orientation = options.ui_orientation;
-#endif
 
 	/* add an exit callback to clear out the Machine on the way out */
 	add_exit_callback(destroy_machine);
@@ -899,13 +896,12 @@ static void init_machine(void)
 	sndintrf_init();
 	fileio_init();
 	config_init();
+	output_init();
 	state_init();
 	state_save_allow_registration(TRUE);
 	drawgfx_init();
 	palette_init();
-#ifdef NEW_RENDER
 	render_init();
-#endif
 	ui_init();
 	generic_machine_init();
 	generic_video_init();
@@ -952,9 +948,6 @@ static void init_machine(void)
 	if (devices_init(Machine->gamedrv))
 		fatalerror("devices_init failed");
 #endif
-
-	/* start the hiscore system -- remove me */
-	hiscore_init(Machine->gamedrv->name);
 
 	/* start the save/load system */
 	saveload_init();
@@ -1067,9 +1060,7 @@ static void free_callback_list(callback_item **cb)
 
 
 /***************************************************************************
-
-    Save/restore
-
+    SAVE/RESTORE
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -1119,7 +1110,7 @@ static void handle_save(void)
 		/* if more than a second has passed, we're probably screwed */
 		if (sub_mame_times(mame_timer_get_time(), saveload_schedule_time).seconds > 0)
 		{
-			ui_popup("Unable to save due to pending anonymous timers. See error.log for details.");
+			popmessage("Unable to save due to pending anonymous timers. See error.log for details.");
 			goto cancel;
 		}
 		return;
@@ -1134,7 +1125,7 @@ static void handle_save(void)
 		/* write the save state */
 		if (state_save_save_begin(file) != 0)
 		{
-			ui_popup("Error: Unable to save state due to illegal registrations. See error.log for details.");
+			popmessage("Error: Unable to save state due to illegal registrations. See error.log for details.");
 			mame_fclose(file);
 			goto cancel;
 		}
@@ -1166,12 +1157,12 @@ static void handle_save(void)
 
 		/* pop a warning if the game doesn't support saves */
 		if (!(Machine->gamedrv->flags & GAME_SUPPORTS_SAVE))
-			ui_popup("State successfully saved.\nWarning: Save states are not officially supported for this game.");
+			popmessage("State successfully saved.\nWarning: Save states are not officially supported for this game.");
 		else
-			ui_popup("State successfully saved.");
+			popmessage("State successfully saved.");
 	}
 	else
-		ui_popup("Error: Failed to save state");
+		popmessage("Error: Failed to save state");
 
 cancel:
 	/* unschedule the save */
@@ -1203,7 +1194,7 @@ static void handle_load(void)
 		/* if more than a second has passed, we're probably screwed */
 		if (sub_mame_times(mame_timer_get_time(), saveload_schedule_time).seconds > 0)
 		{
-			ui_popup("Unable to load due to pending anonymous timers. See error.log for details.");
+			popmessage("Unable to load due to pending anonymous timers. See error.log for details.");
 			goto cancel;
 		}
 		return;
@@ -1244,14 +1235,14 @@ static void handle_load(void)
 
 			/* finish and close */
 			state_save_load_finish();
-			ui_popup("State successfully loaded.");
+			popmessage("State successfully loaded.");
 		}
 		else
-			ui_popup("Error: Failed to load state");
+			popmessage("Error: Failed to load state");
 		mame_fclose(file);
 	}
 	else
-		ui_popup("Error: Failed to load state");
+		popmessage("Error: Failed to load state");
 
 cancel:
 	/* unschedule the load */

@@ -31,20 +31,12 @@
 #include "driver.h"
 #include "winmain.h"
 #include "machine/generic.h"
-#ifndef NEW_RENDER
-#include "windold.h"
-#else
 #include "window.h"
-INLINE int _win_has_menu(void)
-{
-	return 	win_has_menu(win_window_list);
-}
-#define win_video_window		win_window_list->hwnd
-#define win_has_menu			_win_has_menu
-#endif
 #include "options.h"
 #include "input.h"
 #include "debugwin.h"
+#include "video.h"
+#include "ui.h"
 
 
 //============================================================
@@ -54,12 +46,6 @@ INLINE int _win_has_menu(void)
 extern int win_physical_width;
 extern int win_physical_height;
 
-#ifndef NEW_RENDER
-extern int win_window_mode;
-#else
-#include "video.h"
-#define win_window_mode video_config.windowed
-#endif
 
 
 //============================================================
@@ -149,6 +135,7 @@ struct _raw_mouse
 };
 
 
+
 //============================================================
 //  GLOBAL VARIABLES
 //============================================================
@@ -179,8 +166,6 @@ static int					use_joystick;
 static int					use_lightgun;
 static int					use_lightgun_dual;
 static int					use_lightgun_reload;
-static int					use_keyboard_leds;
-static const char *			ledmode;
 static int					steadykey;
 static UINT8				analog_type[ANALOG_TYPE_COUNT];
 
@@ -190,6 +175,7 @@ static LPDIRECTINPUTDEVICE	keyboard_device[MAX_KEYBOARDS];
 static LPDIRECTINPUTDEVICE2	keyboard_device2[MAX_KEYBOARDS];
 static DIDEVCAPS			keyboard_caps[MAX_KEYBOARDS];
 static BYTE					keyboard_state[MAX_KEYBOARDS][MAX_KEYS];
+static UINT8				keyboard_detected_non_di_input;
 
 // additional key data
 static INT8					oldkey[MAX_KEYS];
@@ -224,12 +210,6 @@ static UINT8				joystick_type[MAX_JOYSTICKS][MAX_AXES];
 // gun states
 static INT32				gun_axis[MAX_DX_LIGHTGUNS][2];
 
-// led states
-static int					original_leds;
-static int					led_states;
-static HANDLE				hKbdDev;
-static int					ledmethod;
-
 
 
 //============================================================
@@ -245,6 +225,7 @@ static void extract_input_config(void);
 //  PROTOTYPES
 //============================================================
 
+static void wininput_exit(void);
 static void updatekeyboard(void);
 static void update_joystick_axes(void);
 static void init_keycodes(void);
@@ -340,7 +321,7 @@ const int win_key_trans_table[][4] =
 	{ KEYCODE_OPENBRACE,	DIK_LBRACKET, 		0xdb,			'[' },
 	{ KEYCODE_CLOSEBRACE,	DIK_RBRACKET, 		0xdd,			']' },
 	{ KEYCODE_ENTER, 		DIK_RETURN, 		VK_RETURN, 		13 },
-	{ KEYCODE_LCONTROL, 	DIK_LCONTROL, 		VK_CONTROL, 	0 },
+	{ KEYCODE_LCONTROL, 	DIK_LCONTROL, 		VK_LCONTROL, 	0 },
 	{ KEYCODE_A, 			DIK_A,				'A',			'A' },
 	{ KEYCODE_S, 			DIK_S,				'S',			'S' },
 	{ KEYCODE_D, 			DIK_D,				'D',			'D' },
@@ -353,7 +334,7 @@ const int win_key_trans_table[][4] =
 	{ KEYCODE_COLON, 		DIK_SEMICOLON,		0xba,			';' },
 	{ KEYCODE_QUOTE, 		DIK_APOSTROPHE,		0xde,			'\'' },
 	{ KEYCODE_TILDE, 		DIK_GRAVE, 			0xc0,			'`' },
-	{ KEYCODE_LSHIFT, 		DIK_LSHIFT, 		VK_SHIFT, 		0 },
+	{ KEYCODE_LSHIFT, 		DIK_LSHIFT, 		VK_LSHIFT, 		0 },
 	{ KEYCODE_BACKSLASH,	DIK_BACKSLASH, 		0xdc,			'\\' },
 	{ KEYCODE_Z, 			DIK_Z,				'Z',			'Z' },
 	{ KEYCODE_X, 			DIK_X,				'X',			'X' },
@@ -365,9 +346,9 @@ const int win_key_trans_table[][4] =
 	{ KEYCODE_COMMA, 		DIK_COMMA,			0xbc,			',' },
 	{ KEYCODE_STOP, 		DIK_PERIOD, 		0xbe,			'.' },
 	{ KEYCODE_SLASH, 		DIK_SLASH, 			0xbf,			'/' },
-	{ KEYCODE_RSHIFT, 		DIK_RSHIFT, 		VK_SHIFT, 		0 },
+	{ KEYCODE_RSHIFT, 		DIK_RSHIFT, 		VK_RSHIFT, 		0 },
 	{ KEYCODE_ASTERISK, 	DIK_MULTIPLY, 		VK_MULTIPLY,	'*' },
-	{ KEYCODE_LALT, 		DIK_LMENU, 			VK_MENU, 		0 },
+	{ KEYCODE_LALT, 		DIK_LMENU, 			VK_LMENU, 		0 },
 	{ KEYCODE_SPACE, 		DIK_SPACE, 			VK_SPACE,		' ' },
 	{ KEYCODE_CAPSLOCK, 	DIK_CAPITAL, 		VK_CAPITAL, 	0 },
 	{ KEYCODE_F1, 			DIK_F1,				VK_F1, 			0 },
@@ -401,10 +382,10 @@ const int win_key_trans_table[][4] =
 	{ KEYCODE_F14, 			DIK_F14,			VK_F14, 		0 },
 	{ KEYCODE_F15, 			DIK_F15,			VK_F15, 		0 },
 	{ KEYCODE_ENTER_PAD,	DIK_NUMPADENTER,	VK_RETURN, 		0 },
-	{ KEYCODE_RCONTROL, 	DIK_RCONTROL,		VK_CONTROL, 	0 },
+	{ KEYCODE_RCONTROL, 	DIK_RCONTROL,		VK_RCONTROL, 	0 },
 	{ KEYCODE_SLASH_PAD,	DIK_DIVIDE,			VK_DIVIDE, 		0 },
 	{ KEYCODE_PRTSCR, 		DIK_SYSRQ, 			0, 				0 },
-	{ KEYCODE_RALT, 		DIK_RMENU,			VK_MENU, 		0 },
+	{ KEYCODE_RALT, 		DIK_RMENU,			VK_RMENU, 		0 },
 	{ KEYCODE_HOME, 		DIK_HOME,			VK_HOME, 		0 },
 	{ KEYCODE_UP, 			DIK_UP,				VK_UP, 			0 },
 	{ KEYCODE_PGUP, 		DIK_PRIOR,			VK_PRIOR, 		0 },
@@ -418,6 +399,28 @@ const int win_key_trans_table[][4] =
 	{ KEYCODE_LWIN, 		DIK_LWIN,			VK_LWIN, 		0 },
 	{ KEYCODE_RWIN, 		DIK_RWIN,			VK_RWIN, 		0 },
 	{ KEYCODE_MENU, 		DIK_APPS,			VK_APPS, 		0 },
+
+	// New keys introduced in Windows 2000. These have no MAME codes to
+	// preserve compatibility with old config files that may refer to them
+	// as e.g. FORWARD instead of e.g. KEYCODE_WEBFORWARD. They need table
+	// entries anyway because otherwise they aren't recognized when
+	// GetAsyncKeyState polling is used (as happens currently when MAME is
+	// paused). Some codes are missing because the mapping to vkey codes
+	// isn't clear, and MapVirtualKey is no help.
+
+	{ CODE_OTHER_DIGITAL,	DIK_MUTE,			VK_VOLUME_MUTE,			0 },
+	{ CODE_OTHER_DIGITAL,	DIK_VOLUMEDOWN,		VK_VOLUME_DOWN,			0 },
+	{ CODE_OTHER_DIGITAL,	DIK_VOLUMEUP,		VK_VOLUME_UP,			0 },
+	{ CODE_OTHER_DIGITAL,	DIK_WEBHOME,		VK_BROWSER_HOME,		0 },
+	{ CODE_OTHER_DIGITAL,	DIK_WEBSEARCH,		VK_BROWSER_SEARCH,		0 },
+	{ CODE_OTHER_DIGITAL,	DIK_WEBFAVORITES,	VK_BROWSER_FAVORITES,	0 },
+	{ CODE_OTHER_DIGITAL,	DIK_WEBREFRESH,		VK_BROWSER_REFRESH,		0 },
+	{ CODE_OTHER_DIGITAL,	DIK_WEBSTOP,		VK_BROWSER_STOP,		0 },
+	{ CODE_OTHER_DIGITAL,	DIK_WEBFORWARD,		VK_BROWSER_FORWARD,		0 },
+	{ CODE_OTHER_DIGITAL,	DIK_WEBBACK,		VK_BROWSER_BACK,		0 },
+	{ CODE_OTHER_DIGITAL,	DIK_MAIL,			VK_LAUNCH_MAIL,			0 },
+	{ CODE_OTHER_DIGITAL,	DIK_MEDIASELECT,	VK_LAUNCH_MEDIA_SELECT,	0 },
+
 	{ -1 }
 };
 
@@ -721,7 +724,7 @@ static BOOL CALLBACK enum_keyboard_callback(LPCDIDEVICEINSTANCE instance, LPVOID
 		goto cant_set_format;
 
 	// set the cooperative level
-	result = IDirectInputDevice_SetCooperativeLevel(keyboard_device[keyboard_count], win_video_window,
+	result = IDirectInputDevice_SetCooperativeLevel(keyboard_device[keyboard_count], win_window_list->hwnd,
 					DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 	if (result != DI_OK)
 		goto cant_set_coop_level;
@@ -792,10 +795,10 @@ static BOOL CALLBACK enum_mouse_callback(LPCDIDEVICEINSTANCE instance, LPVOID re
 
 	// set the cooperative level
 	if (use_lightgun)
-		result = IDirectInputDevice_SetCooperativeLevel(mouse_device[mouse_count], win_video_window,
+		result = IDirectInputDevice_SetCooperativeLevel(mouse_device[mouse_count], win_window_list->hwnd,
 					DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 	else
-		result = IDirectInputDevice_SetCooperativeLevel(mouse_device[mouse_count], win_video_window,
+		result = IDirectInputDevice_SetCooperativeLevel(mouse_device[mouse_count], win_window_list->hwnd,
 					DISCL_FOREGROUND | DISCL_EXCLUSIVE);
 
 	if (result != DI_OK)
@@ -918,7 +921,7 @@ static BOOL CALLBACK enum_joystick_callback(LPCDIDEVICEINSTANCE instance, LPVOID
 #else
 	flags = DISCL_FOREGROUND | DISCL_EXCLUSIVE;
 #endif
-	result = IDirectInputDevice_SetCooperativeLevel(joystick_device[joystick_count], win_video_window, flags);
+	result = IDirectInputDevice_SetCooperativeLevel(joystick_device[joystick_count], win_window_list->hwnd, flags);
 	if (result != DI_OK)
 		goto cant_set_coop_level;
 
@@ -950,6 +953,7 @@ int wininput_init(void)
 	HRESULT result;
 
 	add_pause_callback(win_pause_input);
+	add_exit_callback(wininput_exit);
 
 	// allocate a lock
 	raw_mouse_lock = osd_lock_alloc();
@@ -1059,10 +1063,10 @@ cant_create_dinput:
 
 
 //============================================================
-//  win_shutdown_input
+//  wininput_exit
 //============================================================
 
-void win_shutdown_input(void)
+static void wininput_exit(void)
 {
 	int i;
 
@@ -1158,7 +1162,7 @@ void win_pause_input(int paused)
 		{
 			if (mouse_count > 1)
 			IDirectInputDevice_Acquire(mouse_device[MAX_MICE]);
-			if (mouse_active && !win_has_menu())
+			if (mouse_active && !win_has_menu(win_window_list))
 				for (i = 0; i < mouse_count && (win_use_mouse || use_lightgun); i++)
 					IDirectInputDevice_Acquire(mouse_device[i]);
 		}
@@ -1179,7 +1183,6 @@ void wininput_poll(void)
 {
 	HWND focus = GetFocus();
 	HRESULT result = 1;
-	int newstate;
 	int i, j;
 
 	// remember when this happened
@@ -1197,28 +1200,33 @@ void wininput_poll(void)
 	}
 
 	// poll all keyboards
-	for (i = 0; i < keyboard_count; i++)
-	{
-		// first poll the device
-		if (keyboard_device2[i])
-			IDirectInputDevice2_Poll(keyboard_device2[i]);
-
-		// get the state
-		result = IDirectInputDevice_GetDeviceState(keyboard_device[i], sizeof(keyboard_state[i]), &keyboard_state[i][0]);
-
-		// handle lost inputs here
-		if ((result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) && !input_paused)
+	if (keyboard_detected_non_di_input)
+		result = DIERR_NOTACQUIRED;
+	else
+		for (i = 0; i < keyboard_count; i++)
 		{
-			result = IDirectInputDevice_Acquire(keyboard_device[i]);
+			// first poll the device
+			if (keyboard_device2[i])
+				IDirectInputDevice2_Poll(keyboard_device2[i]);
+
+			// get the state
+			result = IDirectInputDevice_GetDeviceState(keyboard_device[i], sizeof(keyboard_state[i]), &keyboard_state[i][0]);
+
+			// handle lost inputs here
+			if ((result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) && !input_paused)
+			{
+				result = IDirectInputDevice_Acquire(keyboard_device[i]);
+				if (result == DI_OK)
+					result = IDirectInputDevice_GetDeviceState(keyboard_device[i], sizeof(keyboard_state[i]), &keyboard_state[i][0]);
+			}
+
+			// convert to 0 or 1
 			if (result == DI_OK)
-				result = IDirectInputDevice_GetDeviceState(keyboard_device[i], sizeof(keyboard_state[i]), &keyboard_state[i][0]);
+				for (j = 0; j < sizeof(keyboard_state[i]); j++)
+					keyboard_state[i][j] >>= 7;
 		}
 
-		// convert to 0 or 1
-		if (result == DI_OK)
-			for (j = 0; j < sizeof(keyboard_state[i]); j++)
-				keyboard_state[i][j] >>= 7;
-	}
+	keyboard_detected_non_di_input = FALSE;
 
 	// if we couldn't poll the keyboard that way, poll it via GetAsyncKeyState
 	if (result != DI_OK)
@@ -1230,19 +1238,15 @@ void wininput_poll(void)
 
 				// if we have a non-zero VK, query it
 				if (vk)
+				{
 					keyboard_state[0][dik] = (GetAsyncKeyState(vk) >> 15) & 1;
+					if (keyboard_state[0][dik])
+						keyboard_detected_non_di_input = TRUE;
+				}
 			}
 
 	// update the lagged keyboard
 	updatekeyboard();
-
-	// update the LED states
-	newstate = (get_led_status(0) << 0) | (get_led_status(1) << 1) | (get_led_status(2) << 2);
-	if (newstate != led_states)
-	{
-		led_states = newstate;
-		osd_set_leds(newstate);
-	}
 
 #ifndef NEW_DEBUGGER
 	// if the debugger is up and visible, don't bother with the rest
@@ -1277,7 +1281,7 @@ void wininput_poll(void)
 		win_read_raw_mouse();
 	else
 	{
-		if (mouse_active && !win_has_menu())
+		if (mouse_active && !win_has_menu(win_window_list))
 			for (i = 0; i < mouse_count && (win_use_mouse||use_lightgun); i++)
 			{
 				// first poll the device
@@ -1309,7 +1313,7 @@ void wininput_poll(void)
 
 int win_is_mouse_captured(void)
 {
-	return (!input_paused && mouse_active && mouse_count > 0 && win_use_mouse && !win_has_menu());
+	return (!input_paused && mouse_active && mouse_count > 0 && win_use_mouse && !win_has_menu(win_window_list));
 }
 
 
@@ -1489,7 +1493,7 @@ static int is_key_pressed(os_code keycode)
 		wininput_poll();
 
 	// if the video window isn't visible, we have to get our events from the console
-	if (!win_video_window || !IsWindowVisible(win_video_window))
+	if (!win_window_list->hwnd || !IsWindowVisible(win_window_list->hwnd))
 	{
 		// warning: this code relies on the assumption that when you're polling for
 		// keyboard events before the system is initialized, they are all of the
@@ -1502,7 +1506,7 @@ static int is_key_pressed(os_code keycode)
 
 #if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
 	// if the debugger is visible and we don't have focus, the key is not pressed
-	if (debugwin_is_debugger_visible() && GetFocus() != win_video_window)
+	if (debugwin_is_debugger_visible() && GetFocus() != win_window_list->hwnd)
 		return 0;
 #endif
 
@@ -1539,6 +1543,8 @@ int osd_readkey_unicode(int flush)
 
 static void init_keycodes(void)
 {
+	const int iswin9x = (GetVersion() >> 31) & 1;
+
 	int key;
 
 	// iterate over all possible keys
@@ -1572,7 +1578,16 @@ static void init_keycodes(void)
 				standardcode = CODE_OTHER_DIGITAL;
 				if (win_key_trans_table[entry][0] >= 0)
 				{
-					code = KEYCODE(key, win_key_trans_table[entry][VIRTUAL_KEY], win_key_trans_table[entry][ASCII_KEY]);
+					int vkey = win_key_trans_table[entry][VIRTUAL_KEY];
+					if (iswin9x)
+						switch (vkey)
+						{
+							case VK_LSHIFT:   case VK_RSHIFT:   vkey = VK_SHIFT;   break;
+							case VK_LCONTROL: case VK_RCONTROL: vkey = VK_CONTROL; break;
+							case VK_LMENU:    case VK_RMENU:    vkey = VK_MENU;    break;
+						}
+
+					code = KEYCODE(key, vkey, win_key_trans_table[entry][ASCII_KEY]);
 					standardcode = win_key_trans_table[entry][MAME_KEY];
 				}
 
@@ -1617,7 +1632,7 @@ static void update_joystick_axes(void)
 
 			/* if we've only ever seen one value here, or if we've been stuck at the same value for a long */
 			/* time (1 minute), mark the axis as dead or invalid */
-			if (history[1].count == 0 || history[0].count > Machine->refresh_rate[0] * 60)
+			if (history[1].count == 0 || history[0].count > Machine->screen[0].refresh * 60)
 				newtype = AXIS_TYPE_INVALID;
 
 			/* scan the history and count unique values; if we get more than 3, it's analog */
@@ -1958,7 +1973,7 @@ static INT32 get_joycode_value(os_code joycode)
 		// analog mouse axis
 		case CODETYPE_MOUSEAXIS:
 			// if the mouse isn't yet active, make it so
-			if (!mouse_active && win_use_mouse && !win_has_menu())
+			if (!mouse_active && win_use_mouse && !win_has_menu(win_window_list))
 			{
 				mouse_active = 1;
 				win_pause_input(0);
@@ -2055,7 +2070,7 @@ static void poll_lightguns(void)
 	int player;
 
 	// if the mouse isn't yet active, make it so
-	if (!mouse_active && (win_use_mouse || use_lightgun) && !win_has_menu())
+	if (!mouse_active && (win_use_mouse || use_lightgun) && !win_has_menu(win_window_list))
 	{
 		mouse_active = 1;
 		win_pause_input(0);
@@ -2066,8 +2081,8 @@ static void poll_lightguns(void)
 		return;
 
 	// Warning message to users - design wise this probably isn't the best function to put this in...
-	if (win_window_mode)
-		ui_popup("Lightgun not supported in windowed mode");
+	if (video_config.windowed)
+		popmessage("Lightgun not supported in windowed mode");
 
 	// loop over players
 	for (player = 0; player < MAX_DX_LIGHTGUNS; player++)
@@ -2268,246 +2283,6 @@ void osd_customize_inputport_list(input_port_default_entry *defaults)
 		// find the next one
 		idef++;
 	}
-}
-
-
-
-//============================================================
-//  osd_get_leds
-//============================================================
-
-int osd_get_leds(void)
-{
-	int result = 0;
-
-	if (!use_keyboard_leds)
-		return 0;
-
-	// if we're on Win9x, use GetKeyboardState
-	if( ledmethod == 0 )
-	{
-		BYTE key_states[256];
-
-		// get the current state
-		GetKeyboardState(&key_states[0]);
-
-		// set the numlock bit
-		result |= (key_states[VK_NUMLOCK] & 1);
-		result |= (key_states[VK_CAPITAL] & 1) << 1;
-		result |= (key_states[VK_SCROLL] & 1) << 2;
-	}
-	else if( ledmethod == 1 ) // WinNT/2K/XP, use GetKeyboardState
-	{
-		BYTE key_states[256];
-
-		// get the current state
-		GetKeyboardState(&key_states[0]);
-
-		// set the numlock bit
-		result |= (key_states[VK_NUMLOCK] & 1);
-		result |= (key_states[VK_CAPITAL] & 1) << 1;
-		result |= (key_states[VK_SCROLL] & 1) << 2;
-	}
-	else // WinNT/2K/XP, use DeviceIoControl
-	{
-		KEYBOARD_INDICATOR_PARAMETERS OutputBuffer;	  // Output buffer for DeviceIoControl
-		ULONG				DataLength = sizeof(KEYBOARD_INDICATOR_PARAMETERS);
-		ULONG				ReturnedLength; // Number of bytes returned in output buffer
-
-		// Address first keyboard
-		OutputBuffer.UnitId = 0;
-
-		DeviceIoControl(hKbdDev, IOCTL_KEYBOARD_QUERY_INDICATORS,
-						NULL, 0,
-						&OutputBuffer, DataLength,
-						&ReturnedLength, NULL);
-
-		// Demangle lights to match 95/98
-		if (OutputBuffer.LedFlags & KEYBOARD_NUM_LOCK_ON) result |= 0x1;
-		if (OutputBuffer.LedFlags & KEYBOARD_CAPS_LOCK_ON) result |= 0x2;
-		if (OutputBuffer.LedFlags & KEYBOARD_SCROLL_LOCK_ON) result |= 0x4;
-	}
-
-	return result;
-}
-
-
-
-//============================================================
-//  osd_set_leds
-//============================================================
-
-void osd_set_leds(int state)
-{
-	if (!use_keyboard_leds)
-		return;
-
-	// if we're on Win9x, use SetKeyboardState
-	if( ledmethod == 0 )
-	{
-		// thanks to Lee Taylor for the original version of this code
-		BYTE key_states[256];
-
-		// get the current state
-		GetKeyboardState(&key_states[0]);
-
-		// mask states and set new states
-		key_states[VK_NUMLOCK] = (key_states[VK_NUMLOCK] & ~1) | ((state >> 0) & 1);
-		key_states[VK_CAPITAL] = (key_states[VK_CAPITAL] & ~1) | ((state >> 1) & 1);
-		key_states[VK_SCROLL] = (key_states[VK_SCROLL] & ~1) | ((state >> 2) & 1);
-
-		SetKeyboardState(&key_states[0]);
-	}
-	else if( ledmethod == 1 ) // WinNT/2K/XP, use keybd_event()
-	{
-		int k;
-		BYTE keyState[ 256 ];
-		const BYTE vk[ 3 ] = { VK_NUMLOCK, VK_CAPITAL, VK_SCROLL };
-
-		GetKeyboardState( (LPBYTE)&keyState );
-		for( k = 0; k < 3; k++ )
-		{
-			if( (  ( ( state >> k ) & 1 ) && !( keyState[ vk[ k ] ] & 1 ) ) ||
-				( !( ( state >> k ) & 1 ) &&  ( keyState[ vk[ k ] ] & 1 ) ) )
-			{
-				// Simulate a key press
-				keybd_event( vk[ k ], 0x45, KEYEVENTF_EXTENDEDKEY | 0, 0 );
-
-				// Simulate a key release
-				keybd_event( vk[ k ], 0x45, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, 0 );
-			}
-		}
-	}
-	else // WinNT/2K/XP, use DeviceIoControl
-	{
-		KEYBOARD_INDICATOR_PARAMETERS InputBuffer;	  // Input buffer for DeviceIoControl
-		ULONG				DataLength = sizeof(KEYBOARD_INDICATOR_PARAMETERS);
-		ULONG				ReturnedLength; // Number of bytes returned in output buffer
-		UINT				LedFlags=0;
-
-		// Demangle lights to match 95/98
-		if (state & 0x1) LedFlags |= KEYBOARD_NUM_LOCK_ON;
-		if (state & 0x2) LedFlags |= KEYBOARD_CAPS_LOCK_ON;
-		if (state & 0x4) LedFlags |= KEYBOARD_SCROLL_LOCK_ON;
-
-		// Address first keyboard
-		InputBuffer.UnitId = 0;
-		InputBuffer.LedFlags = LedFlags;
-		DeviceIoControl(hKbdDev, IOCTL_KEYBOARD_SET_INDICATORS,
-						&InputBuffer, DataLength,
-						NULL, 0,
-						&ReturnedLength, NULL);
-	}
-}
-
-
-
-//============================================================
-//  start_led
-//============================================================
-
-void start_led(void)
-{
-	OSVERSIONINFO osinfo = { sizeof(OSVERSIONINFO) };
-
-	// get LED options
-	use_keyboard_leds = options_get_bool("keyboard_leds", TRUE);
-	if (!use_keyboard_leds)
-		return;
-
-	ledmode = options_get_string("led_mode", TRUE);
-	if (strcmp(ledmode, "ps/2") != 0 && strcmp(ledmode, "usb") != 0)
-	{
-		fprintf(stderr, "Invalid ledmode value %s; reverting to ps/2\n", ledmode);
-		ledmode = "ps/2";
-	}
-
-	// retrive windows version
-	GetVersionEx(&osinfo);
-
-	if ( osinfo.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS )
-	{
-		// 98
-		ledmethod = 0;
-	}
-	else if( strcmp( ledmode, "usb" ) == 0 )
-	{
-		// nt/2k/xp
-		ledmethod = 1;
-	}
-	else
-	{
-		// nt/2k/xp
-		int error_number;
-
-		ledmethod = 2;
-
-		if (!DefineDosDevice (DDD_RAW_TARGET_PATH, "Kbd",
-					"\\Device\\KeyboardClass0"))
-		{
-			error_number = GetLastError();
-			fprintf(stderr, "Unable to open the keyboard device. (error %d)\n", error_number);
-			return;
-		}
-
-		hKbdDev = CreateFile("\\\\.\\Kbd", GENERIC_WRITE, 0,
-					NULL,	OPEN_EXISTING,	0,	NULL);
-
-		if (hKbdDev == INVALID_HANDLE_VALUE)
-		{
-			error_number = GetLastError();
-			fprintf(stderr, "Unable to open the keyboard device. (error %d)\n", error_number);
-			return;
-		}
-	}
-
-	// remember the initial LED states
-	original_leds = osd_get_leds();
-
-	return;
-}
-
-
-
-//============================================================
-//  stop_led
-//============================================================
-
-void stop_led(void)
-{
-	int error_number = 0;
-
-	if (!use_keyboard_leds)
-		return;
-
-	// restore the initial LED states
-	osd_set_leds(original_leds);
-
-	if( ledmethod == 0 )
-	{
-	}
-	else if( ledmethod == 1 )
-	{
-	}
-	else
-	{
-		// nt/2k/xp
-		if (!DefineDosDevice (DDD_REMOVE_DEFINITION, "Kbd", NULL))
-		{
-			error_number = GetLastError();
-			fprintf(stderr, "Unable to close the keyboard device. (error %d)\n", error_number);
-			return;
-		}
-
-		if (!CloseHandle(hKbdDev))
-		{
-			error_number = GetLastError();
-			fprintf(stderr, "Unable to close the keyboard device. (error %d)\n", error_number);
-			return;
-		}
-	}
-
-	return;
 }
 
 

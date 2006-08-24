@@ -244,6 +244,10 @@
 
 #define MASTER_CLOCK	(10000000)
 
+#define PIXEL_CLOCK		(MASTER_CLOCK/2)
+#define HTOTAL			(320)
+#define VTOTAL			(256)
+
 
 
 /*************************************
@@ -309,7 +313,7 @@ static void clock_irq(int curv)
 	cpunum_set_input_line(0, 0, irq_state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* force an update while we're here */
-	force_partial_update(0, v_to_scanline(curv));
+	video_screen_update_partial(0, v_to_scanline(curv));
 
 	/* find the next edge */
 	schedule_next_irq(curv);
@@ -902,18 +906,19 @@ static MACHINE_DRIVER_START( missile )
 	MDRV_CPU_ADD(M6502, MASTER_CLOCK/8)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_FRAMES_PER_SECOND((float)(MASTER_CLOCK/2) / 320.0f / 256.0f)
-	MDRV_VBLANK_DURATION(0)		/* VBLANK is handled manually */
-
 	MDRV_MACHINE_START(missile)
 	MDRV_MACHINE_RESET(missile)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE(320, 256)
-	MDRV_VISIBLE_AREA(0, 255, 25, 255)
 	MDRV_PALETTE_LENGTH(8)
+
+	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_REFRESH_RATE((float)PIXEL_CLOCK / (float)VTOTAL / (float)HTOTAL)
+	MDRV_SCREEN_MAXSIZE(HTOTAL, VTOTAL)
+	MDRV_SCREEN_VBLANK_TIME(0)			/* VBLANK is handled manually */
+	MDRV_SCREEN_VISIBLE_AREA(0, 255, 25, 255)
 
 	MDRV_VIDEO_UPDATE(missile)
 

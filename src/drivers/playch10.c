@@ -297,7 +297,7 @@ Notes & Todo:
 #include "sound/dac.h"
 #include "sound/nes_apu.h"
 
-#include "render.h"
+#include "rendlay.h"
 
 /* clock frequency */
 #define N2A03_DEFAULTCLOCK (21477272.724 / 12)
@@ -404,7 +404,7 @@ static WRITE8_HANDLER( time_w )
 
 	timedata[offset] = data;
 
-	ui_popup("Time: %d%d%d%d",timedata[3],timedata[2],timedata[1],timedata[0]);
+	popmessage("Time: %d%d%d%d",timedata[3],timedata[2],timedata[1],timedata[0]);
 }
 
 static READ8_HANDLER( psg_4015_r )

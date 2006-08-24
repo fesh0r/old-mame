@@ -50,21 +50,14 @@ struct _callback_item
 
 
 /***************************************************************************
-    GLOBALS
+    GLOBAL VARIABLES
 ***************************************************************************/
 
-#ifndef NEW_RENDER
-UINT32 direct_rgb_components[3];
-#endif
 UINT16 *palette_shadow_table;
 
 rgb_t *game_palette;				/* RGB palette as set by the driver */
 rgb_t *adjusted_palette;			/* actual RGB palette after brightness/gamma adjustments */
-static UINT32 *dirty_palette;
 static UINT16 *pen_brightness;
-
-static UINT8 adjusted_palette_dirty;
-static UINT8 debug_palette_dirty;
 
 static UINT16 shadow_factor, highlight_factor;
 
@@ -79,7 +72,7 @@ static callback_item *notify_callback_list;
 
 
 /***************************************************************************
-    PROTOTYPES
+    FUNCTION PROTOTYPES
 ***************************************************************************/
 
 static void palette_exit(void);
@@ -91,7 +84,7 @@ static void internal_modify_pen(pen_t pen, rgb_t color, int pen_bright);
 
 
 /***************************************************************************
-    INLINES
+    INLINE FUNCTIONS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -101,13 +94,7 @@ static void internal_modify_pen(pen_t pen, rgb_t color, int pen_bright);
 
 INLINE UINT16 rgb_to_direct15(rgb_t rgb)
 {
-#ifndef NEW_RENDER
-	return  (  RGB_RED(rgb) >> 3) * (direct_rgb_components[0] / 0x1f) +
-			(RGB_GREEN(rgb) >> 3) * (direct_rgb_components[1] / 0x1f) +
-			( RGB_BLUE(rgb) >> 3) * (direct_rgb_components[2] / 0x1f);
-#else
 	return ((RGB_RED(rgb) >> 3) << 10) | ((RGB_GREEN(rgb) >> 3) << 5) | ((RGB_BLUE(rgb) >> 3) << 0);
-#endif
 }
 
 
@@ -119,13 +106,7 @@ INLINE UINT16 rgb_to_direct15(rgb_t rgb)
 
 INLINE UINT32 rgb_to_direct32(rgb_t rgb)
 {
-#ifndef NEW_RENDER
-	return    RGB_RED(rgb) * (direct_rgb_components[0] / 0xff) +
-			RGB_GREEN(rgb) * (direct_rgb_components[1] / 0xff) +
-			 RGB_BLUE(rgb) * (direct_rgb_components[2] / 0xff);
-#else
 	return rgb;
-#endif
 }
 
 
@@ -146,15 +127,15 @@ INLINE rgb_t adjust_palette_entry(rgb_t entry, int pen_bright)
 
 
 /*-------------------------------------------------
-    mark_pen_dirty - mark a given pen index dirty
+    notify_pen_changed - call all registered
+    notifiers that a pen has changed
 -------------------------------------------------*/
 
-INLINE void mark_pen_dirty(int pen, rgb_t newval)
+INLINE void notify_pen_changed(int pen, rgb_t newval)
 {
 	callback_item *cb;
 	for (cb = notify_callback_list; cb; cb = cb->next)
 		(*cb->notify)(cb->param, pen, newval);
-	dirty_palette[pen / 32] |= 1 << (pen % 32);
 }
 
 
@@ -167,9 +148,6 @@ INLINE void mark_pen_dirty(int pen, rgb_t newval)
 void palette_init(void)
 {
 	/* init statics */
-	adjusted_palette_dirty = 1;
-	debug_palette_dirty = 1;
-
 	shadow_factor = (int)(PALETTE_DEFAULT_SHADOW_FACTOR * (double)(1 << PEN_BRIGHTNESS_BITS));
 	highlight_factor = (int)(PALETTE_DEFAULT_HIGHLIGHT_FACTOR * (double)(1 << PEN_BRIGHTNESS_BITS));
 
@@ -452,7 +430,7 @@ static void internal_set_shadow_preset(int mode, double factor, int dr, int dg, 
 		} // end of colormode
 
 		#if VERBOSE
-			ui_popup("shadow %d recalc factor:%1.2f style:%d", mode, factor, style);
+			popmessage("shadow %d recalc factor:%1.2f style:%d", mode, factor, style);
 		#endif
 	}
 	else // color shadows or highlights(style 0)
@@ -471,7 +449,7 @@ static void internal_set_shadow_preset(int mode, double factor, int dr, int dg, 
 		oldfactor[mode] = -1;
 
 		#if VERBOSE
-			ui_popup("shadow %d recalc %d %d %d %02x", mode, dr, dg, db, noclip);
+			popmessage("shadow %d recalc %d %d %d %02x", mode, dr, dg, db, noclip);
 		#endif
 
 		dr <<= 10; dg <<= 5;
@@ -570,12 +548,10 @@ static void palette_alloc(void)
 	for (i = 0; i < max_total_colors; i++)
 		adjusted_palette[i] = game_palette[i];
 
-	/* allocate memory for the dirty palette array */
-	dirty_palette = auto_malloc((max_total_colors + 31) / 32 * sizeof(dirty_palette[0]));
-	dirty_palette[(max_total_colors - 1) / 32] = 0; /* initialize all the bits of the last dirty entry */
+	/* for 16bpp, notify that all pens have changed */
 	if (colormode == PALETTIZED_16BIT)
 		for (i = 0; i < max_total_colors; i++)
-			mark_pen_dirty(i, adjusted_palette[i]);
+			notify_pen_changed(i, adjusted_palette[i]);
 
 	/* allocate memory for the pen table */
 	if (total_colors > 0)
@@ -750,8 +726,8 @@ void palette_config(void)
 				black_pen = 0;
 				white_pen = 65535;
 			}
-			mark_pen_dirty(black_pen, game_palette[black_pen] = adjusted_palette[black_pen] = MAKE_RGB(0x00,0x00,0x00));
-			mark_pen_dirty(white_pen, game_palette[white_pen] = adjusted_palette[white_pen] = MAKE_RGB(0xff,0xff,0xff));
+			notify_pen_changed(black_pen, game_palette[black_pen] = adjusted_palette[black_pen] = MAKE_RGB(0x00,0x00,0x00));
+			notify_pen_changed(white_pen, game_palette[white_pen] = adjusted_palette[white_pen] = MAKE_RGB(0xff,0xff,0xff));
 			break;
 		}
 
@@ -815,53 +791,6 @@ int palette_get_total_colors_with_ui(void)
 
 
 /*-------------------------------------------------
-    palette_update_display - update the display
-    state with our latest info
--------------------------------------------------*/
-
-#ifndef NEW_RENDER
-
-void palette_update_display(mame_display *display)
-{
-	/* palettized case: point to the palette info */
-	if (colormode == PALETTIZED_16BIT)
-	{
-		display->game_palette = adjusted_palette;
-		display->game_palette_entries = total_colors_with_ui;
-		display->game_palette_dirty = dirty_palette;
-
-		if (adjusted_palette_dirty)
-			display->changed_flags |= GAME_PALETTE_CHANGED;
-	}
-
-	/* direct case: no palette mucking */
-	else
-	{
-		display->game_palette = NULL;
-		display->game_palette_entries = 0;
-		display->game_palette_dirty = NULL;
-	}
-
-	/* debugger always has a palette */
-#if defined(MAME_DEBUG) && !defined(NEW_DEBUGGER)
-	display->debug_palette = debugger_palette;
-	display->debug_palette_entries = DEBUGGER_TOTAL_COLORS;
-#endif
-
-	/* update the dirty state */
-	if (debug_palette_dirty)
-		display->changed_flags |= DEBUG_PALETTE_CHANGED;
-
-	/* clear the dirty flags */
-	adjusted_palette_dirty = 0;
-	debug_palette_dirty = 0;
-}
-
-#endif
-
-
-
-/*-------------------------------------------------
     internal_modify_single_pen - change a single
     pen and recompute its adjusted RGB value
 -------------------------------------------------*/
@@ -883,14 +812,13 @@ static void internal_modify_single_pen(pen_t pen, rgb_t color, int pen_bright)
 	{
 		/* change the adjusted palette entry */
 		adjusted_palette[pen] = adjusted_color;
-		adjusted_palette_dirty = 1;
 
-		/* update the pen value or mark the palette dirty */
+		/* update the pen value */
 		switch (colormode)
 		{
-			/* 16-bit palettized: just mark it dirty for later */
+			/* 16-bit palettized */
 			case PALETTIZED_16BIT:
-				mark_pen_dirty(pen, adjusted_color);
+				notify_pen_changed(pen, adjusted_color);
 				break;
 
 			/* 15/32-bit direct: update the Machine->pens array */
@@ -1096,7 +1024,7 @@ void palette_get_color(pen_t pen, UINT8 *r, UINT8 *g, UINT8 *b)
 	else if (pen == white_pen)
 		*r = *g = *b = 255;
 	else
-	ui_popup("palette_get_color() out of range");
+		popmessage("palette_get_color() out of range");
 }
 
 /*-------------------------------------------------

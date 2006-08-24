@@ -21,9 +21,7 @@
 
 
 /***************************************************************************
-
-    Debugging
-
+    DEBUGGING
 ***************************************************************************/
 
 #define VERBOSE			(0)
@@ -37,9 +35,7 @@
 
 
 /***************************************************************************
-
-    Type definitions
-
+    TYPE DEFINITIONS
 ***************************************************************************/
 
 typedef struct _sound_interface sound_interface;
@@ -67,9 +63,7 @@ struct _sndintrf_data
 
 
 /***************************************************************************
-
-    Prototypes for all get info routines
-
+    EXTERNAL PROTOTYPES
 ***************************************************************************/
 
 void dummy_sound_get_info(void *token, UINT32 state, sndinfo *info);
@@ -104,6 +98,7 @@ void namco_54xx_get_info(void *token, UINT32 state, sndinfo *info);
 void namco_63701x_get_info(void *token, UINT32 state, sndinfo *info);
 void namcona_get_info(void *token, UINT32 state, sndinfo *info);
 void tms36xx_get_info(void *token, UINT32 state, sndinfo *info);
+void tms3615_get_info(void *token, UINT32 state, sndinfo *info);
 void tms5110_get_info(void *token, UINT32 state, sndinfo *info);
 void tms5220_get_info(void *token, UINT32 state, sndinfo *info);
 void vlm5030_get_info(void *token, UINT32 state, sndinfo *info);
@@ -164,9 +159,7 @@ void filter_rc_get_info(void *token, UINT32 state, sndinfo *info);
 
 
 /***************************************************************************
-
-    The core list of sound interfaces
-
+    CORE INTERFACE LIST
 ***************************************************************************/
 
 static sound_interface sndintrf[SOUND_COUNT];
@@ -270,6 +263,9 @@ static const struct
 #endif
 #if (HAS_TMS36XX)
 	{ SOUND_TMS36XX, tms36xx_get_info },
+#endif
+#if (HAS_TMS3615)
+	{ SOUND_TMS3615, tms3615_get_info },
 #endif
 #if (HAS_TMS5110)
 	{ SOUND_TMS5110, tms5110_get_info },
@@ -429,9 +425,7 @@ static const struct
 
 
 /***************************************************************************
-
-    Verification macros
-
+    VALIDATION MACROS
 ***************************************************************************/
 
 #define VERIFY_SNDNUM(name) \
@@ -447,9 +441,7 @@ static const struct
 
 
 /***************************************************************************
-
-    Global variables
-
+    GLOBAL VARIABLES
 ***************************************************************************/
 
 static sndintrf_data sound[MAX_SOUND];
@@ -460,9 +452,7 @@ static int totalsnd;
 
 
 /***************************************************************************
-
-    Initialization/Tear Down
-
+    INITIALIZATION
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -574,9 +564,7 @@ void sndintrf_exit_sound(int sndnum)
 
 
 /***************************************************************************
-
-    Helpers
-
+    HELPERS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -628,9 +616,7 @@ int sndnum_to_sndti(int sndnum, int *index)
 
 
 /***************************************************************************
-
-    Sound chip interfaces by index
-
+    CHIP INTERFACES BY INDEX
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -733,9 +719,7 @@ void *sndnum_token(int sndnum)
 
 
 /***************************************************************************
-
-    Sound chip interfaces by (type,index) pair
-
+    CHIP INTERFACES BY (TYPE,INDEX) PAIR
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -862,9 +846,7 @@ void *sndti_token(int sndtype, int sndindex)
 
 
 /***************************************************************************
-
-    Sound chip interfaces by type
-
+    CHIP INTERFACES BY TYPE
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -914,9 +896,7 @@ const char *sndtype_get_info_string(int sndtype, UINT32 state)
 
 
 /***************************************************************************
-
-    Dummy sound interfaces
-
+    DUMMY INTERFACES
 ***************************************************************************/
 
 static void *dummy_sound_start(int index, int clock, const void *config)

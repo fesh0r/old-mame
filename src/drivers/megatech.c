@@ -57,7 +57,7 @@ Mario Lemeux Hockey 171-5782    837-6963-59       610-0239-59          MPR-14376
 */
 #include "driver.h"
 #include "genesis.h"
-#include "render.h"
+#include "rendlay.h"
 
 /* Megatech BIOS specific */
 static unsigned int bios_port_ctrl;
@@ -328,7 +328,7 @@ static READ8_HANDLER (megatech_bios_port_dd_r)
 
 static WRITE8_HANDLER (megatech_bios_port_7f_w)
 {
-//  ui_popup("CPU #3: I/O port 0x7F write, data %02x",data);
+//  popmessage("CPU #3: I/O port 0x7F write, data %02x",data);
 }
 
 

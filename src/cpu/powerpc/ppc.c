@@ -98,6 +98,8 @@ static UINT32		ppc_field_xlat[256];
 #define XER_OV			0x40000000
 #define XER_CA			0x20000000
 
+#define MSR_AP			0x00800000	/* Access privilege state (PPC602) */
+#define MSR_SA			0x00400000	/* Supervisor access mode (PPC602) */
 #define MSR_POW			0x00040000	/* Power Management Enable */
 #define MSR_WE			0x00040000
 #define MSR_CE			0x00020000
@@ -256,6 +258,9 @@ typedef struct {
 	UINT32 sp;
 	UINT32 tcr;
 	UINT32 ibr;
+	UINT32 esasrr;
+	UINT32 sebr;
+	UINT32 ser;
 
 	/* PowerPC function pointers for memory accesses/exceptions */
 	jmp_buf exception_jmpbuf;
@@ -547,10 +552,12 @@ INLINE void ppc_set_spr(int spr, UINT32 value)
 	if (ppc.is602) {
 		switch(spr)
 		{
-			case SPR602_LT:			printf("ppc: LT = %08X\n", value); ppc.lt = value; return;
-			case SPR602_IBR:		printf("ppc: IBR = %08X\n", value); ppc.ibr = value; return;
-			case SPR602_SP:			printf("ppc: SP = %08X\n", value); ppc.sp = value; return;
-			case SPR602_TCR:		printf("ppc: TCR = %08X\n", value); ppc.tcr = value; return;
+			case SPR602_LT:			ppc.lt = value; return;
+			case SPR602_IBR:		ppc.ibr = value; return;
+			case SPR602_SEBR:		ppc.sebr = value; return;
+			case SPR602_SER:		ppc.ser = value; return;
+			case SPR602_SP:			ppc.sp = value; return;
+			case SPR602_TCR:		ppc.tcr = value; return;
 		}
 	}
 #endif
@@ -655,6 +662,9 @@ INLINE UINT32 ppc_get_spr(int spr)
 		{
 			case SPR602_LT:			return ppc.lt;
 			case SPR602_IBR:		return ppc.ibr;
+			case SPR602_ESASRR:		return ppc.esasrr;
+			case SPR602_SEBR:		return ppc.sebr;
+			case SPR602_SER:		return ppc.ser;
 			case SPR602_SP:			return ppc.sp;
 			case SPR602_TCR:		return ppc.tcr;
 		}
@@ -1154,6 +1164,12 @@ static void ppc602_init(int index, int clock, const void *_config, int (*irqcall
 			((i & 0x01) ? 0x0000000F : 0);
 	}
 
+	// PPC602 specific opcodes
+	optable31[596] = ppc_esa;
+	optable31[628] = ppc_dsa;
+	optable31[1010] = ppc_tlbli;
+	optable31[978] = ppc_tlbld;
+
 	ppc.is602 = 1;
 
 	ppc.read8 = program_read_byte_64be;
@@ -1558,6 +1574,7 @@ static void ppc602_set_info(UINT32 state, union cpuinfo *info)
 	}
 	switch(state)
 	{
+		case CPUINFO_INT_INPUT_STATE + PPC_INPUT_LINE_SMI:	ppc602_set_smi_line(info->i);	break;
 		default:	ppc_set_info(state, info);		break;
 	}
 }

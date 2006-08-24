@@ -138,7 +138,6 @@ Tetris         -         -         -         -         EPR12169  EPR12170  -    
 #include "sound/2151intf.h"
 
 
-
 /*************************************
  *
  *  Statics
@@ -173,8 +172,7 @@ static READ16_HANDLER( misc_io_r );
 static WRITE16_HANDLER( misc_io_w );
 
 static WRITE8_HANDLER( video_control_w );
-static WRITE8_HANDLER( sound_command_w );
-static WRITE8_HANDLER( sound_control_w );
+static WRITE8_HANDLER( tilemap_sound_w );
 
 
 
@@ -190,9 +188,9 @@ static ppi8255_interface single_ppi_intf =
 	{ NULL },
 	{ NULL },
 	{ NULL },
-	{ sound_command_w },
+	{ soundlatch_w },
 	{ video_control_w },
-	{ sound_control_w }
+	{ tilemap_sound_w }
 };
 
 
@@ -222,6 +220,12 @@ static void system16a_generic_init(void)
 }
 
 
+static void suspend_i8751(ATTR_UNUSED int param)
+{
+	cpunum_suspend(mame_find_cpu_index("mcu"), SUSPEND_REASON_DISABLE, 1);
+}
+
+
 
 /*************************************
  *
@@ -235,7 +239,7 @@ MACHINE_RESET( system16a )
 
 	/* if we have a fake i8751 handler, disable the actual 8751 */
 	if (i8751_vblank_hook != NULL)
-		cpunum_suspend(mame_find_cpu_index("mcu"), SUSPEND_REASON_DISABLE, 1);
+		timer_set(TIME_NOW, 0, suspend_i8751);
 }
 
 
@@ -245,6 +249,12 @@ MACHINE_RESET( system16a )
  *  I/O space
  *
  *************************************/
+
+static void delayed_ppi8255_w(int param)
+{
+	ppi8255_0_w(param >> 8, param & 0xff);
+}
+
 
 static READ16_HANDLER( standard_io_r )
 {
@@ -271,8 +281,10 @@ static WRITE16_HANDLER( standard_io_w )
 	switch (offset & (0x3000/2))
 	{
 		case 0x0000/2:
+			/* the port C handshaking signals control the Z80 NMI, */
+			/* so we have to sync whenever we access this PPI */
 			if (ACCESSING_LSB)
-				ppi8255_0_w(offset & 3, data & 0xff);
+				timer_set(TIME_NOW, ((offset & 3) << 8) | (data & 0xff), delayed_ppi8255_w);
 			return;
 	}
 	logerror("%06X:standard_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask ^ 0xffff);
@@ -338,14 +350,7 @@ static WRITE8_HANDLER( video_control_w )
  *
  *************************************/
 
-static WRITE8_HANDLER( sound_command_w )
-{
-	soundlatch_w(0, data);
-	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
-}
-
-
-static WRITE8_HANDLER( sound_control_w )
+static WRITE8_HANDLER( tilemap_sound_w )
 {
 	/*
         PPI port C
@@ -361,6 +366,7 @@ static WRITE8_HANDLER( sound_control_w )
              0= Sound is disabled
              1= sound is enabled
     */
+	cpunum_set_input_line(1, INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 	segaic16_tilemap_set_colscroll(0, ~data & 0x04);
 	segaic16_tilemap_set_rowscroll(0, ~data & 0x02);
 }
@@ -373,7 +379,15 @@ static WRITE8_HANDLER( sound_control_w )
  *
  *************************************/
 
-WRITE8_HANDLER( n7751_command_w )
+static READ8_HANDLER( sound_data_r )
+{
+	/* assert ACK */
+	ppi8255_set_portC(0, 0x00);
+	return soundlatch_r(offset);
+}
+
+
+static WRITE8_HANDLER( n7751_command_w )
 {
 	/*
         Z80 7751 control port
@@ -410,7 +424,7 @@ static WRITE8_HANDLER( n7751_control_w )
 }
 
 
-WRITE8_HANDLER( n7751_rom_offset_w )
+static WRITE8_HANDLER( n7751_rom_offset_w )
 {
 	/* P4 - address lines 0-3 */
 	/* P5 - address lines 4-7 */
@@ -422,14 +436,14 @@ WRITE8_HANDLER( n7751_rom_offset_w )
 }
 
 
-READ8_HANDLER( n7751_rom_r )
+static READ8_HANDLER( n7751_rom_r )
 {
 	/* read from BUS */
 	return memory_region(REGION_SOUND1)[n7751_rom_address];
 }
 
 
-READ8_HANDLER( n7751_command_r )
+static READ8_HANDLER( n7751_command_r )
 {
 	/* read from P2 - 8255's PC0-2 connects to 7751's S0-2 (P24-P26 on an 8048) */
 	/* bit 0x80 is an alternate way to control the sample on/off; doesn't appear to be used */
@@ -437,7 +451,7 @@ READ8_HANDLER( n7751_command_r )
 }
 
 
-WRITE8_HANDLER( n7751_busy_w )
+static WRITE8_HANDLER( n7751_busy_w )
 {
 	/* write to P2 */
 	/* output of bit $80 indicates we are ready (1) or busy (0) */
@@ -445,7 +459,7 @@ WRITE8_HANDLER( n7751_busy_w )
 }
 
 
-READ8_HANDLER( n7751_t1_r )
+static READ8_HANDLER( n7751_t1_r )
 {
 	/* T1 - labelled as "TEST", connected to ground */
 	return 0;
@@ -724,7 +738,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0xe800, 0xe800) AM_READ(soundlatch_r)
+	AM_RANGE(0xe800, 0xe800) AM_READ(sound_data_r)
 	AM_RANGE(0xf800, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -733,7 +747,7 @@ static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x3e) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x3e) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x3f) AM_WRITE(n7751_command_w)
-	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x3f) AM_READ(soundlatch_r)
+	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x3f) AM_READ(sound_data_r)
 ADDRESS_MAP_END
 
 
@@ -795,8 +809,8 @@ static INPUT_PORTS_START( system16a_generic )
 
 	PORT_START_TAG("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -808,8 +822,8 @@ static INPUT_PORTS_START( system16a_generic )
 
 	PORT_START_TAG("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
@@ -880,6 +894,32 @@ static INPUT_PORTS_START( system16a_generic )
 INPUT_PORTS_END
 
 
+static INPUT_PORTS_START( system16a_2button )
+	PORT_INCLUDE( system16a_generic )
+
+	PORT_MODIFY("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_MODIFY("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+INPUT_PORTS_END
+
+
+static INPUT_PORTS_START( system16a_1button )
+	PORT_INCLUDE( system16a_generic )
+
+	PORT_MODIFY("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_MODIFY("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_COCKTAIL
+INPUT_PORTS_END
+
+
 
 /*************************************
  *
@@ -888,13 +928,7 @@ INPUT_PORTS_END
  *************************************/
 
 static INPUT_PORTS_START( afighter )
-	PORT_INCLUDE( system16a_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16a_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
@@ -923,13 +957,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( alexkidd )
-	PORT_INCLUDE( system16a_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16a_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Continues ) )
@@ -957,15 +985,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( aliensyn )
-	PORT_INCLUDE( system16a_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16a_1button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) )
@@ -1000,13 +1020,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( fantzone )
-	PORT_INCLUDE( system16a_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16a_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
@@ -1172,14 +1186,8 @@ static INPUT_PORTS_START( quartet )
 INPUT_PORTS_END
 
 
-static INPUT_PORTS_START( quartet2 )
-	PORT_INCLUDE( system16a_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+static INPUT_PORTS_START( quart2 )
+	PORT_INCLUDE( system16a_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
@@ -1343,16 +1351,12 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( tetris )
-	PORT_INCLUDE( system16a_generic )
+	PORT_INCLUDE( system16a_1button )
 
 	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_MODIFY("DSW")
@@ -1373,10 +1377,9 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( timescan )
-	PORT_INCLUDE( system16a_generic )
+	PORT_INCLUDE( system16a_2button )
 
 	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_MODIFY("UNUSED")
@@ -1405,7 +1408,6 @@ static INPUT_PORTS_START( timescan )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_MODIFY("DSW")
@@ -1447,13 +1449,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( wb3 )
-	PORT_INCLUDE( system16a_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16a_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) )
@@ -1600,6 +1596,58 @@ MACHINE_DRIVER_END
  *  ROM definition(s)
  *
  *************************************/
+
+/**************************************************************************************************************************
+ **************************************************************************************************************************
+ **************************************************************************************************************************
+    Ace Attacker, Sega System 16A
+    CPU: FD1094 317-0060
+*/
+ROM_START( aceattaa )
+	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_LOAD16_BYTE( "epr-11573.43", 0x00000, 0x10000, CRC(ca116367) SHA1(ca09b01568dafec48354072267accb73a97a670f) )
+	ROM_LOAD16_BYTE( "epr-11571.26", 0x00001, 0x10000, CRC(5631d1d6) SHA1(08a2d375e3e4caf392cf2da2dc5497fd1142ab15) )
+	ROM_LOAD16_BYTE( "epr-11574.42", 0x20000, 0x10000, CRC(8d3ed7bd) SHA1(0cb947a796071b0b787638a85fce39135ad8d3cb) )
+	ROM_LOAD16_BYTE( "epr-11572.25", 0x20001, 0x10000, CRC(35c27c25) SHA1(ac983db30edb4c4b71f04359cd22c663940435f5) )
+
+	ROM_REGION( 0x2000, REGION_USER1, 0 ) /* decryption key */
+	ROM_LOAD( "317-0060.key", 0x0000, 0x2000, CRC(f4ee940f) SHA1(13cca3f19bd9761d484185a3476bec3c8c18efcf) )
+
+	ROM_REGION( 0x30000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
+	ROM_LOAD( "epr-11575.95", 0x00000, 0x10000, CRC(bab9fbf3) SHA1(53d78dfc003e04730c7679c830cc086cbf3e3548) )
+	ROM_LOAD( "epr-11576.94", 0x10000, 0x10000, CRC(067ed682) SHA1(13e2e1f812e5a3994a0f1d35eb210881645e74cd) )
+	ROM_LOAD( "epr-11577.93", 0x20000, 0x10000, CRC(f67cf331) SHA1(457b9e618dfa678ae374cdeb25488af3de2e8949) )
+
+	ROM_REGION16_BE( 0x080000, REGION_GFX2, 0 ) /* sprites */
+	ROM_LOAD16_BYTE( "epr-11501.10", 0x00001, 0x08000, CRC(09179ead) SHA1(3e6bf04e1e9ea867d087a47ff04ad0a064a8e299) )
+	ROM_CONTINUE(                    0x40001, 0x08000 )
+	ROM_LOAD16_BYTE( "epr-11505.11", 0x00000, 0x08000, CRC(b67f1ecf) SHA1(3a26cdf91e5a1a11c1a8857e713a9e00cc1bfce0) )
+	ROM_CONTINUE(                    0x40000, 0x08000 )
+	ROM_LOAD16_BYTE( "epr-11502.17", 0x10001, 0x08000, CRC(7464bae4) SHA1(c6b6ca240cee72e7fbd17bad5ca2d5cfe8e835c6) )
+	ROM_CONTINUE(                    0x50001, 0x08000 )
+	ROM_LOAD16_BYTE( "epr-11506.18", 0x10000, 0x08000, CRC(b0104def) SHA1(c81a66ec3a600c1d4c5d058caef15936c59b2574) )
+	ROM_CONTINUE(                    0x50000, 0x08000 )
+	ROM_LOAD16_BYTE( "epr-11503.23", 0x20001, 0x08000, CRC(344c0692) SHA1(3125701f6bb91d8f64515e214b571e169c30a444) )
+	ROM_CONTINUE(                    0x60001, 0x08000 )
+	ROM_LOAD16_BYTE( "epr-11507.24", 0x20000, 0x08000, CRC(a2af710a) SHA1(1c8b75b72797146c2eb788511f8cb1b367fc3e0d) )
+	ROM_CONTINUE(                    0x60000, 0x08000 )
+	ROM_LOAD16_BYTE( "epr-11504.29", 0x30001, 0x08000, CRC(42b4a5f8) SHA1(efb7beee7b45023861711f56b7cc907400cb266e) )
+	ROM_CONTINUE(                    0x70001, 0x08000 )
+	ROM_LOAD16_BYTE( "epr-11508.30", 0x30000, 0x08000, CRC(5cbb833c) SHA1(dc7041b6a4fa75d050bfc2176d0f9e242b55a0b8) )
+	ROM_CONTINUE(                    0x70000, 0x08000 )
+
+	ROM_REGION( 0x20000, REGION_CPU2, 0 ) /* sound CPU */
+	ROM_LOAD( "epr-11578.12", 0x0000, 0x8000, CRC(3d58e39a) SHA1(3e3591ac96903376698cf95d1b1a5f5db590db3c) )
+
+	ROM_REGION( 0x1000, REGION_CPU3, 0 )      /* 4k for 7751 onboard ROM */
+	ROM_LOAD( "7751.bin",     0x0000, 0x0400, CRC(6a9534fc) SHA1(67ad94674db5c2aab75785668f610f6f4eccd158) ) /* 7751 - U34 */
+
+	ROM_REGION( 0x20000, REGION_SOUND1, 0 ) /* 7751 sound data */
+	ROM_LOAD( "epr-11579.1", 0x0000, 0x8000, CRC(1a994135) SHA1(f42444521a878d32b189876f8854f6363e1b353b) )
+	ROM_LOAD( "epr-11580.2", 0x0000, 0x8000, CRC(961646ed) SHA1(4c8f87a10ffd7035145dedba86deb373368b0e49) )
+	ROM_LOAD( "epr-11581.4", 0x0000, 0x8000, CRC(d271a6e5) SHA1(de303f70abfa28e599e5eb0c2b314f43faa1b484) )
+	ROM_LOAD( "epr-11582.5", 0x0000, 0x8000, CRC(bcbe3d8a) SHA1(2e4bb0ebffdd594b192c5b854ea425029d92fdb1) )
+ROM_END
 
 /**************************************************************************************************************************
  **************************************************************************************************************************
@@ -2065,7 +2113,7 @@ ROM_END
     Quartet, pre-System 16
     CPU: 68000
  */
-ROM_START( quartetj )
+ROM_START( quartet1 )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-7458.43",  0x000000, 0x8000, CRC(0096499f) SHA1(dcf8e33513ce7c6660ea546c8e1c574fde629a22) )
 	ROM_LOAD16_BYTE( "epr-7455.26",  0x000001, 0x8000, CRC(da934390) SHA1(d40eb65b6a36a4c1ebeadb76e47a61bd8b2e4b89) )
@@ -2117,7 +2165,7 @@ ROM_END
     Quartet 2, pre-System 16
     CPU: 68000
  */
-ROM_START( quartet2 )
+ROM_START( quart21 )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "quartet2.b9",  0x000000, 0x8000, CRC(67177cd8) SHA1(c4ea001dfbeeb29a09d597fb50d71f54e4e9572a) )
 	ROM_LOAD16_BYTE( "quartet2.b6",  0x000001, 0x8000, CRC(50f50b08) SHA1(646c0d545150b95e5d8d47bf63360f7326add08f) )
@@ -2161,7 +2209,7 @@ ROM_END
     Quartet 2, pre-System 16
     CPU: 68000
  */
-ROM_START( quartt2j )
+ROM_START( quart2 )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-7728.43",  0x000000, 0x8000, CRC(56a8c88e) SHA1(33eaca5272f3588058952ca0b1fa298b89418e81) )
 	ROM_LOAD16_BYTE( "epr-7725.26",  0x000001, 0x8000, CRC(ee15fcc9) SHA1(70d9755145245537f6aeb0d39abeda7811749b8c) )
@@ -2196,11 +2244,7 @@ ROM_START( quartt2j )
 	ROM_LOAD( "epr7475.2c", 0x08000, 0x8000, CRC(7abd1206) SHA1(54d52dc0b9c245cd2df647e714310a71b803cbcf) )
 	ROM_LOAD( "epr7474.3c", 0x10000, 0x8000, CRC(dbf853b8) SHA1(e82f497e1144f23f3233b5c45ef182bfc7923715) )
 	ROM_LOAD( "epr7476.4c", 0x18000, 0x8000, CRC(5eba655a) SHA1(6713ef12037cba3139d0f469c82bd90b44bae8ce) )
-
-	ROM_REGION( 0x10000, REGION_CPU4, 0 )	/* protection MCU */
-	ROM_LOAD( "mcu.bin", 0x00000, 0x1000, NO_DUMP )
 ROM_END
-
 
 /**************************************************************************************************************************
  **************************************************************************************************************************
@@ -2705,14 +2749,15 @@ static DRIVER_INIT( timesca1 )
 GAME( 1987, aliensy2, aliensyn, system16a,        aliensyn, aliensy1,    ROT0,   "Sega",           "Alien Syndrome (set 2, System 16A, FD1089A 317-0033)", 0 )
 GAME( 1987, aliensy1, aliensyn, system16a,        aliensyn, aliensy1,    ROT0,   "Sega",           "Alien Syndrome (set 1, System 16A, FD1089A 317-0033)", 0 )
 GAME( 1986, bodyslam, 0,        system16a_8751,   bodyslam, bodyslam,    ROT0,   "Sega",           "Body Slam (8751 317-unknown)", 0 )
-GAME( 1986, dumpmtmt, bodyslam, system16a_8751,   bodyslam, bodyslam,    ROT0,   "Sega",           "Dump Matsumoto (Japan, 8751 317-unknown)", 0 )
+GAME( 1986, dumpmtmt, bodyslam, system16a_8751,   bodyslam, bodyslam,    ROT0,   "Sega",           "Dump Matsumoto (Japan, 8751 317-unknown))", 0 )
 GAME( 1985, mjleague, 0,        system16a,        mjleague, mjleague,    ROT270, "Sega",           "Major League", 0 )
-GAME( 1986, quartet,  0,        system16a_8751,   quartet,  quartet,     ROT0,   "Sega",           "Quartet (8751 317-unknown)", 0 )
-GAME( 1986, quartetj, quartet,  system16a_8751,   quartet,  quartet,     ROT0,   "Sega",           "Quartet (Japan, 8751 317-unknown)", 0 )
-GAME( 1986, quartet2, quartet,  system16a_8751,   quartet2, quartet,     ROT0,   "Sega",           "Quartet 2 (8751 317-unknown)", 0 )
-GAME( 1986, quartt2j, quartet,  system16a_8751,   quartet2, quartet,     ROT0,   "Sega",           "Quartet 2 (Japan, 8751 317-unknown)", 0 )
+GAME( 1986, quartet,  0,        system16a_8751,   quartet,  quartet,     ROT0,   "Sega",           "Quartet (Rev A, 8751 317-unknown)", 0 )
+GAME( 1986, quartet1, quartet,  system16a_8751,   quartet,  quartet,     ROT0,   "Sega",           "Quartet (8751 317-unknown))", 0 )
+GAME( 1986, quart21,  quartet,  system16a_8751,   quart2,   quartet,     ROT0,   "Sega",           "Quartet 2 (8751 317-unknown)", 0 )
+GAME( 1986, quart2,   quartet,  system16a,        quart2,   generic_16a, ROT0,   "Sega",           "Quartet 2 (unprotected)", 0 )
 
 /* System 16A */
+GAME( 1986, aceattaa, aceattac, system16a       , shinobi,  generic_16a, ROT270, "Sega",           "Ace Attacker (Japan, System 16A, FD1094 317-0060)", GAME_NOT_WORKING )
 GAME( 1986, afighter, 0,        system16a_no7751, afighter, afighter,    ROT270, "Sega",           "Action Fighter, FD1089A 317-0018", 0 )
 GAME( 1986, alexkidd, 0,        system16a,        alexkidd, generic_16a, ROT0,   "Sega",           "Alex Kidd: The Lost Stars (set 2, unprotected)", 0 )
 GAME( 1986, alexkid1, alexkidd, system16a,        alexkidd, alexkid1,    ROT0,   "Sega",           "Alex Kidd: The Lost Stars (set 1, FD1089A 317-unknown)", 0 )

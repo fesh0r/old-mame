@@ -475,10 +475,10 @@ VIDEO_UPDATE( tms9928a )
 		tms.StatusReg = tms.oldStatusReg;
 
 	if (! (tms.Regs[1] & 0x40))
-		fillbitmap(bitmap, Machine->pens[tms.BackColour], &Machine->visible_area[0]);
+		fillbitmap(bitmap, Machine->pens[tms.BackColour], &Machine->screen[0].visarea);
 	else
 	{
-		copybitmap(bitmap, tms.tmpbmp, 0, 0, LEFT_BORDER, TOP_BORDER, &Machine->visible_area[0], TRANSPARENCY_NONE, 0);
+		copybitmap(bitmap, tms.tmpbmp, 0, 0, LEFT_BORDER, TOP_BORDER, &Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
 		{
 			rectangle rt;
 
@@ -510,7 +510,7 @@ int TMS9928A_interrupt () {
     int b;
 
     /* when skipping frames, calculate sprite collision */
-    if (skip_this_frame() ) {
+    if (video_skip_this_frame() ) {
         if (tms.Change) {
             if (TMS_SPRITES_ENABLED) {
                 _TMS9928A_sprites (NULL);

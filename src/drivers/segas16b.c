@@ -1013,6 +1013,12 @@ static void system16b_generic_init(int _rom_board)
 }
 
 
+static void suspend_i8751(ATTR_UNUSED int param)
+{
+	cpunum_suspend(mame_find_cpu_index("mcu"), SUSPEND_REASON_DISABLE, 1);
+}
+
+
 
 /*************************************
  *
@@ -1035,7 +1041,7 @@ static MACHINE_RESET( system16b )
 
 	/* if we have a fake i8751 handler, disable the actual 8751 */
 	if (i8751_vblank_hook != NULL)
-		cpunum_suspend(2, SUSPEND_REASON_DISABLE, 1);
+		timer_set(TIME_NOW, 0, suspend_i8751);
 
 	/* configure sprite banks */
 	for (i = 0; i < 16; i++)
@@ -1557,7 +1563,7 @@ static WRITE16_HANDLER( hwchamp_custom_io_w )
 
 				case 0x30/2:
 					/* bit 4 is GONG */
-			//      if (data & 0x10) ui_popup("GONG");
+			//      if (data & 0x10) popmessage("GONG");
 					/* are the following really lamps? */
 			//      set_led_status(1,data & 0x20);
 			//      set_led_status(2,data & 0x40);
@@ -1842,6 +1848,32 @@ static INPUT_PORTS_START( system16b_generic )
 INPUT_PORTS_END
 
 
+static INPUT_PORTS_START( system16b_2button )
+	PORT_INCLUDE( system16b_generic )
+
+	PORT_MODIFY("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_MODIFY("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+INPUT_PORTS_END
+
+
+static INPUT_PORTS_START( system16b_1button )
+	PORT_INCLUDE( system16b_generic )
+
+	PORT_MODIFY("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_MODIFY("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_COCKTAIL
+INPUT_PORTS_END
+
+
 static INPUT_PORTS_START( generic )
 	PORT_INCLUDE( system16b_generic )
 INPUT_PORTS_END
@@ -1855,15 +1887,7 @@ INPUT_PORTS_END
  *************************************/
 
 static INPUT_PORTS_START( aliensyn )
-	PORT_INCLUDE( system16b_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16b_1button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) )
@@ -1974,13 +1998,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( cotton )
-	PORT_INCLUDE( system16b_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16b_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
@@ -2000,13 +2018,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( ddux )
-	PORT_INCLUDE( system16b_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16b_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
@@ -2125,17 +2137,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( fpoint )
-	PORT_INCLUDE( system16b_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_COCKTAIL
+	PORT_INCLUDE( system16b_1button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) )
@@ -2360,13 +2362,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( riotcity )
-	PORT_INCLUDE( system16b_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16b_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x01, 0x01, "2 Credits to Start" )
@@ -2568,13 +2564,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( sonicbom )
-	PORT_INCLUDE( system16b_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16b_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) )
@@ -2603,16 +2593,12 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( tetris )
-	PORT_INCLUDE( system16b_generic )
+	PORT_INCLUDE( system16b_1button )
 
 	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_MODIFY("DSW")
@@ -2633,14 +2619,12 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( timescan )
-	PORT_INCLUDE( system16b_generic )
+	PORT_INCLUDE( system16b_2button )
 
 	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_MODIFY("P2")
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_MODIFY("UNUSED")
@@ -2707,15 +2691,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( toryumon )
-	PORT_INCLUDE( system16b_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16b_1button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
@@ -2765,13 +2741,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( wb3 )
-	PORT_INCLUDE( system16b_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16b_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) )
@@ -2796,13 +2766,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( wrestwar )
-	PORT_INCLUDE( system16b_generic )
-
-	PORT_MODIFY("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-
-	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_INCLUDE( system16b_2button )
 
 	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) )
@@ -3064,7 +3028,7 @@ static MACHINE_DRIVER_START( system16b_8751 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_VBLANK_INT(i8751_main_cpu_vblank,1)
 
-	MDRV_CPU_ADD(I8751, 8000000)
+	MDRV_CPU_ADD_TAG("mcu", I8751, 8000000)
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 	MDRV_CPU_DATA_MAP(mcu_data_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)
@@ -3114,7 +3078,7 @@ MACHINE_DRIVER_END
  **************************************************************************************************************************
  **************************************************************************************************************************
     Ace Attacker, Sega System 16B
-    CPU: FD1094 (317-????)
+    CPU: FD1094 (317-0059)
     ROM Board: 171-5358
 */
 ROM_START( aceattac )
@@ -3125,7 +3089,7 @@ ROM_START( aceattac )
 	ROM_LOAD16_BYTE( "epr11490.a2", 0x020001, 0x10000, CRC(38cb3a41) SHA1(1d74cc69907cdff2d85e965b80bf3f551465257e) )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 ) /* decryption key */
-	ROM_LOAD( "317-0060.key", 0x0000, 0x2000, BAD_DUMP CRC(f4ee940f) SHA1(13cca3f19bd9761d484185a3476bec3c8c18efcf) ) // cpu seems dead, key is corrupt
+	ROM_LOAD( "317-0059.key", 0x0000, 0x2000, NO_DUMP )
 
 	ROM_REGION( 0x30000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
 	ROM_LOAD( "epr11493.b9",  0x00000, 0x10000, CRC(654485d9) SHA1(b431270564c4e33fd70c8c85af1fcbff8b59ba49) )
@@ -6030,7 +5994,7 @@ static DRIVER_INIT( snapper )
  *
  *************************************/
 
-GAME( 1988, aceattac, 0,        system16b,      generic,  generic_5358,  ROT0,   "Sega",           "Ace Attacker (FD1094 317-0060)", GAME_NOT_WORKING )
+GAME( 1988, aceattac, 0,        system16b,      generic,  generic_5358,  ROT0,   "Sega",           "Ace Attacker (FD1094 317-0059)", GAME_NOT_WORKING )
 GAME( 1987, aliensyn, 0,        system16b,      aliensyn, generic_5358,  ROT0,   "Sega",           "Alien Syndrome (set 4, System 16B, unprotected)", 0 )
 GAME( 1987, aliensy3, aliensyn, system16b,      aliensyn, aliensy3_5358, ROT0,   "Sega",           "Alien Syndrome (set 3, System 16B, FD1089A 317-0033)", 0 )
 GAME( 1988, altbeast, 0,        system16b_8751, altbeast, altbeast_5521, ROT0,   "Sega",           "Altered Beast (set 7, 8751 317-0078)", 0 )

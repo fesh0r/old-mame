@@ -61,7 +61,6 @@ struct _win_window_info
 	int					fullscreen;
 	int					fullscreen_safe;
 	int					maxwidth, maxheight;
-	int					depth;
 	int					refresh;
 	float				aspect;
 
@@ -74,8 +73,7 @@ struct _win_window_info
 	const render_primitive_list *primlist;
 
 	// drawing data
-	void *				gdidata;
-	void *				dxdata;
+	void *				drawdata;
 };
 
 

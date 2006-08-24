@@ -19,6 +19,10 @@
 
 
 
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
+
 enum
 {
 	XML_PARSE_FLAG_WHITESPACE_SIGNIFICANT = 1
@@ -26,11 +30,9 @@ enum
 
 
 
-/*************************************
- *
- *  Type definitions
- *
- *************************************/
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
 
 struct XML_ParserStruct;
 
@@ -75,11 +77,9 @@ struct _xml_parse_options
 
 
 
-/*************************************
- *
- *  Function prototypes
- *
- *************************************/
+/***************************************************************************
+    FUNCTION PROTOTYPES
+***************************************************************************/
 
 xml_data_node *xml_file_create(void);
 xml_data_node *xml_file_read(mame_file *file, xml_parse_options *opts);
@@ -101,5 +101,7 @@ xml_attribute_node *xml_set_attribute(xml_data_node *node, const char *name, con
 xml_attribute_node *xml_set_attribute_int(xml_data_node *node, const char *name, int value);
 xml_attribute_node *xml_set_attribute_float(xml_data_node *node, const char *name, float value);
 void xml_delete_node(xml_data_node *node);
+
+const char *xml_normalize_string(const char *string);
 
 #endif	/* __XMLFILE_H__ */

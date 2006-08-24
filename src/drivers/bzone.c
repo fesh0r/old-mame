@@ -202,7 +202,7 @@
 #include "machine/atari_vg.h"
 #include "sound/pokey.h"
 #include "sound/custom.h"
-#include "render.h"
+#include "rendlay.h"
 #include "bzone.h"
 
 #include "bzone.lh"
@@ -428,7 +428,7 @@ BZONEDSW1
   	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICKRIGHT_UP ) PORT_2WAY
   	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICKLEFT_DOWN ) PORT_2WAY
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICKLEFT_UP ) PORT_2WAY
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON3 )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )

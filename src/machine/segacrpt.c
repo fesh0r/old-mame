@@ -138,7 +138,8 @@
   The following games use a different encryption algorithm:
 
   315-5162      4D Warriors &          used I'm Sorry for k.p.a.
-                Rafflesia
+                Rafflesia &
+                Wonder Boy (set 4)
   315-5177      Astro Flash &
                 Wonder Boy (set 1)
   315-5178      Wonder Boy (set 2)     unencrypted version available
@@ -247,12 +248,14 @@ static void sega_decode(const unsigned char convtable[32][4])
 {
 	int A;
 
+	int length = memory_region_length(REGION_CPU1);
+	int cryptlen = MIN(length, 0x8000);
 	UINT8 *rom = memory_region(REGION_CPU1);
 	UINT8 *decrypted = auto_malloc(0xc000);
 
-	memory_set_decrypted_region(0, 0x0000, 0x7fff, decrypted);
+	memory_set_decrypted_region(0, 0x0000, cryptlen - 1, decrypted);
 
-	for (A = 0x0000;A < 0x8000;A++)
+	for (A = 0x0000;A < cryptlen;A++)
 	{
 		int xor = 0;
 
@@ -284,7 +287,11 @@ static void sega_decode(const unsigned char convtable[32][4])
 
 	/* this is a kludge to catch anyone who has code that crosses the encrypted/ */
 	/* decrypted boundary. ssanchan does it */
-	memcpy(&decrypted[0x8000], &rom[0x8000], 0x4000);
+	if (length > 0x8000)
+	{
+		int bytes = MIN(length - 0x8000, 0x4000);
+		memcpy(&decrypted[0x8000], &rom[0x8000], bytes);
+	}
 }
 
 

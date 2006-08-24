@@ -277,7 +277,7 @@ int start_system18_vdp(void)
 void segac2_enable_display(int enable)
 {
 	if (!cpu_getvblank())
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 	display_enable = enable;
 }
 
@@ -511,7 +511,7 @@ static void vdp_data_w(int data)
 			if (!cpu_getvblank() &&
 				vdp_address >= vdp_hscrollbase &&
 				vdp_address < vdp_hscrollbase + vdp_hscrollsize)
-				force_partial_update(0, cpu_getscanline());
+				video_screen_update_partial(0, cpu_getscanline());
 
 			/* write to VRAM */
 			if (vdp_address & 1)
@@ -539,7 +539,7 @@ static void vdp_data_w(int data)
 
 			/* if the vscroll RAM is changing during screen refresh, force an update */
 			if (!cpu_getvblank())
-				force_partial_update(0, cpu_getscanline());
+				video_screen_update_partial(0, cpu_getscanline());
 
 			/* write to VSRAM */
 			if (vdp_address & 1)
@@ -606,7 +606,7 @@ static int vdp_control_r(void)
 		status |= 0x0008;
 
 	/* set the HBLANK bit */
-	if (beampos < Machine->visible_area[0].min_x || beampos > Machine->visible_area[0].max_x)
+	if (beampos < Machine->screen[0].visarea.min_x || beampos > Machine->screen[0].visarea.max_x)
 		status |= 0x0004;
 
 	return (status);
@@ -655,7 +655,7 @@ static void vdp_register_w(int data, int vblank)
 	/* these are mostly important writes; force an update if they */
 	/* are written during a screen refresh */
 	if (!vblank && is_important[regnum])
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 
 	/* For quite a few of the registers its a good idea to set a couple of variable based
        upon the writes here */
@@ -663,7 +663,7 @@ static void vdp_register_w(int data, int vblank)
 	{
 		case 0x01: /* video modes */
 			if (regdat & 8)
-				ui_popup("Video height = 240!");
+				popmessage("Video height = 240!");
 			break;
 
 		case 0x02: /* Scroll A Name Table Base */
@@ -717,10 +717,14 @@ static void vdp_register_w(int data, int vblank)
 					window_width=64;
 				break;
 			}
-			/* this gets called from the init! */
-			set_visible_area(genesis_screen_number, 0, scrwidth*8-1,
-				Machine->visible_area[genesis_screen_number].min_y,
-				Machine->visible_area[genesis_screen_number].max_y);
+			{
+				screen_state *state = &Machine->screen[genesis_screen_number];
+				rectangle visarea = state->visarea;
+
+				/* this gets called from the init! */
+				visarea.max_x = scrwidth*8-1;
+				video_screen_configure(genesis_screen_number, scrwidth*8, state->height, &visarea, state->refresh);
+			}
 			break;
 
 		case 0x0d: /* HScroll Base */

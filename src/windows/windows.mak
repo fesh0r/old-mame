@@ -138,41 +138,32 @@ LIBS += -lbufferoverflowu
 endif
 
 
+
 #-------------------------------------------------
 # Windows-specific objects
 #-------------------------------------------------
 
 OSOBJS = \
 	$(OBJ)/$(MAMEOS)/config.o \
-	$(OBJ)/$(MAMEOS)/fileio.o \
-	$(OBJ)/$(MAMEOS)/fronthlp.o \
-	$(OBJ)/$(MAMEOS)/input.o \
-	$(OBJ)/$(MAMEOS)/sound.o \
-	$(OBJ)/$(MAMEOS)/ticker.o \
-	$(OBJ)/$(MAMEOS)/winmain.o \
-
-ifndef NEW_RENDER
-OSOBJS += \
-	$(OBJ)/$(MAMEOS)/blit.o \
-	$(OBJ)/$(MAMEOS)/videoold.o \
-	$(OBJ)/$(MAMEOS)/windold.o \
-	$(OBJ)/$(MAMEOS)/wind3old.o \
-	$(OBJ)/$(MAMEOS)/wind4old.o \
-	$(OBJ)/$(MAMEOS)/winddold.o
-else
-OSOBJS += \
-	$(OBJ)/$(MAMEOS)/video.o \
-	$(OBJ)/$(MAMEOS)/window.o \
 	$(OBJ)/$(MAMEOS)/d3d8intf.o \
 	$(OBJ)/$(MAMEOS)/d3d9intf.o \
 	$(OBJ)/$(MAMEOS)/drawd3d.o \
 	$(OBJ)/$(MAMEOS)/drawdd.o \
-	$(OBJ)/$(MAMEOS)/drawgdi.o
+	$(OBJ)/$(MAMEOS)/drawgdi.o \
+	$(OBJ)/$(MAMEOS)/drawnone.o \
+	$(OBJ)/$(MAMEOS)/fileio.o \
+	$(OBJ)/$(MAMEOS)/fronthlp.o \
+	$(OBJ)/$(MAMEOS)/input.o \
+	$(OBJ)/$(MAMEOS)/output.o \
+	$(OBJ)/$(MAMEOS)/sound.o \
+	$(OBJ)/$(MAMEOS)/ticker.o \
+	$(OBJ)/$(MAMEOS)/video.o \
+	$(OBJ)/$(MAMEOS)/window.o \
+	$(OBJ)/$(MAMEOS)/winmain.o
 
 $(OBJ)/$(MAMEOS)/drawdd.o : rendersw.c
 
 $(OBJ)/$(MAMEOS)/drawgdi.o : rendersw.c
-endif
 
 
 OSTOOLOBJS = \
@@ -220,6 +211,18 @@ ifneq ($(WINUI),)
 CFLAGS += -DWINUI=1
 include src/ui/ui.mak
 endif
+
+
+
+#-------------------------------------------------
+# rule for making the ledutil sample
+#-------------------------------------------------
+
+ledutil$(EXE): $(OBJ)/windows/ledutil.o $(OSDBGOBJS)
+	@echo Linking $@...
+	$(LD) $(LDFLAGS) -mwindows $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+
+TOOLS += ledutil$(EXE)
 
 
 

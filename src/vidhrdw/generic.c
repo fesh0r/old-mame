@@ -65,14 +65,101 @@ UINT16 *paletteram16_2;
 mame_bitmap *tmpbitmap;
 int flip_screen_x, flip_screen_y;
 
+
+
+/***************************************************************************
+    COMMON GRAPHICS LAYOUTS
+***************************************************************************/
+
+const gfx_layout gfx_8x8x1 =
+{
+	8,8,
+	RGN_FRAC(1,1),
+	1,
+	{ RGN_FRAC(0,1) },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
+	8*8
+};
+
+const gfx_layout gfx_8x8x2_planar =
+{
+	8,8,
+	RGN_FRAC(1,2),
+	2,
+	{ RGN_FRAC(1,2), RGN_FRAC(0,2) },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
+	8*8
+};
+
+const gfx_layout gfx_8x8x3_planar =
+{
+	8,8,
+	RGN_FRAC(1,3),
+	3,
+	{ RGN_FRAC(2,3), RGN_FRAC(1,3), RGN_FRAC(0,3) },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
+	8*8
+};
+
+const gfx_layout gfx_8x8x4_planar =
+{
+	8,8,
+	RGN_FRAC(1,4),
+	4,
+	{ RGN_FRAC(3,4), RGN_FRAC(2,4), RGN_FRAC(1,4), RGN_FRAC(0,4) },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
+	8*8
+};
+
+const gfx_layout gfx_8x8x5_planar =
+{
+	8,8,
+	RGN_FRAC(1,5),
+	5,
+	{ RGN_FRAC(4,5), RGN_FRAC(3,5), RGN_FRAC(2,5), RGN_FRAC(1,5), RGN_FRAC(0,5) },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
+	8*8
+};
+
+const gfx_layout gfx_8x8x6_planar =
+{
+	8,8,
+	RGN_FRAC(1,6),
+	6,
+	{ RGN_FRAC(5,6), RGN_FRAC(4,6), RGN_FRAC(3,6), RGN_FRAC(2,6), RGN_FRAC(1,6), RGN_FRAC(0,6) },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
+	8*8
+};
+
+const gfx_layout gfx_16x16x4_planar =
+{
+	16,16,
+	RGN_FRAC(1,4),
+	4,
+	{ RGN_FRAC(3,4), RGN_FRAC(2,4), RGN_FRAC(1,4), RGN_FRAC(0,4) },
+	{ STEP16(0,1) },
+	{ STEP16(0,16) },
+	16*16
+};
+
+
+
+/***************************************************************************
+    LOCAL VARIABLES
+***************************************************************************/
+
 static int global_attribute_changed;
 
 
 
 /***************************************************************************
-
-    Inline Helpers
-
+    INLINE FUNCTIONS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -182,9 +269,7 @@ INLINE void set_color_888(pen_t color, int rshift, int gshift, int bshift, UINT3
 
 
 /***************************************************************************
-
-    Initialization
-
+    INITIALIZATION
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -224,14 +309,15 @@ void generic_video_init(void)
 	dirtybuffer32 = NULL;
 	tmpbitmap = NULL;
 	flip_screen_x = flip_screen_y = 0;
+
+	/* force the first update to be full */
+	set_vh_global_attribute(NULL, 0);
 }
 
 
 
 /***************************************************************************
-
-    Generic video start/update callbacks
-
+    GENERIC VIDEO START/UPDATE
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -259,7 +345,7 @@ VIDEO_START( generic )
 	memset(dirtybuffer, 1, videoram_size);
 
 	/* allocate the temporary bitmap */
-	tmpbitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
+	tmpbitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
 	if (tmpbitmap == NULL)
 		return 1;
 
@@ -277,7 +363,7 @@ VIDEO_START( generic )
 VIDEO_START( generic_bitmapped )
 {
 	/* allocate the temporary bitmap */
-	tmpbitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
+	tmpbitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
 	if (tmpbitmap == NULL)
 		return 1;
 
@@ -294,16 +380,14 @@ VIDEO_START( generic_bitmapped )
 
 VIDEO_UPDATE( generic_bitmapped )
 {
-	copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, &Machine->visible_area[0], TRANSPARENCY_NONE, 0);
+	copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, &Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
 	return 0;
 }
 
 
 
 /***************************************************************************
-
-    Generic read/write handlers
-
+    GENERIC READ/WRITE HANDLERS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -318,11 +402,8 @@ READ8_HANDLER( videoram_r )
 
 WRITE8_HANDLER( videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		dirtybuffer[offset] = 1;
-		videoram[offset] = data;
-	}
+	dirtybuffer[offset] = 1;
+	videoram[offset] = data;
 }
 
 
@@ -338,11 +419,8 @@ READ8_HANDLER( colorram_r )
 
 WRITE8_HANDLER( colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		dirtybuffer[offset] = 1;
-		colorram[offset] = data;
-	}
+	dirtybuffer[offset] = 1;
+	colorram[offset] = data;
 }
 
 
@@ -393,9 +471,7 @@ WRITE8_HANDLER( spriteram_2_w )
 
 
 /***************************************************************************
-
-    Generic sprite buffering
-
+    GENERIC SPRITE BUFFERING
 ***************************************************************************/
 
 /* Mish:  171099
@@ -502,9 +578,7 @@ void buffer_spriteram_2(UINT8 *ptr, int length)
 
 
 /***************************************************************************
-
-    Global video attribute handling code
-
+    GLOBAL VIDEO ATTRIBUTES
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -513,33 +587,29 @@ void buffer_spriteram_2(UINT8 *ptr, int length)
 
 static void updateflip(void)
 {
-	int min_x,max_x,min_y,max_y;
+	screen_state *state = &Machine->screen[0];
+	rectangle visarea = state->visarea;
 
 	tilemap_set_flip(ALL_TILEMAPS,(TILEMAP_FLIPX & flip_screen_x) | (TILEMAP_FLIPY & flip_screen_y));
-
-	min_x = Machine->drv->screen[0].default_visible_area.min_x;
-	max_x = Machine->drv->screen[0].default_visible_area.max_x;
-	min_y = Machine->drv->screen[0].default_visible_area.min_y;
-	max_y = Machine->drv->screen[0].default_visible_area.max_y;
 
 	if (flip_screen_x)
 	{
 		int temp;
 
-		temp = Machine->drv->screen[0].maxwidth - min_x - 1;
-		min_x = Machine->drv->screen[0].maxwidth - max_x - 1;
-		max_x = temp;
+		temp = state->width - visarea.min_x - 1;
+		visarea.min_x = state->width - visarea.max_x - 1;
+		visarea.max_x = temp;
 	}
 	if (flip_screen_y)
 	{
 		int temp;
 
-		temp = Machine->drv->screen[0].maxheight - min_y - 1;
-		min_y = Machine->drv->screen[0].maxheight - max_y - 1;
-		max_y = temp;
+		temp = state->height - visarea.min_y - 1;
+		visarea.min_y = state->height - visarea.max_y - 1;
+		visarea.max_y = temp;
 	}
 
-	set_visible_area(0, min_x,max_x,min_y,max_y);
+	video_screen_configure(0, state->width, state->height, &visarea, state->refresh);
 }
 
 
@@ -615,9 +685,7 @@ int get_vh_global_attribute_changed(void)
 
 
 /***************************************************************************
-
-    Common palette initialization functions
-
+    COMMON PALETTE INITIALIZATION
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -677,9 +745,7 @@ PALETTE_INIT( RRRR_GGGG_BBBB )
 
 
 /***************************************************************************
-
-    Generic palette read handlers
-
+    GENERIC PALETTE READ HANDLERS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -724,9 +790,7 @@ READ32_HANDLER( paletteram32_r )
 
 
 /***************************************************************************
-
-    3-3-2 RGB palette write handlers
-
+    3-3-2 RGB PALETTE WRITE HANDLERS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -768,9 +832,7 @@ WRITE8_HANDLER( paletteram_BBGGRRII_w )
 
 
 /***************************************************************************
-
-    4-4-4 RGB palette write handlers
-
+    4-4-4 RGB PALETTE WRITE HANDLERS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -914,9 +976,7 @@ WRITE16_HANDLER( paletteram16_RRRRGGGGBBBBxxxx_word_w )
 
 
 /***************************************************************************
-
-    5-5-5 RGB palette write handlers
-
+    5-5-5 RGB PALETTE WRITE HANDLERS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -1037,9 +1097,7 @@ WRITE16_HANDLER( paletteram16_RRRRGGGGBBBBRGBx_word_w )
 
 
 /***************************************************************************
-
-    4-4-4-4 RGBI palette write handlers
-
+    4-4-4-4 RGBI PALETTE WRITE HANDLERS
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -1066,9 +1124,7 @@ WRITE16_HANDLER( paletteram16_RRRRGGGGBBBBIIII_word_w )
 
 
 /***************************************************************************
-
-    8-8-8 RGB palette write handlers
-
+    8-8-8 RGB PALETTE WRITE HANDLERS
 ***************************************************************************/
 
 /*-------------------------------------------------

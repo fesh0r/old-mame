@@ -17,11 +17,9 @@
 
 
 
-/*************************************
- *
- *  Constants
- *
- *************************************/
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
 #define MAX_TOKEN_LEN		64
 
@@ -30,11 +28,9 @@
 
 
 
-/*************************************
- *
- *  Type definitions
- *
- *************************************/
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
 
 typedef struct _input_code_info input_code_info;
 struct _input_code_info
@@ -48,11 +44,9 @@ struct _input_code_info
 
 
 
-/*************************************
- *
- *  String <-> code matching
- *
- *************************************/
+/***************************************************************************
+    STRING <-> CODE MATCHING
+***************************************************************************/
 
 #define STANDARD_CODE_STRING(x)	{ x, #x },
 
@@ -490,21 +484,17 @@ static struct
 
 
 
-/*************************************
- *
- *  Macros
- *
- *************************************/
+/***************************************************************************
+    MACROS
+***************************************************************************/
 
 #define ANALOG_TYPE(code) (((code) < code_count) ? code_map[code].analogtype : ANALOG_TYPE_NONE)
 
 
 
-/*************************************
- *
- *  Local variables
- *
- *************************************/
+/***************************************************************************
+    GLOBAL VARIABLES
+***************************************************************************/
 
 static input_code_info *code_map;
 static input_code code_count;
@@ -516,6 +506,10 @@ static clock_t record_last;						/* time of last key/joy press */
 static UINT8 record_analog;						/* are we recording an analog sequence? */
 
 
+
+/***************************************************************************
+    CORE IMPLEMENTATION
+***************************************************************************/
 
 /*************************************
  *
@@ -715,7 +709,7 @@ int code_pressed_memory_repeat(input_code code, int speed)
 		}
 
 		/* if this is an autorepeat case, set a 1x delay and leave pressed = 1 */
-		else if (++counter > keydelay * speed * Machine->refresh_rate[0] / 60)
+		else if (++counter > keydelay * speed * Machine->screen[0].refresh / 60)
 		{
 			keydelay = 1;
 			counter = 0;
@@ -1114,7 +1108,7 @@ INT32 seq_analog_value(const input_seq *seq, int *analogtype)
  *
  *************************************/
 
-void seq_name(const input_seq *seq, char *buffer, unsigned max)
+char *seq_name(const input_seq *seq, char *buffer, unsigned max)
 {
 	char *dest = buffer;
 	int codenum;
@@ -1156,6 +1150,8 @@ void seq_name(const input_seq *seq, char *buffer, unsigned max)
 		strcpy(dest, DEF_STR( None ));
 	else
 		*dest = 0;
+
+	return buffer;
 }
 
 

@@ -199,6 +199,7 @@ SOUNDS += NAMCO_54XX
 SOUNDS += NAMCO_63701X
 SOUNDS += NAMCONA
 SOUNDS += TMS36XX
+SOUNDS += TMS3615
 SOUNDS += TMS5110
 SOUNDS += TMS5220
 SOUNDS += VLM5030
@@ -324,6 +325,7 @@ DRVLIBS = \
 	$(OBJ)/technos.a \
 	$(OBJ)/tehkan.a \
 	$(OBJ)/thepit.a \
+	$(OBJ)/tiamc1.a \
 	$(OBJ)/toaplan.a \
 	$(OBJ)/tong.a \
 	$(OBJ)/unico.a \
@@ -604,6 +606,7 @@ $(OBJ)/dataeast.a: \
 	$(OBJ)/drivers/metlclsh.o $(OBJ)/vidhrdw/metlclsh.o \
 	$(OBJ)/drivers/pcktgal.o $(OBJ)/vidhrdw/pcktgal.o \
 	$(OBJ)/drivers/pktgaldx.o $(OBJ)/vidhrdw/pktgaldx.o \
+	$(OBJ)/drivers/pokechmp.o $(OBJ)/vidhrdw/pokechmp.o \
 	$(OBJ)/drivers/progolf.o \
 	$(OBJ)/drivers/rohga.o $(OBJ)/vidhrdw/rohga.o \
 	$(OBJ)/drivers/shootout.o $(OBJ)/vidhrdw/shootout.o \
@@ -1085,11 +1088,11 @@ $(OBJ)/sega.a: \
 	$(OBJ)/drivers/model2.o $(OBJ)/vidhrdw/model2.o \
 	$(OBJ)/drivers/model3.o $(OBJ)/vidhrdw/model3.o $(OBJ)/machine/model3.o \
 	$(OBJ)/drivers/puckpkmn.o \
-	$(OBJ)/drivers/sega.o $(OBJ)/sndhrdw/sega.o $(OBJ)/vidhrdw/sega.o \
 	$(OBJ)/drivers/segac2.o \
+	$(OBJ)/drivers/segag80r.o $(OBJ)/machine/segag80.o $(OBJ)/sndhrdw/segag80r.o $(OBJ)/vidhrdw/segag80r.o \
+	$(OBJ)/drivers/segag80v.o $(OBJ)/sndhrdw/segag80v.o $(OBJ)/vidhrdw/segag80v.o \
 	$(OBJ)/drivers/segahang.o $(OBJ)/vidhrdw/segahang.o \
 	$(OBJ)/drivers/segaorun.o $(OBJ)/vidhrdw/segaorun.o \
-	$(OBJ)/drivers/segar.o $(OBJ)/machine/segar.o $(OBJ)/sndhrdw/segar.o $(OBJ)/vidhrdw/segar.o \
 	$(OBJ)/drivers/segas16a.o $(OBJ)/vidhrdw/segas16a.o \
 	$(OBJ)/drivers/segas16b.o \
 	$(OBJ)/drivers/segas16b.o $(OBJ)/vidhrdw/segas16b.o \
@@ -1335,6 +1338,9 @@ $(OBJ)/thepit.a: \
 	$(OBJ)/drivers/thepit.o $(OBJ)/vidhrdw/thepit.o \
 	$(OBJ)/drivers/timelimt.o $(OBJ)/vidhrdw/timelimt.o \
 
+$(OBJ)/tiamc1.a: \
+	$(OBJ)/drivers/tiamc1.o $(OBJ)/vidhrdw/tiamc1.o \
+
 $(OBJ)/toaplan.a: \
 	$(OBJ)/drivers/mjsister.o $(OBJ)/vidhrdw/mjsister.o \
 	$(OBJ)/drivers/slapfght.o $(OBJ)/machine/slapfght.o $(OBJ)/vidhrdw/slapfght.o \
@@ -1409,7 +1415,7 @@ $(OBJ)/yunsung.a: \
 
 $(OBJ)/zaccaria.a: \
 	$(OBJ)/drivers/galaxia.o \
-	$(OBJ)/drivers/laserbat.o \
+	$(OBJ)/drivers/laserbat.o $(OBJ)/sndhrdw/laserbat.o \
 	$(OBJ)/drivers/zac2650.o $(OBJ)/vidhrdw/zac2650.o \
 	$(OBJ)/drivers/zaccaria.o $(OBJ)/vidhrdw/zaccaria.o \
 
@@ -1529,13 +1535,20 @@ $(OBJ)/misc.a: \
 # layout dependencies
 #-------------------------------------------------
 
-$(OBJ)/drivers/8080bw.o:	$(OBJ)/layout/invaders.lh \
+$(OBJ)/drivers/8080bw.o:	$(OBJ)/layout/clowns.lh \
+							$(OBJ)/layout/invaders.lh \
 							$(OBJ)/layout/invad2ct.lh \
 							$(OBJ)/layout/invrvnge.lh
+
+$(OBJ)/drivers/atarifb.o:	$(OBJ)/layout/atarifb.lh \
+							$(OBJ)/layout/atarifb4.lh \
+							$(OBJ)/layout/abaseb.lh
 
 $(OBJ)/drivers/avalnche.o:	$(OBJ)/layout/avalnche.lh
 
 $(OBJ)/drivers/bzone.o:		$(OBJ)/layout/bzone.lh
+
+$(OBJ)/drivers/bfm_sc2.o:	$(OBJ)/layout/bfm_sc2.lh
 
 $(OBJ)/drivers/cinemat.o:	$(OBJ)/layout/solarq.lh \
 							$(OBJ)/layout/starcas.lh
@@ -1548,6 +1561,8 @@ $(OBJ)/drivers/darius.o:	$(OBJ)/layout/darius.lh
 
 $(OBJ)/drivers/lazercmd.o:	$(OBJ)/layout/lazercmd.lh
 
+$(OBJ)/drivers/maxaflex.o:	$(OBJ)/layout/maxaflex.lh
+
 $(OBJ)/drivers/meadows.o:	$(OBJ)/layout/deadeye.lh \
 							$(OBJ)/layout/gypsyjug.lh
 
@@ -1555,7 +1570,13 @@ $(OBJ)/drivers/nbmj8688.o:	$(OBJ)/layout/nbmj8688.lh
 
 $(OBJ)/drivers/sbrkout.o:	$(OBJ)/layout/sbrkout.lh
 
+$(OBJ)/drivers/sspeedr.o:	$(OBJ)/layout/sspeedr.lh
+
 $(OBJ)/drivers/tetrisp2.o:	$(OBJ)/layout/rocknms.lh
+
+$(OBJ)/drivers/turbo.o:		$(OBJ)/layout/turbo.lh \
+							$(OBJ)/layout/subroc3d.lh \
+							$(OBJ)/layout/buckrog.lh
 
 $(OBJ)/drivers/warpwarp.o:	$(OBJ)/layout/geebee.lh \
 							$(OBJ)/layout/sos.lh

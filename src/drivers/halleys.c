@@ -530,7 +530,7 @@ if (0) {
 			collision_count++;
 
 			#if HALLEYS_DEBUG
-				ui_popup("ID:%02x CC:%3d", offset, collision_count);
+				popmessage("ID:%02x CC:%3d", offset, collision_count);
 			#endif
 		}
 
@@ -1807,29 +1807,28 @@ INPUT_PORTS_END
 
 INPUT_PORTS_START( benberob )
 	PORT_START_TAG("DSW1") // 0xff95
-	PORT_DIPNAME( 0x01, 0x01, "Unknown(1-1)" )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Controls ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Single ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Dual ) )
+	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x02, "Every 100K" )
+	PORT_DIPSETTING(    0x00, "100K & Every 200K" )
+	PORT_DIPSETTING(    0x01, "150K & Every 300K" )
+	PORT_DIPSETTING(    0x03, "100K, 200K & 300K Only" )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Free_Play ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x18, 0x08, DEF_STR( Lives ) )
-	PORT_DIPSETTING(	0x00, "Infinite (Cheat)")
+	PORT_DIPSETTING(    0x00, "Infinite (Cheat)")
 	PORT_DIPSETTING(    0x08, "3" )
 	PORT_DIPSETTING(    0x10, "4" )
 	PORT_DIPSETTING(    0x18, "5" )
 	PORT_DIPNAME( 0x20, 0x20, "Unknown(1-6)" )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, "Unknown(1-7)" )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, "Unknown(1-8)" )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
 	// 0xff96
 	PORT_START_TAG("DSW2")
@@ -1869,30 +1868,29 @@ INPUT_PORTS_START( benberob )
 	PORT_DIPSETTING(    0x70, DEF_STR( 1C_8C ) )
 
 	PORT_START_TAG("DSW3") // 0xff97
-	PORT_DIPNAME( 0x01, 0x01, "Unknown(3-1)" )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x01, 0x01, "Starting Round" )
+	PORT_DIPSETTING(    0x01, "1st Round" )
+	PORT_DIPSETTING(    0x00, "2nd Round" )
 	PORT_DIPNAME( 0x02, 0x00, "Use Both Buttons" )
 	PORT_DIPSETTING(    0x02, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x04, 0x04, "Unknown(3-3)" )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, "Unknown(3-4)" )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0c, 0x08, "Bonus Countdown Time" )
+	PORT_DIPSETTING(    0x00, "1:15" )	/* Fastest countdown */
+	PORT_DIPSETTING(    0x04, "1:30" )
+	PORT_DIPSETTING(    0x08, "1:45" )
+	PORT_DIPSETTING(    0x0c, "2:00" )	/* Slowest countdown */
 	PORT_DIPNAME( 0x10, 0x00, "Show Coinage" )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x20, 0x20, "Unknown(3-6)" )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, "Show Year" )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x40, 0x40, "No Hit (Cheat)")
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, "Unknown(3-8)" )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Maximum Credits" )
+	PORT_DIPSETTING(    0x80, "9" )
+	PORT_DIPSETTING(    0x00, "16" )
 
 	PORT_START_TAG("IN0") // 0xff90
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -2119,6 +2117,34 @@ ROM_START( halleysc )
 ROM_END
 
 
+ROM_START( halley87 )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 ) //MAIN PRG
+	ROM_LOAD( "a62-17.30",   0x0000, 0x4000, CRC(fa2a58a6) SHA1(42cb587aad166ff74ece987f275aa7ad16d58300) )
+	ROM_LOAD( "a62-18.31",   0x4000, 0x4000, CRC(f3a078e6) SHA1(f8fa548b5814276d1ae2d575b9a5d3f0cc2f54fa) )
+	ROM_LOAD( "a62-19.52",   0x8000, 0x4000, CRC(e8bb695c) SHA1(066558ec48a38db03ae10ba873ff05ab5f911658) )
+	ROM_LOAD( "a62-20.50",   0xc000, 0x4000, CRC(59ed52cd) SHA1(059ee01610949a654741b853eed0235eabe0e313) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 ) //SOUND
+	ROM_LOAD( "a62_13.5",    0x0000, 0x2000, CRC(7ce290db) SHA1(e3c72ba5d97cb07f0f72d2765a068af6fb5cca29) )
+	ROM_LOAD( "a62_14.4",    0x2000, 0x2000, CRC(ea74b1a2) SHA1(7be3b9e9d51cfa753ce97e92f7eebd9723fe5821) )
+
+	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "a62_12.78",   0x00000, 0x4000, CRC(c5834a7a) SHA1(4a24b3fa707cde89ad5a52d4e994412fcf28e81f) )
+	ROM_LOAD( "a62_10.77",   0x04000, 0x4000, CRC(3ae7231e) SHA1(277f12570001d82104c79d3d0a58a0b57ed18778) )
+	ROM_LOAD( "a62_08.80",   0x08000, 0x4000, CRC(b9210dbe) SHA1(f72f2307e9acd2dd622a3efce71bd334b68a9b60) )
+	ROM_LOAD( "a62_06.79",   0x0c000, 0x4000, CRC(600be9ca) SHA1(a705b10be37ee93908b1bbaf806cfe7955aa3ffc) )
+	ROM_LOAD( "a62_11.89",   0x10000, 0x4000, CRC(d0e9974e) SHA1(6826cfb4fbf098ed7b9d8b00e2684d7c85a13c11) )
+	ROM_LOAD( "a62_09.88",   0x14000, 0x4000, CRC(e93ef281) SHA1(8bfe1ecce1c7107a5bd1b43b531594c8cfc0719d) )
+	ROM_LOAD( "a62_07.91",   0x18000, 0x4000, CRC(64c95e8b) SHA1(4c3320a764b13a5751c0019c9fafb899ea2f908f) )
+	ROM_LOAD( "a62_05.90",   0x1c000, 0x4000, CRC(c3c877ef) SHA1(23180b106e50b7a2a230c5e9948832e5631972ae) )
+
+	ROM_REGION( 0x0060, REGION_PROMS, 0 ) //COLOR (all identical!)
+	ROM_LOAD( "a26-13.109",  0x0000, 0x0020, CRC(ec449aee) SHA1(aa33e82b592276d5ffd540d9a73d1b48d7d4accf) )
+	ROM_LOAD( "a26-13.110",  0x0020, 0x0020, CRC(ec449aee) SHA1(aa33e82b592276d5ffd540d9a73d1b48d7d4accf) )
+	ROM_LOAD( "a26-13.111",  0x0040, 0x0020, CRC(ec449aee) SHA1(aa33e82b592276d5ffd540d9a73d1b48d7d4accf) )
+ROM_END
+
+
 //**************************************************************************
 // Driver Initializations
 
@@ -2228,5 +2254,6 @@ static DRIVER_INIT( halleys )
 
 GAME( 1984, benberob, 0,       benberob, benberob, benberob, ROT0, "Taito", "Ben Bero Beh (Japan)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_COLORS )
 GAME( 1986, halleys,  0,       halleys, halleys, halleys,  ROT90, "Taito America Corporation (Coin-It license)", "Halley's Comet (US)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
-GAME( 1986, halleysc, halleys, halleys, halleys, halleys,  ROT90, "Taito Corporation", "Halley's Comet (Japan set 1)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
-GAME( 1986, halleycj, halleys, halleys, halleys, halleys,  ROT90, "Taito Corporation", "Halley's Comet (Japan set 2)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
+GAME( 1986, halleysc, halleys, halleys, halleys, halleys,  ROT90, "Taito Corporation", "Halley's Comet (Japan, Newer)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
+GAME( 1986, halleycj, halleys, halleys, halleys, halleys,  ROT90, "Taito Corporation", "Halley's Comet (Japan, Older)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
+GAME( 1986, halley87, halleys, halleys, halleys, halleys,  ROT90, "Taito Corporation", "Halley's Comet '87", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL | GAME_NOT_WORKING ) /* No Collision detection */

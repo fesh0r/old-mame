@@ -96,6 +96,7 @@
 #include "config.h"
 #include "xmlfile.h"
 #include "profiler.h"
+#include "ui.h"
 #include <math.h>
 
 #ifdef MESS
@@ -103,11 +104,9 @@
 #endif
 
 
-/*************************************
- *
- *  Constants
- *
- *************************************/
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
 #define DIGITAL_JOYSTICKS_PER_PLAYER	3
 
@@ -124,11 +123,9 @@
 
 
 
-/*************************************
- *
- *  Type definitions
- *
- *************************************/
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
 
 typedef struct _analog_port_info analog_port_info;
 struct _analog_port_info
@@ -219,11 +216,9 @@ struct _input_port_init_params
 
 
 
-/*************************************
- *
- *  Macros
- *
- *************************************/
+/***************************************************************************
+    MACROS
+***************************************************************************/
 
 #define IS_ANALOG(in)				((in)->type >= __ipt_analog_start && (in)->type <= __ipt_analog_end)
 #define IS_DIGITAL_JOYSTICK(in)		((in)->type >= __ipt_digital_joystick_start && (in)->type <= __ipt_digital_joystick_end)
@@ -235,11 +230,9 @@ struct _input_port_init_params
 
 
 
-/*************************************
- *
- *  Local variables
- *
- *************************************/
+/***************************************************************************
+    GLOBAL VARIABLES
+***************************************************************************/
 
 /* current value of all the ports */
 static input_port_info port_info[MAX_INPUT_PORTS];
@@ -258,11 +251,9 @@ input_port_entry *input_ports_default;
 
 
 
-/*************************************
- *
- *  Port handler tables
- *
- *************************************/
+/***************************************************************************
+    PORT HANDLER TABLES
+***************************************************************************/
 
 static const read8_handler port_handler8[] =
 {
@@ -304,11 +295,9 @@ static const read32_handler port_handler32[] =
 
 
 
-/*************************************
- *
- *  Common shared strings
- *
- *************************************/
+/***************************************************************************
+    COMMON SHARED STRINGS
+***************************************************************************/
 
 const char *input_port_default_strings[] =
 {
@@ -424,11 +413,9 @@ const char *input_port_default_strings[] =
 
 
 
-/*************************************
- *
- *  Default input ports
- *
- *************************************/
+/***************************************************************************
+    DEFAULT INPUT PORTS
+***************************************************************************/
 
 #define INPUT_PORT_DIGITAL_DEF(player_,group_,type_,name_,seq_) \
 	{ IPT_##type_, group_, (player_ == 0) ? player_ : (player_) - 1, (player_ == 0) ? #type_ : ("P" #player_ "_" #type_), name_, seq_, SEQ_DEF_0, SEQ_DEF_0 },
@@ -948,11 +935,9 @@ static int default_ports_lookup[__ipt_max][MAX_PLAYERS];
 
 
 
-/*************************************
- *
- *  Function prototypes
- *
- *************************************/
+/***************************************************************************
+    FUNCTION PROTOTYPES
+***************************************************************************/
 
 static void input_port_load(int config_type, xml_data_node *parentnode);
 static void input_port_save(int config_type, xml_data_node *parentnode);
@@ -961,6 +946,10 @@ static void update_analog_port(int port);
 static void interpolate_analog_port(int port);
 
 
+
+/***************************************************************************
+    CORE IMPLEMENTATION
+***************************************************************************/
 
 /*************************************
  *
@@ -2055,7 +2044,7 @@ profiler_mark(PROFILER_INPUT);
 		}
 
 		/* if this is an autorepeat case, set a 1x delay and leave pressed = 1 */
-		else if (++counter > keydelay * speed * Machine->refresh_rate[0] / 60)
+		else if (++counter > keydelay * speed * Machine->screen[0].refresh / 60)
 		{
 			keydelay = 1;
 			counter = 0;
@@ -2157,7 +2146,7 @@ void input_port_update_defaults(void)
 
 void input_port_vblank_start(void)
 {
-	int ui_visible = ui_is_setup_active() || ui_is_onscrd_active();
+	int ui_visible = ui_is_menu_active() || ui_is_slider_active();
 	int portnum, bitnum;
 
 profiler_mark(PROFILER_INPUT);
@@ -2180,7 +2169,7 @@ profiler_mark(PROFILER_INPUT);
 			if (info->port->type == IPT_VBLANK)
 			{
 				portinfo->vblank ^= info->port->mask;
-				if (Machine->drv->screen[0].vblank_time == 0)
+				if (Machine->screen[0].vblank == 0)
 					logerror("Warning: you are using IPT_VBLANK with vblank_time = 0. You need to increase vblank_time for IPT_VBLANK to work.\n");
 			}
 
@@ -2204,6 +2193,8 @@ profiler_mark(PROFILER_INPUT);
 #endif
 						/* skip locked-out coin inputs */
 						if (port->type >= IPT_COIN1 && port->type <= IPT_COIN8 && coinlockedout[port->type - IPT_COIN1])
+							continue;
+						if (port->type >= IPT_SERVICE1 && port->type <= IPT_SERVICE4 && servicecoinlockedout[port->type - IPT_SERVICE1])
 							continue;
 
 						/* if this is a downward press and we're an impulse control, reset the count */
@@ -2302,7 +2293,7 @@ profiler_mark(PROFILER_END);
 
 void input_port_vblank_end(void)
 {
-	int ui_visible = ui_is_setup_active() || ui_is_onscrd_active();
+	int ui_visible = ui_is_menu_active() || ui_is_slider_active();
 	int port;
 
 profiler_mark(PROFILER_INPUT);

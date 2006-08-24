@@ -528,14 +528,14 @@ INTERRUPT_GEN( fuuki16_interrupt )
 		if (code_pressed_memory(KEYCODE_F1))
 		{
 			fuuki16_raster_enable ^= 1;
-			ui_popup("raster effects %sabled",fuuki16_raster_enable ? "en" : "dis");
+			popmessage("raster effects %sabled",fuuki16_raster_enable ? "en" : "dis");
 		}
 	}
 
 	if ( (fuuki16_vregs[0x1c/2] & 0xff) == (INTERRUPTS_NUM-1 - cpu_getiloops()) )
 	{
 		cpunum_set_input_line(0, 5, PULSE_LINE);	// Raster Line IRQ
-		if(fuuki16_raster_enable) force_partial_update(0, cpu_getscanline());
+		if(fuuki16_raster_enable) video_screen_update_partial(0, cpu_getscanline());
 	}
 }
 

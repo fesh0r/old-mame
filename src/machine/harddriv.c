@@ -404,7 +404,7 @@ READ16_HANDLER( hdc68k_wheel_r )
 
 	/* hack to display the wheel position */
 	if (code_pressed(KEYCODE_LSHIFT))
-		ui_popup("%04X", new_wheel);
+		popmessage("%04X", new_wheel);
 
 	/* if we crossed the center line, latch the edge bit */
 	if ((hdc68k_last_wheel / 0xf0) != (new_wheel / 0xf0))
@@ -732,7 +732,7 @@ WRITE16_HANDLER( hdgsp_io_w )
 
 	/* detect changes to HEBLNK and HSBLNK and force an update before they change */
 	if ((offset == REG_HEBLNK || offset == REG_HSBLNK) && data != tms34010_io_register_r(offset, 0))
-		force_partial_update(0, cpu_getscanline() - 1);
+		video_screen_update_partial(0, cpu_getscanline() - 1);
 
 	tms34010_io_register_w(offset, data, mem_mask);
 }

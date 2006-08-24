@@ -22,9 +22,7 @@
 
 
 /***************************************************************************
-
-    Common types
-
+    COMMON TYPES
 ***************************************************************************/
 
 /* FPTR is a type that can be used to cast a pointer to a scalar */
@@ -157,9 +155,7 @@ typedef union
 
 
 /***************************************************************************
-
-    Common constants
-
+    COMMON CONSTANTS
 ***************************************************************************/
 
 /* Ensure that TRUE/FALSE are defined */
@@ -179,11 +175,20 @@ typedef union
 #endif
 
 
+/* orientation of bitmaps */
+#define	ORIENTATION_FLIP_X				0x0001	/* mirror everything in the X direction */
+#define	ORIENTATION_FLIP_Y				0x0002	/* mirror everything in the Y direction */
+#define ORIENTATION_SWAP_XY				0x0004	/* mirror along the top-left/bottom-right diagonal */
+
+#define	ROT0							0
+#define	ROT90							(ORIENTATION_SWAP_XY | ORIENTATION_FLIP_X)	/* rotate clockwise 90 degrees */
+#define	ROT180							(ORIENTATION_FLIP_X | ORIENTATION_FLIP_Y)	/* rotate 180 degrees */
+#define	ROT270							(ORIENTATION_SWAP_XY | ORIENTATION_FLIP_Y)	/* rotate counter-clockwise 90 degrees */
+
+
 
 /***************************************************************************
-
-    Common macros
-
+    COMMON MACROS
 ***************************************************************************/
 
 /* Standard MAME assertion macros */
@@ -355,9 +360,7 @@ typedef union
 
 
 /***************************************************************************
-
-    Common functions
-
+    COMMON FUNCTIONS
 ***************************************************************************/
 
 /* since stricmp is not part of the standard, we use this instead */
@@ -367,6 +370,10 @@ int mame_stricmp(const char *s1, const char *s2);
 #undef stricmp
 #define stricmp !MUST_USE_MAME_STRICMP_INSTEAD!
 
+/* this macro prevents people from using strcasecmp directly */
+#undef strcasecmp
+#define strcasecmp !MUST_USE_MAME_STRICMP_INSTEAD!
+
 
 /* since strnicmp is not part of the standard, we use this instead */
 int mame_strnicmp(const char *s1, const char *s2, size_t n);
@@ -374,6 +381,10 @@ int mame_strnicmp(const char *s1, const char *s2, size_t n);
 /* this macro prevents people from using strnicmp directly */
 #undef strnicmp
 #define strnicmp !MUST_USE_MAME_STRNICMP_INSTEAD!
+
+/* this macro prevents people from using strncasecmp directly */
+#undef strncasecmp
+#define strncasecmp !MUST_USE_MAME_STRNICMP_INSTEAD!
 
 
 /* additional string compare helper */
@@ -461,9 +472,7 @@ INLINE UINT64 d2u(double d)
 
 
 /***************************************************************************
-
-    Inline math helpers
-
+    INLINE MATH HELPERS
 ***************************************************************************/
 
 /* If the OSD layer wants to override these in osd_cpu.h, they can by #defining */
@@ -503,9 +512,7 @@ INLINE INT32 fixed_mul_shift(INT32 val1, INT32 val2, UINT8 shift)
 
 
 /***************************************************************************
-
-    Binary coded decimal
-
+    BINARY CODED DECIMAL HELPERS
 ***************************************************************************/
 
 INLINE int bcd_adjust(int value)
@@ -532,9 +539,7 @@ INLINE int bcd_2_dec(int a)
 
 
 /***************************************************************************
-
-    Gregorian calendar code
-
+    GROGARIAN CALENDAR HELPERS
 ***************************************************************************/
 
 INLINE int gregorian_is_leap_year(int year)
@@ -557,9 +562,7 @@ INLINE int gregorian_days_in_month(int month, int year)
 
 
 /***************************************************************************
-
-    Compiler-specific nastiness
-
+    COMPILER-SPECIFIC NASTINESS
 ***************************************************************************/
 
 /* Suppress warnings about redefining the macro 'PPC' on LinuxPPC. */
@@ -604,9 +607,7 @@ INLINE int gregorian_days_in_month(int month, int year)
 
 
 /***************************************************************************
-
-    Function prototypes
-
+    FUNCTION PROTOTYPES
 ***************************************************************************/
 
 /* Used by assert(), so definition here instead of mame.h */

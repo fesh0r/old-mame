@@ -17,11 +17,9 @@
 #include "mamecore.h"
 
 
-/*************************************
- *
- *  Constants
- *
- *************************************/
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
 /* NOTE: If you modify this value you need also to modify the SEQ_DEF declarations */
 #define SEQ_MAX				16
@@ -488,11 +486,9 @@ enum
 
 
 
-/*************************************
- *
- *  Type definitions
- *
- *************************************/
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
 
 struct _input_seq
 {
@@ -502,11 +498,9 @@ typedef struct _input_seq input_seq;
 
 
 
-/*************************************
- *
- *  Macros
- *
- *************************************/
+/***************************************************************************
+    MACROS
+***************************************************************************/
 
 /* NOTE: It's very important that this sequence is EXACTLY as long as SEQ_MAX */
 #define SEQ_DEF_6(a,b,c,d,e,f) {{ a, b, c, d, e, f, CODE_NONE, CODE_NONE, CODE_NONE, CODE_NONE, CODE_NONE, CODE_NONE, CODE_NONE, CODE_NONE, CODE_NONE, CODE_NONE }}
@@ -519,11 +513,9 @@ typedef struct _input_seq input_seq;
 
 
 
-/*************************************
- *
- *  Function prototypes
- *
- *************************************/
+/***************************************************************************
+    FUNCTION PROTOTYPES
+***************************************************************************/
 
 /* single code functions */
 int code_init(void);
@@ -548,7 +540,7 @@ void seq_set_4(input_seq *seq, input_code code1, input_code code2, input_code co
 void seq_set_5(input_seq *seq, input_code code1, input_code code2, input_code code3, input_code code4, input_code code5);
 void seq_copy(input_seq *seqdst, const input_seq *seqsrc);
 int seq_cmp(const input_seq *seqa, const input_seq *seqb);
-void seq_name(const input_seq *seq, char *buffer, unsigned max);
+char *seq_name(const input_seq *seq, char *buffer, unsigned max);
 int seq_pressed(const input_seq *seq);
 INT32 seq_analog_value(const input_seq *seq, int *analogtype);
 void seq_read_async_start(int analog);

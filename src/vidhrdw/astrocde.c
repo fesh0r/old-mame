@@ -7,7 +7,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "render.h"
 #include "cpu/z80/z80.h"
 #include "includes/astrocde.h"
 #include <math.h> /* for sin() and cos() */
@@ -183,7 +182,7 @@ static void interrupt_common(void)
 {
 	int i,next;
 
-	force_partial_update(0, CurrentScan);
+	video_screen_update_partial(0, CurrentScan);
 
 	next = (CurrentScan + 1) % MAX_INT_PER_FRAME;
 	for (i = 0;i < 8;i++)
@@ -484,7 +483,7 @@ WRITE8_HANDLER( astrocde_magic_control_w )
 	magic_shift_leftover = 0;	/* reset shift buffer on write to this register */
 
 	if (magic_control & 0x04)
-		ui_popup("unsupported MAGIC ROTATE mode");
+		popmessage("unsupported MAGIC ROTATE mode");
 }
 
 
@@ -722,10 +721,10 @@ static void init_star_field(void)
 	{
 		for (x = -16;x < CLOCKS_PER_LINE-16;x++)	/* perfect values determined with screen shots */
 		{
-			if (x >= Machine->visible_area[0].min_x &&
-				x <= Machine->visible_area[0].max_x &&
-				y >= Machine->visible_area[0].min_y &&
-				y <= Machine->visible_area[0].max_y)
+			if (x >= Machine->screen[0].visarea.min_x &&
+				x <= Machine->screen[0].visarea.max_x &&
+				y >= Machine->screen[0].visarea.min_y &&
+				y <= Machine->screen[0].visarea.max_y)
 			{
 				if ((rng[count] & 0x1fe00) == 0x0fe00)
 					star[x+SCREEN_WIDTH*y] = 1;
@@ -816,14 +815,12 @@ READ8_HANDLER( gorf_io_2_r )
 
 	switch (offset)
 	{
-#ifdef NEW_RENDER
-	case 0x00: render_view_item_set_state("lamp0", !data); break;
-	case 0x01: render_view_item_set_state("lamp1", !data); break;
-	case 0x02: render_view_item_set_state("lamp2", !data); break;
-	case 0x03: render_view_item_set_state("lamp3", !data); break;
-	case 0x04: render_view_item_set_state("lamp4", !data); break;
-	case 0x05: render_view_item_set_state("lamp5", !data); break;
-#endif
+	case 0x00: output_set_value("lamp0", !data); break;
+	case 0x01: output_set_value("lamp1", !data); break;
+	case 0x02: output_set_value("lamp2", !data); break;
+	case 0x03: output_set_value("lamp3", !data); break;
+	case 0x04: output_set_value("lamp4", !data); break;
+	case 0x05: output_set_value("lamp5", !data); break;
 #ifdef VERBOSE
 	default:
 		logerror("%04x: Latch IO2 %02x set to %d\n",activecpu_get_pc(),offset,data);
@@ -1083,7 +1080,7 @@ VIDEO_UPDATE( seawolf2 )
 		if (centre<2)   centre=2;
 		if (centre>317) centre=317;
 
-		draw_crosshair(bitmap,centre,35,&Machine->visible_area[0],0);
+		draw_crosshair(bitmap,centre,35,&Machine->screen[0].visarea,0);
 
 		/* Player 2 */
 
@@ -1094,7 +1091,7 @@ VIDEO_UPDATE( seawolf2 )
 			if (centre<1)   centre=1;
 			if (centre>316) centre=316;
 
-			draw_crosshair(bitmap,centre,33,&Machine->visible_area[0],1);
+			draw_crosshair(bitmap,centre,33,&Machine->screen[0].visarea,1);
 		}
 	}
 	return 0;
@@ -1127,13 +1124,11 @@ READ8_HANDLER( profpac_io_1_r )
 
 READ8_HANDLER( profpac_io_2_r )
 {
-#ifdef NEW_RENDER
-	if(offset & 0x0100) render_view_item_set_state("left lamp A", 1); else render_view_item_set_state("left lamp A", 0);
-	if(offset & 0x0200) render_view_item_set_state("left lamp B", 1); else render_view_item_set_state("left lamp B", 0);
-	if(offset & 0x0400) render_view_item_set_state("left lamp C", 1); else render_view_item_set_state("left lamp C", 0);
-	if(offset & 0x1000) render_view_item_set_state("right lamp A", 1); else render_view_item_set_state("right lamp A", 0);
-	if(offset & 0x2000) render_view_item_set_state("right lamp B", 1); else render_view_item_set_state("right lamp B", 0);
-	if(offset & 0x4000) render_view_item_set_state("right lamp C", 1); else render_view_item_set_state("right lamp C", 0);
-#endif
+	if(offset & 0x0100) output_set_value("left lamp A", 1); else output_set_value("left lamp A", 0);
+	if(offset & 0x0200) output_set_value("left lamp B", 1); else output_set_value("left lamp B", 0);
+	if(offset & 0x0400) output_set_value("left lamp C", 1); else output_set_value("left lamp C", 0);
+	if(offset & 0x1000) output_set_value("right lamp A", 1); else output_set_value("right lamp A", 0);
+	if(offset & 0x2000) output_set_value("right lamp B", 1); else output_set_value("right lamp B", 0);
+	if(offset & 0x4000) output_set_value("right lamp C", 1); else output_set_value("right lamp C", 0);
 	return 0;
 }

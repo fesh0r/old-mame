@@ -52,7 +52,7 @@ VIDEO_START( ccastles )
 			3,	resistances, bweights, 1000, 0);
 
 	/* allocate a bitmap for drawing sprites */
-	spritebitmap = auto_bitmap_alloc(Machine->drv->screen[0].maxwidth, Machine->drv->screen[0].maxheight);
+	spritebitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
 
 	/* register for savestates */
 	state_save_register_global_array(video_control);
@@ -72,7 +72,7 @@ VIDEO_START( ccastles )
 
 WRITE8_HANDLER( ccastles_hscroll_w )
 {
-	force_partial_update(0, cpu_getscanline());
+	video_screen_update_partial(0, cpu_getscanline());
 	hscroll = data;
 }
 
@@ -282,7 +282,7 @@ VIDEO_UPDATE( ccastles )
 
 	/* draw the sprites */
 	fillbitmap(spritebitmap, 0x0f, cliprect);
-	for (offs = 0; offs < 0x100; offs += 4)
+	for (offs = 0; offs < 320/2; offs += 4)
 	{
 		int x = spriteaddr[offs+3];
 		int y = 256 - 16 - spriteaddr[offs+1];

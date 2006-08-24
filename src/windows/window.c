@@ -39,6 +39,7 @@
 
 extern void win_timer_enable(int enabled);
 
+extern int drawnone_init(win_draw_callbacks *callbacks);
 extern int drawgdi_init(win_draw_callbacks *callbacks);
 extern int drawdd_init(win_draw_callbacks *callbacks);
 extern int drawd3d_init(win_draw_callbacks *callbacks);
@@ -228,6 +229,11 @@ int winwindow_init(void)
 	if (video_config.mode == VIDEO_MODE_GDI)
 	{
 		if (drawgdi_init(&draw))
+			return 1;
+	}
+	if (video_config.mode == VIDEO_MODE_NONE)
+	{
+		if (drawnone_init(&draw))
 			return 1;
 	}
 
@@ -503,7 +509,6 @@ int winwindow_video_window_create(int index, win_monitor_info *monitor, const wi
 	memset(window, 0, sizeof(*window));
 	window->maxwidth = config->width;
 	window->maxheight = config->height;
-	window->depth = config->depth;
 	window->refresh = config->refresh;
 	window->monitor = monitor;
 	window->fullscreen = !video_config.windowed;
@@ -522,7 +527,7 @@ int winwindow_video_window_create(int index, win_monitor_info *monitor, const wi
 	window->render_lock = osd_lock_alloc();
 
 	// load the layout
-	window->target = render_target_alloc(NULL, FALSE);
+	window->target = render_target_alloc(NULL, 0);
 	if (window->target == NULL)
 		goto error;
 	render_target_set_orientation(window->target, video_orientation);
@@ -731,11 +736,6 @@ static int create_window_class(void)
 #endif
 		wc.hCursor			= LoadCursor(NULL, IDC_ARROW);
 		wc.hIcon			= LoadIcon(NULL, IDI_APPLICATION);
-		wc.lpszMenuName		= NULL;
-		wc.hbrBackground	= NULL;
-		wc.style			= 0;
-		wc.cbClsExtra		= 0;
-		wc.cbWndExtra		= 0;
 
 		// register the class; fail if we can't
 		if (!RegisterClass(&wc))
@@ -755,13 +755,14 @@ static int create_window_class(void)
 
 static void set_starting_view(int index, win_window_info *window, const char *view)
 {
+	const char *defview = options_get_string("view", FALSE);
 	int viewindex = -1;
 
 	assert(GetCurrentThreadId() == main_threadid);
 
-	// NULL is the same as auto
-	if (view == NULL)
-		view = "auto";
+	// choose non-auto over auto
+	if (strcmp(view, "auto") == 0 && strcmp(defview, "auto") != 0)
+		view = defview;
 
 	// auto view just selects the nth view
 	if (strcmp(view, "auto") != 0)
@@ -1029,7 +1030,8 @@ static int complete_create(win_window_info *window)
 		// finish off by trying to initialize DirectX; if we fail, ignore it
 		if ((*draw.window_init)(window))
 			return 1;
-		ShowWindow(window->hwnd, SW_SHOW);
+		if (video_config.mode != VIDEO_MODE_NONE)
+			ShowWindow(window->hwnd, SW_SHOW);
 	}
 
 	// clear the window
@@ -1683,7 +1685,8 @@ static void set_fullscreen(win_window_info *window, int fullscreen)
 	// show ourself
 	if (!window->fullscreen || window->fullscreen_safe)
 	{
-		ShowWindow(window->hwnd, SW_SHOW);
+		if (video_config.mode != VIDEO_MODE_NONE)
+			ShowWindow(window->hwnd, SW_SHOW);
 		if ((*draw.window_init)(window))
 			exit(1);
 	}

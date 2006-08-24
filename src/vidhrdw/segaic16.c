@@ -235,7 +235,7 @@
         315-5197:                                       xx          xx    xx    xx                           -- tilemap generator
         315-5211:                                                         xx                                 -- sprite generator
         315-5211A:                                                              xx                           -- sprite generator
-        315-5218:                                                   xx    xx                                 -- PCM sound controller
+        315-5218:                                                   xx    xx    xx    xx                     -- PCM sound controller
         315-5242:                                             xx    xx    xx    xx    xx    xx    xx    xx   -- color encoder
         315-5248:                                       xx                      x2    x3                     -- hardware multiplier
         315-5249:                                                               x2    x3                     -- hardware divider
@@ -301,8 +301,13 @@ Quick review of the system16 hardware:
     System 16b plus a genesis vdp.
 
   Outrun:
-    System 16b with sprites with better zooming capabilities, plus a
-    road generator able to handle two roads simultaneously.
+    System 16b tilemaps, frame buffered sprites with better zooming
+    capabilities, and a road generator able to handle two roads
+    simultaneously.
+
+  Super hang-on:
+    Outrun lite, with System 16b sprites instead of the frame buffered
+    sprites, and only one of the two roads is actually used.
 
   X-Board:
     Outrun with a better fillrate and an even more flexible road
@@ -310,13 +315,13 @@ Quick review of the system16 hardware:
 
   Y-Board:
     New design, with two sprite planes and no tilemaps.  The back
-    sprite planes has a huge fillrate and the capability to have its
+    sprite plane has a huge fillrate and the capability to have its
     frame buffer completely rotated.  Also, it has a palette
-    indirection capability to allows for easier palettes rotations.
-    The front sprite plane is 16b.
+    indirection capability to allows for easier palette rotations.
+    The front sprite plane is System 16b.
 
   System24:
-    The odd one out.  Medium resolution. Entirely ram-based, no
+    The odd one out.  Medium resolution.  Entirely ram-based, no
     graphics roms.  4-layer tilemap hardware in two pairs, selection
     on a 8-pixels basis.  Tile-based sprites(!) organised as a linked
     list.  The tilemap chip has been reused for model1 and model2,
@@ -493,7 +498,7 @@ void segaic16_set_display_enable(int enable)
 	enable = (enable != 0);
 	if (segaic16_display_enable != enable)
 	{
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 		segaic16_display_enable = enable;
 	}
 }
@@ -608,10 +613,10 @@ void segaic16_draw_virtual_tilemap(struct tilemap_info *info, mame_bitmap *bitma
 	int page;
 
 	/* which half/halves of the virtual tilemap do we intersect in the X direction? */
-	if (xscroll < 64*8 - Machine->drv->screen[0].maxwidth)
+	if (xscroll < 64*8 - Machine->screen[0].width)
 	{
 		leftmin = 0;
-		leftmax = Machine->drv->screen[0].maxwidth - 1;
+		leftmax = Machine->screen[0].width - 1;
 		rightmin = -1;
 	}
 	else if (xscroll < 64*8)
@@ -619,12 +624,12 @@ void segaic16_draw_virtual_tilemap(struct tilemap_info *info, mame_bitmap *bitma
 		leftmin = 0;
 		leftmax = 64*8 - xscroll - 1;
 		rightmin = leftmax + 1;
-		rightmax = Machine->drv->screen[0].maxwidth - 1;
+		rightmax = Machine->screen[0].width - 1;
 	}
-	else if (xscroll < 128*8 - Machine->drv->screen[0].maxwidth)
+	else if (xscroll < 128*8 - Machine->screen[0].width)
 	{
 		rightmin = 0;
-		rightmax = Machine->drv->screen[0].maxwidth - 1;
+		rightmax = Machine->screen[0].width - 1;
 		leftmin = -1;
 	}
 	else
@@ -632,14 +637,14 @@ void segaic16_draw_virtual_tilemap(struct tilemap_info *info, mame_bitmap *bitma
 		rightmin = 0;
 		rightmax = 128*8 - xscroll - 1;
 		leftmin = rightmax + 1;
-		leftmax = Machine->drv->screen[0].maxwidth - 1;
+		leftmax = Machine->screen[0].width - 1;
 	}
 
 	/* which half/halves of the virtual tilemap do we intersect in the Y direction? */
-	if (yscroll < 32*8 - Machine->drv->screen[0].maxheight)
+	if (yscroll < 32*8 - Machine->screen[0].height)
 	{
 		topmin = 0;
-		topmax = Machine->drv->screen[0].maxheight - 1;
+		topmax = Machine->screen[0].height - 1;
 		bottommin = -1;
 	}
 	else if (yscroll < 32*8)
@@ -647,12 +652,12 @@ void segaic16_draw_virtual_tilemap(struct tilemap_info *info, mame_bitmap *bitma
 		topmin = 0;
 		topmax = 32*8 - yscroll - 1;
 		bottommin = topmax + 1;
-		bottommax = Machine->drv->screen[0].maxheight - 1;
+		bottommax = Machine->screen[0].height - 1;
 	}
-	else if (yscroll < 64*8 - Machine->drv->screen[0].maxheight)
+	else if (yscroll < 64*8 - Machine->screen[0].height)
 	{
 		bottommin = 0;
-		bottommax = Machine->drv->screen[0].maxheight - 1;
+		bottommax = Machine->screen[0].height - 1;
 		topmin = -1;
 	}
 	else
@@ -660,7 +665,7 @@ void segaic16_draw_virtual_tilemap(struct tilemap_info *info, mame_bitmap *bitma
 		bottommin = 0;
 		bottommax = 64*8 - yscroll - 1;
 		topmin = bottommax + 1;
-		topmax = Machine->drv->screen[0].maxheight - 1;
+		topmax = Machine->screen[0].height - 1;
 	}
 
 	/* if the tilemap is flipped, we need to flip our sense within each quadrant */
@@ -669,26 +674,26 @@ void segaic16_draw_virtual_tilemap(struct tilemap_info *info, mame_bitmap *bitma
 		if (leftmin != -1)
 		{
 			int temp = leftmin;
-			leftmin = Machine->drv->screen[0].maxwidth - 1 - leftmax;
-			leftmax = Machine->drv->screen[0].maxwidth - 1 - temp;
+			leftmin = Machine->screen[0].width - 1 - leftmax;
+			leftmax = Machine->screen[0].width - 1 - temp;
 		}
 		if (rightmin != -1)
 		{
 			int temp = rightmin;
-			rightmin = Machine->drv->screen[0].maxwidth - 1 - rightmax;
-			rightmax = Machine->drv->screen[0].maxwidth - 1 - temp;
+			rightmin = Machine->screen[0].width - 1 - rightmax;
+			rightmax = Machine->screen[0].width - 1 - temp;
 		}
 		if (topmin != -1)
 		{
 			int temp = topmin;
-			topmin = Machine->drv->screen[0].maxheight - 1 - topmax;
-			topmax = Machine->drv->screen[0].maxheight - 1 - temp;
+			topmin = Machine->screen[0].height - 1 - topmax;
+			topmax = Machine->screen[0].height - 1 - temp;
 		}
 		if (bottommin != -1)
 		{
 			int temp = bottommin;
-			bottommin = Machine->drv->screen[0].maxheight - 1 - bottommax;
-			bottommax = Machine->drv->screen[0].maxheight - 1 - temp;
+			bottommin = Machine->screen[0].height - 1 - bottommax;
+			bottommax = Machine->screen[0].height - 1 - temp;
 		}
 	}
 
@@ -1344,7 +1349,7 @@ void segaic16_tilemap_set_bank(int which, int banknum, int offset)
 
 	if (info->bank[banknum] != offset)
 	{
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 		info->bank[banknum] = offset;
 		tilemap_mark_all_tiles_dirty(NULL);
 	}
@@ -1366,7 +1371,7 @@ void segaic16_tilemap_set_flip(int which, int flip)
 	flip = (flip != 0);
 	if (info->flip != flip)
 	{
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 		info->flip = flip;
 		tilemap_set_flip(info->textmap, flip ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 		for (pagenum = 0; pagenum < info->numpages; pagenum++)
@@ -1389,7 +1394,7 @@ void segaic16_tilemap_set_rowscroll(int which, int enable)
 	enable = (enable != 0);
 	if (info->rowscroll != enable)
 	{
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 		info->rowscroll = enable;
 	}
 }
@@ -1409,7 +1414,7 @@ void segaic16_tilemap_set_colscroll(int which, int enable)
 	enable = (enable != 0);
 	if (info->colscroll != enable)
 	{
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 		info->colscroll = enable;
 	}
 }
@@ -1433,7 +1438,7 @@ WRITE16_HANDLER( segaic16_textram_0_w )
 {
 	/* certain ranges need immediate updates */
 	if (offset >= 0xe80/2)
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 
 	COMBINE_DATA(&segaic16_textram_0[offset]);
 	tilemap_mark_tile_dirty(bg_tilemap[0].textmap, offset);
@@ -2760,7 +2765,7 @@ void segaic16_sprites_set_bank(int which, int banknum, int offset)
 
 	if (info->bank[banknum] != offset)
 	{
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 		info->bank[banknum] = offset;
 	}
 }
@@ -2780,7 +2785,7 @@ void segaic16_sprites_set_flip(int which, int flip)
 	flip = (flip != 0);
 	if (info->flip != flip)
 	{
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 		info->flip = flip;
 	}
 }
@@ -2800,7 +2805,7 @@ void segaic16_sprites_set_shadow(int which, int shadow)
 	shadow = (shadow != 0);
 	if (info->shadow != shadow)
 	{
-		force_partial_update(0, cpu_getscanline());
+		video_screen_update_partial(0, cpu_getscanline());
 		info->shadow = shadow;
 	}
 }
@@ -2921,7 +2926,7 @@ static void segaic16_road_hangon_draw(struct road_info *info, mame_bitmap *bitma
 		if (code_pressed(KEYCODE_L)) dx++;
 		if (code_pressed(KEYCODE_I)) dy--;
 		if (code_pressed(KEYCODE_K)) dy++;
-		ui_popup("X=%d Y=%d", dx, dy);
+		popmessage("X=%d Y=%d", dx, dy);
 
 		if (code_pressed(KEYCODE_D))
 		{

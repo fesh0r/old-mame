@@ -246,7 +246,7 @@ static void snes_hblank_tick(int ref)
 			if( snes_ram[HDMAEN] )
 				snes_hdma();
 
-			force_partial_update(0, snes_ppu.beam.current_vert-1);
+			video_screen_update_partial(0, snes_ppu.beam.current_vert-1);
 		}
 	}
 
@@ -320,7 +320,7 @@ static void snes_init_ram(void)
 	has_dsp1 = ((snes_r_bank1(0xffd6) >= 3) && (snes_r_bank1(0xffd6) <= 5)) ? 1 : 0;
 
 	// init frame counter so first line is 0
-	if( Machine->drv->screen[0].refresh_rate == 60 )
+	if( Machine->screen[0].refresh == 60 )
 	{
 		snes_ppu.beam.current_vert = SNES_MAX_LINES_NTSC;
 	}
@@ -337,11 +337,18 @@ static OPBASE_HANDLER(spc_opbase)
 	return ~0;
 }
 
+static OPBASE_HANDLER(snes_opbase)
+{
+	opcode_base = opcode_arg_base = snes_ram;
+	return ~0;
+}
+
 MACHINE_START( snes )
 {
 	snes_vram = auto_malloc(SNES_VRAM_SIZE);
 	snes_cgram = auto_malloc(SNES_CGRAM_SIZE);
 	snes_oam = auto_malloc(SNES_OAM_SIZE);
+	memory_set_opbase_handler(0, snes_opbase);
 	memory_set_opbase_handler(1, spc_opbase);
 	return 0;
 }
@@ -351,9 +358,9 @@ MACHINE_RESET( snes )
 	snes_init_ram();
 
 	/* Set STAT78 to NTSC or PAL */
-	if( Machine->drv->screen[0].refresh_rate == 60 )
+	if( Machine->screen[0].refresh == 60 )
 		snes_ram[STAT78] = SNES_NTSC;
-	else /* if( Machine->drv->screen[0].refresh_rate == 50 ) */
+	else /* if( Machine->screen[0].refresh == 50 ) */
 		snes_ram[STAT78] = SNES_PAL;
 }
 
@@ -1030,17 +1037,18 @@ WRITE8_HANDLER( snes_w_io )
 			}
 		case BGMODE:	/* BG mode and character size settings */
 			snes_ppu.mode = data & 0x7;
+			{
+				int max_x;
 #ifdef SNES_DBG_VIDHRDW
-			if( snes_ppu.mode == 5 || snes_ppu.mode == 6 )
-				set_visible_area(0, 0, (SNES_SCR_WIDTH * 2 * 1.75) - 1, 0, snes_ppu.beam.last_visible_line  - 1);
-			else
-				set_visible_area(0, 0, (SNES_SCR_WIDTH * 2 * 1.75) - 1, 0, snes_ppu.beam.last_visible_line - 1 );
+				max_x = (SNES_SCR_WIDTH * 2 * 1.75) - 1;
 #else
-			if( snes_ppu.mode == 5 || snes_ppu.mode == 6 )
-				set_visible_area(0, 0, (SNES_SCR_WIDTH * 2) - 1, 0, snes_ppu.beam.last_visible_line - 1 );
-			else
-				set_visible_area(0, 0, SNES_SCR_WIDTH - 1, 0, snes_ppu.beam.last_visible_line - 1 );
+				if( snes_ppu.mode == 5 || snes_ppu.mode == 6 )
+					max_x = (SNES_SCR_WIDTH * 2) - 1;
+				else
+					max_x = SNES_SCR_WIDTH - 1;
 #endif
+				video_screen_set_visarea(0, 0, max_x, 0, snes_ppu.beam.last_visible_line - 1);
+			}
 
 			snes_ppu.layer[0].tile_size = (data >> 4) & 0x1;
 			snes_ppu.layer[1].tile_size = (data >> 5) & 0x1;

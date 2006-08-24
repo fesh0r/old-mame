@@ -38,7 +38,6 @@
  */
 
 #include "driver.h"
-#include "artwork.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/idectrl.h"
 #include "sound/k054539.h"
@@ -373,10 +372,10 @@ static WRITE32_HANDLER( light_ctrl_1_w )
 {
 	if (ACCESSING_MSW32)
 	{
-		artwork_show("right-red-hlt",  !(data & 0x08000000));	// Right red HIGHLIGHT
-		artwork_show("left-red-hlt",   !(data & 0x04000000));	// Left red HIGHLIGHT
-		artwork_show("left-blue-hlt",  !(data & 0x02000000));	// Left blue HIGHLIGHT
-		artwork_show("right-blue-hlt", !(data & 0x00200000));	// Right blue HIGHLIGHT
+		output_set_value("right-red-hlt",  !(data & 0x08000000));	// Right red HIGHLIGHT
+		output_set_value("left-red-hlt",   !(data & 0x04000000));	// Left red HIGHLIGHT
+		output_set_value("left-blue-hlt",  !(data & 0x02000000));	// Left blue HIGHLIGHT
+		output_set_value("right-blue-hlt", !(data & 0x00200000));	// Right blue HIGHLIGHT
 	}
 }
 
@@ -384,8 +383,8 @@ static WRITE32_HANDLER( light_ctrl_2_w )
 {
 	if (ACCESSING_MSW32)
 	{
-		artwork_show("left-ssr",       data & 0x08000000);	// SSR
-		artwork_show("right-ssr",      data & 0x08000000);	// SSR
+		output_set_value("left-ssr",       !!(data & 0x08000000));	// SSR
+		output_set_value("right-ssr",      !!(data & 0x08000000));	// SSR
 		set_led_status(0, data & 0x00010000);			// 1P START
 		set_led_status(1, data & 0x00020000);			// 2P START
 		set_led_status(2, data & 0x00040000);			// EFFECT

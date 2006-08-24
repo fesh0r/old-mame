@@ -27,6 +27,7 @@
 
 // MAME headers
 #include "render.h"
+#include "rendutil.h"
 #include "options.h"
 
 // OSD headers
@@ -424,7 +425,7 @@ static int drawd3d_window_init(win_window_info *window)
 	// allocate memory for our structures
 	d3d = malloc_or_die(sizeof(*d3d));
 	memset(d3d, 0, sizeof(*d3d));
-	window->dxdata = d3d;
+	window->drawdata = d3d;
 
 	// experimental: load a PNG to use for vector rendering; it is treated
 	// as a brightness map
@@ -459,7 +460,7 @@ error:
 
 static void drawd3d_window_destroy(win_window_info *window)
 {
-	d3d_info *d3d = window->dxdata;
+	d3d_info *d3d = window->drawdata;
 
 	// skip if nothing
 	if (d3d == NULL)
@@ -474,7 +475,7 @@ static void drawd3d_window_destroy(win_window_info *window)
 
 	// free the memory in the window
 	free(d3d);
-	window->dxdata = NULL;
+	window->drawdata = NULL;
 }
 
 
@@ -500,7 +501,7 @@ static const render_primitive_list *drawd3d_window_get_primitives(win_window_inf
 
 static int drawd3d_window_draw(win_window_info *window, HDC dc, int update)
 {
-	d3d_info *d3d = window->dxdata;
+	d3d_info *d3d = window->drawdata;
 	const render_primitive *prim;
 	HRESULT result;
 
@@ -586,7 +587,7 @@ mtlog_add("drawd3d_window_draw: present end");
 
 static int device_create(win_window_info *window)
 {
-	d3d_info *d3d = window->dxdata;
+	d3d_info *d3d = window->drawdata;
 	HRESULT result;
 	int verify;
 
@@ -642,11 +643,7 @@ try_again:
 	d3d->presentation.MultiSampleType				= D3DMULTISAMPLE_NONE;
 	d3d->presentation.SwapEffect					= D3DSWAPEFFECT_DISCARD;
 	d3d->presentation.hDeviceWindow					= window->hwnd;
-#ifdef MESS
 	d3d->presentation.Windowed						= !window->fullscreen || win_has_menu(window);
-#else
-	d3d->presentation.Windowed						= !window->fullscreen;
-#endif
 	d3d->presentation.EnableAutoDepthStencil		= FALSE;
 	d3d->presentation.AutoDepthStencilFormat		= D3DFMT_D16;
 	d3d->presentation.Flags							= 0;
@@ -1023,7 +1020,7 @@ static int device_test_cooperative(d3d_info *d3d)
 static int config_adapter_mode(win_window_info *window)
 {
 	d3d_adapter_identifier identifier;
-	d3d_info *d3d = window->dxdata;
+	d3d_info *d3d = window->drawdata;
 	HRESULT result;
 
 	// choose the monitor number
@@ -1047,11 +1044,7 @@ static int config_adapter_mode(win_window_info *window)
 	}
 
 	// choose a resolution: window mode case
-#ifdef MESS
 	if (!window->fullscreen || win_has_menu(window))
-#else
-	if (!window->fullscreen)
-#endif
 	{
 		RECT client;
 
@@ -1133,7 +1126,7 @@ static int get_adapter_for_monitor(d3d_info *d3d, win_monitor_info *monitor)
 static void pick_best_mode(win_window_info *window)
 {
 	INT32 target_width, target_height;
-	d3d_info *d3d = window->dxdata;
+	d3d_info *d3d = window->drawdata;
 	INT32 minwidth, minheight;
 	float best_score = 0.0;
 	int maxmodes;
@@ -1185,18 +1178,18 @@ static void pick_best_mode(win_window_info *window)
 			size_score = 2.0f;
 
 		// compute refresh score
-		refresh_score = 1.0f / (1.0f + fabs((double)mode.RefreshRate - Machine->refresh_rate[0]));
+		refresh_score = 1.0f / (1.0f + fabs((double)mode.RefreshRate - Machine->screen[0].refresh));
+
+		// if refresh is smaller than we'd like, it only scores up to 0.1
+		if ((double)mode.RefreshRate < Machine->screen[0].refresh)
+			refresh_score *= 0.1;
 
 		// if we're looking for a particular refresh, make sure it matches
 		if (mode.RefreshRate == window->refresh)
-			refresh_score = 1.0f;
+			refresh_score = 2.0f;
 
-		// if refresh is smaller than we'd like, it only scores up to 0.1
-		if ((double)mode.RefreshRate < Machine->refresh_rate[0])
-			refresh_score *= 0.1;
-
-		// weight size highest, followed by depth and refresh
-		final_score = (size_score * 100.0 + refresh_score) / 101.0;
+		// weight size and refresh equally
+		final_score = size_score + refresh_score;
 
 		// best so far?
 		verbose_printf("  %4dx%4d@%3dHz -> %f\n", mode.Width, mode.Height, mode.RefreshRate, final_score * 1000.0f);
@@ -1220,7 +1213,7 @@ static void pick_best_mode(win_window_info *window)
 
 static int update_window_size(win_window_info *window)
 {
-	d3d_info *d3d = window->dxdata;
+	d3d_info *d3d = window->drawdata;
 	RECT client;
 
 	// get the current window bounds
@@ -1259,87 +1252,21 @@ static int update_window_size(win_window_info *window)
 static void draw_line(d3d_info *d3d, const render_primitive *prim)
 {
 	const line_aa_step *step = line_aa_4step;
-	float unitx, unity, effwidth;
+	render_bounds b0, b1;
 	d3d_vertex *vertex;
 	INT32 r, g, b, a;
 	poly_info *poly;
+	float effwidth;
 	DWORD color;
 	int i;
-
-	/*
-        High-level logic -- due to math optimizations, this info is lost below.
-
-        Imagine a thick line of width (w), drawn from (p0) to (p1), with a unit
-        vector (u) indicating the direction from (p0) to (p1).
-
-          B                                                          C
-            +-----------------------  ...   -----------------------+
-            |                                               ^      |
-            |                                               |(w)   |
-            |                                               v      |
-            |<---->* (p0)        ------------>         (p1) *      |
-            |  (w)                    (u)                          |
-            |                                                      |
-            |                                                      |
-            +-----------------------  ...   -----------------------+
-          A                                                          D
-
-        To convert this into a quad, we need to compute the four points A, B, C
-        and D.
-
-        Starting with point A. We first multiply the unit vector by (w) and then
-        rotate the result 135 degrees. This points us in the right direction, but
-        needs to be scaled by a factor of sqrt(2) to reach A. Thus, we have:
-
-            A.x = p0.x + w * u.x * cos(135) * sqrt(2) - w * u.y * sin(135) * sqrt(2)
-            A.y = p0.y + w * u.y * sin(135) * sqrt(2) + w * u.y * cos(135) * sqrt(2)
-
-        Conveniently, sin(135) = 1/sqrt(2), and cos(135) = -1/sqrt(2), so this
-        simplifies to:
-
-            A.x = p0.x - w * u.x - w * u.y
-            A.y = p0.y + w * u.y - w * u.y
-
-        Working clockwise around the polygon, the same fallout happens all around as
-        we rotate the unit vector by -135 (B), -45 (C), and 45 (D) degrees:
-
-            B.x = p0.x - w * u.x + w * u.y
-            B.y = p0.y - w * u.x - w * u.y
-
-            C.x = p1.x + w * u.x + w * u.y
-            C.y = p1.y - w * u.x + w * u.y
-
-            D.x = p1.x + w * u.x - w * u.y
-            D.y = p1.y + w * u.x + w * u.y
-    */
-
-	// compute a vector from point 0 to point 1
-	unitx = prim->bounds.x1 - prim->bounds.x0;
-	unity = prim->bounds.y1 - prim->bounds.y0;
-
-	// points just use a +1/+1 unit vector; this gives a nice diamond pattern
-	if (unitx == 0 && unity == 0)
-	{
-		unitx = 0.70710678f;
-		unity = 0.70710678f;
-	}
-
-	// lines need to be divided by their length
-	else
-	{
-		float invlength = 1.0f / sqrt(unitx * unitx + unity * unity);
-		unitx *= invlength;
-		unity *= invlength;
-	}
 
 	// compute the effective width based on the direction of the line
 	effwidth = prim->width;
 	if (effwidth < 0.5f)
 		effwidth = 0.5f;
 
-	// prescale unitx and unity by the length
-	unitx *= effwidth;
-	unity *= effwidth;
+	// determine the bounds of a quad to draw this line
+	render_line_to_quad(&prim->bounds, effwidth, &b0, &b1);
 
 	// iterate over AA steps
 	for (step = PRIMFLAG_GET_ANTIALIAS(prim->flags) ? line_aa_4step : line_aa_1step; step->weight != 0; step++)
@@ -1350,20 +1277,20 @@ static void draw_line(d3d_info *d3d, const render_primitive *prim)
 			return;
 
 		// rotate the unit vector by 135 degrees and add to point 0
-		vertex[0].x = prim->bounds.x0 - unitx - unity + step->xoffs;
-		vertex[0].y = prim->bounds.y0 + unitx - unity + step->yoffs;
+		vertex[0].x = b0.x0 + step->xoffs;
+		vertex[0].y = b0.y0 + step->yoffs;
 
 		// rotate the unit vector by -135 degrees and add to point 0
-		vertex[1].x = prim->bounds.x0 - unitx + unity + step->xoffs;
-		vertex[1].y = prim->bounds.y0 - unitx - unity + step->yoffs;
+		vertex[1].x = b0.x1 + step->xoffs;
+		vertex[1].y = b0.y1 + step->yoffs;
 
 		// rotate the unit vector by 45 degrees and add to point 1
-		vertex[2].x = prim->bounds.x1 + unitx - unity + step->xoffs;
-		vertex[2].y = prim->bounds.y1 + unitx + unity + step->yoffs;
+		vertex[2].x = b1.x0 + step->xoffs;
+		vertex[2].y = b1.y0 + step->yoffs;
 
 		// rotate the unit vector by -45 degrees and add to point 1
-		vertex[3].x = prim->bounds.x1 + unitx + unity + step->xoffs;
-		vertex[3].y = prim->bounds.y1 - unitx + unity + step->yoffs;
+		vertex[3].x = b1.x1 + step->xoffs;
+		vertex[3].y = b1.y1 + step->yoffs;
 
 		// determine the color of the line
 		r = (INT32)(prim->color.r * step->weight * 255.0f);

@@ -1,6 +1,6 @@
 /***************************************************************************
 
-    raster.c
+    rendersw.c
 
     Software-only rasterization system.
 
@@ -88,7 +88,7 @@ struct _quad_setup_data
 
 
 /***************************************************************************
-    GLOBALS
+    GLOBAL VARIABLES
 ***************************************************************************/
 
 static UINT32 cosine_table[2049];
@@ -190,15 +190,12 @@ INLINE int vec_div(int parm1, int parm2)
 
 
 
-
 /***************************************************************************
-
-    Software rasterizers
-
+    LINE RASTERIZERS
 ***************************************************************************/
 
 /*-------------------------------------------------
-    draw_line - draw a line or point
+    draw_aa_pixel - draw an antialiased pixel
 -------------------------------------------------*/
 
 INLINE void FUNC_PREFIX(draw_aa_pixel)(void *dstdata, UINT32 pitch, int x, int y, rgb_t col)
@@ -218,6 +215,10 @@ INLINE void FUNC_PREFIX(draw_aa_pixel)(void *dstdata, UINT32 pitch, int x, int y
 }
 
 
+/*-------------------------------------------------
+    draw_line - draw a line or point
+-------------------------------------------------*/
+
 static void FUNC_PREFIX(draw_line)(const render_primitive *prim, void *dstdata, INT32 width, INT32 height, UINT32 pitch)
 {
 	int dx,dy,sx,sy,cx,cy,bwidth;
@@ -232,16 +233,6 @@ static void FUNC_PREFIX(draw_line)(const render_primitive *prim, void *dstdata, 
 	y1 = (int)(prim->bounds.y0 * 65536.0f);
 	x2 = (int)(prim->bounds.x1 * 65536.0f);
 	y2 = (int)(prim->bounds.y1 * 65536.0f);
-
-	/* clamp just in case */
-	if (x1 < 0) x1 = 0;
-	if (x1 >= (width << 16)) x1 = (width << 16) - 1;
-	if (x2 < 0) x2 = 0;
-	if (x2 >= (width << 16)) x2 = (width << 16) - 1;
-	if (y1 < 0) y1 = 0;
-	if (y1 >= (height << 16)) y1 = (height << 16) - 1;
-	if (y2 < 0) y2 = 0;
-	if (y2 >= (height << 16)) y2 = (height << 16) - 1;
 
 	/* handle color and intensity */
 	col = MAKE_RGB((int)(255.0f * prim->color.r * prim->color.a), (int)(255.0f * prim->color.g * prim->color.a), (int)(255.0f * prim->color.b * prim->color.a));
@@ -276,15 +267,25 @@ static void FUNC_PREFIX(draw_line)(const render_primitive *prim, void *dstdata, 
 			y1 -= bwidth >> 1; /* start back half the diameter */
 			for (;;)
 			{
-				dx = bwidth;    /* init diameter of beam */
-				dy = y1 >> 16;
-				FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, x1, dy++, Tinten(0xff & (~y1 >> 8), col));
-				dx -= 0x10000 - (0xffff & y1); /* take off amount plotted */
-				a1 = (dx >> 8) & 0xff;   /* calc remainder pixel */
-				dx >>= 16;                   /* adjust to pixel (solid) count */
-				while (dx--)                 /* plot rest of pixels */
-					FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, x1, dy++, col);
-				FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, x1, dy, Tinten(a1,col));
+				if (x1 >= 0 && x1 < width)
+				{
+					dx = bwidth;    /* init diameter of beam */
+					dy = y1 >> 16;
+					if (dy >= 0 && dy < height)
+						FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, x1, dy, Tinten(0xff & (~y1 >> 8), col));
+					dy++;
+					dx -= 0x10000 - (0xffff & y1); /* take off amount plotted */
+					a1 = (dx >> 8) & 0xff;   /* calc remainder pixel */
+					dx >>= 16;                   /* adjust to pixel (solid) count */
+					while (dx--)                 /* plot rest of pixels */
+					{
+						if (dy >= 0 && dy < height)
+							FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, x1, dy, col);
+						dy++;
+					}
+					if (dy >= 0 && dy < height)
+						FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, x1, dy, Tinten(a1,col));
+				}
 				if (x1 == xx) break;
 				x1 += sx;
 				y1 += sy;
@@ -302,15 +303,25 @@ static void FUNC_PREFIX(draw_line)(const render_primitive *prim, void *dstdata, 
 			x1 -= bwidth >> 1; /* start back half the width */
 			for (;;)
 			{
-				dy = bwidth;    /* calc diameter of beam */
-				dx = x1 >> 16;
-				FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, dx++, y1, Tinten(0xff & (~x1 >> 8), col));
-				dy -= 0x10000 - (0xffff & x1); /* take off amount plotted */
-				a1 = (dy >> 8) & 0xff;   /* remainder pixel */
-				dy >>= 16;                   /* adjust to pixel (solid) count */
-				while (dy--)                 /* plot rest of pixels */
-					FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, dx++, y1, col);
-				FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, dx, y1, Tinten(a1, col));
+				if (y1 >= 0 && y1 < height)
+				{
+					dy = bwidth;    /* calc diameter of beam */
+					dx = x1 >> 16;
+					if (dx >= 0 && dx < width)
+						FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, dx, y1, Tinten(0xff & (~x1 >> 8), col));
+					dx++;
+					dy -= 0x10000 - (0xffff & x1); /* take off amount plotted */
+					a1 = (dy >> 8) & 0xff;   /* remainder pixel */
+					dy >>= 16;                   /* adjust to pixel (solid) count */
+					while (dy--)                 /* plot rest of pixels */
+					{
+						if (dx >= 0 && dx < width)
+							FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, dx, y1, col);
+						dx++;
+					}
+					if (dx >= 0 && dx < width)
+						FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, dx, y1, Tinten(a1, col));
+				}
 				if (y1 == yy) break;
 				y1 += sy;
 				x1 += sx;
@@ -335,7 +346,8 @@ static void FUNC_PREFIX(draw_line)(const render_primitive *prim, void *dstdata, 
 		{
 			for (;;)
 			{
-				FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, x1, y1, col);
+				if (x1 >= 0 && x1 < width && y1 >= 0 && y1 < height)
+					FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, x1, y1, col);
 				if (x1 == x2) break;
 				x1 += sx;
 				cx -= dy;
@@ -350,7 +362,8 @@ static void FUNC_PREFIX(draw_line)(const render_primitive *prim, void *dstdata, 
 		{
 			for (;;)
 			{
-				FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, x1, y1, col);
+				if (x1 >= 0 && x1 < width && y1 >= 0 && y1 < height)
+					FUNC_PREFIX(draw_aa_pixel)(dstdata, pitch, x1, y1, col);
 				if (y1 == y2) break;
 				y1 += sy;
 				cy -= dx;
@@ -364,6 +377,11 @@ static void FUNC_PREFIX(draw_line)(const render_primitive *prim, void *dstdata, 
 	}
 }
 
+
+
+/***************************************************************************
+    RECT RASTERIZERS
+***************************************************************************/
 
 /*-------------------------------------------------
     draw_rect - draw a solid rectangle
@@ -467,6 +485,11 @@ static void FUNC_PREFIX(draw_rect)(const render_primitive *prim, void *dstdata, 
 	}
 }
 
+
+
+/***************************************************************************
+    16-BIT PALETTE RASTERIZERS
+***************************************************************************/
 
 /*-------------------------------------------------
     draw_quad_palette16_none - perform
@@ -672,178 +695,10 @@ static void FUNC_PREFIX(draw_quad_palette16_add)(const render_primitive *prim, v
 }
 
 
-/*-------------------------------------------------
-    draw_quad_rgb32 - perform rasterization of
-    a 32bpp RGB texture
--------------------------------------------------*/
 
-static void FUNC_PREFIX(draw_quad_rgb32)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
-{
-	UINT32 *texbase = prim->texture.base;
-	const rgb_t *palbase = prim->texture.palette;
-	UINT32 texrp = prim->texture.rowpixels;
-	INT32 dudx = setup->dudx;
-	INT32 dvdx = setup->dvdx;
-	INT32 endx = setup->endx;
-	INT32 x, y;
-
-	/* fast case: no coloring, no alpha */
-	if (prim->color.r >= 1.0f && prim->color.g >= 1.0f && prim->color.b >= 1.0f && IS_OPAQUE(prim->color.a))
-	{
-		/* loop over rows */
-		for (y = setup->starty; y < setup->endy; y++)
-		{
-			PIXEL_TYPE *dest = (PIXEL_TYPE *)dstdata + y * pitch + setup->startx;
-			INT32 curu = setup->startu + (y - setup->starty) * setup->dudy;
-			INT32 curv = setup->startv + (y - setup->starty) * setup->dvdy;
-
-			/* no lookup case */
-			if (palbase == NULL)
-			{
-				/* loop over cols */
-				for (x = setup->startx; x < endx; x++)
-				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
-					*dest++ = SOURCE32_TO_DEST(pix);
-					curu += dudx;
-					curv += dvdx;
-				}
-			}
-
-			/* lookup case */
-			else
-			{
-				/* loop over cols */
-				for (x = setup->startx; x < endx; x++)
-				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
-					UINT32 r = palbase[(pix >> 16) & 0xff] >> SRCSHIFT_R;
-					UINT32 g = palbase[(pix >> 8) & 0xff] >> SRCSHIFT_G;
-					UINT32 b = palbase[(pix >> 0) & 0xff] >> SRCSHIFT_B;
-
-					*dest++ = DEST_ASSEMBLE_RGB(r, g, b);
-					curu += dudx;
-					curv += dvdx;
-				}
-			}
-		}
-	}
-
-	/* coloring-only case */
-	else if (IS_OPAQUE(prim->color.a))
-	{
-		UINT32 sr = (UINT32)(256.0f * prim->color.r);
-		UINT32 sg = (UINT32)(256.0f * prim->color.g);
-		UINT32 sb = (UINT32)(256.0f * prim->color.b);
-
-		/* clamp R,G,B to 0-256 range */
-		if (sr > 0x100) { if ((INT32)sr < 0) sr = 0; else sr = 0x100; }
-		if (sg > 0x100) { if ((INT32)sg < 0) sg = 0; else sg = 0x100; }
-		if (sb > 0x100) { if ((INT32)sb < 0) sb = 0; else sb = 0x100; }
-
-		/* loop over rows */
-		for (y = setup->starty; y < setup->endy; y++)
-		{
-			PIXEL_TYPE *dest = (PIXEL_TYPE *)dstdata + y * pitch + setup->startx;
-			INT32 curu = setup->startu + (y - setup->starty) * setup->dudy;
-			INT32 curv = setup->startv + (y - setup->starty) * setup->dvdy;
-
-			/* no lookup case */
-			if (palbase == NULL)
-			{
-				/* loop over cols */
-				for (x = setup->startx; x < endx; x++)
-				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
-					UINT32 r = (SOURCE32_R(pix) * sr) >> 8;
-					UINT32 g = (SOURCE32_G(pix) * sg) >> 8;
-					UINT32 b = (SOURCE32_B(pix) * sb) >> 8;
-
-					*dest++ = DEST_ASSEMBLE_RGB(r, g, b);
-					curu += dudx;
-					curv += dvdx;
-				}
-			}
-
-			/* lookup case */
-			else
-			{
-				/* loop over cols */
-				for (x = setup->startx; x < endx; x++)
-				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
-					UINT32 r = (palbase[(pix >> 16) & 0xff] * sr) >> (8 + SRCSHIFT_R);
-					UINT32 g = (palbase[(pix >> 8) & 0xff] * sg) >> (8 + SRCSHIFT_G);
-					UINT32 b = (palbase[(pix >> 0) & 0xff] * sb) >> (8 + SRCSHIFT_B);
-
-					*dest++ = DEST_ASSEMBLE_RGB(r, g, b);
-					curu += dudx;
-					curv += dvdx;
-				}
-			}
-		}
-	}
-
-	/* alpha and/or coloring case */
-	else if (!IS_TRANSPARENT(prim->color.a))
-	{
-		UINT32 sr = (UINT32)(256.0f * prim->color.r * prim->color.a);
-		UINT32 sg = (UINT32)(256.0f * prim->color.g * prim->color.a);
-		UINT32 sb = (UINT32)(256.0f * prim->color.b * prim->color.a);
-		UINT32 invsa = (UINT32)(256.0f * (1.0f - prim->color.a));
-
-		/* clamp R,G,B and inverse A to 0-256 range */
-		if (sr > 0x100) { if ((INT32)sr < 0) sr = 0; else sr = 0x100; }
-		if (sg > 0x100) { if ((INT32)sg < 0) sg = 0; else sg = 0x100; }
-		if (sb > 0x100) { if ((INT32)sb < 0) sb = 0; else sb = 0x100; }
-		if (invsa > 0x100) { if ((INT32)invsa < 0) invsa = 0; else invsa = 0x100; }
-
-		/* loop over rows */
-		for (y = setup->starty; y < setup->endy; y++)
-		{
-			PIXEL_TYPE *dest = (PIXEL_TYPE *)dstdata + y * pitch + setup->startx;
-			INT32 curu = setup->startu + (y - setup->starty) * setup->dudy;
-			INT32 curv = setup->startv + (y - setup->starty) * setup->dvdy;
-
-			/* no lookup case */
-			if (palbase == NULL)
-			{
-				/* loop over cols */
-				for (x = setup->startx; x < endx; x++)
-				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
-					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
-					UINT32 r = (SOURCE32_R(pix) * sr + DEST_R(dpix) * invsa) >> 8;
-					UINT32 g = (SOURCE32_G(pix) * sg + DEST_G(dpix) * invsa) >> 8;
-					UINT32 b = (SOURCE32_B(pix) * sb + DEST_B(dpix) * invsa) >> 8;
-
-					*dest++ = DEST_ASSEMBLE_RGB(r, g, b);
-					curu += dudx;
-					curv += dvdx;
-				}
-			}
-
-			/* lookup case */
-			else
-			{
-				/* loop over cols */
-				for (x = setup->startx; x < endx; x++)
-				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
-					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
-					UINT32 r = ((palbase[(pix >> 16) & 0xff] >> SRCSHIFT_R) * sr + DEST_R(dpix) * invsa) >> 8;
-					UINT32 g = ((palbase[(pix >> 8) & 0xff] >> SRCSHIFT_G) * sg + DEST_G(dpix) * invsa) >> 8;
-					UINT32 b = ((palbase[(pix >> 0) & 0xff] >> SRCSHIFT_B) * sb + DEST_B(dpix) * invsa) >> 8;
-
-					*dest++ = DEST_ASSEMBLE_RGB(r, g, b);
-					curu += dudx;
-					curv += dvdx;
-				}
-			}
-		}
-	}
-}
-
+/***************************************************************************
+    15-BIT RGB QUAD RASTERIZERS
+***************************************************************************/
 
 /*-------------------------------------------------
     draw_quad_rgb15 - perform rasterization of
@@ -1017,6 +872,189 @@ static void FUNC_PREFIX(draw_quad_rgb15)(const render_primitive *prim, void *dst
 	}
 }
 
+
+
+/***************************************************************************
+    32-BIT RGB QUAD RASTERIZERS
+***************************************************************************/
+
+/*-------------------------------------------------
+    draw_quad_rgb32 - perform rasterization of
+    a 32bpp RGB texture
+-------------------------------------------------*/
+
+static void FUNC_PREFIX(draw_quad_rgb32)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
+{
+	UINT32 *texbase = prim->texture.base;
+	const rgb_t *palbase = prim->texture.palette;
+	UINT32 texrp = prim->texture.rowpixels;
+	INT32 dudx = setup->dudx;
+	INT32 dvdx = setup->dvdx;
+	INT32 endx = setup->endx;
+	INT32 x, y;
+
+	/* fast case: no coloring, no alpha */
+	if (prim->color.r >= 1.0f && prim->color.g >= 1.0f && prim->color.b >= 1.0f && IS_OPAQUE(prim->color.a))
+	{
+		/* loop over rows */
+		for (y = setup->starty; y < setup->endy; y++)
+		{
+			PIXEL_TYPE *dest = (PIXEL_TYPE *)dstdata + y * pitch + setup->startx;
+			INT32 curu = setup->startu + (y - setup->starty) * setup->dudy;
+			INT32 curv = setup->startv + (y - setup->starty) * setup->dvdy;
+
+			/* no lookup case */
+			if (palbase == NULL)
+			{
+				/* loop over cols */
+				for (x = setup->startx; x < endx; x++)
+				{
+					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					*dest++ = SOURCE32_TO_DEST(pix);
+					curu += dudx;
+					curv += dvdx;
+				}
+			}
+
+			/* lookup case */
+			else
+			{
+				/* loop over cols */
+				for (x = setup->startx; x < endx; x++)
+				{
+					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 r = palbase[(pix >> 16) & 0xff] >> SRCSHIFT_R;
+					UINT32 g = palbase[(pix >> 8) & 0xff] >> SRCSHIFT_G;
+					UINT32 b = palbase[(pix >> 0) & 0xff] >> SRCSHIFT_B;
+
+					*dest++ = DEST_ASSEMBLE_RGB(r, g, b);
+					curu += dudx;
+					curv += dvdx;
+				}
+			}
+		}
+	}
+
+	/* coloring-only case */
+	else if (IS_OPAQUE(prim->color.a))
+	{
+		UINT32 sr = (UINT32)(256.0f * prim->color.r);
+		UINT32 sg = (UINT32)(256.0f * prim->color.g);
+		UINT32 sb = (UINT32)(256.0f * prim->color.b);
+
+		/* clamp R,G,B to 0-256 range */
+		if (sr > 0x100) { if ((INT32)sr < 0) sr = 0; else sr = 0x100; }
+		if (sg > 0x100) { if ((INT32)sg < 0) sg = 0; else sg = 0x100; }
+		if (sb > 0x100) { if ((INT32)sb < 0) sb = 0; else sb = 0x100; }
+
+		/* loop over rows */
+		for (y = setup->starty; y < setup->endy; y++)
+		{
+			PIXEL_TYPE *dest = (PIXEL_TYPE *)dstdata + y * pitch + setup->startx;
+			INT32 curu = setup->startu + (y - setup->starty) * setup->dudy;
+			INT32 curv = setup->startv + (y - setup->starty) * setup->dvdy;
+
+			/* no lookup case */
+			if (palbase == NULL)
+			{
+				/* loop over cols */
+				for (x = setup->startx; x < endx; x++)
+				{
+					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 r = (SOURCE32_R(pix) * sr) >> 8;
+					UINT32 g = (SOURCE32_G(pix) * sg) >> 8;
+					UINT32 b = (SOURCE32_B(pix) * sb) >> 8;
+
+					*dest++ = DEST_ASSEMBLE_RGB(r, g, b);
+					curu += dudx;
+					curv += dvdx;
+				}
+			}
+
+			/* lookup case */
+			else
+			{
+				/* loop over cols */
+				for (x = setup->startx; x < endx; x++)
+				{
+					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 r = (palbase[(pix >> 16) & 0xff] * sr) >> (8 + SRCSHIFT_R);
+					UINT32 g = (palbase[(pix >> 8) & 0xff] * sg) >> (8 + SRCSHIFT_G);
+					UINT32 b = (palbase[(pix >> 0) & 0xff] * sb) >> (8 + SRCSHIFT_B);
+
+					*dest++ = DEST_ASSEMBLE_RGB(r, g, b);
+					curu += dudx;
+					curv += dvdx;
+				}
+			}
+		}
+	}
+
+	/* alpha and/or coloring case */
+	else if (!IS_TRANSPARENT(prim->color.a))
+	{
+		UINT32 sr = (UINT32)(256.0f * prim->color.r * prim->color.a);
+		UINT32 sg = (UINT32)(256.0f * prim->color.g * prim->color.a);
+		UINT32 sb = (UINT32)(256.0f * prim->color.b * prim->color.a);
+		UINT32 invsa = (UINT32)(256.0f * (1.0f - prim->color.a));
+
+		/* clamp R,G,B and inverse A to 0-256 range */
+		if (sr > 0x100) { if ((INT32)sr < 0) sr = 0; else sr = 0x100; }
+		if (sg > 0x100) { if ((INT32)sg < 0) sg = 0; else sg = 0x100; }
+		if (sb > 0x100) { if ((INT32)sb < 0) sb = 0; else sb = 0x100; }
+		if (invsa > 0x100) { if ((INT32)invsa < 0) invsa = 0; else invsa = 0x100; }
+
+		/* loop over rows */
+		for (y = setup->starty; y < setup->endy; y++)
+		{
+			PIXEL_TYPE *dest = (PIXEL_TYPE *)dstdata + y * pitch + setup->startx;
+			INT32 curu = setup->startu + (y - setup->starty) * setup->dudy;
+			INT32 curv = setup->startv + (y - setup->starty) * setup->dvdy;
+
+			/* no lookup case */
+			if (palbase == NULL)
+			{
+				/* loop over cols */
+				for (x = setup->startx; x < endx; x++)
+				{
+					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
+					UINT32 r = (SOURCE32_R(pix) * sr + DEST_R(dpix) * invsa) >> 8;
+					UINT32 g = (SOURCE32_G(pix) * sg + DEST_G(dpix) * invsa) >> 8;
+					UINT32 b = (SOURCE32_B(pix) * sb + DEST_B(dpix) * invsa) >> 8;
+
+					*dest++ = DEST_ASSEMBLE_RGB(r, g, b);
+					curu += dudx;
+					curv += dvdx;
+				}
+			}
+
+			/* lookup case */
+			else
+			{
+				/* loop over cols */
+				for (x = setup->startx; x < endx; x++)
+				{
+					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
+					UINT32 r = ((palbase[(pix >> 16) & 0xff] >> SRCSHIFT_R) * sr + DEST_R(dpix) * invsa) >> 8;
+					UINT32 g = ((palbase[(pix >> 8) & 0xff] >> SRCSHIFT_G) * sg + DEST_G(dpix) * invsa) >> 8;
+					UINT32 b = ((palbase[(pix >> 0) & 0xff] >> SRCSHIFT_B) * sb + DEST_B(dpix) * invsa) >> 8;
+
+					*dest++ = DEST_ASSEMBLE_RGB(r, g, b);
+					curu += dudx;
+					curv += dvdx;
+				}
+			}
+		}
+	}
+}
+
+
+
+/***************************************************************************
+    32-BIT ARGB QUAD RASTERIZERS
+***************************************************************************/
 
 /*-------------------------------------------------
     draw_quad_argb32_alpha - perform
@@ -1445,6 +1483,11 @@ static void FUNC_PREFIX(draw_quad_argb32_add)(const render_primitive *prim, void
 }
 
 
+
+/***************************************************************************
+    CORE QUAD RASTERIZERS
+***************************************************************************/
+
 /*-------------------------------------------------
     setup_and_draw_textured_quad - perform setup
     and then dispatch to a texture-mode-specific
@@ -1535,6 +1578,10 @@ static void FUNC_PREFIX(setup_and_draw_textured_quad)(const render_primitive *pr
 }
 
 
+
+/***************************************************************************
+    PRIMARY ENTRY POINT
+***************************************************************************/
 
 /*-------------------------------------------------
     draw_primitives - draw a series of primitives
