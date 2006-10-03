@@ -132,12 +132,7 @@ PALETTE_INIT(statriv2)
 	int i;
 
 	for (i = 0; i < 8; i++)
-	{
-		palette_set_color(i,
-			0xff * ((i >> 2) & 1),
-			0xff * ((i >> 0) & 1),
-			0xff * ((i >> 1) & 1));
-	}
+		palette_set_color(machine,i,pal1bit(i >> 2),pal1bit(i >> 0),pal1bit(i >> 1));
 
 	for (i = 0; i < 64; i++)
 	{
@@ -546,9 +541,9 @@ INPUT_PORTS_START( hangman )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x00, "Keep High Scores" )
+	PORT_DIPSETTING(    0x80, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
 INPUT_PORTS_START( sextriv )

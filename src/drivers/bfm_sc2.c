@@ -553,7 +553,7 @@ static INTERRUPT_GEN( timer_irq )
 		watchdog_cnt++;
 		if ( watchdog_cnt > 2 )	// this is a hack, i don't know what the watchdog timeout is, 3 IRQ's works fine
 		{  // reset board
-			mame_schedule_soft_reset();		// reset entire machine. CPU 0 should be enough, but that doesn't seem to work !!
+			mame_schedule_soft_reset(Machine);		// reset entire machine. CPU 0 should be enough, but that doesn't seem to work !!
 			on_scorpion2_reset();
 			return;
 		}
@@ -2685,8 +2685,8 @@ static MACHINE_DRIVER_START( scorpion2_vid )
 
 	MDRV_SCREEN_ADD("VFD", 0x000)
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_SIZE( 288, 29)
-	MDRV_VISIBLE_AREA(  0, 288-1, 0, 29-1)
+	MDRV_SCREEN_SIZE( 288, 34)
+	MDRV_VISIBLE_AREA(  0, 288-1, 0, 34-1)
 
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_COLORTABLE_LENGTH(16)

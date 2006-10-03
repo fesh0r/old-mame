@@ -218,6 +218,8 @@ static int game_id, init_success, blitter_busy, collision_count, stars_enabled, 
 static int mVectorType, sndnmi_mask, firq_level;
 static void *blitter_reset_timer;
 
+static offs_t halleys_collision_detection;
+
 
 //**************************************************************************
 // MB1551x Blitter Functions
@@ -1038,7 +1040,7 @@ static READ8_HANDLER( collision_id_r )
     UPDATE: re-implemented pixel collision to accompany the hack method.
 */
 
-	if (game_id==GAME_HALLEYS && activecpu_get_pc()==0xb114) // HACK: collision detection bypass
+	if (game_id==GAME_HALLEYS && activecpu_get_pc()==halleys_collision_detection) // HACK: collision detection bypass
 	{
 		if (collision_count) { collision_count--; return(collision_list[collision_count]); }
 
@@ -1060,7 +1062,7 @@ static PALETTE_INIT( halleys )
 	for (count=0; count<1024; count++)
 	{
 		pal_ptr[count] = 0;
-		palette_set_color(count, 0, 0, 0);
+		palette_set_color(machine, count, 0, 0, 0);
 	}
 
 	// 00-31: palette RAM(ffc0-ffdf)
@@ -1081,7 +1083,7 @@ static PALETTE_INIT( halleys )
 			g = r + count + BG_MONO;
 			r += i;
 			pal_ptr[g] = d;
-			palette_set_color(g, r, r, r);
+			palette_set_color(machine, g, r, r, r);
 		}
 	}
 
@@ -1092,11 +1094,11 @@ static PALETTE_INIT( halleys )
 		pal_ptr[j] = j;
 
 		i = d>>6 & 0x03;
-		r = d>>2 & 0x0c; r |= i;  r = r<<4 | r;
-		g = d    & 0x0c; g |= i;  g = g<<4 | g;
-		b = d<<2 & 0x0c; b |= i;  b = b<<4 | b;
+		r = d>>2 & 0x0c; r |= i;
+		g = d    & 0x0c; g |= i;
+		b = d<<2 & 0x0c; b |= i;
 
-		palette_set_color(j, r, g, b);
+		palette_set_color(machine, j, pal4bit(r), pal4bit(g), pal4bit(b));
 	}
 }
 
@@ -1164,13 +1166,13 @@ static WRITE8_HANDLER( halleys_paletteram_IIRRGGBB_w )
 	g = d    & 0x0c; g |= i;  g = g<<4 | g;
 	b = d<<2 & 0x0c; b |= i;  b = b<<4 | b;
 
-	palette_set_color(offset, r, g, b);
-	palette_set_color(offset+SP_2BACK, r, g, b);
-	palette_set_color(offset+SP_ALPHA, r, g, b);
-	palette_set_color(offset+SP_COLLD, r, g, b);
+	palette_set_color(Machine, offset, r, g, b);
+	palette_set_color(Machine, offset+SP_2BACK, r, g, b);
+	palette_set_color(Machine, offset+SP_ALPHA, r, g, b);
+	palette_set_color(Machine, offset+SP_COLLD, r, g, b);
 
 	halleys_decode_rgb(&r, &g, &b, offset, 0);
-	palette_set_color(offset+0x20, r, g, b);
+	palette_set_color(Machine, offset+0x20, r, g, b);
 }
 
 
@@ -1936,7 +1938,7 @@ static MACHINE_RESET( halleys )
 	blitter_busy    = 0;
 	collision_count = 0;
 	stars_enabled   = 0;
-	bgcolor         = get_black_pen();
+	bgcolor         = get_black_pen(machine);
 	fftail = ffhead = ffcount = 0;
 
 	memset(io_ram, 0xff, io_ramsize);
@@ -2244,6 +2246,15 @@ static DRIVER_INIT( benberob )
 static DRIVER_INIT( halleys )
 {
 	game_id = GAME_HALLEYS;
+	halleys_collision_detection = 0xb114;
+
+	init_success = init_common();
+}
+
+static DRIVER_INIT( halley87 )
+{
+	game_id = GAME_HALLEYS;
+	halleys_collision_detection = 0xb10d;
 
 	init_success = init_common();
 }
@@ -2252,8 +2263,8 @@ static DRIVER_INIT( halleys )
 //**************************************************************************
 // Game Definitions
 
-GAME( 1984, benberob, 0,       benberob, benberob, benberob, ROT0, "Taito", "Ben Bero Beh (Japan)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_COLORS )
-GAME( 1986, halleys,  0,       halleys, halleys, halleys,  ROT90, "Taito America Corporation (Coin-It license)", "Halley's Comet (US)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
-GAME( 1986, halleysc, halleys, halleys, halleys, halleys,  ROT90, "Taito Corporation", "Halley's Comet (Japan, Newer)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
-GAME( 1986, halleycj, halleys, halleys, halleys, halleys,  ROT90, "Taito Corporation", "Halley's Comet (Japan, Older)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
-GAME( 1986, halley87, halleys, halleys, halleys, halleys,  ROT90, "Taito Corporation", "Halley's Comet '87", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL | GAME_NOT_WORKING ) /* No Collision detection */
+GAME( 1984, benberob, 0,       benberob, benberob, benberob,  ROT0,  "Taito", "Ben Bero Beh (Japan)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_COLORS )
+GAME( 1986, halleys,  0,       halleys,  halleys,  halleys,   ROT90, "Taito America Corporation (Coin-It license)", "Halley's Comet (US)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
+GAME( 1986, halleysc, halleys, halleys,  halleys,  halleys,   ROT90, "Taito Corporation", "Halley's Comet (Japan, Newer)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
+GAME( 1986, halleycj, halleys, halleys,  halleys,  halleys,   ROT90, "Taito Corporation", "Halley's Comet (Japan, Older)", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )
+GAME( 1986, halley87, halleys, halleys,  halleys,  halley87,  ROT90, "Taito Corporation", "Halley's Comet '87", GAME_IMPERFECT_GRAPHICS | GAME_NO_COCKTAIL )

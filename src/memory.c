@@ -93,7 +93,7 @@
 
 #include "driver.h"
 #include "profiler.h"
-#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#ifdef MAME_DEBUG
 #include "debug/debugcpu.h"
 #endif
 #include <stdarg.h>
@@ -157,7 +157,7 @@
 
 #define SUBTABLE_PTR(tabledata, entry) (&(tabledata)->table[(1 << LEVEL1_BITS) + (((entry) - SUBTABLE_BASE) << LEVEL2_BITS)])
 
-#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#ifdef MAME_DEBUG
 #define DEBUG_HOOK_READ(a,b,c) if (debug_hook_read) (*debug_hook_read)(a, b, c)
 #define DEBUG_HOOK_WRITE(a,b,c,d) if (debug_hook_write) (*debug_hook_write)(a, b, c, d)
 #else
@@ -296,7 +296,7 @@ static int					log_unmap[ADDRESS_SPACES];		/* log unmapped memory accesses */
 static cpu_data				cpudata[MAX_CPU];				/* data gathered for each CPU */
 static bank_data 			bankdata[STATIC_COUNT];			/* data gathered for each bank */
 
-#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#ifdef MAME_DEBUG
 static debug_hook_read_ptr	debug_hook_read;				/* pointer to debugger callback for memory reads */
 static debug_hook_write_ptr	debug_hook_write;				/* pointer to debugger callback for memory writes */
 #endif
@@ -415,7 +415,7 @@ static void mem_dump(void)
     memory_init - initialize the memory system
 -------------------------------------------------*/
 
-int memory_init(void)
+int memory_init(running_machine *machine)
 {
 	int i;
 
@@ -437,7 +437,7 @@ int memory_init(void)
 	/* init the CPUs */
 	if (!init_cpudata())
 		return 1;
-	add_exit_callback(memory_exit);
+	add_exit_callback(machine, memory_exit);
 
 	/* preflight the memory handlers and check banks */
 	if (!preflight_memory())
@@ -465,7 +465,7 @@ int memory_init(void)
     memory_exit - free memory
 -------------------------------------------------*/
 
-void memory_exit(void)
+void memory_exit(running_machine *machine)
 {
 	int cpunum, spacenum;
 
@@ -538,7 +538,7 @@ void memory_set_context(int activecpu)
 
 	opbasefunc = cpudata[activecpu].opbase;
 
-#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#ifdef MAME_DEBUG
 	if (activecpu != -1)
 		debug_get_memory_hooks(activecpu, &debug_hook_read, &debug_hook_write);
 	else
@@ -1506,7 +1506,7 @@ static void install_mem_handler(addrspace_data *space, int iswrite, int databits
 
 	/* sanity check */
 	if (HANDLER_IS_RAM(handler))
-		assert_always(mame_get_phase() == MAME_PHASE_INIT, "RAM/ROM memory handlers can only be installed at init time");
+		assert_always(mame_get_phase(Machine) == MAME_PHASE_INIT, "RAM/ROM memory handlers can only be installed at init time");
 
 	/* translate ROM to RAM/UNMAP here */
 	if (HANDLER_IS_ROM(handler))
@@ -2275,7 +2275,8 @@ static int find_memory(void)
 					if (!IS_AMENTRY_EXTENDED(map))
 					{
 						/* assign base/size values */
-						if (map->base) *map->base = map->memory;
+						if (map->base != NULL)
+							*map->base = map->memory;
 						if (map->size)
 						{
 							if (!IS_AMENTRY_MATCH_MASK(map))

@@ -47,7 +47,7 @@ static struct
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static void debug_command_exit(void);
+static void debug_command_exit(running_machine *machine);
 
 static UINT64 execute_min(UINT32 ref, UINT32 params, UINT64 *param);
 static UINT64 execute_max(UINT32 ref, UINT32 params, UINT64 *param);
@@ -112,7 +112,7 @@ static void execute_symlist(int ref, int params, const char **param);
     system
 -------------------------------------------------*/
 
-void debug_command_init(void)
+void debug_command_init(running_machine *machine)
 {
 	int cpunum, itemnum;
 	const char *name;
@@ -237,7 +237,7 @@ void debug_command_init(void)
 			setup_commands();
 	}
 
-	add_exit_callback(debug_command_exit);
+	add_exit_callback(machine, debug_command_exit);
 }
 
 
@@ -245,7 +245,7 @@ void debug_command_init(void)
     debug_command_exit - exit-time cleanup
 -------------------------------------------------*/
 
-static void debug_command_exit(void)
+static void debug_command_exit(running_machine *machine)
 {
 	int cpunum;
 
@@ -981,7 +981,7 @@ static void execute_bpset(int ref, int params, const char *param[])
 
 	/* set the breakpoint */
 	bpnum = debug_breakpoint_set(cpu_getactivecpu(), address, condition, action);
-	debug_console_printf("Breakpoint %d set\n", bpnum);
+	debug_console_printf("Breakpoint %X set\n", bpnum);
 }
 
 
@@ -1155,7 +1155,7 @@ static void execute_wpset(int ref, int params, const char *param[])
 
 	/* set the watchpoint */
 	wpnum = debug_watchpoint_set(cpu_getactivecpu(), ref, type, address, length, condition, action);
-	debug_console_printf("Watchpoint %d set\n", wpnum);
+	debug_console_printf("Watchpoint %X set\n", wpnum);
 }
 
 

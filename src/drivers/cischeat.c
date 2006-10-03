@@ -226,22 +226,22 @@ static READ16_HANDLER( rom_3_r ) {return rom_3[offset];}
 WRITE16_HANDLER( bigrun_paletteram16_w )
 {
 	UINT16 word = COMBINE_DATA(&paletteram16[offset]);
-	int r = ((word >> 8) & 0xF0 ) | ((word << 0) & 0x08);
-	int g = ((word >> 4) & 0xF0 ) | ((word << 1) & 0x08);
-	int b = ((word >> 0) & 0xF0 ) | ((word << 2) & 0x08);
+	int r = pal5bit(((word >> 11) & 0x1E ) | ((word >> 3) & 0x01));
+	int g = pal5bit(((word >> 7 ) & 0x1E ) | ((word >> 2) & 0x01));
+	int b = pal5bit(((word >> 3 ) & 0x1E ) | ((word >> 1) & 0x01));
 
 	// Scroll 0
-	if ( (offset >= 0x0e00/2) && (offset <= 0x0fff/2) ) { palette_set_color(0x000 + offset - 0x0e00/2, r,g,b ); return;}
+	if ( (offset >= 0x0e00/2) && (offset <= 0x0fff/2) ) { palette_set_color(Machine, 0x000 + offset - 0x0e00/2, r,g,b ); return;}
 	// Scroll 1
-	if ( (offset >= 0x1600/2) && (offset <= 0x17ff/2) ) { palette_set_color(0x100 + offset - 0x1600/2, r,g,b ); return;}
+	if ( (offset >= 0x1600/2) && (offset <= 0x17ff/2) ) { palette_set_color(Machine, 0x100 + offset - 0x1600/2, r,g,b ); return;}
 	// Road 0
-	if ( (offset >= 0x1800/2) && (offset <= 0x1fff/2) ) { palette_set_color(0x200 + offset - 0x1800/2, r,g,b ); return;}
+	if ( (offset >= 0x1800/2) && (offset <= 0x1fff/2) ) { palette_set_color(Machine, 0x200 + offset - 0x1800/2, r,g,b ); return;}
 	// Road 1
-	if ( (offset >= 0x2000/2) && (offset <= 0x27ff/2) ) { palette_set_color(0x600 + offset - 0x2000/2, r,g,b ); return;}
+	if ( (offset >= 0x2000/2) && (offset <= 0x27ff/2) ) { palette_set_color(Machine, 0x600 + offset - 0x2000/2, r,g,b ); return;}
 	// Sprites
-	if ( (offset >= 0x2800/2) && (offset <= 0x2fff/2) ) { palette_set_color(0xa00 + offset - 0x2800/2, r,g,b ); return;}
+	if ( (offset >= 0x2800/2) && (offset <= 0x2fff/2) ) { palette_set_color(Machine, 0xa00 + offset - 0x2800/2, r,g,b ); return;}
 	// Scroll 2
-	if ( (offset >= 0x3600/2) && (offset <= 0x37ff/2) ) { palette_set_color(0xe00 + offset - 0x3600/2, r,g,b ); return;}
+	if ( (offset >= 0x3600/2) && (offset <= 0x37ff/2) ) { palette_set_color(Machine, 0xe00 + offset - 0x3600/2, r,g,b ); return;}
 }
 
 static ADDRESS_MAP_START( bigrun_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -298,22 +298,22 @@ ADDRESS_MAP_END
 WRITE16_HANDLER( cischeat_paletteram16_w )
 {
 	UINT16 word = COMBINE_DATA(&paletteram16[offset]);
-	int r = ((word >> 8) & 0xF0 ) | ((word << 0) & 0x08);
-	int g = ((word >> 4) & 0xF0 ) | ((word << 1) & 0x08);
-	int b = ((word >> 0) & 0xF0 ) | ((word << 2) & 0x08);
+	int r = pal5bit(((word >> 11) & 0x1E ) | ((word >> 3) & 0x01));
+	int g = pal5bit(((word >> 7 ) & 0x1E ) | ((word >> 2) & 0x01));
+	int b = pal5bit(((word >> 3 ) & 0x1E ) | ((word >> 1) & 0x01));
 
 	// Scroll 0
-	if ( (offset >= 0x1c00/2) && (offset <= 0x1fff/2) ) { palette_set_color(0x000 + offset - 0x1c00/2, r,g,b ); return;}
+	if ( (offset >= 0x1c00/2) && (offset <= 0x1fff/2) ) { palette_set_color(Machine, 0x000 + offset - 0x1c00/2, r,g,b ); return;}
 	// Scroll 1
-	if ( (offset >= 0x2c00/2) && (offset <= 0x2fff/2) ) { palette_set_color(0x200 + offset - 0x2c00/2, r,g,b ); return;}
+	if ( (offset >= 0x2c00/2) && (offset <= 0x2fff/2) ) { palette_set_color(Machine, 0x200 + offset - 0x2c00/2, r,g,b ); return;}
 	// Scroll 2
-	if ( (offset >= 0x6c00/2) && (offset <= 0x6fff/2) ) { palette_set_color(0x400 + offset - 0x6c00/2, r,g,b ); return;}
+	if ( (offset >= 0x6c00/2) && (offset <= 0x6fff/2) ) { palette_set_color(Machine, 0x400 + offset - 0x6c00/2, r,g,b ); return;}
 	// Road 0
-	if ( (offset >= 0x3800/2) && (offset <= 0x3fff/2) ) { palette_set_color(0x600 + offset - 0x3800/2, r,g,b ); return;}
+	if ( (offset >= 0x3800/2) && (offset <= 0x3fff/2) ) { palette_set_color(Machine, 0x600 + offset - 0x3800/2, r,g,b ); return;}
 	// Road 1
-	if ( (offset >= 0x4800/2) && (offset <= 0x4fff/2) ) { palette_set_color(0xa00 + offset - 0x4800/2, r,g,b ); return;}
+	if ( (offset >= 0x4800/2) && (offset <= 0x4fff/2) ) { palette_set_color(Machine, 0xa00 + offset - 0x4800/2, r,g,b ); return;}
 	// Sprites
-	if ( (offset >= 0x5000/2) && (offset <= 0x5fff/2) ) { palette_set_color(0xe00 + offset - 0x5000/2, r,g,b ); return;}
+	if ( (offset >= 0x5000/2) && (offset <= 0x5fff/2) ) { palette_set_color(Machine, 0xe00 + offset - 0x5000/2, r,g,b ); return;}
 }
 
 static ADDRESS_MAP_START( cischeat_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -366,22 +366,22 @@ ADDRESS_MAP_END
 WRITE16_HANDLER( f1gpstar_paletteram16_w )
 {
 	UINT16 word = COMBINE_DATA(&paletteram16[offset]);
-	int r = ((word >> 8) & 0xF0 ) | ((word << 0) & 0x08);
-	int g = ((word >> 4) & 0xF0 ) | ((word << 1) & 0x08);
-	int b = ((word >> 0) & 0xF0 ) | ((word << 2) & 0x08);
+	int r = pal5bit(((word >> 11) & 0x1E ) | ((word >> 3) & 0x01));
+	int g = pal5bit(((word >> 7 ) & 0x1E ) | ((word >> 2) & 0x01));
+	int b = pal5bit(((word >> 3 ) & 0x1E ) | ((word >> 1) & 0x01));
 
 	// Scroll 0
-	if ( (offset >= 0x1e00/2) && (offset <= 0x1fff/2) ) { palette_set_color(0x000 + offset - 0x1e00/2, r,g,b ); return;}
+	if ( (offset >= 0x1e00/2) && (offset <= 0x1fff/2) ) { palette_set_color(Machine, 0x000 + offset - 0x1e00/2, r,g,b ); return;}
 	// Scroll 1
-	if ( (offset >= 0x2e00/2) && (offset <= 0x2fff/2) ) { palette_set_color(0x100 + offset - 0x2e00/2, r,g,b ); return;}
+	if ( (offset >= 0x2e00/2) && (offset <= 0x2fff/2) ) { palette_set_color(Machine, 0x100 + offset - 0x2e00/2, r,g,b ); return;}
 	// Scroll 2
-	if ( (offset >= 0x6e00/2) && (offset <= 0x6fff/2) ) { palette_set_color(0x200 + offset - 0x6e00/2, r,g,b ); return;}
+	if ( (offset >= 0x6e00/2) && (offset <= 0x6fff/2) ) { palette_set_color(Machine, 0x200 + offset - 0x6e00/2, r,g,b ); return;}
 	// Road 0
-	if ( (offset >= 0x3800/2) && (offset <= 0x3fff/2) ) { palette_set_color(0x300 + offset - 0x3800/2, r,g,b ); return;}
+	if ( (offset >= 0x3800/2) && (offset <= 0x3fff/2) ) { palette_set_color(Machine, 0x300 + offset - 0x3800/2, r,g,b ); return;}
 	// Road 1
-	if ( (offset >= 0x4800/2) && (offset <= 0x4fff/2) ) { palette_set_color(0x700 + offset - 0x4800/2, r,g,b ); return;}
+	if ( (offset >= 0x4800/2) && (offset <= 0x4fff/2) ) { palette_set_color(Machine, 0x700 + offset - 0x4800/2, r,g,b ); return;}
 	// Sprites
-	if ( (offset >= 0x5000/2) && (offset <= 0x5fff/2) ) { palette_set_color(0xb00 + offset - 0x5000/2, r,g,b ); return;}
+	if ( (offset >= 0x5000/2) && (offset <= 0x5fff/2) ) { palette_set_color(Machine, 0xb00 + offset - 0x5000/2, r,g,b ); return;}
 }
 
 /*  F1 GP Star tests:
@@ -479,16 +479,16 @@ WRITE16_HANDLER( scudhamm_paletteram16_w )
 {
 	int newword = COMBINE_DATA(&paletteram16[offset]);
 
-	int r = ((newword >> 8) & 0xF0 ) | ((newword << 0) & 0x08);
-	int g = ((newword >> 4) & 0xF0 ) | ((newword << 1) & 0x08);
-	int b = ((newword >> 0) & 0xF0 ) | ((newword << 2) & 0x08);
+	int r = pal5bit(((newword >> 11) & 0x1E ) | ((newword >> 3) & 0x01));
+	int g = pal5bit(((newword >> 7 ) & 0x1E ) | ((newword >> 2) & 0x01));
+	int b = pal5bit(((newword >> 3 ) & 0x1E ) | ((newword >> 1) & 0x01));
 
 	// Scroll 0
-	if ( (offset >= 0x1e00/2) && (offset <= 0x1fff/2) ) { palette_set_color(0x000 + offset - 0x1e00/2, r,g,b ); return;}
+	if ( (offset >= 0x1e00/2) && (offset <= 0x1fff/2) ) { palette_set_color(Machine, 0x000 + offset - 0x1e00/2, r,g,b ); return;}
 	// Scroll 2
-	if ( (offset >= 0x4e00/2) && (offset <= 0x4fff/2) ) { palette_set_color(0x100 + offset - 0x4e00/2, r,g,b ); return;}
+	if ( (offset >= 0x4e00/2) && (offset <= 0x4fff/2) ) { palette_set_color(Machine, 0x100 + offset - 0x4e00/2, r,g,b ); return;}
 	// Sprites
-	if ( (offset >= 0x3000/2) && (offset <= 0x3fff/2) ) { palette_set_color(0x200 + offset - 0x3000/2, r,g,b ); return;}
+	if ( (offset >= 0x3000/2) && (offset <= 0x3fff/2) ) { palette_set_color(Machine, 0x200 + offset - 0x3000/2, r,g,b ); return;}
 }
 
 
@@ -1041,17 +1041,20 @@ INPUT_PORTS_START( bigrun )
 
 	PORT_START_TAG("IN4")	// DSW 2 & 3 - $80006.w
 	// DSW 3
-	PORT_DIPNAME( 0x0003, 0x0003, "Unknown 3-0&1*" )
-	PORT_DIPSETTING(      0x0003, "3" )
-	PORT_DIPSETTING(      0x0002, "2" )
-	PORT_DIPSETTING(      0x0001, "1" )
-	PORT_DIPSETTING(      0x0000, "0" )
+	PORT_DIPNAME( 0x0003, 0x0003, "Extra Setting For Coin B" )
+	PORT_DIPSETTING(      0x0003, DEF_STR( Unused ) )
+	PORT_DIPSETTING(      0x0001, DEF_STR( 1C_5C ) )	PORT_CONDITION("IN4",0x1c00,PORTCOND_NOTEQUALS,0x0000)
+	PORT_DIPSETTING(      0x0002, DEF_STR( 1C_6C ) )	PORT_CONDITION("IN4",0x1c00,PORTCOND_NOTEQUALS,0x0000)
+	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_7C ) )	PORT_CONDITION("IN4",0x1c00,PORTCOND_NOTEQUALS,0x0000)
+	PORT_DIPSETTING(      0x0001, DEF_STR( Unused ) )	PORT_CONDITION("IN4",0x1c00,PORTCOND_EQUALS,0x0000)
+	PORT_DIPSETTING(      0x0002, DEF_STR( Unused ) )	PORT_CONDITION("IN4",0x1c00,PORTCOND_EQUALS,0x0000)
+	PORT_DIPSETTING(      0x0000, DEF_STR( Unused ) )	PORT_CONDITION("IN4",0x1c00,PORTCOND_EQUALS,0x0000)
 	PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Allow_Continue ) )
 	PORT_DIPSETTING(      0x0004, DEF_STR( No )  )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x0008, 0x0008, "Unknown 3-3" )
-	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On )  )
+	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Region ) )	// If you try to change Unit ID the game show the error message in different language
+	PORT_DIPSETTING(      0x0008, DEF_STR( Japanese ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( English) )
 	PORT_DIPNAME( 0x0010, 0x0010, "Move Cabinet" )
 	PORT_DIPSETTING(      0x0000, DEF_STR( No )  )
 	PORT_DIPSETTING(      0x0010, DEF_STR( Yes ) )
@@ -1071,7 +1074,7 @@ INPUT_PORTS_START( bigrun )
 	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0200, DEF_STR( On )  )
-	PORT_DIPNAME( 0x1c00, 0x1c00, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0x1c00, 0x1c00, DEF_STR( Coin_B ) )	PORT_CONDITION("IN4",0x0003,PORTCOND_EQUALS,0x0003)
 	PORT_DIPSETTING(      0x1000, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(      0x0800, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x1800, DEF_STR( 2C_1C ) )
@@ -1079,6 +1082,9 @@ INPUT_PORTS_START( bigrun )
 	PORT_DIPSETTING(      0x0c00, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(      0x1400, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x0400, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
+	PORT_DIPNAME( 0x1c00, 0x1c00, DEF_STR( Coin_B ) )	PORT_CONDITION("IN4",0x0003,PORTCOND_NOTEQUALS,0x0003)
+	PORT_DIPSETTING(      0x1c00, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
 	PORT_DIPNAME( 0xe000, 0xe000, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x8000, DEF_STR( 4C_1C ) )
@@ -1228,22 +1234,22 @@ INPUT_PORTS_START( f1gpstar )
     Japan       "race together" in Test Mode, Always Choose Race
                 Japanese, Km/h, "handle shock"  , "(c)1991",
     USA         English,  Mph , "steering shock", "(c)1992 North America Only"
-    England     English,  Mph , "steering shock", "(c)1992"
+    Europe      English,  Mph , "steering shock", "(c)1992"
     France      French,   Km/h, "steering shock", "(c)1992" */
 
 	PORT_START_TAG("IN1")	// DSW 1 & 2 - $80000.w -> !f9012
 	// DSW 1 ( Coinage - it changes with Country: we use IN6 & IN7 )
-	PORT_DIPNAME( 0x0040, 0x0040, "Free Play (UK FR)" )
+	PORT_DIPNAME( 0x0040, 0x0040, "Free Play (EU & FR)" )
 	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On )  )
 	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )	// unused?
 	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On )  )
 	// DSW 2
-	PORT_DIPNAME( 0x0300, 0x0100, "Country"  )	// -> !f901e
+	PORT_DIPNAME( 0x0300, 0x0100, DEF_STR( Region )  )	// -> !f901e
 	PORT_DIPSETTING(      0x0300, DEF_STR( Japan )   )
 	PORT_DIPSETTING(      0x0200, DEF_STR( USA )     )
-	PORT_DIPSETTING(      0x0100, "UK"      )
+	PORT_DIPSETTING(      0x0100, DEF_STR( Europe )  )
 	PORT_DIPSETTING(      0x0000, "France"  )
 	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Difficulty ) )	// -> !f9026
 	PORT_DIPSETTING(      0x0000, DEF_STR( Easy )      )	// 58 <- Initial Time (seconds, Germany)
@@ -1256,7 +1262,7 @@ INPUT_PORTS_START( f1gpstar )
 	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x2000, DEF_STR( On )  )
-	PORT_DIPNAME( 0x4000, 0x4000, "Choose Race (US UK FR)"  ) // -> f0020
+	PORT_DIPNAME( 0x4000, 0x4000, "Choose Race (US EU FR)"  ) // -> f0020
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x4000, DEF_STR( On )  )
 	PORT_DIPNAME( 0x8000, 0x8000, "Vibrations" )
@@ -1335,8 +1341,8 @@ INPUT_PORTS_START( f1gpstar )
 	PORT_DIPSETTING(      0x0028, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x0020, DEF_STR( 1C_4C ) )
 
-	PORT_START_TAG("IN7")	// Coinage UK & France (it changes with Country)
-	PORT_DIPNAME( 0x0007, 0x0007, "Coin A (UK FR)" )
+	PORT_START_TAG("IN7")	// Coinage Europe & France (it changes with Country)
+	PORT_DIPNAME( 0x0007, 0x0007, "Coin A (EU FR)" )
 	PORT_DIPSETTING(      0x0007, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(      0x0006, DEF_STR( 1C_2C ) )
@@ -1345,7 +1351,7 @@ INPUT_PORTS_START( f1gpstar )
 	PORT_DIPSETTING(      0x0003, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 1C_7C ) )
-	PORT_DIPNAME( 0x0038, 0x0038, "Coin B (UK FR)" )
+	PORT_DIPNAME( 0x0038, 0x0038, "Coin B (EU FR)" )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(      0x0008, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(      0x0010, DEF_STR( 3C_1C ) )
@@ -1402,15 +1408,14 @@ INPUT_PORTS_START( wildplt )
 	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x1000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x2000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Lives ) )
+	PORT_DIPSETTING(      0x2000, "2" )
+	PORT_DIPSETTING(      0x0000, "4" )
+	PORT_DIPNAME( 0xc000, 0xc000, DEF_STR( Region ) )
+	PORT_DIPSETTING(      0x4000, "Europe?" )
+	PORT_DIPSETTING(      0x8000, DEF_STR( USA ) )
+	PORT_DIPSETTING(      0xc000, DEF_STR( Japan ) )
+	PORT_DIPSETTING(      0x0000, "France?" )
 
 	PORT_START_TAG("IN1")
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -1423,12 +1428,12 @@ INPUT_PORTS_START( wildplt )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE2 ) PORT_NAME("Emergency Button") //E Stop for motors?
+	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN ) // Up Limit SW.
+	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN ) // Dow Limit SW.
+	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN ) // Center SW.
+	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN ) // Senser SW. #1
+	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN ) // Senser SW. #2
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE2 ) PORT_NAME("Emergency Button") //E Stop for motors? ( Senser SW. #3 )
 
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,0xff) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_REVERSE
@@ -2689,7 +2694,7 @@ DRIVER_INIT( wildplt )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x080000, 0x087fff, 0, 0, wildplt_vregs_r );
 
-	init_f1gpstar();
+	init_f1gpstar(machine);
 }
 
 

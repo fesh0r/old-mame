@@ -123,8 +123,10 @@ struct _element_component
 	render_bounds		bounds;				/* bounds of the element */
 	render_color		color;				/* color of the element */
 	const char *		string;				/* string for text components */
-	int					pattern;			/* LED segment patterns */
 	mame_bitmap *		bitmap;				/* source bitmap for images */
+	const char *		dirname;			/* directory name of image file (for lazy loading) */
+	const char *		imagefile;			/* name of the image file (for lazy loading) */
+	const char *		alphafile;			/* name of the alpha file (for lazy loading) */
 	int					hasalpha;			/* is there any alpha component present? */
 };
 
@@ -142,7 +144,7 @@ static void layout_element_scale(mame_bitmap *dest, const mame_bitmap *source, c
 static void layout_element_draw_rect(mame_bitmap *dest, const rectangle *bounds, const render_color *color);
 static void layout_element_draw_disk(mame_bitmap *dest, const rectangle *bounds, const render_color *color);
 static void layout_element_draw_text(mame_bitmap *dest, const rectangle *bounds, const render_color *color, const char *string);
-static void layout_element_draw_led7seg(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int pattern);
+static void layout_element_draw_led7seg(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int state);
 
 /* layout file parsing */
 static layout_element *load_layout_element(xml_data_node *elemnode, const char *dirname);
@@ -351,6 +353,8 @@ static void layout_element_scale(mame_bitmap *dest, const mame_bitmap *source, c
 			switch (component->type)
 			{
 				case COMPONENT_TYPE_IMAGE:
+					if (component->bitmap == NULL)
+						component->bitmap = load_component_bitmap(component->dirname, component->imagefile, component->alphafile, &component->hasalpha);
 					render_resample_argb_bitmap_hq(
 							(UINT32 *)dest->base + bounds.min_y * dest->rowpixels + bounds.min_x,
 							dest->rowpixels,
@@ -372,7 +376,7 @@ static void layout_element_scale(mame_bitmap *dest, const mame_bitmap *source, c
 					break;
 
 				case COMPONENT_TYPE_LED7SEG:
-					layout_element_draw_led7seg(dest, &bounds, &component->color, component->pattern);
+					layout_element_draw_led7seg(dest, &bounds, &component->color, elemtex->state);
 					break;
 			}
 		}
@@ -663,23 +667,23 @@ static void layout_element_draw_led7seg(mame_bitmap *dest, const rectangle *boun
 	/* top bar */
 	draw_segment_horizontal(tempbitmap, 0 + 2*segwidth/3, bmwidth - 2*segwidth/3, 0 + segwidth/2, segwidth, (pattern & (1 << 0)) ? onpen : offpen);
 
-	/* top-left bar */
-	draw_segment_vertical(tempbitmap, 0 + 2*segwidth/3, bmheight/2 - segwidth/3, 0 + segwidth/2, segwidth, (pattern & (1 << 1)) ? onpen : offpen);
-
 	/* top-right bar */
-	draw_segment_vertical(tempbitmap, 0 + 2*segwidth/3, bmheight/2 - segwidth/3, bmwidth - segwidth/2, segwidth, (pattern & (1 << 2)) ? onpen : offpen);
+	draw_segment_vertical(tempbitmap, 0 + 2*segwidth/3, bmheight/2 - segwidth/3, bmwidth - segwidth/2, segwidth, (pattern & (1 << 1)) ? onpen : offpen);
 
-	/* middle bar */
-	draw_segment_horizontal(tempbitmap, 0 + 2*segwidth/3, bmwidth - 2*segwidth/3, bmheight/2, segwidth, (pattern & (1 << 3)) ? onpen : offpen);
+	/* bottom-right bar */
+	draw_segment_vertical(tempbitmap, bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, bmwidth - segwidth/2, segwidth, (pattern & (1 << 2)) ? onpen : offpen);
+
+	/* bottom bar */
+	draw_segment_horizontal(tempbitmap, 0 + 2*segwidth/3, bmwidth - 2*segwidth/3, bmheight - segwidth/2, segwidth, (pattern & (1 << 3)) ? onpen : offpen);
 
 	/* bottom-left bar */
 	draw_segment_vertical(tempbitmap, bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, 0 + segwidth/2, segwidth, (pattern & (1 << 4)) ? onpen : offpen);
 
-	/* bottom-right bar */
-	draw_segment_vertical(tempbitmap, bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, bmwidth - segwidth/2, segwidth, (pattern & (1 << 5)) ? onpen : offpen);
+	/* top-left bar */
+	draw_segment_vertical(tempbitmap, 0 + 2*segwidth/3, bmheight/2 - segwidth/3, 0 + segwidth/2, segwidth, (pattern & (1 << 5)) ? onpen : offpen);
 
-	/* bottom bar */
-	draw_segment_horizontal(tempbitmap, 0 + 2*segwidth/3, bmwidth - 2*segwidth/3, bmheight - segwidth/2, segwidth, (pattern & (1 << 6)) ? onpen : offpen);
+	/* middle bar */
+	draw_segment_horizontal(tempbitmap, 0 + 2*segwidth/3, bmwidth - 2*segwidth/3, bmheight/2, segwidth, (pattern & (1 << 6)) ? onpen : offpen);
 
 	/* apply skew */
 	for (y = 0; y < tempbitmap->height; y++)
@@ -975,6 +979,8 @@ static layout_element *load_layout_element(xml_data_node *elemnode, const char *
 		/* determine the maximum state */
 		if (component->state > element->maxstate)
 			element->maxstate = component->state;
+		if (component->type == COMPONENT_TYPE_LED7SEG)
+			element->maxstate = 255;
 	}
 
 	/* determine the scale/offset for normalization */
@@ -1003,7 +1009,7 @@ static layout_element *load_layout_element(xml_data_node *elemnode, const char *
 
 		/* look for at least one visible component in this state */
 		for (component = element->complist; component != NULL; component = component->next)
-			if (component->state == -1 || component->state == state)
+			if (component->state == -1 || component->state == state || component->type == COMPONENT_TYPE_LED7SEG)
 				break;
 
 		/* allocate a texture only if we have some visible components in this state */
@@ -1048,14 +1054,9 @@ static element_component *load_element_component(xml_data_node *compnode, const 
 
 		/* load and allocate the bitmap */
 		component->type = COMPONENT_TYPE_IMAGE;
-		component->bitmap = load_component_bitmap(dirname, file, afile, &component->hasalpha);
-		if (component->bitmap == NULL)
-		{
-			if (afile == NULL)
-				fatalerror("Unable to load component bitmap '%s'", file);
-			else
-				fatalerror("Unable to load component bitmap '%s'/'%s'", file, afile);
-		}
+		component->dirname = (dirname == NULL) ? NULL : copy_string(dirname);
+		component->imagefile = (file == NULL) ? NULL : copy_string(file);
+		component->alphafile = (afile == NULL) ? NULL : copy_string(afile);
 	}
 
 	/* text nodes */
@@ -1073,17 +1074,7 @@ static element_component *load_element_component(xml_data_node *compnode, const 
 
 	/* led7seg nodes */
 	else if (strcmp(compnode->name, "led7seg") == 0)
-	{
-		const char *pattern = xml_get_attribute_string_with_subst(compnode, "pattern", "0000000");
-		int i;
-
-		/* extract the pattern from the binary digits */
 		component->type = COMPONENT_TYPE_LED7SEG;
-		component->pattern = 0;
-		for (i = 0; pattern[i] != 0; i++)
-			if (pattern[i] == '1')
-				component->pattern |= 1 << i;
-	}
 
 	/* rect nodes */
 	else if (strcmp(compnode->name, "rect") == 0)
@@ -1246,6 +1237,25 @@ static mame_bitmap *load_component_bitmap(const char *dirname, const char *file,
 			bitmap_free(bitmap);
 			bitmap = NULL;
 		}
+
+	/* if we can't load the bitmap, allocate a dummy one and report an error */
+	if (bitmap == NULL)
+	{
+		int step, line;
+
+		/* draw some stripes in the bitmap */
+		bitmap = bitmap_alloc_depth(100, 100, 32);
+		fillbitmap(bitmap, 0, NULL);
+		for (step = 0; step < 100; step += 25)
+			for (line = 0; line < 100; line++)
+				*((UINT32 *)bitmap->base + ((step + line) % 100) * bitmap->rowbytes + line % 100) = MAKE_ARGB(0xff,0xff,0xff,0xff);
+
+		/* log an error */
+		if (alphafile == NULL)
+			logerror("Unable to load component bitmap '%s'", file);
+		else
+			logerror("Unable to load component bitmap '%s'/'%s'", file, alphafile);
+	}
 
 	return bitmap;
 }
@@ -1435,6 +1445,12 @@ static void layout_element_free(layout_element *element)
 		element->complist = temp->next;
 		if (temp->string != NULL)
 			free((void *)temp->string);
+		if (temp->dirname != NULL)
+			free((void *)temp->dirname);
+		if (temp->imagefile != NULL)
+			free((void *)temp->imagefile);
+		if (temp->alphafile != NULL)
+			free((void *)temp->alphafile);
 		if (temp->bitmap != NULL)
 			bitmap_free(temp->bitmap);
 		free(temp);

@@ -77,7 +77,7 @@ PALETTE_INIT( irem )
 		bit3 = (color_prom[2*Machine->drv->total_colors] >> 3) & 0x01;
 		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(i,r,g,b);
+		palette_set_color(machine,i,r,g,b);
 
 		color_prom++;
 	}
@@ -116,7 +116,7 @@ PALETTE_INIT( battroad )
 		bit3 = (color_prom[2*512] >> 3) & 0x01;
 		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(i,r,g,b);
+		palette_set_color(machine,i,r,g,b);
 
 		color_prom++;
 	}
@@ -142,7 +142,7 @@ PALETTE_INIT( battroad )
 		bit2 = (color_prom[i] >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(i+512,r,g,b);
+		palette_set_color(machine,i+512,r,g,b);
 	}
 
 	color_prom += 32;
@@ -180,7 +180,7 @@ PALETTE_INIT( spelunk2 )
 		bit3 = (color_prom[2*256] >> 3) & 0x01;
 		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(i,r,g,b);
+		palette_set_color(machine,i,r,g,b);
 
 		color_prom++;
 	}
@@ -211,7 +211,7 @@ PALETTE_INIT( spelunk2 )
 		bit3 = (color_prom[2*256] >> 3) & 0x01;
 		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(i+512,r,g,b);
+		palette_set_color(machine,i+512,r,g,b);
 
 		color_prom++;
 	}
@@ -461,7 +461,7 @@ static void get_ldrun_bg_tile_info( int offs )
 		flags |= TILE_FLIPX;
 	}
 	SET_TILE_INFO( 0, code | ( ( color & 0xc0 ) << 2 ), color & 0x1f, flags );
-	if( ( ( color & 0x0f ) >> 1 ) >= 0x04 )
+	if( ( ( color & 0x1f ) >> 1 ) >= 0x0c )
 	{
 		tile_info.priority = 1;
 	}
@@ -488,6 +488,33 @@ VIDEO_START( ldrun )
 	return m62_start( get_ldrun_bg_tile_info, 1, 1, 8, 8, 64, 32 );
 }
 
+static void get_ldrun2_bg_tile_info( int offs )
+{
+	int code;
+	int color;
+	int flags;
+	code = m62_tileram[ offs << 1 ];
+	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	flags = 0;
+	if( ( color & 0x20 ) )
+	{
+		flags |= TILE_FLIPX;
+	}
+	SET_TILE_INFO( 0, code | ( ( color & 0xc0 ) << 2 ), color & 0x1f, flags );
+	if( ( ( color & 0x1f ) >> 1 ) >= 0x04 )
+	{
+		tile_info.priority = 1;
+	}
+	else
+	{
+		tile_info.priority = 0;
+	}
+}
+
+VIDEO_START( ldrun2 )
+{
+	return m62_start( get_ldrun2_bg_tile_info, 1, 1, 8, 8, 64, 32 );
+}
 
 static void get_battroad_bg_tile_info( int offs )
 {
@@ -502,7 +529,7 @@ static void get_battroad_bg_tile_info( int offs )
 		flags |= TILE_FLIPX;
 	}
 	SET_TILE_INFO( 0, code | ( ( color & 0x40 ) << 3 ) | ( ( color & 0x10 ) << 4 ), color & 0x0f, flags );
-	if( ( ( color & 0x0f ) >> 1 ) >= 0x04 )
+	if( ( ( color & 0x1f ) >> 1 ) >= 0x04 )
 	{
 		tile_info.priority = 1;
 	}

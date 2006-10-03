@@ -201,10 +201,10 @@ static ppi8255_interface single_ppi_intf =
  *
  *************************************/
 
-static void system16a_generic_init(void)
+static void system16a_generic_init(running_machine *machine)
 {
 	/* call the generic init */
-	machine_reset_sys16_onetime();
+	machine_reset_sys16_onetime(machine);
 
 	/* init the FD1094 */
 	fd1094_driver_init();
@@ -222,7 +222,7 @@ static void system16a_generic_init(void)
 
 static void suspend_i8751(ATTR_UNUSED int param)
 {
-	cpunum_suspend(mame_find_cpu_index("mcu"), SUSPEND_REASON_DISABLE, 1);
+	cpunum_suspend(mame_find_cpu_index(Machine, "mcu"), SUSPEND_REASON_DISABLE, 1);
 }
 
 
@@ -1643,10 +1643,10 @@ ROM_START( aceattaa )
 	ROM_LOAD( "7751.bin",     0x0000, 0x0400, CRC(6a9534fc) SHA1(67ad94674db5c2aab75785668f610f6f4eccd158) ) /* 7751 - U34 */
 
 	ROM_REGION( 0x20000, REGION_SOUND1, 0 ) /* 7751 sound data */
-	ROM_LOAD( "epr-11579.1", 0x0000, 0x8000, CRC(1a994135) SHA1(f42444521a878d32b189876f8854f6363e1b353b) )
-	ROM_LOAD( "epr-11580.2", 0x0000, 0x8000, CRC(961646ed) SHA1(4c8f87a10ffd7035145dedba86deb373368b0e49) )
-	ROM_LOAD( "epr-11581.4", 0x0000, 0x8000, CRC(d271a6e5) SHA1(de303f70abfa28e599e5eb0c2b314f43faa1b484) )
-	ROM_LOAD( "epr-11582.5", 0x0000, 0x8000, CRC(bcbe3d8a) SHA1(2e4bb0ebffdd594b192c5b854ea425029d92fdb1) )
+	ROM_LOAD( "epr-11579.1", 0x00000, 0x8000, CRC(1a994135) SHA1(f42444521a878d32b189876f8854f6363e1b353b) )
+	ROM_LOAD( "epr-11580.2", 0x08000, 0x8000, CRC(961646ed) SHA1(4c8f87a10ffd7035145dedba86deb373368b0e49) )
+	ROM_LOAD( "epr-11581.4", 0x10000, 0x8000, CRC(d271a6e5) SHA1(de303f70abfa28e599e5eb0c2b314f43faa1b484) )
+	ROM_LOAD( "epr-11582.5", 0x18000, 0x8000, CRC(bcbe3d8a) SHA1(2e4bb0ebffdd594b192c5b854ea425029d92fdb1) )
 ROM_END
 
 /**************************************************************************************************************************
@@ -2434,10 +2434,10 @@ ROM_START( sjryuko1 )
 	ROM_LOAD( "7751.bin",     0x0000, 0x0400, CRC(6a9534fc) SHA1(67ad94674db5c2aab75785668f610f6f4eccd158) ) /* 7751 - U34 */
 
 	ROM_REGION( 0x20000, REGION_SOUND1, 0 ) /* 7751 sound data */
-	ROM_LOAD( "epr12228.1", 0x0000, 0x8000, CRC(6b2e6aef) SHA1(64ae6ec327c32cdb877a493ebfe11af15e2388ac) )
-	ROM_LOAD( "epr12229.2", 0x0000, 0x8000, CRC(b7aa015c) SHA1(0ef023f73722e27180c271b207a5097220f40b5e) )
-	ROM_LOAD( "epr12230.4", 0x0000, 0x8000, CRC(d0f61fd4) SHA1(e6f29459d7395122f26957f56e38926aebd9004c) )
-	ROM_LOAD( "epr12231.5", 0x0000, 0x8000, CRC(780bdc57) SHA1(8c859043bba389292604385b88c743728180f9a9) )
+	ROM_LOAD( "epr12228.1", 0x00000, 0x8000, CRC(6b2e6aef) SHA1(64ae6ec327c32cdb877a493ebfe11af15e2388ac) )
+	ROM_LOAD( "epr12229.2", 0x08000, 0x8000, CRC(b7aa015c) SHA1(0ef023f73722e27180c271b207a5097220f40b5e) )
+	ROM_LOAD( "epr12230.4", 0x10000, 0x8000, CRC(d0f61fd4) SHA1(e6f29459d7395122f26957f56e38926aebd9004c) )
+	ROM_LOAD( "epr12231.5", 0x18000, 0x8000, CRC(780bdc57) SHA1(8c859043bba389292604385b88c743728180f9a9) )
 ROM_END
 
 
@@ -2660,14 +2660,14 @@ ROM_END
 
 static DRIVER_INIT( generic_16a )
 {
-	system16a_generic_init();
+	system16a_generic_init(machine);
 }
 
 
 static DRIVER_INIT( afighter )
 {
 	void fd1089_decrypt_0018(void);
-	system16a_generic_init();
+	system16a_generic_init(machine);
 	fd1089_decrypt_0018();
 }
 
@@ -2675,7 +2675,7 @@ static DRIVER_INIT( afighter )
 static DRIVER_INIT( alexkid1 )
 {
 	void fd1089_decrypt_alexkidd(void);
-	system16a_generic_init();
+	system16a_generic_init(machine);
 	fd1089_decrypt_alexkidd();
 }
 
@@ -2683,14 +2683,14 @@ static DRIVER_INIT( alexkid1 )
 static DRIVER_INIT( aliensy1 )
 {
 	void fd1089_decrypt_0033(void);
-	system16a_generic_init();
+	system16a_generic_init(machine);
 	fd1089_decrypt_0033();
 }
 
 
 static DRIVER_INIT( bodyslam )
 {
-	system16a_generic_init();
+	system16a_generic_init(machine);
 	i8751_vblank_hook = bodyslam_i8751_sim;
 }
 
@@ -2699,14 +2699,14 @@ static DRIVER_INIT( mjleague )
 {
 	UINT16 *rombase = (UINT16 *)memory_region(REGION_CPU1);
 	rombase[0xbd42/2] = (rombase[0xbd42/2] & 0x00ff) | 0x6600;
-	system16a_generic_init();
+	system16a_generic_init(machine);
 	custom_io_r = mjleague_custom_io_r;
 }
 
 
 static DRIVER_INIT( quartet )
 {
-	system16a_generic_init();
+	system16a_generic_init(machine);
 	i8751_vblank_hook = quartet_i8751_sim;
 }
 
@@ -2714,7 +2714,7 @@ static DRIVER_INIT( quartet )
 static DRIVER_INIT( sdi )
 {
 	void fd1089_decrypt_0027(void);
-	system16a_generic_init();
+	system16a_generic_init(machine);
 	fd1089_decrypt_0027();
 	custom_io_r = sdi_custom_io_r;
 }
@@ -2723,7 +2723,7 @@ static DRIVER_INIT( sdi )
 static DRIVER_INIT( sjryukoa )
 {
 	void fd1089_decrypt_5021(void);
-	system16a_generic_init();
+	system16a_generic_init(machine);
 	fd1089_decrypt_5021();
 	custom_io_r = sjryuko_custom_io_r;
 	lamp_changed_w = sjryuko_lamp_changed_w;
@@ -2733,7 +2733,7 @@ static DRIVER_INIT( sjryukoa )
 static DRIVER_INIT( timesca1 )
 {
 	void fd1089_decrypt_0024(void);
-	system16a_generic_init();
+	system16a_generic_init(machine);
 	fd1089_decrypt_0024();
 }
 

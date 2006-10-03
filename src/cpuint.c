@@ -12,7 +12,7 @@
 #include <signal.h>
 #include "driver.h"
 
-#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#ifdef MAME_DEBUG
 #include "debug/debugcpu.h"
 #endif
 
@@ -110,7 +110,7 @@ static int (*drv_irq_callbacks[MAX_CPU])(int);
  *
  *************************************/
 
-int cpuint_init(void)
+int cpuint_init(running_machine *machine)
 {
 	int cpunum;
 	int line;
@@ -369,7 +369,7 @@ INLINE int cpu_irq_callback(int cpunum, int line)
 	if (drv_irq_callbacks[cpunum])
 		vector = (*drv_irq_callbacks[cpunum])(line);
 
-#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#ifdef MAME_DEBUG
 	/* notify the debugger */
 	debug_interrupt_hook(cpunum, line);
 #endif

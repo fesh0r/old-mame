@@ -244,6 +244,7 @@ SOUNDS += VRENDER0
 #SOUNDS += VOTRAX
 SOUNDS += ES8712
 SOUNDS += RF5C400
+SOUNDS += SPEAKER
 
 
 
@@ -354,7 +355,6 @@ $(OBJ)/shared.a: \
 	$(OBJ)/machine/6526cia.o \
 	$(OBJ)/machine/6821pia.o \
 	$(OBJ)/machine/6840ptm.o \
-	$(OBJ)/machine/6850acia.o \
 	$(OBJ)/machine/7474.o \
 	$(OBJ)/machine/74123.o \
 	$(OBJ)/machine/74148.o \
@@ -981,6 +981,7 @@ $(OBJ)/nichibut.a: \
 
 $(OBJ)/nintendo.a: \
 	$(OBJ)/drivers/dkong.o $(OBJ)/sndhrdw/dkong.o $(OBJ)/vidhrdw/dkong.o \
+	$(OBJ)/drivers/kinstb.o \
 	$(OBJ)/drivers/mario.o $(OBJ)/sndhrdw/mario.o $(OBJ)/vidhrdw/mario.o \
 	$(OBJ)/drivers/n8080.o $(OBJ)/sndhrdw/n8080.o $(OBJ)/vidhrdw/n8080.o \
 	$(OBJ)/drivers/nss.o $(OBJ)/machine/snes.o $(OBJ)/sndhrdw/snes.o $(OBJ)/vidhrdw/snes.o \
@@ -992,7 +993,7 @@ $(OBJ)/nintendo.a: \
 	$(OBJ)/machine/drakton.o \
 	$(OBJ)/machine/rp5h01.o \
 	$(OBJ)/machine/strtheat.o \
-	$(OBJ)/vidhrdw/ppu2c03b.o \
+	$(OBJ)/vidhrdw/ppu2c0x.o \
 
 $(OBJ)/nix.a: \
 	$(OBJ)/drivers/fitfight.o $(OBJ)/vidhrdw/fitfight.o \
@@ -1110,7 +1111,7 @@ $(OBJ)/sega.a: \
 	$(OBJ)/drivers/system18.o \
 	$(OBJ)/drivers/system24.o $(OBJ)/machine/system24.o $(OBJ)/vidhrdw/system24.o \
 	$(OBJ)/drivers/topshoot.o \
-	$(OBJ)/drivers/turbo.o $(OBJ)/machine/turbo.o $(OBJ)/sndhrdw/turbo.o $(OBJ)/vidhrdw/turbo.o \
+	$(OBJ)/drivers/turbo.o $(OBJ)/sndhrdw/turbo.o $(OBJ)/vidhrdw/turbo.o \
 	$(OBJ)/drivers/vicdual.o $(OBJ)/sndhrdw/vicdual.o $(OBJ)/vidhrdw/vicdual.o \
 	$(OBJ)/drivers/zaxxon.o $(OBJ)/sndhrdw/zaxxon.o $(OBJ)/vidhrdw/zaxxon.o \
 	$(OBJ)/machine/fd1089.o \
@@ -1228,7 +1229,7 @@ $(OBJ)/taito.a: \
 	$(OBJ)/drivers/fgoal.o $(OBJ)/vidhrdw/fgoal.o \
 	$(OBJ)/drivers/flstory.o $(OBJ)/machine/flstory.o $(OBJ)/vidhrdw/flstory.o \
 	$(OBJ)/drivers/gladiatr.o $(OBJ)/vidhrdw/gladiatr.o \
-	$(OBJ)/drivers/grchamp.o $(OBJ)/machine/grchamp.o $(OBJ)/sndhrdw/grchamp.o $(OBJ)/vidhrdw/grchamp.o \
+	$(OBJ)/drivers/grchamp.o $(OBJ)/sndhrdw/grchamp.o $(OBJ)/vidhrdw/grchamp.o \
 	$(OBJ)/drivers/groundfx.o $(OBJ)/vidhrdw/groundfx.o \
 	$(OBJ)/drivers/gsword.o $(OBJ)/machine/tait8741.o $(OBJ)/vidhrdw/gsword.o \
 	$(OBJ)/drivers/gunbustr.o $(OBJ)/vidhrdw/gunbustr.o \
@@ -1339,7 +1340,7 @@ $(OBJ)/thepit.a: \
 	$(OBJ)/drivers/timelimt.o $(OBJ)/vidhrdw/timelimt.o \
 
 $(OBJ)/tiamc1.a: \
-	$(OBJ)/drivers/tiamc1.o $(OBJ)/vidhrdw/tiamc1.o \
+	$(OBJ)/drivers/tiamc1.o $(OBJ)/vidhrdw/tiamc1.o $(OBJ)/sndhrdw/tiamc1.o \
 
 $(OBJ)/toaplan.a: \
 	$(OBJ)/drivers/mjsister.o $(OBJ)/vidhrdw/mjsister.o \
@@ -1437,6 +1438,7 @@ $(OBJ)/misc.a: \
 	$(OBJ)/drivers/aztarac.o $(OBJ)/sndhrdw/aztarac.o $(OBJ)/vidhrdw/aztarac.o \
 	$(OBJ)/drivers/beaminv.o $(OBJ)/vidhrdw/beaminv.o \
 	$(OBJ)/drivers/bmcbowl.o \
+	$(OBJ)/drivers/carrera.o \
 	$(OBJ)/drivers/cave.o $(OBJ)/vidhrdw/cave.o \
 	$(OBJ)/drivers/cherrym.o \
 	$(OBJ)/drivers/coinmstr.o \
@@ -1495,6 +1497,7 @@ $(OBJ)/misc.a: \
 	$(OBJ)/drivers/pass.o $(OBJ)/vidhrdw/pass.o \
 	$(OBJ)/drivers/pipeline.o \
 	$(OBJ)/drivers/pkscram.o \
+	$(OBJ)/drivers/pmpoker.o \
 	$(OBJ)/drivers/pntnpuzl.o \
 	$(OBJ)/drivers/policetr.o $(OBJ)/vidhrdw/policetr.o \
 	$(OBJ)/drivers/polyplay.o $(OBJ)/sndhrdw/polyplay.o $(OBJ)/vidhrdw/polyplay.o \
@@ -1562,6 +1565,8 @@ $(OBJ)/drivers/darius.o:	$(OBJ)/layout/darius.lh
 $(OBJ)/drivers/lazercmd.o:	$(OBJ)/layout/lazercmd.lh
 
 $(OBJ)/drivers/maxaflex.o:	$(OBJ)/layout/maxaflex.lh
+
+$(OBJ)/drivers/mpu4.o:		$(OBJ)/layout/mpu4.lh \
 
 $(OBJ)/drivers/meadows.o:	$(OBJ)/layout/deadeye.lh \
 							$(OBJ)/layout/gypsyjug.lh

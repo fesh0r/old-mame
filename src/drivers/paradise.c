@@ -15,7 +15,7 @@ Year + Game          Board#
 94+ Paradise         YS-1600
 94+ Paradise Deluxe  YS-1604
 95  Target Ball      YS-2002
-96  Torus            ?
+96  Torus            YS-0402? Looks identical
 98  Mad Ball         YS-0402
 ---------------------------------------------------------------------------
 
@@ -26,44 +26,6 @@ paradise: I'm not sure it's working correctly:
 - The high scores table can't be entered !?
 - The chance to play a bonus game is very slim. I think I got to play
   a couple in total. Is there a way to trigger them !?
-
-Target Ball
-Yunsung, 1995
-
-PCB Layout
-----------
-
-YS-2002 YUNSUNG
-|---------------------------------------------------------|
-|  M6295  M6295   Z80              4MHz       YUNSUNG.110 |
-| YUNSUNG.113   YUNSUNG.128                   YUNSUNG.111 |
-| YUNSUNG.85     6264                                     |
-|                                             YUNSUNG.92  |
-|                                             YUNSUNG.93  |
-|                                                         |
-|                6116                                     |
-|                6116              6116                   |
-|J               6116                                     |
-|A                                                        |
-|M                                            6116        |
-|M                                            6116        |
-|A                            |-------|                   |
-|                             | ACTEL |                   |
-|                             |A1020B |                   |
-|DSW1(8)                      |PLCC84 |                   |
-|         12MHz               |-------|                   |
-|                           4464                          |
-|                           4464     YUNSUNG.114          |
-|                           4464     YUNSUNG.115          |
-|DSW2(8)                    4464                          |
-|                                                         |
-|---------------------------------------------------------|
-Notes:
-      Z80 clock: 6.000MHz
-     6295 clock: 1.000MHz (both), sample rate = 1000000/132 (both)
-          VSync: 54Hz
-
- note even with these settings game runs slightly faster in Mame than real PCB
 
 ***************************************************************************/
 
@@ -749,6 +711,50 @@ ROM_START( paradlx )
 	ROM_LOAD( "9.u113", 0x00000, 0x80000, CRC(9c5337f0) SHA1(4d7a8069be4551aad9d7d32d835dcf91be079359) )
 ROM_END
 
+/***************************************************************************
+
+                          Target Ball
+
+Yunsung, 1995
+
+PCB Layout
+----------
+
+YS-2002 YUNSUNG
+|---------------------------------------------------------|
+|  M6295  M6295   Z80              4MHz       YUNSUNG.110 |
+| YUNSUNG.113   YUNSUNG.128                   YUNSUNG.111 |
+| YUNSUNG.85     6264                                     |
+|                                             YUNSUNG.92  |
+|                                             YUNSUNG.93  |
+|                                                         |
+|                6116                                     |
+|                6116              6116                   |
+|J               6116                                     |
+|A                                                        |
+|M                                            6116        |
+|M                                            6116        |
+|A                            |-------|                   |
+|                             | ACTEL |                   |
+|                             |A1020B |                   |
+|DSW1(8)                      |PLCC84 |                   |
+|         12MHz               |-------|                   |
+|                           4464                          |
+|                           4464     YUNSUNG.114          |
+|                           4464     YUNSUNG.115          |
+|DSW2(8)                    4464                          |
+|                                                         |
+|---------------------------------------------------------|
+Notes:
+      Z80 clock: 6.000MHz
+     6295 clock: 1.000MHz (both), sample rate = 1000000/132 (both)
+          VSync: 54Hz
+
+ note even with these settings game runs slightly faster in Mame than real PCB
+
+
+***************************************************************************/
+
 ROM_START( tgtball )
 	ROM_REGION( 0x44000, REGION_CPU1, 0 )		/* Z80 Code */
 	ROM_LOAD( "rom7.bin", 0x00000, 0x0c000, CRC(8dbeab12) SHA1(7181c23459990aecbe2d13377aaf19f65108eac6) )
@@ -803,7 +809,7 @@ ROM_START( tgtballa )
 	ROM_LOAD( "yunsung.113", 0x00000, 0x40000, CRC(150a6cc6) SHA1(b435fcf8ba48006f506db6b63ba54a30a6b3eade) )
 ROM_END
 
-ROM_START( torus )
+ROM_START( torus ) /* Board looks identical to the YS-0402 but has no number printed on the PCB */
 	ROM_REGION( 0x14000, REGION_CPU1, 0 )		/* Z80 Code */
 	ROM_LOAD( "bc13.bin",     0x00000, 0xc000, CRC(55d3ef3e) SHA1(195463271fdb3f9f5c19068efd1c99105f761fe9) )
 	ROM_CONTINUE(             0x10000, 0x4000 )
@@ -835,7 +841,7 @@ PCB: YS-0402
 
 Z80A
 AD-65 (OKI M6295)
-Actel A1020B PLC84C
+Actel A1020B PLC84C (or compatible QuickLogic QL12X16B-XPL84C)
 OSC: 12.000 MHz, 4.000Mhz
 
 RAM 4 Hyundai HY62256ALP-70
@@ -857,7 +863,7 @@ All roms read with manufacturer's IDs and routines
 
 */
 
-ROM_START( madball )
+ROM_START( madball ) /* Models in swimsuits only, no nudity */
 	ROM_REGION( 0x24000, REGION_CPU1, 0 )		/* Z80 Code */
 	ROM_LOAD( "p.u1",     0x00000, 0xc000, CRC(73008425) SHA1(6eded60fd5c637a63783247c858d999d5974d378) )
 	ROM_CONTINUE(             0x10000, 0x14000 )
@@ -876,6 +882,30 @@ ROM_START( madball )
 	ROM_REGION( 0x100000, REGION_GFX4, ROMREGION_DISPOSE | ROMREGION_INVERT)	/* 8x8x8 Midground */
 	ROM_LOAD( "4.u93",      0x80000, 0x80000, CRC(c3be56ad) SHA1(9cfa0b38c60798deccca74dc6b0ce0826ff7f467) )
 	ROM_LOAD( "3.u92",      0x00000, 0x80000, CRC(846019a6) SHA1(571bfa299e13b96ca263bd7e62c760bdbe3438bd) )
+
+	ROM_REGION( 0x80000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_LOAD( "s.u28",     0x00000, 0x80000, CRC(78f02584) SHA1(70542e126db73a573db9ef41399d3a07fb7ea94b) )
+ROM_END
+
+ROM_START( madballn ) /* Even numbered stages show topless models.  Is nudity controlled by a dipswitch? */
+	ROM_REGION( 0x24000, REGION_CPU1, 0 )		/* Z80 Code */
+	ROM_LOAD( "bc13.u1",     0x00000, 0xc000, CRC(531fa919) SHA1(0eafc663b9ad50d0dfc5491fe96c9bcf30483991) )
+	ROM_CONTINUE(             0x10000, 0x14000 )
+
+	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT)	/* 16x16x8 Sprites */
+	ROM_LOAD( "2.u67",      0x00000, 0x40000, CRC(1f3a6cd5) SHA1(7a17549f2fff003605d91703c84a398488b2f74c) )
+	ROM_LOAD( "1.u66",      0x40000, 0x40000, CRC(8637c7b4) SHA1(e0026e48f0e8f3554a5b448e0d1f9d1c5551dbfb) )
+
+	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE | ROMREGION_ERASEFF)	/* 8x8x4 Background */
+	/* not for this game */
+
+	ROM_REGION( 0x100000, REGION_GFX3, ROMREGION_DISPOSE | ROMREGION_INVERT)	/* 8x8x8 Foreground */
+	ROM_LOAD( "bc2.u105",      0x00000, 0x80000, CRC(d75faa62) SHA1(95badf932e8a8084e67aa7df8d6cb2cb2917d5fc) )
+	ROM_LOAD( "bc1.u106",      0x80000, 0x80000, CRC(04b8f7a5) SHA1(97555880f200d0ecc521f8c76bcaa4a0f0eb1aa9) )
+
+	ROM_REGION( 0x100000, REGION_GFX4, ROMREGION_DISPOSE | ROMREGION_INVERT)	/* 8x8x8 Midground */
+	ROM_LOAD( "bc3.u93",      0x80000, 0x80000, CRC(f07a5fe6) SHA1(0b1117d8ff0f2a6c953ab1988065b75a33e2c949) )
+	ROM_LOAD( "bc4.u92",      0x00000, 0x80000, CRC(7ed233ab) SHA1(8a4bc31741b4e6e1c03974f9b00f747a29c78ebf) )
 
 	ROM_REGION( 0x80000, REGION_SOUND1, 0 )	/* Samples */
 	ROM_LOAD( "s.u28",     0x00000, 0x80000, CRC(78f02584) SHA1(70542e126db73a573db9ef41399d3a07fb7ea94b) )
@@ -912,3 +942,4 @@ GAME( 1995,  tgtball,  0,       tgtball,  tgtball,  tgtball,  ROT0,  "Yun Sung",
 GAME( 1995,  tgtballa, tgtball, tgtball,  tgtball,  tgtball,  ROT0,  "Yun Sung", "Target Ball", 0 )
 GAME( 1996,  torus,    0,       torus,    torus,    torus,    ROT90, "Yun Sung", "Torus", 0 )
 GAME( 1998,  madball,  0,       madball,  madball,  tgtball,  ROT0,  "Yun Sung", "Mad Ball V2.0", 0 )
+GAME( 1997,  madballn, madball, madball,  madball,  tgtball,  ROT0,  "Yun Sung", "Mad Ball V2.0 (With Nudity)", 0 )

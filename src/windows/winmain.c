@@ -8,6 +8,7 @@
 //============================================================
 
 // standard windows headers
+#define _WIN32_WINNT 0x0400
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mmsystem.h>
@@ -183,7 +184,7 @@ int main(int argc, char **argv)
 //  output_oslog
 //============================================================
 
-static void output_oslog(const char *buffer)
+static void output_oslog(running_machine *machine, const char *buffer)
 {
 	extern int win_erroroslog;
 	if (win_erroroslog)
@@ -196,21 +197,19 @@ static void output_oslog(const char *buffer)
 //  osd_init
 //============================================================
 
-int osd_init(void)
+int osd_init(running_machine *machine)
 {
-	extern int wininput_init(void);
-	extern void win_blit_init(void);
 	extern int win_erroroslog;
 	int result = 0;
 
 	if (result == 0)
-		result = winvideo_init();
+		result = winvideo_init(machine);
 
 	if (result == 0)
-		result = wininput_init();
+		result = wininput_init(machine);
 
 	if (result == 0)
-		winoutput_init();
+		winoutput_init(machine);
 
 #ifdef MESS
 	if (result == 0)
@@ -218,7 +217,7 @@ int osd_init(void)
 #endif
 
 	if (win_erroroslog)
-		add_logerror_callback(output_oslog);
+		add_logerror_callback(machine, output_oslog);
 
 	return result;
 }
@@ -254,6 +253,21 @@ void osd_free_executable(void *ptr, size_t size)
 int osd_is_bad_read_ptr(const void *ptr, size_t size)
 {
 	return IsBadReadPtr(ptr, size);
+}
+
+
+
+//============================================================
+//  osd_break_into_debugger
+//============================================================
+
+void osd_break_into_debugger(const char *message)
+{
+	if (IsDebuggerPresent())
+	{
+		OutputDebugString(message);
+		DebugBreak();
+	}
 }
 
 
@@ -465,7 +479,7 @@ static LONG CALLBACK exception_filter(struct _EXCEPTION_POINTERS *info)
 
 	// if we're hitting this recursively, just exit
 	if (already_hit)
-		return EXCEPTION_EXECUTE_HANDLER;
+		ExitProcess(100);
 	already_hit = 1;
 
 	// find our man
@@ -576,12 +590,10 @@ static LONG CALLBACK exception_filter(struct _EXCEPTION_POINTERS *info)
 	}
 #endif
 
-	logerror("shutting down after exception\n");
-
 	cli_frontend_exit();
 
 	// exit
-	return EXCEPTION_EXECUTE_HANDLER;
+	ExitProcess(100);
 }
 
 

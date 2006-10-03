@@ -14,9 +14,7 @@
 #ifndef __CHEAT_H__
 #define __CHEAT_H__
 
-extern int he_did_cheat;
-
-void cheat_init(void);
+void cheat_init(running_machine *machine);
 
 int cheat_menu(int selection);
 

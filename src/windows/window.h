@@ -112,7 +112,7 @@ extern int			win_use_raw_mouse;
 //============================================================
 
 // core initialization
-int winwindow_init(void);
+int winwindow_init(running_machine *machine);
 
 // creation/deletion of windows
 int winwindow_video_window_create(int index, win_monitor_info *monitor, const win_window_config *config);
@@ -126,6 +126,10 @@ void winwindow_toggle_full_screen(void);
 
 void winwindow_process_events_periodic(void);
 void winwindow_process_events(int ingame);
+
+void winwindow_ui_pause_from_window_thread(int pause);
+void winwindow_ui_pause_from_main_thread(int pause);
+int winwindow_ui_is_paused(void);
 
 #if HAS_WINDOW_MENU
 int win_create_menu(HMENU *menus);

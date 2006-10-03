@@ -127,7 +127,7 @@ static UINT8		bloxeed_sound;		/* use kludge for bloxeed sound? */
 
 static MACHINE_START( segac2 )
 {
-	if (machine_start_genesis())
+	if (machine_start_genesis(machine))
 		return 1;
 	state_save_register_global_array(misc_io_data);
 	state_save_register_global(prot_write_buf);
@@ -139,7 +139,7 @@ static MACHINE_START( segac2 )
 MACHINE_RESET( segac2 )
 {
 	/* set up interrupts and such */
-	machine_reset_genesis();
+	machine_reset_genesis(machine);
 
 	/* determine how many sound banks */
 	sound_banks = 0;
@@ -272,15 +272,12 @@ static WRITE16_HANDLER( palette_w )
 	newword = paletteram16[offset];
 
 	/* up to 8 bits */
-	r = ((newword << 4) & 0xf0) | ((newword >>  9) & 0x08);
-	g = ((newword >> 0) & 0xf0) | ((newword >> 10) & 0x08);
-	b = ((newword >> 4) & 0xf0) | ((newword >> 11) & 0x08);
-	r |= r >> 5;
-	g |= g >> 5;
-	b |= b >> 5;
+	r = ((newword << 1) & 0x1e) | ((newword >> 12) & 0x01);
+	g = ((newword >> 3) & 0x1e) | ((newword >> 13) & 0x01);
+	b = ((newword >> 7) & 0x1e) | ((newword >> 14) & 0x01);
 
 	/* set the color */
-	palette_set_color(offset, r, g, b);
+	palette_set_color(Machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
 }
 
 
@@ -2027,19 +2024,17 @@ static DRIVER_INIT( puyopuy2 )
 
 static DRIVER_INIT( potopoto )
 {
-	/* note: this is not the real table; Poto Poto only tests one  */
-	/* very specific case, so we don't have enough data to provide */
-	/* the correct table in its entirety */
+	/* 317-0218 */
 	static const UINT32 table[256/8] =
 	{
-		0x00000000, 0x00000000, 0x00000000, 0x00000000,
-		0x00000000, 0x00000000, 0x00000000, 0x00000000,
-		0x00000000, 0x00000000, 0x00000000, 0x00000000,
-		0x00000000, 0x00000000, 0x00000000, 0x00000000,
-		0x00000000, 0x00000000, 0x00000000, 0x00000000,
-		0x00000000, 0x00000000, 0x22222222, 0x22222222,
-		0x00000000, 0x00000000, 0x00000000, 0x00000000,
-		0x00000000, 0x00000000, 0x00000000, 0x00000000
+		0xb33ba22a, 0xa23bb32a, 0xa22aa22a, 0xb32ab32a,
+		0xb139a028, 0xa039b128, 0xa028a028, 0xb128b128,
+		0x3f3f2e2e, 0x2e3f3f2e, 0x2e2e2e2e, 0x3f2e3f2e,
+		0x3d3d2c2c, 0x2c3d3d2c, 0x2c2c2c2c, 0x3d2c3d2c,
+		0xdd11ee22, 0xcc11ff22, 0xcc00ee22, 0xdd00ff22,
+		0xdf13ec20, 0xce13fd20, 0xce02ec20, 0xdf02fd20,
+		0x51156226, 0x40157326, 0x40046226, 0x51047326,
+		0x53176024, 0x42177124, 0x42066024, 0x53067124
 	};
 	segac2_common_init(table);
 }

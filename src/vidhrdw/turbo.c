@@ -6,995 +6,1085 @@
 
 #include "driver.h"
 #include "turbo.h"
+#include "res_net.h"
+#include <math.h>
 
 
-/* constants */
-#define VIEW_WIDTH					(32*8)
-#define VIEW_HEIGHT					(28*8)
-#define END_OF_ROW_VALUE			0x12345678
 
-/* globals definitions */
-UINT8 *sega_sprite_position;
-UINT8 turbo_collision;
-
-/* internal data */
-static UINT8 *sprite_priority, *sprite_expanded_priority;
-static UINT8 *road_gfxdata, *road_palette, *road_enable_collide;
-static UINT16 *road_expanded_palette;
-static UINT8 *fore_palette, *fore_priority;
-static UINT16 *fore_expanded_data;
-static UINT8 *back_data;
-static UINT8 *overall_priority, *collision_map;
-
-/* sprite tracking */
-struct sprite_params_data
+typedef struct _sprite_info sprite_info;
+struct _sprite_info
 {
-	UINT32 *base;
-	UINT8 *enable;
-	int offset, rowbytes;
-	int yscale, miny, maxy;
-	int xscale, xoffs;
-	int flip;
+	UINT16	ve;					/* VE0-15 signals for this row */
+	UINT8	lst;				/* LST0-7 signals for this row */
+	UINT32	latched[8];			/* latched pixel data */
+	UINT8	plb[8];				/* latched PLB state */
+	UINT32	offset[8];			/* current offset for this row */
+	UINT32	frac[8];			/* leftover fraction */
+	UINT32	step[8];			/* stepping value */
 };
-static struct sprite_params_data sprite_params[16];
-static UINT32 *sprite_expanded_data;
-static UINT8 *sprite_expanded_enable;
 
-/* misc other stuff */
-static UINT8 *buckrog_bitmap_ram;
-static UINT8 drew_frame;
-static UINT32 sprite_mask;
+static const UINT32 sprite_expand[16] =
+{
+	0x00000000, 0x00000001, 0x00000100, 0x00000101,
+	0x00010000, 0x00010001, 0x00010100, 0x00010101,
+	0x01000000, 0x01000001, 0x01000100, 0x01000101,
+	0x01010000, 0x01010001, 0x01010100, 0x01010101
+};
 
 
-/***************************************************************************
 
-    Convert the color PROMs into a more useable format.
 
-***************************************************************************/
+/*************************************
+ *
+ *  Palette conversion
+ *
+ *************************************/
 
 PALETTE_INIT( turbo )
 {
+	static const int resistances[3] = { 1000, 470, 220 };
+	double rweights[3], gweights[3], bweights[2];
 	int i;
 
-	for (i = 0; i < 512; i++, color_prom++)
+	/* compute the color output resistor weights */
+	compute_resistor_weights(0,	255, -1.0,
+			3,	&resistances[0], rweights, 470, 0,
+			3,	&resistances[0], gweights, 470, 0,
+			2,	&resistances[1], bweights, 470, 0);
+
+	/* initialize the palette with these colors */
+	for (i = 0; i < 256; i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 
-		/* bits 4,5,6 of the index are inverted before being used as addresses */
-		/* to save ourselves lots of trouble, we will undo the inversion when */
-		/* generating the palette */
-		int adjusted_index = i ^ 0x70;
-
 		/* red component */
-		bit0 = (*color_prom >> 0) & 1;
-		bit1 = (*color_prom >> 1) & 1;
-		bit2 = (*color_prom >> 2) & 1;
-		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = (i >> 0) & 1;
+		bit1 = (i >> 1) & 1;
+		bit2 = (i >> 2) & 1;
+		r = combine_3_weights(rweights, bit0, bit1, bit2);
 
 		/* green component */
-		bit0 = (*color_prom >> 3) & 1;
-		bit1 = (*color_prom >> 4) & 1;
-		bit2 = (*color_prom >> 5) & 1;
-		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = (i >> 3) & 1;
+		bit1 = (i >> 4) & 1;
+		bit2 = (i >> 5) & 1;
+		g = combine_3_weights(gweights, bit0, bit1, bit2);
 
 		/* blue component */
-		bit0 = 0;
-		bit1 = (*color_prom >> 6) & 1;
-		bit2 = (*color_prom >> 7) & 1;
-		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = (i >> 6) & 1;
+		bit1 = (i >> 7) & 1;
+		b = combine_2_weights(bweights, bit0, bit1);
 
-		palette_set_color(adjusted_index,r,g,b);
+		palette_set_color(machine, i, r, g, b);
 	}
 }
 
 
 PALETTE_INIT( subroc3d )
 {
+	static const int resistances[3] = { 1000, 470, 220 };
+	double rweights[3], gweights[3], bweights[2];
 	int i;
 
-	/* Subroc3D uses a common final color PROM with 512 entries */
-	for (i = 0; i < 512; i++, color_prom++)
+	/* compute the color output resistor weights */
+	compute_resistor_weights(0,	255, -1.0,
+			3,	&resistances[0], rweights, 470, 0,
+			3,	&resistances[0], gweights, 470, 0,
+			2,	&resistances[1], bweights, 470, 0);
+
+	/* initialize the palette with these colors */
+	for (i = 0; i < 256; i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 
 		/* red component */
-		bit0 = (*color_prom >> 0) & 1;
-		bit1 = (*color_prom >> 1) & 1;
-		bit2 = (*color_prom >> 2) & 1;
-		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = (i >> 0) & 1;
+		bit1 = (i >> 1) & 1;
+		bit2 = (i >> 2) & 1;
+		r = combine_3_weights(rweights, bit0, bit1, bit2);
 
 		/* green component */
-		bit0 = (*color_prom >> 3) & 1;
-		bit1 = (*color_prom >> 4) & 1;
-		bit2 = (*color_prom >> 5) & 1;
-		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = (i >> 3) & 1;
+		bit1 = (i >> 4) & 1;
+		bit2 = (i >> 5) & 1;
+		g = combine_3_weights(gweights, bit0, bit1, bit2);
 
 		/* blue component */
-		bit0 = 0;
-		bit1 = (*color_prom >> 6) & 1;
-		bit2 = (*color_prom >> 7) & 1;
-		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = (i >> 6) & 1;
+		bit1 = (i >> 7) & 1;
+		b = combine_2_weights(bweights, bit0, bit1);
 
-		palette_set_color(i,r,g,b);
+		palette_set_color(machine, i, r, g, b);
 	}
 }
 
 
 PALETTE_INIT( buckrog )
 {
+	static const int resistances[4] = { 2200, 1000, 500, 250 };
+	double rweights[3], gweights[3], bweights[4];
 	int i;
 
-	/* Buck Rogers uses 1024 entries for the sprite color PROM */
-	for (i = 0; i < 1024; i++, color_prom++)
-	{
-		int bit0, bit1, bit2, r, g, b;
+	/* compute the color output resistor weights */
+	compute_resistor_weights(0,	255, -1.0,
+			3,	&resistances[1], rweights, 1000, 0,
+			3,	&resistances[1], gweights, 1000, 0,
+			4,	&resistances[0], bweights, 1000, 0);
 
-		/* red component */
-		bit0 = (*color_prom >> 0) & 1;
-		bit1 = (*color_prom >> 1) & 1;
-		bit2 = (*color_prom >> 2) & 1;
-		r = 34 * bit0 + 68 * bit1 + 137 * bit2;
-
-		/* green component */
-		bit0 = (*color_prom >> 3) & 1;
-		bit1 = (*color_prom >> 4) & 1;
-		bit2 = (*color_prom >> 5) & 1;
-		g = 34 * bit0 + 68 * bit1 + 137 * bit2;
-
-		/* blue component */
-		bit0 = 0;
-		bit1 = (*color_prom >> 6) & 1;
-		bit2 = (*color_prom >> 7) & 1;
-		b = 34 * bit0 + 68 * bit1 + 137 * bit2;
-
-		palette_set_color(i,r,g,b);
-	}
-
-	/* then another 512 entries for the character color PROM */
-	for (i = 0; i < 512; i++, color_prom++)
-	{
-		int bit0, bit1, bit2, r, g, b;
-
-		/* red component */
-		bit0 =
-		bit1 = (*color_prom >> 0) & 1;
-		bit2 = (*color_prom >> 1) & 1;
-		r = 34 * bit0 + 68 * bit1 + 137 * bit2;
-
-		/* green component */
-		bit0 =
-		bit1 = (*color_prom >> 2) & 1;
-		bit2 = (*color_prom >> 3) & 1;
-		g = 34 * bit0 + 68 * bit1 + 137 * bit2;
-
-		/* blue component */
-		bit0 = 0;
-		bit1 = (*color_prom >> 4) & 1;
-		bit2 = (*color_prom >> 5) & 1;
-		b = 34 * bit0 + 68 * bit1 + 137 * bit2;
-
-		palette_set_color(i+1024,r,g,b);
-	}
-
-	/* finally, the gradient foreground gets its own set of 256 colors */
-	for (i = 0; i < 256; i++)
+	/* initialize the palette with these colors */
+	for (i = 0; i < 1024; i++)
 	{
 		int bit0, bit1, bit2, bit3, r, g, b;
 
 		/* red component */
-		bit0 = 0;
-		bit1 = 0;
-		bit2 = (i >> 0) & 1;
-		r = 34 * bit0 + 68 * bit1 + 137 * bit2;
+		bit0 = (i >> 0) & 1;
+		bit1 = (i >> 1) & 1;
+		bit2 = (i >> 2) & 1;
+		r = combine_3_weights(rweights, bit0, bit1, bit2);
 
 		/* green component */
-		bit0 = (i >> 1) & 1;
-		bit1 = (i >> 2) & 1;
-		bit2 = (i >> 3) & 1;
-		g = 34 * bit0 + 68 * bit1 + 137 * bit2;
+		bit0 = (i >> 3) & 1;
+		bit1 = (i >> 4) & 1;
+		bit2 = (i >> 5) & 1;
+		g = combine_3_weights(gweights, bit0, bit1, bit2);
 
-		/* blue component */
-		bit0 = (i >> 4) & 1;
-		bit1 = (i >> 5) & 1;
+		/* blue component - note the shuffled bits */
+		bit0 = (i >> 8) & 1;
+		bit1 = (i >> 9) & 1;
 		bit2 = (i >> 6) & 1;
 		bit3 = (i >> 7) & 1;
-		b = 16 * bit0 + 34 * bit1 + 68 * bit2 + 137 * bit3;
+		b = combine_4_weights(bweights, bit0, bit1, bit2, bit3);
 
-		palette_set_color(i+1024+512,r,g,b);
+		palette_set_color(machine, i, r, g, b);
 	}
 }
 
 
 
-/***************************************************************************
+/*************************************
+ *
+ *  Video startup
+ *
+ *************************************/
 
-    Sprite startup/shutdown
-
-***************************************************************************/
-
-static int init_sprites(UINT32 sprite_expand[16], UINT8 sprite_enable[16], int expand_shift)
+static void get_fg_tile_info(int tile_index)
 {
-	UINT8 *sprite_gfxdata = memory_region(REGION_GFX1);
-	int sprite_length = memory_region_length(REGION_GFX1);
-	int sprite_bank_size = sprite_length / 8;
-	UINT8 *src, *edst;
-	UINT32 *dst;
-	int i, j;
-
-	/* allocate the expanded sprite data */
-	sprite_expanded_data = auto_malloc(sprite_length * 2 * sizeof(UINT32));
-
-	/* allocate the expanded sprite enable array */
-	sprite_expanded_enable = auto_malloc(sprite_length * 2 * sizeof(UINT8));
-
-	/* expand the sprite ROMs */
-	src = sprite_gfxdata;
-	dst = sprite_expanded_data;
-	edst = sprite_expanded_enable;
-	for (i = 0; i < 8; i++)
-	{
-		/* expand this bank */
-		for (j = 0; j < sprite_bank_size; j++)
-		{
-			int bits = *src++;
-			*dst++ = sprite_expand[bits >> 4];
-			*dst++ = sprite_expand[bits & 15];
-			*edst++ = sprite_enable[bits >> 4];
-			*edst++ = sprite_enable[bits & 15];
-		}
-
-		/* shift for the next bank */
-		for (j = 0; j < 16; j++)
-		{
-			if (sprite_expand[j] != END_OF_ROW_VALUE)
-				sprite_expand[j] <<= expand_shift;
-			sprite_enable[j] <<= 1;
-		}
-	}
-
-	/* success */
-	return 0;
+	turbo_state *state = Machine->driver_data;
+	int code = state->videoram[tile_index];
+	SET_TILE_INFO(0, code, code >> 2, 0)
 }
 
-
-
-/***************************************************************************
-
-    Foreground startup/shutdown
-
-***************************************************************************/
-
-static int init_fore(void)
-{
-	UINT8 *fore_gfxdata = memory_region(REGION_GFX2);
-	int fore_length = memory_region_length(REGION_GFX2);
-	UINT16 *dst;
-	UINT8 *src;
-	int i, j;
-
-	/* allocate the expanded foreground data */
-	fore_expanded_data = auto_malloc(fore_length);
-
-	/* expand the foreground ROMs */
-	src = fore_gfxdata;
-	dst = fore_expanded_data;
-	for (i = 0; i < fore_length / 2; i++, src++)
-	{
-		int bits1 = src[0];
-		int bits2 = src[fore_length / 2];
-		int newbits = 0;
-
-		for (j = 0; j < 8; j++)
-		{
-			newbits |= ((bits1 >> (j ^ 7)) & 1) << (j * 2);
-			newbits |= ((bits2 >> (j ^ 7)) & 1) << (j * 2 + 1);
-		}
-		*dst++ = newbits;
-	}
-
-	return 0;
-}
-
-
-
-/***************************************************************************
-
-    Video startup
-
-***************************************************************************/
 
 VIDEO_START( turbo )
 {
-	UINT32 sprite_expand[16];
-	UINT8 sprite_enable[16];
-	UINT16 *dst;
-	UINT8 *src;
-	int i;
+	turbo_state *state = Machine->driver_data;
 
-	/* determine ROM/PROM addresses */
-	sprite_priority = memory_region(REGION_PROMS) + 0x0200;
-
-	road_gfxdata = memory_region(REGION_GFX3);
-	road_palette = memory_region(REGION_PROMS) + 0x0b00;
-	road_enable_collide = memory_region(REGION_PROMS) + 0x0b40;
-
-	fore_palette = memory_region(REGION_PROMS) + 0x0a00;
-
-	overall_priority = memory_region(REGION_PROMS) + 0x0600;
-	collision_map = memory_region(REGION_PROMS) + 0x0b60;
-
-	/* compute the sprite expansion array */
-	for (i = 0; i < 16; i++)
-	{
-		UINT32 value = 0;
-		if (i & 1) value |= 0x00000001;
-		if (i & 2) value |= 0x00000100;
-		if (i & 4) value |= 0x00010000;
-
-		/* special value for the end-of-row */
-		if ((i & 0x0c) == 0x04) value = END_OF_ROW_VALUE;
-
-		sprite_expand[i] = value;
-		sprite_enable[i] = (i >> 3) & 1;
-	}
-
-	/* initialize the sprite data */
-	if (init_sprites(sprite_expand, sprite_enable, 1))
-		return 1;
-
-	/* initialize the fore data */
-	if (init_fore())
-		return 1;
-
-	/* allocate the expanded road palette */
-	road_expanded_palette = auto_malloc(0x40 * sizeof(UINT16));
-
-	/* expand the road palette */
-	src = road_palette;
-	dst = road_expanded_palette;
-	for (i = 0; i < 0x20; i++, src++)
-		*dst++ = src[0] | (src[0x20] << 8);
-
-	/* other stuff */
-	drew_frame = 0;
-	sprite_mask = 0x7fff;
-
-	/* return success */
-	return 0;
-}
-
-
-VIDEO_START( subroc3d )
-{
-	UINT32 sprite_expand[16];
-	UINT8 sprite_enable[16];
-	int i;
-
-	/* determine ROM/PROM addresses */
-	sprite_priority = memory_region(REGION_PROMS) + 0x0500;
-	fore_palette = memory_region(REGION_PROMS) + 0x0200;
-
-	/* compute the sprite expansion array */
-	for (i = 0; i < 16; i++)
-	{
-		sprite_expand[i] = (i == 0x03 || i == 0x0f) ? END_OF_ROW_VALUE : i;
-		sprite_enable[i] = (i == 0x00 || i == 0x03 || i == 0x0c || i == 0x0f) ? 0 : 1;
-	}
-
-	/* initialize the sprite data */
-	if (init_sprites(sprite_expand, sprite_enable, 4))
-		return 1;
-
-	/* initialize the fore data */
-	if (init_fore())
-		return 1;
-
-	/* allocate the expanded sprite priority map */
-	sprite_expanded_priority = auto_malloc(1 << 12);
-
-	/* expand the sprite priority map */
-	for (i = 0; i < (1 << 12); i++)
-	{
-		int plb = ~i & 0xff;
-		int ply = i >> 8;
-		int byteval = sprite_priority[(plb | ((ply & 0x0e) << 7)) & 0x1ff];
-		sprite_expanded_priority[i] = (ply & 1) ? (byteval >> 4) : (byteval & 0x0f);
-		sprite_expanded_priority[i] *= 4;
-	}
-
-	/* other stuff */
-	sprite_mask = 0xffff;
-
-	/* return success */
+	/* initialize the foreground tilemap */
+	state->fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 32,32);
 	return 0;
 }
 
 
 VIDEO_START( buckrog )
 {
-	UINT32 sprite_expand[16];
-	UINT8 sprite_enable[16];
-	int i;
+	turbo_state *state = Machine->driver_data;
 
-	/* determine ROM/PROM addresses */
-	fore_priority = memory_region(REGION_PROMS) + 0x400;
-	back_data = memory_region(REGION_GFX3);
-
-	/* compute the sprite expansion array */
-	for (i = 0; i < 16; i++)
-	{
-		sprite_expand[i] = (i == 0x0f) ? END_OF_ROW_VALUE : i;
-		sprite_enable[i] = (i == 0x00 || i == 0x0f) ? 0 : 1;
-	}
-
-	/* initialize the sprite data */
-	if (init_sprites(sprite_expand, sprite_enable, 4))
-		return 1;
-
-	/* initialize the fore data */
-	if (init_fore())
-		return 1;
-
-	/* allocate the expanded sprite priority map */
-	sprite_expanded_priority = auto_malloc(1 << 8);
-
-	/* expand the sprite priority map */
-	for (i = 0; i < (1 << 8); i++)
-	{
-		if (i & 0x01) sprite_expanded_priority[i] = 0 | 8;
-		else if (i & 0x02) sprite_expanded_priority[i] = 1 | 8;
-		else if (i & 0x04) sprite_expanded_priority[i] = 2 | 8;
-		else if (i & 0x08) sprite_expanded_priority[i] = 3 | 8;
-		else if (i & 0x10) sprite_expanded_priority[i] = 4 | 8;
-		else if (i & 0x20) sprite_expanded_priority[i] = 5 | 8;
-		else if (i & 0x40) sprite_expanded_priority[i] = 6 | 8;
-		else if (i & 0x80) sprite_expanded_priority[i] = 7 | 8;
-		else sprite_expanded_priority[i] = 0;
-		sprite_expanded_priority[i] *= 4;
-	}
+	/* initialize the foreground tilemap */
+	state->fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 32,32);
 
 	/* allocate the bitmap RAM */
-	buckrog_bitmap_ram = auto_malloc(0xe000);
-
-	/* other stuff */
-	sprite_mask = 0xffff;
-
-	/* return success */
+	state->buckrog_bitmap_ram = auto_malloc(0xe000);
+	state_save_register_global_pointer(state->buckrog_bitmap_ram, 0xe000);
 	return 0;
 }
 
 
 
-/***************************************************************************
+/*************************************
+ *
+ *  Videoram access
+ *
+ *************************************/
 
-    Sprite data gathering
-
-***************************************************************************/
-
-static void turbo_update_sprite_info(void)
+WRITE8_HANDLER( turbo_videoram_w )
 {
-	struct sprite_params_data *data = sprite_params;
-	int i;
-
-	/* first loop over all sprites and update those whose scanlines intersect ours */
-	for (i = 0; i < 16; i++, data++)
+	turbo_state *state = Machine->driver_data;
+	state->videoram[offset] = data;
+	if (offset < 0x400)
 	{
-		UINT8 *sprite_base = spriteram + 16 * i;
-
-		/* snarf all the data */
-		data->base = sprite_expanded_data + (i & 7) * 0x8000;
-		data->enable = sprite_expanded_enable + (i & 7) * 0x8000;
-		data->offset = (sprite_base[6] + 256 * sprite_base[7]) & sprite_mask;
-		data->rowbytes = (INT16)(sprite_base[4] + 256 * sprite_base[5]);
-		data->miny = sprite_base[0];
-		data->maxy = sprite_base[1];
-		data->xscale = ((5 * 256 - 4 * sprite_base[2]) << 16) / (5 * 256);
-		data->yscale = (4 << 16) / (sprite_base[3] + 4);
-		data->xoffs = -1;
-		data->flip = 0;
-	}
-
-	/* now find the X positions */
-	for (i = 0; i < 0x200; i++)
-	{
-		int value = sega_sprite_position[i];
-		if (value)
-		{
-			int base = (i & 0x100) >> 5;
-			int which;
-			for (which = 0; which < 8; which++)
-				if (value & (1 << which))
-					sprite_params[base + which].xoffs = i & 0xff;
-		}
+		video_screen_update_partial(0, video_screen_get_vpos(0));
+		tilemap_mark_tile_dirty(state->fg_tilemap, offset);
 	}
 }
 
-
-static void subroc3d_update_sprite_info(void)
-{
-	struct sprite_params_data *data = sprite_params;
-	int i;
-
-	/* first loop over all sprites and update those whose scanlines intersect ours */
-	for (i = 0; i < 16; i++, data++)
-	{
-		UINT8 *sprite_base = spriteram + 8 * i;
-
-		/* snarf all the data */
-		data->base = sprite_expanded_data + (i & 7) * 0x10000;
-		data->enable = sprite_expanded_enable + (i & 7) * 0x10000;
-		data->offset = ((sprite_base[6] + 256 * sprite_base[7]) * 2) & sprite_mask;
-		data->rowbytes = (INT16)(sprite_base[4] + 256 * sprite_base[5]) * 2;
-		data->miny = sprite_base[0] ^ 0xff;
-		data->maxy = (sprite_base[1] ^ 0xff) - 1;
-		data->xscale = 65536.0 * (1.0 - 0.004 * (double)(sprite_base[2] - 0x40));
-		data->yscale = (4 << 16) / (sprite_base[3] + 4);
-		data->xoffs = -1;
-		data->flip = sprite_base[7]>>7;
-	}
-
-	/* now find the X positions */
-	for (i = 0; i < 0x200; i++)
-	{
-		int value = sega_sprite_position[i];
-		if (value)
-		{
-			int base = (i & 0x01) << 3;
-			int which;
-			for (which = 0; which < 8; which++)
-				if (value & (1 << which))
-					sprite_params[base + which].xoffs = ((i & 0x1fe) >> 1);
-		}
-	}
-}
-
-
-
-/***************************************************************************
-
-    Sprite rendering
-
-***************************************************************************/
-
-static void draw_one_sprite(const struct sprite_params_data *data, UINT32 *dest, UINT8 *edest, int xclip, int scanline)
-{
-	int xstep = data->flip ? -data->xscale : data->xscale;
-	int xoffs = data->xoffs;
-	UINT32 xcurr;
-	UINT32 *src;
-	UINT8 *esrc;
-	int offset;
-
-	/* xoffs of -1 means don't draw */
-	if (xoffs == -1 || data->xscale <= 0) return;
-
-	/* compute the current data offset */
-	scanline = ((scanline - data->miny) * data->yscale) >> 16;
-	offset = data->offset + (scanline + 1) * data->rowbytes;
-
-	/* clip to the road */
-	xcurr = offset << 16;
-	if (xoffs < xclip)
-	{
-		/* the pixel clock starts on xoffs regardless of clipping; take this into account */
-		xcurr += ((xclip - xoffs) * xstep) & 0xffff;
-		xoffs = xclip;
-	}
-
-	/* determine the bitmap location */
-	src = data->base;
-	esrc = data->enable;
-
-	/* two cases: easy case is with xstep <= 0x10000 */
-	if (xstep >= -0x10000 && xstep <= 0x10000)
-	{
-		/* loop over columns */
-		while (xoffs < VIEW_WIDTH)
-		{
-			UINT32 srcval = src[(xcurr >> 16) & sprite_mask];
-			UINT8 srcenable = esrc[(xcurr >> 16) & sprite_mask];
-
-			/* stop on the end-of-row signal */
-			if (srcval == END_OF_ROW_VALUE)
-				break;
-
-			/* OR in the bits from this pixel */
-			dest[xoffs] |= srcval;
-			edest[xoffs++] |= srcenable;
-			xcurr += xstep;
-		}
-	}
-
-	/* otherwise, we need to make sure we don't skip the end of row */
-	else
-	{
-		int xdir = (xstep < 0) ? -1 : 1;
-
-		/* loop over columns */
-		while (xoffs < VIEW_WIDTH)
-		{
-			int xint = (xcurr >> 16) & sprite_mask, newxint;
-			UINT32 srcval = src[xint];
-			UINT8 srcenable = esrc[xint];
-
-			/* stop on the end-of-row signal */
-			if (srcval == END_OF_ROW_VALUE)
-				break;
-
-			/* OR in the bits from this pixel */
-			dest[xoffs] |= srcval;
-			edest[xoffs++] |= srcenable;
-			xcurr += xstep;
-
-			/* make sure we don't hit any end of rows along the way */
-			newxint = (xcurr >> 16) & sprite_mask;
-			while ((xint = (xint + xdir) & sprite_mask) != newxint)
-				if (src[xint] == END_OF_ROW_VALUE)
-					break;
-		}
-	}
-}
-
-
-static void draw_sprites(UINT32 *dest, UINT8 *edest, int scanline, UINT8 mask, int xclip)
-{
-	int i;
-
-	for (i = 0; i < 8; i++)
-	{
-		const struct sprite_params_data *data;
-
-		/* check the mask */
-		if (mask & (1 << i))
-		{
-			/* if the sprite intersects this scanline, draw it */
-			data = &sprite_params[i];
-			if (scanline >= data->miny && scanline < data->maxy)
-				draw_one_sprite(data, dest, edest, xclip, scanline);
-
-			/* if the sprite intersects this scanline, draw it */
-			data = &sprite_params[8 + i];
-			if (scanline >= data->miny && scanline < data->maxy)
-				draw_one_sprite(data, dest, edest, xclip, scanline);
-		}
-	}
-}
-
-
-
-/***************************************************************************
-
-    Core drawing routines
-
-***************************************************************************/
-
-static void turbo_render(mame_bitmap *bitmap)
-{
-	UINT8 *overall_priority_base = &overall_priority[(turbo_fbpla & 8) << 6];
-	UINT8 *sprite_priority_base = &sprite_priority[(turbo_fbpla & 7) << 7];
-	UINT8 *road_gfxdata_base = &road_gfxdata[(turbo_opc << 5) & 0x7e0];
-	UINT16 *road_palette_base = &road_expanded_palette[(turbo_fbcol & 1) << 4];
-	pen_t *colortable;
-	int x, y, i;
-
-	/* suck up the sprite parameter data */
-	turbo_update_sprite_info();
-
-	/* determine the color offset */
-	colortable = &Machine->pens[(turbo_fbcol & 6) << 6];
-
-	/* loop over rows */
-	for (y = 4; y < VIEW_HEIGHT - 4; y++)
-	{
-		int sel, coch, babit, slipar_acciar, area, area1, area2, area3, area4, area5, road = 0;
-		UINT32 sprite_buffer[VIEW_WIDTH];
-		UINT8 sprite_enable[VIEW_WIDTH];
-		UINT8 scanline[VIEW_WIDTH];
-
-		/* compute the Y sum between opa and the current scanline (p. 141) */
-		int va = (y + turbo_opa) & 0xff;
-
-		/* the upper bit of OPC inverts the road */
-		if (!(turbo_opc & 0x80)) va ^= 0xff;
-
-		/* clear the sprite buffer and draw the road sprites */
-		memset(sprite_buffer, 0, VIEW_WIDTH * sizeof(UINT32));
-		memset(sprite_enable, 0, VIEW_WIDTH * sizeof(UINT8));
-		draw_sprites(sprite_buffer, sprite_enable, y, 0x07, 0);
-
-		/* loop over 8-pixel chunks */
-		for (x = 8; x < VIEW_WIDTH; x += 8)
-		{
-			int area5_buffer = road_gfxdata_base[0x4000 + (x >> 3)];
-			UINT8 fore_data = videoram[(y / 8) * 32 + (x / 8) - 33];
-			UINT16 forebits_buffer = fore_expanded_data[(fore_data << 3) | (y & 7)];
-
-			/* loop over columns */
-			for (i = 0; i < 8; i++)
-			{
-				UINT32 sprite = sprite_buffer[x + i];
-				UINT8 enable = sprite_enable[x + i];
-
-				/* compute the X sum between opb and the current column; only the carry matters (p. 141) */
-				int carry = (x + i + turbo_opb) >> 8;
-
-				/* the carry selects which inputs to use (p. 141) */
-				if (carry)
-				{
-					sel	 = turbo_ipb;
-					coch = turbo_ipc >> 4;
-				}
-				else
-				{
-					sel	 = turbo_ipa;
-					coch = turbo_ipc & 15;
-				}
-
-				/* at this point we also compute area5 (p. 141) */
-				area5 = (area5_buffer >> 3) & 0x10;
-				area5_buffer <<= 1;
-
-				/* now look up the rest of the road bits (p. 142) */
-				area1 = road_gfxdata[0x0000 | ((sel & 15) << 8) | va];
-				area1 = ((area1 + x + i) >> 8) & 0x01;
-				area2 = road_gfxdata[0x1000 | ((sel & 15) << 8) | va];
-				area2 = ((area2 + x + i) >> 7) & 0x02;
-				area3 = road_gfxdata[0x2000 | ((sel >> 4) << 8) | va];
-				area3 = ((area3 + x + i) >> 6) & 0x04;
-				area4 = road_gfxdata[0x3000 | ((sel >> 4) << 8) | va];
-				area4 = ((area4 + x + i) >> 5) & 0x08;
-
-				/* compute the final area value and look it up in IC18/PR1115 (p. 144) */
-				area = area5 | area4 | area3 | area2 | area1;
-				babit = road_enable_collide[area] & 0x07;
-
-				/* note: SLIPAR is 0 on the road surface only */
-				/*       ACCIAR is 0 on the road surface and the striped edges only */
-				slipar_acciar = road_enable_collide[area] & 0x30;
-				if (!road && (slipar_acciar & 0x20))
-				{
-					road = 1;
-					draw_sprites(sprite_buffer, sprite_enable, y, 0xf8, x + i + 2);
-				}
-
-				/* perform collision detection here */
-				turbo_collision |= collision_map[(enable & 7) | (slipar_acciar >> 1)];
-
-				/* we only need to continue if we're actually drawing */
-				if (bitmap)
-				{
-					int bacol, red, grn, blu, priority, forebits, mx;
-
-					/* also use the coch value to look up color info in IC13/PR1114 and IC21/PR1117 (p. 144) */
-					bacol = road_palette_base[coch & 15];
-
-					/* at this point, do the character lookup */
-					forebits = forebits_buffer & 3;
-					forebits_buffer >>= 2;
-					forebits = fore_palette[forebits | (fore_data & 0xfc)];
-
-					/* look up the sprite priority in IC11/PR1122 */
-					priority = sprite_priority_base[enable >> 1];
-
-					/* use that to look up the overall priority in IC12/PR1123 */
-					mx = overall_priority_base[(priority & 7) | ((enable << 3) & 8) | ((fore_data >> 3) & 0x10) | ((forebits << 2) & 0x20) | (babit << 6)];
-
-					/* the input colors consist of a mix of sprite, road and 1's & 0's */
-					red = 0x040000 | ((bacol & 0x001f) << 13) | ((forebits & 1) << 12) | ((sprite <<  4) & 0x0ff0);
-					grn = 0x080000 | ((bacol & 0x03e0) <<  9) | ((forebits & 2) << 12) | ((sprite >>  3) & 0x1fe0);
-					blu = 0x100000 | ((bacol & 0x7c00) <<  5) | ((forebits & 4) << 12) | ((sprite >> 10) & 0x3fc0);
-
-					/* we then go through a muxer; normally these values are inverted, but */
-					/* we've already taken care of that when we generated the palette */
-					red = (red >> mx) & 0x10;
-					grn = (grn >> mx) & 0x20;
-					blu = (blu >> mx) & 0x40;
-					scanline[x + i] = mx | red | grn | blu;
-				}
-			}
-		}
-
-		/* render the scanline */
-		if (bitmap)
-			draw_scanline8(bitmap, 8, y, VIEW_WIDTH - 8, &scanline[8], colortable, -1);
-	}
-}
-
-
-static void subroc3d_render(mame_bitmap *bitmap)
-{
-	UINT8 *sprite_priority_base = &sprite_expanded_priority[(subroc3d_ply & 15) << 8];
-	pen_t *colortable;
-	int y;
-
-	/* suck up the sprite parameter data */
-	subroc3d_update_sprite_info();
-
-	/* determine the color offset */
-	colortable = &Machine->pens[(subroc3d_col & 15) << 5];
-
-	/* loop over rows */
-	for (y = 0; y < VIEW_HEIGHT; y++)
-	{
-		UINT32 sprite_buffer[VIEW_WIDTH];
-		UINT8 sprite_enable[VIEW_WIDTH];
-		UINT8 scanline[VIEW_WIDTH];
-		int x;
-
-		/* clear the sprite buffer and draw the road sprites */
-		memset(sprite_buffer, 0, VIEW_WIDTH * sizeof(UINT32));
-		memset(sprite_enable, 0, VIEW_WIDTH * sizeof(UINT8));
-		draw_sprites(sprite_buffer, sprite_enable, y, 0xff, 0);
-
-		/* loop over 8-pixel chunks */
-		for (x = 0; x < VIEW_WIDTH; x += 8)
-		{
-			UINT8 fore_data = videoram[(y / 8) * 32 + (((x / 8) + subroc3d_chofs) % 32)];
-			UINT16 forebits_buffer = fore_expanded_data[(fore_data << 3) | (y & 7)];
-			int i;
-
-			/* loop over columns */
-			for (i = 0; i < 8; i++)
-			{
-				int bits, forebits, mux, mplb;
-
-				/* at this point, do the character lookup */
-				forebits = forebits_buffer & 3;
-				forebits_buffer >>= 2;
-				forebits = fore_palette[forebits | (fore_data & 0xfc)] & 0x0f;
-
-				/* determine the value of mplb */
-				mplb = (forebits == 0 || (fore_data & 0x80));
-
-				/* look up the sprite priority in IC11/PR1122 */
-				mux = mplb ? sprite_priority_base[sprite_enable[x + i]] : 0;
-
-				/* mux3 selects either sprite or foreground */
-				if (mux & 0x20)
-					bits = (sprite_buffer[x + i] >> (mux & 0x1c)) & 0x0f;
-				else
-					bits = forebits;
-
-				scanline[x + i] = ((mux & 0x20) >> 1) | bits;
-			}
-		}
-
-		/* render the scanline */
-		draw_scanline8(bitmap, 0, y, VIEW_WIDTH, scanline, colortable, -1);
-	}
-}
-
-
-static void buckrog_render(mame_bitmap *bitmap)
-{
-	int y;
-
-	/* suck up the sprite parameter data */
-	subroc3d_update_sprite_info();
-
-	/* loop over rows */
-	for (y = 0; y < VIEW_HEIGHT; y++)
-	{
-		UINT32 sprite_buffer[VIEW_WIDTH];
-		UINT8 sprite_enable[VIEW_WIDTH];
-		UINT16 scanline[VIEW_WIDTH];
-		int bgcolor;
-		int x;
-
-		/* determine background color for this scanline */
-		bgcolor = 1024 | 512 | back_data[(buckrog_mov << 8) | y];
-
-		/* clear the sprite buffer and draw the road sprites */
-		memset(sprite_buffer, 0, VIEW_WIDTH * sizeof(UINT32));
-		memset(sprite_enable, 0, VIEW_WIDTH * sizeof(UINT8));
-		draw_sprites(sprite_buffer, sprite_enable, y, 0xff, 0);
-
-		/* loop over 8-pixel chunks */
-		for (x = 0; x < VIEW_WIDTH; x += 8)
-		{
-			UINT8 fore_data = videoram[(y / 8) * 32 + (x / 8)];
-			UINT16 forebits_buffer = fore_expanded_data[(fore_data << 3) | (y & 7)];
-			UINT16 forebits_upper = ((buckrog_fchg << 7) & 0x180) | ((fore_data >> 1) & 0x7c);
-			UINT8 *stars = &buckrog_bitmap_ram[y * 256];
-			int i;
-
-			/* loop over columns */
-			for (i = 0; i < 8; i++)
-			{
-				int bits, forebits, forepri, mux;
-
-				/* at this point, do the character lookup */
-				forebits = (forebits_buffer & 3) | forebits_upper;
-				forebits_buffer >>= 2;
-
-				/* look up the foreground priority */
-				forepri = fore_priority[forebits];
-
-				/* look up the sprite priority in IC11/PR1122 */
-				mux = sprite_expanded_priority[sprite_enable[x + i]];
-
-				/* final result is based on sprite/foreground/star priorities */
-				if (!(forepri & 0x80))
-					bits = 1024 | forebits;
-				else if (mux & 0x20)
-					bits = (buckrog_obch << 7) | ((mux & 0x1c) << 2) | ((sprite_buffer[x + i] >> (mux & 0x1c)) & 0x0f);
-				else if (!(forepri & 0x40))
-					bits = 1024 | forebits;
-				else if (stars[x + i])
-					bits = 1024 | 512 | 255;
-				else
-					bits = bgcolor;
-
-				scanline[x + i] = bits;
-			}
-		}
-
-		/* render the scanline */
-		draw_scanline16(bitmap, 0, y, VIEW_WIDTH, scanline, Machine->pens, -1);
-	}
-}
-
-
-
-/***************************************************************************
-
-    Main refresh
-
-***************************************************************************/
-
-VIDEO_EOF( turbo )
-{
-	/* only do collision checking if we didn't draw */
-	if (!drew_frame)
-		turbo_render(NULL);
-	drew_frame = 0;
-}
-
-
-VIDEO_UPDATE( turbo )
-{
-	/* perform the actual drawing */
-	turbo_render(bitmap);
-
-	/* draw the LEDs for the scores */
-	turbo_update_segments();
-
-	/* indicate that we drew this frame, so that the eof callback doesn't bother doing anything */
-	drew_frame = 1;
-	return 0;
-}
-
-
-VIDEO_UPDATE( subroc3d )
-{
-	/* perform the actual drawing */
-	subroc3d_render(bitmap);
-
-	/* draw the LEDs for the scores */
-	turbo_update_segments();
-	return 0;
-}
-
-
-VIDEO_UPDATE( buckrog )
-{
-	/* perform the actual drawing */
-	buckrog_render(bitmap);
-
-	/* draw the LEDs for the scores */
-	turbo_update_segments();
-	return 0;
-}
-
-
-
-/***************************************************************************
-
-    Buck Rogers misc
-
-***************************************************************************/
 
 WRITE8_HANDLER( buckrog_bitmap_w )
 {
-	buckrog_bitmap_ram[offset] = data & 1;
+	turbo_state *state = Machine->driver_data;
+	state->buckrog_bitmap_ram[offset] = data & 1;
+}
+
+
+
+/*************************************
+ *
+ *  Sprite X scaling
+ *
+ *************************************/
+
+INLINE UINT32 sprite_xscale(UINT8 dacinput, double vr1, double vr2, double cext)
+{
+	/* compute the effective pixel clock for this sprite */
+	/* thanks to Frank Palazzolo for figuring out this logic */
+
+	/* compute the control voltage to the VCO */
+	/* VR1 and VR2 are variable resistors on Turbo, fixed on other boards */
+	double iref = 5.0 / (1.5e3 + vr2);
+	double iout = iref * ((float)dacinput / 256.0);
+	double vref = 5.0 * 1e3 / (3.8e3 + 1e3 + vr1);
+	double vco_cv = (2.2e3 * iout) + vref;
+
+	/* based on the control voltage, compute the frequency assuming a 50pF */
+	/* external capacitor; this is the graph in the datasheet. Some attempt */
+	/* to simulate the non-linearity at the edges has been made, but it is */
+	/* admittedly cheesy. */
+	double vco_freq;
+	if (vco_cv > 5.0)
+		vco_cv = 5.0;
+	if (vco_cv < 0.0)
+		vco_cv = 0.0;
+	if (vco_cv < 1.33)
+		vco_freq = (0.68129 + pow(vco_cv + 0.6, 1.285)) * 1e6;
+	else if (vco_cv < 4.3)
+		vco_freq = (3 + (8 - 3) * ((vco_cv - 1.33) / (4.3 - 1.33))) * 1e6;
+	else
+		vco_freq = (-1.560279 + pow(vco_cv - 4.3 + 6, 1.26)) * 1e6;
+
+	/* now scale based on the actual external capacitor; the frequency goes */
+	/* up by a factor of 10 for every factor of 10 the capacitance is reduced */
+	/* approximately */
+	vco_freq *= 50e-12 / cext;
+
+	/* finally, convert to a fraction (8.24) of 5MHz, which is the pixel clock */
+	return (UINT32)((vco_freq / (5e6 * TURBO_X_SCALE)) * 16777216.0);
+}
+
+
+
+/*************************************
+ *
+ *  Turbo sprite handling
+ *
+ *************************************/
+
+static void turbo_prepare_sprites(turbo_state *state, UINT8 y, sprite_info *info)
+{
+	const UINT8 *pr1119 = memory_region(REGION_PROMS) + 0x200;
+	int sprnum;
+
+	/* initialize the line enable signals to 0 */
+	info->ve = 0;
+	info->lst = 0;
+
+	/* compute the sprite information, which was done on the previous scanline during HBLANK */
+	for (sprnum = 0; sprnum < 16; sprnum++)
+	{
+		UINT8 *rambase = &state->spriteram[sprnum * 0x10];
+		int level = sprnum & 7;
+		UINT8 clo, chi;
+		UINT32 sum;
+
+		/* perform the first ALU to see if we are within the scanline */
+		sum = y + (rambase[0] ^ 0xff);
+		clo = (sum >> 8) & 1;
+		sum += (y << 8) + ((rambase[1] ^ 0xff) << 8);
+		chi = (sum >> 16) & 1;
+
+		/* the AND of the low carry and the inverse of the high carry clocks an enable bit */
+		/* for this sprite; note that the logic in the Turbo schematics is reversed here */
+		if (clo & (chi ^ 1))
+		{
+			int xscale = rambase[2] ^ 0xff;
+			int yscale = rambase[3];// ^ 0xff;
+			UINT16 offset = rambase[6] + (rambase[7] << 8);
+			int offs;
+
+			/* mark this entry enabled */
+			info->ve |= 1 << sprnum;
+
+			/* look up the low byte of the sum plus the yscale value in */
+			/* IC50/PR1119 to determine if we write back the sum of the */
+			/* offset and the rowbytes this scanline (p. 138) */
+			offs = (sum & 0xff) |			/* A0-A7 = AL0-AL7 */
+				   ((yscale & 0x08) << 5);	/* A8-A9 = /RO11-/RO12 */
+
+			/* one of the bits is selected based on the low 7 bits of yscale */
+			if (!((pr1119[offs] >> (yscale & 0x07)) & 1))
+			{
+				offset += rambase[4] + (rambase[5] << 8);
+				rambase[6] = offset;
+				rambase[7] = offset >> 8;
+			}
+
+			/* the output of the ALU here goes to the individual level counter */
+			info->latched[level] = 0;
+			info->plb[level] = 0;
+			info->offset[level] = offset;
+			info->frac[level] = 0;
+			info->step[level] = sprite_xscale(xscale, 1.0e3 * readinputportbytag("VR1") / 100.0, 1.0e3 * readinputportbytag("VR2") / 100.0, 100e-12);
+		}
+	}
+}
+
+
+static UINT32 turbo_get_sprite_bits(UINT8 road, sprite_info *sprinfo)
+{
+	const UINT8 *sprite_gfxdata = memory_region(REGION_GFX1);
+	UINT8 sprlive = sprinfo->lst;
+	UINT32 sprdata = 0;
+	int level;
+
+	/* if we haven't left the road yet, sprites 3-7 are disabled */
+	if (!road)
+		sprlive &= 0x07;
+
+	/* loop over all live levels */
+	for (level = 0; level < 8; level++)
+		if (sprlive & (1 << level))
+		{
+			/* latch the data and advance the offset */
+			sprdata |= sprinfo->latched[level];
+			sprinfo->frac[level] += sprinfo->step[level];
+
+			/* if we're live and we've clocked more data, advance */
+			while (sprinfo->frac[level] >= 0x1000000)
+			{
+				UINT16 offs = sprinfo->offset[level];
+				UINT8 pixdata;
+
+				/* bit 0 controls which half of the byte to use */
+				/* bits 1-13 go to address lines */
+				/* bit 14 selects which of the two ROMs to read from */
+				pixdata = sprite_gfxdata[(level << 14) | ((offs >> 1) & 0x3fff)] >> ((~offs & 1) * 4);
+				sprinfo->latched[level] = sprite_expand[pixdata & 0x0f] << level;
+
+				/* if bit 3 is 0 and bit 2 is 1, the enable flip/flip is reset */
+				if ((pixdata & 0x0c) == 0x04)
+				{
+					sprinfo->lst &= ~(1 << level);
+					sprlive &= ~(1 << level);
+				}
+
+				/* if bit 15 is set, we decrement instead of increment */
+				sprinfo->offset[level] += (offs & 0x8000) ? -1 : 1;
+				sprinfo->frac[level] -= 0x1000000;
+			}
+		}
+
+	return sprdata;
+}
+
+
+
+/*************************************
+ *
+ *  Turbo video update
+ *
+ *************************************/
+
+VIDEO_UPDATE( turbo )
+{
+	turbo_state *state = Machine->driver_data;
+	mame_bitmap *fgpixmap = tilemap_get_pixmap(state->fg_tilemap);
+	const UINT8 *road_gfxdata = memory_region(REGION_GFX3);
+	const UINT8 *prom_base = memory_region(REGION_PROMS);
+	const UINT8 *pr1114 = prom_base + 0x000;
+	const UINT8 *pr1115 = prom_base + 0x020;
+	const UINT8 *pr1116 = prom_base + 0x040;
+	const UINT8 *pr1117 = prom_base + 0x060;
+	const UINT8 *pr1118 = prom_base + 0x100;
+	const UINT8 *pr1121 = prom_base + 0x600;
+	const UINT8 *pr1122 = prom_base + 0x800;
+	const UINT8 *pr1123 = prom_base + 0xc00;
+	int x, y;
+
+	/* loop over rows */
+	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
+	{
+		const UINT16 *fore = (UINT16 *)fgpixmap->base + y * fgpixmap->rowpixels;
+		UINT16 *dest = (UINT16 *)bitmap->base + y * bitmap->rowpixels;
+		int sel, coch, babit, slipar_acciar, area, offs, areatmp, road = 0;
+		sprite_info sprinfo;
+
+		/* compute the Y sum between opa and the current scanline (p. 141) */
+		int va = (y + state->turbo_opa) & 0xff;
+
+		/* the upper bit of OPC inverts the road (p. 141) */
+		if (!(state->turbo_opc & 0x80))
+			va ^= 0xff;
+
+		/* compute the sprite information; we use y-1 since this info was computed during HBLANK */
+		/* on the previous scanline */
+		turbo_prepare_sprites(state, y, &sprinfo);
+
+		/* loop over columns */
+		for (x = 0; x <= cliprect->max_x; x += TURBO_X_SCALE)
+		{
+			int bacol, red, grn, blu, priority, foreraw, forebits, mx, ix;
+			int xx = x / TURBO_X_SCALE;
+			UINT8 carry;
+			UINT32 sprbits;
+			UINT16 he;
+
+			/* load the bitmask from the sprite position for both halves of the sprites (p. 139) */
+			he = state->sprite_position[xx] | (state->sprite_position[xx + 0x100] << 8);
+
+			/* the AND of the line enable and horizontal enable is clocked and held in LST0-7 (p. 143) */
+			he &= sprinfo.ve;
+			sprinfo.lst |= he | (he >> 8);
+
+			/* compute the X sum between opb and the current column; only the carry matters (p. 141) */
+			carry = (xx + state->turbo_opb) >> 8;
+
+			/* the carry selects which inputs to use (p. 141) */
+			if (carry)
+			{
+				sel	 = state->turbo_ipb;
+				coch = state->turbo_ipc >> 4;
+			}
+			else
+			{
+				sel	 = state->turbo_ipa;
+				coch = state->turbo_ipc & 15;
+			}
+
+			/* look up AREA1 and AREA2 (p. 142) */
+			offs = va |							/*  A0- A7 = VA0-VA7 */
+				   ((sel & 0x0f) << 8);			/*  A8-A11 = SEL0-3 */
+
+			areatmp = road_gfxdata[0x0000 | offs];
+			areatmp = ((areatmp + xx) >> 8) & 0x01;
+			area = areatmp << 0;
+
+			areatmp = road_gfxdata[0x1000 | offs];
+			areatmp = ((areatmp + xx) >> 8) & 0x01;
+			area |= areatmp << 1;
+
+			/* look up AREA3 and AREA4 (p. 142) */
+			offs = va |							/*  A0- A7 = VA0-VA7 */
+				   ((sel & 0xf0) << 4);			/*  A8-A11 = SEL4-7 */
+
+			areatmp = road_gfxdata[0x2000 | offs];
+			areatmp = ((areatmp + xx) >> 8) & 0x01;
+			area |= areatmp << 2;
+
+			areatmp = road_gfxdata[0x3000 | offs];
+			areatmp = ((areatmp + xx) >> 8) & 0x01;
+			area |= areatmp << 3;
+
+			/* look up AREA5 (p. 141) */
+			offs = (xx >> 3) |							/*  A0- A4 = H3-H7 */
+				   ((state->turbo_opc & 0x3f) << 5);	/*  A5-A10 = OPC0-5 */
+
+			areatmp = road_gfxdata[0x4000 | offs];
+			areatmp = (areatmp << (xx & 7)) & 0x80;
+			area |= areatmp >> 3;
+
+			/* compute the final area value and look it up in IC18/PR1115 (p. 144) */
+			/* note: SLIPAR is 0 on the road surface only */
+			/*       ACCIAR is 0 on the road surface and the striped edges only */
+			babit = pr1115[area];
+			slipar_acciar = babit & 0x30;
+			if (!road && (slipar_acciar & 0x20))
+				road = 1;
+
+			/* also use the coch value to look up color info in IC13/PR1114 and IC21/PR1117 (p. 144) */
+			offs = (coch & 0x0f) |						/* A0-A3: CONT0-3 = COCH0-3 */
+				   ((state->turbo_fbcol & 0x01) << 4);	/*    A4: COL0 */
+			bacol = pr1114[offs] | (pr1117[offs] << 8);
+
+			/* at this point, do the character lookup; due to the shift register loading in */
+			/* the sync PROM, we latch character 0 during pixel 6 and start clocking in pixel */
+			/* 8, effectively shifting the display by 8; at pixel 0x108, the color latch is */
+			/* forced clear and isn't touched until the next shift register load */
+			foreraw = (xx < 8 || xx >= 0x108) ? 0 : fore[xx - 8];
+
+			/* perform the foreground color table lookup in IC99/PR1118 (p. 137) */
+			forebits = pr1118[foreraw];
+
+			/* now that we have done all the per-5MHz pixel work, mix the sprites at the scale factor */
+			for (ix = 0; ix < TURBO_X_SCALE; ix++)
+			{
+				/* iterate over live sprites and update them */
+				/* the final 32-bit value is: */
+				/*    CDB0-7 = D0 -D7  */
+				/*    CDG0-7 = D8 -D15 */
+				/*    CDR0-7 = D16-D23 */
+				/*    PLB0-7 = D24-D31 */
+				sprbits = turbo_get_sprite_bits(road, &sprinfo);
+
+				/* perform collision detection here via lookup in IC20/PR1116 (p. 144) */
+				state->turbo_collision |= pr1116[((sprbits >> 24) & 7) | (slipar_acciar >> 1)];
+
+				/* look up the sprite priority in IC11/PR1122 (p. 144) */
+				priority = ((sprbits & 0xfe000000) >> 25) |		/* A0-A6: PLB1-7 */
+						   ((state->turbo_fbpla & 0x07) << 7);	/* A7-A9: PLA0-2 */
+				priority = pr1122[priority];
+
+				/* use that to look up the overall priority in IC12/PR1123 (p. 144) */
+				mx = (priority & 7) | 						/* A0-A2: PR-1122 output, bits 0-2 */
+					 ((sprbits & 0x01000000) >> 21) | 		/*    A3: PLB0 */
+					 ((foreraw & 0x80) >> 3) | 				/*    A4: PLBE */
+					 ((forebits & 0x08) << 2) | 			/*    A5: PLBF */
+					 ((babit & 0x07) << 6) |				/* A6-A8: BABIT1-3 */
+					 ((state->turbo_fbpla & 0x08) << 6);	/*    A9: PLA3 */
+				mx = pr1123[mx];
+
+				/* the MX output selects one of 16 inputs; build up a 16-bit pattern to match */
+				/* these in red, green, and blue (p. 144) */
+				red = ((sprbits & 0x0000ff) >> 0) |		/*  D0- D7: CDR0-CDR7 */
+					  ((forebits & 0x01) << 8) |		/*      D8: CDRF */
+					  ((bacol & 0x001f) << 9) |			/*  D9-D13: BAR0-BAR4 */
+					  (1 << 14) |						/*     D14: 1 */
+					  (0 << 15);						/*     D15: 0 */
+
+				grn = ((sprbits & 0x00ff00) >> 8) |		/*  D0- D7: CDG0-CDG7 */
+					  ((forebits & 0x02) << 7) |		/*      D8: CDGF */
+					  ((bacol & 0x03e0) << 4) |			/*  D9-D13: BAG0-BAG4 */
+					  (1 << 14) |						/*     D14: 1 */
+					  (0 << 15);						/*     D15: 0 */
+
+				blu = ((sprbits & 0xff0000) >> 16) |	/*  D0- D7: CDB0-CDB7 */
+					  ((forebits & 0x04) << 6) |		/*      D8: CDBF */
+					  ((bacol & 0x7c00) >> 1) |			/*  D9-D13: BAB0-BAB4 */
+					  (1 << 14) |						/*     D14: 1 */
+					  (0 << 15);						/*     D15: 0 */
+
+				/* we then go through a muxer to select one of the 16 outputs computed above (p. 144) */
+				offs = mx |								/* A0-A3: MX0-MX3 */
+					   (((~red >> mx) & 1) << 4) |		/*    A4: CDR */
+					   (((~grn >> mx) & 1) << 5) |		/*    A5: CDG */
+					   (((~blu >> mx) & 1) << 6) |		/*    A6: CDB */
+					   ((state->turbo_fbcol & 6) << 6);	/* A7-A8: COL1-2 */
+				dest[x + ix] = pr1121[offs];
+			}
+		}
+	}
+	return 0;
+}
+
+
+
+/*************************************
+ *
+ *  Subroc 3D sprite handling
+ *
+ *************************************/
+
+/*
+    Sprite state machine:
+
+    1LINE = 0 (V & 0x108 == 0x108)
+    ---------
+           0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+           20 21 21 20 20 21 21 20 20 05 25 2c 07 e7 37 22
+               _____       _____       _____    ________
+    RAD0 = ___|     |_____|     |_____|     |__|        |___
+                                                ___________
+    RAD7 = ____________________________________|           |
+                                       _________________
+    YCULL= ___________________________|                 |___
+                                             __
+    AX   = _________________________________|  |____________
+                                                      __
+    D/A  = __________________________________________|  |___
+           ___________________________    _____    _________
+    /CLK1=                            |__|     |__|
+                                                   __
+    WRPL = _______________________________________|  |______
+                                                   __
+    /CLK2= _______________________________________|  |______
+
+
+
+    1LINE = 1 (V & 0x108 != 0x108)
+    ---------
+           0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+           2c 2c 2c 2f 2f 2f 2f 20 2d 2d 2d 2d 0f 6f 2f 20
+                     ___________    ____________________
+    RAD0 = _________|           |__|                    |___
+                     ___________                ________
+    RAD7 = _________|           |______________|        |___
+           _____________________    ____________________
+    YCULL=                      |__|                    |___
+           _____________________    ____________________
+    AX   =                      |__|                    |___
+
+    D/A  = _________________________________________________
+           ____________________________________    _________
+    /CLK1=                                     |__|
+                                                   __
+    WRPL = _______________________________________|  |______
+
+    /CLK2= _________________________________________________
+
+*/
+
+static void subroc3d_prepare_sprites(turbo_state *state, UINT8 y, sprite_info *info)
+{
+	const UINT8 *pr1449 = memory_region(REGION_PROMS) + 0x300;
+	int sprnum;
+
+	/* initialize the line enable signals to 0 */
+	info->ve = 0;
+	info->lst = 0;
+
+	/* compute the sprite information, which was done on the previous scanline during HBLANK */
+	for (sprnum = 0; sprnum < 16; sprnum++)
+	{
+		UINT8 *rambase = &state->spriteram[sprnum * 8];
+		int level = sprnum & 7;
+		UINT8 clo, chi;
+		UINT32 sum;
+
+		/* perform the first ALU to see if we are within the scanline */
+		sum = y + (rambase[0]/* ^ 0xff*/);
+		clo = (sum >> 8) & 1;
+		sum += (y << 8) + ((rambase[1]/* ^ 0xff*/) << 8);
+		chi = (sum >> 16) & 1;
+
+		/* the AND of the low carry and the inverse of the high carry clocks an enable bit */
+		/* for this sprite; note that the logic in the Turbo schematics is reversed here */
+		if (clo & (chi ^ 1))
+		{
+			int xscale = rambase[2] ^ 0xff;
+			int yscale = rambase[3];// ^ 0xff;
+			UINT16 offset = rambase[6] + (rambase[7] << 8);
+			int offs;
+
+			/* mark this entry enabled */
+			info->ve |= 1 << sprnum;
+
+			/* look up the low byte of the sum plus the yscale value in */
+			/* IC50/PR1119 to determine if we write back the sum of the */
+			/* offset and the rowbytes this scanline (p. 138) */
+			offs = (sum & 0xff) |			/* A0-A7 = AL0-AL7 */
+				   ((yscale & 0x08) << 5);	/* A8-A9 = /RO11-/RO12 */
+
+			/* one of the bits is selected based on the low 7 bits of yscale */
+			if (!((pr1449[offs] >> (yscale & 0x07)) & 1))
+			{
+				offset += rambase[4] + (rambase[5] << 8);
+				rambase[6] = offset;
+				rambase[7] = offset >> 8;
+			}
+
+			/* the output of the ALU here goes to the individual level counter */
+			info->latched[level] = 0;
+			info->plb[level] = 0;
+			info->offset[level] = offset << 1;
+			info->frac[level] = 0;
+			info->step[level] = sprite_xscale(xscale, 1.2e3, 1.2e3, 220e-12);
+		}
+	}
+}
+
+
+static UINT32 subroc3d_get_sprite_bits(sprite_info *sprinfo, UINT8 *plb)
+{
+	/* see logic on each sprite:
+        END = (CDA == 1 && (CDA ^ CDB) == 0 && (CDC ^ CDD) == 0)
+        PLB = END ^ (CDA == 1 && (CDC ^ CDD) == 0)
+       end is in bit 1, plb in bit 0
+    */
+	static const UINT8 plb_end[16] = { 0,1,1,2, 1,1,1,1, 1,1,1,1, 0,1,1,2 };
+	const UINT8 *sprite_gfxdata = memory_region(REGION_GFX1);
+	UINT32 sprdata = 0;
+	int level;
+
+	*plb = 0;
+
+	/* loop over all live levels */
+	for (level = 0; level < 8; level++)
+		if (sprinfo->lst & (1 << level))
+		{
+			/* latch the data and advance the offset */
+			sprdata |= sprinfo->latched[level];
+			*plb |= sprinfo->plb[level];
+			sprinfo->frac[level] += sprinfo->step[level];
+
+			/* if we're live and we've clocked more data, advance */
+			while (sprinfo->frac[level] >= 0x800000)
+			{
+				UINT32 offs = sprinfo->offset[level];
+				UINT8 pixdata;
+
+				/* bit 0 controls which half of the byte to use */
+				/* bits 1-13 go to address lines */
+				/* bit 14 selects which of the two ROMs to read from */
+				pixdata = sprite_gfxdata[(level << 15) | ((offs >> 1) & 0x7fff)] >> ((~offs & 1) * 4);
+				sprinfo->latched[level] = sprite_expand[pixdata & 0x0f] << level;
+				sprinfo->plb[level] = (plb_end[pixdata & 0x0f] & 1) << level;
+
+				/* if bit 3 is 0 and bit 2 is 1, the enable flip/flip is reset */
+				if (plb_end[pixdata & 0x0f] & 2)
+					sprinfo->lst &= ~(1 << level);
+
+				/* if bit 15 is set, we decrement instead of increment */
+				sprinfo->offset[level] += (offs & 0x10000) ? -1 : 1;
+				sprinfo->frac[level] -= 0x800000;
+			}
+		}
+
+	return sprdata;
+}
+
+
+
+/*************************************
+ *
+ *  Subroc 3D video update
+ *
+ *************************************/
+
+VIDEO_UPDATE( subroc3d )
+{
+	turbo_state *state = Machine->driver_data;
+	mame_bitmap *fgpixmap = tilemap_get_pixmap(state->fg_tilemap);
+	const UINT8 *prom_base = memory_region(REGION_PROMS);
+	const UINT8 *pr1419 = prom_base + 0x000;
+	const UINT8 *pr1620 = prom_base + 0x200;
+	const UINT8 *pr1450 = prom_base + 0x500;
+	const UINT8 *pr1454 = prom_base + 0x920;
+	int x, y;
+
+	/* loop over rows */
+	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
+	{
+		const UINT16 *fore = (UINT16 *)fgpixmap->base + y * fgpixmap->rowpixels;
+		UINT16 *dest = (UINT16 *)bitmap->base + y * bitmap->rowpixels;
+		sprite_info sprinfo;
+
+		/* compute the sprite information; we use y-1 since this info was computed during HBLANK */
+		/* on the previous scanline */
+		subroc3d_prepare_sprites(state, y, &sprinfo);
+
+		/* loop over columns */
+		for (x = 0; x <= cliprect->max_x; x += TURBO_X_SCALE)
+		{
+			int offs, finalbits, ix;
+			UINT8 xx = x / TURBO_X_SCALE;
+			UINT8 foreraw, forebits, mux, cd, plb, mplb;
+			UINT16 he;
+			UINT32 sprbits;
+
+			/* load the bitmask from the sprite position for both halves of the sprites (p. 143) */
+			he = state->sprite_position[xx * 2] | (state->sprite_position[xx * 2 + 1] << 8);
+
+			/* the AND of the line enable and horizontal enable is clocked and held in LST0-7 (p. 143) */
+			he &= sprinfo.ve;
+			sprinfo.lst |= he | (he >> 8);
+
+			/* at this point, do the character lookup */
+			if (!state->subroc3d_flip)
+				foreraw = fore[xx];
+			else
+				foreraw = fore[(pr1454[(xx >> 3) & 0x1f] << 3) | (xx & 0x07)];
+
+			/* perform the foreground color table lookup in IC62/PR1620 (p. 141) */
+			forebits = pr1620[foreraw];
+
+			/* MPLB is set based on the high bit of the raw foreground data, as an OR over the output */
+			/* of the foreground color PROM */
+			mplb = (foreraw & 0x80) || ((forebits & 0x0f) == 0);
+
+			/* now that we have done all the per-5MHz pixel work, mix the sprites at the scale factor */
+			for (ix = 0; ix < TURBO_X_SCALE; ix++)
+			{
+				/* iterate over live sprites and update them */
+				/* the final 32-bit value is: */
+				/*    CDA0-7 = D0 -D7  */
+				/*    CDB0-7 = D8 -D15 */
+				/*    CDC0-7 = D16-D23 */
+				/*    CDD0-7 = D24-D31 */
+				sprbits = subroc3d_get_sprite_bits(&sprinfo, &plb);
+
+				/* MUX0-3 is selected by PLY0-3 and the sprite enable bits, and is the output */
+				/* of IC21/PR1450 (p. 141), unless MPLB = 0, in which case the values are grounded (p. 141) */
+				if (mplb)
+				{
+					offs = (plb ^ 0xff) |						/* A0-A7: /PLB0-7 */
+						   ((state->subroc3d_ply & 0x02) << 7);	/*    A8: PLY1 */
+					mux = pr1450[offs] >> ((state->subroc3d_ply & 0x01) * 4);
+				}
+				else
+					mux = 0;
+
+				/* CD0-3 are selected from the sprite bits and MUX0-2 (p. 141) */
+				sprbits = (sprbits >> (mux & 0x07)) & 0x01010101;
+				cd = (sprbits >> (24-3)) | (sprbits >> (16-2)) | (sprbits >> (8-1)) | sprbits;
+
+				/* MUX3 selects either CD0-3 or the foreground output (p. 141) */
+				if (mux & 0x08)
+					finalbits = cd;
+				else
+					finalbits = forebits;
+
+				/* we then go through a muxer to select one of the 16 outputs computed above (p. 141) */
+				offs = (finalbits & 0x0f) | 				/* A0-A3: CD0-CD3 */
+					   ((mux & 0x08) << 1) | 				/*    A4: MUX3 */
+					   (state->subroc3d_col << 5);			/* A5-A8: COL0-COL3 */
+				dest[x + ix] = pr1419[offs];
+			}
+		}
+	}
+	return 0;
+}
+
+
+
+/*************************************
+ *
+ *  Buck Rogers sprite handling
+ *
+ *************************************/
+
+static void buckrog_prepare_sprites(turbo_state *state, UINT8 y, sprite_info *info)
+{
+	const UINT8 *pr5196 = memory_region(REGION_PROMS) + 0x100;
+	int sprnum;
+
+	/* initialize the line enable signals to 0 */
+	info->ve = 0;
+	info->lst = 0;
+
+	/* compute the sprite information, which was done on the previous scanline during HBLANK */
+	for (sprnum = 0; sprnum < 16; sprnum++)
+	{
+		UINT8 *rambase = &state->spriteram[sprnum * 8];
+		int level = sprnum & 7;
+		UINT8 clo, chi;
+		UINT32 sum;
+
+		/* perform the first ALU to see if we are within the scanline */
+		sum = y + (rambase[0]/* ^ 0xff*/);
+		clo = (sum >> 8) & 1;
+		sum += (y << 8) + ((rambase[1]/* ^ 0xff*/) << 8);
+		chi = (sum >> 16) & 1;
+
+		/* the AND of the low carry and the inverse of the high carry clocks an enable bit */
+		/* for this sprite; note that the logic in the Turbo schematics is reversed here */
+		if (clo & (chi ^ 1))
+		{
+			int xscale = rambase[2] ^ 0xff;
+			int yscale = rambase[3];// ^ 0xff;
+			UINT16 offset = rambase[6] + (rambase[7] << 8);
+			int offs;
+
+			/* mark this entry enabled */
+			info->ve |= 1 << sprnum;
+
+			/* look up the low byte of the sum plus the yscale value in */
+			/* IC50/PR1119 to determine if we write back the sum of the */
+			/* offset and the rowbytes this scanline (p. 138) */
+			offs = (sum & 0xff) |			/* A0-A7 = AL0-AL7 */
+				   ((yscale & 0x08) << 5);	/* A8-A9 = /RO11-/RO12 */
+
+			/* one of the bits is selected based on the low 7 bits of yscale */
+			if (!((pr5196[offs] >> (yscale & 0x07)) & 1))
+			{
+				offset += rambase[4] + (rambase[5] << 8);
+				rambase[6] = offset;
+				rambase[7] = offset >> 8;
+			}
+
+			/* the output of the ALU here goes to the individual level counter */
+			info->latched[level] = 0;
+			info->plb[level] = 0;
+			info->offset[level] = offset << 1;
+			info->frac[level] = 0;
+			info->step[level] = sprite_xscale(xscale, 1.2e3, 500/*820*/, 220e-12);
+		}
+	}
+}
+
+
+static UINT32 buckrog_get_sprite_bits(sprite_info *sprinfo, UINT8 *plb)
+{
+	/* see logic on each sprite:
+        END = (CDA == 1 && (CDA ^ CDB) == 0 && (CDC ^ CDD) == 0)
+        PLB = END ^ (CDA == 1 && (CDC ^ CDD) == 0)
+       end is in bit 1, plb in bit 0
+    */
+	static const UINT8 plb_end[16] = { 0,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,2 };
+	const UINT8 *sprite_gfxdata = memory_region(REGION_GFX1);
+	UINT32 sprdata = 0;
+	int level;
+
+	*plb = 0;
+
+	/* loop over all live levels */
+	for (level = 0; level < 8; level++)
+		if (sprinfo->lst & (1 << level))
+		{
+			/* latch the data and advance the offset */
+			sprdata |= sprinfo->latched[level];
+			*plb |= sprinfo->plb[level];
+			sprinfo->frac[level] += sprinfo->step[level];
+
+			/* if we're live and we've clocked more data, advance */
+			while (sprinfo->frac[level] >= 0x800000)
+			{
+				UINT32 offs = sprinfo->offset[level];
+				UINT8 pixdata;
+
+				/* bit 0 controls which half of the byte to use */
+				/* bits 1-13 go to address lines */
+				/* bit 14 selects which of the two ROMs to read from */
+				pixdata = sprite_gfxdata[(level << 15) | ((offs >> 1) & 0x7fff)] >> ((~offs & 1) * 4);
+				sprinfo->latched[level] = sprite_expand[pixdata & 0x0f] << level;
+				sprinfo->plb[level] = (plb_end[pixdata & 0x0f] & 1) << level;
+
+				/* if bit 3 is 0 and bit 2 is 1, the enable flip/flip is reset */
+				if (plb_end[pixdata & 0x0f] & 2)
+					sprinfo->lst &= ~(1 << level);
+
+				/* if bit 15 is set, we decrement instead of increment */
+				sprinfo->offset[level] += (offs & 0x10000) ? -1 : 1;
+				sprinfo->frac[level] -= 0x800000;
+			}
+		}
+
+	return sprdata;
+}
+
+
+
+/*************************************
+ *
+ *  Buck Rogers video update
+ *
+ *************************************/
+
+VIDEO_UPDATE( buckrog )
+{
+	turbo_state *state = Machine->driver_data;
+	mame_bitmap *fgpixmap = tilemap_get_pixmap(state->fg_tilemap);
+	const UINT8 *bgcolor = memory_region(REGION_GFX3);
+	const UINT8 *prom_base = memory_region(REGION_PROMS);
+	const UINT8 *pr5194 = prom_base + 0x000;
+	const UINT8 *pr5198 = prom_base + 0x500;
+	const UINT8 *pr5199 = prom_base + 0x700;
+	int x, y;
+
+	/* loop over rows */
+	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
+	{
+		const UINT16 *fore = (UINT16 *)fgpixmap->base + y * fgpixmap->rowpixels;
+		UINT16 *dest = (UINT16 *)bitmap->base + y * bitmap->rowpixels;
+		sprite_info sprinfo;
+
+		/* compute the sprite information; we use y-1 since this info was computed during HBLANK */
+		/* on the previous scanline */
+		buckrog_prepare_sprites(state, y, &sprinfo);
+
+		/* loop over columns */
+		for (x = 0; x <= cliprect->max_x; x += TURBO_X_SCALE)
+		{
+			UINT8 foreraw, forebits, cd, plb, star, mux;
+			UINT8 xx = x / TURBO_X_SCALE;
+			UINT16 he;
+			UINT32 sprbits;
+			int palbits, offs, ix;
+
+			/* load the bitmask from the sprite position for both halves of the sprites (p. 143) */
+			he = state->sprite_position[xx * 2] | (state->sprite_position[xx * 2 + 1] << 8);
+
+			/* the AND of the line enable and horizontal enable is clocked and held in LST0-7 (p. 143) */
+			he &= sprinfo.ve;
+			sprinfo.lst |= he | (he >> 8);
+
+			/* at this point, do the character lookup and the foreground color table lookup in IC93/PR1598 (SH 5/5)*/
+			foreraw = fore[(pr5194[((xx >> 3) - 1) & 0x1f] << 3) | (xx & 0x07)];
+			offs = ((foreraw & 0x03) << 0) |			/* A0-A1: BIT0-1 */
+				   ((foreraw & 0xf8) >> 1) |			/* A2-A6: BANK3-7 */
+				   ((state->buckrog_fchg & 0x03) << 7);	/* A7-A9: FCHG0-2 */
+			forebits = pr5198[offs];
+
+			/* fetch the STAR bit */
+			star = state->buckrog_bitmap_ram[y * 64 + xx];
+
+			/* now that we have done all the per-5MHz pixel work, mix the sprites at the scale factor */
+			for (ix = 0; ix < TURBO_X_SCALE; ix++)
+			{
+				/* iterate over live sprites and update them */
+				/* the final 32-bit value is: */
+				/*    CDA0-7 = D0 -D7  */
+				/*    CDB0-7 = D8 -D15 */
+				/*    CDC0-7 = D16-D23 */
+				/*    CDD0-7 = D24-D31 */
+				sprbits = buckrog_get_sprite_bits(&sprinfo, &plb);
+
+				/* the PLB bits go into an LS148 8-to-1 decoder and become MUX0-3 (PROM board SH 2/10) */
+				if (plb == 0)
+					mux = 8;
+				else
+				{
+					mux = 7;
+					while (!(plb & 0x80))
+					{
+						mux--;
+						plb <<= 1;
+					}
+				}
+
+				/* MUX then selects one of the sprites and selects CD0-3 */
+				sprbits = (sprbits >> (mux & 0x07)) & 0x01010101;
+				cd = (sprbits >> (24-3)) | (sprbits >> (16-2)) | (sprbits >> (8-1)) | sprbits;
+
+				/* this info goes into an LS148 8-to-3 decoder to determine the priorities (SH 5/5) */
+
+				/* priority 7 is if bit 0x80 of the foreground color is 0; CHNG = 0 */
+				if (!(forebits & 0x80))
+				{
+					palbits = ((forebits & 0x3c) << 2) |
+							  ((forebits & 0x06) << 1) |
+							  ((forebits & 0x01) << 0);
+				}
+
+				/* priority 6 is if MUX3 is 0; CHNG = 1 */
+				else if (!(mux & 0x08))
+				{
+					offs = (cd & 0x0f) |						/* A0-A3: CD0-3 */
+						   ((mux & 0x07) << 4) |				/* A4-A6: MUX0-2 */
+						   ((state->buckrog_obch & 0x07) << 7);	/* A7-A9: OBCH0-2 */
+					palbits = pr5199[offs];
+				}
+
+				/* priority 3 is if bit 0x40 of the foreground color is 0; CHNG = 0 */
+				else if (!(forebits & 0x40))
+				{
+					palbits = ((forebits & 0x3c) << 2) |
+							  ((forebits & 0x06) << 1) |
+							  ((forebits & 0x01) << 0);
+				}
+
+				/* priority 1 is if the star is set; CHNG = 2 */
+				else if (star)
+				{
+					palbits = 0xff;
+				}
+
+				/* otherwise, CHNG = 3 */
+				else
+				{
+					palbits = bgcolor[y | ((state->buckrog_mov & 0x1f) << 8)];
+					palbits = (palbits & 0xc0) | ((palbits & 0x30) << 4) | ((palbits & 0x0f) << 2);
+				}
+
+				/* store the final bits for this pixel */
+				dest[x + ix] = palbits;
+			}
+		}
+	}
+	return 0;
 }

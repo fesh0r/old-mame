@@ -201,7 +201,7 @@ VIDEO_START( ssv )
 
 VIDEO_START( eaglshot )
 {
-	if ( video_start_ssv() )
+	if ( video_start_ssv(machine) )
 		return 1;
 
 	eaglshot_gfxram		=	(UINT16*)auto_malloc(16 * 0x40000);
@@ -227,7 +227,7 @@ WRITE16_HANDLER( gdfs_tmapram_w )
 
 VIDEO_START( gdfs )
 {
-	if ( video_start_ssv() )
+	if ( video_start_ssv(machine) )
 		return 1;
 
 	Machine->gfx[2]->color_granularity = 64; /* 256 colour sprites with palette selectable on 64 colour boundaries */
@@ -291,6 +291,8 @@ char eaglshot_dirty, *eaglshot_dirty_tile;
 
     CRT controller, registers that are written
     (resolution, visible area, flipping etc. ?)
+
+
 
                 1c0060-7f:
 
@@ -409,7 +411,7 @@ WRITE16_HANDLER( paletteram16_xrgb_swap_word_w )
 	g = data1 >> 8;
 	b = data1 & 0xff;
 
-	palette_set_color(offset>>1, r, g, b);
+	palette_set_color(Machine, offset>>1, r, g, b);
 
 	if (!(Machine->drv->video_attributes & VIDEO_NEEDS_6BITS_PER_GUN))
 		popmessage("driver should use VIDEO_NEEDS_6BITS_PER_GUN flag");
@@ -814,6 +816,7 @@ static void ssv_draw_sprites(mame_bitmap *bitmap)
 					case 0x4940:	sy += 0x60;		break;		// srmp4
 					case 0x5940:	sy -= 0x20;		break;		// drifto94, dynagear, eaglshot, keithlcy, mslider, stmblade
 					case 0x5950:	sy += 0xdf;		break;		// gdfs
+					case 0x7940:	sy -= 0x10;		break;		// ultrax, twineag2
 				}
 
 				ssv_draw_row(bitmap, sx, sy, scroll);
@@ -867,10 +870,15 @@ static void ssv_draw_sprites(mame_bitmap *bitmap)
 				if (ssv_scroll[0x74/2] == 0x6500)	// vasara
 					sy = 0xe8 - sy;
 
-				if (ssv_scroll[0x74/2] & 0x8000)	// srmp7, twineag2, ultrax
+				if (ssv_scroll[0x74/2] & 0x8000)		// srmp7, twineag2, ultrax
 				{
-					sx	=	ssv_sprites_offsx + sx;
-					sy	=	ssv_sprites_offsy + sy;
+					if (ssv_scroll[0x76/2] & 0x4000) {					// twineag2, ultrax
+						sx	=	ssv_sprites_offsx + sx - (xnum-1) * 8;
+						sy	=	ssv_sprites_offsy + sy - (ynum * 8) / 2;
+					} else {									// srmp7
+						sx	=	ssv_sprites_offsx + sx;
+						sy	=	ssv_sprites_offsy + sy;
+					}
 				}
 				else if (ssv_scroll[0x76/2] & 0x1000)	// eaglshot
 				{
@@ -943,7 +951,7 @@ VIDEO_UPDATE( eaglshot )
 		}
 	}
 
-	video_update_ssv(screen, bitmap, cliprect);
+	video_update_ssv(machine, screen, bitmap, cliprect);
 	return 0;
 }
 
@@ -1114,7 +1122,7 @@ VIDEO_UPDATE( gdfs )
 {
 	int tile, pri;
 
-	video_update_ssv(screen, bitmap, cliprect);
+	video_update_ssv(machine, screen, bitmap, cliprect);
 
 	// Decode zooming sprites tiles from ram
 	if (eaglshot_dirty)

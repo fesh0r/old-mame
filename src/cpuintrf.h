@@ -316,7 +316,7 @@ enum
 	CPUINFO_PTR_WINDOW_LAYOUT,							/* R/O: struct debug_window_layout *layout */
 	CPUINFO_PTR_INTERNAL_MEMORY_MAP,					/* R/O: construct_map_t map */
 	CPUINFO_PTR_INTERNAL_MEMORY_MAP_LAST = CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACES - 1,
-	CPUINFO_PTR_DEBUG_REGISTER_LIST,					/* R/O: int *list: list of registers for NEW_DEBUGGER */
+	CPUINFO_PTR_DEBUG_REGISTER_LIST,					/* R/O: int *list: list of registers for the debugger */
 
 	CPUINFO_PTR_CPU_SPECIFIC = 0x18000,					/* R/W: CPU-specific values start here */
 
@@ -438,7 +438,7 @@ typedef struct _cpu_interface cpu_interface;
  *************************************/
 
 /* reset the internal CPU tracking */
-void cpuintrf_init(void);
+void cpuintrf_init(running_machine *machine);
 
 /* set up the interface for one CPU of a given type */
 int	cpuintrf_init_cpu(int cpunum, int cputype, int clock, const void *config, int (*irqcallback)(int));
@@ -456,7 +456,7 @@ void cpuintrf_pop_context(void);
 char *cpuintrf_temp_str(void);
 
 /* set the dasm override handler */
-void cpuintrf_set_dasm_override(offs_t (*dasm_override)(int cpunum, char *buffer, offs_t pc));
+void cpuintrf_set_dasm_override(int cpunum, offs_t (*dasm_override)(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes));
 
 
 

@@ -498,7 +498,7 @@ static struct YM3438interface ym3438_interface =
 static MACHINE_DRIVER_START( shangha3 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 16000000)	/* 16 MHz ??? */
+	MDRV_CPU_ADD(M68000, 8000000)
 	MDRV_CPU_PROGRAM_MAP(shangha3_readmem,shangha3_writemem)
 	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
 
@@ -531,7 +531,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( heberpop )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 16000000)	/* 16 MHz ??? */
+	MDRV_CPU_ADD(M68000, 8000000)
 	MDRV_CPU_PROGRAM_MAP(heberpop_readmem,heberpop_writemem)
 	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
 
@@ -569,7 +569,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( blocken )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 16000000)	/* 16 MHz ??? */
+	MDRV_CPU_ADD(M68000, 8000000)
 	MDRV_CPU_PROGRAM_MAP(blocken_readmem,blocken_writemem)
 	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
 

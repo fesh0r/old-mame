@@ -41,6 +41,7 @@ typedef void genf(void);
 
 /* These are forward struct declarations that are used to break
    circular dependencies in the code */
+typedef struct _running_machine running_machine;
 typedef struct _mame_display mame_display;
 typedef struct _game_driver game_driver;
 typedef struct _machine_config machine_config;
@@ -612,6 +613,7 @@ INLINE int gregorian_days_in_month(int month, int year)
 
 /* Used by assert(), so definition here instead of mame.h */
 DECL_NORETURN void CLIB_DECL fatalerror(const char *text,...) ATTR_PRINTF(1,2) ATTR_NORETURN;
+DECL_NORETURN void CLIB_DECL fatalerror_exitcode(int exitcode, const char *text,...) ATTR_PRINTF(2,3) ATTR_NORETURN;
 
 
 #endif	/* __MAMECORE_H__ */

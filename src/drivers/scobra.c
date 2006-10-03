@@ -1331,7 +1331,7 @@ static MACHINE_DRIVER_START( moonwar )
 	MDRV_IMPORT_FROM(type1)
 
 	/* video hardware */
-	MDRV_PALETTE_LENGTH(32+64+2)	/* 32 for characters, 64 for stars, 2 for bullets */
+	MDRV_PALETTE_LENGTH(32+64+2+1)	/* 32 for characters, 64 for stars, 2 for bullets, 1 for bg */
 
 	MDRV_PALETTE_INIT(moonwar)
 MACHINE_DRIVER_END
@@ -1419,7 +1419,7 @@ static MACHINE_DRIVER_START( darkplnt )
 	MDRV_IMPORT_FROM(type2)
 
 	/* video hardware */
-	MDRV_PALETTE_LENGTH(32+2) /* 32 for characters, 2 for bullets */
+	MDRV_PALETTE_LENGTH(32+64+2) /* 32 for characters, 64 (buffer) for stars, 2 for bullets */
 
 	MDRV_PALETTE_INIT(darkplnt)
 	MDRV_VIDEO_START(darkplnt)
@@ -2129,7 +2129,7 @@ GAME( 1982, tazmania, 0,        type1,    tazmania, scobra,       ROT90,  "Stern
 GAME( 1982, tazmani2, tazmania, type2,    tazmania, tazmani2,     ROT90,  "Stern", "Tazz-Mania (set 2)", GAME_SUPPORTS_SAVE )
 GAME( 1982, calipso,  0,        calipso,  calipso,  scobra,       ROT90,  "[Stern] (Tago license)", "Calipso", GAME_SUPPORTS_SAVE )
 GAME( 1982, anteater, 0,        type1,    anteater, anteater,     ROT90,  "[Stern] (Tago license)", "Anteater", GAME_SUPPORTS_SAVE )
-GAME( 1983, anteatg,  anteater, anteatg,  anteatg,  scramble_ppi, ROT90,  "TV-Tuning 2000 (F.E.G. license)", "Ameisenbaer (German)", GAME_SUPPORTS_SAVE )
+GAME( 1983, anteatg,  anteater, anteatg,  anteatg,  scramble_ppi, ROT90,  "TV-Tuning (F.E.G. license)", "Ameisenbaer (German)", GAME_SUPPORTS_SAVE )
 GAME( 1983, anteatgb, anteater, anteatgb, anteatgb, scramble_ppi, ROT90,  "Free Enterprise Games", "The Anteater (UK)", GAME_SUPPORTS_SAVE )
 GAME( 1982, rescue,   0,        rescue,   rescue,   rescue,       ROT90,  "Stern", "Rescue", GAME_SUPPORTS_SAVE )
 GAME( 1982, aponow,   rescue,   rescue,   rescue,   rescue,       ROT90,  "bootleg", "Apocaljpse Now", GAME_SUPPORTS_SAVE )

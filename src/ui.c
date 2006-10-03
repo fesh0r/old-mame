@@ -113,13 +113,17 @@ static slider_state slider_list[100];
 static int slider_count;
 static int slider_current;
 
+static int display_rescale_message;
+static int allow_rescale;
+
 
 
 /***************************************************************************
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static void ui_exit(void);
+static void ui_exit(running_machine *machine);
+static int rescale_notifier(running_machine *machine, int width, int height);
 
 /* text generators */
 static int sprintf_disclaimer(char *buffer);
@@ -195,10 +199,10 @@ INLINE void slider_config(slider_state *state, INT32 minval, INT32 defval, INT32
     ui_init - set up the user interface
 -------------------------------------------------*/
 
-int ui_init(void)
+int ui_init(running_machine *machine)
 {
 	/* make sure we clean up after ourselves */
-	add_exit_callback(ui_exit);
+	add_exit_callback(machine, ui_exit);
 
 	/* load the localization file */
 	if (uistring_init(options.language_file) != 0)
@@ -208,12 +212,17 @@ int ui_init(void)
 	ui_font = render_font_alloc("ui.bdf");
 
 	/* initialize the other UI bits */
-	ui_menu_init();
-	ui_gfx_init();
+	ui_menu_init(machine);
+	ui_gfx_init(machine);
 
 	/* reset globals */
 	single_step = FALSE;
 	ui_set_handler(handler_messagebox, 0);
+
+	/* request callbacks when the renderer does resizing */
+	render_set_rescale_notify(machine, rescale_notifier);
+	allow_rescale = 0;
+	display_rescale_message = FALSE;
 	return 0;
 }
 
@@ -222,12 +231,32 @@ int ui_init(void)
     ui_exit - clean up ourselves on exit
 -------------------------------------------------*/
 
-static void ui_exit(void)
+static void ui_exit(running_machine *machine)
 {
 	/* free the font */
 	if (ui_font != NULL)
 		render_font_free(ui_font);
 	ui_font = NULL;
+}
+
+
+/*-------------------------------------------------
+    rescale_notifier - notifier to trigger a
+    rescale message during long operations
+-------------------------------------------------*/
+
+static int rescale_notifier(running_machine *machine, int width, int height)
+{
+	/* always allow "small" rescaling */
+	if (width < 500 || height < 500)
+		return TRUE;
+
+	/* if we've currently disallowed rescaling, turn on a message next frame */
+	if (allow_rescale == 0)
+		display_rescale_message = TRUE;
+
+	/* only allow rescaling once we're sure the message is visible */
+	return (allow_rescale == 1);
 }
 
 
@@ -250,7 +279,7 @@ int ui_display_startup_screens(int show_disclaimer, int show_warnings, int show_
 
 	/* loop over states */
 	ui_set_handler(handler_ingame, 0);
-	for (state = 0; state < maxstate && !mame_is_scheduled_event_pending(); state++)
+	for (state = 0; state < maxstate && !mame_is_scheduled_event_pending(Machine); state++)
 	{
 		/* default to standard colors */
 		messagebox_backcolor = UI_FILLCOLOR;
@@ -286,7 +315,7 @@ int ui_display_startup_screens(int show_disclaimer, int show_warnings, int show_
 		while (code_read_async() != CODE_NONE) ;
 
 		/* loop while we have a handler */
-		while (ui_handler_callback != handler_ingame && !mame_is_scheduled_event_pending())
+		while (ui_handler_callback != handler_ingame && !mame_is_scheduled_event_pending(Machine))
 			video_frame_update();
 
 		/* clear the handler and force an update */
@@ -331,7 +360,7 @@ void ui_update_and_render(void)
 	render_container_empty(render_container_get_ui());
 
 	/* if we're paused, dim the whole screen */
-	if (mame_get_phase() >= MAME_PHASE_RESET && (single_step || mame_is_paused()))
+	if (mame_get_phase(Machine) >= MAME_PHASE_RESET && (single_step || mame_is_paused(Machine)))
 	{
 		int alpha = (1.0f - options.pause_bright) * 255.0f;
 		if (alpha > 255)
@@ -368,6 +397,19 @@ void ui_update_and_render(void)
 		ui_draw_text_box(messagebox_text, JUSTIFY_CENTER, 0.5f, 0.9f, messagebox_backcolor);
 	else
 		popup_text_end = 0;
+
+	/* add a message if we are rescaling */
+	if (display_rescale_message)
+	{
+		display_rescale_message = FALSE;
+		if (allow_rescale == 0)
+			allow_rescale = 2;
+		ui_draw_text_box("Updating Artwork...", JUSTIFY_CENTER, 0.5f, 0.5f, messagebox_backcolor);
+	}
+
+	/* decrement the frame counter if it is non-zero */
+	else if (allow_rescale != 0)
+		allow_rescale--;
 
 #ifdef MESS
 	/* let MESS display its stuff */
@@ -1005,7 +1047,7 @@ static UINT32 handler_messagebox_ok(UINT32 state)
 	/* if the user cancels, exit out completely */
 	else if (input_ui_pressed(IPT_UI_CANCEL))
 	{
-		mame_schedule_exit();
+		mame_schedule_exit(Machine);
 		state = UI_HANDLER_CANCEL;
 	}
 
@@ -1027,7 +1069,7 @@ static UINT32 handler_messagebox_anykey(UINT32 state)
 	/* if the user cancels, exit out completely */
 	if (input_ui_pressed(IPT_UI_CANCEL))
 	{
-		mame_schedule_exit();
+		mame_schedule_exit(Machine);
 		state = UI_HANDLER_CANCEL;
 	}
 
@@ -1046,12 +1088,12 @@ static UINT32 handler_messagebox_anykey(UINT32 state)
 
 static UINT32 handler_ingame(UINT32 state)
 {
-	int is_paused = mame_is_paused();
+	int is_paused = mame_is_paused(Machine);
 
 	/* if we're single-stepping, pause now */
 	if (single_step)
 	{
-		mame_pause(TRUE);
+		mame_pause(Machine, TRUE);
 		single_step = FALSE;
 	}
 
@@ -1062,7 +1104,7 @@ static UINT32 handler_ingame(UINT32 state)
 
 	/* if the user pressed ESC, stop the emulation */
 	if (input_ui_pressed(IPT_UI_CANCEL))
-		mame_schedule_exit();
+		mame_schedule_exit(Machine);
 
 	/* turn on menus if requested */
 	if (input_ui_pressed(IPT_UI_CONFIGURE))
@@ -1077,29 +1119,29 @@ static UINT32 handler_ingame(UINT32 state)
 
 	/* handle a reset request */
 	if (input_ui_pressed(IPT_UI_RESET_MACHINE))
-		mame_schedule_hard_reset();
+		mame_schedule_hard_reset(Machine);
 	if (input_ui_pressed(IPT_UI_SOFT_RESET))
-		mame_schedule_soft_reset();
+		mame_schedule_soft_reset(Machine);
 
 	/* handle a request to display graphics/palette */
 	if (input_ui_pressed(IPT_UI_SHOW_GFX))
 	{
 		if (!is_paused)
-			mame_pause(TRUE);
+			mame_pause(Machine, TRUE);
 		return ui_set_handler(ui_gfx_ui_handler, is_paused);
 	}
 
 	/* handle a save state request */
 	if (input_ui_pressed(IPT_UI_SAVE_STATE))
 	{
-		mame_pause(TRUE);
+		mame_pause(Machine, TRUE);
 		return ui_set_handler(handler_load_save, LOADSAVE_SAVE);
 	}
 
 	/* handle a load state request */
 	if (input_ui_pressed(IPT_UI_LOAD_STATE))
 	{
-		mame_pause(TRUE);
+		mame_pause(Machine, TRUE);
 		return ui_set_handler(handler_load_save, LOADSAVE_LOAD);
 	}
 
@@ -1114,10 +1156,10 @@ static UINT32 handler_ingame(UINT32 state)
 		if (is_paused && (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT)))
 		{
 			single_step = TRUE;
-			mame_pause(FALSE);
+			mame_pause(Machine, FALSE);
 		}
 		else
-			mame_pause(!mame_is_paused());
+			mame_pause(Machine, !mame_is_paused(Machine));
 	}
 
 	/* toggle movie recording */
@@ -1247,7 +1289,7 @@ static UINT32 handler_load_save(UINT32 state)
 			popmessage("Load cancelled");
 
 		/* reset the state */
-		mame_pause(FALSE);
+		mame_pause(Machine, FALSE);
 		return UI_HANDLER_CANCEL;
 	}
 
@@ -1271,16 +1313,16 @@ static UINT32 handler_load_save(UINT32 state)
 	if (state == LOADSAVE_SAVE)
 	{
 		popmessage("Save to position %c", file);
-		mame_schedule_save(filename);
+		mame_schedule_save(Machine, filename);
 	}
 	else
 	{
 		popmessage("Load from position %c", file);
-		mame_schedule_load(filename);
+		mame_schedule_load(Machine, filename);
 	}
 
 	/* remove the pause and reset the state */
-	mame_pause(FALSE);
+	mame_pause(Machine, FALSE);
 	return UI_HANDLER_CANCEL;
 }
 

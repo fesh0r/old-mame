@@ -63,7 +63,7 @@ static UINT32 uniqueid = 12345;
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static void output_exit(void);
+static void output_exit(running_machine *machine);
 
 
 
@@ -143,10 +143,10 @@ INLINE output_item *create_new_item(const char *outname, INT32 value)
     output_init - initialize everything
 -------------------------------------------------*/
 
-void output_init(void)
+void output_init(running_machine *machine)
 {
 	/* get a callback when done */
-	add_exit_callback(output_exit);
+	add_exit_callback(machine, output_exit);
 
 	/* reset the lists */
 	memset(itemtable, 0, sizeof(itemtable));
@@ -158,7 +158,7 @@ void output_init(void)
     output_exit - cleanup on exit
 -------------------------------------------------*/
 
-static void output_exit(void)
+static void output_exit(running_machine *machine)
 {
 	output_notify *notify;
 	output_item *item;
@@ -228,6 +228,32 @@ void output_set_value(const char *outname, INT32 value)
 
 
 /*-------------------------------------------------
+    output_set_indexed_value - set the value of an
+    indexed output
+-------------------------------------------------*/
+
+void output_set_indexed_value(const char *basename, int index, int value)
+{
+	char buffer[100];
+	char *dest = buffer;
+
+	/* copy the string */
+	while (*basename != 0)
+		*dest++ = *basename++;
+
+	/* append the index */
+	if (index > 1000) *dest++ = '0' + ((index / 1000) % 10);
+	if (index > 100) *dest++ = '0' + ((index / 100) % 10);
+	if (index > 10) *dest++ = '0' + ((index / 10) % 10);
+	*dest++ = '0' + (index % 10);
+	*dest++ = 0;
+
+	/* set the value */
+	output_set_value(buffer, value);
+}
+
+
+/*-------------------------------------------------
     output_get_value - return the value of an
     output
 -------------------------------------------------*/
@@ -240,6 +266,32 @@ INT32 output_get_value(const char *outname)
 	if (item == NULL)
 		return 0;
 	return item->value;
+}
+
+
+/*-------------------------------------------------
+    output_get_indexed_value - get the value of an
+    indexed output
+-------------------------------------------------*/
+
+INT32 output_get_indexed_value(const char *basename, int index)
+{
+	char buffer[100];
+	char *dest = buffer;
+
+	/* copy the string */
+	while (*basename != 0)
+		*dest++ = *basename++;
+
+	/* append the index */
+	if (index > 1000) *dest++ = '0' + ((index / 1000) % 10);
+	if (index > 100) *dest++ = '0' + ((index / 100) % 10);
+	if (index > 10) *dest++ = '0' + ((index / 10) % 10);
+	*dest++ = '0' + (index % 10);
+	*dest++ = 0;
+
+	/* set the value */
+	return output_get_value(buffer);
 }
 
 

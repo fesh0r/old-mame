@@ -302,7 +302,7 @@ INLINE void schedule_next_irq(int curv)
 		curv = ((curv + 32) & 0xff) & ~0x10;
 
 	/* next one at the start of this scanline */
-	timer_adjust(irq_timer, cpu_getscanlinetime(v_to_scanline(curv)), curv, 0);
+	mame_timer_adjust(irq_timer, video_screen_get_time_until_pos(0, v_to_scanline(curv), 0), curv, time_zero);
 }
 
 
@@ -322,7 +322,7 @@ static void clock_irq(int curv)
 
 static UINT32 get_vblank(void *param)
 {
-	int v = scanline_to_v(cpu_getscanline());
+	int v = scanline_to_v(video_screen_get_vpos(0));
 	return v < 24;
 }
 
@@ -344,7 +344,7 @@ static void adjust_cpu_speed(int curv)
 
 	/* scanline for the next run */
 	curv ^= 224;
-	timer_adjust(cpu_timer, cpu_getscanlinetime(v_to_scanline(curv)), curv, 0);
+	mame_timer_adjust(cpu_timer, video_screen_get_time_until_pos(0, v_to_scanline(curv), 0), curv, time_zero);
 }
 
 
@@ -385,7 +385,7 @@ static MACHINE_START( missile )
 
 	/* create a timer to speed/slow the CPU */
 	cpu_timer = timer_alloc(adjust_cpu_speed);
-	timer_adjust(cpu_timer, cpu_getscanlinetime(v_to_scanline(0)), 0, 0);
+	mame_timer_adjust(cpu_timer, video_screen_get_time_until_pos(0, v_to_scanline(0), 0), 0, time_zero);
 
 	/* create a timer for IRQs and set up the first callback */
 	irq_timer = timer_alloc(clock_irq);
@@ -528,7 +528,7 @@ static UINT8 read_vram(offs_t address)
 
 VIDEO_UPDATE( missile )
 {
-	pen_t black = get_black_pen();
+	pen_t black = get_black_pen(machine);
 	int x, y;
 
 	/* draw the bitmap to the screen, looping over Y */
@@ -621,7 +621,7 @@ static WRITE8_HANDLER( missile_w )
 
 	/* color RAM */
 	else if (offset >= 0x4b00 && offset < 0x4c00)
-		palette_set_color(offset & 7, pal1bit(~data >> 3), pal1bit(~data >> 2), pal1bit(~data >> 1));
+		palette_set_color(Machine, offset & 7, pal1bit(~data >> 3), pal1bit(~data >> 2), pal1bit(~data >> 1));
 
 	/* watchdog */
 	else if (offset >= 0x4c00 && offset < 0x4d00)

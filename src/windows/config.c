@@ -25,11 +25,8 @@
 #include "video.h"
 #include "render.h"
 #include "rendutil.h"
-
-#ifdef NEW_DEBUGGER
 #include "debug/debugcpu.h"
 #include "debug/debugcon.h"
-#endif
 
 
 
@@ -194,6 +191,7 @@ static const options_entry windows_opts[] =
 	{ "sleep",                    "1",        OPTION_BOOLEAN,    "enable sleeping, which gives time back to other applications when idle" },
 	{ "rdtsc",                    "0",        OPTION_BOOLEAN,    "use the RDTSC instruction for timing; faster but may result in uneven performance" },
 	{ "priority",                 "0",        0,                 "thread priority for the main game thread; range from -15 to 1" },
+	{ "multithreading;mt",        "0",        OPTION_BOOLEAN,    "enable multithreading; this enables rendering and blitting on a separate thread" },
 
 	// video options
 	{ NULL,                       NULL,       OPTION_HEADER,     "VIDEO OPTIONS" },
@@ -604,8 +602,8 @@ static void execute_commands(const char *argv0)
 			int result;
 
 			init_resource_tracking();
-			cpuintrf_init();
-			sndintrf_init();
+			cpuintrf_init(NULL);
+			sndintrf_init(NULL);
 			result = (*frontend_options[i].function)(stdout);
 			exit_resource_tracking();
 			exit(result);
@@ -680,7 +678,7 @@ static void extract_options(const game_driver *driver, machine_config *drv)
 	options.vector_flicker = options_get_float("flicker", TRUE);
 
 	// sound options
-	options.samplerate = options_get_bool("sound", TRUE) ? options_get_int("samplerate", TRUE) : 0;
+	options.samplerate = options_get_bool("sound", TRUE) ? options_get_int_range("samplerate", TRUE, 1000, 1000000) : 0;
 	options.use_samples = options_get_bool("samples", TRUE);
 	attenuation = options_get_int("volume", TRUE);
 	audio_latency = options_get_int("audio_latency", TRUE);
@@ -718,11 +716,9 @@ static void extract_options(const game_driver *driver, machine_config *drv)
 }
 #ifdef MAME_DEBUG
 	options.mame_debug = options_get_bool("debug", TRUE);
-#ifdef NEW_DEBUGGER
 	stemp = options_get_string("debugscript", TRUE);
 	if (stemp != NULL)
 		debug_source_script(stemp);
-#endif
 #endif
 
 {

@@ -75,7 +75,7 @@ static void ic13_shifter(void)
 DRIVER_INIT ( ic13 )
 {
 	ic13_shifter();
-	init_stv();
+	init_stv(machine);
 }
 /*
 EEPROM write 0000 to address 2d
@@ -222,7 +222,7 @@ DRIVER_INIT(shienryu)
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ae8e0, 0x60ae8e3, 0, 0, shienryu_speedup_r ); // after you enable sound cpu
 	memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x60ae8e4, 0x60ae8e7, 0, 0, shienryu_slave_speedup_r ); // after you enable sound cpu
 
-	init_stv();
+	init_stv(machine);
 }
 
 static READ32_HANDLER( prikura_speedup_r )
@@ -250,7 +250,7 @@ DRIVER_INIT(prikura)
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60b9228, 0x60b922b, 0, 0, prikura_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)prikura_slave_speedup );
 
-	init_stv();
+	init_stv(machine);
 
 	minit_boost = sinit_boost = 0;
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
@@ -295,7 +295,7 @@ DRIVER_INIT(hanagumi)
    	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6094188, 0x609418b, 0, 0, hanagumi_speedup_r );
    	memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x6015438, 0x601543b, 0, 0, hanagumi_slave_off );
 
-  	init_stv();
+  	init_stv(machine);
 }
 
 
@@ -337,7 +337,7 @@ DRIVER_INIT(puyosun)
    	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, puyosun_speedup_r ); // idle loop of main cpu
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)puyosun_slave_speedup );
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost = sinit_boost = 0;
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
@@ -364,7 +364,7 @@ DRIVER_INIT(mausuke)
 {
    	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, mausuke_speedup_r ); // idle loop of main cpu
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost = sinit_boost = 0;
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
@@ -402,7 +402,7 @@ DRIVER_INIT(cottonbm)
    	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, cottonbm_speedup_r ); // idle loop of main cpu
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)cottonbm_slave_speedup );
 
-	init_stv();
+	init_stv(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(10);
 }
@@ -438,26 +438,138 @@ DRIVER_INIT(cotton2)
    	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, cotton2_speedup_r ); // idle loop of main cpu
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)cotton2_slave_speedup );
 
-	init_stv();
+	init_stv(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
 }
 
+static int dnmtdeka_pending_commands;
+
 static READ32_HANDLER( dnmtdeka_speedup_r )
 {
-	if (activecpu_get_pc()==0x6027c93) cpu_spinuntil_time(TIME_IN_USEC(20));
-
+	if (activecpu_get_pc()==0x6027c92) cpu_spinuntil_int();//cpu_spinuntil_time(TIME_IN_USEC(20));
 	return stv_workram_h[0x0985a0/4];
+}
+
+static WRITE32_HANDLER(dnmtdeka_cmd_write)
+{
+	COMBINE_DATA(&stv_workram_h[0x0e0ad4/4 + offset]);
+	if ( (cpu_getactivecpu() == 0) && (activecpu_get_pc() == 0x00000d06) )
+		return;
+
+	if ( data != 0 ) dnmtdeka_pending_commands++;
+	//logerror( "CMD: Written by cpu=%d, at = %08X, offset = %08X, data = %08X, commands = %d\n", cpu_getactivecpu(), activecpu_get_pc(), offset, data, dnmtdeka_pending_commands );
+	cpu_trigger(1000);
+}
+
+static READ32_HANDLER(dnmtdeka_cmd_read)
+{
+	//logerror( "CMD: Read by cpu=%d, at = %08X, offset = %08X, data = %08X, commands = %d\n", cpu_getactivecpu(), activecpu_get_pc(), offset, stv_workram_h[0xe0bd0/4 + offset], dnmtdeka_pending_commands );
+	if ( activecpu_get_pc() == 0x060051f4 )
+	{
+		if ( stv_workram_h[0x0e0ad4/4 + offset] == 0 )
+		{
+			if ( dnmtdeka_pending_commands == 0 )
+				cpu_spinuntil_trigger(1000);
+		}
+		else
+		{
+			dnmtdeka_pending_commands--;
+		}
+	}
+
+	return stv_workram_h[0x0e0ad4/4 + offset];
 }
 
 
 DRIVER_INIT(dnmtdeka)
 {
-//      memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60985a0, 0x60985a3, 0, 0, dnmtdeka_speedup_r ); // idle loop of main cpu
+	dnmtdeka_pending_commands = 0;
 
-	init_ic13();
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60985a0, 0x60985a3, 0, 0, dnmtdeka_speedup_r ); // idle loop of main cpu
+	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0ad4, 0x060e0bab, 0, 0, dnmtdeka_cmd_write );
+	memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x060e0ad4, 0x060e0bab, 0, 0, dnmtdeka_cmd_read );
+
+	init_ic13(machine);
 }
 
+static int diehard_pending_commands;
+
+static READ32_HANDLER(diehard_speedup_r)
+{
+	if ( activecpu_get_pc() == 0x06027c9a ) cpu_spinuntil_int();
+	return stv_workram_h[0x000986ac/4];
+}
+
+static WRITE32_HANDLER(diehard_cmd_write)
+{
+	COMBINE_DATA(&stv_workram_h[0xe0bd0/4 + offset]);
+	if ( (cpu_getactivecpu() == 0) && (activecpu_get_pc() == 0x00000d06) )
+		return;
+
+	if ( data != 0 ) diehard_pending_commands++;
+	//logerror( "CMD: Written by cpu=%d, at = %08X, offset = %08X, data = %08X, commands = %d\n", cpu_getactivecpu(), activecpu_get_pc(), offset, data, diehard_pending_commands );
+	cpu_trigger(1000);
+}
+
+static READ32_HANDLER(diehard_cmd_read)
+{
+	//logerror( "CMD: Read by cpu=%d, at = %08X, offset = %08X, data = %08X, commands = %d\n", cpu_getactivecpu(), activecpu_get_pc(), offset, stv_workram_h[0xe0bd0/4 + offset], diehard_pending_commands );
+	if ( activecpu_get_pc() == 0x060051f4 )
+	{
+		if ( stv_workram_h[0xe0bd0/4 + offset] == 0 )
+		{
+			if ( diehard_pending_commands == 0 )
+				cpu_spinuntil_trigger(1000);
+		}
+	}
+
+	return stv_workram_h[0xe0bd0/4 + offset];
+}
+
+static READ32_HANDLER(diehard_cmd_ack_read)
+{
+	//logerror( "CMDACK: Read by cpu=%d, at = %08X, offset = %08X, data = %08X, commands = %d\n", cpu_getactivecpu(), activecpu_get_pc(), offset, stv_workram_h[0x000e0dd8/4], diehard_pending_commands );
+	if ( (stv_workram_h[0x000e0dd8/4] & 0xff000000) == 0 &&
+		 diehard_pending_commands == 0 )
+	{
+		cpu_trigger(1000);
+	}
+	return stv_workram_h[0x000e0dd8/4];
+}
+
+static WRITE32_HANDLER(diehard_cmd_ack_write)
+{
+	//logerror( "CMDACK: Write by cpu=%d, at = %08X, offset = %08X, data = %08X, commands = %d\n", cpu_getactivecpu(), activecpu_get_pc(), offset, data, diehard_pending_commands );
+	if ( diehard_pending_commands > 0 )
+	{
+		diehard_pending_commands--;
+	}
+	COMBINE_DATA(&stv_workram_h[0x000e0dd8/4]);
+}
+
+static WRITE32_HANDLER(diehard_cmd_ack_write_cpu0)
+{
+	//logerror( "CMDACK: Write by cpu=%d, at = %08X, offset = %08X, data = %08X, commands = %d\n", cpu_getactivecpu(), activecpu_get_pc(), offset, data, diehard_pending_commands );
+	COMBINE_DATA(&stv_workram_h[0x000e0dd8/4]);
+	cpu_trigger(1000);
+}
+
+DRIVER_INIT(diehard)
+{
+	diehard_pending_commands = 0;
+
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060986ac, 0x060986af, 0, 0, diehard_speedup_r );
+	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0bd0, 0x060e0ca7, 0, 0, diehard_cmd_write );
+	memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x060e0bd0, 0x060e0ca7, 0, 0, diehard_cmd_read );
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0dd8, 0x060e0dd8, 0, 0, diehard_cmd_ack_read );
+	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0dd8, 0x060e0dd8, 0, 0, diehard_cmd_ack_write_cpu0 );
+	memory_install_write32_handler(1, ADDRESS_SPACE_PROGRAM, 0x060e0dd8, 0x060e0dd8, 0, 0, diehard_cmd_ack_write );
+
+
+	init_ic13(machine);
+
+}
 
 static READ32_HANDLER( fhboxers_speedup_r )
 {
@@ -488,7 +600,7 @@ DRIVER_INIT(fhboxers)
    	memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x6090740, 0x6090743, 0, 0, fhboxers_speedup2_r ); // idle loop of second cpu
   	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x06090bb4, 0x06090bb7, 0, 0, fhboxers_speedup3_r ); // idle loop of main cpu
 
-	init_ic13();
+	init_ic13(machine);
 }
 
 
@@ -519,7 +631,7 @@ DRIVER_INIT(bakubaku)
    	memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x60fdfe8, 0x60fdfeb, 0, 0, bakubaku_speedup2_r ); // turn off slave sh2, is it needed after boot ??
    	//memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6033660, 0x6033663, 0, 0, bakubaku_hangskip_r ); // it waits for a ram address to change what should change it?
 
-	init_ic13();
+	init_ic13(machine);
 }
 
 static READ32_HANDLER( groovef_hack1_r )
@@ -573,7 +685,7 @@ DRIVER_INIT( groovef )
 //  memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x60060dc, 0x60060df, 0, 0, groovef_second_cpu_off_r ); // not a good idea, needs it for ai.
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)groovef_slave_speedup );
 
-	init_stv();
+	init_stv(machine);
 
 	minit_boost = sinit_boost = 0;
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
@@ -635,7 +747,7 @@ DRIVER_INIT( danchih )
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, danchih_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)danchih_slave_speedup );
 
-	init_stv();
+	init_stv(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(5);
 
@@ -682,7 +794,7 @@ DRIVER_INIT( astrass )
 
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0608e4d8, 0x0608e4db, 0, 0, astrass_speedup_r );
 
-	init_ic13();
+	init_ic13(machine);
 }
 
 /* Treasure Hunt idle loop skipping */
@@ -737,7 +849,7 @@ DRIVER_INIT(thunt)
 
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf *)thunt_slave_speedup);
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(1);
 }
@@ -767,7 +879,7 @@ DRIVER_INIT(sandor)
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060314f8, 0x060314fb, 0, 0, sandor_speedup_r );
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x06075a2c, 0x06075a2f, 0, 0, sandor_speedup2_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf *)sandor_slave_speedup);
-	init_ic13();
+	init_ic13(machine);
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(1);
 
 }
@@ -814,7 +926,7 @@ DRIVER_INIT(grdforce)
 
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf *)grdforce_slave_speedup);
 
-	init_stv();
+	init_stv(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
 }
@@ -831,7 +943,7 @@ DRIVER_INIT(batmanfr)
 {
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)batmanfr_slave_speedup );
 
-	init_stv();
+	init_stv(machine);
 
 	minit_boost = sinit_boost = 0;
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
@@ -853,7 +965,7 @@ DRIVER_INIT(colmns97)
 {
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)colmns97_slave_speedup );
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost = sinit_boost = 0;
 
@@ -878,7 +990,7 @@ DRIVER_INIT(winterht)
 
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)winterht_slave_speedup );
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(2);
 }
@@ -903,7 +1015,7 @@ DRIVER_INIT(seabass)
 
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)seabass_slave_speedup );
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(5);
 }
@@ -926,35 +1038,11 @@ DRIVER_INIT(vfremix)
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x06074f98, 0x06074f9b, 0, 0, vfremix_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)vfremix_slave_speedup );
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(20);
 }
 
-static READ32_HANDLER(diehard_speedup_r)
-{
-	if ( activecpu_get_pc() == 0x06027c9a ) cpu_spinuntil_int();
-	return stv_workram_h[0x000986ac/4];
-}
-
-static READ32_HANDLER(diehard_slave_speedup_r)
-{
-	if ( activecpu_get_pc() == 0x060051f4 )
-		if (stv_workram_h[0x000e0be0/4] == 0)
-			cpunum_spinuntil_trigger(1, 1000);
-
-	return stv_workram_h[0x000986ac/4];
-}
-
-DRIVER_INIT(diehard)
-{
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060986ac, 0x060986af, 0, 0, diehard_speedup_r );
-	//memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x060e0be0, 0x060e0be3, 0, 0, diehard_slave_speedup_r );
-
-	init_ic13();
-
-	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
-}
 
 static READ32_HANDLER(sss_speedup_r)
 {
@@ -974,7 +1062,7 @@ DRIVER_INIT(sss)
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060ffc10, 0x060ffc13, 0, 0, sss_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)sss_slave_speedup );
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
 }
@@ -1001,24 +1089,24 @@ DRIVER_INIT(othellos)
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060ffc10, 0x060ffc13, 0, 0, othellos_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)othellos_slave_speedup );
 
-	init_stv();
+	init_stv(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
 
 }
 
-static void sassisu_slave_speedup( UINT32 data )
+static void sasissu_slave_speedup( UINT32 data )
 {
 	if ( activecpu_get_pc() == 0x060710C0 )
 		if ( (data & 0x00800000) == 0 )
 			cpunum_spinuntil_trigger(1, 1000);
 }
 
-DRIVER_INIT(sassisu)
+DRIVER_INIT(sasissu)
 {
-	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)sassisu_slave_speedup );
+	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)sasissu_slave_speedup );
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(2);
 }
@@ -1032,7 +1120,7 @@ static READ32_HANDLER(gaxeduel_speedup_r)
 DRIVER_INIT(gaxeduel)
 {
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x002f4068, 0x002f406b, 0, 0, gaxeduel_speedup_r);
-	init_ic13();
+	init_ic13(machine);
 }
 
 static READ32_HANDLER(suikoenb_speedup_r)
@@ -1044,7 +1132,7 @@ static READ32_HANDLER(suikoenb_speedup_r)
 DRIVER_INIT(suikoenb)
 {
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060705d0, 0x060705d3, 0, 0, suikoenb_speedup_r);
-	init_ic13();
+	init_ic13(machine);
 }
 
 static void sokyugrt_slave_speedup( UINT32 data )
@@ -1066,7 +1154,7 @@ DRIVER_INIT(sokyugrt)
 {
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)sokyugrt_slave_speedup );
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060788cc, 0x060788cf, 0, 0, sokyugrt_speedup_r);
-	init_ic13();
+	init_ic13(machine);
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
 
 }
@@ -1099,7 +1187,7 @@ DRIVER_INIT(znpwfv)
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)znpwfv_slave_speedup );
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, znpwfv_speedup_r );
 
-	init_ic13();
+	init_ic13(machine);
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(2);
 }
 
@@ -1121,7 +1209,7 @@ DRIVER_INIT(twcup98)
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)twcup98_slave_speedup );
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, twcup98_speedup_r );
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(5);
 }
@@ -1144,7 +1232,7 @@ DRIVER_INIT(smleague)
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)smleague_slave_speedup );
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, smleague_speedup_r );
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
 }
@@ -1160,7 +1248,7 @@ DRIVER_INIT(finlarch)
 {
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, finlarch_speedup_r );
 
-	init_ic13();
+	init_ic13(machine);
 
 }
 
@@ -1191,7 +1279,7 @@ DRIVER_INIT(maruchan)
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)maruchan_slave_speedup );
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, maruchan_speedup_r );
 
-	init_ic13();
+	init_ic13(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
 }
@@ -1208,7 +1296,7 @@ DRIVER_INIT(pblbeach)
 {
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0606c398, 0x0606c39b, 0, 0, pblbeach_speedup_r );
 
-	init_ic13();
+	init_ic13(machine);
 }
 
 static READ32_HANDLER( shanhigw_speedup_r )
@@ -1222,7 +1310,7 @@ DRIVER_INIT(shanhigw)
 {
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x06095cd8, 0x06095cdb, 0, 0, shanhigw_speedup_r );
 
-	init_stv();
+	init_stv(machine);
 }
 
 static READ32_HANDLER( elandore_speedup_r )
@@ -1248,7 +1336,7 @@ DRIVER_INIT(elandore)
 {
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, elandore_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf *)elandore_slave_speedup);
-	init_stv();
+	init_stv(machine);
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(0);
 
 }
@@ -1276,7 +1364,7 @@ DRIVER_INIT(rsgun)
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, rsgun_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf *)rsgun_slave_speedup);
 
-	init_stv();
+	init_stv(machine);
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(20);
 

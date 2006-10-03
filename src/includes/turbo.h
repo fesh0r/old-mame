@@ -6,71 +6,102 @@
 
 #include "sound/discrete.h"
 
-/*----------- defined in machine/turbo.c -----------*/
+/* sprites are scaled in the analog domain; to give a better */
+/* rendition of this, we scale in the X direction by this factor */
+#define TURBO_X_SCALE		2
 
-extern UINT8 turbo_opa, turbo_opb, turbo_opc;
-extern UINT8 turbo_ipa, turbo_ipb, turbo_ipc;
-extern UINT8 turbo_fbpla, turbo_fbcol;
-extern UINT8 turbo_speed;
 
-extern UINT8 subroc3d_col, subroc3d_ply, subroc3d_chofs;
+typedef struct _i8279_state i8279_state;
+struct _i8279_state
+{
+	UINT8		command;
+	UINT8		mode;
+	UINT8		prescale;
+	UINT8		inhibit;
+	UINT8		clear;
+	UINT8		ram[16];
+};
 
-extern UINT8 buckrog_fchg, buckrog_mov, buckrog_obch;
 
-MACHINE_RESET( turbo );
-MACHINE_RESET( subroc3d );
-MACHINE_RESET( buckrog );
+typedef struct _turbo_state turbo_state;
+struct _turbo_state
+{
+	/* memory pointers */
+	UINT8 *		videoram;
+	UINT8 *		spriteram;
+	UINT8 *		sprite_position;
+	UINT8 *		buckrog_bitmap_ram;
 
-READ8_HANDLER( turbo_8279_r );
-WRITE8_HANDLER( turbo_8279_w );
+	/* machine states */
+	i8279_state	i8279;
 
-READ8_HANDLER( turbo_collision_r );
-WRITE8_HANDLER( turbo_collision_clear_w );
-WRITE8_HANDLER( turbo_coin_and_lamp_w );
+	/* sound state */
+	UINT8		turbo_osel, turbo_bsel;
+	UINT8		sound_state[3];
 
-void turbo_rom_decode(void);
+	/* video state */
+	tilemap *	fg_tilemap;
+
+	/* Turbo-specific states */
+	UINT8		turbo_opa, turbo_opb, turbo_opc;
+	UINT8		turbo_ipa, turbo_ipb, turbo_ipc;
+	UINT8		turbo_fbpla, turbo_fbcol;
+	UINT8		turbo_speed;
+	UINT8		turbo_collision;
+	UINT8		turbo_last_analog;
+	UINT8		turbo_accel;
+
+	/* Subroc-specific states */
+	UINT8		subroc3d_col, subroc3d_ply, subroc3d_flip;
+	UINT8		subroc3d_mdis, subroc3d_mdir;
+	UINT8		subroc3d_tdis, subroc3d_tdir;
+	UINT8		subroc3d_fdis, subroc3d_fdir;
+	UINT8		subroc3d_hdis, subroc3d_hdir;
+
+	/* Buck Rogers-specific states */
+	UINT8		buckrog_fchg, buckrog_mov, buckrog_obch;
+	UINT8		buckrog_command;
+	UINT8		buckrog_myship;
+};
+
+
+/*----------- defined in drivers/turbo.c -----------*/
 
 void turbo_update_tachometer(void);
 void turbo_update_segments(void);
 
-READ8_HANDLER( buckrog_cpu2_command_r );
-READ8_HANDLER( buckrog_port_2_r );
-READ8_HANDLER( buckrog_port_3_r );
-WRITE8_HANDLER( buckrog_ppi8255_0_w );
 
 
 /*----------- defined in sndhrdw/turbo.c -----------*/
 
-extern discrete_sound_block turbo_sound_interface[];
+MACHINE_DRIVER_EXTERN( turbo_samples );
+MACHINE_DRIVER_EXTERN( subroc3d_samples );
+MACHINE_DRIVER_EXTERN( buckrog_samples );
 
-WRITE8_HANDLER( turbo_sound_A_w );
-WRITE8_HANDLER( turbo_sound_B_w );
-WRITE8_HANDLER( turbo_sound_C_w );
+WRITE8_HANDLER( turbo_sound_a_w );
+WRITE8_HANDLER( turbo_sound_b_w );
+WRITE8_HANDLER( turbo_sound_c_w );
 
-WRITE8_HANDLER( subroc3d_sound_A_w );
-WRITE8_HANDLER( subroc3d_sound_B_w );
-WRITE8_HANDLER( subroc3d_sound_C_w );
+WRITE8_HANDLER( subroc3d_sound_a_w );
+WRITE8_HANDLER( subroc3d_sound_b_w );
+WRITE8_HANDLER( subroc3d_sound_c_w );
 
-WRITE8_HANDLER( buckrog_sound_A_w );
-WRITE8_HANDLER( buckrog_sound_B_w );
+WRITE8_HANDLER( buckrog_sound_a_w );
+WRITE8_HANDLER( buckrog_sound_b_w );
 
 
 /*----------- defined in vidhrdw/turbo.c -----------*/
 
-extern UINT8 *sega_sprite_position;
-extern UINT8 turbo_collision;
-
 PALETTE_INIT( turbo );
 VIDEO_START( turbo );
-VIDEO_EOF( turbo );
 VIDEO_UPDATE( turbo );
 
 PALETTE_INIT( subroc3d );
-VIDEO_START( subroc3d );
 VIDEO_UPDATE( subroc3d );
 
 PALETTE_INIT( buckrog );
 VIDEO_START( buckrog );
 VIDEO_UPDATE( buckrog );
 
+WRITE8_HANDLER( turbo_videoram_w );
 WRITE8_HANDLER( buckrog_bitmap_w );

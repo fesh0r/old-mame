@@ -10,6 +10,26 @@
     Known bugs:
         * the ERROR message in Asteroids Deluxe self test is related to a pokey problem
 
+Information from a Tech Tip:
+
+Asteroids Modification:
+
+As a result of inquires regarding the achievement of extremely high scores on Asteroids,
+we have developed a modification that will accomplish the following:
+  When the small flying saucer enters the screen, it fires immediately in the direction
+    of the player. The missiles also have a wraparound capability.
+  Originally, the program was entered so that the saucer would go one-sixth of the way
+    across the screen before firing, without the wraparound capability.
+
+There are two revisions currently in the field, ROM revision 02 has the flip-flop capability,
+  version 01 does not.
+Kits are available immediately from your Atari Distributor.  To determine which kit you
+  require, check ROMs on your Asteroids PCB.  If ROM code is "-01" order kit no. 08-0303009.
+  If ROM code is "-02", order no. 08-0303008.
+
+*** It looks like both current sets are the older "easier" version.  We need dumps of the updates
+    for both sets.
+
     Asteroids-deluxe state-prom added by HIGHWAYMAN.
     The prom pcb location is:C8 and is 256x4
     (i need to update the dump, this one is read in 8bit-mode)
@@ -148,6 +168,9 @@
 #include "sound/discrete.h"
 #include "sound/pokey.h"
 
+#define MASTER_CLOCK (12096000)
+#define CLOCK_3KHZ  (MASTER_CLOCK / 4096)
+
 /*************************************
  *
  *  Coin counters
@@ -188,7 +211,9 @@ static WRITE8_HANDLER( llander_led_w )
 
 static ADDRESS_MAP_START( asteroid_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
-	AM_RANGE(0x0000, 0x03ff) AM_RAM
+	AM_RANGE(0x0000, 0x01ff) AM_RAM
+	AM_RANGE(0x0200, 0x02ff) AM_RAM AM_RAMBANK(1) AM_BASE(&asteroid_ram1)
+	AM_RANGE(0x0300, 0x03ff) AM_RAM AM_RAMBANK(2) AM_BASE(&asteroid_ram2)
 	AM_RANGE(0x2000, 0x2007) AM_READ(asteroid_IN0_r) /* IN0 */
 	AM_RANGE(0x2400, 0x2407) AM_READ(asteroid_IN1_r) /* IN1 */
 	AM_RANGE(0x2800, 0x2803) AM_READ(asteroid_DSW1_r) /* DSW1 */
@@ -207,7 +232,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( astdelux_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
-	AM_RANGE(0x0000, 0x03ff) AM_RAM
+	AM_RANGE(0x0000, 0x01ff) AM_RAM
+	AM_RANGE(0x0200, 0x02ff) AM_RAM AM_RAMBANK(1) AM_BASE(&asteroid_ram1)
+	AM_RANGE(0x0300, 0x03ff) AM_RAM AM_RAMBANK(2) AM_BASE(&asteroid_ram2)
 	AM_RANGE(0x2000, 0x2007) AM_READ(asteroid_IN0_r) /* IN0 */
 	AM_RANGE(0x2400, 0x2407) AM_READ(asteroid_IN1_r) /* IN1 */
 	AM_RANGE(0x2800, 0x2803) AM_READ(asteroid_DSW1_r) /* DSW1 */
@@ -231,7 +258,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( llander_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
-	AM_RANGE(0x0000, 0x00ff) AM_MIRROR(0x100) AM_RAM
+	AM_RANGE(0x0000, 0x00ff) AM_RAM AM_MIRROR(0x1f00)
 	AM_RANGE(0x2000, 0x2000) AM_READ(llander_IN0_r) /* IN0 */
 	AM_RANGE(0x2400, 0x2407) AM_READ(asteroid_IN1_r) /* IN1 */
 	AM_RANGE(0x2800, 0x2803) AM_READ(asteroid_DSW1_r) /* DSW1 */
@@ -595,9 +622,9 @@ static struct POKEYinterface pokey_interface =
 static MACHINE_DRIVER_START( asteroid )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6502, 1500000)
+	MDRV_CPU_ADD_TAG("main", M6502, MASTER_CLOCK/8)
 	MDRV_CPU_PROGRAM_MAP(asteroid_map,0)
-	MDRV_CPU_VBLANK_INT(asteroid_interrupt,4)	/* 250 Hz */
+	MDRV_CPU_PERIODIC_INT(asteroid_interrupt, TIME_IN_HZ(CLOCK_3KHZ / 12))
 
 	MDRV_FRAMES_PER_SECOND(60)
 	MDRV_MACHINE_RESET(asteroid)
@@ -605,10 +632,9 @@ static MACHINE_DRIVER_START( asteroid )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR | VIDEO_RGB_DIRECT)
 	MDRV_SCREEN_SIZE(400,300)
-	MDRV_VISIBLE_AREA(0, 1040, 70, 950)
+	MDRV_VISIBLE_AREA(0, 1044, 0, 800)
 	MDRV_PALETTE_LENGTH(32768)
 
-	MDRV_PALETTE_INIT(avg_white)
 	MDRV_VIDEO_START(dvg)
 	MDRV_VIDEO_UPDATE(vector)
 
@@ -625,7 +651,7 @@ static MACHINE_DRIVER_START( asterock )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(asteroid)
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_VBLANK_INT(asterock_interrupt,4)	/* 250 Hz */
+	MDRV_CPU_PERIODIC_INT(asterock_interrupt, TIME_IN_HZ(CLOCK_3KHZ / 12))
 MACHINE_DRIVER_END
 
 
@@ -643,7 +669,7 @@ static MACHINE_DRIVER_START( astdelux )
 	MDRV_SOUND_CONFIG(astdelux_discrete_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(POKEY, 1500000)
+	MDRV_SOUND_ADD(POKEY, MASTER_CLOCK/8)
 	MDRV_SOUND_CONFIG(pokey_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -655,15 +681,12 @@ static MACHINE_DRIVER_START( llander )
 	MDRV_IMPORT_FROM(asteroid)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(llander_map,0)
-	MDRV_CPU_VBLANK_INT(llander_interrupt,6)	/* 250 Hz */
+	MDRV_CPU_PERIODIC_INT(llander_interrupt, TIME_IN_HZ(CLOCK_3KHZ / 12))
 
 	MDRV_FRAMES_PER_SECOND(40)
-	MDRV_MACHINE_RESET(NULL)
+	MDRV_MACHINE_RESET(avgdvg)
 
-	/* video hardware */
-	MDRV_VISIBLE_AREA(0, 1050, 0, 900)
-
-	MDRV_PALETTE_INIT(avg_white)
+	MDRV_VISIBLE_AREA(0, 1023, 0, 1023)
 	MDRV_VIDEO_START(dvg)
 	MDRV_VIDEO_UPDATE(vector)
 
@@ -688,6 +711,10 @@ ROM_START( asteroid )
 	ROM_LOAD( "035143.02",    0x7800, 0x0800, CRC(312caa02) SHA1(1ce2eac1ab90b972e3f1fc3d250908f26328d6cb) )
 	/* Vector ROM */
 	ROM_LOAD( "035127.02",    0x5000, 0x0800, CRC(8b71fd9e) SHA1(8cd5005e531eafa361d6b7e9eed159d164776c70) )
+    /* DVG PROM */
+    ROM_REGION( 0x100, REGION_PROMS, 0 )
+    ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+
 ROM_END
 
 ROM_START( asteroi1 )
@@ -697,6 +724,9 @@ ROM_START( asteroi1 )
 	ROM_LOAD( "035143.01",    0x7800, 0x0800, CRC(7d4e3d05) SHA1(d88000e904e158efde50e453e2889ecd2cb95f24) )
 	/* Vector ROM */
 	ROM_LOAD( "035127.01",    0x5000, 0x0800, CRC(99699366) SHA1(9b2828fc1cef7727f65fa65e1e11e309b7c98792) )
+    /* DVG PROM */
+    ROM_REGION( 0x100, REGION_PROMS, 0 )
+    ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( asteroib )
@@ -706,6 +736,9 @@ ROM_START( asteroib )
 	ROM_LOAD( "035143ll.bin", 0x7800, 0x0800, CRC(6b1d8594) SHA1(ff3cd93f1bc5734bface285e442125b395602d7d) )
 	/* Vector ROM */
 	ROM_LOAD( "035127.02",    0x5000, 0x0800, CRC(8b71fd9e) SHA1(8cd5005e531eafa361d6b7e9eed159d164776c70) )
+    /* DVG PROM */
+    ROM_REGION( 0x100, REGION_PROMS, 0 )
+    ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( asterock )
@@ -719,6 +752,9 @@ ROM_START( asterock )
 	/* Vector ROM */
 	ROM_LOAD( "sidamas.0",    0x5000, 0x0400, CRC(6bd2053f) SHA1(790f2858f44bbb1854e2d9d549e29f4815c4665b) )
 	ROM_LOAD( "sidamas.1",    0x5400, 0x0400, CRC(231ce201) SHA1(710f4c19864d725ba1c9ea447a97e84001a679f7) )
+    /* DVG PROM */
+    ROM_REGION( 0x100, REGION_PROMS, 0 )
+    ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( meteorts )
@@ -728,6 +764,9 @@ ROM_START( meteorts )
 	ROM_LOAD( "m2_j1.bin",    0x7800, 0x0800, CRC(64bd0408) SHA1(141d053cb4cce3fece98293136928b527d3ade0f) )
 	/* Vector ROM */
 	ROM_LOAD( "mv_np3.bin",   0x5000, 0x0800, CRC(11d1c4ae) SHA1(433c2c05b92094bbe102c356d7f1a907db13da67) )
+    /* DVG PROM */
+    ROM_REGION( 0x100, REGION_PROMS, 0 )
+    ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 
@@ -741,8 +780,8 @@ ROM_START( astdelux )
 	ROM_LOAD( "036800.02",    0x4800, 0x0800, CRC(bb8cabe1) SHA1(cebaa1b91b96e8b80f2b2c17c6fd31fa9f156386) )
 	ROM_LOAD( "036799.01",    0x5000, 0x0800, CRC(7d511572) SHA1(1956a12bccb5d3a84ce0c1cc10c6ad7f64e30b40) )
 
-	ROM_REGION( 0x0100, REGION_PROMS, 0 )
-	ROM_LOAD( "034602.bin",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+    ROM_REGION( 0x100, REGION_PROMS, 0 )
+	ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( astdelu2 )
@@ -756,7 +795,7 @@ ROM_START( astdelu2 )
 	ROM_LOAD( "036799.01",    0x5000, 0x0800, CRC(7d511572) SHA1(1956a12bccb5d3a84ce0c1cc10c6ad7f64e30b40) )
 
 	ROM_REGION( 0x0100, REGION_PROMS, 0 )
-	ROM_LOAD( "034602.bin",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 /***************************************************************************
@@ -808,7 +847,7 @@ ROM_START( astdelu1 )
 	ROM_LOAD( "036799.01",    0x5000, 0x0800, CRC(7d511572) SHA1(1956a12bccb5d3a84ce0c1cc10c6ad7f64e30b40) )
 
 	ROM_REGION( 0x0100, REGION_PROMS, 0 )
-	ROM_LOAD( "034602.bin",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 
@@ -824,6 +863,10 @@ ROM_START( llander )
 	/* This _should_ be the rom for international versions. */
 	/* Unfortunately, is it not currently available. */
 	ROM_LOAD( "034597.01",    0x5800, 0x0800, NO_DUMP )
+
+    /* DVG PROM */
+    ROM_REGION( 0x100, REGION_PROMS, 0 )
+    ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( llander1 )
@@ -838,6 +881,10 @@ ROM_START( llander1 )
 	/* This _should_ be the rom for international versions. */
 	/* Unfortunately, is it not currently available. */
 	ROM_LOAD( "034597.01",    0x5800, 0x0800, NO_DUMP )
+
+    /* DVG PROM */
+    ROM_REGION( 0x100, REGION_PROMS, 0 )
+    ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 
