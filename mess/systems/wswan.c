@@ -39,7 +39,7 @@
 static ADDRESS_MAP_START (wswan_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x00000, 0x03fff) AM_RAM		/* 16kb RAM / 4 colour tiles */
 	AM_RANGE(0x04000, 0x0ffff) AM_NOP		/* nothing */
-	AM_RANGE(0x10000, 0x1ffff) AM_RAMBANK(1)	/* SRAM bank */
+	AM_RANGE(0x10000, 0x1ffff) AM_READWRITE( wswan_sram_r, wswan_sram_w )	/* SRAM bank */
 	AM_RANGE(0x20000, 0x2ffff) AM_ROMBANK(2)	/* ROM bank 1 */
 	AM_RANGE(0x30000, 0x3ffff) AM_ROMBANK(3)	/* ROM bank 2 */
 	AM_RANGE(0x40000, 0x4ffff) AM_ROMBANK(4)	/* ROM bank 3 */
@@ -58,7 +58,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (wscolor_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x00000, 0x0ffff) AM_RAM		/* 16kb RAM / 4 colour tiles, 16 colour tiles + palettes */
-	AM_RANGE(0x10000, 0x1ffff) AM_RAMBANK(1)	/* SRAM bank */
+	AM_RANGE(0x10000, 0x1ffff) AM_READWRITE( wswan_sram_r, wswan_sram_w )	/* SRAM bank */
 	AM_RANGE(0x20000, 0x2ffff) AM_ROMBANK(2)	/* ROM bank 1 */
 	AM_RANGE(0x30000, 0x3ffff) AM_ROMBANK(3)	/* ROM bank 2 */
 	AM_RANGE(0x40000, 0x4ffff) AM_ROMBANK(4)	/* ROM bank 3 */
@@ -106,7 +106,7 @@ static PALETTE_INIT( wswan )
 	for( ii = 0; ii < 16; ii++ )
 	{
 		UINT8 shade = ii * (256 / 16);
-		palette_set_color( 15 - ii, shade, shade, shade );
+		palette_set_color(machine,  15 - ii, shade, shade, shade );
 	}
 }
 
@@ -116,7 +116,7 @@ static PALETTE_INIT( wscolor ) {
 		int r = ( i & 0x0F00 ) >> 8;
 		int g = ( i & 0x00F0 ) >> 4;
 		int b = i & 0x000F;
-		palette_set_color( i, r << 4, g << 4, b << 4 );
+		palette_set_color(machine,  i, r << 4, g << 4, b << 4 );
 	}
 }
 

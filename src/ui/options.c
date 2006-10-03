@@ -391,8 +391,9 @@ static const REG_OPTION regGameOpts[] =
 	{ "bios",                   RO_STRING,  offsetof(options_type, bios),                            "default" },
 #ifdef MESS
 	{ "autosave",               RO_BOOL,    offsetof(options_type, autosave),                        "0" },
-#endif
+#else
 	{ "autosave",               RO_BOOL,    offsetof(options_type, autosave),                        "1" },
+#endif
 
 #ifdef MESS
 	/* mess options */
@@ -501,7 +502,7 @@ BOOL OptionsInit()
 #endif /* MAME_DEBUG */
 
 	num_games = GetNumGames();
-	code_init();
+	code_init(NULL);
 	// Load all default settings
 	LoadDefaultOptions(&settings, regSettings);
 	LoadDefaultOptions(&settings, global_game_options);

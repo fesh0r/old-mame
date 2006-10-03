@@ -65,7 +65,6 @@
    - midi extension (@)
    - TV overlay (IN 57-001), digitisation extension (@)
    - barcode reader (@)
-   - NR 07-005 MO5 extension, MO5NR: network (@)
    - speech synthesis extension
 
    (@) means MESS is lacking support for this kind of device / feature anyway
@@ -464,7 +463,7 @@ boot floppy.
 * video:
     320x200 pixels with color constraints (2 colors per horizontal
     8-pixel span), 8-color pixel palette,
-    50 Hz (SECAM)
+    50 Hz (tweaked SECAM)
 
 * devices:
   - AZERTY keyboard, 58-keys, French with accents
@@ -563,34 +562,56 @@ ADDRESS_MAP_END
      ROM_FILL( base, 0x800, 0x39 )					\
      /* CD 90-640 (5"1/4) */						\
      ROM_LOAD ( "cd90-640.rom", base+0x800, 0x7c0,			\
+		CRC(5114c0a5)						\
 		MD5(e5b609dd90b26c9974a46cd54eab4216) )			\
      /* CD 90-351 (3"1/2) */						\
      ROM_LOAD ( "cd-351-0.rom", base+0x1000, 0x7c0,			\
+		CRC(2c0159fd)						\
 		MD5(74b61b2905e355419c497b5520706aa0) )			\
      ROM_LOAD ( "cd-351-1.rom", base+0x1800, 0x7c0,			\
+		CRC(8e58d159)						\
 		MD5(e2a2cd1be213bc340bb8e9ebbed95d0d) )			\
      ROM_LOAD ( "cd-351-2.rom", base+0x2000, 0x7c0,			\
+		CRC(c9228b60)						\
 		MD5(087e52f007dd24a385adea39f80682a3) )			\
      ROM_LOAD ( "cd-351-3.rom", base+0x2800, 0x7c0,			\
+		CRC(3ca8e5dc)						\
 		MD5(e01dceb2295fa548a4f74cf0487c3f6d) )			\
      /* CQ 90-028 (2"8, aka QDD) */					\
      ROM_LOAD ( "cq90-028.rom", base+0x3000, 0x7c0,			\
+		CRC(ca4dba3d)						\
 		MD5(0f58e167bf6ebcd2cbba946be2084fbe) )			
      
+/* external floppy / network controller: 8 banks */     
+#define ROM_FLOPPY5( base )				\
+  ROM_FLOPPY( base )					\
+  ROM_LOAD ( "nano5.rom", base+0x3800, 0x7c0,	\
+	     CRC(2f756868)				\
+	     MD5(06ff309276d4fc656e99a8ad1ca67899) )
+
+#define ROM_FLOPPY7( base )				\
+  ROM_FLOPPY( base )					\
+  ROM_LOAD ( "nano7.rom", base+0x3800, 0x7c0,	\
+	     CRC(42a1d1a6)				\
+	     MD5(77da8cfc9e0a14ef2ed7034f5941b542) )
+     
+
 ROM_START ( to7 )
      ROM_REGION ( 0x28000, REGION_CPU1, 0 )
      ROM_LOAD ( "to7.rom", 0xe800, 0x1800,
+		CRC(0e7826da)
 		MD5(5bf18521bf35293de942645f690b2845) )
      ROM_FILL ( 0x10000, 0x10000, 0x39 )
-     ROM_FLOPPY ( 0x24000 )
+     ROM_FLOPPY7 ( 0x24000 )
 ROM_END
 
 ROM_START ( t9000 )
      ROM_REGION ( 0x28000, REGION_CPU1, 0 )
      ROM_LOAD ( "t9000.rom", 0xe800, 0x1800,
+		CRC(daa8cfbf)
 		MD5(b3007f26e7b621c1a4f0fd2c287f80b9) )
      ROM_FILL ( 0x10000, 0x10000, 0x39 )
-     ROM_FLOPPY ( 0x24000 )
+     ROM_FLOPPY7 ( 0x24000 )
 ROM_END
 
 
@@ -622,7 +643,41 @@ INPUT_PORTS_START ( to7_fconfig )
      PORT_CONFSETTING ( 0x01, "CD 90-640 (5\"1/4)" )
      PORT_CONFSETTING ( 0x02, "CD 90-351 (3\"1/2)" )
      PORT_CONFSETTING ( 0x03, "CQ 90-028 (2\"8 QDD)" )
-     //PORT_CONFSETTING ( 0x04, "Network" )
+     PORT_CONFSETTING ( 0x04, "Network" )
+
+     PORT_CONFNAME ( 0xf8, 0x08, "Network ID" )
+     PORT_CONFSETTING ( 0x00, "0 (Master)" );
+     PORT_CONFSETTING ( 0x08, "1" );
+     PORT_CONFSETTING ( 0x10, "2" );
+     PORT_CONFSETTING ( 0x18, "3" );
+     PORT_CONFSETTING ( 0x20, "4" );
+     PORT_CONFSETTING ( 0x28, "5" );
+     PORT_CONFSETTING ( 0x30, "6" );
+     PORT_CONFSETTING ( 0x38, "7" );
+     PORT_CONFSETTING ( 0x40, "8" );
+     PORT_CONFSETTING ( 0x48, "9" );
+     PORT_CONFSETTING ( 0x50, "10" );
+     PORT_CONFSETTING ( 0x58, "11" );
+     PORT_CONFSETTING ( 0x60, "12" );
+     PORT_CONFSETTING ( 0x68, "13" );
+     PORT_CONFSETTING ( 0x70, "14" );
+     PORT_CONFSETTING ( 0x78, "15" );
+     PORT_CONFSETTING ( 0x80, "16" );
+     PORT_CONFSETTING ( 0x88, "17" );
+     PORT_CONFSETTING ( 0x90, "18" );
+     PORT_CONFSETTING ( 0x98, "19" );
+     PORT_CONFSETTING ( 0xa0, "20" );
+     PORT_CONFSETTING ( 0xa8, "21" );
+     PORT_CONFSETTING ( 0xb0, "22" );
+     PORT_CONFSETTING ( 0xb8, "23" );
+     PORT_CONFSETTING ( 0xc0, "24" );
+     PORT_CONFSETTING ( 0xc8, "25" );
+     PORT_CONFSETTING ( 0xd0, "26" );
+     PORT_CONFSETTING ( 0xd8, "27" );
+     PORT_CONFSETTING ( 0xe0, "28" );
+     PORT_CONFSETTING ( 0xe8, "29" );
+     PORT_CONFSETTING ( 0xf0, "30" );
+     PORT_CONFSETTING ( 0xf8, "31" );
 
 INPUT_PORTS_END
 
@@ -738,25 +793,26 @@ static MACHINE_DRIVER_START ( to7 )
      MDRV_MACHINE_RESET ( to7 )     
   
 /* cpu */
-/* NOTE: the frequency is close to but not exactly 1 MHz to compensate
-   for the difference between the 624-line video output and the 625-line
-   SECAM video format.
- */
-     MDRV_CPU_ADD_TAG ( "main", M6809, 998400 ) /* almost 1 MHz */
+     MDRV_CPU_ADD_TAG ( "main", M6809, 1000000 )
      MDRV_CPU_PROGRAM_MAP ( to7, 0 )
   
 /* video */
-     MDRV_FRAMES_PER_SECOND ( 50 )
+/* Finally, I figured it out. The video hardware overclocks the SECAM 
+   framerate from 50 Hz to 1/0.019968 Hz to get 312 64us lines per frame,
+   i.e., 19.968 ms per frame, not 20 ms
+*/
+     MDRV_FRAMES_PER_SECOND ( /*50*/ 1./0.019968 )
      MDRV_INTERLEAVE ( 0 )
      MDRV_VIDEO_ATTRIBUTES ( VIDEO_TYPE_RASTER )
-     MDRV_SCREEN_MAXSIZE ( THOM_TOTAL_WIDTH * 2, THOM_TOTAL_HEIGHT * 2 )
-     MDRV_SCREEN_VISIBLE_AREA ( 0, THOM_TOTAL_WIDTH * 2 - 1, 
+     MDRV_SCREEN_SIZE ( THOM_TOTAL_WIDTH * 2, THOM_TOTAL_HEIGHT * 2 )
+     MDRV_VISIBLE_AREA ( 0, THOM_TOTAL_WIDTH * 2 - 1, 
 				0, THOM_TOTAL_HEIGHT * 2 - 1 )
      MDRV_PALETTE_LENGTH ( 4097 ) /* 12-bit color + transparency */
      MDRV_PALETTE_INIT ( thom )
      MDRV_VIDEO_START ( thom )
      MDRV_VIDEO_UPDATE ( thom )
      MDRV_VIDEO_EOF ( thom )
+     MDRV_DEFAULT_LAYOUT( "thomson" )
 
 /* sound */
      MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -863,16 +919,18 @@ ADDRESS_MAP_END
 ROM_START ( to770 )
      ROM_REGION ( 0x40000, REGION_CPU1, 0 )
      ROM_LOAD ( "to770.rom", 0xe800, 0x1800, /* BIOS */
+		CRC(89518862)
 		MD5(61402c35b75faeb4b74b815f323fff3d) )
-     ROM_FLOPPY ( 0x3c000 )
+     ROM_FLOPPY7 ( 0x3c000 )
      ROM_FILL ( 0x10000, 0x10000, 0x39 )
 ROM_END
 
 ROM_START ( to770a )
      ROM_REGION ( 0x40000, REGION_CPU1, 0 )
      ROM_LOAD ( "to770a.rom", 0xe800, 0x1800,
+		CRC(378ea808)
 		MD5(6b63aa135107beee243967a2da0e5453) )
-     ROM_FLOPPY ( 0x3c000 )
+     ROM_FLOPPY7 ( 0x3c000 )
      ROM_FILL ( 0x10000, 0x10000, 0x39 )
 ROM_END
 
@@ -986,7 +1044,8 @@ Unlike the TO7, the BASIC 1.0 is integrated and the MO5 can be used "as-is".
   - optional cartridge, up to 64 KB, incompatible with TO7,
     masks the integrated BASIC ROM
   - game & music, I/O, floppy extensions: identical to TO7
-  - NR 07-005: network extension, comes with 2 KB ROM & 64 KB RAM
+  - NR 07-005: network extension, MC 6854 based, 2 KB ROM & 64 KB RAM
+    (build by the French Leanord company)
  
 
 MO5E (1986)
@@ -1035,23 +1094,23 @@ ADDRESS_MAP_END
 ROM_START ( mo5 )
      ROM_REGION ( 0x38000, REGION_CPU1, 0 )
      ROM_LOAD ( "mo5.rom", 0xf000, 0x1000,
+		CRC(f0ea9140)
 		MD5(ab3533a7132f90933acce80e256ae459) )
-/*
-     ROM_LOAD ( "basic5.rom", 0x10000, 0x4000,
-		MD5(06023716e0cfe086ca874a1f65f0363d) )
-*/
      ROM_LOAD ( "basic5.rom", 0x11000, 0x3000,
+		CRC(c2c11b9d)
 		MD5(f992a912093d3e8f165f225f74345b57) )
-     ROM_FLOPPY ( 0x34000 )
+     ROM_FLOPPY5 ( 0x34000 )
 ROM_END
 
 ROM_START ( mo5e )
      ROM_REGION ( 0x38000, REGION_CPU1, 0 )
      ROM_LOAD ( "mo5e.rom", 0xf000, 0x1000,
+		CRC(6520213a)
 		MD5(434c42b96c31a341e13085048cdc8eae) )
      ROM_LOAD ( "basic5e.rom", 0x11000, 0x3000,
+		CRC(934a72b2)
 		MD5(6404a7f49ec28937decd905d2a3cbb28) )
-     ROM_FLOPPY ( 0x34000 )
+     ROM_FLOPPY5 ( 0x34000 )
 ROM_END
 
 
@@ -1155,7 +1214,7 @@ It was replaced quickly with the improved TO9+.
   - 1 MHz Motorola 6809E CPU
   - 1 Motorola 6821 PIA (+2 for game, modem extensions)
   - 1 Motorola 6846 timer, PIA
-  - 1 Motorola 6804 + 1 Motorola 6850 (keyboard & mouse control)
+  - 1 Motorola 6805 + 1 Motorola 6850 (keyboard & mouse control)
   - 1 Western Digital 2793 (disk controller)
   - 3 gate-arrays (address decoding, system, video)
 
@@ -1243,24 +1302,33 @@ ADDRESS_MAP_END
 ROM_START ( to9 )
      ROM_REGION ( 0x6c000, REGION_CPU1, 0 )
      ROM_LOAD ( "to9.rom", 0xe000, 0x2000, /* BIOS & floppy controller */
+		CRC(f9278bf7)
 		MD5(507f0c482462b70b816fd23cf6791179) )
 
      /* BASIC & software */
      ROM_LOAD ( "basic9-0.rom", 0x20000, 0x4000,
+		CRC(c7bac620)
 		MD5(095d0f94ab506ab5da1e73ae550ee2bc) )
      ROM_LOAD ( "basic9-1.rom", 0x24000, 0x4000,
+		CRC(ea5f3e43)
 		MD5(ce29a894c31db083acf6bdf015a02b5e) )
      ROM_LOAD ( "basic9-2.rom", 0x28000, 0x4000,
+		CRC(0f5581b3)
 		MD5(02279e22b8bfe29e750fb62671e3951d) )
      ROM_LOAD ( "basic9-3.rom", 0x2c000, 0x4000,
+		CRC(6b5b19e3)
 		MD5(dac4b33a8cbebf64916b35515e0693c8) )
      ROM_LOAD ( "soft9-0a.rom", 0x30000, 0x4000,
+		CRC(8cee157e)
 		MD5(3dab712e800351b4f639790595b12101) )
      ROM_LOAD ( "soft9-1a.rom", 0x34000, 0x4000,
+		CRC(cf39ac93)
 		MD5(bcd744cdbd022cd9e2651e87792cd742) )
      ROM_LOAD ( "soft9-0b.rom", 0x38000, 0x4000,
+		CRC(033aee3f)
 		MD5(1a4d3549c78328479361e867d240f285) )
      ROM_LOAD ( "soft9-1b.rom", 0x3c000, 0x4000,
+		CRC(214fe527)
 		MD5(3dc2820fbe7b81a3936f731b44f23cbe) )
 
      ROM_FILL( 0x10000, 0x10000, 0x39 )
@@ -1508,18 +1576,24 @@ ROM_START ( to8 )
 
      /* BIOS & floppy */
      ROM_LOAD ( "to8-0.rom", 0xb0000, 0x2000,
+		CRC(3c4a640a)
 		MD5(97c9b803305031daf6bffa671f7667c2) )
      ROM_LOAD ( "to8-1.rom", 0xb2000, 0x2000,
+		CRC(cb9bae2d)
 		MD5(6ca0ebe022f9c433373eaed403aaf0ce) )
 
      /* BASIC */
      ROM_LOAD ( "basic8-0.rom", 0x20000, 0x4000,
+		CRC(e5a00fb3)
 		MD5(6c33e3cd79bd6c675634b172594bbfec) )
      ROM_LOAD ( "basic8-1.rom", 0x24000, 0x4000,
+		CRC(4b241e63)
 		MD5(360cbf42078bf8c80a283828bf6ee4e6) )
      ROM_LOAD ( "basic8-2.rom", 0x28000, 0x4000,
+		CRC(0f5581b3)
 		MD5(02279e22b8bfe29e750fb62671e3951d) )
      ROM_LOAD ( "basic8-3.rom", 0x2c000, 0x4000,
+		CRC(f552e7e3)
 		MD5(56c1e929ef4be6771cac7157d169132f) )
 
      ROM_FILL( 0x10000, 0x10000, 0x39 )
@@ -1530,18 +1604,24 @@ ROM_START ( to8d )
 
      /* BIOS & floppy */
      ROM_LOAD ( "to8d-0.rom", 0xb0000, 0x2000,
+		CRC(30ea4950)
 		MD5(7704c1148b8761e9ce650ef1aa7ded69) )
      ROM_LOAD ( "to8d-1.rom", 0xb2000, 0x2000,
+		CRC(926cf0ca)
 		MD5(3e202c3914e16c5ede32ab2bd2a61a5e) )
 
      /* BASIC */
      ROM_LOAD ( "basic8-0.rom", 0x20000, 0x4000,
+		CRC(e5a00fb3)
 		MD5(6c33e3cd79bd6c675634b172594bbfec) )
      ROM_LOAD ( "basic8-1.rom", 0x24000, 0x4000,
+		CRC(4b241e63)
 		MD5(360cbf42078bf8c80a283828bf6ee4e6) )
      ROM_LOAD ( "basic8-2.rom", 0x28000, 0x4000,
+		CRC(0f5581b3)
 		MD5(02279e22b8bfe29e750fb62671e3951d) )
      ROM_LOAD ( "basic8-3.rom", 0x2c000, 0x4000,
+		CRC(f552e7e3)
 		MD5(56c1e929ef4be6771cac7157d169132f) )
 
      ROM_FILL( 0x10000, 0x10000, 0x39 )
@@ -1632,7 +1712,7 @@ It uses the same video gate-array and floppy controller.
 The differences with the TO8 are:
 
 * chips:
-  - 1 Motorola 6804 + 1 Motorola 6850 (keyboard)
+  - 1 Motorola 6805 + 1 Motorola 6850 (keyboard)
   - 3 Motorola 6821 PIAs (system, game, modem)
 
 * memory:
@@ -1693,18 +1773,24 @@ ROM_START ( to9p )
 
      /* BIOS & floppy */
      ROM_LOAD ( "to9p-0.rom", 0xb0000, 0x2000,
+		CRC(a2731296)
 		MD5(dfb6bfe5ae6142395fe4d1b854b7f6ff) )
      ROM_LOAD ( "to9p-1.rom", 0xb2000, 0x2000,
+		CRC(c52ce315)
 		MD5(66bba93895d27c788b25a8b48c8d3799) )
 
      /* BASIC */
      ROM_LOAD ( "basicp-0.rom", 0x20000, 0x4000,
+		CRC(e5a00fb3)
 		MD5(6c33e3cd79bd6c675634b172594bbfec) )
      ROM_LOAD ( "basicp-1.rom", 0x24000, 0x4000,
+		CRC(4b241e63)
 		MD5(360cbf42078bf8c80a283828bf6ee4e6) )
      ROM_LOAD ( "basicp-2.rom", 0x28000, 0x4000,
+		CRC(0f5581b3)
 		MD5(02279e22b8bfe29e750fb62671e3951d) )
      ROM_LOAD ( "basicp-3.rom", 0x2c000, 0x4000,
+		CRC(ebe9c8d9)
 		MD5(67e7f2de15bcd2ee9dac7974da478901) )
 
       ROM_FILL( 0x10000, 0x10000, 0x39 )
@@ -1835,21 +1921,27 @@ ROM_START ( mo6 )
 
      /* BIOS */
      ROM_LOAD ( "mo6-0.rom", 0x23000, 0x1000,
+		CRC(0446eef6)
 		MD5(192c44506f347b02030eb3ec862b850f) )
      ROM_LOAD ( "mo6-1.rom", 0x27000, 0x1000,
+		CRC(eb6df8d4)
 		MD5(7ff810d9b7e6900d8904336b6114ebd7) )
 
      /* BASIC */
      ROM_LOAD ( "basic6-0.rom", 0x20000, 0x3000,
+		CRC(18789833)
 		MD5(08edc429b44e581b3c826ac81b06cd2b) )
      ROM_LOAD ( "basic6-1.rom", 0x24000, 0x3000,
+		CRC(c9b4d6f4)
 		MD5(03f82e6d26547dd23fca7c420b6952c4) )
      ROM_LOAD ( "basic6-2.rom", 0x28000, 0x4000,
+		CRC(08eac9bb)
 		MD5(4f5d0bb8dea45d85d8551c09888423d1) )
      ROM_LOAD ( "basic6-3.rom", 0x2c000, 0x4000,
+		CRC(19d66dc4)
 		MD5(c2c4dab28d42adf4ea264270ea889c4f) )
 
-     ROM_FLOPPY ( 0x50000 )
+     ROM_FLOPPY5 ( 0x50000 )
      ROM_FILL ( 0x10000, 0x10000, 0x39 )
 ROM_END
 
@@ -1858,21 +1950,27 @@ ROM_START ( pro128 )
 
      /* BIOS */
      ROM_LOAD ( "pro128-0.rom", 0x23000, 0x1000,
+		CRC(a8aef291)
 		MD5(b7d937421754b79587050208b8c3beb2) )
      ROM_LOAD ( "pro128-1.rom", 0x27000, 0x1000,
+		CRC(5b3340ec)
 		MD5(9b7f4505195d12a5efceaac26bcb4079) )
 
      /* BASIC */
      ROM_LOAD ( "basico-0.rom", 0x20000, 0x3000,
+		CRC(98b10d5e)
 		MD5(96ce523fe27cd3935195f4218deb6277) )
      ROM_LOAD ( "basico-1.rom", 0x24000, 0x3000,
+		CRC(721d2124)
 		MD5(73cfdcd1638932ef8ebc639cbc6e2dd0) )
      ROM_LOAD ( "basico-2.rom", 0x28000, 0x4000,
+		CRC(135438ab)
 		MD5(d155a93aa1a2b1b5102bb5e0acdb3391) )
      ROM_LOAD ( "basico-3.rom", 0x2c000, 0x4000,
+		CRC(2c2befa6)
 		MD5(5e31d779961ed1ae7fc800489277f96a) )
 
-     ROM_FLOPPY ( 0x50000 )
+     ROM_FLOPPY5 ( 0x50000 )
      ROM_FILL ( 0x10000, 0x10000, 0x39 )
 ROM_END
 
@@ -2087,7 +2185,7 @@ It is both MO5 and MO6 compatible (but not TO-compatible).
 Here are the differences between the MO6 and MO5NR:
 
 * chips:
-  - integrated EF 6854 network controller
+  - integrated MC 6854 network controller
 
 * memory: 
   - extra 2 KB ROM for the integrated network controller,
@@ -2148,21 +2246,27 @@ ROM_START ( mo5nr )
 
      /* BIOS */
      ROM_LOAD ( "mo5nr-0.rom", 0x23000, 0x1000,
+		CRC(06e31115)
 		MD5(5826a0190d7d0eb9a03c327072198a5d) )
      ROM_LOAD ( "mo5nr-1.rom", 0x27000, 0x1000,
+		CRC(7cda17c9)
 		MD5(ede3dd012cd15ad5066581522ce724b5) )
 
      /* BASIC */
      ROM_LOAD ( "basicn-0.rom", 0x20000, 0x3000,
+		CRC(fae9e691)
 		MD5(03c7d856a17b34c7b295b22038c89c8f) )
      ROM_LOAD ( "basicn-1.rom", 0x24000, 0x3000,
+		CRC(cf134dd7)
 		MD5(e8069cd0857735e856ac0125b473b696) )
      ROM_LOAD ( "basicn-2.rom", 0x28000, 0x4000,
+		CRC(b69d2e0d)
 		MD5(cd11f0244c0cd30fd315c14e83b21381) )
      ROM_LOAD ( "basicn-3.rom", 0x2c000, 0x4000,
+		CRC(7785610f)
 		MD5(c67c65ac66c5f82bea3fcb83c2308a51) )
 
-     ROM_FLOPPY ( 0x50000 )
+     ROM_FLOPPY5 ( 0x50000 )
      ROM_FILL ( 0x10000, 0x10000, 0x39 ) /* TODO: network ROM */
 ROM_END
 

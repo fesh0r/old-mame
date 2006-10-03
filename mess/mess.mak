@@ -392,7 +392,7 @@ $(OBJ)/nintendo.a:					\
 	$(OBJ)/mess/machine/gb.o		\
 	$(OBJ)/mess/systems/gb.o		\
 	$(OBJ)/mess/machine/nes_mmc.o	\
-	$(OBJ)/mess/vidhrdw/ppu2c0x.o	\
+	$(OBJ)/vidhrdw/ppu2c0x.o		\
 	$(OBJ)/mess/vidhrdw/nes.o		\
 	$(OBJ)/mess/machine/nes.o		\
 	$(OBJ)/mess/systems/nes.o		\
@@ -961,6 +961,7 @@ $(OBJ)/be.a:						\
 	$(OBJ)/machine/53c810.o
 
 $(OBJ)/thomson.a:			\
+	$(OBJ)/mess/machine/mc6854.o    \
 	$(OBJ)/mess/machine/mc6846.o	\
 	$(OBJ)/mess/systems/thomson.o   \
 	$(OBJ)/mess/machine/thomson.o   \
@@ -1053,9 +1054,6 @@ COREOBJS +=							\
 
 
 
-# additional tools
-TOOLS = dat2html$(EXE) messtest$(EXE) chdman$(EXE) messdocs$(EXE) imgtool$(EXE)
-
 include mess/tools/imgtool/imgtool.mak
 
 DAT2HTML_OBJS =								\
@@ -1109,3 +1107,11 @@ $(OBJ)/render.o:	$(OBJ)/mess/layout/horizont.lh \
 
 
 $(OBJ)/mess/systems/coco.o:	$(OBJ)/mess/layout/coco3.lh
+
+
+
+#-------------------------------------------------
+# MESS tool targets
+#-------------------------------------------------
+
+TOOLS += dat2html$(EXE) messtest$(EXE) messdocs$(EXE) imgtool$(EXE)

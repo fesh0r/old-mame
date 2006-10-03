@@ -73,7 +73,7 @@ void config_init(running_machine *machine)
 	typelist = NULL;
 
 #ifdef MESS
-	mess_config_init();
+	mess_config_init(machine);
 #endif
 }
 

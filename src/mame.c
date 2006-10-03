@@ -1053,7 +1053,7 @@ static void init_machine(running_machine *machine)
 
 #ifdef MESS
 	/* initialize the devices */
-	if (devices_init(machine->gamedrv))
+	if (devices_init(machine))
 		fatalerror("devices_init failed");
 #endif
 

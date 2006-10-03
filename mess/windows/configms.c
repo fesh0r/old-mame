@@ -36,7 +36,7 @@ const options_entry mess_opts[] =
 	{ NULL,							NULL,   OPTION_HEADER,		"MESS SPECIFIC OPTIONS" },
 	{ "newui;nu",                   "1",    OPTION_BOOLEAN,		"use the new MESS UI" },
     { "ramsize;ram",				NULL,	0,					"size of RAM (if supported by driver)" },
-	{ "threads;thr",				NULL,	0,					"number of threads to use for parallel operations" },
+	{ "threads;thr",				"0",	0,					"number of threads to use for parallel operations" },
 	{ "natural;nat",				"0",	OPTION_BOOLEAN,		"specifies whether to use a natural keyboard or not" },
 	{ "min_width;mw",				"200",	0,					"specifies the minimum width for the display" },
 	{ "min_height;mh",				"200",	0,					"specifies the minimum height for the display" },
@@ -262,18 +262,18 @@ void win_add_mess_device_options(const game_driver *gamedrv)
 
 
 
-static void win_mess_exit(void)
+static void win_mess_exit(running_machine *machine)
 {
 	if (win_write_config)
-		write_config(NULL, Machine->gamedrv);
+		write_config(NULL, machine->gamedrv);
 }
 
 
 
-void win_mess_config_init(void)
+void win_mess_config_init(running_machine *machine)
 {
 	config_register("device_directories", device_dirs_load, device_dirs_save);
-	add_exit_callback(win_mess_exit);
+	add_exit_callback(machine, win_mess_exit);
 }
 
 

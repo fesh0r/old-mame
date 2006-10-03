@@ -1,3 +1,80 @@
+0.109
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Apple IIc (ROM revision 4)  (not working) [Nick Westgate]
+- Tano Dragon 64  [Phill Harvey-Smith]
+
+
+
+System Driver Changes:
+----------------------
+- [C64] Fixed issues found by the TRAP4, TRAP5, and TRAP6 tests of the c64
+  test suite.  (bug #952) [Wilbert Pol]
+
+- [CBM] Fixed SID code to remove potential divide by zero issues.  (bug #936)
+  [Nate Woods]
+
+- [COCO3] Fixed a bug that could cause hi-res text and graphics to not display
+  properly when RGB is enabled.  (bug #938) [Nate Woods]
+
+- [DRAGON] Fixed side specification on floppy disk controller.  [Phill
+  Harvey-Smith]
+
+- [GAMEBOY] Fixed battery backed RAM saving.  (bug #948) [Dirk Best, Wilbert
+  Pol]
+
+- [TELMAC] Fixed crash when running without sound.  (bug #922) [Nate Woods]
+
+- [THOMSON] Improved video emulation, floppy disk support, preliminary network
+  extension support, and LEDs.  [Antoine Mine]
+
+- [THOMSON] Added CRCs to the BIOS declarations.  (bug #942) [Antoine Mine]
+
+- [VIC20] Fixed bug that caused the driver to fail when sound was disabled.
+  (bug #930) [Nate Woods]
+
+
+
+User Interface Changes:
+-----------------------
+- [Windows] Fixed a bug that caused the Pause menu item to always appear as
+  checked.  (bug #926) [Nate Woods]
+
+- [Windows GUI] Fixed a bug that caused the GUI to fumble on paths with spaces
+  in them.  (bug #918) [Nate Woods]
+
+- [Windows GUI] The GUI will no longer process software entries when an
+  emulation is running.  (bug #940) [Nate Woods]
+
+
+
+Imgtool Changes:
+----------------
+- Fixed the listfilters command.  (bug #945) [Tim Lindner]
+
+- Added Thomson support.  [Antoine Mine]
+
+- [Windows] Modified wimgtool so that it will function properly if it cannot
+  locate an icon for a given file extension.  [Nate Woods]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.109.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Fixed improper use of options.sample_rate in drivers to use
+  Machine->sample_rate.  (bug #939)  [Oliver Stoeneberg]
+
+- Build system cleanups.  (bug #929)  [Nate Woods]
+  
+- [Windows] Fixed incorrect "Illegal integer value for threads" error.  (bug
+  #920) [Nate Woods]
+
+
+
 0.108
 
 New System Drivers Supported (in no particular order):

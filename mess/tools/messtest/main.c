@@ -136,16 +136,17 @@ int main(int argc, char *argv[])
 
 	/* since the cpuintrf and sndintrf structures are filled dynamically now, we
 	 * have to init first */
-	cpuintrf_init();
-	sndintrf_init();
+	cpuintrf_init(NULL);
+	sndintrf_init(NULL);
 	
 	/* register options */
 	options_add_entries(messtest_opts);
 	options_set_option_callback("", handle_arg);
 
 	/* run MAME's validity checks; if these fail cop out now */
-	if (mame_validitychecks(-1))
-		goto done;
+	/* NPW 16-Sep-2006 - commenting this out because this cannot be run outside of MAME */
+	//if (mame_validitychecks(-1))
+	//	goto done;
 	/* run Imgtool's validity checks; if these fail cop out now */
 	if (imgtool_validitychecks())
 		goto done;
