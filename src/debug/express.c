@@ -386,7 +386,7 @@ static void print_tokens(FILE *out, parsed_expression *expr)
 #if DEBUG_TOKENS
 	parse_token *token = expr->token;
 
-	printf("----\n");
+	mame_printf_debug("----\n");
 	while (token->type != TOK_END)
 	{
 		switch (token->type)
@@ -465,7 +465,7 @@ static void print_tokens(FILE *out, parsed_expression *expr)
 		}
 		token++;
 	}
-	printf("----\n");
+	mame_printf_debug("----\n");
 #endif
 }
 
@@ -1770,6 +1770,19 @@ int symtable_add(symbol_table *table, const char *name, const symbol_entry *entr
 	char *newstring;
 	UINT32 hash_index;
 	int strindex;
+	int all_digits, i;
+
+	/* we cannot add numeric symbols */
+	all_digits = TRUE;
+	for (i = 0; name[i]; i++)
+	{
+		if (!isdigit(name[i]))
+		{
+			all_digits = FALSE;
+			break;
+		}
+	}
+	assert_always(!all_digits, "All-digit symbols are not allowed");
 
 	/* see if we already have an entry and just overwrite it if we do */
 	oldentry = (symbol_entry *)symtable_find(table, name);

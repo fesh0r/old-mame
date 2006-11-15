@@ -148,7 +148,7 @@ struct _rom_load_data
 	int				romsloaded;			/* current ROMs loaded count */
 	int				romstotal;			/* total number of ROMs to read */
 
-	void *			file;				/* current file */
+	mame_file *		file;				/* current file */
 
 	UINT8 *			regionbase;			/* base of current region */
 	UINT32			regionlength;		/* length of current region */
@@ -294,6 +294,7 @@ struct _rom_load_data
 ***************************************************************************/
 
 /* disk handling */
+chd_file *open_disk_image(const game_driver *gamedrv, const rom_entry *romp);
 chd_file *get_disk_handle(int diskindex);
 
 /* ROM processing */

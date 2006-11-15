@@ -125,22 +125,6 @@ static int m37710_irq_vectors[M37710_LINE_MAX] =
 	0xfffe,	// RESET
 };
 
-/* Layout of the registers in the MAME debugger */
-static unsigned char m37710i_register_layout[] =
-{
-	M37710_PB, M37710_PC, M37710_S, M37710_DB, M37710_D, M37710_P, M37710_E, -1,
-	M37710_A, M37710_B, M37710_X, M37710_Y, 0
-};
-
-/* Layout of the MAME debugger windows x,y,w,h */
-static unsigned char m37710i_window_layout[] = {
-	 0, 0,80, 4,	/* register window (top rows) */
-	 0, 5,29,16,	/* disassembler window (left colums) */
-	30, 5,50, 7,	/* memory #1 window (right, upper middle) */
-	30,14,50, 8,	/* memory #2 window (right, lower middle) */
-	 0,23,80, 1,	/* command line window (bottom rows) */
-};
-
 // M37710 internal peripherals
 
 #if M37710_DEBUG
@@ -412,7 +396,7 @@ static void m37710_recalc_timer(int timer)
 	if (m37710i_cpu.m37710_regs[0x40] & (1<<timer))
 	{
 		#if M37710_DEBUG
-		printf("Timer %d (%s) is enabled\n", timer, m37710_tnames[timer]);
+		mame_printf_debug("Timer %d (%s) is enabled\n", timer, m37710_tnames[timer]);
 		#endif
 
 		// set the timer's value
@@ -429,7 +413,7 @@ static void m37710_recalc_timer(int timer)
 					time /= ((double)tval+1.0);
 
 					#if M37710_DEBUG
-					printf("Timer %d in timer mode, %f Hz\n", timer, time);
+					mame_printf_debug("Timer %d in timer mode, %f Hz\n", timer, time);
 					#endif
 
 					timer_adjust(m37710i_cpu.timers[timer], TIME_IN_HZ(time), cpunum, 0);
@@ -438,19 +422,19 @@ static void m37710_recalc_timer(int timer)
 
 				case 1:	      	// event counter mode
 					#if M37710_DEBUG
-					printf("Timer %d in event counter mode\n", timer);
+					mame_printf_debug("Timer %d in event counter mode\n", timer);
 					#endif
 					break;
 
 				case 2:		// one-shot pulse mode
 					#if M37710_DEBUG
-					printf("Timer %d in one-shot mode\n", timer);
+					mame_printf_debug("Timer %d in one-shot mode\n", timer);
 					#endif
 					break;
 
 				case 3:	      	// PWM mode
 					#if M37710_DEBUG
-					printf("Timer %d in PWM mode\n", timer);
+					mame_printf_debug("Timer %d in PWM mode\n", timer);
 					#endif
 					break;
 			}
@@ -464,7 +448,7 @@ static void m37710_recalc_timer(int timer)
 					time /= ((double)tval+1.0);
 
 					#if M37710_DEBUG
-					printf("Timer %d in timer mode, %f Hz\n", timer, time);
+					mame_printf_debug("Timer %d in timer mode, %f Hz\n", timer, time);
 					#endif
 
 					timer_adjust(m37710i_cpu.timers[timer], TIME_IN_HZ(time), cpunum, 0);
@@ -473,19 +457,19 @@ static void m37710_recalc_timer(int timer)
 
 				case 1:	      	// event counter mode
 					#if M37710_DEBUG
-					printf("Timer %d in event counter mode\n", timer);
+					mame_printf_debug("Timer %d in event counter mode\n", timer);
 					#endif
 					break;
 
 				case 2:		// pulse period/pulse width measurement mode
 					#if M37710_DEBUG
-					printf("Timer %d in pulse period/width measurement mode\n", timer);
+					mame_printf_debug("Timer %d in pulse period/width measurement mode\n", timer);
 					#endif
 					break;
 
 				case 3:
 					#if M37710_DEBUG
-					printf("Timer %d in unknown mode!\n", timer);
+					mame_printf_debug("Timer %d in unknown mode!\n", timer);
 					#endif
 					break;
 			}
@@ -859,7 +843,7 @@ void m37710i_update_irqs(void)
 		// let's do it...
 		// push PB, then PC, then status
 		CLK(8);
-//      printf("taking IRQ %d: PC = %06x, SP = %04x, IPL %d\n", wantedIRQ, REG_PB | REG_PC, REG_S, m37710i_cpu.ipl);
+//      mame_printf_debug("taking IRQ %d: PC = %06x, SP = %04x, IPL %d\n", wantedIRQ, REG_PB | REG_PC, REG_S, m37710i_cpu.ipl);
 		m37710i_push_8(REG_PB>>16);
 		m37710i_push_16(REG_PC);
 		m37710i_push_8(m37710i_cpu.ipl);
@@ -1025,12 +1009,12 @@ void m37710_set_irq_callback(int (*callback)(int))
 #ifdef MAME_DEBUG
 #include "m7700ds.h"
 #endif
-unsigned m37710_dasm(char *buffer, unsigned pc)
+offs_t m37710_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 #ifdef MAME_DEBUG
-	return m7700_disassemble(buffer, (pc&0xffff), pc>>16, FLAG_M, FLAG_X);
+	return m7700_disassemble(buffer, (pc&0xffff), pc>>16, oprom, FLAG_M, FLAG_X);
 #else
-	sprintf(buffer, "$%02X", m37710_read_8_immediate(pc));
+	sprintf(buffer, "$%02X", oprom[0]);
 	return 1;
 #endif
 }
@@ -1204,8 +1188,6 @@ void m37710_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m37710_dasm;		break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &m37710_ICount;			break;
-		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = m37710i_register_layout;		break;
-		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = m37710i_window_layout;		break;
 
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = &construct_map_m37710_internal_map; break;
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_DATA:    info->internal_map = 0; break;

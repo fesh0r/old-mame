@@ -127,16 +127,16 @@ static void hc11_regs_w(UINT32 address, UINT8 value)
 	switch(reg)
 	{
 		case 0x00:		/* PORTA */
-			//printf("HC11: porta = %02X\n", value);
+			//mame_printf_debug("HC11: porta = %02X\n", value);
 			return;
 		case 0x01:		/* DDRA */
-			//printf("HC11: ddra = %02X\n", value);
+			//mame_printf_debug("HC11: ddra = %02X\n", value);
 			return;
 		case 0x08:		/* PORTD */
-			//printf("HC11: portd = %02X\n", value);
+			//mame_printf_debug("HC11: portd = %02X\n", value);
 			return;
 		case 0x09:		/* DDRD */
-			//printf("HC11: ddrd = %02X\n", value);
+			//mame_printf_debug("HC11: ddrd = %02X\n", value);
 			return;
 		case 0x22:		/* TMSK1 */
 			return;
@@ -178,16 +178,16 @@ static void hc11_regs_w(UINT32 address, UINT8 value)
 		case 0x73:		/* SCCR2 */
 			return;
 		case 0x7c:		/* PORTH */
-			//printf("HC11: porth = %02X\n", value);
+			//mame_printf_debug("HC11: porth = %02X\n", value);
 			return;
 		case 0x7d:		/* DDRH */
-			//printf("HC11: ddrh = %02X\n", value);
+			//mame_printf_debug("HC11: ddrh = %02X\n", value);
 			return;
 		case 0x7e:		/* PORTG */
-			//printf("HC11: portg = %02X\n", value);
+			//mame_printf_debug("HC11: portg = %02X\n", value);
 			return;
 		case 0x7f:		/* DDRG */
-			//printf("HC11: ddrg = %02X\n", value);
+			//mame_printf_debug("HC11: ddrg = %02X\n", value);
 			return;
 
 		case 0x88:		/* SPCR2 */
@@ -196,7 +196,7 @@ static void hc11_regs_w(UINT32 address, UINT8 value)
 			return;
 		case 0x8a:		/* SPDR2 */
 			spi_data2 = value;
-			//printf("HC11: SPI data 2 = %02X\n", value);
+			//mame_printf_debug("HC11: SPI data 2 = %02X\n", value);
 			return;
 
 		case 0x8b:		/* OPT4 */
@@ -354,27 +354,10 @@ static int hc11_execute(int cycles)
 
 /*****************************************************************************/
 
-static UINT8 hc11_reg_layout[] =
-{
-	HC11_PC,		HC11_SP,
-	HC11_A,			HC11_B,
-	HC11_IX,		HC11_IY,
-	0
-};
-
-static UINT8 hc11_win_layout[] =
-{
-	 0, 0,80, 2,	/* register window (top rows) */
-	 0, 3,35,19,	/* disassembler window (left colums) */
-	36, 3,44, 8,	/* memory #1 window (right, upper middle) */
-	36,12,44,10,	/* memory #2 window (right, lower middle) */
-	 0,23,80, 1,	/* command line window (bottom rows) */
-};
-
-offs_t hc11_disasm(char *buffer, UINT32 pc)
+static offs_t hc11_disasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 #ifdef MAME_DEBUG
-	return mc68hc11_dasm_one(buffer, pc);
+	return mc68hc11_dasm_one(buffer, pc, oprom);
 #else
 	sprintf(buffer, "$%02X", FETCH());
 	return 1;
@@ -446,8 +429,6 @@ void mc68hc11_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = hc11_disasm;		break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &hc11.icount;			break;
-		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = hc11_reg_layout;				break;
-		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = hc11_win_layout;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "MC68HC11"); break;

@@ -264,7 +264,7 @@ static void mips3drc_entrygen(drc_core *drc);
 static void recompute_tlb_table(void);
 static void update_cycle_counting(void);
 
-static offs_t mips3_dasm(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes);
+static offs_t mips3_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 
 
 
@@ -653,7 +653,7 @@ INLINE void logonetlbentry(int index, int which)
 
 	vaddr += pagesize * which;
 
-	printf("index=%08X  pagesize=%08X  vaddr=%08X%08X  paddr=%08X%08X  asid=%02X  r=%X  c=%X  dvg=%c%c%c\n",
+	mame_printf_debug("index=%08X  pagesize=%08X  vaddr=%08X%08X  paddr=%08X%08X  asid=%02X  r=%X  c=%X  dvg=%c%c%c\n",
 			index, pagesize, (UINT32)(vaddr >> 32), (UINT32)vaddr, (UINT32)(paddr >> 32), (UINT32)paddr,
 			asid, r, c, (lo & 4) ? 'd' : '.', (lo & 2) ? 'v' : '.', (lo & 1) ? 'g' : '.');
 #endif
@@ -726,7 +726,7 @@ static void tlbp(void)
 	{
 		UINT64 mask = ~(mips3.tlb[index].page_mask & U64(0x0000000001ffe000)) & ~U64(0x1fff);
 #if PRINTF_TLB
-printf("Mask = %08X%08X  TLB = %08X%08X  MATCH = %08X%08X\n",
+mame_printf_debug("Mask = %08X%08X  TLB = %08X%08X  MATCH = %08X%08X\n",
 	(UINT32)(mask >> 32), (UINT32)mask,
 	(UINT32)(mips3.tlb[index].entry_hi >> 32), (UINT32)mips3.tlb[index].entry_hi,
 	(UINT32)(mips3.cpr[0][COP0_EntryHi] >> 32), (UINT32)mips3.cpr[0][COP0_EntryHi]);
@@ -744,7 +744,7 @@ printf("Mask = %08X%08X  TLB = %08X%08X  MATCH = %08X%08X\n",
 		if (mips3.tlb_table[vpn & 0xfffff] == 0xffffffff)
 		{
 #if PRINTF_TLB
-			printf("TLBP: Should have not found an entry\n");
+			mame_printf_debug("TLBP: Should have not found an entry\n");
 //          DEBUGGER_BREAK;
 #endif
 		}
@@ -755,7 +755,7 @@ printf("Mask = %08X%08X  TLB = %08X%08X  MATCH = %08X%08X\n",
 		if (mips3.tlb_table[vpn & 0xfffff] != 0xffffffff)
 		{
 #if PRINTF_TLB
-			printf("TLBP: Should havefound an entry\n");
+			mame_printf_debug("TLBP: Should havefound an entry\n");
 //          DEBUGGER_BREAK;
 #endif
 		}
@@ -886,53 +886,14 @@ static void code_log(drc_core *drc, const char *label, void *start)
 
 
 /***************************************************************************
-    DEBUGGER DEFINITIONS
-***************************************************************************/
-
-static UINT8 mips3_reg_layout[] =
-{
-	MIPS3_PC,		MIPS3_SR,		-1,
-	MIPS3_EPC,		MIPS3_CAUSE,	-1,
-	MIPS3_COUNT,	MIPS3_COMPARE,	-1,
-	MIPS3_HI,		MIPS3_LO,		-1,
-	MIPS3_R0,	 	MIPS3_R16,		-1,
-	MIPS3_R1, 		MIPS3_R17,		-1,
-	MIPS3_R2, 		MIPS3_R18,		-1,
-	MIPS3_R3, 		MIPS3_R19,		-1,
-	MIPS3_R4, 		MIPS3_R20,		-1,
-	MIPS3_R5, 		MIPS3_R21,		-1,
-	MIPS3_R6, 		MIPS3_R22,		-1,
-	MIPS3_R7, 		MIPS3_R23,		-1,
-	MIPS3_R8,		MIPS3_R24,		-1,
-	MIPS3_R9,		MIPS3_R25,		-1,
-	MIPS3_R10,		MIPS3_R26,		-1,
-	MIPS3_R11,		MIPS3_R27,		-1,
-	MIPS3_R12,		MIPS3_R28,		-1,
-	MIPS3_R13,		MIPS3_R29,		-1,
-	MIPS3_R14,		MIPS3_R30,		-1,
-	MIPS3_R15,		MIPS3_R31,		0
-};
-
-static UINT8 mips3_win_layout[] =
-{
-	 0, 0,45,20,	/* register window (top rows) */
-	46, 0,33,14,	/* disassembler window (left colums) */
-	 0,21,45, 1,	/* memory #1 window (right, upper middle) */
-	46,15,33, 7,	/* memory #2 window (right, lower middle) */
-	 0,23,80, 1,	/* command line window (bottom rows) */
-};
-
-
-
-/***************************************************************************
     DISASSEMBLY HOOK
 ***************************************************************************/
 
-static offs_t mips3_dasm(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes)
+static offs_t mips3_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 #ifdef MAME_DEBUG
 	extern unsigned dasmmips3(char *, unsigned, UINT32);
-	UINT32 op = *(UINT32 *)opram;
+	UINT32 op = *(UINT32 *)oprom;
 	if (mips3.bigendian)
 		op = BIG_ENDIANIZE_INT32(op);
 	else
@@ -1127,10 +1088,8 @@ void mips3_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = mips3_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = mips3_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = mips3_dasm;		break;
+		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = mips3_dasm;			break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &mips3_icount;			break;
-		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = mips3_reg_layout;				break;
-		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = mips3_win_layout;				break;
 		case CPUINFO_PTR_TRANSLATE:						info->translate = translate_address;	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */

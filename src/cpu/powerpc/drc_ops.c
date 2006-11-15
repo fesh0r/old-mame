@@ -310,14 +310,6 @@ static void append_generate_exception(drc_core *drc, UINT8 exception)
 	if (exception == EXCEPTION_IRQ)
 	{
 		_and_m32abs_imm(&ppc.exception_pending, ~0x1);		// clear pending irq
-
-		/* set EXISR IRQ bit on PPC403 */
-		if (!ppc.is603 && !ppc.is602)
-		{
-			_mov_r32_m32abs(REG_EDX, &ppc.exisr);
-			_or_r32_m32abs(REG_EDX, &ppc.external_int);
-			_mov_m32abs_r32(&ppc.exisr, REG_EDX);
-		}
 	}
 	if (exception == EXCEPTION_DECREMENTER)
 	{
@@ -329,32 +321,65 @@ static void append_generate_exception(drc_core *drc, UINT8 exception)
 
 static void append_check_interrupts(drc_core *drc, int inline_generate)
 {
-	link_info link1, link2, link3, link4;
-	_test_m32abs_imm(&ppc.msr, MSR_EE);		/* no interrupt if external interrupts are not enabled */
-	_jcc_short_link(COND_Z, &link1);		/* ZF = 1 if bit == 0 */
+	if (ppc.is602 || ppc.is603)
+	{
+		link_info link1, link2, link3, link4;
+		_test_m32abs_imm(&ppc.msr, MSR_EE);		/* no interrupt if external interrupts are not enabled */
+		_jcc_short_link(COND_Z, &link1);		/* ZF = 1 if bit == 0 */
 
-	/* else check if any interrupt are pending */
-	_mov_r32_m32abs(REG_EAX, &ppc.exception_pending);
-	_cmp_r32_imm(REG_EAX, 0);
-	_jcc_short_link(COND_Z, &link2);		/* reg == 0, no exceptions are pending */
+		/* else check if any interrupt are pending */
+		_mov_r32_m32abs(REG_EAX, &ppc.exception_pending);
+		_cmp_r32_imm(REG_EAX, 0);
+		_jcc_short_link(COND_Z, &link2);		/* reg == 0, no exceptions are pending */
 
-	/* else handle the first pending exception */
-	_test_r32_imm(REG_EAX, 0x1);			/* is it a IRQ? */
-	_jcc_short_link(COND_Z, &link3);
-	_mov_m32abs_r32(&SRR0, REG_EDI);		/* save return address */
-	_mov_r32_m32abs(REG_EAX, &ppc.generate_interrupt_exception);
-	_jmp_r32(REG_EAX);
-	_resolve_link(&link3);
+		/* else handle the first pending exception */
+		_test_r32_imm(REG_EAX, 0x1);			/* is it a IRQ? */
+		_jcc_short_link(COND_Z, &link3);
 
-	_test_r32_imm(REG_EAX, 0x2);			/* is it a decrementer exception */
-	_jcc_short_link(COND_Z, &link4);
-	_mov_m32abs_r32(&SRR0, REG_EDI);		/* save return address */
-	_mov_r32_m32abs(REG_EAX, &ppc.generate_decrementer_exception);
-	_jmp_r32(REG_EAX);
-	_resolve_link(&link4);
+		_mov_m32abs_r32(&SRR0, REG_EDI);		/* save return address */
+		_mov_r32_m32abs(REG_EAX, &ppc.generate_interrupt_exception);
+		_jmp_r32(REG_EAX);
+		_resolve_link(&link3);
 
-	_resolve_link(&link1);
-	_resolve_link(&link2);
+		_test_r32_imm(REG_EAX, 0x2);			/* is it a decrementer exception */
+		_jcc_short_link(COND_Z, &link4);
+		_mov_m32abs_r32(&SRR0, REG_EDI);		/* save return address */
+		_mov_r32_m32abs(REG_EAX, &ppc.generate_decrementer_exception);
+		_jmp_r32(REG_EAX);
+		_resolve_link(&link4);
+
+		_resolve_link(&link1);
+		_resolve_link(&link2);
+	}
+	else
+	{
+		link_info link1, link2, link3, link4;
+		_test_m32abs_imm(&ppc.msr, MSR_EE);		/* no interrupt if external interrupts are not enabled */
+		_jcc_short_link(COND_Z, &link1);		/* ZF = 1 if bit == 0 */
+
+		/* else check if any interrupt are pending */
+		_mov_r32_m32abs(REG_EAX, &ppc.exception_pending);
+		_cmp_r32_imm(REG_EAX, 0);
+		_jcc_short_link(COND_Z, &link2);		/* reg == 0, no exceptions are pending */
+
+		/* else handle the first pending exception */
+		_test_r32_imm(REG_EAX, 0x1);			/* is it a IRQ? */
+		_jcc_short_link(COND_Z, &link3);
+
+		_mov_r32_m32abs(REG_EAX, &ppc.exisr);
+		_and_r32_m32abs(REG_EAX, &ppc.exier);
+		_cmp_r32_imm(REG_EAX, 0);
+		_jcc_short_link(COND_Z, &link4);
+
+		_mov_m32abs_r32(&SRR0, REG_EDI);		/* save return address */
+		_mov_r32_m32abs(REG_EAX, &ppc.generate_interrupt_exception);
+		_jmp_r32(REG_EAX);
+
+		_resolve_link(&link1);
+		_resolve_link(&link2);
+		_resolve_link(&link3);
+		_resolve_link(&link4);
+	}
 }
 
 static void append_branch_or_dispatch(drc_core *drc, UINT32 newpc, int cycles)
@@ -429,7 +454,7 @@ static UINT32 recompile_addx(drc_core *drc, UINT32 op)
 	_mov_m32abs_r32(&REG(RT), REG_EDX);
 
 	if (OEBIT) {
-		printf("recompile_addx: OE bit set !\n");
+		mame_printf_debug("recompile_addx: OE bit set !\n");
 		return RECOMPILE_UNIMPLEMENTED;
 	}
 	if (RCBIT) {
@@ -454,7 +479,7 @@ static UINT32 recompile_addcx(drc_core *drc, UINT32 op)
 	_mov_m32abs_r32(&XER, REG_EBX);
 
 	if (OEBIT) {
-		printf("recompile_addcx: OE bit set !\n");
+		mame_printf_debug("recompile_addcx: OE bit set !\n");
 		return RECOMPILE_UNIMPLEMENTED;
 	}
 	if (RCBIT) {
@@ -1414,7 +1439,7 @@ static UINT32 recompile_lswi(drc_core *drc, UINT32 op)
 
 static UINT32 recompile_lswx(drc_core *drc, UINT32 op)
 {
-	printf("PPCDRC: recompile lswx\n");
+	mame_printf_debug("PPCDRC: recompile lswx\n");
 	return RECOMPILE_UNIMPLEMENTED;
 }
 
@@ -1525,7 +1550,7 @@ static UINT32 recompile_mcrf(drc_core *drc, UINT32 op)
 
 static UINT32 recompile_mcrxr(drc_core *drc, UINT32 op)
 {
-	printf("PPCDRC: recompile mcrxr\n");
+	mame_printf_debug("PPCDRC: recompile mcrxr\n");
 	return RECOMPILE_UNIMPLEMENTED;
 }
 
@@ -1672,7 +1697,7 @@ static UINT32 recompile_mullwx(drc_core *drc, UINT32 op)
 	_mov_m32abs_r32(&REG(RT), REG_EDX);
 
 	if (OEBIT) {
-		printf("recompile_mullwx: OEBIT set!\n");
+		mame_printf_debug("recompile_mullwx: OEBIT set!\n");
 		return RECOMPILE_UNIMPLEMENTED;
 	}
 
@@ -2121,7 +2146,7 @@ static UINT32 recompile_stswi(drc_core *drc, UINT32 op)
 
 static UINT32 recompile_stswx(drc_core *drc, UINT32 op)
 {
-	printf("PPCDRC: recompile stswx\n");
+	mame_printf_debug("PPCDRC: recompile stswx\n");
 	return RECOMPILE_UNIMPLEMENTED;
 }
 
@@ -2234,7 +2259,7 @@ static UINT32 recompile_subfx(drc_core *drc, UINT32 op)
 	_mov_m32abs_r32(&REG(RT), REG_EDX);
 
 	if (OEBIT) {
-		printf("recompile_subfx: OEBIT set !\n");
+		mame_printf_debug("recompile_subfx: OEBIT set !\n");
 		return RECOMPILE_UNIMPLEMENTED;
 	}
 	if (RCBIT) {
@@ -2268,7 +2293,7 @@ static UINT32 recompile_subfcx(drc_core *drc, UINT32 op)
 		_mov_m32abs_r32(&XER, REG_EBX);
 
 		//if (OEBIT) {
-		//  printf("recompile_subfcx: OEBIT set !\n");
+		//  mame_printf_debug("recompile_subfcx: OEBIT set !\n");
 		//  return RECOMPILE_UNIMPLEMENTED;
 		//}
 		if (RCBIT) {
@@ -2296,7 +2321,7 @@ static UINT32 recompile_subfex(drc_core *drc, UINT32 op)
 	_mov_m32abs_r32(&XER, REG_EBX);
 
 	if (OEBIT) {
-		printf("recompile_subfex: OEBIT set !\n");
+		mame_printf_debug("recompile_subfex: OEBIT set !\n");
 		return RECOMPILE_UNIMPLEMENTED;
 	}
 	if (RCBIT) {
@@ -2527,7 +2552,7 @@ static UINT32 recompile_icread(drc_core *drc, UINT32 op)
 
 static UINT32 recompile_rfci(drc_core *drc, UINT32 op)
 {
-	printf("PPCDRC: recompile rfci\n");
+	mame_printf_debug("PPCDRC: recompile rfci\n");
 	return RECOMPILE_UNIMPLEMENTED;
 }
 
@@ -2581,7 +2606,7 @@ static UINT32 recompile_wrteei(drc_core *drc, UINT32 op)
 
 static UINT32 recompile_invalid(drc_core *drc, UINT32 op)
 {
-	printf("PPCDRC: Invalid opcode %08X PC : %X\n", op, ppc.pc);
+	mame_printf_debug("PPCDRC: Invalid opcode %08X PC : %X\n", op, ppc.pc);
 	return RECOMPILE_UNIMPLEMENTED;
 }
 
@@ -3050,13 +3075,13 @@ static UINT32 recompile_tlbsync(drc_core *drc, UINT32 op)
 
 static UINT32 recompile_eciwx(drc_core *drc, UINT32 op)
 {
-	printf("PPCDRC: eciwx unimplemented\n");
+	mame_printf_debug("PPCDRC: eciwx unimplemented\n");
 	return RECOMPILE_UNIMPLEMENTED;
 }
 
 static UINT32 recompile_ecowx(drc_core *drc, UINT32 op)
 {
-	printf("PPCDRC: ecowx unimplemented\n");
+	mame_printf_debug("PPCDRC: ecowx unimplemented\n");
 	return RECOMPILE_UNIMPLEMENTED;
 }
 

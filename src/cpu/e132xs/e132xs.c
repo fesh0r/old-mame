@@ -398,47 +398,6 @@ enum
 	E132XS_L60, E132XS_L61, E132XS_L62, E132XS_L63
 };
 
-static UINT8 hyperstone_reg_layout[] =
-{
-	E132XS_PC,  E132XS_SR,  E132XS_FER, E132XS_G3,  -1,
-	E132XS_G4,  E132XS_G5,  E132XS_G6,  E132XS_G7,  -1,
-	E132XS_G8,  E132XS_G9,  E132XS_G10, E132XS_G11, -1,
-	E132XS_G12, E132XS_G13, E132XS_G14,	E132XS_G15, -1,
-	E132XS_G16,	E132XS_G17,	E132XS_SP,	E132XS_UB,  -1,
-	E132XS_BCR,	E132XS_TPR,	E132XS_TCR,	E132XS_TR,  -1,
-	E132XS_WCR,	E132XS_ISR,	E132XS_FCR,	E132XS_MCR, -1,
-	E132XS_G28, E132XS_G29,	E132XS_G30,	E132XS_G31, -1,
-	E132XS_CL0, E132XS_CL1, E132XS_CL2, E132XS_CL3, -1,
-	E132XS_CL4, E132XS_CL5, E132XS_CL6, E132XS_CL7, -1,
-	E132XS_CL8, E132XS_CL9, E132XS_CL10,E132XS_CL11,-1,
-	E132XS_CL12,E132XS_CL13,E132XS_CL14,E132XS_CL15,-1,
-	E132XS_L0,  E132XS_L1,  E132XS_L2,  E132XS_L3,  -1,
-	E132XS_L4,  E132XS_L5,  E132XS_L6,  E132XS_L7,  -1,
-	E132XS_L8,  E132XS_L9,  E132XS_L10, E132XS_L11, -1,
-	E132XS_L12, E132XS_L13, E132XS_L14, E132XS_L15, -1,
-	E132XS_L16, E132XS_L17, E132XS_L18, E132XS_L19, -1,
-	E132XS_L20, E132XS_L21, E132XS_L22, E132XS_L23, -1,
-	E132XS_L24, E132XS_L25, E132XS_L26, E132XS_L27, -1,
-	E132XS_L28, E132XS_L29, E132XS_L30, E132XS_L31, -1,
-	E132XS_L32, E132XS_L33, E132XS_L34, E132XS_L35, -1,
-	E132XS_L36, E132XS_L37, E132XS_L38, E132XS_L39, -1,
-	E132XS_L40, E132XS_L41, E132XS_L42, E132XS_L43, -1,
-	E132XS_L44, E132XS_L45, E132XS_L46, E132XS_L47, -1,
-	E132XS_L48, E132XS_L49, E132XS_L50, E132XS_L51, -1,
-	E132XS_L52, E132XS_L53, E132XS_L54, E132XS_L55, -1,
-	E132XS_L56, E132XS_L57, E132XS_L58, E132XS_L59, -1,
-	E132XS_L60, E132XS_L61, E132XS_L62, E132XS_L63, 0
-};
-
-UINT8 hyperstone_win_layout[] =
-{
-	 0, 0,80, 8, /* register window (top rows) */
-	 0, 9,34,13, /* disassembler window (left, middle columns) */
-	35, 9,46, 6, /* memory #1 window (right, upper middle) */
-	35,16,46, 6, /* memory #2 window (right, lower middle) */
-	 0,23,80, 1  /* command line window (bottom row) */
-};
-
 
 /* Delay information */
 struct _delay
@@ -825,23 +784,23 @@ static UINT32 get_global_register(UINT8 code)
         case 29:
         case 30:
         case 31:
-            printf("read _Reserved_ Global Register %d @ %08X\n",code,PC);
+            mame_printf_debug("read _Reserved_ Global Register %d @ %08X\n",code,PC);
             break;
 
         case BCR_REGISTER:
-            printf("read write-only BCR register @ %08X\n",PC);
+            mame_printf_debug("read write-only BCR register @ %08X\n",PC);
             return 0;
 
         case TPR_REGISTER:
-            printf("read write-only TPR register @ %08X\n",PC);
+            mame_printf_debug("read write-only TPR register @ %08X\n",PC);
             return 0;
 
         case FCR_REGISTER:
-            printf("read write-only FCR register @ %08X\n",PC);
+            mame_printf_debug("read write-only FCR register @ %08X\n",PC);
             return 0;
 
         case MCR_REGISTER:
-            printf("read write-only MCR register @ %08X\n",PC);
+            mame_printf_debug("read write-only MCR register @ %08X\n",PC);
             return 0;
         }
     }
@@ -885,19 +844,19 @@ static void set_global_register(UINT8 code, UINT32 val)
 				break;
 /*
             case ISR_REGISTER:
-                printf("written %08X to read-only ISR register\n",val);
+                mame_printf_debug("written %08X to read-only ISR register\n",val);
                 break;
 
             case 22:
-//              printf("written %08X to TCR register\n",val);
+//              mame_printf_debug("written %08X to TCR register\n",val);
                 break;
 
             case 23:
-//              printf("written %08X to TR register\n",val);
+//              mame_printf_debug("written %08X to TR register\n",val);
                 break;
 
             case 24:
-//              printf("written %08X to WCR register\n",val);
+//              mame_printf_debug("written %08X to WCR register\n",val);
                 break;
 
             case 16:
@@ -906,7 +865,7 @@ static void set_global_register(UINT8 code, UINT32 val)
             case 29:
             case 30:
             case 31:
-                printf("written %08X to _Reserved_ Global Register %d\n",val,code);
+                mame_printf_debug("written %08X to _Reserved_ Global Register %d\n",val,code);
                 break;
 
             case BCR_REGISTER:
@@ -933,13 +892,13 @@ static void set_global_register(UINT8 code, UINT32 val)
                 switch((val & 0x3000)>>12)
                 {
                 case 0:
-                    printf("IO3 interrupt mode\n");
+                    mame_printf_debug("IO3 interrupt mode\n");
                     break;
                 case 1:
-                    printf("IO3 timing mode\n");
+                    mame_printf_debug("IO3 timing mode\n");
                     break;
                 case 2:
-                    printf("watchdog mode\n");
+                    mame_printf_debug("watchdog mode\n");
                     break;
                 case 3:
                     // IO3 standard mode
@@ -1014,7 +973,7 @@ static void decode_source(int local, int hflag)
 			SREG = 0; // write-only registers
 		}
 		else if( current_regs.src == ISR_REGISTER )
-			printf("read src ISR. PC = %08X\n",PPC);
+			mame_printf_debug("read src ISR. PC = %08X\n",PPC);
 	}
 }
 
@@ -1047,7 +1006,7 @@ static void decode_dest(int local, int hflag)
 		else if(current_regs.dst == SR_REGISTER)
 			DST_IS_SR = 1;
 		else if( current_regs.src == ISR_REGISTER )
-			printf("read dst ISR. PC = %08X\n",PPC);
+			mame_printf_debug("read dst ISR. PC = %08X\n",PPC);
 	}
 }
 
@@ -1659,7 +1618,7 @@ static void execute_exception(UINT32 addr)
 	PC = addr;
 	change_pc(PC);
 
-	printf("EXCEPTION! PPC = %08X PC = %08X\n",PPC-2,PC-2);
+	mame_printf_debug("EXCEPTION! PPC = %08X PC = %08X\n",PPC-2,PC-2);
 	hyperstone_ICount -= 2;
 }
 
@@ -1742,21 +1701,21 @@ static void set_irq_line(int irqline, int state)
 				break;
 		}
 /*
-        if( (FCR&(1<<6)) && (!(FCR&(1<<4))) ) printf("IO2 en\n"); // IO2
+        if( (FCR&(1<<6)) && (!(FCR&(1<<4))) ) mame_printf_debug("IO2 en\n"); // IO2
 
-        if( (FCR&(1<<2)) && (!(FCR&(1<<0))) ) printf("IO1 en\n"); // IO1
+        if( (FCR&(1<<2)) && (!(FCR&(1<<0))) ) mame_printf_debug("IO1 en\n"); // IO1
 
-        if( !(FCR&(1<<31)) ) printf("int4 en\n"); //  int 4
+        if( !(FCR&(1<<31)) ) mame_printf_debug("int4 en\n"); //  int 4
 
-        if( !(FCR&(1<<30)) ) printf("int3 en\n"); //  int 3
+        if( !(FCR&(1<<30)) ) mame_printf_debug("int3 en\n"); //  int 3
 
-        if( !(FCR&(1<<29)) ) printf("int2 en\n"); //  int 2
+        if( !(FCR&(1<<29)) ) mame_printf_debug("int2 en\n"); //  int 2
 
-        if( !(FCR&(1<<28)) ) printf("int1 en\n"); //  int 1
+        if( !(FCR&(1<<28)) ) mame_printf_debug("int1 en\n"); //  int 1
 
-        if( (FCR&(1<<10)) && (!(FCR&(1<<8))) ) printf("IO3 en\n"); // IO3
+        if( (FCR&(1<<10)) && (!(FCR&(1<<8))) ) mame_printf_debug("IO3 en\n"); // IO3
 
-      //  if( !(FCR&(1<<23)) ) printf("timer irq!\n"); //  timer
+      //  if( !(FCR&(1<<23)) ) mame_printf_debug("timer irq!\n"); //  timer
 */
 		if(execint)
 		{
@@ -1943,12 +1902,12 @@ static void hyperstone_set_context(void *regs)
 		hyperstone = *(hyperstone_regs *)regs;
 }
 
-static offs_t hyperstone_dasm(char *buffer, offs_t pc)
+static offs_t hyperstone_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 #ifdef MAME_DEBUG
-	return dasm_hyperstone( buffer, pc, GET_H, GET_FP );
+	return dasm_hyperstone( buffer, pc, oprom, GET_H, GET_FP );
 #else
-	sprintf(buffer, "$%08x", READ_OP(pc));
+	sprintf(buffer, "$%08x", oprom[0]);
 	return 1;
 #endif
 }
@@ -5208,8 +5167,6 @@ void hyperstone_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						    break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = hyperstone_dasm;		break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &hyperstone_ICount;			break;
-		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = hyperstone_reg_layout;			break;
-		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = hyperstone_win_layout;			break;
 
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_DATA:    info->internal_map = 0; break;
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_IO:      info->internal_map = 0; break;

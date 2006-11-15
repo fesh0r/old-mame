@@ -8,7 +8,7 @@
 
 #include <ctype.h>
 
-#include "memory.h"
+#include "cpuintrf.h"
 
 typedef unsigned char byte;
 
@@ -165,13 +165,11 @@ static void InitDasm8201(void)
 				case '_':
 					continue;
 				default:
-					printf("Invalid instruction encoding '%s %s'\n", Formats[i*2],Formats[i*2+1]);
-					exit(1);
+					fatalerror("Invalid instruction encoding '%s %s'\n", Formats[i*2],Formats[i*2+1]);
 			}
 		}
 		if (bit != -1 ) {
-			printf("not enough bits in encoding '%s %s' %d\n", Formats[i*2],Formats[i*2+1],bit);
-			exit(1);
+			fatalerror("not enough bits in encoding '%s %s' %d\n", Formats[i*2],Formats[i*2+1],bit);
 		}
 
 		Op[i].mask  = mask;
@@ -197,8 +195,9 @@ static void InitDasm8201(void)
 	OpInizialized = 1;
 }
 
-int Dasm8201(char *buffer, unsigned pc)
+offs_t Dasm8201(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
+	offs_t dasmflags = 0;
 	int i;
 	int op;
 	int cnt = 1;
@@ -206,7 +205,7 @@ int Dasm8201(char *buffer, unsigned pc)
 
 	if (!OpInizialized) InitDasm8201();
 
-	code = cpu_readop(pc);
+	code = oprom[0];
 	op = -1;	/* no matching opcode */
 	for ( i = 0; i < MAX_OPS; i++)
 	{
@@ -229,7 +228,7 @@ int Dasm8201(char *buffer, unsigned pc)
 
 	if (Op[op].type & 0x10)
 	{
-		disp = cpu_readop_arg( (pc&0xff00) | ((pc+1)&0xff));
+		disp = opram[1];
 		cnt++;
 	}
 	else
@@ -244,5 +243,19 @@ int Dasm8201(char *buffer, unsigned pc)
 	else
 		sprintf(buffer, "%s",Op[op].fmt);
 
-	return cnt;
+	switch (code)
+	{
+		case 0xcc:
+		case 0xcd:
+		case 0xce:
+		case 0xdf:
+			dasmflags = DASMFLAG_STEP_OVER;
+			break;
+
+		case 0xff:
+			dasmflags = DASMFLAG_STEP_OUT;
+			break;
+	}
+
+	return cnt | dasmflags | DASMFLAG_SUPPORTED;
 }

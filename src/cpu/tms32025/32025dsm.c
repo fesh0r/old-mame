@@ -403,8 +403,9 @@ static void InitDasm32025(void)
 	OpInizialized = 1;
 }
 
-unsigned Dasm32025(char *str, unsigned pc)
+unsigned Dasm32025(char *str, unsigned pc, const UINT8 *oprom, const UINT8 *opram)
 {
+	UINT32 flags = 0;
 	int a, b, c, d, k, m, n, p, r, s, t, w, x;	/* these can all be filled in by parsing an instruction */
 	int i;
 	int op;
@@ -417,14 +418,14 @@ unsigned Dasm32025(char *str, unsigned pc)
 	if (!OpInizialized) InitDasm32025();
 
 	op = -1;				/* no matching opcode */
-	code = READOP16(pc);
+	code = (oprom[0] << 8) | oprom[1];
 	for ( i = 0; i < MAX_OPS; i++)
 	{
 		if ((code & Op[i].mask) == Op[i].bits)
 		{
 			if (op != -1)
 			{
-				printf("Error: opcode %04Xh matches %d (%s) and %d (%s)\n",
+				mame_printf_debug("Error: opcode %04Xh matches %d (%s) and %d (%s)\n",
 					code,i,Op[i].fmt,op,Op[op].fmt);
 			}
 			op = i;
@@ -440,7 +441,7 @@ unsigned Dasm32025(char *str, unsigned pc)
 	{
 		bit = 31;
 		code <<= 16;
-		code |= READARG16(pc+cnt);
+		code |= (opram[2] << 8) | opram[3];
 		cnt++;
 	}
 	else
@@ -454,7 +455,7 @@ unsigned Dasm32025(char *str, unsigned pc)
 
 	while (bit >= 0)
 	{
-		/* printf("{%c/%d}",*cp,bit); */
+		/* mame_printf_debug("{%c/%d}",*cp,bit); */
 		switch(*cp)
 		{
 			case 'a': a <<=1; a |= ((code & (1<<bit)) ? 1 : 0); bit--; break;
@@ -479,6 +480,12 @@ unsigned Dasm32025(char *str, unsigned pc)
 
 	/* now traverse format string */
 	cp = Op[op].fmt;
+
+	if (!strncmp(cp, "cal", 3))
+		flags = DASMFLAG_STEP_OVER;
+	else if (!strncmp(cp, "ret", 3))
+		flags = DASMFLAG_STEP_OUT;
+
 	while (*cp)
 	{
 		if (*cp == '%')
@@ -512,5 +519,5 @@ unsigned Dasm32025(char *str, unsigned pc)
 			*str = '\0';
 		}
 	}
-	return cnt;
+	return cnt | flags | DASMFLAG_SUPPORTED;
 }

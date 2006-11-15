@@ -7,10 +7,14 @@ Quiz        (c) 1991
 
 driver by Nicola Salmoria
 
+Trivia games "No Coins" mode: if DSW "No Coins" is on, coin inputs are
+replaced by a 6th button to start games. This is a feature of the PCB for private use.
+
 ***************************************************************************/
 
 #include "driver.h"
 #include "machine/8255ppi.h"
+#include "machine/ticket.h"
 #include "sound/dac.h"
 
 
@@ -68,6 +72,11 @@ static READ8_HANDLER( portC_r )
 //  return (rand()&2);
 }
 
+static READ8_HANDLER( port1_r )
+{
+	return input_port_1_r(0) | (ticket_dispenser_0_r(0) >> 5);
+}
+
 static WRITE8_HANDLER( lamps_w )
 {
 	/* 5 button lamps */
@@ -84,12 +93,12 @@ static WRITE8_HANDLER( lamps_w )
 
 static WRITE8_HANDLER( sound_w )
 {
-	/* bit 3 enables coin lockout (lamp6 in test modes, set to lamp 10 as in getrivia.c) */
+	/* bit 3 - coin lockout (lamp6 in test modes, set to lamp 10 as in getrivia.c) */
 	coin_lockout_global_w(~data & 0x08);
 	set_led_status(9,data & 0x08);
 
-	/* bit 5 enables ticket out in trivia games; remove this led if ticket dispenser is added */
-	set_led_status(8,data & 0x20);
+	/* bit 5 - ticket out in trivia games */
+	ticket_dispenser_w(0, (data & 0x20)<< 2);
 
 	/* bit 6 enables NMI */
 	interrupt_enable_w(0,data & 0x40);
@@ -105,16 +114,18 @@ static ppi8255_interface ppi8255_intf =
 {
 	2, 									/* 2 chips */
 	{ input_port_0_r, input_port_2_r },	/* Port A read */
-	{ input_port_1_r, NULL },			/* Port B read */
-	{ NULL,           portC_r },		/* Port C read */
-	{ NULL,           NULL },			/* Port A write */
-	{ NULL,           lamps_w },		/* Port B write */
-	{ sound_w,        NULL },			/* Port C write */
+	{ port1_r, 	NULL },			/* Port B read */
+	{ NULL,		portC_r },		/* Port C read */
+	{ NULL,		NULL },			/* Port A write */
+	{ NULL,		lamps_w },		/* Port B write */
+	{ sound_w,	NULL },			/* Port C write */
 };
 
 MACHINE_RESET( findout )
 {
 	ppi8255_init(&ppi8255_intf);
+
+	ticket_dispenser_init(100, 1, 1);
 }
 
 
@@ -234,7 +245,7 @@ ADDRESS_MAP_END
 	PORT_START_TAG("IN0") \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2) \
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SPECIAL )		/* ticket status */ \
 	PORT_SERVICE( 0x08, IP_ACTIVE_LOW ) \
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
@@ -357,12 +368,12 @@ INPUT_PORTS_START( gt103a )
 	PORT_DIPNAME( 0x10, 0x00, "Timeout" )
 	PORT_DIPSETTING(    0x10, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x20, 0x20, "Tickets" )
+	PORT_DIPNAME( 0x20, 0x00, "Tickets" )
 	PORT_DIPSETTING(    0x20, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x40, 0x40, "No Coins" )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )	/* if on, coin inputs are replaced by a 6th button to start games. */
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )		/* this is a feature of the PCB for private use. */
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -372,7 +383,7 @@ INPUT_PORTS_START( gt103a )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_IMPULSE(2) PORT_CONDITION("DSWA", 0x40, PORTCOND_EQUALS, 0x00) PORT_NAME ("Start in no coins mode")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2) PORT_CONDITION("DSWA", 0x40, PORTCOND_EQUALS, 0x40)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_CONDITION("DSWA", 0x40, PORTCOND_EQUALS, 0x00)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SPECIAL )		/* ticket status */
 	PORT_SERVICE( 0x08, IP_ACTIVE_LOW )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -393,8 +404,14 @@ INPUT_PORTS_END
 INPUT_PORTS_START( quiz )
 	PORT_INCLUDE( gt103a )
 
+	PORT_MODIFY("DSWA")
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )	/* no tickets */
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
 	PORT_MODIFY("IN0")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* no coin 2 */
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* no tickets */
 INPUT_PORTS_END
 
 INPUT_PORTS_START( gt507uk )
@@ -515,13 +532,14 @@ ROM_START( gt103 )
 	ROM_LOAD( "sports_alt",      0x30000, 0x8000, CRC(02712bc7) SHA1(a07a87c2c37f34a188d7c00acc0d977acc850f00) )
 ROM_END
 
-ROM_START( gt5 )
+ROM_START( gt5 ) /* v5.06, From a TRIV3D romboard */
 	ROM_REGION( 0x38000, REGION_CPU1, 0 )
-	ROM_LOAD( "prog3_right",   0x00000, 0x2000, CRC(e2bd11f6) SHA1(217019bc9c2bb09279cfed4b82b1f5907aa7c1b1) )
-	ROM_LOAD( "prog3_left",    0x02000, 0x2000, BAD_DUMP CRC(218bd5c5) SHA1(1321188ca3befb5a20434759718d4935fabcc383) )
-	ROM_LOAD( "entertainment", 0x10000, 0x8000, CRC(07068c9f) SHA1(1aedc78d071281ec8b08488cd82655d41a77cf6b) )
-	ROM_LOAD( "vices",         0x18000, 0x8000, CRC(e6069955) SHA1(68f7453f21a4ce1be912141bbe947fbd81d918a3) )
-	ROM_LOAD( "war_and_peace", 0x20000, 0x8000, CRC(bc709383) SHA1(2fba4c80773abea7bbd826c39378b821cddaa255) )
+	ROM_LOAD( "program",         0x00000, 0x4000, CRC(e9d6226c) SHA1(42e62c5cafa3f051bf48c18c8c549ffcd4c766c5) )
+	ROM_LOAD( "entertainment_2", 0x10000, 0x8000, CRC(c75c2331) SHA1(9c5947616a4cba2623c599def6cf3b2b1981b681) ) /* rom / question set #15 */
+	ROM_LOAD( "facts_2",         0x18000, 0x8000, CRC(7836ef31) SHA1(6a84cfa39de392eed46a4b37752e00b6d094bbd6) )
+	ROM_LOAD( "new_science_3",   0x20000, 0x8000, CRC(fcbc3bc3) SHA1(2dbdd39dce9dbf53c0954dec44a4f5109243dc60) )
+	ROM_LOAD( "nfl_football",    0x28000, 0x8000, CRC(42eb2849) SHA1(c24e681a508ef8350f7e5d50aea2c31cf70ce5c9) )
+	ROM_LOAD( "adult_sex_6",     0x30000, 0x8000, CRC(d66f35f7) SHA1(81b56756230b27b0903d0c5df30439726526afe2) )
 ROM_END
 
 ROM_START( gt103a )
@@ -537,7 +555,7 @@ ROM_END
 ROM_START( gt103a1 )
 	ROM_REGION( 0x38000, REGION_CPU1, 0 )
 	ROM_LOAD( "prog1_versiona",  0x00000, 0x4000, CRC(537d6566) SHA1(282a33e4a9fc54d34094393c00026bf31ccd6ab5) )
-	ROM_LOAD( "general_1",       0x10000, 0x8000, CRC(1efa01c3) SHA1(801ef5ab55184e488b08ef99ebd641ea4f7edb24) )
+	ROM_LOAD( "general",         0x10000, 0x8000, CRC(1efa01c3) SHA1(801ef5ab55184e488b08ef99ebd641ea4f7edb24) )
 	ROM_LOAD( "new_science_2",   0x18000, 0x8000, CRC(3bd80fb8) SHA1(9a196595bc5dc6ed5ee5853786839ed4847fa436) )
 	ROM_LOAD( "nfl_football",    0x20000, 0x8000, CRC(d676b7cd) SHA1(d652d2441adb500f7af526d110d0335ea453d75b) )
 	ROM_LOAD( "potpourri",       0x28000, 0x8000, CRC(f2968a28) SHA1(87c08c59dfee71e7bf071f09c3017c750a1c5694) )
@@ -563,11 +581,20 @@ ROM_START( gt103a3 )
 	ROM_LOAD( "new_entrtnmnt",  0x28000, 0x8000, CRC(0f54340c) SHA1(1ca4c23b542339791a2d8f4a9a857f755feca8a1) )
 ROM_END
 
+ROM_START( gt103a4 )
+	ROM_REGION( 0x38000, REGION_CPU1, 0 )
+	ROM_LOAD( "prog1_versiona",   0x00000, 0x4000, CRC(537d6566) SHA1(282a33e4a9fc54d34094393c00026bf31ccd6ab5) )
+	ROM_LOAD( "vices",            0x10000, 0x8000, CRC(e6069955) SHA1(68f7453f21a4ce1be912141bbe947fbd81d918a3) )
+	ROM_LOAD( "science",          0x18000, 0x8000, CRC(2f940ebd) SHA1(bead4988ac0a97d70f2a3c0b40a05968436de2ed) )
+	ROM_LOAD( "war_and_peace",    0x20000, 0x8000, CRC(bc709383) SHA1(2fba4c80773abea7bbd826c39378b821cddaa255) )
+	ROM_LOAD( "entertainment",    0x28000, 0x8000, CRC(07068c9f) SHA1(1aedc78d071281ec8b08488cd82655d41a77cf6b) )
+ROM_END
+
 ROM_START( gt103aa )
 	ROM_REGION( 0x38000, REGION_CPU1, 0 )
 	ROM_LOAD( "t_3a-8_1.bin",    0x00000, 0x4000, CRC(02aef306) SHA1(1ffc10c79a55d41ea36bcaab13cb3f02cb3f9712) )
 	ROM_LOAD( "rock-n-roll_alt", 0x10000, 0x8000, CRC(8eb83052) SHA1(93e3c1ae6c2048fb44ecafe1013b6a96da38fa84) )
-	ROM_LOAD( "science",         0x18000, 0x8000, CRC(9eaebd18) SHA1(3a4d787cb006dbb23ce346577cb1bb5e543ba52c) )
+	ROM_LOAD( "science_alt",     0x18000, 0x8000, CRC(9eaebd18) SHA1(3a4d787cb006dbb23ce346577cb1bb5e543ba52c) )
 	ROM_LOAD( "the_sixties",     0x20000, 0x8000, CRC(8cfa854e) SHA1(81428c12f99841db1c61b471ac8d00f0c411883b) )
 	ROM_LOAD( "television",      0x28000, 0x8000, CRC(731d4cc0) SHA1(184b6e48edda24f50e377a473a1a4709a218181b) )
 	ROM_LOAD( "usa_trivia",      0x30000, 0x8000, CRC(829543b4) SHA1(deb0a4132852643ad884cf194b0a2e6671aa2b4e) )
@@ -579,7 +606,7 @@ ROM_START( gt103ab )
 	ROM_LOAD( "entertainment_alt", 0x10000, 0x8000, CRC(9a6628b9) SHA1(c0cb7e974329d4d5b91f107296d21a674e35a51b) )
 	ROM_LOAD( "general_alt",       0x18000, 0x8000, CRC(df34f7f9) SHA1(329d123eea711d5135dc02dd7b89b220ce8ddd28) )
 	ROM_LOAD( "history-geog.",     0x20000, 0x8000, CRC(c9a70fc3) SHA1(4021e5d702844416e8c798ed0a57c9ecd20b1d4b) )
-	ROM_LOAD( "science_alt",       0x28000, 0x8000, CRC(ac93d348) SHA1(55550ba6b5daffdf9653854075ad4f8398a5e621) )
+	ROM_LOAD( "science_alt2",      0x28000, 0x8000, CRC(ac93d348) SHA1(55550ba6b5daffdf9653854075ad4f8398a5e621) )
 	ROM_LOAD( "sports_alt2",       0x30000, 0x8000, CRC(40207845) SHA1(2dddb9685dcefabfde07057a639aa9d08da2329e) )
 ROM_END
 
@@ -636,12 +663,13 @@ When ERROR appears, press F2, then F3 to reset, then F2 again and the game will 
 
 GAME( 1986, gt507uk,  0,      findout, gt507uk, 0, ROT0, "Grayhound Electronics", "Trivia (UK Version 5.07)",               GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
 GAME( 1986, gt103,    0,      findout, gt103,   0, ROT0, "Grayhound Electronics", "Trivia (Version 1.03)",                  GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
-GAME( 1986, gt5,      0,      findout, gt103a,  0, ROT0, "Grayhound Electronics", "Trivia (Version 5)",                     GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+GAME( 1986, gt5,      0,      findout, gt103,   0, ROT0, "Grayhound Electronics", "Trivia (Version 5.06)",                  GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
 
 GAME( 1984, gt103a,   0,      findout, gt103a,  0, ROT0, "Greyhound Electronics", "Trivia (Version 1.03a)",                 GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
 GAME( 1984, gt103a1,  gt103a, findout, gt103a,  0, ROT0, "Greyhound Electronics", "Trivia (Version 1.03a) (alt 1)",         GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
 GAME( 1984, gt103a2,  gt103a, findout, gt103a,  0, ROT0, "Greyhound Electronics", "Trivia (Version 1.03a) (alt 2)",         GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
 GAME( 1984, gt103a3,  gt103a, findout, gt103a,  0, ROT0, "Greyhound Electronics", "Trivia (Version 1.03a) (alt 3)",         GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
+GAME( 1984, gt103a4,  gt103a, findout, gt103a,  0, ROT0, "Greyhound Electronics", "Trivia (Version 1.03a) (alt 4)",         GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
 GAME( 1984, gt103aa,  gt103a, findout, gt103a,  0, ROT0, "Greyhound Electronics", "Trivia (Version 1.03a Alt questions 1)", GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
 GAME( 1984, gt103ab,  gt103a, findout, gt103a,  0, ROT0, "Greyhound Electronics", "Trivia (Version 1.03a Alt questions 2)", GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
 GAME( 1984, gt103asx, gt103a, findout, gt103a,  0, ROT0, "Greyhound Electronics", "Trivia (Version 1.03a Sex questions)",   GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )

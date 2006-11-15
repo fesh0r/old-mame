@@ -147,41 +147,6 @@ Timming
 /* MAME is unnecessary */
 #define HANDLE_HALT_LINE 0
 
-/* Layout of the registers in the debugger */
-static UINT8 ALPHA8201_reg_layout[] =
-{
-	ALPHA8201_PC,
-	ALPHA8201_SP,
-	ALPHA8201_RB,
-	ALPHA8201_MB,
-#if 0
-	ALPHA8201_CF,
-	ALPHA8201_ZF,
-#endif
-	ALPHA8201_IX0,
-	ALPHA8201_IX1,
-	ALPHA8201_IX2,
-	ALPHA8201_LP0,
-	ALPHA8201_LP1,
-	ALPHA8201_LP2,
-	ALPHA8201_A,
-	ALPHA8201_B,
-//
-	ALPHA8201_R0,ALPHA8201_R1,ALPHA8201_R2,ALPHA8201_R3,
-	ALPHA8201_R4,ALPHA8201_R5,ALPHA8201_R6,ALPHA8201_R7,
-//
-	0
-};
-
-/* Layout of the debugger windows x,y,w,h */
-static UINT8 ALPHA8201_win_layout[] = {
-	 0, 0,80, 2,	/* register window (top rows) */
-	 0, 3,24,19,	/* disassembler window (left colums) */
-	25, 3,55, 9,	/* memory #1 window (right, upper middle) */
-	25,13,55, 9,	/* memory #2 window (right, lower middle) */
-	 0,23,80, 1,	/* command line window (bottom rows) */
-};
-
 #define M_RDMEM(A)		ALPHA8201_RDMEM(A)
 #define M_WRMEM(A,V)	ALPHA8201_WRMEM(A,V)
 #define M_RDOP(A)		ALPHA8201_RDOP(A)
@@ -312,7 +277,7 @@ INLINE void M_UNDEFINED(void)
 {
 	logerror("ALPHA8201:  PC = %03x,  Unimplemented opcode = %02x\n", PC-1, M_RDMEM(PC-1));
 #if SHOW_MESSAGE_CONSOLE
-	printf("ALPHA8201:  PC = %03x,  Unimplemented opcode = %02x\n", PC-1, M_RDMEM(PC-1));
+	mame_printf_debug("ALPHA8201:  PC = %03x,  Unimplemented opcode = %02x\n", PC-1, M_RDMEM(PC-1));
 #endif
 }
 
@@ -322,7 +287,7 @@ INLINE void M_UNDEFINED2(void)
 	UINT8 imm = M_RDMEM_OPCODE();
 	logerror("ALPHA8201:  PC = %03x,  Unimplemented opcode = %02x,%02x\n", PC-2, op,imm);
 #if SHOW_MESSAGE_CONSOLE
-	printf("ALPHA8201:  PC = %03x,  Unimplemented opcode = %02x,%02x\n", PC-2, op,imm);
+	mame_printf_debug("ALPHA8201:  PC = %03x,  Unimplemented opcode = %02x,%02x\n", PC-2, op,imm);
 #endif
 }
 
@@ -334,7 +299,7 @@ static void need_verify(const char *s)
 	UINT8 op  = M_RDOP(PC-1);
 	logerror("ALPHA8201:  PC = %03x, unknown opcode = %02x is '%s' ??\n",PC-1, op,s);
 #if SHOW_MESSAGE_CONSOLE
-	printf("ALPHA8201:  PC = %03x, unknown opcode = %02x is '%s' ??\n",PC-1, op,s);
+	mame_printf_debug("ALPHA8201:  PC = %03x, unknown opcode = %02x is '%s' ??\n",PC-1, op,s);
 #endif
 }
 
@@ -786,7 +751,7 @@ static int alpha8xxx_execute(const s_opcode *op_map,int cycles)
 			{
 				/* EVEN , get PC low */
 				R.pc.b.l = M_RDMEM(pcptr);
-//printf("ALPHA8201 load PCL ENTRY=%02X PCL=%02X\n",pcptr, R.pc.b.l);
+//mame_printf_debug("ALPHA8201 load PCL ENTRY=%02X PCL=%02X\n",pcptr, R.pc.b.l);
 				ALPHA8201_ICount -= C1;
 				M_WRMEM(0x001,pcptr+1);
 				continue;
@@ -813,7 +778,7 @@ static int alpha8xxx_execute(const s_opcode *op_map,int cycles)
 
 #if SHOW_ENTRY_POINT
 logerror("ALPHA8201 START ENTRY=%02X PC=%03X\n",pcptr,PC);
-printf("ALPHA8201 START ENTRY=%02X PC=%03X\n",pcptr,PC);
+mame_printf_debug("ALPHA8201 START ENTRY=%02X PC=%03X\n",pcptr,PC);
 #endif
 		}
 
@@ -822,7 +787,7 @@ printf("ALPHA8201 START ENTRY=%02X PC=%03X\n",pcptr,PC);
 		CALL_MAME_DEBUG;
 		opcode =M_RDOP(PC);
 #if TRACE_PC
-printf("ALPHA8201:  PC = %03x,  opcode = %02x\n", PC, opcode);
+mame_printf_debug("ALPHA8201:  PC = %03x,  opcode = %02x\n", PC, opcode);
 #endif
 		PCL++;
 		inst_cycles = op_map[opcode].cycles;
@@ -859,12 +824,12 @@ static void ALPHA8201_set_context (void *src)
 		R = *(ALPHA8201_Regs*)src;
 }
 
-static offs_t ALPHA8201_dasm(char *buffer, offs_t pc)
+static offs_t ALPHA8201_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 #ifdef	MAME_DEBUG
-	return Dasm8201(buffer,pc);
+	return Dasm8201(buffer, pc, oprom, opram);
 #else
-	sprintf( buffer, "$%02X", cpu_readop(pc) );
+	sprintf( buffer, "$%02X", oprom[0]);
 	return 1;
 #endif
 }
@@ -878,7 +843,7 @@ static void set_irq_line(int irqline, int state)
 	if(irqline == INPUT_LINE_HALT)
 	{
 		R.halt = (state==ASSERT_LINE) ? 1 : 0;
-/* printf("ALPHA8201 HALT %d\n",R.halt); */
+/* mame_printf_debug("ALPHA8201 HALT %d\n",R.halt); */
 		change_pc(PC);
 	}
 #endif
@@ -992,11 +957,9 @@ static void alpha8xxx_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = ALPHA8201_reset;				break;
 		case CPUINFO_PTR_EXIT:							info->exit = ALPHA8201_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = ALPHA8201_execute;			break;
-		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
+		case CPUINFO_PTR_BURN:							info->burn = NULL;							break;
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = ALPHA8201_dasm;			break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &ALPHA8201_ICount;			break;
-		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = ALPHA8201_reg_layout;				break;
-		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = ALPHA8201_win_layout;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s = cpuintrf_temp_str(), "AlphaDenshi MCU"); break;

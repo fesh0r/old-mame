@@ -249,6 +249,8 @@ typedef struct {
 	UINT32 fit_int_enable;
 	UINT32 wdt_bit;
 	UINT32 wdt_int_enable;
+	UINT32 dac1, dac2;
+	UINT32 iac1, iac2;
 
 	SPU_REGS spu;
 	DMA_REGS dma[4];
@@ -258,7 +260,6 @@ typedef struct {
 	UINT32 reserved_address;
 
 	int exception_pending;
-	int external_int;
 
 	UINT64 tb;			/* 56-bit timebase register */
 
@@ -627,10 +628,16 @@ INLINE void ppc_set_spr(int spr, UINT32 value)
 			case SPR403_DBSR:		ppc.dbsr = value; return;
 			case SPR403_DCWR:		return;
 			case SPR403_PID:		ppc.pid = value; return;
-			case SPR403_PBL1:		ppc.pbl1 = value; printf("PPC: PBL1 = %08X\n", ppc.pbl1); return;
-			case SPR403_PBU1:		ppc.pbu1 = value; printf("PPC: PBU1 = %08X\n", ppc.pbu1); return;
-			case SPR403_PBL2:		ppc.pbl2 = value; printf("PPC: PBL2 = %08X\n", ppc.pbl2); return;
-			case SPR403_PBU2:		ppc.pbu2 = value; printf("PPC: PBU2 = %08X\n", ppc.pbu2); return;
+			case SPR403_PBL1:		ppc.pbl1 = value; mame_printf_debug("PPC: PBL1 = %08X\n", ppc.pbl1); return;
+			case SPR403_PBU1:		ppc.pbu1 = value; mame_printf_debug("PPC: PBU1 = %08X\n", ppc.pbu1); return;
+			case SPR403_PBL2:		ppc.pbl2 = value; mame_printf_debug("PPC: PBL2 = %08X\n", ppc.pbl2); return;
+			case SPR403_PBU2:		ppc.pbu2 = value; mame_printf_debug("PPC: PBU2 = %08X\n", ppc.pbu2); return;
+			case SPR403_SRR2:		ppc.srr2 = value; return;
+			case SPR403_SRR3:		ppc.srr3 = value; return;
+			case SPR403_DAC1:		ppc.dac1 = value; return;
+			case SPR403_DAC2:		ppc.dac2 = value; return;
+			case SPR403_IAC1:		ppc.iac1 = value; return;
+			case SPR403_IAC2:		ppc.iac2 = value; return;
 		}
 	}
 #endif
@@ -677,6 +684,12 @@ INLINE UINT32 ppc_get_spr(int spr)
 			case SPR403_PBU1:		return ppc.pbu1;
 			case SPR403_PBL2:		return ppc.pbl2;
 			case SPR403_PBU2:		return ppc.pbu2;
+			case SPR403_SRR2:		return ppc.srr2;
+			case SPR403_SRR3:		return ppc.srr3;
+			case SPR403_DAC1:		return ppc.dac1;
+			case SPR403_DAC2:		return ppc.dac2;
+			case SPR403_IAC1:		return ppc.iac1;
+			case SPR403_IAC2:		return ppc.iac2;
 		}
 	}
 #endif
@@ -975,8 +988,9 @@ static void ppcdrc403_set_irq_line(int irqline, int state)
 	{
 		UINT32 mask = (1 << (4 - irqline));
 		if( state == ASSERT_LINE) {
-			if( EXIER & mask ) {
-				ppc.external_int = mask;
+			if (EXIER & mask)
+			{
+				ppc.exisr |= mask;
 				ppc.exception_pending |= 0x1;
 
 				if (ppc.irq_callback)
@@ -996,7 +1010,7 @@ static void ppcdrc403_set_irq_line(int irqline, int state)
 		UINT32 mask = 0x08000000;
 		if (state) {
 			if( EXIER & mask ) {
-				ppc.external_int = mask;
+				ppc.exisr |= mask;
 				ppc.exception_pending |= 0x1;
 			}
 		}
@@ -1006,7 +1020,7 @@ static void ppcdrc403_set_irq_line(int irqline, int state)
 		UINT32 mask = 0x04000000;
 		if (state) {
 			if( EXIER & mask ) {
-				ppc.external_int = mask;
+				ppc.exisr |= mask;
 				ppc.exception_pending |= 0x1;
 			}
 		}
@@ -1423,67 +1437,6 @@ static void ppc_set_context(void *src)
 	change_pc(ppc.pc);
 }
 
-/*******************************************************************/
-
-/* Debugger definitions */
-
-static UINT8 ppc_reg_layout[] =
-{
-	PPC_PC,			PPC_MSR,		-1,
-	PPC_CR,			PPC_LR,			-1,
-	PPC_CTR,		PPC_XER,		-1,
-	PPC_SRR0,		PPC_SRR1,		-1,
-	PPC_R0,		 	PPC_R16,		-1,
-	PPC_R1, 		PPC_R17,		-1,
-	PPC_R2, 		PPC_R18,		-1,
-	PPC_R3, 		PPC_R19,		-1,
-	PPC_R4, 		PPC_R20,		-1,
-	PPC_R5, 		PPC_R21,		-1,
-	PPC_R6, 		PPC_R22,		-1,
-	PPC_R7, 		PPC_R23,		-1,
-	PPC_R8,			PPC_R24,		-1,
-	PPC_R9,			PPC_R25,		-1,
-	PPC_R10,		PPC_R26,		-1,
-	PPC_R11,		PPC_R27,		-1,
-	PPC_R12,		PPC_R28,		-1,
-	PPC_R13,		PPC_R29,		-1,
-	PPC_R14,		PPC_R30,		-1,
-	PPC_R15,		PPC_R31,		0
-};
-
-static UINT8 ppc_win_layout[] =
-{
-	 0, 0,34,33,	/* register window (top rows) */
-	35, 0,45,14,	/* disassembler window (left colums) */
-	35,15,45, 3,	/* memory #2 window (right, lower middle) */
-	35,19,45, 3,	/* memory #1 window (right, upper middle) */
-	 0,23,80, 1,	/* command line window (bottom rows) */
-};
-
-static UINT8 ppc603_reg_layout[] =
-{
-	PPC_PC,			PPC_MSR,		-1,
-	PPC_CR,			PPC_LR,			-1,
-	PPC_CTR,		PPC_XER,		-1,
-	PPC_SRR0,		PPC_SRR1,		-1,
-	PPC_DEC,						-1,
-	PPC_R0,		 	PPC_R16,		-1,
-	PPC_R1, 		PPC_R17,		-1,
-	PPC_R2, 		PPC_R18,		-1,
-	PPC_R3, 		PPC_R19,		-1,
-	PPC_R4, 		PPC_R20,		-1,
-	PPC_R5, 		PPC_R21,		-1,
-	PPC_R6, 		PPC_R22,		-1,
-	PPC_R7, 		PPC_R23,		-1,
-	PPC_R8,			PPC_R24,		-1,
-	PPC_R9,			PPC_R25,		-1,
-	PPC_R10,		PPC_R26,		-1,
-	PPC_R11,		PPC_R27,		-1,
-	PPC_R12,		PPC_R28,		-1,
-	PPC_R13,		PPC_R29,		-1,
-	PPC_R14,		PPC_R30,		-1,
-	PPC_R15,		PPC_R31,		0
-};
 
 /**************************************************************************
  * Generic set_info
@@ -1616,10 +1569,8 @@ void ppc_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_GET_CONTEXT:					info->getcontext = ppc_get_context;		break;
 		case CPUINFO_PTR_SET_CONTEXT:					info->setcontext = ppc_set_context;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-		case CPUINFO_PTR_DISASSEMBLE_NEW:				info->disassemble_new = ppc_dasm;		break;
+		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = ppc_dasm;			break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &ppc_icount;				break;
-		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = ppc_reg_layout;				break;
-		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = ppc_win_layout;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "PPC403"); break;
@@ -1753,7 +1704,6 @@ void ppc603_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_READ:							info->read = ppc_read;					break;
 		case CPUINFO_PTR_WRITE:							info->write = ppc_write;				break;
 		case CPUINFO_PTR_READOP:						info->readop = ppc_readop;				break;
-		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = ppc603_reg_layout;				break;
 		case CPUINFO_PTR_TRANSLATE:						info->translate = ppc_translate_address_cb;	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1802,7 +1752,6 @@ void ppc602_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_READ:							info->read = ppc_read;					break;
 		case CPUINFO_PTR_WRITE:							info->write = ppc_write;				break;
 		case CPUINFO_PTR_READOP:						info->readop = ppc_readop;				break;
-		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = ppc603_reg_layout;				break;
 		case CPUINFO_PTR_TRANSLATE:						info->translate = ppc_translate_address_cb;	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */

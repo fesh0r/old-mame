@@ -1799,6 +1799,8 @@ static void render_spans_32(int start, int end, int tilenum, int shade, int text
 			if (x >= clipx1 && x < clipx2)
 			{
 				COLOR c1, c2;
+				c1.r = c1.g = c1.b = c1.a = 0;
+				c2.r = c2.g = c2.b = c2.a = 0;
 
 				if ((z & 0xffff) >= 0x8000) sz++;
 				if ((w & 0xffff) >= 0x8000) sw++;
@@ -2075,7 +2077,6 @@ static void render_spans_16(int start, int end, int tilenum, int shade, int text
 
 		for (j=0; j <= length; j++)
 		{
-			COLOR c1, c2;
 			int sr = r >> 16;
 			int sg = g >> 16;
 			int sb = b >> 16;
@@ -2086,6 +2087,9 @@ static void render_spans_16(int start, int end, int tilenum, int shade, int text
 			UINT16 sz = z >> 16;
 			int oz;
 			int sss = 0, sst = 0;
+			COLOR c1, c2;
+			c1.r = c1.g = c1.b = c1.a = 0;
+			c2.r = c2.g = c2.b = c2.a = 0;
 
 			if (x >= clipx1 && x < clipx2)
 			{
@@ -3024,7 +3028,7 @@ static void rdp_set_other_modes(UINT32 w1, UINT32 w2)
 	SET_BLENDER_INPUT(1, 1, &blender2a_r[1], &blender2a_g[1], &blender2a_b[1], &blender2b_a[1],
 					  other_modes.blend_m2a_1, other_modes.blend_m2b_1);
 
-//  printf("blend: m1a = %d, m1b = %d, m2a = %d, m2b = %d\n", other_modes.blend_m1a_0, other_modes.blend_m1b_0, other_modes.blend_m2a_0, other_modes.blend_m2b_0);
+//  mame_printf_debug("blend: m1a = %d, m1b = %d, m2a = %d, m2b = %d\n", other_modes.blend_m1a_0, other_modes.blend_m1b_0, other_modes.blend_m2a_0, other_modes.blend_m2b_0);
 
 	switch (other_modes.rgb_dither_sel)
 	{
@@ -3058,7 +3062,7 @@ static void rdp_load_tlut(UINT32 w1, UINT32 w2)
 					for (i=sl; i <= sh; i++)
 					{
 						tlut[i] = src[i];
-			//          printf("TLUT %d = %04X\n", i, tlut[i]);
+			//          mame_printf_debug("TLUT %d = %04X\n", i, tlut[i]);
 					}
 					break;
 				}

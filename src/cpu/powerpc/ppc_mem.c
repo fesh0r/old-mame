@@ -223,18 +223,18 @@ static int ppc_translate_address(offs_t *addr_ptr, int flags)
 
 		if (DUMP_PAGEFAULTS)
 		{
-			printf("PAGE FAULT: address=%08X PC=%08X SDR1=%08X MSR=%08X\n", address, ppc.pc, ppc.sdr1, ppc.msr);
-			printf("\n");
+			mame_printf_debug("PAGE FAULT: address=%08X PC=%08X SDR1=%08X MSR=%08X\n", address, ppc.pc, ppc.sdr1, ppc.msr);
+			mame_printf_debug("\n");
 
 			for (i = 0; i < 4; i++)
 			{
 				bl = bat[i].u & 0x00001FFC;
 				mask = (~bl << 15) & 0xFFFE0000;
-				printf("    BAT[%d]=%08X%08X    (A & %08X = %08X)\n", i, bat[i].u, bat[i].l,
+				mame_printf_debug("    BAT[%d]=%08X%08X    (A & %08X = %08X)\n", i, bat[i].u, bat[i].l,
 					mask, bat[i].u & 0xFFFE0000);
 			}
-			printf("\n");
-			printf("    VSID=%06X HASH=%05X HASH\'=%05X\n", vsid, hash, hash ^ 0x7FFFF);
+			mame_printf_debug("\n");
+			mame_printf_debug("    VSID=%06X HASH=%05X HASH\'=%05X\n", vsid, hash, hash ^ 0x7FFFF);
 
 			for (hash_type = 0; hash_type <= 1; hash_type++)
 			{
@@ -243,7 +243,7 @@ static int ppc_translate_address(offs_t *addr_ptr, int flags)
 					for (i = 0; i < 8; i++)
 					{
 						pte = pteg_ptr[hash_type][i];
-						printf("    PTE[%i%c]=%08X%08X\n",
+						mame_printf_debug("    PTE[%i%c]=%08X%08X\n",
 							i,
 							hash_type ? '\'' : ' ',
 							(unsigned) (pte >> 32),
@@ -351,14 +351,14 @@ static UINT32 ppc_readop_translated(offs_t address)
 /***********************************************************************/
 
 
-static offs_t ppc_dasm(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes)
+static offs_t ppc_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 #ifdef MAME_DEBUG
 	UINT32 op;
 	op = BIG_ENDIANIZE_INT32(*((UINT32 *) oprom));
 	return ppc_dasm_one(buffer, pc, op);
 #else
-	sprintf(buffer, "$%08X", ROPCODE(pc));
+	sprintf(buffer, "$%08X", (oprom[0] << 24) | (oprom[1] << 16) | (oprom[2] << 8) | oprom[3]);
 	return 4;
 #endif
 }

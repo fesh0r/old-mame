@@ -432,7 +432,7 @@ DrawPoly( mame_bitmap *bitmap, const UINT32 *pSource, int n, int bNew )
 	int i;
 	if( bNew )
 	{
-		printf( "polydata: 0x%08x 0x%08x 0x%08x\n", flags, unk, intensity );
+		mame_printf_debug( "polydata: 0x%08x 0x%08x 0x%08x\n", flags, unk, intensity );
 	}
 	for( i=0; i<n; i++ )
 	{
@@ -442,7 +442,7 @@ DrawPoly( mame_bitmap *bitmap, const UINT32 *pSource, int n, int bNew )
 
 		if( bNew )
 		{
-			printf( "\t(%f,%f,%f)\n", x[i], y[i], z[i] );
+			mame_printf_debug( "\t(%f,%f,%f)\n", x[i], y[i], z[i] );
 		}
 	}
 	for( i=0; i<n; i++ )
@@ -460,7 +460,7 @@ DrawPoly( mame_bitmap *bitmap, const UINT32 *pSource, int n, int bNew )
 			int y1 = bitmap->width*y[j]/z1 + bitmap->height/2;
 			if( bNew )
 			{
-				printf( "[%d,%d]..[%d,%d]\n", x0,y0,x1,y1 );
+				mame_printf_debug( "[%d,%d]..[%d,%d]\n", x0,y0,x1,y1 );
 			}
 			DrawLine( bitmap, x0,y0,x1,y1 );
 		}
@@ -502,7 +502,7 @@ VIDEO_UPDATE( ss23 )
 			break;
 
 		default:
-			printf( "unk opcode: 0x%x\n", opcode );
+			mame_printf_debug( "unk opcode: 0x%x\n", opcode );
 			bDone = 1;
 			break;
 		}
@@ -606,7 +606,7 @@ static READ32_HANDLER(sysctl_stat_r)
 // as with System 22, we need to halt the MCU while checking shared RAM
 static WRITE32_HANDLER( s23_mcuen_w )
 {
-	printf("mcuen_w: mask %08x, data %08x\n", mem_mask, data);
+	mame_printf_debug("mcuen_w: mask %08x, data %08x\n", mem_mask, data);
 	if (mem_mask == 0xffff0000)
 	{
 		if (data)
@@ -702,35 +702,33 @@ INLINE UINT8 make_bcd(UINT8 data)
 static READ8_HANDLER( s23_mcu_rtc_r )
 {
 	UINT8 ret = 0;
-	time_t curtime;
-	struct tm *exptime;
+	mame_system_time systime;
 	static int weekday[7] = { 7, 1, 2, 3, 4, 5, 6 };
 
-	time(&curtime);
-	exptime = localtime(&curtime);
+	mame_get_current_datetime(Machine, &systime);
 
 	switch (s23_rtcstate)
 	{
 		case 0:
-			ret = make_bcd(exptime->tm_sec);	// seconds (BCD, 0-59) in bits 0-6, bit 7 = battery low
+			ret = make_bcd(systime.local_time.second);	// seconds (BCD, 0-59) in bits 0-6, bit 7 = battery low
 			break;
 		case 1:
-			ret = make_bcd(exptime->tm_min);	// minutes (BCD, 0-59)
+			ret = make_bcd(systime.local_time.minute);	// minutes (BCD, 0-59)
 			break;
 		case 2:
-			ret = make_bcd(exptime->tm_hour);	// hour (BCD, 0-23)
+			ret = make_bcd(systime.local_time.hour);	// hour (BCD, 0-23)
 			break;
 		case 3:
-			ret = make_bcd(weekday[exptime->tm_wday]); // day of the week (1 = Monday, 7 = Sunday)
+			ret = make_bcd(weekday[systime.local_time.weekday]); // day of the week (1 = Monday, 7 = Sunday)
 			break;
 		case 4:
-			ret = make_bcd(exptime->tm_mday);	// day (BCD, 1-31)
+			ret = make_bcd(systime.local_time.mday);	// day (BCD, 1-31)
 			break;
 		case 5:
-			ret = make_bcd(exptime->tm_mon + 1);	// month (BCD, 1-12)
+			ret = make_bcd(systime.local_time.month + 1);	// month (BCD, 1-12)
 			break;
 		case 6:
-			ret = make_bcd(exptime->tm_year % 100);	// year (BCD, 0-99)
+			ret = make_bcd(systime.local_time.year % 100);	// year (BCD, 0-99)
 			break;
 	}
 

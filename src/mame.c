@@ -88,6 +88,7 @@
 
 #include <stdarg.h>
 #include <setjmp.h>
+#include <time.h>
 
 
 
@@ -157,6 +158,9 @@ struct _mame_private
 
 	/* random number seed */
 	UINT32			rand_seed;
+
+	/* base time */
+	time_t			base_time;
 };
 
 
@@ -170,6 +174,10 @@ running_machine *Machine;
 
 /* various game options filled in by the OSD */
 global_options options;
+
+/* output channels */
+static output_callback output_cb[OUTPUT_CHANNEL_COUNT];
+static void *output_cb_param[OUTPUT_CHANNEL_COUNT];
 
 /* the "disclaimer" that should be printed when run with no parameters */
 const char *mame_disclaimer =
@@ -732,6 +740,174 @@ UINT32 memory_region_flags(running_machine *machine, int num)
 
 
 /***************************************************************************
+    OUTPUT MANAGEMENT
+***************************************************************************/
+
+/*-------------------------------------------------
+    mame_set_output_channel - configure an output
+    channel
+-------------------------------------------------*/
+
+void mame_set_output_channel(output_channel channel, output_callback callback, void *param, output_callback *prevcb, void **prevparam)
+{
+	assert(channel < OUTPUT_CHANNEL_COUNT);
+	assert(callback != NULL);
+
+	/* return the originals if requested */
+	if (prevcb != NULL)
+		*prevcb = output_cb[channel];
+	if (prevparam != NULL)
+		*prevparam = output_cb_param[channel];
+
+	/* set the new ones */
+	output_cb[channel] = callback;
+	output_cb_param[channel] = param;
+}
+
+
+/*-------------------------------------------------
+    mame_file_output_callback - default callback
+    for file output
+-------------------------------------------------*/
+
+void mame_file_output_callback(void *param, const char *format, va_list argptr)
+{
+	vfprintf((FILE *)param, format, argptr);
+}
+
+
+/*-------------------------------------------------
+    mame_null_output_callback - default callback
+    for no output
+-------------------------------------------------*/
+
+void mame_null_output_callback(void *param, const char *format, va_list argptr)
+{
+}
+
+
+/*-------------------------------------------------
+    mame_printf_error - output an error to the
+    appropriate callback
+-------------------------------------------------*/
+
+void mame_printf_error(const char *format, ...)
+{
+	va_list argptr;
+
+	/* by default, we go to stderr */
+	if (output_cb[OUTPUT_CHANNEL_ERROR] == NULL)
+	{
+		output_cb[OUTPUT_CHANNEL_ERROR] = mame_file_output_callback;
+		output_cb_param[OUTPUT_CHANNEL_ERROR] = stderr;
+	}
+
+	/* do the output */
+	va_start(argptr, format);
+	(*output_cb[OUTPUT_CHANNEL_ERROR])(output_cb_param[OUTPUT_CHANNEL_ERROR], format, argptr);
+	va_end(argptr);
+}
+
+
+/*-------------------------------------------------
+    mame_printf_warning - output a warning to the
+    appropriate callback
+-------------------------------------------------*/
+
+void mame_printf_warning(const char *format, ...)
+{
+	va_list argptr;
+
+	/* by default, we go to stderr */
+	if (output_cb[OUTPUT_CHANNEL_WARNING] == NULL)
+	{
+		output_cb[OUTPUT_CHANNEL_WARNING] = mame_file_output_callback;
+		output_cb_param[OUTPUT_CHANNEL_WARNING] = stderr;
+	}
+
+	/* do the output */
+	va_start(argptr, format);
+	(*output_cb[OUTPUT_CHANNEL_WARNING])(output_cb_param[OUTPUT_CHANNEL_WARNING], format, argptr);
+	va_end(argptr);
+}
+
+
+/*-------------------------------------------------
+    mame_printf_info - output info text to the
+    appropriate callback
+-------------------------------------------------*/
+
+void mame_printf_info(const char *format, ...)
+{
+	va_list argptr;
+
+	/* by default, we go to stdout */
+	if (output_cb[OUTPUT_CHANNEL_INFO] == NULL)
+	{
+		output_cb[OUTPUT_CHANNEL_INFO] = mame_file_output_callback;
+		output_cb_param[OUTPUT_CHANNEL_INFO] = stdout;
+	}
+
+	/* do the output */
+	va_start(argptr, format);
+	(*output_cb[OUTPUT_CHANNEL_INFO])(output_cb_param[OUTPUT_CHANNEL_INFO], format, argptr);
+	va_end(argptr);
+}
+
+
+/*-------------------------------------------------
+    mame_printf_debug - output debug text to the
+    appropriate callback
+-------------------------------------------------*/
+
+void mame_printf_debug(const char *format, ...)
+{
+	va_list argptr;
+
+	/* by default, we go to stderr */
+	if (output_cb[OUTPUT_CHANNEL_DEBUG] == NULL)
+	{
+#ifdef MAME_DEBUG
+		output_cb[OUTPUT_CHANNEL_DEBUG] = mame_file_output_callback;
+		output_cb_param[OUTPUT_CHANNEL_DEBUG] = stdout;
+#else
+		output_cb[OUTPUT_CHANNEL_DEBUG] = mame_null_output_callback;
+		output_cb_param[OUTPUT_CHANNEL_DEBUG] = NULL;
+#endif
+	}
+
+	/* do the output */
+	va_start(argptr, format);
+	(*output_cb[OUTPUT_CHANNEL_DEBUG])(output_cb_param[OUTPUT_CHANNEL_DEBUG], format, argptr);
+	va_end(argptr);
+}
+
+
+/*-------------------------------------------------
+    mame_printf_log - output log text to the
+    appropriate callback
+-------------------------------------------------*/
+
+void mame_printf_log(const char *format, ...)
+{
+	va_list argptr;
+
+	/* by default, we go to stderr */
+	if (output_cb[OUTPUT_CHANNEL_LOG] == NULL)
+	{
+		output_cb[OUTPUT_CHANNEL_LOG] = mame_file_output_callback;
+		output_cb_param[OUTPUT_CHANNEL_LOG] = stderr;
+	}
+
+	/* do the output */
+	va_start(argptr, format);
+	(*output_cb[OUTPUT_CHANNEL_LOG])(output_cb_param[OUTPUT_CHANNEL_LOG], format, argptr);
+	va_end(argptr);
+}
+
+
+
+/***************************************************************************
     MISCELLANEOUS
 ***************************************************************************/
 
@@ -743,7 +919,7 @@ UINT32 memory_region_flags(running_machine *machine, int num)
 static void fatalerror_common(running_machine *machine, int exitcode, const char *buffer)
 {
 	/* output and return */
-	printf("%s\n", giant_string_buffer);
+	mame_printf_error("%s\n", giant_string_buffer);
 
 	/* break into the debugger if attached */
 	osd_break_into_debugger(giant_string_buffer);
@@ -1016,6 +1192,12 @@ static void init_machine(running_machine *machine)
 	generic_video_init(machine);
 	mame->rand_seed = 0x9d14abd7;
 
+	/* initialize the base time (if not doing record/playback) */
+	if (!Machine->record_file && !Machine->playback_file)
+		time(&mame->base_time);
+	else
+		mame->base_time = 0;
+
 	/* init the osd layer */
 	if (osd_init(machine) != 0)
 		fatalerror("osd_init failed");
@@ -1053,8 +1235,7 @@ static void init_machine(running_machine *machine)
 
 #ifdef MESS
 	/* initialize the devices */
-	if (devices_init(machine))
-		fatalerror("devices_init failed");
+	devices_init(machine);
 #endif
 
 	/* start the save/load system */
@@ -1206,6 +1387,7 @@ static void saveload_init(running_machine *machine)
 static void handle_save(running_machine *machine)
 {
 	mame_private *mame = machine->mame_data;
+	mame_file_error filerr;
 	mame_file *file;
 
 	/* if no name, bail */
@@ -1228,8 +1410,8 @@ static void handle_save(running_machine *machine)
 	}
 
 	/* open the file */
-	file = mame_fopen(machine->gamedrv->name, mame->saveload_pending_file, FILETYPE_STATE, 1);
-	if (file)
+	filerr = mame_fopen(SEARCHPATH_STATE, mame->saveload_pending_file, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &file);
+	if (filerr == FILERR_NONE)
 	{
 		int cpunum;
 
@@ -1290,6 +1472,7 @@ cancel:
 static void handle_load(running_machine *machine)
 {
 	mame_private *mame = machine->mame_data;
+	mame_file_error filerr;
 	mame_file *file;
 
 	/* if no name, bail */
@@ -1313,8 +1496,8 @@ static void handle_load(running_machine *machine)
 	}
 
 	/* open the file */
-	file = mame_fopen(machine->gamedrv->name, mame->saveload_pending_file, FILETYPE_STATE, 0);
-	if (file)
+	filerr = mame_fopen(SEARCHPATH_STATE, mame->saveload_pending_file, OPEN_FLAG_READ, &file);
+	if (filerr == FILERR_NONE)
 	{
 		/* start loading */
 		if (state_save_load_begin(file) == 0)
@@ -1361,4 +1544,67 @@ cancel:
 	free(mame->saveload_pending_file);
 	mame->saveload_pending_file = NULL;
 	mame->saveload_schedule_callback = NULL;
+}
+
+
+
+/***************************************************************************
+    SYSTEM TIME
+***************************************************************************/
+
+/*-------------------------------------------------
+    get_tm_time - converts a MAME
+-------------------------------------------------*/
+
+static void get_tm_time(struct tm *t, mame_system_tm *systm)
+{
+	systm->second	= t->tm_sec;
+	systm->minute	= t->tm_min;
+	systm->hour		= t->tm_hour;
+	systm->mday		= t->tm_mday;
+	systm->year		= t->tm_year + 1900;
+	systm->weekday	= t->tm_wday;
+	systm->day		= t->tm_yday;
+	systm->is_dst	= t->tm_isdst;
+}
+
+
+
+/*-------------------------------------------------
+    fill_systime - fills out a mame_system_time
+    structure
+-------------------------------------------------*/
+
+static void fill_systime(mame_system_time *systime, time_t t)
+{
+	systime->time = t;
+	get_tm_time(localtime(&t), &systime->local_time);
+	get_tm_time(gmtime(&t), &systime->utc_time);
+}
+
+
+
+/*-------------------------------------------------
+    mame_get_base_datetime - retrieve the time of
+    the host system; useful for RTC implementations
+-------------------------------------------------*/
+
+void mame_get_base_datetime(running_machine *machine, mame_system_time *systime)
+{
+	mame_private *mame = machine->mame_data;
+	fill_systime(systime, mame->base_time);
+}
+
+
+
+/*-------------------------------------------------
+    mame_get_current_datetime - retrieve the current
+    time (offsetted by the baes); useful for RTC
+    implementations
+-------------------------------------------------*/
+
+void mame_get_current_datetime(running_machine *machine, mame_system_time *systime)
+{
+	mame_private *mame = machine->mame_data;
+	fill_systime(systime, mame->base_time + mame_timer_get_time().seconds);
 }

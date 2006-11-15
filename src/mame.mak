@@ -160,6 +160,9 @@ CPUS += DSP56156
 CPUS += RSP
 CPUS += ALPHA8201
 CPUS += ALPHA8301
+CPUS += CDP1802
+CPUS += COP420
+CPUS += COP410
 
 
 #-------------------------------------------------
@@ -245,6 +248,7 @@ SOUNDS += VRENDER0
 SOUNDS += ES8712
 SOUNDS += RF5C400
 SOUNDS += SPEAKER
+SOUNDS += CDP1869
 
 
 
@@ -326,7 +330,6 @@ DRVLIBS = \
 	$(OBJ)/technos.a \
 	$(OBJ)/tehkan.a \
 	$(OBJ)/thepit.a \
-	$(OBJ)/tiamc1.a \
 	$(OBJ)/toaplan.a \
 	$(OBJ)/tong.a \
 	$(OBJ)/unico.a \
@@ -815,6 +818,7 @@ $(OBJ)/konami.a: \
 	$(OBJ)/drivers/konamigv.o \
 	$(OBJ)/drivers/konamigx.o $(OBJ)/machine/konamigx.o $(OBJ)/vidhrdw/konamigx.o \
 	$(OBJ)/drivers/konamim2.o \
+	$(OBJ)/drivers/ksys573.o $(OBJ)/machine/x76f041.o \
 	$(OBJ)/drivers/labyrunr.o $(OBJ)/vidhrdw/labyrunr.o \
 	$(OBJ)/drivers/lethal.o $(OBJ)/vidhrdw/lethal.o \
 	$(OBJ)/drivers/mainevt.o $(OBJ)/vidhrdw/mainevt.o \
@@ -851,6 +855,7 @@ $(OBJ)/konami.a: \
 	$(OBJ)/drivers/trackfld.o $(OBJ)/machine/konami.o $(OBJ)/sndhrdw/trackfld.o $(OBJ)/vidhrdw/trackfld.o \
 	$(OBJ)/drivers/tutankhm.o $(OBJ)/vidhrdw/tutankhm.o \
 	$(OBJ)/drivers/twin16.o $(OBJ)/vidhrdw/twin16.o \
+	$(OBJ)/drivers/ultrsprt.o \
 	$(OBJ)/drivers/ultraman.o $(OBJ)/vidhrdw/ultraman.o \
 	$(OBJ)/drivers/vendetta.o $(OBJ)/vidhrdw/vendetta.o \
 	$(OBJ)/drivers/wecleman.o $(OBJ)/vidhrdw/wecleman.o \
@@ -1083,6 +1088,7 @@ $(OBJ)/sega.a: \
 	$(OBJ)/drivers/genesis.o $(OBJ)/vidhrdw/genesis.o \
 	$(OBJ)/drivers/hshavoc.o \
 	$(OBJ)/drivers/kopunch.o $(OBJ)/vidhrdw/kopunch.o \
+	$(OBJ)/drivers/megadriv.o \
 	$(OBJ)/drivers/megaplay.o \
 	$(OBJ)/drivers/megatech.o \
 	$(OBJ)/drivers/model1.o $(OBJ)/machine/model1.o $(OBJ)/vidhrdw/model1.o \
@@ -1102,6 +1108,7 @@ $(OBJ)/sega.a: \
 	$(OBJ)/drivers/segasyse.o $(OBJ)/vidhrdw/segasyse.o \
 	$(OBJ)/drivers/segaxbd.o $(OBJ)/vidhrdw/segaxbd.o \
 	$(OBJ)/drivers/segaybd.o $(OBJ)/vidhrdw/segaybd.o \
+	$(OBJ)/drivers/ssf2md.o \
 	$(OBJ)/drivers/sg1000a.o $(OBJ)/vidhrdw/tms9928a.o \
 	$(OBJ)/drivers/stactics.o $(OBJ)/machine/stactics.o $(OBJ)/vidhrdw/stactics.o \
 	$(OBJ)/drivers/stv.o $(OBJ)/drivers/stvhacks.o $(OBJ)/machine/stvcd.o \
@@ -1339,9 +1346,6 @@ $(OBJ)/thepit.a: \
 	$(OBJ)/drivers/thepit.o $(OBJ)/vidhrdw/thepit.o \
 	$(OBJ)/drivers/timelimt.o $(OBJ)/vidhrdw/timelimt.o \
 
-$(OBJ)/tiamc1.a: \
-	$(OBJ)/drivers/tiamc1.o $(OBJ)/vidhrdw/tiamc1.o $(OBJ)/sndhrdw/tiamc1.o \
-
 $(OBJ)/toaplan.a: \
 	$(OBJ)/drivers/mjsister.o $(OBJ)/vidhrdw/mjsister.o \
 	$(OBJ)/drivers/slapfght.o $(OBJ)/machine/slapfght.o $(OBJ)/vidhrdw/slapfght.o \
@@ -1441,6 +1445,7 @@ $(OBJ)/misc.a: \
 	$(OBJ)/drivers/carrera.o \
 	$(OBJ)/drivers/cave.o $(OBJ)/vidhrdw/cave.o \
 	$(OBJ)/drivers/cherrym.o \
+	$(OBJ)/drivers/cidelsa.o $(OBJ)/vidhrdw/cdp1869.o \
 	$(OBJ)/drivers/coinmstr.o \
 	$(OBJ)/drivers/coolpool.o \
 	$(OBJ)/drivers/crystal.o $(OBJ)/machine/ds1302.o $(OBJ)/vidhrdw/vrender0.o \
@@ -1507,6 +1512,7 @@ $(OBJ)/misc.a: \
 	$(OBJ)/drivers/shangkid.o $(OBJ)/vidhrdw/shangkid.o \
 	$(OBJ)/drivers/skyarmy.o \
 	$(OBJ)/drivers/sliver.o \
+	$(OBJ)/drivers/smstrv.o \
 	$(OBJ)/drivers/sprcros2.o $(OBJ)/vidhrdw/sprcros2.o \
 	$(OBJ)/drivers/ssfindo.o \
 	$(OBJ)/drivers/ssingles.o \
@@ -1516,7 +1522,9 @@ $(OBJ)/misc.a: \
 	$(OBJ)/drivers/tattack.o \
 	$(OBJ)/drivers/taxidrvr.o $(OBJ)/vidhrdw/taxidrvr.o \
 	$(OBJ)/drivers/tcl.o \
+	$(OBJ)/drivers/tetriunk.o \
 	$(OBJ)/drivers/thedeep.o $(OBJ)/vidhrdw/thedeep.o \
+	$(OBJ)/drivers/tiamc1.o $(OBJ)/vidhrdw/tiamc1.o $(OBJ)/sndhrdw/tiamc1.o \
 	$(OBJ)/drivers/tickee.o $(OBJ)/vidhrdw/tickee.o \
 	$(OBJ)/drivers/truco.o $(OBJ)/vidhrdw/truco.o \
 	$(OBJ)/drivers/trucocl.o $(OBJ)/vidhrdw/trucocl.o \
@@ -1553,6 +1561,8 @@ $(OBJ)/drivers/bzone.o:		$(OBJ)/layout/bzone.lh
 
 $(OBJ)/drivers/bfm_sc2.o:	$(OBJ)/layout/bfm_sc2.lh
 
+$(OBJ)/drivers/cardline.o:	$(OBJ)/layout/cardline.lh
+
 $(OBJ)/drivers/cinemat.o:	$(OBJ)/layout/solarq.lh \
 							$(OBJ)/layout/starcas.lh
 
@@ -1561,6 +1571,8 @@ $(OBJ)/drivers/circus.o:	$(OBJ)/layout/circus.lh
 $(OBJ)/drivers/copsnrob.o:	$(OBJ)/layout/copsnrob.lh
 
 $(OBJ)/drivers/darius.o:	$(OBJ)/layout/darius.lh
+
+$(OBJ)/drivers/funworld.o:	$(OBJ)/layout/funworld.lh
 
 $(OBJ)/drivers/lazercmd.o:	$(OBJ)/layout/lazercmd.lh
 
