@@ -43,15 +43,12 @@ HP38G             09/??/95              1LT8             Yorke
 
 #include "cpuintrf.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define SATURN_INT_NONE	0
 #define SATURN_INT_IRQ	1
 #define SATURN_INT_NMI	2
 
-typedef struct {
+typedef struct
+{
 	void (*out)(int);
 	int (*in)(void);
 	void (*reset)(void);
@@ -61,11 +58,11 @@ typedef struct {
 	void (*crc)(int addr, int data);
 } SATURN_CONFIG;
 
-void saturn_get_info(UINT32 state, union cpuinfo *info);
+#ifdef MAME_DEBUG
+unsigned saturn_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+#endif /* MAME_DEBUG */
 
-#ifdef __cplusplus
-	}
-#endif
+void saturn_get_info(UINT32 state, union cpuinfo *info);
 
 #endif
 

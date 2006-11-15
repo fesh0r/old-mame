@@ -118,9 +118,9 @@ WRITE8_HANDLER (	nascom1_port_01_w )
 
 DEVICE_LOAD( nascom1_cassette )
 {
-	nascom1_tape_size = mame_fsize(file);
-	nascom1_tape_image = (UINT8 *) image_malloc(image, nascom1_tape_size);
-	if (!nascom1_tape_image || (mame_fread(file, nascom1_tape_image, nascom1_tape_size) != nascom1_tape_size))
+	nascom1_tape_size = image_length(image);
+	nascom1_tape_image = image_ptr(image);
+	if (!nascom1_tape_image)
 		return INIT_FAIL;
 
 	nascom1_tape_index = 0;
@@ -165,7 +165,7 @@ int	nascom1_init_cartridge(int id, mame_file *file)
 		while (!done)
 		{
 			mame_fread(file, (void *)fileaddr, 4);
-			printf ("%4.4s\n", fileaddr);
+			logerror ("%4.4s\n", fileaddr);
 			if (fileaddr[0] == '.')
 			{
 				done = 1;
@@ -173,7 +173,7 @@ int	nascom1_init_cartridge(int id, mame_file *file)
 			else
 			{
 				/* vsscanf (fileaddr, "%4X", &addr); */
-			    /* printf ("%04X: %02X %02X %02X %02X %02X %02X %02X %02X\n",
+			    /* logerror ("%04X: %02X %02X %02X %02X %02X %02X %02X %02X\n",
 							  addr, filebyt1, filebyt2, filebyt3, filebyt4,
 									filebyt5, filebyt6, filebyt7, filebyt8); */
 

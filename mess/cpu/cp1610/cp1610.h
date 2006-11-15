@@ -38,8 +38,8 @@ extern int cp1610_icount;				 /* cycle count */
 void cp1610_get_info(UINT32 state, union cpuinfo *info);
 
 #ifdef MAME_DEBUG
-extern unsigned DasmCP1610( char *dst, unsigned pc );
-#endif
+unsigned cp1610_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+#endif /* MAME_DEBUG */
 
 // Temporary
 #define cp1610_readop(A) program_read_word_16be((A)<<1)

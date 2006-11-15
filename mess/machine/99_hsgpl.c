@@ -206,41 +206,14 @@ static int ti99_hsgpl_get_dirty_flag(void)
 }
 
 
-#if 0
-DEVICE_LOAD(ti99_hsgpl)
-{
-	hsgpl.is_image_writable = image_is_writable(image);
-
-	if (image_has_been_created(image))
-		/* There is nothing wrong with creating an image here */
-		return INIT_PASS;
-
-	if (ti99_hsgpl_file_load(file))
-		return INIT_FAIL;
-
-	return INIT_PASS;
-}
-
-DEVICE_UNLOAD(ti99_hsgpl)
-{
-	if (hsgpl.is_image_writable && ti99_hsgpl_get_dirty_flag())
-	{
-		if (mame_fseek(image_fp(image), 0, SEEK_SET))
-			return;
-
-		if (ti99_hsgpl_file_save(image_fp(image)))
-			return;
-	}
-}
-#endif
 
 int ti99_hsgpl_load_memcard(void)
 {
+	mame_file_error filerr;
 	mame_file *file;
 
-
-	file = mame_fopen(Machine->gamedrv->name, "hsgpl", FILETYPE_MEMCARD, OSD_FOPEN_READ);
-	if (! file)
+	filerr = mame_fopen(SEARCHPATH_MEMCARD, "hsgpl.nv", OPEN_FLAG_READ, &file);
+	if (filerr != FILERR_NONE)
 		return /*1*/0;
 	if (ti99_hsgpl_file_load(file))
 	{
@@ -254,12 +227,13 @@ int ti99_hsgpl_load_memcard(void)
 
 int ti99_hsgpl_save_memcard(void)
 {
+	mame_file_error filerr;
 	mame_file *file;
 
 	if (ti99_hsgpl_get_dirty_flag())
 	{
-		file = mame_fopen(Machine->gamedrv->name, "hsgpl", FILETYPE_MEMCARD, OSD_FOPEN_WRITE);
-		if (! file)
+		filerr = mame_fopen(SEARCHPATH_MEMCARD, "hsgpl.nv", OPEN_FLAG_WRITE, &file);
+		if (filerr != FILERR_NONE)
 			return 1;
 		if (ti99_hsgpl_file_save(file))
 		{

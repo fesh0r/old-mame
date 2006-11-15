@@ -43,40 +43,6 @@
 #endif
 
 
-/* Layout of the registers in the debugger */
-static UINT8 sc61860_reg_layout[] =
-{
-	SC61860_P,
-	SC61860_Q,
-	SC61860_R,
-	SC61860_DP,
-	SC61860_PC,
-	-1,
-
-	SC61860_I,
-	SC61860_K,
-	SC61860_V,
-	SC61860_X,
-	SC61860_H,
-	-1,
-
-	SC61860_J,
-	SC61860_L,
-	SC61860_W,
-	SC61860_Y,
-	SC61860_BA,
-	0
-};
-
-/* Layout of the debugger windows x,y,w,h */
-static UINT8 sc61860_win_layout[] = {
-	25, 0,55, 3,	/* register window (top, right rows) */
-	 0, 0,24,22,	/* disassembler window (left colums) */
-	25, 4,55, 8,	/* memory #1 window (right, upper middle) */
-	25,14,55, 8,	/* memory #2 window (right, lower middle) */
-	 0,23,80, 1,	/* command line window (bottom rows) */
-};
-
 /****************************************************************************
  * The 61860 registers.
  ****************************************************************************/
@@ -124,14 +90,6 @@ static void sc61860_reset(void)
 	sc61860.pc=0;
 	change_pc(sc61860.pc);
 }
-
-#ifndef MAME_DEBUG
-static unsigned sc61860_dasm(char *buffer, unsigned pc)
-{
-	sprintf( buffer, "$%X", cpu_readop(pc) );
-	return 1;
-}
-#endif /* MAME_DEBUG */
 
 static void sc61860_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
@@ -259,10 +217,10 @@ void sc61860_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = sc61860_reset;					break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = sc61860_execute;				break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
+#ifdef MAME_DEBUG
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = sc61860_dasm;					break;
+#endif /* MAME_DEBUG */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &sc61860_ICount;				break;
-		case CPUINFO_PTR_REGISTER_LAYOUT:				info->p = sc61860_reg_layout;	break;
-		case CPUINFO_PTR_WINDOW_LAYOUT:					info->p = sc61860_win_layout;	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "SC61860"); break;

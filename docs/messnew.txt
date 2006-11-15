@@ -1,3 +1,88 @@
+0.109.1
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Dragon 64 + Compusense Plus addon  [Phill Harvey-Smith]
+
+
+
+System Driver Changes:
+----------------------
+- [APPLE2] Fixed stray C06x reads. [Chad]
+
+- [APPLE2] Fixed write support on 5.25" drives under certain situations.
+  [Chad]
+
+- [ATVGA] Fixed lockups.  [Barry Rodewald]
+
+- [ATVGA] Fixed Video Display Disable bit and 256 color VGA for programs that
+  expect linear video memory, and implemented the Line Compare Register.
+  [Barry Rodewald]
+
+- [CPCPLUS] Changed FPS from 50 to 50.080128205128205.  [Barry Rodewald]
+  
+- [CPSCHNGR] Fixed regression introduced in 0.109.  [Dr. Zer0]
+
+- [DGNBETA] Fixed regression in disk code that prevented booting and a keyboard
+  error.  Rewrote the video code.  [Phill Harvey-Smith]
+
+- [GBCOLOR] Added double speed mode support.  (bug #300) [Wilbert Pol]
+
+- [MPF1] New artwork.  (bug #964) [Giel van Schijndel]
+
+- [PC1512/1640] Fixed Amstrad keyboard.  [Andrew Jenner]
+
+- [SPECTRUM] Fixed snapshot loading regression introduced in 0.105.  [Chad]
+
+- [THOMSON] Added support for speech synthesis with the Phillips MEA 8000
+  chipset.  [Antoine Mine]
+
+
+
+User Interface Changes:
+-----------------------
+- Changed base help message, to reflect the actual command line options
+  available.  [Nate Woods]
+
+- [Windows] Fixed customize input dialogs.  [Nate Woods]
+
+- [Windows GUI] Fixed a bug that could cause changes in the device view to
+  not be reflected in the picker.  [Nate Woods]
+  
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.110.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- All image file accessing is now done through image.h, rather than using
+  mame_file objects.  [Nate Woods]
+
+- Introduced an image_ptr() call, which returns a pointer to all image data
+  valid for the lifetime of the image.  [Nate Woods]
+
+- Added a specialized exit code for MESS-related initialization.  (bug #931)
+  [Nate Woods]
+
+- Added the ability to disable tests in Messtest.  [Nate Woods]
+
+- Real time clocks now retrieve default times from the core.  [Nate Woods]
+
+- I286 fixes.  [Barry Rodewald]
+
+- Changed image_battery_load() and image_battery_save() to not return error
+  codes; clients of these functions should not act differently if these files
+  can't be loaded or saved.  [Nate Woods]
+
+
+
 0.109
 
 New System Drivers Supported (in no particular order):

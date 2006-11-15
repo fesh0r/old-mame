@@ -25,11 +25,12 @@ void CLIB_DECL logerror(const char *text,...)
 /* ----------------------------------------------------------------------- */
 /* total hack */
 
-mame_file *mame_fopen(const char *gamename, const char *filename, int filetype, int openforwrite)
+mame_file_error mame_fopen(const char *searchpath, const char *filename, UINT32 openflags, mame_file **file)
 {
 	char buffer[2048];
 	snprintf(buffer, sizeof(buffer), "crc/%s", filename);
-	return (mame_file *) fopen(buffer, "r");
+	*file = (mame_file *) fopen(buffer, "r");
+	return FILERR_NONE;
 }
 
 char *mame_fgets(char *s, int n, mame_file *file)
@@ -64,6 +65,22 @@ void CLIB_DECL fatalerror(const char *text,...)
 	vfprintf(stderr, text, va);
 	va_end(va);
 	exit(-1);
+}
+
+void mame_printf_error(const char *format, ...)
+{
+}
+
+void mame_printf_warning(const char *format, ...)
+{
+}
+
+void mame_printf_info(const char *format, ...)
+{
+}
+
+void mame_printf_debug(const char *format, ...)
+{
 }
 
 

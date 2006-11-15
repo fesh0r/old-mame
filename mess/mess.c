@@ -26,37 +26,37 @@ UINT32 mess_ram_size;
 UINT8 *mess_ram;
 UINT8 mess_ram_default_value = 0xCD;
 
-static int devices_initialload(const game_driver *gamedrv);
-static void devices_exit(running_machine *machine);
 
-
-static int ram_init(const game_driver *gamedrv)
+static void ram_init(const game_driver *gamedrv)
 {
 	int i;
+	char buffer[1024];
+	char *s;
 
 	/* validate RAM option */
 	if (options.ram != 0)
 	{
 		if (!ram_is_valid_option(gamedrv, options.ram))
 		{
-			char buffer[RAM_STRING_BUFLEN];
+			char buffer2[RAM_STRING_BUFLEN];
 			int opt_count;
 
 			opt_count = ram_option_count(gamedrv);
 			if (opt_count == 0)
 			{
 				/* this driver doesn't support RAM configurations */
-				printf("Driver '%s' does not support RAM configurations\n", gamedrv->name);
+				fatalerror_exitcode(MAMERR_DEVICE, "Driver '%s' does not support RAM configurations\n", gamedrv->name);
 			}
 			else
 			{
-				printf("%s is not a valid RAM option for driver '%s' (valid choices are ",
-					ram_string(buffer, options.ram), gamedrv->name);
+				s = buffer;
+				s += sprintf(s, "%s is not a valid RAM option for driver '%s' (valid choices are ",
+					ram_string(buffer2, options.ram), gamedrv->name);
 				for (i = 0; i < opt_count; i++)
-					printf("%s%s",  i ? " or " : "", ram_string(buffer, ram_option(gamedrv, i)));
-				printf(")\n");
+					s += sprintf(s, "%s%s",  i ? " or " : "", ram_string(buffer2, ram_option(gamedrv, i)));
+				s += sprintf(s, ")\n");
+				fatalerror_exitcode(MAMERR_DEVICE, "%s", buffer);
 			}
-			return 1;
 		}
 		mess_ram_size = options.ram;
 	}
@@ -78,7 +78,6 @@ static int ram_init(const game_driver *gamedrv)
 	{
 		mess_ram = NULL;
 	}
-	return 0;
 }
 
 
@@ -89,10 +88,19 @@ static int ram_init(const game_driver *gamedrv)
  *  ith all user specified image names.
  ****************************************************************************/
 
-int devices_init(running_machine *machine)
+void devices_init(running_machine *machine)
 {
 	int i;
 	const struct IODevice *dev;
+	int id;
+	int result = INIT_FAIL;
+	int devcount;
+	int *allocated_slots;
+	const char *image_name;
+	mess_image *image;
+	iodevice_t devtype;
+	const char *devtag;
+	int devindex;
 
 	/* convienient place to call this */
 	{
@@ -111,7 +119,7 @@ int devices_init(running_machine *machine)
 	/* allocate the IODevice struct */
 	machine->devices = devices_allocate(Machine->gamedrv);
 	if (!machine->devices)
-		return 1;
+		fatalerror_exitcode(MAMERR_DEVICE, "devices_allocate() failed");
 
 	/* Check that the driver supports all devices requested (options struct)*/
 	for( i = 0; i < options.image_count; i++ )
@@ -122,37 +130,14 @@ int devices_init(running_machine *machine)
 			dev = device_find(machine->devices, options.image_files[i].device_type);
 
 		if (!dev)
-		{
-			printf(" ERROR: Device [%s] is not supported by this system\n", device_typename(options.image_files[i].device_type));
-			return 1;
-		}
+			fatalerror_exitcode(MAMERR_DEVICE, " ERROR: Device [%s] is not supported by this system\n", device_typename(options.image_files[i].device_type));
 	}
 
 	/* initialize RAM code */
-	if (ram_init(machine->gamedrv))
-		return 1;
+	ram_init(machine->gamedrv);
 
 	/* init all devices */
 	image_init();
-	add_exit_callback(machine, devices_exit);
-	return devices_initialload(machine->gamedrv);
-}
-
-
-
-static int devices_initialload(const game_driver *gamedrv)
-{
-	int i;
-	int id;
-	int result = INIT_FAIL;
-	int devcount;
-	int *allocated_slots;
-	const struct IODevice *dev;
-	const char *image_name;
-	mess_image *image;
-	iodevice_t devtype;
-	const char *devtag;
-	int devindex;
 
 	/* count number of devices, and record a list of allocated slots */
 	devcount = 0;
@@ -160,9 +145,7 @@ static int devices_initialload(const game_driver *gamedrv)
 		devcount++;
 	if (devcount > 0)
 	{
-		allocated_slots = malloc(devcount * sizeof(*allocated_slots));
-		if (!allocated_slots)
-			goto error;
+		allocated_slots = malloc_or_die(devcount * sizeof(*allocated_slots));
 		memset(allocated_slots, 0, devcount * sizeof(*allocated_slots));
 	}
 	else
@@ -204,16 +187,15 @@ static int devices_initialload(const game_driver *gamedrv)
 		{
 			if (image)
 			{
-				printf("Device %s load (%s) failed: %s\n",
+				fatalerror_exitcode(MAMERR_DEVICE, "Device %s load (%s) failed: %s\n",
 					device_typename(devtype),
 					osd_basename((char *) image_name),
 					image_error(image));
 			}
 			else
 			{
-				printf("Too many devices of type %d\n", devtype);
+				fatalerror_exitcode(MAMERR_DEVICE, "Too many devices of type %d\n", devtype);
 			}
-			goto error;
 		}
 	}
 
@@ -226,44 +208,18 @@ static int devices_initialload(const game_driver *gamedrv)
 			{
 				image = image_from_device_and_index(dev, id);
 				if (!image_exists(image))
-				{
-					printf("Driver requires that device %s must have an image to load\n", device_typename(dev->type));
-					goto error;
-				}
+					fatalerror_exitcode(MAMERR_DEVICE, "Driver requires that device %s must have an image to load\n", device_typename(dev->type));
 			}
 		}
 	}
 	free(allocated_slots);
-	return 0;
-
-error:
-	if (allocated_slots)
-		free(allocated_slots);
-	return 1;
-}
-
-
-
-/*
- * Call the exit() functions for all devices of a
- * driver for all images.
- */
-static void devices_exit(running_machine *machine)
-{
-	/* unload all devices */
-	image_unload_all(FALSE);
-	image_unload_all(TRUE);
-
-	/* exit all devices */
-	image_exit();
-	Machine->devices = NULL;
 }
 
 
 
 void showmessdisclaimer(void)
 {
-	printf(
+	mame_printf_info(
 		"MESS is an emulator: it reproduces, more or less faithfully, the behaviour of\n"
 		"several computer and console systems. But hardware is useless without software\n"
 		"so a file dump of the BIOS, cartridges, discs, and cassettes which run on that\n"
@@ -279,7 +235,7 @@ void showmessdisclaimer(void)
 
 void showmessinfo(void)
 {
-	printf(
+	mame_printf_info(
 		"M.E.S.S. v%s\n"
 		"Multiple Emulation Super System - Copyright (C) 1997-2004 by the MESS Team\n"
 		"M.E.S.S. is based on the ever excellent M.A.M.E. Source code\n"
@@ -288,11 +244,14 @@ void showmessinfo(void)
 
 	showmessdisclaimer();
 
-	printf(
-		"Usage:  MESS <system> <device> <software> <options>\n\n"
-		"        MESS -list        for a brief list of supported systems\n"
-		"        MESS -listdevices for a full list of supported devices\n"
-		"        MESS -showusage   to see usage instructions\n"
+	mame_printf_info(
+		"Usage:  MESS <system> <device> <software> <options>\n"
+		"\n"
+		"        MESS -showusage    for a brief list of options\n"
+		"        MESS -showconfig   for a list of configuration options\n"
+		"        MESS -listdevices  for a full list of supported devices\n"
+		"        MESS -createconfig to create a mess.ini\n"
+		"\n"
 		"See mess.txt for help, readme.txt for options.\n");
 }
 
@@ -300,14 +259,18 @@ void showmessinfo(void)
 
 void ram_dump(const char *filename)
 {
+	mame_file_error filerr;
 	mame_file *file;
 
+	/* use a default filename */
 	if (!filename)
 		filename = "ram.bin";
 
-	file = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_NVRAM, OSD_FOPEN_WRITE);
-	if (file)
+	/* open the file */
+	filerr = mame_fopen(NULL, filename, OPEN_FLAG_WRITE, &file);
+	if (filerr == FILERR_NONE)
 	{
+		/* write the data */
 		mame_fwrite(file, mess_ram, mess_ram_size);
 
 		/* close file */

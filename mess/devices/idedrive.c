@@ -73,7 +73,7 @@ static int ide_hd_init(mess_image *image)
 	ide_hd_load - Load an IDE hard disk image
 -------------------------------------------------*/
 
-static int ide_hd_load(mess_image *image, mame_file *file)
+static int ide_hd_load(mess_image *image)
 {
 	int result, which_bus, which_address;
 	struct ide_interface *intf;
@@ -83,7 +83,7 @@ static int ide_hd_load(mess_image *image, mame_file *file)
 	ide_get_params(image, &which_bus, &which_address, &intf, NULL, &parent_load, NULL);
 
 	/* call the parent load function */
-	result = parent_load(image, file);
+	result = parent_load(image);
 	if (result != INIT_PASS)
 		return result;
 
@@ -119,7 +119,7 @@ static void ide_hd_unload(mess_image *image)
 
 
 /*-------------------------------------------------
-	ide_hd_validity_check - Unload an IDE hard disk image
+	ide_hd_validity_check - check this device's validity
 -------------------------------------------------*/
 
 static int ide_hd_validity_check(const device_class *devclass)
@@ -135,19 +135,19 @@ static int ide_hd_validity_check(const device_class *devclass)
 
 	if (which_address != 0)
 	{
-		printf("%s: IDE device has non-zero address\n", devclass->gamedrv->name);
+		mame_printf_error("%s: IDE device has non-zero address\n", devclass->gamedrv->name);
 		error = 1;
 	}
 
 	if (!intf)
 	{
-		printf("%s: IDE device does not specify an interface\n", devclass->gamedrv->name);
+		mame_printf_error("%s: IDE device does not specify an interface\n", devclass->gamedrv->name);
 		error = 1;
 	}
 
 	if (count > MAX_IDE_CONTROLLERS)
 	{
-		printf("%s: Too many IDE devices; maximum is %d\n", devclass->gamedrv->name, MAX_IDE_CONTROLLERS);
+		mame_printf_error("%s: Too many IDE devices; maximum is %d\n", devclass->gamedrv->name, MAX_IDE_CONTROLLERS);
 		error = 1;
 	}
 

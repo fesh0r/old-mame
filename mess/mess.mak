@@ -968,7 +968,8 @@ $(OBJ)/thomson.a:			\
 	$(OBJ)/mess/vidhrdw/thomson.o   \
 	$(OBJ)/mess/devices/thomflop.o \
 	$(OBJ)/mess/formats/thom_dsk.o \
-	$(OBJ)/mess/formats/thom_cas.o
+	$(OBJ)/mess/formats/thom_cas.o \
+	$(OBJ)/mess/sndhrdw/mea8000.o
 
 $(OBJ)/tiger.a:				\
 	$(OBJ)/mess/systems/gamecom.o	\
@@ -1115,3 +1116,7 @@ $(OBJ)/mess/systems/coco.o:	$(OBJ)/mess/layout/coco3.lh
 #-------------------------------------------------
 
 TOOLS += dat2html$(EXE) messtest$(EXE) messdocs$(EXE) imgtool$(EXE)
+
+ifeq ($(MAMEOS),windows)
+TOOLS += wimgtool$(EXE)
+endif

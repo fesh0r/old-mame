@@ -1287,13 +1287,13 @@ DEVICE_LOAD(wswan_cart)
 
 	ws_ram = memory_get_read_ptr( 0, ADDRESS_SPACE_PROGRAM, 0 );
 	memset( ws_ram, 0, 0xFFFF );
-	ROMBanks = mame_fsize( file ) / 65536;
+	ROMBanks = image_length( image ) / 65536;
 
 	for( ii = 0; ii < ROMBanks; ii++ )
 	{
 		if( (ROMMap[ii] = (UINT8 *)malloc( 0x10000 )) )
 		{
-			if( mame_fread( file, ROMMap[ii], 0x10000 ) != 0x10000 )
+			if( image_fread( image, ROMMap[ii], 0x10000 ) != 0x10000 )
 			{
 				logerror( "Error while reading loading rom!\n" );
 				return INIT_FAIL;
@@ -1314,14 +1314,14 @@ DEVICE_LOAD(wswan_cart)
 	{
 		int sum = 0;
 		/* Spit out some info */
-		printf( "ROM DETAILS\n" );
-		printf( "\tDeveloper ID: %X\n", ROMMap[ROMBanks-1][0xfff6] );
-		printf( "\tMinimum system: %s\n", ROMMap[ROMBanks-1][0xfff7] ? "WonderSwan Color" : "WonderSwan" );
-		printf( "\tCart ID: %X\n", ROMMap[ROMBanks-1][0xfff8] );
-		printf( "\tROM size: %s\n", wswan_determine_romsize( ROMMap[ROMBanks-1][0xfffa] ) );
-		printf( "\tSRAM size: %s\n", sram_str );
-		printf( "\tFeatures: %X\n", ROMMap[ROMBanks-1][0xfffc] );
-		printf( "\tRTC: %s\n", ( ROMMap[ROMBanks-1][0xfffd] ? "yes" : "no" ) );
+		mame_printf_debug( "ROM DETAILS\n" );
+		mame_printf_debug( "\tDeveloper ID: %X\n", ROMMap[ROMBanks-1][0xfff6] );
+		mame_printf_debug( "\tMinimum system: %s\n", ROMMap[ROMBanks-1][0xfff7] ? "WonderSwan Color" : "WonderSwan" );
+		mame_printf_debug( "\tCart ID: %X\n", ROMMap[ROMBanks-1][0xfff8] );
+		mame_printf_debug( "\tROM size: %s\n", wswan_determine_romsize( ROMMap[ROMBanks-1][0xfffa] ) );
+		mame_printf_debug( "\tSRAM size: %s\n", sram_str );
+		mame_printf_debug( "\tFeatures: %X\n", ROMMap[ROMBanks-1][0xfffc] );
+		mame_printf_debug( "\tRTC: %s\n", ( ROMMap[ROMBanks-1][0xfffd] ? "yes" : "no" ) );
 		for( ii = 0; ii < ROMBanks; ii++ ) {
 			int count;
 			for( count = 0; count < 0x10000; count++ ) {
@@ -1331,7 +1331,7 @@ DEVICE_LOAD(wswan_cart)
 		sum -= ROMMap[ROMBanks-1][0xffff];
 		sum -= ROMMap[ROMBanks-1][0xfffe];
 		sum &= 0xFFFF;
-		printf( "\tChecksum: %X%X (calculated: %04X)\n", ROMMap[ROMBanks-1][0xffff], ROMMap[ROMBanks-1][0xfffe], sum );
+		mame_printf_debug( "\tChecksum: %X%X (calculated: %04X)\n", ROMMap[ROMBanks-1][0xffff], ROMMap[ROMBanks-1][0xfffe], sum );
 	}
 #endif
 

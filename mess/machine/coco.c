@@ -56,6 +56,11 @@ Dragon Alpha code added 21-Oct-2004,
 Fixed Dragon Alpha NMI enable/disable, following circuit traces on a real machine.
 	P.Harvey-Smith, 11-Aug-2005.
 
+Re-implemented Alpha NMI enable/disable, using direct PIA reads, rather than
+keeping track of it in a variable in the driver.
+	P.Harvey-Smith, 25-Sep-2006.
+
+
 ***************************************************************************/
 
 #include <math.h>
@@ -87,6 +92,7 @@ static UINT8 coco3_mmu[16];
 static UINT8 coco3_interupt_line;
 static UINT8 gime_firq, gime_irq;
 static int cart_line, cart_inserted;
+static UINT16 cart_bank_size;
 
 static WRITE8_HANDLER ( d_pia1_pb_w );
 static WRITE8_HANDLER ( d_pia1_pa_w );
@@ -144,6 +150,14 @@ static int dgnalpha_just_reset;		/* Reset flag used to ignore first NMI after re
 
 /* End Dragon Alpha */
 
+/* Dragon Plus */
+static int dragon_plus_reg;			/* Dragon plus control reg */
+
+/* MegaCart CTRL reg, bit 1 selects 8K or 16K banking */
+int MegaCTRL;
+int MegaBank;	// Copy of bank reg so that we can peek it
+/* End Mega Cart */
+
 /* These sets of defines control logging.  When MAME_DEBUG is off, all logging
  * is off.  There is a different set of defines for when MAME_DEBUG is on so I
  * don't have to worry abount accidently committing a version of the driver
@@ -166,9 +180,10 @@ static int dgnalpha_just_reset;		/* Reset flag used to ignore first NMI after re
 
 static int count_bank(void);
 static int is_Orch90(void);
+static int is_megacart(void);
 
 #ifdef MAME_DEBUG
-static offs_t coco_dasm_override(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes);
+static offs_t coco_dasm_override(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif /* MAME_DEBUG */
 
 
@@ -356,7 +371,7 @@ static const struct cartridge_slot *coco_cart_interface;
   changing to make it worthy of Microsoft.
 ***************************************************************************/
 
-static int load_pak_into_region(mame_file *fp, int *pakbase, int *paklen, UINT8 *mem, int segaddr, int seglen)
+static int load_pak_into_region(mess_image *image, int *pakbase, int *paklen, UINT8 *mem, int segaddr, int seglen)
 {
 	if (*paklen)
 	{
@@ -366,7 +381,7 @@ static int load_pak_into_region(mame_file *fp, int *pakbase, int *paklen, UINT8 
 			int skiplen;
 
 			skiplen = segaddr - *pakbase;
-			if (mame_fseek(fp, skiplen, SEEK_CUR))
+			if (image_fseek(image, skiplen, SEEK_CUR))
 			{
 				if (LOG_PAK)
 					logerror("Could not fully read PAK.\n");
@@ -385,7 +400,7 @@ static int load_pak_into_region(mame_file *fp, int *pakbase, int *paklen, UINT8 
 			if (seglen > *paklen)
 				seglen = *paklen;
 
-			if (mame_fread(fp, mem, seglen) < seglen)
+			if (image_fread(image, mem, seglen) < seglen)
 			{
 				if (LOG_PAK)
 					logerror("Could not fully read PAK.\n");
@@ -444,7 +459,7 @@ static void pak_load_trailer(const pak_decodedtrailer *trailer)
 	sam_set_state(trailer->sam, 0x7fff);
 }
 
-static int generic_pak_load(mame_file *fp, int rambase_index, int rombase_index, int pakbase_index)
+static int generic_pak_load(mess_image *image, int rambase_index, int rombase_index, int pakbase_index)
 {
 	UINT8 *ROM;
 	UINT8 *rambase;
@@ -470,7 +485,7 @@ static int generic_pak_load(mame_file *fp, int rambase_index, int rombase_index,
 		return INIT_FAIL;
 	}
 
-	if (mame_fread(fp, &header, sizeof(header)) < sizeof(header))
+	if (image_fread(image, &header, sizeof(header)) < sizeof(header))
 	{
 		if (LOG_PAK)
 			logerror("Could not fully read PAK.\n");
@@ -482,14 +497,14 @@ static int generic_pak_load(mame_file *fp, int rambase_index, int rombase_index,
 	if (pakstart == 0xc000)
 		cart_inserted = 1;
 
-	if (mame_fseek(fp, paklength, SEEK_CUR))
+	if (image_fseek(image, paklength, SEEK_CUR))
 	{
 		if (LOG_PAK)
 			logerror("Could not fully read PAK.\n");
 		return INIT_FAIL;
 	}
 
-	trailerlen = mame_fread(fp, trailerraw, sizeof(trailerraw));
+	trailerlen = image_fread(image, trailerraw, sizeof(trailerraw));
 	if (trailerlen)
 	{
 		if (pak_decode_trailer(trailerraw, trailerlen, &trailer))
@@ -502,7 +517,7 @@ static int generic_pak_load(mame_file *fp, int rambase_index, int rombase_index,
 		trailer_load = 1;
 	}
 
-	if (mame_fseek(fp, sizeof(pak_header), SEEK_SET))
+	if (image_fseek(image, sizeof(pak_header), SEEK_SET))
 	{
 		if (LOG_PAK)
 			logerror("Unexpected error while reading PAK.\n");
@@ -526,7 +541,7 @@ static int generic_pak_load(mame_file *fp, int rambase_index, int rombase_index,
 	memcpy(rambase + 0xC000, pakbase, 0x3F00);
 
 	/* Get the RAM portion */
-	if (load_pak_into_region(fp, &pakstart, &paklength, rambase, 0x0000, 0xff00))
+	if (load_pak_into_region(image, &pakstart, &paklength, rambase, 0x0000, 0xff00))
 		return INIT_FAIL;
 
 	memcpy(pakbase, rambase + 0xC000, 0x3F00);
@@ -538,12 +553,12 @@ static int generic_pak_load(mame_file *fp, int rambase_index, int rombase_index,
 
 SNAPSHOT_LOAD ( coco_pak )
 {
-	return generic_pak_load(fp, 0x0000, 0x0000, 0x4000);
+	return generic_pak_load(image, 0x0000, 0x0000, 0x4000);
 }
 
 SNAPSHOT_LOAD ( coco3_pak )
 {
-	return generic_pak_load(fp, (0x70000 % mess_ram_size), 0x0000, 0xc000);
+	return generic_pak_load(image, (0x70000 % mess_ram_size), 0x0000, 0xc000);
 }
 
 /***************************************************************************
@@ -553,12 +568,12 @@ SNAPSHOT_LOAD ( coco3_pak )
   be used in place of PAK files, when possible
 ***************************************************************************/
 
-static int generic_rom_load(mess_image *img, mame_file *fp, UINT8 *dest, UINT16 destlength)
+static int generic_rom_load(mess_image *image, UINT8 *dest, UINT16 destlength)
 {
 	UINT8 *rombase;
 	int   romsize;
 
-	romsize = mame_fsize(fp);
+	romsize = image_length(image);
 
 	/* The following hack is for Arkanoid running on the CoCo2.
 		The issuse is the CoCo2 hardware only allows the cartridge
@@ -567,11 +582,11 @@ static int generic_rom_load(mess_image *img, mame_file *fp, UINT8 *dest, UINT16 
 		from a CoCo2. Thus we need to skip ahead in the ROM file. On
 		the CoCo3 the entire 32K ROM is accessable. */
 
-	if (image_crc(img) == 0x25C3AA70)     /* Test for Arkanoid  */
+	if (image_crc(image) == 0x25C3AA70)     /* Test for Arkanoid  */
 	{
 		if ( destlength == 0x4000 )						/* Test if CoCo2      */
 		{
-			mame_fseek( fp, 0x4000, SEEK_SET );			/* Move ahead in file */
+			image_fseek( image, 0x4000, SEEK_SET );			/* Move ahead in file */
 			romsize -= 0x4000;							/* Adjust ROM size    */
 		}
 	}
@@ -579,7 +594,7 @@ static int generic_rom_load(mess_image *img, mame_file *fp, UINT8 *dest, UINT16 
 	if (romsize > destlength)
 		romsize = destlength;
 
-	mame_fread(fp, dest, romsize);
+	image_fread(image, dest, romsize);
 
 	cart_inserted = 1;
 
@@ -601,7 +616,7 @@ static int generic_rom_load(mess_image *img, mame_file *fp, UINT8 *dest, UINT16 
 DEVICE_LOAD(coco_rom)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	return generic_rom_load(image, file, &ROM[0x4000], 0x4000);
+	return generic_rom_load(image, &ROM[0x4000], 0x4000);
 }
 
 DEVICE_UNLOAD(coco_rom)
@@ -618,20 +633,18 @@ DEVICE_LOAD(coco3_rom)
 	int		count;
 
 	count = count_bank();
-	if (file)
-		mame_fseek(file, 0, SEEK_SET);
 
 	if( count == 0 )
 	{
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM size is 32K max */
-		return generic_rom_load(image, file, &ROM[0x8000], 0x8000);
+		return generic_rom_load(image, &ROM[0x8000], 0x8000);
 	}
 	else
 	{
 		/* Load roms starting at 0x8000 and mirror upwards. */
 		/* ROM bank is 16K max */
-		return generic_rom_load(image, file, &ROM[0x8000], 0x4000);
+		return generic_rom_load(image, &ROM[0x8000], 0x4000);
 	}
 }
 
@@ -1063,6 +1076,10 @@ static void coco_sound_update(void)
 	}
 }
 
+/* 
+	Dragon Alpha AY-3-8912	
+*/
+
 READ8_HANDLER ( dgnalpha_psg_porta_read )
 {	
 	return 0;
@@ -1405,7 +1422,7 @@ static void dragon_page_rom(int	romswitch)
 
 static void	dgnalpha_fdc_callback(int event)
 {
-	/* As far as I can tell, the NMI just goes straight onto the processor line on the alpha */
+	/* The NMI line on the alphaAlpha is gated through IC16 (early PLD), and is gated by pia2 CA2  */
 	/* The DRQ line goes through pia2 cb1, in exactly the same way as DRQ from DragonDos does */
 	/* for pia1 cb1 */
 	switch(event) 
@@ -1414,11 +1431,13 @@ static void	dgnalpha_fdc_callback(int event)
 			cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
 			break;
 		case WD179X_IRQ_SET:
-		    if(dgnalpha_just_reset)
-				dgnalpha_just_reset=0;
+			if(dgnalpha_just_reset)
+			{
+				dgnalpha_just_reset = 0;
+			}
 			else
 			{
-				if (pia_2_ca2_r(0)) 
+				if (pia_get_output_ca2(2)) 
 					cpunum_set_input_line(0, INPUT_LINE_NMI, ASSERT_LINE);
 			}
 			break;
@@ -1532,6 +1551,56 @@ static READ8_HANDLER ( d_pia1_pb_r_coco2 )
 	else
 		result = (pia_get_output_b(0) & 0x40) >> 4;		/* 32/64K: wire output of pia0_pb6 to input pia1_pb2  */
 	return result;
+}
+
+
+/*
+	Compusense Dragon Plus Control register
+*/
+
+/* The read handler will eventually return the 6845 status */
+READ8_HANDLER ( plus_reg_r )
+{
+	return 0;
+}
+
+/* 
+	When writing the bits have the following meanings :
+
+	bit	value	purpose
+	0	0	First 2k of memory map determined by bits 1 & 2	
+		1	6845 display RAM mapped into first 2K of map, 
+			
+	2,1	0,0	Normal bottom 32K or ram mapped (from mainboard).
+		0,1	First 32K of plus RAM mapped into $0000-$7FFF
+		1,0	Second 32K of plus RAM mapped into $0000-$7FFF
+		1,1	Undefined. I will assume that it's the same as 00.
+	3-7		Unused.
+*/
+WRITE8_HANDLER ( plus_reg_w )
+{
+	UINT8 *readbank1;
+	write8_handler writebank1;
+	
+	int map;
+	
+	dragon_plus_reg = data;
+	
+	map = (data & 0x06)>>1;
+	
+	switch (map)
+	{
+		case 0x00	: readbank1=&mess_ram[0x00000]; break;
+		case 0x01	: readbank1=&mess_ram[0x10000]; break;
+		case 0x02	: readbank1=&mess_ram[0x18000]; break;
+		case 0x03	: readbank1=&mess_ram[0x00000]; break;
+		default	: readbank1=&mess_ram[0x00000]; break; // Just to shut the compiler up !	
+	}	
+
+	writebank1 = MWA8_BANK1;
+	memory_set_bankptr(1, readbank1);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, writebank1);
+	
 }
 
 
@@ -2237,6 +2306,8 @@ static int count_bank(void)
 
 	crc = image_crc(img);
 
+	cart_bank_size = 0x4000;
+
 	switch( crc )
 	{
 		case 0x83bd6056:		/* Mind-Roll */
@@ -2251,9 +2322,20 @@ static int count_bank(void)
 			logerror("ROM cartridge bankswitching enabled: RoboCop (26-3164)\n");
 			return 7;
 			break;
-		default:				/* No bankswitching */
-			return 0;
-			break;
+		default:
+			if (is_megacart())
+			{   
+				// Select Mega cart bank size 8k or 16K
+				// Mega cart can hold up to a 512megabit rom, banks are 8k or 16K
+				cart_bank_size=(MegaCTRL & 0x02) ? 0x4000 : 0x2000; 
+				return 0x3F;	
+				break;
+			}
+			else
+			{
+				return 0;
+				break;
+			}
 	}
 }
 
@@ -2271,19 +2353,38 @@ static int is_Orch90(void)
 	return crc == 0x15FB39AF;
 }
 
+/* Detect Megacart code, looks for Megacart magic number at offset 4 in file */
+static int is_megacart(void)
+{
+	UINT32		Magic;
+	int		ret;
+	mess_image 	*img;
+
+	img = cartslot_image();
+	
+	if (image_exists(img))					// Check that  cart is mounted
+	{
+		image_fseek(cartslot_image(), 4, SEEK_SET);	// Mega cart magic no at offset 4
+		image_fread(cartslot_image(), &Magic, sizeof(Magic));	// 4 bytes long
+	
+		ret = (Magic == 0x12210968);			// return true if magic no found
+	}
+	else
+		ret = 0;					// Return 0 if image not open
+		
+	return ret;
+}
+
 static void generic_setcartbank(int bank, UINT8 *cartpos)
 {
-	mame_file *fp;
-
 	if (count_bank() > 0)
 	{
 		/* pin variable to proper bit width */
 		bank &= count_bank();
 
 		/* read the bank */
-		fp = image_fp(cartslot_image());
-		mame_fseek(fp, bank * 0x4000, SEEK_SET);
-		mame_fread(fp, cartpos, 0x4000);
+		image_fseek(cartslot_image(), bank * cart_bank_size, SEEK_SET);
+		image_fread(cartslot_image(), cartpos, cart_bank_size);
 	}
 }
 
@@ -2334,9 +2435,16 @@ static void generic_init_machine(running_machine *machine, const pia6821_interfa
 
 	/* HACK for bankswitching carts */
 	if( is_Orch90() )
+	{
 		cartslottype = &cartridge_Orch90;
+	}
 	else
-	    cartslottype = (count_bank() > 0) ? &cartridge_banks : &cartridge_standard;
+	{
+		if (is_megacart())
+			cartslottype = &cartridge_banks_mega;
+		else
+			cartslottype = (count_bank() > 0) ? &cartridge_banks : &cartridge_standard;
+	}
 
 	coco_cartrige_init(cart_inserted ? cartslottype : cartinterface, cartcallback);
 
@@ -2364,6 +2472,19 @@ MACHINE_START( dragon64 )
 	memory_set_bankptr(1, &mess_ram[0]);
 	generic_init_machine(machine, dragon64_pia_intf, &dragon64_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks, d_recalc_interrupts);
 	acia_6551_init();
+	
+	coco_or_dragon = AM_DRAGON;
+	return 0;
+}
+
+MACHINE_START( d64plus )
+{
+	memory_set_bankptr(1, &mess_ram[0]);
+	generic_init_machine(machine, dragon64_pia_intf, &dragon64_sam_intf, &cartridge_fdc_dragon, &coco_cartcallbacks, d_recalc_interrupts);
+	acia_6551_init();
+	
+	dragon_plus_reg = 0;
+	plus_reg_w(0,0);
 	
 	coco_or_dragon = AM_DRAGON;
 	return 0;
@@ -2626,7 +2747,7 @@ static const char *os9syscalls[] =
 };
 
 
-static offs_t coco_dasm_override(char *buffer, offs_t pc, UINT8 *oprom, UINT8 *opram, int bytes)
+static offs_t coco_dasm_override(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	unsigned call;
 	unsigned result = 0;

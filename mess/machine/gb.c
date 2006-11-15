@@ -259,14 +259,8 @@ MACHINE_RESET( gbc )
 	/* Allocate memory for video ram */
 	for( ii = 0; ii < 2; ii++ )
 	{
-		if( (GBC_VRAMMap[ii] = malloc (0x2000)) )
-		{
-			memset (GBC_VRAMMap[ii], 0, 0x2000);
-		}
-		else
-		{
-			printf("Error allocating video memory\n");
-		}
+		GBC_VRAMMap[ii] = malloc_or_die (0x2000);
+		memset (GBC_VRAMMap[ii], 0, 0x2000);
 	}
 	GBC_VRAMBank = 0;
 	memory_set_bankptr (4, GBC_VRAMMap[GBC_VRAMBank]);
@@ -1239,7 +1233,7 @@ DEVICE_LOAD(gb_cart)
 	J = filesize % 0x4000;
 	if ( J == 512 ) {
 		logerror( "Rom-header found, skipping\n" );
-		mame_fseek( file, J, SEEK_SET );
+		image_fseek( image, J, SEEK_SET );
 		filesize -= 512;
 	}
 
@@ -1253,7 +1247,7 @@ DEVICE_LOAD(gb_cart)
 	gb_cart = auto_malloc( filesize );
 
 	/* Read cartridge */
-	if ( mame_fread( file, gb_cart, filesize ) != filesize ) {
+	if ( image_fread( image, gb_cart, filesize ) != filesize ) {
 		logerror( "Error loading cartridge: Unable to read from file: %s.\n", image_filename(image) );
 		return INIT_FAIL;
 	}
@@ -1491,6 +1485,8 @@ void gb_scanline_interrupt (void)
 	/* The rest only makes sense if the display is enabled */
 	if (LCDCONT & 0x80)
 	{
+		CURLINE = ( CURLINE + 1 ) % 154;
+
 		if (CURLINE < 144)
 		{
 			/* Set Mode 2 lcdstate */
@@ -1518,7 +1514,6 @@ void gb_scanline_interrupt (void)
 					cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
 			}
 		}
-		CURLINE = (CURLINE + 1) % 154;
 
 		if ( CURLINE == CMPLINE )
 		{
@@ -1707,11 +1702,13 @@ WRITE8_HANDLER ( gbc_video_w )
 		case 0x0D:	/* KEY1 - Prepare speed switch */
 			if( data & 0x1 )
 			{
+				gb_speed_change_pending = 1;
+				/* FIXME/TODO: This update should actually be done by the STOP instruction */
 				data = (gb_vid_regs[offset] & 0x80)?0x00:0x80;
 /*				cpunum_set_clockscale( 0, (data & 0x80)?2.0:1.0 );*/
-#ifdef V_GENERAL
-				logerror( "Switched to %s mode.\n", (data & 0x80) ? "FAST":"NORMAL" );
-#endif /* V_GENERAL */
+/* #ifdef V_GENERAL */
+/*				logerror( "Switched to %s mode.\n", (data & 0x80) ? "FAST":"NORMAL" ); */
+/* #endif */ /* V_GENERAL */
 			}
 			break;
 		case 0x0F:	/* VBK - VRAM bank select */
@@ -1973,7 +1970,7 @@ DEVICE_LOAD(megaduck_cart)
 	gb_cart = auto_malloc( filesize );
 
 	/* Read cartridge */
-	if (mame_fread (file, gb_cart, filesize) != filesize) {
+	if (image_fread (image, gb_cart, filesize) != filesize) {
 		logerror("Error loading cartridge: Unable to read from file: %s.\n", image_filename(image));
 		return INIT_FAIL;
 	}

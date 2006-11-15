@@ -492,6 +492,7 @@ DEVICE_LOAD( ti99_cart )
 	const char *name = image_filename(image);
 	const char *ch, *ch2;
 	int id = image_index_in_device(image);
+	int i;
 	slot_type_t type = (slot_type_t) id;
 
 	/* There is a circuitry in TI99/4(a) that resets the console when a
@@ -544,7 +545,7 @@ DEVICE_LOAD( ti99_cart )
 		break;
 
 	case SLOT_GROM:
-		mame_fread(file, memory_region(region_grom) + 0x6000, 0xA000);
+		image_fread(image, memory_region(region_grom) + 0x6000, 0xA000);
 		break;
 
 	case SLOT_MINIMEM:
@@ -555,12 +556,14 @@ DEVICE_LOAD( ti99_cart )
 	case SLOT_CROM:
 		if (ti99_model == model_99_8)
 		{
-			mame_fread(file, cartridge_pages_8[0], 0x2000);
+			image_fread(image, cartridge_pages_8[0], 0x2000);
 			current_page_ptr_8 = cartridge_pages_8[0];
 		}
 		else
 		{
-			mame_fread_msbfirst(file, cartridge_pages[0], 0x2000);
+			image_fread(image, cartridge_pages[0], 0x2000);
+			for (i = 0; i < 0x1000; i++)
+				cartridge_pages[0][i] = BIG_ENDIANIZE_INT16(cartridge_pages[0][i]);
 			current_page_ptr = cartridge_pages[0];
 		}
 		break;
@@ -569,12 +572,14 @@ DEVICE_LOAD( ti99_cart )
 		cartridge_paged = TRUE;
 		if (ti99_model == model_99_8)
 		{
-			mame_fread(file, cartridge_pages_8[1], 0x2000);
+			image_fread(image, cartridge_pages_8[1], 0x2000);
 			current_page_ptr_8 = cartridge_pages_8[0];
 		}
 		else
 		{
-			mame_fread_msbfirst(file, cartridge_pages[1], 0x2000);
+			image_fread(image, cartridge_pages[1], 0x2000);
+			for (i = 0; i < 0x1000; i++)
+				cartridge_pages[1][i] = BIG_ENDIANIZE_INT16(cartridge_pages[1][i]);
 			current_page_ptr = cartridge_pages[0];
 		}
 		break;

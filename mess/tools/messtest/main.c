@@ -24,6 +24,7 @@ static int test_count, failure_count;
 
 static const options_entry messtest_opts[] =
 {
+	{ "<UNADORNED0>",              NULL,        OPTION_REPEATS,    NULL },
 	{ "" },
 	{ "dumpscreenshots;ds",		"0",	OPTION_BOOLEAN,	"always dump screenshots" },
 	{ "preservedir;pd",			"0",	OPTION_BOOLEAN,	"preserve current directory" },
@@ -77,9 +78,9 @@ static void handle_arg(const char *arg)
 	/* setup options */
 	memset(&opts, 0, sizeof(opts));
 	opts.script_filename = arg;
-	if (options_get_bool("preservedir", TRUE))
+	if (options_get_bool("preservedir"))
 		opts.preserve_directory = 1;
-	if (options_get_bool("dumpscreenshots", TRUE))
+	if (options_get_bool("dumpscreenshots"))
 		opts.dump_screenshots = 1;
 
 	if (messtest(&opts, &this_test_count, &this_failure_count))
@@ -114,9 +115,6 @@ int main(int argc, char *argv[])
 	int result = -1;
 	clock_t begin_time;
 	double elapsed_time;
-	extern int mess_ghost_images;
-
-	mess_ghost_images = 1;
 
 #ifdef WIN32
 	/* expand wildcards so '*' can be used; this is not UNIX */
@@ -140,8 +138,10 @@ int main(int argc, char *argv[])
 	sndintrf_init(NULL);
 	
 	/* register options */
+	options_init(NULL);
+	options_free_entries();
 	options_add_entries(messtest_opts);
-	options_set_option_callback("", handle_arg);
+	options_set_option_callback(OPTION_UNADORNED(0), handle_arg);
 
 	/* run MAME's validity checks; if these fail cop out now */
 	/* NPW 16-Sep-2006 - commenting this out because this cannot be run outside of MAME */

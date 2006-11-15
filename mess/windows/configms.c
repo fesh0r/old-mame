@@ -29,9 +29,10 @@ int win_write_config;
 //	LOCAL VARIABLES
 //============================================================
 
+static int added_device_options;
 static char *dev_dirs[IO_COUNT];
 
-const options_entry mess_opts[] =
+static const options_entry mess_opts[] =
 {
 	{ NULL,							NULL,   OPTION_HEADER,		"MESS SPECIFIC OPTIONS" },
 	{ "newui;nu",                   "1",    OPTION_BOOLEAN,		"use the new MESS UI" },
@@ -57,6 +58,7 @@ const options_entry mess_opts[] =
  */
 int write_config(const char* filename, const game_driver *gamedrv)
 {
+	mame_file_error filerr;
 	mame_file *f;
 	char buffer[128];
 	int retval = 1;
@@ -67,8 +69,8 @@ int write_config(const char* filename, const game_driver *gamedrv)
 		filename = buffer;
 	}
 
-	f = mame_fopen(buffer, NULL, FILETYPE_INI, 1);
-	if (!f)
+	filerr = mame_fopen(SEARCHPATH_INI, buffer, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &f);
+	if (filerr != FILERR_NONE)
 		goto done;
 
 	options_output_ini_mame_file(f);
@@ -213,7 +215,7 @@ void win_add_mess_device_options(const game_driver *gamedrv)
 		// add a separator
 		opts = auto_malloc(sizeof(*opts) * 2);
 		memset(opts, 0, sizeof(*opts) * 2);
-		opts[0].name = "MESS devices";
+		opts[0].description = "MESS DEVICES";
 		opts[0].flags = OPTION_HEADER;
 		options_add_entries(opts);
 
@@ -336,7 +338,7 @@ void win_mess_extract_options(void)
 	const char *s;
 	int i, j;
 
-	arg = options_get_string("ramsize", TRUE);
+	arg = options_get_string("ramsize");
 	if (arg)
 	{
 		specified_ram = ram_parse_string(arg);
@@ -347,15 +349,15 @@ void win_mess_extract_options(void)
 		}
 	}
 
-	options.skip_warnings = options_get_bool("skip_warnings", TRUE);
-	options.disable_normal_ui = options_get_bool("newui", TRUE);
+	options.skip_warnings = options_get_bool("skip_warnings");
+	options.disable_normal_ui = options_get_bool("newui");
 	options.ram = specified_ram;
-	options.min_width = options_get_int("min_width", TRUE);
-	options.min_height = options_get_int("min_height", TRUE);
+	options.min_width = options_get_int("min_width");
+	options.min_height = options_get_int("min_height");
 
-	win_task_count = options_get_int("threads", TRUE);
-	win_use_natural_keyboard = options_get_bool("natural", TRUE);
-	win_write_config = options_get_bool("writeconfig", TRUE);
+	win_task_count = options_get_int("threads");
+	win_use_natural_keyboard = options_get_bool("natural");
+	win_write_config = options_get_bool("writeconfig");
 
 	if (device_options)
 	{
@@ -370,7 +372,7 @@ void win_mess_extract_options(void)
 				while((s = strchr(optionname, ';')) != NULL)
 					optionname = s + 1;
 
-				filename = options_get_string(optionname, TRUE);
+				filename = options_get_string(optionname);
 
 				if (filename)
 				{
@@ -388,13 +390,24 @@ void win_mess_extract_options(void)
 
 
 
-void win_mess_driver_name_callback(const char *arg)
+static void win_mess_driver_name_callback(const char *arg)
 {
 	int drvnum;
-	drvnum = driver_get_index(arg);
-	if (drvnum >= 0)
-		win_add_mess_device_options(drivers[drvnum]);
+
+	if (!added_device_options)
+	{
+		drvnum = driver_get_index(arg);
+		if (drvnum >= 0)
+			win_add_mess_device_options(drivers[drvnum]);
+		added_device_options = TRUE;
+	}
 }
 
 
 
+void win_mess_options_init(void)
+{
+	added_device_options = FALSE;
+	options_add_entries(mess_opts);
+	options_set_option_callback(OPTION_UNADORNED(0), win_mess_driver_name_callback);
+}

@@ -104,7 +104,7 @@ SNAPSHOT_LOAD(spectrum)
 	if (!snapshot_data)
 		goto error;
 
-	mame_fread(fp, snapshot_data, snapshot_size);
+	image_fread(image, snapshot_data, snapshot_size);
 
 	if (!mame_stricmp(file_type, "sna"))
 	{
@@ -492,8 +492,8 @@ void spectrum_setup_sp(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	}
 
 	data = (status & 0x10)>>4;
-	activecpu_set_input_line(0, data);
-	activecpu_set_input_line(INPUT_LINE_NMI, data);
+	cpunum_set_input_line(0, 0, data);
+	cpunum_set_input_line(0, INPUT_LINE_NMI, data);
 	cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
 
 	spectrum_page_basicrom();
@@ -595,8 +595,8 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	set_last_border_color(pSnapshot[26] & 0x07);
 	force_border_redraw();
 
-	activecpu_set_input_line(0, data);
-	activecpu_set_input_line(INPUT_LINE_NMI, data);
+	cpunum_set_input_line(0, 0, data);
+	cpunum_set_input_line(0, INPUT_LINE_NMI, data);
 	cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
 
 	if (SnapshotSize == 49179)
@@ -903,8 +903,8 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		/* cpunum_set_reg(0, Z80_IRQ_STATE, 1); */
 	}
 
-	activecpu_set_input_line(0, data);
-	activecpu_set_input_line(INPUT_LINE_NMI, data);
+	cpunum_set_input_line(0, 0, data);
+	cpunum_set_input_line(0, INPUT_LINE_NMI, data);
 	cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
 
 	/* IFF2 */
@@ -1067,12 +1067,12 @@ QUICKLOAD_LOAD(spectrum)
 	UINT8 *quick_data;
 	int read_;
 
-	quick_length = mame_fsize(fp);
+	quick_length = image_length(image);
 	quick_data = malloc(quick_length);
 	if (!quick_data)
 		return INIT_FAIL;
 
-	read_ = mame_fread(fp, quick_data, quick_length);
+	read_ = image_fread(image, quick_data, quick_length);
 	if (read_ != quick_length)
 		return INIT_FAIL;
 
@@ -1094,7 +1094,7 @@ DEVICE_LOAD( timex_cart )
 
 	logerror ("Trying to load cart\n");
 
-	file_size = mame_fsize(file);
+	file_size = image_length(image);
 
 	if (file_size < 0x09)
 	{
@@ -1109,7 +1109,7 @@ DEVICE_LOAD( timex_cart )
 		return INIT_FAIL;
 	}
 
-	mame_fread(file, file_data, file_size);
+	image_fread(image, file_data, file_size);
 
 	for (i=0; i<8; i++)
 		if(file_data[i+1]&0x02)	chunks_in_file++;

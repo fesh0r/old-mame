@@ -118,13 +118,11 @@ static void cas_copy_callback(int param)
 
 DEVICE_LOAD( trs80_cas )
 {
-	cas_size = mame_fsize(file);
-	cas_buff = image_malloc(image, cas_size);
+	cas_size = image_length(image);
+	cas_buff = image_ptr(image);
 	if (!cas_buff)
 		return INIT_FAIL;
 
-	mame_fread(file, cas_buff, cas_size);
-	mame_fclose(file);
 	if (cas_buff[1] == 0x55)
 	{
 		LOG(("trs80_cas_init: loading %s size %d\n", image_filename(image), cas_size));
@@ -221,27 +219,23 @@ DEVICE_LOAD( trs80_floppy )
 	int dir_length; /* length of directory in sectors (aka DDGA) */
 	int id = image_index_in_device(image);
 
-    if (device_load_basicdsk_floppy(image, file) != INIT_PASS)
+    if (device_load_basicdsk_floppy(image) != INIT_PASS)
 		return INIT_FAIL;
 
     if (image_index_in_device(image) == 0)        /* first floppy? */
 	{
-		if (file)
-		{
-
-            mame_fseek(file, 0, SEEK_SET);
-			mame_fread(file, pdrive, 2);
+		image_fseek(image, 0, SEEK_SET);
+		image_fread(image, pdrive, 2);
 #if 0
-			if (pdrive[0] != 0x00 || pdrive[1] != 0xfe)
-			{
-				basicdsk_read_sectormap(image, &tracks[id], &heads[id], &spt[id]);
-			}
-			else
+		if (pdrive[0] != 0x00 || pdrive[1] != 0xfe)
+		{
+			basicdsk_read_sectormap(image, &tracks[id], &heads[id], &spt[id]);
+		}
+		else
 #endif
 
-			mame_fseek(file, 2 * 256, SEEK_SET);
-			mame_fread(file, pdrive, 4*16);
-		}
+		image_fseek(image, 2 * 256, SEEK_SET);
+		image_fread(image, pdrive, 4*16);
 	}
 
 	tracks = pdrive[id*16+3] + 1;
@@ -349,7 +343,7 @@ static void tape_put_byte(UINT8 value)
 				UINT8 zeroes[256] = {0,};
 
 				sprintf(filename, "basic%c.cas", tape_buffer[4]);
-				tape_put_file = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_IMAGE, OSD_FOPEN_RW);
+				mame_fopen(SEARCHPATH_IMAGE, filename, OPEN_FLAG_READ | OPEN_FLAG_WRITE, &tape_put_file);
 				mame_fwrite(tape_put_file, zeroes, 256);
 				mame_fwrite(tape_put_file, tape_buffer, 8);
 			}
@@ -361,7 +355,7 @@ static void tape_put_byte(UINT8 value)
 				UINT8 zeroes[256] = {0,};
 
 				sprintf(filename, "%-6.6s.cas", tape_buffer+2);
-				tape_put_file = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_IMAGE, OSD_FOPEN_RW);
+				mame_fopen(SEARCHPATH_IMAGE, filename, OPEN_FLAG_READ | OPEN_FLAG_WRITE, &tape_put_file);
 				mame_fwrite(tape_put_file, zeroes, 256);
 				mame_fwrite(tape_put_file, tape_buffer, 8);
 			}
@@ -442,7 +436,7 @@ static void tape_get_open(void)
 
 		sprintf(filename, "%-6.6s.cas", RAM + 0x41e8);
 		logerror("filename %s\n", filename);
-		tape_get_file = mame_fopen(Machine->gamedrv->name, filename, FILETYPE_IMAGE, OSD_FOPEN_READ);
+		mame_fopen(SEARCHPATH_IMAGE, filename, OPEN_FLAG_READ, &tape_get_file);
 		tape_count = 0;
 	}
 }
