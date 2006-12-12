@@ -292,18 +292,25 @@ static image_error_t load_zip_path(mess_image *image, const char *path)
 	/* search for a ZIP file */
 	sprintf(zip_segment, "%s%s", zip_extension, PATH_SEPARATOR);
 	s = strrchr(path_copy, '.');
-	if (!s || mame_stricmp(s, ".zip"))
+	if (!s || mame_stricmp(s, zip_extension))
 		s = strstr(path_copy, zip_segment);
 	if (s)
 	{
 		s += strlen(zip_extension);
-		*s = '\0';
-		zip_file_path = path_copy;
 		if (*s)
-			zip_entry = s + strlen(PATH_SEPARATOR);
+		{
+			/* we have a ZIP subpath */
+			*(s++) = '\0';
+			zip_entry = s;
+		}
 		else
+		{
+			/* no ZIP subpath */
 			zip_entry = NULL;
+		}
+		zip_file_path = path_copy;
 
+		/* open the ZIP file */
 		ziperr = zip_file_open(zip_file_path, &zip);
 		if (ziperr == ZIPERR_NONE)
 		{
@@ -1377,7 +1384,7 @@ void image_battery_save(mess_image *image, const void *buffer, int length)
 	assert_always(buffer && (length > 0), "Must specify sensical buffer/length");
 
 	/* try to open the battery file and write it out, if possible */
-	filerr = open_battery_file(image, OPEN_FLAG_WRITE, &file);
+	filerr = open_battery_file(image, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &file);
 	if (filerr == FILERR_NONE)
 	{
 		mame_fwrite(file, buffer, length);

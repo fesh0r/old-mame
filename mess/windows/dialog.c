@@ -994,7 +994,7 @@ int win_dialog_add_adjuster(dialog_box *dialog, const char *item_label, int defa
 		goto error;
 	x += dialog->layout->combo_width - DIM_ADJUSTER_SCR_WIDTH;
 
-	_snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+	_sntprintf(buf, sizeof(buf) / sizeof(buf[0]),
 		is_percentage ? TEXT("%d%%") : TEXT("%d"),
 		default_value);
 	s = win_dialog_tcsdup(dialog, buf);
@@ -1572,6 +1572,20 @@ char *win_dialog_strdup(dialog_box *dialog, const char *s)
 
 
 //============================================================
+//	win_dialog_wcsdup
+//============================================================
+
+WCHAR *win_dialog_wcsdup(dialog_box *dialog, const WCHAR *s)
+{
+	WCHAR *result = (WCHAR *) pool_malloc(&dialog->mempool, (wcslen(s) + 1) * sizeof(*s));
+	if (result)
+		wcscpy(result, s);
+	return result;
+}
+
+
+
+//============================================================
 //	before_display_dialog
 //============================================================
 
@@ -1609,20 +1623,19 @@ static void after_display_dialog(void)
 
 void win_dialog_runmodal(HWND wnd, dialog_box *dialog)
 {
-	struct _dialog_box *di;
-	
-	di = (struct _dialog_box *) dialog;
-	assert(di);
+	assert(dialog);
 
 	// finishing touches on the dialog
-	dialog_prime(di);
+	dialog_prime(dialog);
 
 	// show the dialog
 	before_display_dialog();
+#ifndef UNICODE
 	if (GetVersion() & 0x80000000)
-		DialogBoxIndirectParamA(NULL, di->handle, wnd, dialog_proc, (LPARAM) di);
+		DialogBoxIndirectParamA(NULL, dialog->handle, wnd, dialog_proc, (LPARAM) dialog);
 	else
-		DialogBoxIndirectParamW(NULL, di->handle, wnd, dialog_proc, (LPARAM) di);
+#endif // UNICODE
+		DialogBoxIndirectParamW(NULL, dialog->handle, wnd, dialog_proc, (LPARAM) dialog);
 	after_display_dialog();
 }
 

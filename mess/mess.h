@@ -13,12 +13,10 @@
 
 struct SystemConfigurationParamBlock;
 
-#include "osdepend.h"
 #include "device.h"
 #include "driver.h"
 #include "image.h"
 #include "artworkx.h"
-#include "config.h"
 
 
 

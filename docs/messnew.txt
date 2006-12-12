@@ -1,4 +1,59 @@
-0.109.1
+0.111
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+(none)
+
+
+
+System Driver Changes:
+----------------------
+- [A7800] Updated palette.  [Nabuko78]
+
+- [AMSTRAD] Minor floppy disk cleanup.  [Nate Woods]
+
+- [COCO] Implemented Diecom Light Gun Adapter.  (bug #971) [Tim Lindner]
+
+- [DGNBETA] Fixed regressions introduced in 0.110.  (bug #970) [Phill
+  Harvey-Smith]
+
+- [SVISION] Fixed the aspect ratio.  [Peter Trauner]
+
+
+
+User Interface Changes:
+-----------------------
+(none)
+  
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.111.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Fixed opening up specific images within zip files that contain multiple
+  images.  (bug #973) [Nate Woods]
+  
+- Removed a stub disassembler from the v30mz core, as per MAME conventions.
+  [Nate Woods]
+
+- Renamed the "hash_directory" option to "hashpath".  [Aaron Giles]
+
+- Fixed regression introduced in 0.110 that caused battery backed NVRAM files
+  to not be written unless the file already existed.  (bug #974) [Nate Woods]
+
+- Added an SP0256 sound core.  [tim lindner]
+
+
+
+0.110
 
 New System Drivers Supported (in no particular order):
 ------------------------------------------------------

@@ -100,14 +100,13 @@ static struct mess_hd *get_drive(mess_image *img)
  *************************************/
 
 #define ENCODED_IMAGE_REF_PREFIX	"/:/M/E/S/S//i/m/a/g/e//#"
-#define ENCODED_IMAGE_REF_FORMAT	(ENCODED_IMAGE_REF_PREFIX "%016x")
-#define ENCODED_IMAGE_REF_LEN		(sizeof(ENCODED_IMAGE_REF_PREFIX)+16)
+#define ENCODED_IMAGE_REF_FORMAT	(ENCODED_IMAGE_REF_PREFIX "%p.chd")
+#define ENCODED_IMAGE_REF_LEN		(sizeof(ENCODED_IMAGE_REF_PREFIX)+20)
 
 
 static void encode_ptr(void *ptr, char filename[ENCODED_IMAGE_REF_LEN])
 {
-	snprintf(filename, ENCODED_IMAGE_REF_LEN, ENCODED_IMAGE_REF_FORMAT,
-		(unsigned int) ptr);
+	snprintf(filename, ENCODED_IMAGE_REF_LEN, ENCODED_IMAGE_REF_FORMAT, ptr);
 }
 
 
@@ -121,11 +120,11 @@ int chd_create_ref(void *ref, UINT64 logicalbytes, UINT32 hunkbytes, UINT32 comp
 
 
 
-chd_file *chd_open_ref(void *ref, int writeable, chd_file *parent)
+chd_error chd_open_ref(void *ref, int mode, chd_file *parent, chd_file **chd)
 {
 	char filename[ENCODED_IMAGE_REF_LEN];
 	encode_ptr(ref, filename);
-	return chd_open(filename, writeable, parent);
+	return chd_open(filename, mode, parent, chd);
 }
 
 
@@ -142,12 +141,19 @@ chd_file *chd_open_ref(void *ref, int writeable, chd_file *parent)
 
 static mess_image *decode_image_ref(const char encoded_image_ref[ENCODED_IMAGE_REF_LEN])
 {
-	unsigned int ptr;
+	void *ptr;
+	char c[5] = { 0, };
 
-	if (sscanf(encoded_image_ref, ENCODED_IMAGE_REF_FORMAT, &ptr) == 1)
-		return (mess_image *) ptr;
+	/* scan the reference */
+	if (sscanf(encoded_image_ref, ENCODED_IMAGE_REF_PREFIX "%p%c%c%c%c", &ptr, &c[0], &c[1], &c[2], &c[3]) != 5)
+		return NULL;
 
-	return NULL;
+	/* check for the correct file extension */
+	if (strcmp(c, ".chd"))
+		return NULL;
+
+	/* success */
+	return (mess_image *) ptr;
 }
 
 
@@ -188,7 +194,8 @@ static chd_interface_file *mess_chd_open(const char *filename, const char *mode)
 	}
 
 	/* invalid "file name"? */
-	assert(image);
+	if (!image)
+		return NULL;
 
 	/* read-only fp? */
 	if (!image_is_writable(image) && !(mode[0] == 'r' && !strchr(mode, '+')))
@@ -266,7 +273,7 @@ int device_init_mess_hd(mess_image *image)
 
 static int internal_load_mess_hd(mess_image *image, const char *metadata)
 {
-	int err = 0;
+	chd_error err = 0;
 	struct mess_hd *hd;
 	chd_file *chd;
 	int is_writeable;
@@ -278,47 +285,42 @@ static int internal_load_mess_hd(mess_image *image, const char *metadata)
 	do
 	{
 		is_writeable = image_is_writable(image);
-		chd = chd_open_ref(image, is_writeable, NULL);
+		chd = NULL;
+		err = chd_open_ref(image, is_writeable ? CHD_OPEN_READWRITE : CHD_OPEN_READ, NULL, &chd);
 
-		if (!chd)
-		{
-			err = chd_get_last_error();
-
-			/* special case; if we get CHDERR_FILE_NOT_WRITEABLE, make the
-			 * image read only and repeat */
-			if (err == CHDERR_FILE_NOT_WRITEABLE)
-				image_make_readonly(image);
-		}
+		/* special case; if we get CHDERR_FILE_NOT_WRITEABLE, make the
+		 * image read only and repeat */
+		if (err == CHDERR_FILE_NOT_WRITEABLE)
+			image_make_readonly(image);
 	}
 	while(!chd && is_writeable && (err == CHDERR_FILE_NOT_WRITEABLE));
 	if (!chd)
-		goto error;
+		goto done;
 
 	/* if we created the image and hence, have metadata to set, set the metadata */
 	if (metadata)
 	{
-		err = chd_set_metadata(chd, HARD_DISK_STANDARD_METADATA, 0, metadata, strlen(metadata) + 1);
+		err = chd_set_metadata(chd, HARD_DISK_METADATA_TAG, 0, metadata, strlen(metadata) + 1);
 		if (err != CHDERR_NONE)
-			goto error;
+			goto done;
 	}
 
 	/* open the hard disk file */
 	hd->hard_disk_handle = hard_disk_open(chd);
 	if (!hd->hard_disk_handle)
-		goto error;
+		goto done;
 
 	drive_handles[id] = hd->hard_disk_handle;
 
-	return INIT_PASS;
-
-error:
-	if (chd)
-		chd_close(chd);
-
-	err = chd_get_last_error();
+done:
 	if (err)
+	{
+		if (chd)
+			chd_close(chd);
+
 		image_seterror(image, IMAGE_ERROR_UNSPECIFIED, chd_get_error_string(err));
-	return INIT_FAIL;
+	}
+	return err ? INIT_FAIL : INIT_PASS;
 }
 
 

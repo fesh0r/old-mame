@@ -37,10 +37,12 @@
 #define OPTION_GAMENAME				OPTION_UNADORNED(0)
 
 /* core search path options */
-#define OPTION_ROMPATH				"rompath"
 #ifdef MESS
+#define OPTION_ROMPATH				"biospath"
 #define OPTION_HASHPATH				"hashpath"
 #define OPTION_IMAGEPATH			"softwarepath"
+#else
+#define OPTION_ROMPATH				"rompath"
 #endif
 #define OPTION_SAMPLEPATH			"samplepath"
 #define OPTION_ARTPATH				"artpath"

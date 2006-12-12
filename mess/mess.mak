@@ -230,7 +230,7 @@ SOUNDS+=C6280
 #SOUNDS+=SCSP
 #SOUNDS+=YMF271
 SOUNDS+=PSXSPU
-#SOUNDS+=CDDA
+SOUNDS+=CDDA
 #SOUNDS+=ICS2115
 #SOUNDS+=ST0016
 #SOUNDS+=C352
@@ -241,6 +241,7 @@ SOUNDS+=BEEP
 SOUNDS+=SID6581
 SOUNDS+=SID8580
 SOUNDS+=ES5503
+#SOUNDS+=SP0256
 
 # Archive definitions
 DRVLIBS = \
@@ -1108,6 +1109,7 @@ $(OBJ)/render.o:	$(OBJ)/mess/layout/horizont.lh \
 
 
 $(OBJ)/mess/systems/coco.o:	$(OBJ)/mess/layout/coco3.lh
+$(OBJ)/mess/systems/svision.o:	$(OBJ)/mess/layout/svision.lh
 
 
 
