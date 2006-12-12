@@ -14,8 +14,9 @@ enum dataType { DT_BYTE, DT_WORD, DT_DOUBLE_WORD, DT_LONG_WORD } ;
 
 // This function's areguments are written source->destination to fall in line with the processor's paradigm...
 static void SetDestinationValue(void *sourcePointer, unsigned char sourceType,
-						 void *destinationPointer, unsigned char destinationType) ;
-static void SetDataMemoryValue(void *sourcePointer, unsigned char sourceType, UINT32 destinationAddr) ;
+								void *destinationPointer, unsigned char destinationType) ;
+
+static void SetDataMemoryValue   (void *sourcePointer, unsigned char sourceType, UINT32 destinationAddr) ;
 static void SetProgramMemoryValue(void *sourcePointer, unsigned char sourceType, UINT32 destinationAddr) ;
 
 
@@ -41,6 +42,7 @@ static int CmpOperation(void **wd, UINT64 *pa) ;
 static int Dec24Operation(void **wd, UINT64 *pa) ;
 static int AndOperation(void **wd, UINT64 *pa) ;
 static int OrOperation(void **wd, UINT64 *pa) ;
+static int TstOperation(void **wd, UINT64 *pa) ;
 
 static int MoveCOperation(void) ;
 static int MoveMOperation(void) ;
@@ -53,6 +55,7 @@ static int OriOperation(void) ;
 static int BitfieldOperation(void) ;
 static int JmpOperation(void) ;
 static int BsrOperation(void) ;
+static int JsrOperation(void) ;
 static int DoOperation(void) ;
 static int TccOperation(void) ;
 static int BraOperation(void) ;
@@ -77,6 +80,7 @@ static void *DecodeRRTable(UINT16 RR, unsigned char *dt) ;
 static void *DecodeDDTable(UINT16 DD, unsigned char *dt) ;
 static void *DecodeHHHTable(UINT16 HHH, unsigned char *dt) ;
 static void *DecodeHHTable(UINT16 HH, unsigned char *dt) ;
+static void *DecodeZTable(UINT16 Z, unsigned char *dt) ;
 static UINT16 DecodeBBBBitMask(UINT16 BBB, UINT16 *iVal) ;
 static int DecodeccccTable(UINT16 cccc) ;
 static void Decodeh0hFTable(UINT16 h0h, UINT16 F, void **source, unsigned char *st, void **dest, unsigned char *dt) ;
@@ -89,6 +93,7 @@ static void DecodeIIIITable(UINT16 IIII, void **source, unsigned char *st, void 
 static void ExecuteMMTable(int x, UINT16 MM) ;
 static void ExecutemTable(int x, UINT16 m) ;
 static void ExecutezTable(int x, UINT16 z) ;
+static UINT16 ExecuteqTable(int x, UINT16 q) ;
 
 static UINT16 AssembleDFromPTable(UINT16 P, UINT16 ppppp) ;
 
@@ -163,7 +168,7 @@ static void execute_one(void)
 	change_pc(PC) ;
 
 	// Loop processing
-	if (lfFLAG)
+	if (lfBIT)
 	{
 		if (PC == LA)
 		{
@@ -251,6 +256,7 @@ static unsigned ExecuteDataALUOpcode(int parallelType)
 			else if (BITS(OP,0x0007) == 0x1)
 			{
 				// TST - 1mRR HHHW 0010 F001
+				retSize = TstOperation(&workingDest, &previousAccum);
 			}
 			else if (BITS(OP,0x0007) == 0x2)
 			{
@@ -632,6 +638,12 @@ static unsigned ExecuteSpecialOpcode(void)
 				retSize = 1 ;
 				break ;
 
+			// DO FOREVER - 0000 0000 0000 0010 xxxx xxxx xxxx xxxx
+			case 0x2:
+				// !!! IMPLEMENT ME NEXT;
+				retSize = 0;
+				break;
+
 			// RTS - 0000 0000 0000 0110
 			case 0x6:
 				PC = SSH ;
@@ -640,6 +652,15 @@ static unsigned ExecuteSpecialOpcode(void)
 				retSize = 0 ;
 				change_pc(PC) ;
 				break ;
+
+			// RTI - 0000 0000 0000 0111
+			case 0x7:
+				PC = SSH;
+				SR = SSL;
+				SP--;
+				retSize = 0;
+				change_pc(PC);
+				break;
 		}
 	}
 	else if (BITS(OP,0x0f00) == 0x0)
@@ -654,14 +675,25 @@ static unsigned ExecuteSpecialOpcode(void)
 		}
 		else if (BITS(OP,0x00f0) == 0x2)
 		{
-			retSize = 1 ;
+			switch(BITS(OP,0x000c))								// Consolidation can happen here
+			{
+				// JSR - 0000 0001 0010 00RR
+				// JMP - 0000 0001 0010 01RR
+				case 0x1: retSize = JmpOperation(); break;
+				// BSR - 0000 0001 0010 10RR
+				// BRA - 0000 0001 0010 11RR
+				default:  retSize = 1;
+			}
 		}
 		else if (BITS(OP,0x00f0) == 0x3)
 		{
 			switch(BITS(OP,0x000c))
 			{
+				// JSR - 0000 0001 0011 00-- xxxx xxxx xxxx xxxx
+				case 0x0: retSize = JsrOperation() ; break ;
 				// JMP - 0000 0001 0011 01-- xxxx xxxx xxxx xxxx
 				case 0x1: retSize = JmpOperation() ; break ;
+				// BSR - 0000 0001 0011 10-- xxxx xxxx xxxx xxxx
 				case 0x2: retSize = BsrOperation() ; break ;
 			}
 		}
@@ -692,6 +724,7 @@ static unsigned ExecuteSpecialOpcode(void)
 		else
 		{
 			// REP - 0000 0100 001D DDDD
+			retSize = RepOperation() ;
 		}
 	}
 	else if (BITS(OP,0x0f00) == 0x5)
@@ -813,8 +846,8 @@ static int BitfieldOperation(void)
 	{
 		// bfchg
 		case 0x12:
-			if ((iVal & opVal) == iVal)   SET_cFLAG() ;		// test
-			else					    CLEAR_cFLAG() ;
+			if ((iVal & opVal) == iVal)   SET_cBIT() ;		// test
+			else					    CLEAR_cBIT() ;
 
 			opVal ^= iVal ;									// and change
 			break ;
@@ -836,8 +869,9 @@ static int BitfieldOperation(void)
 
 		// bftstl
 		case 0x00:
-			if ((iVal & opVal) == 0)   SET_cFLAG() ;
-			else				     CLEAR_cFLAG() ;
+			if ((iVal & opVal) == 0)   SET_cBIT() ;
+			else				     CLEAR_cBIT() ;
+			retSize = 2; return retSize;				/* It's just a test - no need to go on */
 			break ;
 	}
 
@@ -900,14 +934,42 @@ static int MoveCOperation(void)
 			{
 				// q in move(c)
 
-				retSize = 666 ;
+				// Figure out the true addr...
+				UINT16 addr = ExecuteqTable(BITS(OP,0x0003), BITS(OP,0x0008));
+
+				if (W)
+				{
+					// !!! does this work ???
+					UINT16 data = data_read_word_16le(addr<<1) ;
+					SetDestinationValue(&data, DT_WORD, SD, sdt) ;
+				}
+				else
+				{
+					SetDataMemoryValue(SD, sdt, addr<<1);
+				}
+
+				retSize = 1 ;
 			}
 			else
 			{
 				if (BITS(OP,0x0002))
 				{
 					// Z in move(c)
-					retSize = 666 ;
+					unsigned char rt = 0x00;
+					void *Z;
+
+					Z = DecodeZTable(BITS(OP,0x0008), &rt);
+
+					if (W)
+					{
+						// Unimplemented
+						retSize = 666 ;
+					}
+					else
+					{
+						SetDataMemoryValue(SD, sdt, (*((UINT16*)Z))<<1);
+						retSize = 1;
+					}
 				}
 				else
 				{
@@ -1067,7 +1129,7 @@ static int MoveIOperation(void)
 	return retSize ;
 }
 
-int MovePOperation(void)
+static int MovePOperation(void)
 {
 	int retSize = 1 ;
 
@@ -1115,7 +1177,8 @@ int MovePOperation(void)
 		// A little different than most W if's - opposite read and write thingies...
 		if (W)
 		{
-			SetDataMemoryValue(sdrReg, sdrt, pp<<1) ;
+			UINT16 data = data_read_word_16le( (*((UINT16*)sdrReg))<<1 ) ;		// read the word out
+			SetDataMemoryValue(&data, DT_WORD, pp<<1) ;
 		}
 		else
 		{
@@ -1135,11 +1198,24 @@ static int JmpOperation(void)
 	int retSize = 0 ;
 
 	dsp56k.ppc = PC;
-	PC = (ROPCODE((PC<<1)+2)) ;						// Can this offset by 2 bytes be handled better?  Say, for example, by moving "1 word"?
 
-	retSize = 0 ;									// Jump with no offset.
+	if (BITS(OP,0x0010))
+	{
+		PC = (ROPCODE((PC<<1)+2)) ;		// Can this offset by 2 bytes be handled better?  Say, for example, by moving "1 word"?
+		change_pc(PC) ;
+	}
+	else
+	{
+		unsigned char rt = 0x00 ;
+		void *R = 0x00 ;
 
-	change_pc(PC) ;
+		R = DecodeRRTable(BITS(OP,0x0003), &rt);
+
+		PC = *((UINT16*)R);
+		change_pc(PC);
+	}
+
+	retSize = 0 ;					// Jump with no offset.
 
 	return retSize ;
 }
@@ -1170,6 +1246,27 @@ static int BsrOperation(void)
 	change_pc(PC) ;
 
 	return retSize ;
+}
+
+static int JsrOperation(void)
+{
+	int retSize = 0;
+
+	// Handle other JSR types!
+	INT16 branchOffset = (ROPCODE((PC<<1)+2)) ;	// Can this offset by 2 bytes be handled better?  Say, for example, by moving "1 word"?
+
+	// The docs say nothing of this, but I swear it *must* be true
+	PC += 2 ;
+	dsp56k.ppc = PC ;
+
+	// See bsr operation
+	SP++;
+	SSH = PC;
+	SSL = SR;
+
+	PC = branchOffset;
+
+	return retSize;
 }
 
 static int BraOperation(void)
@@ -1254,7 +1351,7 @@ static int DoOperation(void)
 
 
 	// Third instruction cycle
-	SET_lfFLAG() ;
+	SET_lfBIT() ;
 
 	return retSize ;
 }
@@ -1292,14 +1389,14 @@ static int Dec24Operation(void **wd, UINT64 *pa)
 
 	// Carry flag (C) - HACK
 //  if (decMe == 0x0000000000ff7fff)
-//      SET_cFLAG() ;
+//      SET_cBIT() ;
 //  else
-//      CLEAR_cFLAG() ;
+//      CLEAR_cBIT() ;
 
 	// Carry flag (C)
 //  UINT8 postCarryBit = (*((UINT64*)D) & 0x0000008000000000) >> 39 ;
-//  if (postCarryBit != carryBit)   SET_cFLAG() ;
-//  else                          CLEAR_cFLAG() ;
+//  if (postCarryBit != carryBit)   SET_cBIT() ;
+//  else                          CLEAR_cBIT() ;
 
     *wd = D ;
 
@@ -1329,8 +1426,8 @@ static int Dec24Operation(void **wd, UINT64 *pa)
 
     // Carry flag (C)
     UINT8 postCarryBit = ((*((PAIR64*)D)).b.h4 & 0x80) >> 7 ;
-    if (postCarryBit != carryBit)   SET_cFLAG() ;
-    else                          CLEAR_cFLAG() ;
+    if (postCarryBit != carryBit)   SET_cBIT() ;
+    else                          CLEAR_cBIT() ;
 
     *wd = D ;
 */
@@ -1421,7 +1518,7 @@ static int NotOperation(void **wd, UINT64 *pa)
 }
 
 
-int EorOperation(void **wd, UINT64 *pa)
+static int EorOperation(void **wd, UINT64 *pa)
 {
 	int retSize = 1 ;
 
@@ -1459,7 +1556,7 @@ static int TfrDataALUOperation(void **wd, UINT64 *pa)
 	return retSize ;
 }
 
-int AndOperation(void **wd, UINT64 *pa)
+static int AndOperation(void **wd, UINT64 *pa)
 {
 	int retSize = 1 ;
 
@@ -1553,7 +1650,37 @@ static int ClrOperation(void **wd, UINT64 *pa)
 	return retSize ;
 }
 
-int AndiOperation(void)
+static int TstOperation(void **wd, UINT64 *pa)
+{
+	int retSize = 1 ;
+
+	unsigned char drt    = 0x00 ;
+	void *destinationReg = 0x00 ;
+	destinationReg = DecodeFTable(BITS(OP,0x0008), &drt) ;
+
+	// S - "computed according to the standard definition (section A.4)"
+	// L - can't be done until after data move
+	// E - set if signed integer portion is in use
+	// U - set according to the standard definition of the U bit
+	// N - set if bit 39 is set
+	if (*((UINT64*)destinationReg) & (UINT64)U64(0x8000000000)) SET_nBIT();
+	else										   CLEAR_nBIT();
+
+	// Z - set if == 0
+	if (*((UINT64*)destinationReg) == 0) SET_zBIT();
+	else								 CLEAR_zBIT();
+
+	// V&C - always cleared
+	CLEAR_vBIT();
+	CLEAR_cBIT();
+
+	*pa = *((UINT64*)destinationReg) ;	// backup the previous value (no change here)
+	*wd = destinationReg;
+
+	return retSize ;
+}
+
+static int AndiOperation(void)
 {
 	int retSize = 1 ;
 
@@ -1594,7 +1721,7 @@ static int OriOperation(void)
 	return retSize ;
 }
 
-int CmpOperation(void **wd, UINT64 *pa)
+static int CmpOperation(void **wd, UINT64 *pa)
 {
 	int retSize = 1 ;
 
@@ -1619,9 +1746,9 @@ int CmpOperation(void **wd, UINT64 *pa)
 	result = *((UINT64*)D) - cmpVal ;
 
 	if (result == 0)
-		SET_zFLAG() ;
+		SET_zBIT() ;
 	else
-		CLEAR_zFLAG() ;
+		CLEAR_zBIT() ;
 
     *wd = D ;
 	return retSize ;
@@ -1734,7 +1861,7 @@ static int BccOperation(void)
 	return retSize ;
 }
 
-int Tst2Operation(void)
+static int Tst2Operation(void)
 {
 	int retSize = 1 ;
 
@@ -1750,12 +1877,12 @@ int Tst2Operation(void)
 
 	// zero
 	if ( (*((UINT16*)destinationReg)) == 0)
-		SET_zFLAG() ;
+		SET_zBIT() ;
 	else
-		CLEAR_zFLAG() ;
+		CLEAR_zBIT() ;
 
 	// always clear C flag
-	CLEAR_cFLAG() ;
+	CLEAR_cBIT() ;
 
 	return retSize ;
 }
@@ -1803,7 +1930,12 @@ static int RepOperation(void)
 	}
 	else if (BITS(OP,0x0f00) == 0x4)
 	{
-		// S
+		// SD
+		unsigned char st = 0x00 ;
+		void *S ;
+
+		S = DecodeDDDDDTable(BITS(OP,0x001f), &st) ;
+		SetDestinationValue(S, st, &count, DT_WORD);
 	}
 	else
 	{
@@ -1939,6 +2071,20 @@ static void *DecodeHHTable(UINT16 HH, unsigned char *dt)
 	return retAddress ;
 }
 
+static void *DecodeZTable(UINT16 Z, unsigned char *dt)
+{
+	void *retAddress = 0x00 ;
+
+	switch(Z)
+	{
+		// Fixed as per the Family Manual addendum
+		case 0x01: retAddress = &A1 ; *dt = DT_WORD ; break ;
+		case 0x00: retAddress = &B1 ; *dt = DT_WORD ; break ;
+	}
+
+	return retAddress ;
+}
+
 
 static UINT16 DecodeBBBBitMask(UINT16 BBB, UINT16 *iVal)
 {
@@ -2019,6 +2165,30 @@ static void ExecutezTable(int x, UINT16 z)
 	}
 }
 
+// Returns R address
+static UINT16 ExecuteqTable(int x, UINT16 q)
+{
+	UINT16 *rX = 0x00 ;
+	UINT16 *nX = 0x00 ;
+
+	switch(x)
+	{
+		case 0x0: rX = &R0 ; nX = &N0 ; break ;
+		case 0x1: rX = &R1 ; nX = &N1 ; break ;
+		case 0x2: rX = &R2 ; nX = &N2 ; break ;
+		case 0x3: rX = &R3 ; nX = &N3 ; break ;
+	}
+
+	switch(q)
+	{
+		case 0x0: /* No permanent changes */ ; return (*rX)+(*nX); break;
+		case 0x1: (*rX)--;					   return (*rX);	   break;	// This one is special - it's a *PRE-decrement*!
+	}
+
+	exit(1);
+	return 0x00;
+}
+
 static UINT16 AssembleDFromPTable(UINT16 P, UINT16 ppppp)
 {
 	UINT16 destAddr = 0x00 ;
@@ -2056,22 +2226,22 @@ static int DecodeccccTable(UINT16 cccc)
 	switch (cccc)
 	{
 		// Arranged according to mnemonic table - not decoding table...
-		case 0x0: if( cFLAG == 0)                          retVal = 1 ; break ; // cc(hs)
-		case 0x8: if( cFLAG == 1)                          retVal = 1 ; break ; // cs(lo)
-		case 0x5: if( eFLAG == 0)                          retVal = 1 ; break ; // ec
-		case 0xa: if( zFLAG == 1)                          retVal = 1 ; break ; // eq
-		case 0xd: if( eFLAG == 1)                          retVal = 1 ; break ; // es
-		case 0x1: if((nFLAG ^ vFLAG) == 0)                 retVal = 1 ; break ; // ge
-		case 0x7: if((zFLAG + (nFLAG ^ vFLAG)) == 0)       retVal = 1 ; break ; // gt
-		case 0x6: if( lFLAG == 0)                          retVal = 1 ; break ; // lc
-		case 0xf: if((zFLAG + (nFLAG ^ vFLAG)) == 1)       retVal = 1 ; break ; // le
-		case 0xe: if( lFLAG == 1)                          retVal = 1 ; break ; // ls
-		case 0x9: if((nFLAG ^ vFLAG) == 1)                 retVal = 1 ; break ; // lt
-		case 0xb: if( nFLAG == 1)                          retVal = 1 ; break ; // mi
-		case 0x2: if( zFLAG == 0)                          retVal = 1 ; break ; // ne
-		case 0xc: if((zFLAG + ((!uFLAG) & (!eFLAG))) == 1) retVal = 1 ; break ; // nr
-		case 0x3: if( nFLAG == 0)                          retVal = 1 ; break ; // pl
-		case 0x4: if((zFLAG + ((!uFLAG) & (!eFLAG))) == 0) retVal = 1 ; break ; // nn
+		case 0x0: if( cBIT == 0)                        retVal = 1 ; break ; // cc(hs)
+		case 0x8: if( cBIT == 1)                        retVal = 1 ; break ; // cs(lo)
+		case 0x5: if( eBIT == 0)                        retVal = 1 ; break ; // ec
+		case 0xa: if( zBIT == 1)                        retVal = 1 ; break ; // eq
+		case 0xd: if( eBIT == 1)                        retVal = 1 ; break ; // es
+		case 0x1: if((nBIT ^ vBIT) == 0)                retVal = 1 ; break ; // ge
+		case 0x7: if((zBIT + (nBIT ^ vBIT)) == 0)       retVal = 1 ; break ; // gt
+		case 0x6: if( lBIT == 0)                        retVal = 1 ; break ; // lc
+		case 0xf: if((zBIT + (nBIT ^ vBIT)) == 1)       retVal = 1 ; break ; // le
+		case 0xe: if( lBIT == 1)                        retVal = 1 ; break ; // ls
+		case 0x9: if((nBIT ^ vBIT) == 1)                retVal = 1 ; break ; // lt
+		case 0xb: if( nBIT == 1)                        retVal = 1 ; break ; // mi
+		case 0x2: if( zBIT == 0)                        retVal = 1 ; break ; // ne
+		case 0xc: if((zBIT + ((!uBIT) & (!eBIT))) == 1) retVal = 1 ; break ; // nr
+		case 0x3: if( nBIT == 0)                        retVal = 1 ; break ; // pl
+		case 0x4: if((zBIT + ((!uBIT) & (!eBIT))) == 0) retVal = 1 ; break ; // nn
 	}
 
 	return retVal ;
@@ -2393,7 +2563,7 @@ static void SetDestinationValue(void *sourcePointer, unsigned char sourceType,
 // !! redundant functions (data and memory) can be handled with function pointers !!
 static void SetDataMemoryValue(void *sourcePointer, unsigned char sourceType, UINT32 destinationAddr)
 {
-	// mame_printf_debug("%x\n", destinationAddr) ;
+	// mame_printf_debug("%d %x\n", sourceType, destinationAddr) ;
 
 	// I wonder if this is how this should be done???
 	switch(sourceType)

@@ -30,28 +30,25 @@ struct _hard_disk_file
     CORE IMPLEMENTATION
 ***************************************************************************/
 
-/*************************************
- *
- *  Open a hard disk
- *
- *************************************/
+/*-------------------------------------------------
+    hard_disk_open - open a hard disk handle,
+    given a chd_file
+-------------------------------------------------*/
 
 hard_disk_file *hard_disk_open(chd_file *chd)
 {
 	int cylinders, heads, sectors, sectorbytes;
 	hard_disk_file *file;
 	char metadata[256];
-	UINT32 metatag;
-	UINT32 count;
+	chd_error err;
 
 	/* punt if no CHD */
-	if (!chd)
+	if (chd == NULL)
 		return NULL;
 
 	/* read the hard disk metadata */
-	metatag = HARD_DISK_STANDARD_METADATA;
-	count = chd_get_metadata(chd, &metatag, 0, metadata, sizeof(metadata));
-	if (count == 0)
+	err = chd_get_metadata(chd, HARD_DISK_METADATA_TAG, 0, metadata, sizeof(metadata), NULL, NULL);
+	if (err != CHDERR_NONE)
 		return NULL;
 
 	/* parse the metadata */
@@ -60,7 +57,7 @@ hard_disk_file *hard_disk_open(chd_file *chd)
 
 	/* allocate memory for the hard disk file */
 	file = malloc(sizeof(hard_disk_file));
-	if (!file)
+	if (file == NULL)
 		return NULL;
 
 	/* fill in the data */
@@ -74,7 +71,7 @@ hard_disk_file *hard_disk_open(chd_file *chd)
 
 	/* allocate a cache */
 	file->cache = malloc(chd_get_header(chd)->hunkbytes);
-	if (!file->cache)
+	if (file->cache == NULL)
 	{
 		free(file);
 		return NULL;
@@ -84,28 +81,23 @@ hard_disk_file *hard_disk_open(chd_file *chd)
 }
 
 
-
-/*************************************
- *
- *  Close a hard disk
- *
- *************************************/
+/*-------------------------------------------------
+    hard_disk_close - close a hard disk handle
+-------------------------------------------------*/
 
 void hard_disk_close(hard_disk_file *file)
 {
 	/* free the cache */
-	if (file->cache)
+	if (file->cache != NULL)
 		free(file->cache);
 	free(file);
 }
 
 
-
-/*************************************
- *
- *  Return the handle to the CHD
- *
- *************************************/
+/*-------------------------------------------------
+    hard_disk_get_chd - get a handle to a CHD
+    from a hard disk
+-------------------------------------------------*/
 
 chd_file *hard_disk_get_chd(hard_disk_file *file)
 {
@@ -113,12 +105,10 @@ chd_file *hard_disk_get_chd(hard_disk_file *file)
 }
 
 
-
-/*************************************
- *
- *  Return hard disk specific info
- *
- *************************************/
+/*-------------------------------------------------
+    hard_disk_get_info - return information about
+    a hard disk
+-------------------------------------------------*/
 
 hard_disk_info *hard_disk_get_info(hard_disk_file *file)
 {
@@ -126,12 +116,10 @@ hard_disk_info *hard_disk_get_info(hard_disk_file *file)
 }
 
 
-
-/*************************************
- *
- *  Read from a hard disk
- *
- *************************************/
+/*-------------------------------------------------
+    hard_disk_read - read sectors from a hard
+    disk
+-------------------------------------------------*/
 
 UINT32 hard_disk_read(hard_disk_file *file, UINT32 lbasector, UINT32 numsectors, void *buffer)
 {
@@ -155,7 +143,8 @@ UINT32 hard_disk_read(hard_disk_file *file, UINT32 lbasector, UINT32 numsectors,
 	/* if we haven't cached this hunk, read it now */
 	if (file->cachehunk != hunknum)
 	{
-		if (!chd_read(file->chd, hunknum, 1, file->cache))
+		chd_error err = chd_read(file->chd, hunknum, file->cache);
+		if (err != CHDERR_NONE)
 			return 0;
 		file->cachehunk = hunknum;
 	}
@@ -166,17 +155,16 @@ UINT32 hard_disk_read(hard_disk_file *file, UINT32 lbasector, UINT32 numsectors,
 }
 
 
-
-/*************************************
- *
- *  Write to a hard disk
- *
- *************************************/
+/*-------------------------------------------------
+    hard_disk_write - write  sectors to a hard
+    disk
+-------------------------------------------------*/
 
 UINT32 hard_disk_write(hard_disk_file *file, UINT32 lbasector, UINT32 numsectors, const void *buffer)
 {
 	UINT32 hunknum = lbasector / file->hunksectors;
 	UINT32 sectoroffs = lbasector % file->hunksectors;
+	chd_error err;
 
 	/* for now, just break down multisector writes into single sectors */
 	if (numsectors > 1)
@@ -195,7 +183,8 @@ UINT32 hard_disk_write(hard_disk_file *file, UINT32 lbasector, UINT32 numsectors
 	/* if we haven't cached this hunk, read it now */
 	if (file->cachehunk != hunknum)
 	{
-		if (!chd_read(file->chd, hunknum, 1, file->cache))
+		err = chd_read(file->chd, hunknum, file->cache);
+		if (err != CHDERR_NONE)
 			return 0;
 		file->cachehunk = hunknum;
 	}
@@ -204,7 +193,6 @@ UINT32 hard_disk_write(hard_disk_file *file, UINT32 lbasector, UINT32 numsectors
 	memcpy(&file->cache[sectoroffs * file->info.sectorbytes], buffer, file->info.sectorbytes);
 
 	/* write it back out */
-	if (chd_write(file->chd, hunknum, 1, file->cache))
-		return 1;
-	return 0;
+	err = chd_write(file->chd, hunknum, file->cache);
+	return (err == CHDERR_NONE) ? 1 : 0;
 }

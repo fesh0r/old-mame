@@ -1,4 +1,5 @@
-/* ST-V SpeedUp Hacks */
+/* ST-V Inits and SpeedUp Hacks */
+/* stvinit.c */
 
 /*
 to be honest i think some of these cause more problems than they're worth ...
@@ -7,6 +8,7 @@ to be honest i think some of these cause more problems than they're worth ...
 #include "driver.h"
 #include "machine/eeprom.h"
 #include "cpu/sh2/sh2.h"
+#include "machine/stvprot.h"
 
 extern UINT32 *stv_workram_h;
 extern UINT32 *stv_workram_l;
@@ -487,8 +489,8 @@ DRIVER_INIT(dnmtdeka)
 	dnmtdeka_pending_commands = 0;
 
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60985a0, 0x60985a3, 0, 0, dnmtdeka_speedup_r ); // idle loop of main cpu
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0ad4, 0x060e0bab, 0, 0, dnmtdeka_cmd_write );
-	memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x060e0ad4, 0x060e0bab, 0, 0, dnmtdeka_cmd_read );
+	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0ad4, 0x060e0bc3, 0, 0, dnmtdeka_cmd_write );
+	memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x060e0ad4, 0x060e0bc3, 0, 0, dnmtdeka_cmd_read );
 
 	init_ic13(machine);
 }
@@ -560,8 +562,8 @@ DRIVER_INIT(diehard)
 	diehard_pending_commands = 0;
 
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060986ac, 0x060986af, 0, 0, diehard_speedup_r );
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0bd0, 0x060e0ca7, 0, 0, diehard_cmd_write );
-	memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x060e0bd0, 0x060e0ca7, 0, 0, diehard_cmd_read );
+	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0bd0, 0x060e0dcf, 0, 0, diehard_cmd_write );
+	memory_install_read32_handler(1, ADDRESS_SPACE_PROGRAM, 0x060e0bd0, 0x060e0dcf, 0, 0, diehard_cmd_read );
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0dd8, 0x060e0dd8, 0, 0, diehard_cmd_ack_read );
 	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060e0dd8, 0x060e0dd8, 0, 0, diehard_cmd_ack_write_cpu0 );
 	memory_install_write32_handler(1, ADDRESS_SPACE_PROGRAM, 0x060e0dd8, 0x060e0dd8, 0, 0, diehard_cmd_ack_write );
@@ -794,6 +796,8 @@ DRIVER_INIT( astrass )
 
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0608e4d8, 0x0608e4db, 0, 0, astrass_speedup_r );
 
+	install_standard_protection();
+
 	init_ic13(machine);
 }
 
@@ -931,6 +935,15 @@ DRIVER_INIT(grdforce)
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(50);
 }
 
+static READ32_HANDLER( batmanfr_speedup_r )
+{
+	//logerror( "batmanfr speedup: pc = %08x, mem = %08x\n", activecpu_get_pc(), stv_workram_h[0x0002acf0/4] );
+	if ( activecpu_get_pc() != 0x060121c2 )
+		cpu_spinuntil_int();
+
+	return stv_workram_h[0x0002acf0/4];
+}
+
 static void batmanfr_slave_speedup( UINT32 data )
 {
 	if (activecpu_get_pc() == 0x060125be )
@@ -941,6 +954,7 @@ static void batmanfr_slave_speedup( UINT32 data )
 
 DRIVER_INIT(batmanfr)
 {
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0602acf0, 0x0602acf3, 0, 0, batmanfr_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)batmanfr_slave_speedup );
 
 	init_stv(machine);
@@ -1059,6 +1073,7 @@ static void sss_slave_speedup( UINT32 data )
 
 DRIVER_INIT(sss)
 {
+	install_standard_protection();
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x060ffc10, 0x060ffc13, 0, 0, sss_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf*)sss_slave_speedup );
 
@@ -1172,7 +1187,8 @@ static void znpwfv_slave_speedup( UINT32 data )
 		{
 			if (
 			(stv_workram_h[0x0ffc44/4] != 0x260f359c) &&
-			(stv_workram_h[0x0ffc48/4] != 0x260f359c)
+			(stv_workram_h[0x0ffc48/4] != 0x260f359c) &&
+			(stv_workram_h[0x0ffc48/4] != 0x260f3598)
 			)
 			{
 				logerror("cpu1 skip %08x %08x\n",stv_workram_h[0x0ffc44/4],stv_workram_h[0x0ffc48/4]);
@@ -1188,7 +1204,7 @@ DRIVER_INIT(znpwfv)
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, znpwfv_speedup_r );
 
 	init_ic13(machine);
-	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(2);
+	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(1) / 2;
 }
 
 static READ32_HANDLER( twcup98_speedup_r )
@@ -1210,6 +1226,7 @@ DRIVER_INIT(twcup98)
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, twcup98_speedup_r );
 
 	init_ic13(machine);
+	install_standard_protection();
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(5);
 }
@@ -1334,6 +1351,7 @@ static void elandore_slave_speedup(UINT32 data)
 
 DRIVER_INIT(elandore)
 {
+	install_standard_protection();
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, elandore_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf *)elandore_slave_speedup);
 	init_stv(machine);
@@ -1361,6 +1379,7 @@ static void rsgun_slave_speedup(UINT32 data)
 
 DRIVER_INIT(rsgun)
 {
+	install_standard_protection();
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc10, 0x60ffc13, 0, 0, rsgun_speedup_r );
 	cpunum_set_info_fct(1, CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK, (genf *)rsgun_slave_speedup);
 
@@ -1368,4 +1387,16 @@ DRIVER_INIT(rsgun)
 
 	minit_boost_timeslice = sinit_boost_timeslice = TIME_IN_USEC(20);
 
+}
+
+DRIVER_INIT(ffreveng)
+{
+	install_standard_protection();
+	init_stv(machine);
+}
+
+DRIVER_INIT(decathlt)
+{
+	install_decathlt_protection();
+	init_ic13(machine);
 }

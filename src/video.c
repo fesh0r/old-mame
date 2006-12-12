@@ -463,7 +463,7 @@ void video_screen_configure(int scrnum, int width, int height, const rectangle *
 			/* allocate new stuff */
 			info->bitmap[0] = bitmap_alloc_depth(curwidth, curheight, Machine->color_depth);
 			info->bitmap[1] = bitmap_alloc_depth(curwidth, curheight, Machine->color_depth);
-			info->texture = render_texture_alloc(info->bitmap[0], visarea, palette_get_adjusted_colors(Machine) + config->palette_base, info->format, NULL, NULL);
+			info->texture = render_texture_alloc(info->bitmap[0], visarea, config->palette_base, info->format, NULL, NULL);
 		}
 	}
 
@@ -770,10 +770,10 @@ void video_frame_update(void)
 						rectangle fixedvis = Machine->screen[scrnum].visarea;
 						fixedvis.max_x++;
 						fixedvis.max_y++;
-						render_texture_set_bitmap(screen->texture, bitmap, &fixedvis, palette_get_adjusted_colors(Machine) + Machine->drv->screen[scrnum].palette_base, screen->format);
+						render_texture_set_bitmap(screen->texture, bitmap, &fixedvis, Machine->drv->screen[scrnum].palette_base, screen->format);
 						screen->curbitmap = 1 - screen->curbitmap;
 					}
-					render_screen_add_quad(scrnum, 0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(0xff,0xff,0xff,0xff), screen->texture, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA) | PRIMFLAG_SCREENTEX(1));
+					render_screen_add_quad(scrnum, 0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(0xff,0xff,0xff,0xff), screen->texture, PRIMFLAG_BLENDMODE(BLENDMODE_NONE) | PRIMFLAG_SCREENTEX(1));
 				}
 			}
 
@@ -890,23 +890,27 @@ void video_screen_save_snapshot(mame_file *fp, int scrnum)
 static mame_file_error mame_fopen_next(const char *pathoption, const char *extension, mame_file **file)
 {
 	mame_file_error filerr;
-	char name[13];
+	char *fname;
 	int seq;
 
-	/* avoid overwriting existing files */
-	/* first of all try with "gamename.xxx" */
-	sprintf(name, "%.8s.%s", Machine->gamedrv->name, extension);
-	filerr = mame_fopen(pathoption, name, OPEN_FLAG_READ, file);
-	seq = 0;
-	while (filerr == FILERR_NONE)
+	/* allocate temp space for the name */
+	fname = malloc_or_die(strlen(Machine->basename) + 1 + 10 + strlen(extension) + 1);
+
+	/* try until we succeed */
+	for (seq = 0; ; seq++)
 	{
-		/* otherwise use "nameNNNN.xxx" */
+		sprintf(fname, "%s" PATH_SEPARATOR "%04d.%s", Machine->basename, seq, extension);
+		filerr = mame_fopen(pathoption, fname, OPEN_FLAG_READ, file);
+		if (filerr != FILERR_NONE)
+			break;
 		mame_fclose(*file);
-		sprintf(name,"%.4s%04d.%s", Machine->gamedrv->name, seq++, extension);
-		filerr = mame_fopen(pathoption, name, OPEN_FLAG_READ, file);
 	}
 
-    filerr = mame_fopen(pathoption, name, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, file);
+	/* create the final file */
+    filerr = mame_fopen(pathoption, fname, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, file);
+
+    /* free the name and get out */
+    free(fname);
     return filerr;
 }
 

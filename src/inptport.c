@@ -2225,7 +2225,19 @@ profiler_mark(PROFILER_INPUT);
 						else if (IS_DIGITAL_JOYSTICK(port))
 						{
 							digital_joystick_info *joyinfo = JOYSTICK_INFO_FOR_PORT(port);
-							UINT8 mask = port->four_way ? joyinfo->current4way : joyinfo->current;
+							UINT8 mask;
+							switch( port->way )
+							{
+							case 4:
+								mask = joyinfo->current4way;
+								break;
+							case 16:
+								mask = 0xff;
+								break;
+							default:
+								mask = joyinfo->current;
+								break;
+							}
 							if ((mask >> JOYSTICK_DIR_FOR_PORT(port)) & 1)
 								portinfo->digital ^= port->mask;
 						}
@@ -2472,16 +2484,46 @@ static void update_analog_port(int portnum)
 		/* the accumulated delta; also note that the last input was a digital one */
 		if (seq_pressed(input_port_seq(info->port, SEQ_TYPE_DECREMENT)))
 		{
-			delta -= (INT32)(port->analog.delta * info->keyscale);
-			keypressed = info->lastdigital = 1;
+			keypressed = 1;
+			if (port->analog.delta)
+			{
+				delta -= (INT32)(port->analog.delta * info->keyscale);
+				info->lastdigital = 1;
+			}
+			else
+			{
+				if (info->lastdigital != 2)
+				{
+					/* decrement only once when first pressed */
+					delta -= (INT32)(info->keyscale);
+					info->lastdigital = 2;
+				}
+			}
 		}
+		else if (info->lastdigital == 2)
+			info->lastdigital = 1;
 
 		/* same for the increment code sequence */
 		if (seq_pressed(input_port_seq(info->port, SEQ_TYPE_INCREMENT)))
 		{
-			delta += (INT32)(port->analog.delta * info->keyscale);
-			keypressed = info->lastdigital = 1;
+			keypressed = 1;
+			if (port->analog.delta)
+			{
+				delta += (INT32)(port->analog.delta * info->keyscale);
+				info->lastdigital = 1;
+			}
+			else
+			{
+				if (info->lastdigital != 3)
+				{
+					/* increment only once when first pressed */
+					delta += (INT32)(info->keyscale);
+					info->lastdigital = 3;
+				}
+			}
 		}
+		else if (info->lastdigital == 3)
+			info->lastdigital = 1;
 
 		/* if resetting is requested, clear the accumulated position to 0 before */
 		/* applying the deltas so that we only return this frame's delta */
@@ -2505,24 +2547,35 @@ static void update_analog_port(int portnum)
 		/* if our last movement was due to a digital input, and if this control */
 		/* type autocenters, and if neither the increment nor the decrement seq */
 		/* was pressed, apply autocentering */
-		if (info->lastdigital && info->autocenter && !keypressed)
+		if (info->autocenter)
 		{
-			/* autocenter from positive values */
-			if (info->accum >= 0)
+			if (info->lastdigital && !keypressed)
 			{
-				info->accum -= (INT32)(port->analog.centerdelta * info->keyscale);
-				if (info->accum < 0)
-					info->accum = 0;
-			}
+				/* autocenter from positive values */
+				if (info->accum >= 0)
+				{
+					info->accum -= (INT32)(port->analog.centerdelta * info->keyscale);
+					if (info->accum < 0)
+					{
+						info->accum = 0;
+						info->lastdigital = 0;
+					}
+				}
 
-			/* autocenter from negative values */
-			else
-			{
-				info->accum += (INT32)(port->analog.centerdelta * info->keyscale);
-				if (info->accum > 0)
-					info->accum = 0;
+				/* autocenter from negative values */
+				else
+				{
+					info->accum += (INT32)(port->analog.centerdelta * info->keyscale);
+					if (info->accum > 0)
+					{
+						info->accum = 0;
+						info->lastdigital = 0;
+					}
+				}
 			}
 		}
+		else if (!keypressed)
+			info->lastdigital = 0;
 	}
 }
 

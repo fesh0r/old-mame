@@ -45,6 +45,9 @@
  *   - Overflow for ADDH only affects upper 16bits (was modifying 32 bits)  *
  *   - Internal Data Memory map is assigned here now                        *
  *   - Cycle counts for invalid opcodes 7F1E and 7F1F are now 0             *
+ *  RK  (23-Nov-2006) Ver 1.22                                              *
+ *   - Fixed state of the Overflow Flag on reset                            *
+ *   - Fixed the SUBC instruction which was incorrectly zeroing the divisor *
  *                                                                          *
  \**************************************************************************/
 
@@ -570,13 +573,13 @@ static void subc(void)
 {
 	oldacc.d = R.ACC.d;
 	getdata(15,0);
-	R.ALU.d -= R.ALU.d;
+	R.ALU.d = (INT32) R.ACC.d - R.ALU.d;
 	if ((INT32)((oldacc.d ^ R.ALU.d) & (oldacc.d ^ R.ACC.d)) < 0)
-		SET(OV_FLAG);
+	    SET(OV_FLAG);
 	if ( (INT32)(R.ALU.d) >= 0 )
-		R.ACC.d = ((R.ALU.d << 1) + 1);
+	    R.ACC.d = ((R.ALU.d << 1) + 1);
 	else
-		R.ACC.d = (R.ACC.d << 1);
+	    R.ACC.d = (R.ACC.d << 1);
 }
 static void subh(void)
 {
@@ -736,7 +739,7 @@ static void tms32010_init (int index, int clock, const void *config, int (*irqca
 static void tms32010_reset (void)
 {
 	R.PC    = 0;
-	R.STR   = 0xfefe;
+	R.STR   = 0x7efe;	// OV cleared
 	R.ACC.d = 0;
 	R.INTF  = TMS32010_INT_NONE;
 	addr_mask = 0x0fff;	/* TMS32010 can only address 0x0fff */
@@ -838,17 +841,6 @@ static void set_irq_line(int irqline, int state)
 }
 
 
-static offs_t tms32010_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
-{
-#ifdef MAME_DEBUG
-	return Dasm32010( buffer, pc, oprom, opram );
-#else
-	sprintf( buffer, "$%04X", (oprom[0] << 8) | oprom[1] );
-	return 2;
-#endif
-}
-
-
 /****************************************************************************
  *  Internal Memory Map
  ****************************************************************************/
@@ -941,14 +933,16 @@ void tms32010_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = tms32010_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = tms32010_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
+#ifdef MAME_DEBUG
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = tms32010_dasm;		break;
+#endif /* MAME_DEBUG */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &tms32010_icount;		break;
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_DATA:	info->internal_map = construct_map_tms32010_ram; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "TMS32010"); break;
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s = cpuintrf_temp_str(), "Texas Instruments TMS32010"); break;
-		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s = cpuintrf_temp_str(), "1.21"); break;
+		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s = cpuintrf_temp_str(), "1.22"); break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s = cpuintrf_temp_str(), __FILE__); break;
 		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s = cpuintrf_temp_str(), "Copyright (C)1999-2004+ by Tony La Porta"); break;
 

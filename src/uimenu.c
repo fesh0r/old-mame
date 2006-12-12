@@ -804,7 +804,9 @@ static UINT32 menu_analog(UINT32 state)
 	input_port_entry *selected_in = NULL;
 	input_port_entry *in;
 	int menu_items = 0;
+	int selected_item = 0;
 	int delta = 0;
+	int use_autocenter = 0;
 
 	/* reset the menu and string pool */
 	memset(item_list, 0, sizeof(item_list));
@@ -814,13 +816,38 @@ static UINT32 menu_analog(UINT32 state)
 	for (in = Machine->input_ports; in->type != IPT_END; in++)
 		if (port_type_is_analog(in->type))
 		{
-			/* track the selected item */
-			if (state >= menu_items && state < menu_items + 4)
-				selected_in = in;
+			switch (in->type)
+			{
+				/* Autocenter Speed is only used for these devices */
+				case IPT_PEDAL:
+				case IPT_PEDAL2:
+				case IPT_PEDAL3:
+				case IPT_PADDLE:
+				case IPT_PADDLE_V:
+				case IPT_AD_STICK_X:
+				case IPT_AD_STICK_Y:
+				case IPT_AD_STICK_Z:
+					use_autocenter = 1;
+					break;
 
-			/* add four items for each one */
+				default:
+					use_autocenter = 0;
+					break;
+			}
+
+			/* track the selected item */
+			if (state >= menu_items && state < menu_items + 3 + use_autocenter)
+			{
+				selected_in = in;
+				selected_item = state - menu_items;
+				// shift menu for missing Autocenter
+				if (selected_item && !use_autocenter) selected_item++;
+			}
+
+			/* add the needed items for each analog input */
 			analog_menu_add_item(&item_list[menu_items++], in, UI_keyjoyspeed, ANALOG_ITEM_KEYSPEED);
-			analog_menu_add_item(&item_list[menu_items++], in, UI_centerspeed, ANALOG_ITEM_CENTERSPEED);
+			if (use_autocenter)
+				analog_menu_add_item(&item_list[menu_items++], in, UI_centerspeed, ANALOG_ITEM_CENTERSPEED);
 			analog_menu_add_item(&item_list[menu_items++], in, UI_reverse, ANALOG_ITEM_REVERSE);
 			analog_menu_add_item(&item_list[menu_items++], in, UI_sensitivity, ANALOG_ITEM_SENSITIVITY);
 		}
@@ -845,7 +872,7 @@ static UINT32 menu_analog(UINT32 state)
 
 	/* adjust the appropriate value */
 	if (delta != 0 && selected_in)
-		switch (state % ANALOG_ITEM_COUNT)
+		switch (selected_item)
 		{
 			case ANALOG_ITEM_KEYSPEED:		selected_in->analog.delta += delta;			break;
 			case ANALOG_ITEM_CENTERSPEED:	selected_in->analog.centerdelta += delta;	break;
@@ -1621,7 +1648,7 @@ static void analog_menu_add_item(ui_menu_item *item, const input_port_entry *in,
 		default:
 		case ANALOG_ITEM_KEYSPEED:
 			value = in->analog.delta;
-			minval = 1;
+			minval = 0;
 			maxval = 255;
 			item->subtext = menu_string_pool_add("%d", value);
 			break;

@@ -567,6 +567,9 @@ basically a 68000 opcode/s instruction. Below is a list of those known;
         cmpi.l  #$19720301,D0       X-Men, Children of the Atom
         cmpi.l  #$19720327,D1       X-Men Vs. Street Fighter
 
+        for a dead PCB the encryption watchdog sequence becomes
+        0xffff 0xffff 0xffff
+
 Encryption
 
 Currently the algorhythm is unknown so instead we use ready decrypted
@@ -605,7 +608,7 @@ Known problems with this driver.
     the explenation above for the most likley cause of this problem.
 
   - Progear slows down more that it should when compared to real hardware. See
-    the explenation above for the most likley cause of this problem.
+    the explanation above for the most likely cause of this problem.
 
 ***************************************************************************/
 
@@ -613,8 +616,13 @@ Known problems with this driver.
 #include "machine/eeprom.h"
 #include "cpu/m68000/m68000.h"
 #include "sound/qsound.h"
+#include "ui.h"
+#include "chd.h"
 
 #include "cps1.h"       /* External CPS1 definitions */
+
+#define USE_DECRYPTION_CHD_IF_PRESENT 1
+#define GENERATE_XOR_FROM_CHD 0
 
 /*
 Export this function so that the vidhrdw routine can drive the
@@ -1353,11 +1361,7 @@ static READ16_HANDLER( pl2_port_0_word_r )
 		return readinputport(3) + (readinputport(4) << 8);
 }
 
-static DRIVER_INIT ( puzloop2 )
-{
-	init_cps2(machine);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x804000, 0x804001, 0, 0, pl2_port_0_word_r);
-}
+
 
 static const gfx_layout cps1_layout8x8 =
 {
@@ -2136,12 +2140,17 @@ ROM_START( batcira )
 ROM_END
 
 ROM_START( choko )
-	ROM_REGION( CODE_SIZE, REGION_CPU1, 0 )      /* 68000 code */
+	ROM_REGION( CODE_SIZE, REGION_CPU1, ROMREGION_ERASEFF )      /* 68000 code */
 	ROM_LOAD16_WORD_SWAP( "tkoj.03", 0x000000, 0x80000, CRC(11f5452f) SHA1(1575729cdbb857a3a780df6e3e0efd6968926fb8) )
 	ROM_LOAD16_WORD_SWAP( "tkoj.04", 0x080000, 0x80000, CRC(68655378) SHA1(a2d82996394cc28622e93f6c338f9b78aa798775) )
 
+#if USE_DECRYPTION_CHD_IF_PRESENT
+	DISK_REGION( REGION_DISKS )	/* Decryption Table for Choko (Japan) */
+	DISK_IMAGE( "choko", 0, SHA1(4111565be6b9c73acce8875158d481e8a82607cf) MD5(3397f958562e9cd7370e005315c52b66) )
+#else
 	ROM_REGION16_BE( CODE_SIZE, REGION_USER1, 0 )
-    ROM_LOAD16_WORD_SWAP( "tkojx.bin", 0x000000, 0x400000, CRC(4e4efee1) SHA1(52340439ef1be7ddd4582fbaf72e3c3dd968d0b1) )
+	ROM_LOAD16_WORD_SWAP( "choko.xor", 0x000000, 0x100000, CRC(cf1d846a) SHA1(330adfcca810acd7c7ea5c83a73b492744f0b67c) )
+#endif
 
 	ROM_REGION( 0x1000000, REGION_GFX1, 0 )
 	ROMX_LOAD( "tko-simm.01c",   0x0000000, 0x200000, NO_DUMP, ROM_GROUPBYTE | ROM_SKIP(7) ) // ROM on a simm
@@ -2180,11 +2189,14 @@ ROM_START( csclubj )
 	ROM_LOAD16_WORD_SWAP( "cscj.06", 0x180000, 0x80000, CRC(169e4d40) SHA1(6540d89df5e76189d32b696be7626087fe26e33b) )
 	ROM_LOAD16_WORD_SWAP( "csc.07",  0x200000, 0x80000, CRC(01b05caa) SHA1(5b84487da68e6b6f2889c76bf9e070e25941988c) )
 
+
+#if USE_DECRYPTION_CHD_IF_PRESENT
+	DISK_REGION( REGION_DISKS )	/* Decryption Table for Capcom Sports Club (Japan) */
+	DISK_IMAGE( "csclubj", 0, SHA1(95bfc863a8c1a99d250edc8bee98a953207078ea) MD5(096b479d494ddf5a939d8a1154c452a5 ) )
+#else
 	ROM_REGION16_BE( CODE_SIZE, REGION_USER1, 0 )
-	ROM_LOAD16_WORD_SWAP( "cscjx.03", 0x000000, 0x80000, CRC(2de1d45d) SHA1(204574607d2dc45e233ed2f88fadc1d5a3790ba6) )
-	ROM_LOAD16_WORD_SWAP( "cscjx.04", 0x080000, 0x80000, CRC(81b25d76) SHA1(e81a5768c053cea10d340c6624e270dd5604c855) )
-	ROM_LOAD16_WORD_SWAP( "cscjx.05", 0x100000, 0x80000, CRC(5adb1c93) SHA1(734aff59e3819ca2250d1fe3e945bd0f0410deef) )
-	ROM_LOAD16_WORD_SWAP( "cscjx.06", 0x180000, 0x80000, CRC(f5558f79) SHA1(0cb75f19db9c83dffb998f6fc6dcf35a58d35dd9) )
+	ROM_LOAD16_WORD_SWAP( "csclubj.xor", 0x000000, 0x200000, CRC(d85a6ed0) SHA1(af0503d9d8f374ddb69d5a73272d0ace6ed3fa7b) )
+#endif
 
 	ROM_REGION( 0x1000000, REGION_GFX1, 0 )
 	ROM_FILL(              0x000000, 0x800000, 0 )
@@ -3501,6 +3513,37 @@ ROM_START( gwinga )
 	ROM_REGION( 0x800000, REGION_SOUND1, 0 ) /* QSound samples */
 	ROM_LOAD16_WORD_SWAP( "ggw.11m",   0x000000, 0x400000, CRC(e172acf5) SHA1(d7b0963d66165f3607d887741c5e7ab952bcf2ff) )
 	ROM_LOAD16_WORD_SWAP( "ggw.12m",   0x400000, 0x400000, CRC(4bee4e8f) SHA1(c440b5a38359ec3b8002f39690b79bf78703f5d0) )
+ROM_END
+
+ROM_START( jyangoku )
+	ROM_REGION(CODE_SIZE, REGION_CPU1, 0 )      /* 68000 code */
+	ROM_LOAD16_WORD_SWAP( "maj_j03.6a", 0x000000, 0x80000, CRC(4614a3b2) SHA1(f7226006feafaf561046ae7fce18bf62289d41df) )
+
+#if USE_DECRYPTION_CHD_IF_PRESENT
+	DISK_REGION( REGION_DISKS )	/* Decryption Table for Jyangokushi: Haoh no Saihai (Japan) */
+	DISK_IMAGE( "jyangoku", 0, SHA1(d632f2bf1bf37fc6b9ed40440f75877c8cc95fe9) MD5(41a772700bc83d5fb9f5c5a2e8e69cf6) )
+#else
+	ROM_REGION16_BE( CODE_SIZE, REGION_USER1, 0 )
+	ROM_LOAD16_WORD_SWAP( "jyangoku.xor", 0x000000, 0x40000, CRC(2c98cf43) SHA1(9bb5eef10df235430260c890133eda7578ea2a8d) )
+#endif
+
+	ROM_REGION( 0x1000000, REGION_GFX1, 0 )
+	ROMX_LOAD( "maj-simm.01c",   0x0000000, 0x200000, NO_DUMP /*CRC(ba0fe27b) SHA1(1)*/ , ROM_GROUPBYTE | ROM_SKIP(7) ) // ROM on a simm
+	ROMX_LOAD( "maj-simm.01d",   0x0000001, 0x200000, NO_DUMP /*CRC(2cd141bf) SHA1(1)*/ , ROM_GROUPBYTE | ROM_SKIP(7) ) // ROM on a simm
+	ROMX_LOAD( "maj-simm.01a",   0x0000002, 0x200000, NO_DUMP /*CRC(e29e4c26) SHA1(1)*/ , ROM_GROUPBYTE | ROM_SKIP(7) ) // ROM on a simm
+	ROMX_LOAD( "maj-simm.01b",   0x0000003, 0x200000, NO_DUMP /*CRC(7f68b88a) SHA1(1)*/ , ROM_GROUPBYTE | ROM_SKIP(7) ) // ROM on a simm
+	ROMX_LOAD( "maj-simm.03c",   0x0000004, 0x200000, NO_DUMP /*CRC(3aaeb90b) SHA1(1)*/ , ROM_GROUPBYTE | ROM_SKIP(7) ) // ROM on a simm
+	ROMX_LOAD( "maj-simm.03d",   0x0000005, 0x200000, NO_DUMP /*CRC(97894cea) SHA1(1)*/ , ROM_GROUPBYTE | ROM_SKIP(7) ) // ROM on a simm
+	ROMX_LOAD( "maj-simm.03a",   0x0000006, 0x200000, NO_DUMP /*CRC(ec737d9d) SHA1(1)*/ , ROM_GROUPBYTE | ROM_SKIP(7) ) // ROM on a simm
+	ROMX_LOAD( "maj-simm.03b",   0x0000007, 0x200000, NO_DUMP /*CRC(c23b6f22) SHA1(1)*/ , ROM_GROUPBYTE | ROM_SKIP(7) ) // ROM on a simm
+
+	ROM_REGION(QSOUND_SIZE, REGION_CPU2, 0 ) /* 64k for the audio CPU (+banks) */
+	ROM_LOAD( "maj_01.1a",  0x00000, 0x08000, CRC(1fe8c213) SHA1(e0045566337851d8261ed65d5bea483f09ae96b4) )
+	ROM_CONTINUE(         0x10000, 0x18000 )
+
+	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* QSound samples */
+	ROM_LOAD16_WORD_SWAP( "maj-simm.05a",   0x000000, 0x200000, NO_DUMP /*BAD_DUMP CRC(4cb79672) SHA1(1)*/ ) // ROM on a simm
+	ROM_LOAD16_WORD_SWAP( "maj-simm.05b",   0x200000, 0x200000, NO_DUMP /*         CRC(e5f2e14a) SHA1(1)*/ ) // ROM on a simm
 ROM_END
 
 ROM_START( megaman2 )
@@ -4895,11 +4938,14 @@ ROM_START( pzloop2j )
 	ROM_LOAD16_WORD_SWAP( "pl2j.05a", 0x100000, 0x80000, CRC(6ea9dbfc) SHA1(c3065e02516755e8b94a741dd2ab960c96d0ff8c) )
 	ROM_LOAD16_WORD_SWAP( "pl2j.06a", 0x180000, 0x80000, CRC(0f14848d) SHA1(94a3ee00d65cd9a310b3a330e2c37467b5863c64) )
 
+
+#if USE_DECRYPTION_CHD_IF_PRESENT
+	DISK_REGION( REGION_DISKS )	/* Decryption Table for Puzzloop 2 (Japan) */
+	DISK_IMAGE( "pzloop2j", 0, SHA1(f7322042a4ce36568fa457dd564fbe84baa8c9fb) MD5(531fced60d35a5b3ddcc24c4695ebf76) )
+#else
 	ROM_REGION16_BE( CODE_SIZE, REGION_USER1, 0 )
-	ROM_LOAD16_WORD_SWAP( "pl2jx.03a", 0x000000, 0x80000, CRC(3c9bdc30) SHA1(c66823c8a18d4bf29ec166e98848362738de2eef) )
-	ROM_LOAD16_WORD_SWAP( "pl2jx.04a", 0x080000, 0x80000, CRC(aa1b28f4) SHA1(ff048d4a2b1de12b6648c26cfc9b10979be1b2fa) )
-	ROM_LOAD16_WORD_SWAP( "pl2jx.05a", 0x100000, 0x80000, CRC(cd27c17d) SHA1(b837d209a1485d3af224cdb1fb7abbb9bea89f2b) )
-	ROM_LOAD16_WORD_SWAP( "pl2jx.06a", 0x180000, 0x80000, CRC(48f3ac5f) SHA1(f05bb8790a92a6964850f8f22e2bc3cd4301a466) )
+	ROM_LOAD16_WORD_SWAP( "pzloop2j.xor", 0x000000, 0x200000, CRC(6bd75f6d) SHA1(15678f57dd95727188fd26383300d89421bbd360) )
+#endif
 
 	ROM_REGION( 0x1000000, REGION_GFX1, 0 )
 	ROMX_LOAD( "pl2-simm.01c",   0x0000000, 0x200000, CRC(137b13a7) SHA1(a1ca1bc8699ddfc54d5de1b39a9db9a5ac8b12e5) , ROM_GROUPBYTE | ROM_SKIP(7) ) // ROM on a simm
@@ -5273,8 +5319,14 @@ ROM_START( sfzj )
 	ROM_LOAD16_WORD_SWAP( "sfz.05a",  0x100000, 0x80000, CRC(0810544d) SHA1(5f39bda3e7b16508eb58e5a2e0cc58c09cf428ce) )
 	ROM_LOAD16_WORD_SWAP( "sfz.06",   0x180000, 0x80000, CRC(806e8f38) SHA1(b6d6912aa8f2f590335d7ff9a8214648e7131ebb) )
 
+
+#if USE_DECRYPTION_CHD_IF_PRESENT
+	DISK_REGION( REGION_DISKS )	/* Decryption Table for Street Fighter Zero (Japan) */
+	DISK_IMAGE( "sfzj", 0, SHA1(8532c3d42ceae7210c6a04b688ed8402246da65a) MD5(52662d0264bf265cefd3d5d7282f6794) )
+#else
 	ROM_REGION16_BE( CODE_SIZE, REGION_USER1, 0 )
-	ROM_LOAD16_WORD_SWAP( "sfzjx.03c", 0x000000, 0x80000, CRC(d6b17a9b) SHA1(f6d3726427c6bee7e02505a9332759fc959b7d43) )
+	ROM_LOAD16_WORD_SWAP( "sfzj.xor", 0x000000, 0x080000, CRC(aa9fcf0a) SHA1(7d9830969a02eb1d8b56832a876db4443eb15007) )
+#endif
 
 	ROM_REGION( 0x1000000, REGION_GFX1, 0 )
 	ROM_FILL(              0x000000, 0x800000, 0 )
@@ -5300,8 +5352,14 @@ ROM_START( sfzjr1 )
 	ROM_LOAD16_WORD_SWAP( "sfz.05a",  0x100000, 0x80000, CRC(0810544d) SHA1(5f39bda3e7b16508eb58e5a2e0cc58c09cf428ce) )
 	ROM_LOAD16_WORD_SWAP( "sfz.06",   0x180000, 0x80000, CRC(806e8f38) SHA1(b6d6912aa8f2f590335d7ff9a8214648e7131ebb) )
 
+
+#if USE_DECRYPTION_CHD_IF_PRESENT
+	DISK_REGION( REGION_DISKS )	/* Decryption Table for Street Fighter Zero (Japan) */
+	DISK_IMAGE( "sfzj", 0, SHA1(8532c3d42ceae7210c6a04b688ed8402246da65a) MD5(52662d0264bf265cefd3d5d7282f6794) )
+#else
 	ROM_REGION16_BE( CODE_SIZE, REGION_USER1, 0 )
-	ROM_LOAD16_WORD_SWAP( "sfzjx.03b", 0x000000, 0x80000, CRC(b501f03c) SHA1(9f73a6177acae9174f06811642f7675e51a5809d) )
+	ROM_LOAD16_WORD_SWAP( "sfzjr1.xor", 0x000000, 0x080000, CRC(c92f45ad) SHA1(9bd6861ed6cb2c6e5f02f9cfd99d7bf04ec01164) )
+#endif
 
 	ROM_REGION( 0x1000000, REGION_GFX1, 0 )
 	ROM_FILL(              0x000000, 0x800000, 0 )
@@ -5327,8 +5385,13 @@ ROM_START( sfzjr2 )
 	ROM_LOAD16_WORD_SWAP( "sfz.05",   0x100000, 0x80000, CRC(1f363612) SHA1(87203b5db2d3887762da431d6fc2f2b76d4feedb) )
 	ROM_LOAD16_WORD_SWAP( "sfz.06",   0x180000, 0x80000, CRC(806e8f38) SHA1(b6d6912aa8f2f590335d7ff9a8214648e7131ebb) )
 
+#if USE_DECRYPTION_CHD_IF_PRESENT
+	DISK_REGION( REGION_DISKS )	/* Decryption Table for Street Fighter Zero (Japan) */
+	DISK_IMAGE( "sfzj", 0, SHA1(8532c3d42ceae7210c6a04b688ed8402246da65a) MD5(52662d0264bf265cefd3d5d7282f6794) )
+#else
 	ROM_REGION16_BE( CODE_SIZE, REGION_USER1, 0 )
-	ROM_LOAD16_WORD_SWAP( "sfzjx.03a", 0x000000, 0x80000, CRC(3cc138b5) SHA1(9192989793c4388744d89df93781bb73e99315a0) )
+	ROM_LOAD16_WORD_SWAP( "sfzjr2.xor", 0x000000, 0x080000, CRC(40ef8d24) SHA1(1d20ed6d114d7ce92349b0ad0a6838d831f4bcb6) )
+#endif
 
 	ROM_REGION( 0x1000000, REGION_GFX1, 0 )
 	ROM_FILL(              0x000000, 0x800000, 0 )
@@ -7171,9 +7234,14 @@ ROM_START( xmcota )
 	ROM_LOAD16_WORD_SWAP( "xmn.09a",  0x300000, 0x80000, CRC(9241cae8) SHA1(bb6980abf25aaf3eb14e230ca6942f3e2ab2c660) )
 	ROM_LOAD16_WORD_SWAP( "xmn.10a",  0x380000, 0x80000, CRC(53c0eab9) SHA1(e3b1ec1fd517735f7801cfebb257c43185c6d3fb) )
 
+
+#if USE_DECRYPTION_CHD_IF_PRESENT
+	DISK_REGION( REGION_DISKS )	/* Decryption Table for X-Men Children of the Atom (Euro) */
+	DISK_IMAGE( "xmcota", 0, SHA1(155cb5ec132d9cd81ff3cbb5e78a33bf53b4ab1f) MD5(e1946c96adcc4a5e7d189c677e5bfeb0) )
+#else
 	ROM_REGION16_BE( CODE_SIZE, REGION_USER1, 0 )
-	ROM_LOAD16_WORD_SWAP( "xmnex.03e", 0x000000, 0x80000, CRC(2f5daa9f) SHA1(16a25c45ab2a267b402539c5b9b6dbaf8bcc56ba) )
-	ROM_LOAD16_WORD_SWAP( "xmnex.04e", 0x080000, 0x80000, CRC(f0e24605) SHA1(c72105491d9c1d97286eea09c9ac506fa234a776) )
+	ROM_LOAD16_WORD_SWAP( "xmcota.xor", 0x000000, 0x100000, CRC(1b04be6d) SHA1(694d198ee3b2b8777ac0b6fd0b5a9049a1d860d6) )
+#endif
 
 	ROM_REGION( 0x2000000, REGION_GFX1, 0 )
 	ROMX_LOAD( "xmn.13m",   0x0000000, 0x400000, CRC(bf4df073) SHA1(4d2740c3a827f0ec2cf75ad99c65e393c6a11c23) , ROM_GROUPWORD | ROM_SKIP(6) )
@@ -7381,7 +7449,7 @@ ROM_START( xmcotaa )
 	ROM_LOAD16_WORD_SWAP( "xmn.09",   0x300000, 0x80000, CRC(ae946df3) SHA1(733671f76d766bda7110df9d338791cc5202b050) )
 	ROM_LOAD16_WORD_SWAP( "xmn.10",   0x380000, 0x80000, CRC(32a6be1d) SHA1(8f5fcb33b528abed670b4fc3fa62431a6e033c56) )
 
-	ROM_REGION16_BE( CODE_SIZE, REGION_USER1, 0 )
+	ROM_REGION16_BE( CODE_SIZE, REGION_USER1, ROMREGION_ERASE00 )
 	ROM_LOAD16_WORD_SWAP( "xmnax.03a", 0x000000, 0x80000, CRC(978a0de4) SHA1(cdf3542f03cbf373efc8596ac886566b3458647d) )
 	ROM_LOAD16_WORD_SWAP( "xmnax.04a", 0x080000, 0x80000, CRC(07cb0839) SHA1(1aaf5ba8e256107ce8ef7dbd961b15149dc6d11b) )
 
@@ -7779,6 +7847,439 @@ ROM_START( xmvsfb )
 	ROM_LOAD16_WORD_SWAP( "xvs.12m",   0x200000, 0x200000, CRC(7b11e460) SHA1(a581c84acaaf0ce056841c15a6f36889e88be68d) )
 ROM_END
 
+
+extern DRIVER_INIT( cps2_nodecrypt );
+
+/* Decrypts CPS2 title using a CHD image.  This is more complete than the XOR tables but takes a while longer (~2 minutes)
+   due to the chd being ~4 gigabytes in size
+
+   The CHD will decrypt any set for the matching game & region (eg sfz, japan), rather than just a single set.
+   Different games and/or regions require different tables.
+
+   ToDo:
+
+   Add functions to dump full tables for further study and reduction
+   Add functions to allow bytes to be encrypted using these tables
+
+   Notes:
+   Due to the level of HD activity involved here try and make sure that the HD with the CHD file on has been defragmented
+   Real Encryption does _not_ cover the entire address space, it differs per game,
+
+   */
+
+void dump_tables(void);
+
+int decrypt_cps2_with_chd(int encryption_length) // encrypted areas actually differ per game..
+{
+	/* chdman -createraw ChokoTable.table choko.chd 0 4096 */
+	UINT16 CPS2_HUNKS_PER_BLOCK;
+
+	UINT16 lookupTable[0x10000];
+	UINT16 decryptBuffer[0x10000];
+	UINT8 loadingMessage[256]; // for displaying with UI
+	UINT8 *needToLoad;  // boolean array indicating if we need to load a hunk or not
+
+	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+	int length = memory_region_length(REGION_CPU1);
+	UINT16 *decrypted = auto_malloc(length);
+	UINT32 hunkbytes;
+	int i, j;
+
+	memcpy(decrypted, rom, length); // copy entire rom to decrytped buffer so that non-decrypted areas still show there
+
+	if (!USE_DECRYPTION_CHD_IF_PRESENT)
+	{
+		mame_printf_info("decryption CHD image support disabled!\n");
+		return 0;
+	}
+
+	if (memory_region(REGION_DISKS)==NULL)
+	{
+		mame_printf_info("no decryption image!\n");
+		return 0;
+	}
+	else
+		mame_printf_info("decryption image found, and will be used\n");
+
+	hunkbytes = chd_get_header(get_disk_handle(0))->hunkbytes;
+	CPS2_HUNKS_PER_BLOCK = 0x20000/ hunkbytes;
+
+	needToLoad = auto_malloc(CPS2_HUNKS_PER_BLOCK);
+
+	/* dump the 4gig tables to disk, non-compressed, put in decrypt folder */
+//  dump_tables();
+//  exit(1);
+
+	mame_printf_info("Loading Decryption Lookup table from end of CHD (hunk 1048608)\n");
+	for (i = 0; i < CPS2_HUNKS_PER_BLOCK; i++)
+	{
+		chd_error err = chd_read(get_disk_handle(0), CPS2_HUNKS_PER_BLOCK*0x8000 + i, (UINT8 *)&lookupTable[0] + i * hunkbytes);
+		if (err != CHDERR_NONE)
+			fatalerror("Error reading from CHD: %d\n", err);
+	}
+	for (i = 0; i < ARRAY_LENGTH(lookupTable); i++)
+		lookupTable[i] = LITTLE_ENDIANIZE_INT16(lookupTable[i]);
+
+	{
+		unsigned int address;
+
+		for (address=0;address<0x10000;address++)
+		{
+			UINT16 tableBase = lookupTable[address&0xffff];
+
+			if ((address&0xff)==0xff)
+			{
+				sprintf(loadingMessage, "Decrypting with CHD (block %d / %d, %f%% complete)",address,0xffff, ((float)address/0xffff)*100);
+				ui_set_startup_text(loadingMessage,1);
+				mame_printf_info("%s     \r",loadingMessage);
+			}
+
+			if (tableBase&0x8000)
+			{	/* if the lookup has 0x8000 set then the address relating to it will have already been processed below, when the original table was found */
+				continue;
+			}
+			else
+			{
+				unsigned int i;
+				unsigned int address2 = 0xfffff;
+
+				/* search for matching base, but with 0x8000 set in our lookup (indicates same table but rearranged) */
+
+				for (i=0;i<0x10000;i++)
+				{
+					if (lookupTable[i] == (tableBase|0x8000))
+					{
+						address2 = i;
+						break;
+					}
+				}
+
+				/* this shouldn't happen! if it does the lookup table is corrupt .. */
+				if (address2==0xfffff)
+				{
+					mame_printf_info("\n\nDecryption Error! Matching table address not found for %04x\n",tableBase);
+					exit(1);
+				}
+
+				/* Decide which hunks we actually need to load from the CHD */
+				for(i=0;i<CPS2_HUNKS_PER_BLOCK;i++)
+					needToLoad[i]=0;
+
+				for (i=0;i<encryption_length/2;i+=0x10000)
+				{
+					UINT16 encrypted;
+
+					encrypted = rom[address+i];
+					needToLoad[encrypted / (0x10000/CPS2_HUNKS_PER_BLOCK) ] = 1;
+
+					/* decrypt other address which uses the same table */
+					encrypted = rom[address2+i]^0xffff;
+					needToLoad[encrypted/ (0x10000/CPS2_HUNKS_PER_BLOCK) ] = 1;
+				}
+
+				for(i=0;i<CPS2_HUNKS_PER_BLOCK;i++)
+				{
+					if (needToLoad[i])
+					{
+						UINT16 *dest = decryptBuffer+i*(0x10000/CPS2_HUNKS_PER_BLOCK);
+						chd_error err = chd_read(get_disk_handle(0), ((tableBase&0x7fff)*CPS2_HUNKS_PER_BLOCK)+i, dest );
+						if (err != CHDERR_NONE)
+							fatalerror("Error reading from CHD: %d\n", err);
+						for (j = 0; j < hunkbytes / 2; j++)
+							dest[i] = LITTLE_ENDIANIZE_INT16(dest[i]);
+					}
+				}
+
+				/* The parts of the table that are needed have been loaded, now decrypt with it */
+				for (i=0;i<encryption_length/2;i+=0x10000)
+				{
+					UINT16 encrypted;
+					UINT16 decryptedtable;
+
+					encrypted = rom[address+i];
+					decryptedtable = decryptBuffer[encrypted];
+					decryptedtable = ((decryptedtable<<8)&0xff00)|((decryptedtable>>8)&0x00ff);
+					decrypted[address+i] = decryptedtable;
+
+					/* decrypt other address which uses the same table */
+					encrypted = rom[address2+i];
+					decryptedtable = decryptBuffer[encrypted^0xffff]^0xffff;
+					decryptedtable = ((decryptedtable<<8)&0xff00)|((decryptedtable>>8)&0x00ff);
+					decrypted[address2+i] = decryptedtable;
+				}
+			}
+		}
+	}
+
+	memory_set_decrypted_region(0, 0x000000, length - 1, decrypted);
+	m68k_set_encrypted_opcode_range(0,0,length);
+
+
+#if GENERATE_XOR_FROM_CHD
+	/*
+        This will save out a xor for a set with a CHD..
+        just for debug / testing, the XORs have no long-term future in
+        MAME and will eventually be removed.
+
+        This will create a xor for the specified decrypt region size,
+        no artifical gaps etc.  They are however still practically
+        useless for studying the encryption.
+
+        Any set with a supported CHD uses XORs created with this function
+        for consistency.  If the actual decrypted regions listed are
+        incorrect they can be corrected later.
+    */
+	{
+		UINT16* xor;
+		FILE* xordump;
+		unsigned char filename[256];
+		int l;
+		xor = auto_malloc(encryption_length);
+		for (l=0; l<encryption_length/2;l++)
+		{
+			xor[l] = decrypted[l] ^ rom[l];
+		}
+
+		sprintf(filename,"%s.xor",Machine->gamedrv->name);
+
+		xordump = fopen(filename,"wb");
+
+		fwrite(xor, encryption_length/2, 2, xordump);
+
+		fclose(xordump);
+	}
+#endif
+
+	return 1;
+}
+
+
+void cps2test_do_address_swap(UINT16* tableRam)
+{
+	UINT16* tempRam;
+	int x;
+
+	tempRam = malloc(0x20000);
+
+	for (x=0;x<0x10000;x++)
+	{
+		tempRam[x] = tableRam[ BITSWAP16(x,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15)];
+//      tempRam[x] = tableRam[ BITSWAP16(x,13,1,2,3,4,5,6,7,8,9,10,0,12,11,14,15)];
+
+	}
+
+	for (x=0;x<0x10000l;x++)
+	{
+		tableRam[x] = tempRam[x];
+	}
+
+	free(tempRam);
+
+}
+
+/* doing the above reveals interesting patterns in the bitcounts.. see below
+
+ -- maybe there are bitswaps which give better counts.. either way it proves that
+    the data in the tables tables isn't in a 100% random order, there is some
+    structure to it, it just isn't clear what..
+
+(blocksize 0x8000)
+
+400a 3fb8 409c 3fc1 4000 4000 4000 4000 3fc0 4000 4000 408c 4000 404c 40a0 4000
+3ff6 4048 3f64 403f 4000 4000 4000 4000 4040 4000 4000 3f74 4000 3fb4 3f60 4000
+
+3fd7 4012 40fe 4000 4000 4000 4000 4000 4040 4000 4000 3f4a 4000 4006 40a0 4000
+4029 3fee 3f02 4000 4000 4000 4000 4000 3fc0 4000 4000 40b6 4000 3ffa 3f60 4000
+
+4044 3ffa 3f4e 3fad 4000 4000 4000 4000 4040 4000 4000 404e 4000 3ffa 40a0 4000
+3fbc 4006 40b2 4053 4000 4000 4000 4000 3fc0 4000 4000 3fb2 4000 4006 3f60 4000
+
+3ff7 3ffa 3fa0 403b 4000 4000 4000 4000 4040 4000 4000 403c 4000 3f96 4280 4000
+4009 4006 4060 3fc5 4000 4000 4000 4000 3fc0 4000 4000 3fc4 4000 406a 3d80 4000
+
+3fe9 4062 4038 3fc2 4000 4000 4000 4000 3fc0 4000 4000 4022 4000 404c 40a0 4000
+4017 3f9e 3fc8 403e 4000 4000 4000 4000 4040 4000 4000 3fde 4000 3fb4 3f60 4000
+
+
+
+
+(blocksize 0x4000)
+                    ****           ****      ****                                 * = no longer splits even at this level
+206e 200b 2043 204a 1fc9 2000 2000 1ffc 1fe0 2020 2000 2035 2000 201d 2050 2000
+1f9c 1fad 2059 1f77 2037 2000 2000 2004 1fe0 1fe0 2000 2057 2000 202f 2050 2000
+204a 2047 1fbd 206e 2003 2000 2000 1fe0 2020 2020 2000 1fcb 2000 202b 1fb0 2000
+1fac 2001 1fa7 1fd1 1ffd 2000 2000 2020 2020 1fe0 2000 1fa9 2000 1f89 1fb0 2000
+
+1fc2 203f 2098 2018 2060 2000 2000 2029 2020 2020 2000 1fc4 2000 1fc6 2050 2000
+2015 1fd3 2066 1fe8 1fa0 2000 2000 1fd7 2020 1fe0 2000 1f86 2000 2040 2050 2000
+200a 2013 1f68 202c 2034 2000 2000 1fdd 1fe0 2020 2000 203c 2000 1ff2 1fb0 2000
+201f 1fdb 1f9a 1fd4 1fcc 2000 2000 2023 1fe0 1fe0 2000 207a 2000 2008 1fb0 2000
+
+2058 1fd6 1fc9 2009 1fb6 2000 2000 2006 2020 2040 2000 2034 2000 1fdf 2050 2000
+1fec 2024 1f85 1fa4 204a 2000 2000 1ffa 2020 1fc0 2000 201a 2000 201b 2050 2000
+1fcc 2024 2037 1fff 1ff6 2000 2000 2022 1fe0 2040 2000 1fcc 2000 1ffd 1fb0 2000
+1ff0 1fe2 207b 2054 200a 2000 2000 1fde 1fe0 1fc0 2000 1fe6 2000 2009 1fb0 2000
+
+2026 2016 1fee 204b 201a 2000 2000 1ff6 2020 2060 2000 2019 2000 1fca 2140 2000
+1fd1 1fe4 1fb2 1ff0 1fe6 2000 2000 200a 2020 1fa0 2000 2023 2000 1fcc 2140 2000
+2026 2042 2012 2009 1ff0 2000 2000 1ff0 1fe0 2060 2000 1fe7 2000 201e 1ec0 2000
+1fe3 1fc4 204e 1fbc 2010 2000 2000 2010 1fe0 1fa0 2000 1fdd 2000 204c 1ec0 2000
+
+the columns which split perfectly into quarters (0x2000 in every column) split
+perfectly like this on ALL games, the more random columns are more random on
+ALL games.  it's something every encryption table has in common.
+
+if you look at a smaller block size / divide (0x2000) then *one* bit still splits evenly
+                         **** ****                          ****           ****    * = no longer splits even at this level
+0f48 0fdc 0ffe 1014 1002 1038 0ff8 0fdb 1018 101a 1000 1028 0f48 1020 0fd8 1050
+0f57 103c 1015 0ff3 1016 0fc8 1008 101d 0fc8 0fc6 1000 1017 10b8 0feb 0fd8 0fb0
+10c3 1033 101a 100b 0fd4 1028 0ff8 1000 1018 0fe6 1000 102c 0fd8 0ff4 0fd8 1050
+1099 0ff9 1031 1007 1014 0fd8 1008 1008 0fc8 103a 1000 101f 1028 100d 0fd8 0fb0
+0f57 0f8a 0fd5 0fce 0fe7 1038 1018 0fef 1038 101a 1000 0ffd 0f48 0fdb 1028 1050
+0f72 1040 1018 102f 0ffb 0fc8 0fe8 0fff 0fe8 0fc6 1000 0fc4 10b8 1028 1028 0fb0
+10ae 0fe0 0fb7 0fdb 0ff7 1028 1018 0ffe 1038 0fe6 1000 0fcb 0fd8 0fe7 1028 1050
+108e 1012 0ffe 100f 1027 0fd8 0fe8 1014 0fe8 103a 1000 0fea 1028 100a 1028 0fb0
+
+0ffb 0ffc 0fc0 1008 0fdd 0fc0 0fec 0feb 102c 0fa8 1000 100d 1000 1007 1028 0fb0
+0ff6 1005 0fd8 0ff8 1079 1040 1014 102c 0ff4 1018 1000 0ffd 1000 104a 1028 1050
+102d 0ff9 0ff1 102f 0fcc 1000 0fec 1012 102c 1058 1000 1041 1000 1001 1028 0fb0
+0ff4 0fe8 0fcb 0ff9 0fde 1000 1014 0fd7 0ff4 0fe8 1000 0ff3 1000 101e 1028 1050
+1032 103b 1021 100b 0fbf 0fc0 1004 0fd0 1024 0fa8 1000 0ffc 1000 0ffb 0fd8 0fb0
+1015 0ffc 1047 0fe9 1065 1040 0ffc 1027 0fbc 1018 1000 0ffa 1000 0fe4 0fd8 1050
+0fc9 0fd3 103e 0fc4 1008 1000 1004 1009 1024 1058 1000 0fdc 1000 0ff1 0fd8 0fb0
+0fde 1014 1006 1020 0fd4 1000 0ffc 1000 0fbc 0fe8 1000 0ff0 1000 0fc0 0fd8 1050
+
+
+going further (0x1000) everything seems rather random again
+
+
+*/
+
+void do_bitcounts(UINT16* tableRam)
+{
+	int BLOCK_SIZE = 0x4000;
+
+	UINT32 bitcounts[16];
+	int x,y,i;
+
+	for (x=0;x<16;x++)
+		bitcounts[x] = 0;
+
+	for (i=0;i<0x10000;i+=BLOCK_SIZE)
+	{
+
+		for (x=0;x<16;x++)
+			bitcounts[x] = 0;
+
+		for (x=i;x<i+BLOCK_SIZE;x++)
+		{
+			UINT16 data = tableRam[x];
+
+			for (y=0;y<16;y++)
+			{
+				UINT8 bit = (data >> y)&1;
+				bitcounts[y] += bit;
+
+			}
+		}
+
+
+		for (y=0;y<16;y++)
+		{
+			printf("%04x ",bitcounts[y]);
+			logerror("%04x ",bitcounts[y]);
+		}
+
+		printf("\n");
+		logerror("\n");
+	}
+
+	printf("\n");
+	logerror("\n");
+
+}
+
+/* This dumps the 4gb + lookup table version of the tables from the CHD,
+   todo: add a function to dump the full 8gig version
+
+   make sure you have a folder called decrypt */
+
+void dump_tables(void)
+{
+	/* chdman -createhd sfzj.raw sfzj.chd 0 1 1 1048608 4096 */
+	UINT16 CPS2_HUNKS_PER_BLOCK;
+	int x;
+
+	UINT16* tableRam;
+
+	tableRam = malloc(0x20000);
+	CPS2_HUNKS_PER_BLOCK = 0x20000/ chd_get_header(get_disk_handle(0))->hunkbytes;
+
+	for (x=0;x<0x8001; x++)
+	{
+		unsigned char filename[256];
+		FILE* outFile;
+
+		int i;
+
+		for (i=0; i<CPS2_HUNKS_PER_BLOCK;i++)
+			chd_read(get_disk_handle(0), (x*CPS2_HUNKS_PER_BLOCK)+i, tableRam+i*(0x10000/CPS2_HUNKS_PER_BLOCK) );
+
+		if (x<0x8000)
+		{
+			sprintf(filename, "decrypt/%04x.tbl",x);
+
+			/* the bit-count patterns you get from this seem interesting */
+//          cps2test_do_address_swap(tableRam);
+//          do_bitcounts(tableRam);
+		}
+		else  sprintf(filename, "decrypt/lookup.tbl");
+
+		outFile = fopen(filename,"wb");
+		fwrite(tableRam, 2, 65536, outFile);
+		fclose(outFile);
+
+	}
+}
+
+DRIVER_INIT( cps2_chd_256 )
+{
+	if(!decrypt_cps2_with_chd(0x40000))
+		init_cps2(machine);
+	else
+		init_cps2_nodecrypt(machine);
+}
+
+DRIVER_INIT( cps2_chd_512 )
+{
+	if(!decrypt_cps2_with_chd(0x80000))
+		init_cps2(machine);
+	else
+		init_cps2_nodecrypt(machine);
+}
+
+DRIVER_INIT( cps2_chd_1024 )
+{
+	if(!decrypt_cps2_with_chd(0x100000))
+		init_cps2(machine);
+	else
+		init_cps2_nodecrypt(machine);
+}
+
+DRIVER_INIT( cps2_chd_2048 )
+{
+	if(!decrypt_cps2_with_chd(0x200000))
+		init_cps2(machine);
+	else
+		init_cps2_nodecrypt(machine);
+}
+
+static DRIVER_INIT ( puzloop2 )
+{
+	init_cps2_chd_2048(machine);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x804000, 0x804001, 0, 0, pl2_port_0_word_r);
+}
+
 GAME( 1993, ssf2,     0,       cps2, ssf2,    cps2, ROT0,   "Capcom", "Super Street Fighter II: The New Challengers (World 930911)", 0 )
 GAME( 1993, ssf2u,    ssf2,    cps2, ssf2,    cps2, ROT0,   "Capcom", "Super Street Fighter II: The New Challengers (US 930911)", 0 )
 GAME( 1993, ssf2a,    ssf2,    cps2, ssf2,    cps2, ROT0,   "Capcom", "Super Street Fighter II: The New Challengers (Asia 931005)", 0 )
@@ -7806,7 +8307,7 @@ GAME( 1994, ssf2ta,   ssf2,    cps2, ssf2,    cps2, ROT0,   "Capcom", "Super Str
 GAME( 1994, ssf2tu,   ssf2,    cps2, ssf2,    cps2, ROT0,   "Capcom", "Super Street Fighter II Turbo (US 940323)", GAME_NOT_WORKING )
 GAME( 1994, ssf2tur1, ssf2,    cps2, ssf2,    cps2, ROT0,   "Capcom", "Super Street Fighter II Turbo (US 940223)", 0 )
 GAME( 1994, ssf2xj,   ssf2,    cps2, ssf2,    cps2, ROT0,   "Capcom", "Super Street Fighter II X: Grand Master Challenge (Japan 940223)", 0 )
-GAME( 1994, xmcota,   0,       cps2, ssf2,    cps2, ROT0,   "Capcom", "X-Men: Children of the Atom (Euro 950105)", 0 )
+GAME( 1994, xmcota,   0,       cps2, ssf2,    cps2_chd_1024, ROT0,   "Capcom", "X-Men: Children of the Atom (Euro 950105)", 0 )
 GAME( 1994, xmcotau,  xmcota,  cps2, ssf2,    cps2, ROT0,   "Capcom", "X-Men: Children of the Atom (US 950105)", 0 )
 GAME( 1994, xmcotah,  xmcota,  cps2, ssf2,    cps2, ROT0,   "Capcom", "X-Men: Children of the Atom (Hispanic 950331)", GAME_NOT_WORKING )
 GAME( 1994, xmcotaj,  xmcota,  cps2, ssf2,    cps2, ROT0,   "Capcom", "X-Men: Children of the Atom (Japan 941219)", 0 )
@@ -7856,9 +8357,9 @@ GAME( 1995, sfar2,    sfa,     cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fi
 GAME( 1995, sfar3,    sfa,     cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Alpha: Warriors' Dreams (Euro 950605)", 0 )
 GAME( 1995, sfau,     sfa,     cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Alpha: Warriors' Dreams (US 950627)", 0 )
 GAME( 1995, sfza,     sfa,     cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Zero (Asia 950627)", GAME_NOT_WORKING )
-GAME( 1995, sfzj,     sfa,     cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Zero (Japan 950727)", 0 )
-GAME( 1995, sfzjr1,   sfa,     cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Zero (Japan 950627)", 0 )
-GAME( 1995, sfzjr2,   sfa,     cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Zero (Japan 950605)", 0 )
+GAME( 1995, sfzj,     sfa,     cps2, ssf2,    cps2_chd_512, ROT0,   "Capcom", "Street Fighter Zero (Japan 950727)", 0 )
+GAME( 1995, sfzjr1,   sfa,     cps2, ssf2,    cps2_chd_512, ROT0,   "Capcom", "Street Fighter Zero (Japan 950627)", 0 )
+GAME( 1995, sfzjr2,   sfa,     cps2, ssf2,    cps2_chd_512, ROT0,   "Capcom", "Street Fighter Zero (Japan 950605)", 0 )
 GAME( 1995, sfzh,     sfa,     cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Zero (Hispanic 950627)", GAME_NOT_WORKING )
 GAME( 1995, sfzb,     sfa,     cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Zero (Brazil 951109)", GAME_NOT_WORKING )
 GAME( 1995, sfzbr1,   sfa,     cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Zero (Brazil 950727)", GAME_NOT_WORKING )
@@ -7912,7 +8413,7 @@ GAME( 1997, batcira,  batcir,  cps2, batcir,  cps2, ROT0,   "Capcom", "Battle Ci
 GAME( 1997, batcirj,  batcir,  cps2, batcir,  cps2, ROT0,   "Capcom", "Battle Circuit (Japan 970319)", 0 )
 GAME( 1997, csclub,   0,       cps2, sgemf,   cps2, ROT0,   "Capcom", "Capcom Sports Club (Euro 970722)", 0 )
 GAME( 1997, cscluba,  csclub,  cps2, sgemf,   cps2, ROT0,   "Capcom", "Capcom Sports Club (Asia 970722)", 0 )
-GAME( 1997, csclubj,  csclub,  cps2, sgemf,   cps2, ROT0,   "Capcom", "Capcom Sports Club (Japan 970722)", 0 )
+GAME( 1997, csclubj,  csclub,  cps2, sgemf,   cps2_chd_2048, ROT0,   "Capcom", "Capcom Sports Club (Japan 970722)", 0 )
 GAME( 1997, csclubh,  csclub,  cps2, sgemf,   cps2, ROT0,   "Capcom", "Capcom Sports Club (Hispanic 970722)", GAME_NOT_WORKING )
 GAME( 1997, mshvsf,   0,       cps2, ssf2,    cps2, ROT0,   "Capcom", "Marvel Super Heroes Vs. Street Fighter (Euro 970625)", GAME_NOT_WORKING )
 GAME( 1997, mshvsfu,  mshvsf,  cps2, ssf2,    cps2, ROT0,   "Capcom", "Marvel Super Heroes Vs. Street Fighter (US 970827)", 0 )
@@ -7953,6 +8454,7 @@ GAME( 1998, sfz3jr1,  sfa3,    cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fi
 GAME( 1998, sfz3jr2,  sfa3,    cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Zero 3 (Japan 980629)", 0 )
 GAME( 1998, sfz3a,    sfa3,    cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Zero 3 (Asia 980904)", GAME_NOT_WORKING )
 GAME( 1998, sfz3ar1,  sfa3,    cps2, ssf2,    cps2, ROT0,   "Capcom", "Street Fighter Zero 3 (Asia 980701)", 0 )
+GAME( 1999, jyangoku, 0,       cps2, ssf2,    cps2_chd_256, ROT0,   "Capcom", "Jyangokushi: Haoh no Saihai (Japan)", GAME_NOT_WORKING )
 
 /* Games released on CPS-2 hardware by Takumi */
 
@@ -7966,7 +8468,7 @@ GAME( 2000, mmatrixj, mmatrix, cps2, 19xx,    cps2, ROT0,   "Capcom, supported b
 
 GAME( 2000, mpangj,   0,       cps2, ssf2,    cps2, ROT0,   "Mitchell, distributed by Capcom", "Mighty! Pang (Japan 001011)", 0 )
 GAME( 2001, pzloop2j, 0,       cps2, puzloop2, puzloop2, ROT0,   "Mitchell, distributed by Capcom", "Puzz Loop 2 (Japan 010205)", 0 )
-GAME( 2001, choko,    0,       cps2, cps2,    cps2, ROT0,   "Mitchell, distributed by Capcom", "Choko (Japan 010820)", GAME_IMPERFECT_GRAPHICS )
+GAME( 2001, choko,    0,       cps2, cps2,    cps2_chd_1024, ROT0,   "Mitchell, distributed by Capcom", "Choko (Japan 010820)", GAME_IMPERFECT_GRAPHICS )
 
 /* Games released on CPS-2 hardware by Eighting/Raizing */
 
