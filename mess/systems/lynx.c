@@ -124,7 +124,7 @@ void lynx_draw_lines(int newline)
 		{
 			for (;lynx_line_y<yend;lynx_line_y++)
 			{
-				line = (UINT16 *) tmpbitmap->line[lynx_line_y];
+				line = BITMAP_ADDR16(tmpbitmap, lynx_line_y, 0);
 				for (x=160-2;x>=0;j++,x-=2)
 				{
 					byte = lynx_read_vram(j);
@@ -137,7 +137,7 @@ void lynx_draw_lines(int newline)
 		{
 			for (;lynx_line_y<yend;lynx_line_y++)
 			{
-				line = (UINT16 *) tmpbitmap->line[102-1-lynx_line_y];
+				line = BITMAP_ADDR16(tmpbitmap, 102-1-lynx_line_y, 0);
 				for (x=0;x<160;j++,x+=2)
 				{
 					byte = lynx_read_vram(j);
@@ -154,7 +154,7 @@ void lynx_draw_lines(int newline)
 		{
 			for (;lynx_line_y<yend;lynx_line_y++)
 			{
-				line = (UINT16 *) tmpbitmap->line[102-1-lynx_line_y];
+				line = BITMAP_ADDR16(tmpbitmap, 102-1-lynx_line_y, 0);
 				for (x=160-2;x>=0;j++,x-=2)
 				{
 					byte = lynx_read_vram(j);
@@ -167,7 +167,7 @@ void lynx_draw_lines(int newline)
 		{
 			for (;lynx_line_y<yend;lynx_line_y++)
 			{
-				line = (UINT16 *) tmpbitmap->line[lynx_line_y];
+				line = BITMAP_ADDR16(tmpbitmap, lynx_line_y, 0);
 				for (x=0;x<160;j++,x+=2)
 				{
 					byte = lynx_read_vram(j);
@@ -218,17 +218,18 @@ static MACHINE_DRIVER_START( lynx )
 	MDRV_CPU_ADD(M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
 	MDRV_CPU_PROGRAM_MAP(lynx_mem, 0)
 	MDRV_CPU_VBLANK_INT(lynx_frame_int, 1)
-	MDRV_FRAMES_PER_SECOND(LCD_FRAMES_PER_SECOND)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(LCD_FRAMES_PER_SECOND)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( lynx )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/*MDRV_SCREEN_SIZE(160, 102)*/
 	MDRV_SCREEN_SIZE(160, 160)
-	MDRV_VISIBLE_AREA(0, 160-1, 0, 102-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 160-1, 0, 102-1)
 	MDRV_PALETTE_LENGTH(0x1000)
 	MDRV_COLORTABLE_LENGTH(0)
 	MDRV_PALETTE_INIT( lynx )

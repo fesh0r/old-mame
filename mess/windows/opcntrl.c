@@ -49,7 +49,7 @@ static BOOL prepare_combobox(HWND control, const struct OptionGuide *guide,
 	BOOL has_option;
 	TCHAR buf1[256];
 	TCHAR buf2[256];
-	LPCTSTR text;
+	LPTSTR tempstr;
 
 	SendMessage(control, CB_GETLBTEXT, SendMessage(control, CB_GETCURSEL, 0, 0), (LPARAM) buf1);
 	SendMessage(control, CB_RESETCONTENT, 0, 0);
@@ -75,7 +75,7 @@ static BOOL prepare_combobox(HWND control, const struct OptionGuide *guide,
 				if (guide->option_type == OPTIONTYPE_INT)
 				{
 					_sntprintf(buf2, sizeof(buf2) / sizeof(buf2[0]), TEXT("%d"), j);
-					text = buf2;
+					SendMessage(control, CB_ADDSTRING, 0, (LPARAM) buf2);
 				}
 				else if (guide->option_type == OPTIONTYPE_ENUM_BEGIN)
 				{
@@ -86,17 +86,18 @@ static BOOL prepare_combobox(HWND control, const struct OptionGuide *guide,
 					}
 					if (guide[k].option_type != OPTIONTYPE_ENUM_VALUE)
 						goto unexpected;
-					text = A2T(guide[k].display_name);
+					tempstr = tstring_from_utf8(guide[k].display_name);
+					SendMessage(control, CB_ADDSTRING, 0, (LPARAM) tempstr);
+					free(tempstr);
 				}
 				else
 					goto unexpected;
 
-				SendMessage(control, CB_ADDSTRING, 0, (LPARAM) text);
 				SendMessage(control, CB_SETITEMDATA, option_count, j);
 
 				if (j == default_value)
 					default_index = option_count;
-				if (!strcmp(buf1, buf2))
+				if (!_tcscmp(buf1, buf2))
 					current_index = option_count;
 				option_count++;
 			}
@@ -155,7 +156,7 @@ static BOOL prepare_editbox(HWND control, const struct OptionGuide *guide,
 				err = option_resolution_getdefault(optspec, guide->parameter, &val);
 				if (err)
 					goto done;
-				_sntprintf(buf, sizeof(buf) / sizeof(buf[0]), "%d", val);
+				_sntprintf(buf, sizeof(buf) / sizeof(buf[0]), TEXT("%d"), val);
 				break;
 
 			default:
@@ -197,7 +198,7 @@ static BOOL check_editbox(HWND control)
 	switch(guide->option_type)
 	{
 		case OPTIONTYPE_INT:
-			val = atoi(buf);
+			val = _ttoi(buf);
 			err = option_resolution_isvalidvalue(optspec, guide->parameter, val);
 			if (err)
 			{
@@ -284,7 +285,7 @@ BOOL win_adjust_option_control(HWND control, int delta)
 		ranges, sizeof(ranges) / sizeof(ranges[0]));
 
 	GetWindowText(control, buf, sizeof(buf) / sizeof(buf[0]));
-	original_val = atoi(buf);
+	original_val = _ttoi(buf);
 	val = original_val + delta;
 
 	for (i = 0; ranges[i].min >= 0; i++)
@@ -317,17 +318,25 @@ optreserr_t win_add_resolution_parameter(HWND control, option_resolution *resolu
 	const struct OptionGuide *guide;
 	TCHAR buf[256];
 	optreserr_t err;
+	char *alloc_text = NULL;
 	const char *text;
 	const char *old_text;
 	int i;
 
 	if (!GetWindowText(control, buf, sizeof(buf) / sizeof(buf[0])))
-		return OPTIONRESOLTUION_ERROR_INTERNAL;
-	text = U2T(buf);
+	{
+		err = OPTIONRESOLTUION_ERROR_INTERNAL;
+		goto done;
+	}
+	alloc_text = utf8_from_tstring(buf);
+	text = alloc_text;
 
 	guide = (const struct OptionGuide *) GetProp(control, guide_prop);
 	if (!guide)
-		return OPTIONRESOLTUION_ERROR_INTERNAL;
+	{
+		err = OPTIONRESOLTUION_ERROR_INTERNAL;
+		goto done;
+	}
 
 	if (guide->option_type == OPTIONTYPE_ENUM_BEGIN)
 	{
@@ -349,10 +358,14 @@ optreserr_t win_add_resolution_parameter(HWND control, option_resolution *resolu
 	{
 		err = option_resolution_add_param(resolution, guide->identifier, text);
 		if (err)
-			return err;
+			goto done;
 	}
 
-	return OPTIONRESOLUTION_ERROR_SUCCESS;
+	err = OPTIONRESOLUTION_ERROR_SUCCESS;
+done:
+	if (alloc_text)
+		free(alloc_text);
+	return err;
 }
 
 

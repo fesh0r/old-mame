@@ -1,3 +1,132 @@
+0.112
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Amiga 500 NTSC (former "amiga" driver) [Ernesto Corvi]
+- Amiga 500 PAL [Ernesto Corvi]
+- Amiga 1000 NTSC [Ernesto Corvi]
+- Apple IIj+ [Nick Westgate]
+
+
+
+System Driver Changes:
+----------------------
+- [AMIGA] Fixed regressions; now boots properly.  Also added keyboard support,
+  512KB "slow-ram" support, preliminary support for Datel Action Replay 1 and
+  many floppy controller fixes.  Added Chip RAM mirroring and Extended ADF 1
+  disk format.  [Ernesto Corvi]
+
+- [APPLE2] Fixed crash when ramsize was set to 4k.  (bug #1048) [Nate Woods]
+
+- [ATARI] Fixed hang on reset bug.  (bug #982) [Nate Woods]
+
+- [AVIGO] Removed redundant artwork in avigo.zip.  (bug #1043) [Nate Woods]
+
+- [C16] Fixed crash when ramsize was set to less than 64k.  (bug #1049) [Nate
+  Woods]
+
+- [COCO] Fixed crash when ramsize was set to less than 32k.  (bug #993) [Nate
+  Woods]
+
+- [COCO] Fixed hi-res interface regression introduced in 0.105.  Also cleaned
+  up how input devices work.  (bug #1025) [Nate Woods]
+
+- [COCO] Fixed regression in one-bit sound.  (bug #1041) [Nate Woods]
+
+- [DGNBETA] More fully implemented certain graphics modes.  [Phill
+  Harvey-Smith]
+  
+- [GAMEBOY] Updated aspect ratios for gameboy, gbpocket, and gbcolor to 10:9,
+  supergb to 4:3.  [Belegdol]
+
+- [IP204415] Fixed driver.  (bug #986) [Nate Woods]
+
+- [MK2] Updated to use the new artwork system.  [Justin Kerk]
+
+- [MSX2] Fixed MSX2 PAL framerates.  (bug #963) [MJSTY]
+
+- [N64] Added the .bin file extension.  (bug #1016) [Nate Woods]
+
+- [SATURN] Saturn driver back up to date so it starts up and shows the boot
+  screens properly.  [R. Belmont]
+
+- [THOMSON] Fixed device name that clashed with "cc" option on main MESS.  (bug
+  #994) [Antoine Mine]
+
+- [THOMSON] Improved video and mouse emulation, and all machines now use the
+  Model 2 Game Extension.  [Antoine Mine]
+
+- [TRS80] Fixed TRS-80 drivers.  [Robbert, R. Belmont]
+
+- [VTECH1] Fixed memory leak.  (bug #1021) [Nate Woods]
+
+- [VTECH1] Rewrote memory and input handling, added support for the 4MB
+  extension.  Also changed BASICV2.1 loading and corrected Laser 310 clock
+  frequency.  [Dirk Best]
+
+
+
+User Interface Changes:
+-----------------------
+- Changed -biospath command line option to be -rompath.  -biospath still works
+  but it is secondary and configuration files created by MESS will use
+  -rompath.  Also removed -softwarepath, paths passed on the command line will
+  now be absolute.  The concept of software paths will continue within the
+  MESS GUI.  [Nate Woods]
+
+- [Windows] Fixed bug that could cause the loss of mouse capture when toggling
+  the menu bar.  (bug #977) [Nate Woods]
+
+- [Windows] Fixed regression when saving and loading save states.  (bug #1035)
+  [Nate Woods]
+
+- [Windows] Fixed device create bugs that could cause file extensions to not
+  be specified by default or crashes.  (bug #1040) [Nate Woods]
+
+
+
+Imgtool Changes:
+----------------
+- Fixed a bug that could cause crashes when opening ZIP files.  [Nate Woods]
+
+- Updated help text.  [Nate Woods]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.112.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Fixed certain crashes that occured on hard reset.  (bug #988) [Nate Woods]
+
+- Fixed bug that caused a crash when a device was passed an empty string at
+  the command line.  (bug #991) [Nate Woods]
+
+- Fixed error reporting when startup images are not properly loaded up.  (bug
+  #928, #990, #992) [Nate Woods]
+
+- Fixed crash when unmounting images in the old UI file manager.  (bug #998)
+  [Nate Woods]
+
+- Fixed various memory leaks in debug builds when the debugger is not enabled.
+  (bug #1018) [Nate Woods]
+
+- Fixed hash file processing.  [MJSTY]
+
+- Fixed problem creating printer output.  (bug #1039) [Nate Woods]
+
+- Removed redundant checks for tilemap allocation failute.  [Dirk Best]
+
+- [Messtest] Now displays emulation error output.  [Nate Woods]
+
+- [Windows] Fixed several memory leaks in the Windows code.  [Nate woods]
+
+- [Windows] COnsolidated some MESS specific OSD code into the MAME OSD core
+  code and removed redundant directory functions.  [Nate Woods]
+
+
+
 0.111
 
 New System Drivers Supported (in no particular order):
@@ -2125,7 +2254,7 @@ User Interface Changes:
 
 Imgtool Changes:
 ----------------
-(none)
+- Created a Cybiko image driver.  [Tim Schuerwegen]
 
 
 

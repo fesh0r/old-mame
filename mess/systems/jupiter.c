@@ -168,7 +168,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( jupiter_interrupt )
 {
-	cpunum_set_input_line(0, 0, PULSE_LINE);
+	cpunum_set_input_line(0, 0, HOLD_LINE);
 }
 
 /* machine definition */
@@ -178,16 +178,17 @@ static MACHINE_DRIVER_START( jupiter )
 	MDRV_CPU_PROGRAM_MAP(jupiter_mem, 0)
 	MDRV_CPU_IO_MAP(jupiter_io, 0)
 	MDRV_CPU_VBLANK_INT(jupiter_interrupt,1)
-	MDRV_FRAMES_PER_SECOND(50)
-	MDRV_VBLANK_DURATION(2500)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500))
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( jupiter )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32 * 8, 24 * 8)
-	MDRV_VISIBLE_AREA(0, 32 * 8 - 1, 0, 24 * 8 - 1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 32 * 8 - 1, 0, 24 * 8 - 1)
 	MDRV_GFXDECODE( jupiter_gfxdecodeinfo )
 	MDRV_PALETTE_LENGTH(sizeof(jupiter_palette) / 3)
 	MDRV_COLORTABLE_LENGTH(sizeof (jupiter_colortable))

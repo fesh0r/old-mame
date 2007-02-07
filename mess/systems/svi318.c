@@ -325,27 +325,21 @@ static struct AY8910interface ay8910_interface =
 	svi318_psg_port_b_w
 };
 
-static const TMS9928a_interface tms9928a_interface =
-{
-	TMS9929A,
-	0x4000,
-	svi318_vdp_interrupt
-};
-
 static MACHINE_DRIVER_START( svi318 )
 	/* Basic machine hardware */
 	MDRV_CPU_ADD_TAG( "main", Z80, 3579545 )	/* 3.579545 Mhz */
 	MDRV_CPU_PROGRAM_MAP( svi318_mem, 0 )
 	MDRV_CPU_IO_MAP( svi318_io, 0 )
 	MDRV_CPU_VBLANK_INT( svi318_interrupt, 1 )
-	MDRV_FRAMES_PER_SECOND(50)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
+	MDRV_MACHINE_START( svi318 )
 	MDRV_MACHINE_RESET( svi318 )
 
 	/* Video hardware */
-	MDRV_TMS9928A( &tms9928a_interface )
+	MDRV_IMPORT_FROM(tms9928a)
 
 	/* Sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -367,7 +361,7 @@ static MACHINE_DRIVER_START( svi328b )
 
 	/* video hardware */
 	MDRV_SCREEN_SIZE(640, 400)
-	MDRV_VISIBLE_AREA(0,640-1, 0, 400-1)
+	MDRV_SCREEN_VISIBLE_AREA(0,640-1, 0, 400-1)
 	MDRV_VIDEO_UPDATE( svi328b )
 MACHINE_DRIVER_END
 

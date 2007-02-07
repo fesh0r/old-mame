@@ -33,13 +33,10 @@ static const options_entry messtest_opts[] =
 
 	// file and directory options
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE SEARCH PATH OPTIONS" },
-#ifndef MESS
 	{ "rompath;rp;biospath;bp",      "roms",      0,                 "path to ROMsets and hard disk images" },
-#else
-	{ "biospath;bp",               "bios",      0,                 "path to BIOS sets" },
+#ifdef MESS
 	{ "hashpath;hash_directory;hash","hash",      0,                 "path to hash files" },
-	{ "softwarepath;swp",            "software",  0,                 "path to software" },
-#endif
+#endif /* MESS */
 	{ "samplepath;sp",               "samples",   0,                 "path to samplesets" },
 	{ "artpath;artwork_directory",   "artwork",   0,                 "path to artwork files" },
 	{ "ctrlrpath;ctrlr_directory",   "ctrlr",     0,                 "path to controller definitions" },
@@ -111,7 +108,11 @@ static void win_expand_wildcards(int *argc, char **argv[])
 
 
 
-int main(int argc, char *argv[])
+#ifdef WIN32
+int CLIB_DECL utf8_main(int argc, char *argv[])
+#else
+int CLIB_DECL main(int argc, char *argv[])
+#endif
 {
 	int result = -1;
 	clock_t begin_time;

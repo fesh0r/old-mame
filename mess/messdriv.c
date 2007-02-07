@@ -225,6 +225,7 @@ TESTDRIVER( nc200 )		/* 19?? NC200										*/
 	DRIVER( apple1 )	/* Jul 1976 Apple 1 								*/
 	DRIVER( apple2 )	/* Apr 1977 Apple ][ 								*/
 	DRIVER( apple2p )	/* Jun 1979 Apple ][+ 								*/
+	DRIVER( apple2jp )	/* ??? ???? Apple ][j+ 								*/
 	DRIVER( apple2e )	/* Jan 1983 Apple //e								*/
 	DRIVER( apple2ee )	/* Mar 1985 Apple //e Enhanced						*/
 	DRIVER( apple2ep )	/* Jan 1987 Apple //e Platinum						*/
@@ -348,7 +349,9 @@ TESTDRIVER( c128nor )	/* Commodore 128 - PAL (norwegian)					*/
 TESTDRIVER( c128d )		/* Commodore 128D - NTSC 							*/
 TESTDRIVER( c128dita )	/* Commodore 128D - PAL (italian) cost reduced set	*/
 
-	DRIVER( amiga ) 	/* Commodore Amiga									*/
+	DRIVER( a500n ) 	/* Commodore Amiga 500 - NTSC						*/
+	DRIVER( a500p ) 	/* Commodore Amiga 500 - PAL						*/
+	DRIVER( a1000n ) 	/* Commodore Amiga 1000 - NTSC						*/
 	DRIVER( cdtv )
 
 	DRIVER( c65 )		/* C65 / C64DX (Prototype, NTSC, 911001)			*/
@@ -585,9 +588,7 @@ TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy 			*/
 	DRIVER( las210de )  /* 1984 Sanyo Laser 210 (Germany)                   */
 	DRIVER( vz200 ) 	/* 1984 Dick Smith Electronics VZ-200               */
 	DRIVER( laser310 )	/* 1984 Laser 310 (210 with diff. keyboard and RAM)	*/
-	DRIVER( las31021 )  /* 1984? Laser 310 (Basic V2.1)                     */
 	DRIVER( vz300 ) 	/* 1984 Dick Smith Electronics VZ-300               */
-	DRIVER( vz300_21 ) 	/* 1984 Dick Smith Electronics VZ-300 (Basic V2.1)  */
 	DRIVER( laser350 )	/* 1984? Laser 350									*/
 	DRIVER( laser500 )	/* 1984? Laser 500									*/
 	DRIVER( laser700 )	/* 1984? Laser 700									*/

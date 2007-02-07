@@ -10,24 +10,22 @@
 CFLAGS += -DWINUI -DEMULATORDLL=\"$(EMULATORDLL)\"
 RCFLAGS += -DMESS
 
-OSOBJS += \
-	$(OBJ)/mess/windows/dirio.o		\
-	$(OBJ)/mess/windows/dirutils.o	\
-	$(OBJ)/mess/windows/configms.o	\
-	$(OBJ)/mess/windows/menu.o		\
-	$(OBJ)/mess/windows/opcntrl.o	\
-	$(OBJ)/mess/windows/dialog.o	\
-	$(OBJ)/mess/windows/tapedlg.o	\
-	$(OBJ)/mess/windows/parallel.o	\
-	$(OBJ)/mess/windows/strconv.o	\
-	$(OBJ)/mess/windows/winutils.o	\
-	$(OBJ)/mess/windows/mess.res
+LIBS += -lcomdlg32
 
-ifdef MSVC_BUILD
-MESSTEST_OBJS		+= $(OBJ)/mess/ui/dirent.o
-MESSDOCS_OBJS		+= $(OBJ)/mess/ui/dirent.o
-PLATFORM_TOOL_OBJS	+= $(OBJ)/mess/ui/dirent.o
-endif
+OSOBJS += \
+	$(OBJ)/mess/windows/configms.o	\
+	$(OBJ)/mess/windows/dialog.o	\
+	$(OBJ)/mess/windows/menu.o		\
+	$(OBJ)/mess/windows/mess.res	\
+	$(OBJ)/mess/windows/messlib.o	\
+	$(OBJ)/mess/windows/opcntrl.o	\
+	$(OBJ)/mess/windows/tapedlg.o
+
+OSDCOREOBJS += \
+	$(OBJ)/mess/windows/winmess.o	\
+	$(OBJ)/mess/windows/winutils.o	\
+	$(OBJ)/mess/windows/parallel.o	\
+	$(OBJ)/mess/windows/glob.o
 
 
 

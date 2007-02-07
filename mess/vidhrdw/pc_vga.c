@@ -154,8 +154,9 @@ static unsigned short vga_colortable[] =
 
 MACHINE_DRIVER_START( pcvideo_vga )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(720, 480)
-	MDRV_VISIBLE_AREA(0,720-1, 0,480-1)
+	MDRV_SCREEN_VISIBLE_AREA(0,720-1, 0,480-1)
 	MDRV_PALETTE_LENGTH(0x100)
 	MDRV_COLORTABLE_LENGTH(0x100*2 /*sizeof(vga_colortable) / sizeof(vga_colortable[0])*/)
 	MDRV_PALETTE_INIT(vga)
@@ -167,8 +168,9 @@ MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( pcvideo_pc1640 )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(720, 350)
-	MDRV_VISIBLE_AREA(0,720-1, 0,350-1)
+	MDRV_SCREEN_VISIBLE_AREA(0,720-1, 0,350-1)
 	MDRV_PALETTE_LENGTH(sizeof(ega_palette) / 3)
 	MDRV_COLORTABLE_LENGTH(0x100*2 /*sizeof(vga_colortable) / sizeof(vga_colortable[0])*/)
 	MDRV_PALETTE_INIT(ega)
@@ -1197,7 +1199,7 @@ static void vga_vh_text(mame_bitmap *bitmap, struct crtc6845 *crtc)
 
 			for (h = MAX(-line, 0); (h < height) && (line+h < MIN(TEXT_LINES, bitmap->height)); h++)
 			{
-				bitmapline = (UINT16 *) bitmap->line[line+h];
+				bitmapline = BITMAP_ADDR16(bitmap, line+h, 0);
 				bits = font[h<<2];
 
 				assert(bitmapline);
@@ -1245,7 +1247,7 @@ static void vga_vh_ega(mame_bitmap *bitmap, struct crtc6845 *crtc)
 	for (addr=EGA_START_ADDRESS, pos=0, line=0; line<LINES;
 		 line += height, addr=(addr+EGA_LINE_LENGTH)&0x3ffff)
 	{
-		bitmapline = (UINT16 *) bitmap->line[line];
+		bitmapline = BITMAP_ADDR16(bitmap, line, 0);
 
 		for (pos=addr, c=0, column=0; column<EGA_COLUMNS; column++, c+=8, pos=(pos+4)&0x3ffff)
 		{
@@ -1273,7 +1275,7 @@ static void vga_vh_ega(mame_bitmap *bitmap, struct crtc6845 *crtc)
 			if (line + i >= LINES)
 				break;
 
-			newbitmapline = (UINT16 *) bitmap->line[line+i];
+			newbitmapline = BITMAP_ADDR16(bitmap, line+i, 0);
 			memcpy(newbitmapline, bitmapline, EGA_COLUMNS * 8 * sizeof(UINT16));
 		}
 	}
@@ -1293,7 +1295,7 @@ static void vga_vh_vga(mame_bitmap *bitmap, struct crtc6845 *crtc)
 				curr_addr = addr;
 			if(line == (vga.line_compare & 0xff))
 				curr_addr = 0;
-			bitmapline = (UINT16 *) bitmap->line[line];
+			bitmapline = BITMAP_ADDR16(bitmap, line, 0);
 			addr %= vga.svga_intf.vram_size;
 			for (pos=curr_addr, c=0, column=0; column<VGA_COLUMNS; column++, c+=8, pos+=0x20)
 			{
@@ -1318,7 +1320,7 @@ static void vga_vh_vga(mame_bitmap *bitmap, struct crtc6845 *crtc)
 				curr_addr = addr;
 			if(line == (vga.line_compare & 0xff))
 				curr_addr = 0;
-			bitmapline = (UINT16 *) bitmap->line[line];
+			bitmapline = BITMAP_ADDR16(bitmap, line, 0);
 			addr %= vga.svga_intf.vram_size;
 			for (pos=curr_addr, c=0, column=0; column<VGA_COLUMNS; column++, c+=8, pos+=0x08)
 			{

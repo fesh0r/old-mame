@@ -310,13 +310,12 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 		for (ndriver = 0; ndriver < GetNumGames(); ndriver++)
 		{
 			const game_driver *gamedrv = drivers[ndriver];
-			const game_driver *clone_of = NULL;
 			struct DriversInfo *gameinfo = &drivers_info[ndriver];
 			const rom_entry *region, *rom;
 			machine_config drv;
 			const input_port_entry *input_ports;
 			int speakernum, num_speakers;
-			gameinfo->isClone = ((clone_of = driver_get_clone(gamedrv)) != NULL && (clone_of->flags & NOT_A_DRIVER) == 0);
+			gameinfo->isClone = (GetParentRomSetIndex(gamedrv) != -1);
 			gameinfo->isBroken = ((gamedrv->flags & GAME_NOT_WORKING) != 0);
 			gameinfo->supportsSaveState = ((gamedrv->flags & GAME_SUPPORTS_SAVE) != 0);
 			gameinfo->isHarddisk = FALSE;
@@ -373,10 +372,10 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 
 			gameinfo->usesTrackball = FALSE;
 			gameinfo->usesLightGun = FALSE;
-			if (gamedrv->construct_ipt != NULL)
+			if (gamedrv->ipt != NULL)
 			{
 				begin_resource_tracking();
-				input_ports = input_port_allocate(gamedrv->construct_ipt, NULL);
+				input_ports = input_port_allocate(gamedrv->ipt, NULL);
 				while (1)
 				{
 					UINT32 type;

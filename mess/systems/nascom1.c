@@ -218,7 +218,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( nascom_interrupt )
 {
-	cpunum_set_input_line(0, 0, PULSE_LINE);
+	cpunum_set_input_line(0, 0, HOLD_LINE);
 }
 
 /* Machine definition */
@@ -228,16 +228,17 @@ static MACHINE_DRIVER_START( nascom1 )
 	MDRV_CPU_PROGRAM_MAP(nascom1_mem, 0)
 	MDRV_CPU_IO_MAP(nascom1_io, 0)
 	MDRV_CPU_VBLANK_INT(nascom_interrupt, 1)
-	MDRV_FRAMES_PER_SECOND(50)
-	MDRV_VBLANK_DURATION(2500)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500))
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( nascom1 )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(48 * 8, 16 * 16)
-	MDRV_VISIBLE_AREA(0, 48 * 8 - 1, 0, 16 * 16 - 1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 48 * 8 - 1, 0, 16 * 16 - 1)
 	MDRV_GFXDECODE( nascom1_gfxdecodeinfo )
 	MDRV_PALETTE_LENGTH( sizeof (nascom1_palette) / 3 )
 	MDRV_COLORTABLE_LENGTH( sizeof (nascom1_colortable) )
@@ -252,7 +253,7 @@ static MACHINE_DRIVER_START( nascom2 )
 	MDRV_IMPORT_FROM( nascom1 )
 	MDRV_CPU_REPLACE( "main", Z80, 2000000 )
 	MDRV_SCREEN_SIZE(48 * 8, 16 * 14)
-	MDRV_VISIBLE_AREA(0, 48 * 8 - 1, 0, 16 * 14 - 1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 48 * 8 - 1, 0, 16 * 14 - 1)
 	MDRV_GFXDECODE( nascom2_gfxdecodeinfo )
 	MDRV_VIDEO_UPDATE( nascom2 )
 MACHINE_DRIVER_END

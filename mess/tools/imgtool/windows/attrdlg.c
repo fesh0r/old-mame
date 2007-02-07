@@ -35,14 +35,14 @@ static int create_option_controls(HWND dialog, HFONT font, int margin, int *y,
 	DWORD style;
 	int i, x, width, selected;
 	char buf[256];
+	TCHAR *t_buf;
 
 	GetWindowRect(dialog, &dialog_rect);
 
 	if (suggestion_info)
 	{
 		// set up label control
-		snprintf(buf, sizeof(buf) / sizeof(buf[0]), "Mode:");
-		control = CreateWindow(TEXT("STATIC"), U2T(buf), WS_CHILD | WS_VISIBLE,
+		control = CreateWindow(TEXT("STATIC"), TEXT("Mode:"), WS_CHILD | WS_VISIBLE,
 			margin, *y + 2, label_width, control_height, dialog, NULL, NULL, NULL);
 		SendMessage(control, WM_SETFONT, (WPARAM) font, 0);
 		SetProp(control, owner_prop, (HANDLE) 1);
@@ -77,8 +77,10 @@ static int create_option_controls(HWND dialog, HFONT font, int margin, int *y,
 		{
 			// set up label control
 			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%s:", guide[i].display_name);
-			control = CreateWindow(TEXT("STATIC"), U2T(buf), WS_CHILD | WS_VISIBLE,
+			t_buf = tstring_from_utf8(buf);
+			control = CreateWindow(TEXT("STATIC"), t_buf, WS_CHILD | WS_VISIBLE,
 				margin, *y + 2, label_width, control_height, dialog, NULL, NULL, NULL);
+			free(t_buf);
 			SendMessage(control, WM_SETFONT, (WPARAM) font, 0);
 			SetProp(control, owner_prop, (HANDLE) 1);
 
@@ -102,7 +104,11 @@ static int create_option_controls(HWND dialog, HFONT font, int margin, int *y,
 					style = WS_CHILD | WS_VISIBLE | UDS_AUTOBUDDY;
 					aux_control = CreateWindow(TEXT("msctls_updown32"), NULL, style,
 							x + width - 16, *y, 16, control_height, dialog, NULL, NULL, NULL);
+#if (_WIN32_IE >= 0x0400)
 					SendMessage(aux_control, UDM_SETRANGE32, 0x80000000, 0x7FFFFFFF);
+#else // !(_WIN32_IE >= 0x0400)
+					SendMessage(aux_control, UDM_SETRANGE, 0, MAKELONG(UD_MAXVAL, UD_MINVAL));
+#endif // (_WIN32_IE >= 0x0400)
 					break;
 
 				case OPTIONTYPE_ENUM_BEGIN:

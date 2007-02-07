@@ -366,15 +366,29 @@ static const TMS9928a_interface tms9118_interface =
 {
 	TMS99x8A,
 	0x4000,
+	0, 0,
 	tms9901_set_int2
 };
+
+static MACHINE_START(ti99_8_60hz)
+{
+	TMS9928A_configure(&tms9118_interface);
+	return 0;
+}
 
 static const TMS9928a_interface tms9129_interface =
 {
 	TMS9929A,
 	0x4000,
+	0, 0,
 	tms9901_set_int2
 };
+
+static MACHINE_START(ti99_8_50hz)
+{
+	TMS9928A_configure(&tms9129_interface);
+	return 0;
+}
 
 static struct tms9995reset_param ti99_8_processor_config =
 {
@@ -397,14 +411,15 @@ static MACHINE_DRIVER_START(ti99_8_60hz)
 	MDRV_CPU_VBLANK_INT(ti99_vblank_interrupt, 1)
 	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
+	MDRV_MACHINE_START( ti99_8_60hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
-	MDRV_TMS9928A( &tms9118_interface )
+	MDRV_IMPORT_FROM(tms9928a)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -428,14 +443,15 @@ static MACHINE_DRIVER_START(ti99_8_50hz)
 	MDRV_CPU_VBLANK_INT(ti99_vblank_interrupt, 1)
 	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
 
-	MDRV_FRAMES_PER_SECOND(50)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
+	MDRV_MACHINE_START( ti99_8_50hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
-	MDRV_TMS9928A( &tms9129_interface )
+	MDRV_IMPORT_FROM(tms9928a)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

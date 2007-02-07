@@ -261,7 +261,7 @@ static void apple2_hires_draw_task(void *param, int task_num, int task_count)
 			}
 		}
 
-		p = (UINT16 *) bitmap->line[row];
+		p = BITMAP_ADDR16(bitmap, row, 0);
 
 		for (col = 0; col < columns; col++)
 		{
@@ -379,9 +379,6 @@ int apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_softs
 	/* 14x8 */
 	lores_tiledata = auto_malloc(sizeof(UINT8) * 14 * 8);
 
-	if (!text_tilemap || !dbltext_tilemap || !lores_tilemap)
-		return 1;
-	
 	/* build lores_tiledata */
 	memset(lores_tiledata + 0*14, 0, 4*14);
 	memset(lores_tiledata + 4*14, 1, 4*14);

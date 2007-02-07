@@ -24,6 +24,8 @@
 #include "pile.h"
 #include "inputx.h"
 
+#define EOLN (CRLF == 1 ? "\r" : (CRLF == 2 ? "\n" : (CRLF == 3 ? "\r\n" : NULL)))
+
 /* ----------------------------------------------------------------------- */
 
 typedef enum
@@ -511,24 +513,3 @@ void report_testcase_ran(int failure)
 {
 	is_failure = failure;
 }
-
-
-
-void make_filename_temporary(char *filename, size_t buflen)
-{
-#ifdef WIN32
-	TCHAR tempbuf[MAX_PATH];
-
-	GetTempPath(sizeof(tempbuf) / sizeof(tempbuf[0]), tempbuf);
-	_tcscat(tempbuf, U2T(filename));
-	DeleteFile(tempbuf);
-
-	snprintf(filename, buflen, "%s", T2U(tempbuf));
-#endif /* WIN32 */
-}
-
-
-
-
-
-

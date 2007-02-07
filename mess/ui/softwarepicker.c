@@ -274,7 +274,8 @@ static BOOL SoftwarePicker_CalculateHash(HWND hwndPicker, int nIndex)
 		zip_file *zip;
 		zip_error ziperr;
 		const zip_file_header *zipent;
-		const char *zip_entry_name;
+		char *zip_file_name;
+		char *zip_entry_name;
 
 		// open the ZIP file
 		nLength = pFileInfo->pszZipEntryName - pFileInfo->szFilename;
@@ -283,9 +284,10 @@ static BOOL SoftwarePicker_CalculateHash(HWND hwndPicker, int nIndex)
 		pszZipName[nLength - 1] = '\0';
 
 		// get the entry name
-		zip_entry_name = T2A(pFileInfo->pszZipEntryName);
+		zip_file_name = utf8_from_tstring(pszZipName);
+		zip_entry_name = utf8_from_tstring(pFileInfo->pszZipEntryName);
 
-		ziperr = zip_file_open(T2A(pszZipName), &zip);
+		ziperr = zip_file_open(zip_file_name, &zip);
 		if (ziperr == ZIPERR_NONE)
 		{
 			zipent = zip_file_first_file(zip);
@@ -309,6 +311,8 @@ static BOOL SoftwarePicker_CalculateHash(HWND hwndPicker, int nIndex)
 			}
 			zip_file_close(zip);
 		}
+		free(zip_file_name);
+		free(zip_entry_name);
 	}
 	else
 	{
@@ -390,7 +394,7 @@ static BOOL SoftwarePicker_AddFileEntry(HWND hwndPicker, LPCTSTR pszFilename,
 	struct FileInfo **ppNewIndex;
 	struct FileInfo *pInfo;
 	int nIndex, nSize;
-	LPCSTR pszExtension, s;
+	LPCSTR pszExtension = NULL, s;
 	const struct IODevice *pDevice = NULL;
 	device_class devclass = {0,};
 
@@ -401,7 +405,8 @@ static BOOL SoftwarePicker_AddFileEntry(HWND hwndPicker, LPCTSTR pszFilename,
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
 
 	// look up the device
-	pszExtension = T2A(_tcsrchr(pszFilename, '.'));
+	if (_tcsrchr(pszFilename, '.'))
+		pszExtension = utf8_from_tstring(_tcsrchr(pszFilename, '.'));
 	if (pszExtension && pPickerInfo->pDriver)
 	{
 		pszExtension++;
@@ -483,12 +488,12 @@ error:
 static BOOL SoftwarePicker_AddZipEntFile(HWND hwndPicker, LPCTSTR pszZipPath,
 	BOOL bForce, zip_file *pZip, const zip_file_header *pZipEnt)
 {
-	LPCTSTR pszZipSubPath;
+	LPTSTR pszZipSubPath;
 	LPTSTR s;
 	int nLength;
 	int nZipEntryNameLength;
 
-	pszZipSubPath = A2T(pZipEnt->filename);
+	pszZipSubPath = tstring_from_utf8(pZipEnt->filename);
 
 	// special case; skip first two characters if they are './'
 	if ((pszZipSubPath[0] == '.') && (pszZipSubPath[1] == '/'))
@@ -503,8 +508,37 @@ static BOOL SoftwarePicker_AddZipEntFile(HWND hwndPicker, LPCTSTR pszZipPath,
 	s = (LPTSTR) alloca(nLength * sizeof(TCHAR));
 	_sntprintf(s, nLength, TEXT("%s\\%s"), pszZipPath, pszZipSubPath);
 
+	free(pszZipSubPath);
 	return SoftwarePicker_AddFileEntry(hwndPicker, s, 
 		nZipEntryNameLength, pZipEnt->crc, bForce);
+}
+
+
+
+static zip_error zip_file_open_tstring(LPCTSTR filename, zip_file **zip)
+{
+	zip_error ziperr;
+	char *filename_utf8;
+	
+	*zip = NULL;
+
+	// convert filename to UTF-8
+	filename_utf8 = utf8_from_tstring(filename);
+	if (!filename_utf8)
+	{
+		ziperr = ZIPERR_OUT_OF_MEMORY;
+		goto done;
+	}
+
+	// open the ZIP file
+	ziperr = zip_file_open(filename_utf8, zip);
+	if (ziperr != ZIPERR_NONE)
+		goto done;
+
+done:
+	if (filename_utf8)
+		free(filename_utf8);
+	return ziperr;
 }
 
 
@@ -521,7 +555,7 @@ static BOOL SoftwarePicker_InternalAddFile(HWND hwndPicker, LPCTSTR pszFilename,
 	s = _tcsrchr(pszFilename, '.');
 	if (s && (!_tcsicmp(s, TEXT(".zip"))))
 	{
-		ziperr = zip_file_open(pszFilename, &pZip);
+		ziperr = zip_file_open_tstring(pszFilename, &pZip);
 		if (ziperr  == ZIPERR_NONE)
 		{
 			pZipEnt = zip_file_first_file(pZip);
@@ -754,8 +788,9 @@ const TCHAR *SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn
 	struct SoftwarePickerInfo *pPickerInfo;
 	const struct FileInfo *pFileInfo;
 	LPCTSTR s = NULL;
-	LPCTSTR pszUtf8 = NULL;
+	const char *pszUtf8 = NULL;
 	unsigned int nHashFunction = 0;
+	char szBuffer[256];
 	
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
 	if ((nRow < 0) || (nRow >= pPickerInfo->nIndexLength))
@@ -792,7 +827,9 @@ const TCHAR *SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn
 				}
 				if (pszUtf8)
 				{
-					_sntprintf(pszBuffer, nBufferLength, TEXT("%s"), U2T(pszUtf8));
+					TCHAR *tempstr = tstring_from_utf8(pszUtf8);
+					_sntprintf(pszBuffer, nBufferLength, TEXT("%s"), tempstr);
+					free(tempstr);
 					s = pszBuffer;
 				}
 			}
@@ -807,9 +844,11 @@ const TCHAR *SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn
 				case MESS_COLUMN_MD5:	nHashFunction = HASH_MD5;	break;
 				case MESS_COLUMN_SHA1:	nHashFunction = HASH_SHA1;	break;
 			}
-			if (hash_data_extract_printable_checksum(pFileInfo->szHash,
-				nHashFunction, pszBuffer))
+			if (hash_data_extract_printable_checksum(pFileInfo->szHash, nHashFunction, szBuffer))
 			{
+				TCHAR *tempstr = tstring_from_utf8(szBuffer);
+				_sntprintf(pszBuffer, nBufferLength, TEXT("%s"), tempstr);
+				free(tempstr);
 				s = pszBuffer;
 			}
 			break;

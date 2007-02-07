@@ -7,12 +7,12 @@ IMGTOOL_LIB_OBJS =							\
 	$(OBJ)/md5.o							\
 	$(OBJ)/restrack.o						\
 	$(OBJ)/sha1.o							\
+	$(OBJ)/unicode.o						\
 	$(OBJ)/version.o						\
 	$(OBJ)/mamecore.o						\
 	$(OBJ)/mess/utils.o						\
 	$(OBJ)/mess/pool.o						\
 	$(OBJ)/mess/opresolv.o					\
-	$(OBJ)/mess/unicode.o					\
 	$(OBJ)/mess/formats/ioprocs.o			\
 	$(OBJ)/mess/formats/flopimg.o			\
 	$(OBJ)/mess/formats/cassimg.o			\
@@ -47,7 +47,8 @@ IMGTOOL_LIB_OBJS =							\
 	$(OBJ)/mess/tools/imgtool/prodos.o		\
 	$(OBJ)/mess/tools/imgtool/vzdos.o		\
 	$(OBJ)/mess/tools/imgtool/thomson.o		\
-	$(OBJ)/mess/tools/imgtool/macutil.o
+	$(OBJ)/mess/tools/imgtool/macutil.o		\
+	$(OBJ)/mess/tools/imgtool/cybiko.o
 #	  $(OBJ)/mess/tools/imgtool/tstsuite.o \
 #	  $(OBJ)/mess/formats/fmsx_cas.o       \
 #	  $(OBJ)/mess/formats/svi_cas.o        \
@@ -71,6 +72,7 @@ IMGTOOL_LIB_OBJS =							\
 
 IMGTOOL_OBJS =								\
 	$(IMGTOOL_LIB_OBJS)						\
+	$(OBJ)/mess/toolerr.o					\
 	$(OBJ)/mess/tools/imgtool/stubs.o		\
 	$(OBJ)/mess/tools/imgtool/main.o		\
 

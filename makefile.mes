@@ -7,6 +7,7 @@
 ###########################################################################
 
 
+
 ###########################################################################
 #################   BEGIN USER-CONFIGURABLE OPTIONS   #####################
 ###########################################################################
@@ -42,9 +43,6 @@ endif
 # uncomment next line to include the debugger
 # DEBUG = 1
 
-# uncomment next line to use the new multiwindow debugger
-NEW_DEBUGGER = 1
-
 # uncomment next line to use DRC MIPS3 engine
 X86_MIPS3_DRC = 1
 
@@ -54,6 +52,9 @@ X86_PPC_DRC = 1
 # uncomment next line to use DRC Voodoo rasterizers
 # X86_VOODOO_DRC = 1
 
+
+WINUI = 1
+MESS = 1
 
 
 #-------------------------------------------------
@@ -83,6 +84,10 @@ BUILD_ZLIB = 1
 # uncomment next line to generate a link map for exception handling in windows
 # MAP = 1
 
+# specify optimization level or leave commented to use the default
+# (default is OPTIMIZE = 3 normally, or OPTIMIZE = 0 with symbols)
+# OPTIMIZE = 3
+
 
 ###########################################################################
 ##################   END USER-CONFIGURABLE OPTIONS   ######################
@@ -97,6 +102,15 @@ BUILD_ZLIB = 1
 ifdef PTR64
 X86_MIPS3_DRC =
 X86_PPC_DRC =
+endif
+
+# specify a default optimization level if none explicitly stated
+ifndef OPTIMIZE
+ifndef SYMBOLS
+OPTIMIZE = 3
+else
+OPTIMIZE = 0
+endif
 endif
 
 
@@ -118,8 +132,6 @@ RM = @rm -f
 
 WINDOWS_PROGRAM = -mwindows
 CONSOLE_PROGRAM = -mconsole
-
-WINUI = 1
 
 #-------------------------------------------------
 # form the name of the executable
@@ -196,10 +208,6 @@ endif
 
 ifdef DEBUG
 DEFS += -DMAME_DEBUG
-endif
-
-ifdef NEW_DEBUGGER
-DEFS += -DNEW_DEBUGGER
 endif
 
 ifdef X86_VOODOO_DRC
@@ -279,11 +287,10 @@ VPATH = src $(wildcard src/cpu/*)
 #-------------------------------------------------
 
 OBJDIRS = \
-	obj \
-	$(OBJ) \
 	$(OBJ)/cpu \
 	$(OBJ)/sound \
 	$(OBJ)/debug \
+	$(OBJ)/tools \
 	$(OBJ)/drivers \
 	$(OBJ)/layout \
 	$(OBJ)/machine \
@@ -306,13 +313,6 @@ OBJDIRS += 	$(OBJ)/mess         $(OBJ)/mess/$(MAMEOS)			\
 ifeq ($(MAMEOS),windows)
 OBJDIRS +=	$(OBJ)/mess/tools/imgtool/windows 						\
 		$(OBJ)/mess/tools/imgtool/windows/res
-
-PLATFORM_TOOL_OBJS =				\
-	$(OBJ)/mess/windows/glob.o		\
-	$(OBJ)/mess/windows/dirutils.o	\
-	$(OBJ)/windows/fileio.o
-else
-PLATFORM_TOOL_OBJS = $(OBJ)/$(MAMEOS)/fileio.o
 endif
 
 
@@ -324,6 +324,10 @@ endif
 CPULIB = $(OBJ)/libcpu.a
 
 SOUNDLIB = $(OBJ)/libsound.a
+
+OSDCORELIB = $(OBJ)/$(MAMEOS)/libocore.a
+
+OSDCORELIB_NOMAIN = $(OBJ)/$(MAMEOS)/libocore_nomain.a
 
 
 
@@ -370,9 +374,7 @@ all: maketree emulator extra
 # include the various .mak files
 #-------------------------------------------------
 
-include src/core.mak
-include mess/$(TARGET).mak
-
+# include OS-specific rules first
 ifeq ($(MAMEOS),windows)
 include mess/tools/imgtool/windows/wimgtool.mak
 endif
@@ -381,10 +383,11 @@ ifeq ($(MAMEOS),windows)
 include mess/$(MAMEOS)/$(MAMEOS).mak
 endif
 
+# then the various core pieces
+include src/core.mak
+include mess/$(TARGET).mak
 include src/cpu/cpu.mak
 include src/sound/sound.mak
-include mess/cpu/cpu.mak
-include mess/sound/sound.mak
 
 # combine the various definitions to one
 CDEFS = $(DEFS) $(COREDEFS) $(CPUDEFS) $(SOUNDDEFS)
@@ -399,7 +402,7 @@ emulator: maketree $(EMULATORALL)
 
 extra: $(TOOLS)
 
-maketree: $(sort $(OBJDIRS)) $(OSPREBUILD)
+maketree: $(sort $(OBJDIRS))
 
 clean:
 	@echo Deleting object tree $(OBJ)...
@@ -416,7 +419,7 @@ clean:
 #-------------------------------------------------
 
 $(sort $(OBJDIRS)):
-	$(MD) $@
+	$(MD) -p $@
 
 
 
@@ -433,11 +436,11 @@ else
 DLLLINK=dll
 endif
 
-$(EMULATORDLL): $(OBJS) $(COREOBJS) $(OSOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $(RESFILE) $(OSDBGOBJS)
+$(EMULATORDLL): $(OBJS) $(COREOBJS) $(OSOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $(RESFILE) $(EXPAT) $(ZLIB) $(OSDCORELIB)
 # always recompile the version string
 	$(CC) $(CDEFS) $(CFLAGS) -c src/version.c -o $(OBJ)/version.o
 	@echo Linking $@...
-	$(LD) -shared $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@ $(MAPFLAGS)
+	$(LD) -shared $(LDFLAGS) $^ $(LIBS) -o $@ $(MAPFLAGS)
 
 # gui target
 $(EMULATORGUI):	$(EMULATORDLL) $(OBJ)/mess/ui/guimain.o $(GUIRESFILE)
@@ -458,47 +461,41 @@ $(EMULATORCLI):	$(OBJS) $(COREOBJS) $(OSOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $
 
 endif
 
-file2str$(EXE): $(OBJ)/file2str.o $(OSDBGOBJS)
+file2str$(EXE): $(OBJ)/tools/file2str.o $(OSDCORELIB)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-romcmp$(EXE): $(OBJ)/romcmp.o $(OBJ)/unzip.o $(OBJ)/mamecore.o $(ZLIB) $(OSDBGOBJS)
+romcmp$(EXE): $(OBJ)/tools/romcmp.o $(OBJ)/unzip.o $(OBJ)/mamecore.o $(ZLIB) $(OSDCORELIB)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-chdman$(EXE): $(OBJ)/chdman.o $(OBJ)/chd.o $(OBJ)/chdcd.o $(OBJ)/cdrom.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o $(ZLIB) $(OSTOOLOBJS) $(OSDBGOBJS)
+chdman$(EXE): $(OBJ)/tools/chdman.o $(OBJ)/chd.o $(OBJ)/tools/chdcd.o $(OBJ)/cdrom.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o $(ZLIB) $(OSDCORELIB)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-jedutil$(EXE): $(OBJ)/jedutil.o $(OBJ)/jedparse.o $(OSDBGOBJS)
+jedutil$(EXE): $(OBJ)/tools/jedutil.o $(OBJ)/jedparse.o $(OSDCORELIB)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-dat2html$(EXE): $(DAT2HTML_OBJS) $(OBJ)/mess/windows/dirutils.o $(OSDBGOBJS)
+dat2html$(EXE): $(DAT2HTML_OBJS) $(OSDCORELIB)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-messdocs$(EXE): $(MESSDOCS_OBJS) $(OBJ)/mess/windows/dirutils.o $(OSDBGOBJS)
+messdocs$(EXE): $(MESSDOCS_OBJS) $(OSDCORELIB)
 	@echo Compiling $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-imgtool$(EXE): $(IMGTOOL_OBJS) $(PLATFORM_TOOL_OBJS) $(ZLIB) $(OSDBGOBJS)
+imgtool$(EXE): $(IMGTOOL_OBJS) $(ZLIB) $(OSDCORELIB)
 	@echo Compiling $@...
-	$(LD) $(LDFLAGS) $(OSTOOLOBJS) $(OSDBGLDFLAGS) $^ $(ZLIB) $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-wimgtool$(EXE): $(WIMGTOOL_OBJS) $(PLATFORM_TOOL_OBJS) $(ZLIB) $(OSDBGOBJS)
+wimgtool$(EXE): $(WIMGTOOL_OBJS) $(ZLIB) $(OSDCORELIB_NOMAIN)
 	@echo Compiling $@...
-	$(LD) $(LDFLAGS) $(OSTOOLOBJS) $(OSDBGLDFLAGS) $(LIBS) $(WINDOWS_PROGRAM) $^ $(ZLIB) $(LIBS) -lcomctl32 -lshlwapi -o $@
+	$(LD) $(LDFLAGS) $(OSDCORELIB_NOMAIN) $(LIBS) $(WINDOWS_PROGRAM) $^ $(ZLIB) $(LIBS) -lcomctl32 -lshlwapi -o $@
 
-messtest$(EXE):	$(OBJS) $(COREOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $(MESSTEST_OBJS) $(OSTOOLOBJS) \
-		$(OBJ)/windows/ticker.o					\
-		$(OBJ)/windows/fileio.o					\
-		$(OBJ)/windows/winalloc.o				\
-		$(OBJ)/mess/windows/dirio.o				\
-		$(OBJ)/mess/windows/dirutils.o			\
+messtest$(EXE):	$(OBJS) $(COREOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $(MESSTEST_OBJS) $(OSDCORELIB) \
 		$(OBJ)/mess/windows/glob.o				\
-		$(OBJ)/mess/windows/parallel.o			\
-		$(OBJ)/mess/windows/strconv.o			
+		$(OBJ)/mess/windows/parallel.o
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(CONSOLE_PROGRAM) $^ -Wl,--allow-multiple-definition $(ZLIB) $(LIBS) -lwinmm -o $@
 
@@ -514,6 +511,10 @@ endif
 
 $(SOUNDLIB): $(SOUNDOBJS)
 
+$(OSDCORELIB): $(OSDCOREOBJS)
+
+$(OSDCORELIB_NOMAIN): $(OSDCOREOBJS:$(OBJ)/$(MAMEOS)/main.o=)
+
 $(OBJ)/libexpat.a: $(OBJ)/expat/xmlparse.o $(OBJ)/expat/xmlrole.o $(OBJ)/expat/xmltok.o
 
 $(OBJ)/libz.a: $(OBJ)/zlib/adler32.o $(OBJ)/zlib/compress.o $(OBJ)/zlib/crc32.o $(OBJ)/zlib/deflate.o \
@@ -526,19 +527,19 @@ $(OBJ)/libz.a: $(OBJ)/zlib/adler32.o $(OBJ)/zlib/compress.o $(OBJ)/zlib/crc32.o 
 # generic rules
 #-------------------------------------------------
 
-$(OBJ)/$(MAMEOS)/%.o: src/$(MAMEOS)/%.c
+$(OBJ)/$(MAMEOS)/%.o: src/$(MAMEOS)/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGSOSDEPEND) -c $< -o $@
 
-$(OBJ)/%.o: src/%.c
+$(OBJ)/%.o: src/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -c $< -o $@
 
-$(OBJ)/%.pp: src/%.c
+$(OBJ)/%.pp: src/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -E $< -o $@
 
-$(OBJ)/%.s: src/%.c
+$(OBJ)/%.s: src/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -S $< -o $@
 

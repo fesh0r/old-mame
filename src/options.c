@@ -83,10 +83,8 @@ static const options_entry core_options[] =
 
 	// file and directory options
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE SEARCH PATH OPTIONS" },
-#ifndef MESS
 	{ "rompath;rp;biospath;bp",      "roms",      0,                 "path to ROMsets and hard disk images" },
-#else
-	{ "biospath;bp",               "bios",      0,                 "path to BIOS sets" },
+#ifdef MESS
 	{ "hashpath;hash_directory;hash","hash",      0,                 "path to hash files" },
 #endif /* MESS */
 	{ "samplepath;sp",               "samples",   0,                 "path to samplesets" },
@@ -362,7 +360,7 @@ int options_parse_command_line(int argc, char **argv)
 		data = find_entry_data(optionname, TRUE);
 		if (data == NULL)
 		{
-			printf("Error: unknown option: %s\n", argv[arg]);
+			mame_printf_error("Error: unknown option: %s\n", argv[arg]);
 			return 1;
 		}
 		if ((data->flags & (OPTION_DEPRECATED | OPTION_INTERNAL)) != 0)

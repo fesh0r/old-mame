@@ -394,7 +394,7 @@ static const REG_OPTION regGameOpts[] =
 #else
 	{ "autosave",               RO_BOOL,    offsetof(options_type, autosave),                        "1" },
 #endif
-	{ "mt_render",              RO_BOOL,    offsetof(options_type, mt_render),                       "0" },
+	{ "mt",                     RO_BOOL,    offsetof(options_type, mt_render),                       "0" },
 
 #ifdef MESS
 	/* mess options */
@@ -412,12 +412,10 @@ static const REG_OPTION global_game_options[] =
 	{"skip_warnings",           RO_BOOL,    offsetof(settings_type, skip_warnings),     "0" },
 #endif
 
+	{ "rompath",                RO_STRING,  offsetof(settings_type, romdirs),          "roms" },
 #ifdef MESS
-	{ "biospath",               RO_STRING,  offsetof(settings_type, romdirs),          "bios" },
 	{ "softwarepath",           RO_STRING,  offsetof(settings_type, mess.softwaredirs),"software" },
 	{ "hashpath",               RO_STRING,  offsetof(settings_type, mess.hashdir),     "hash" },
-#else
-	{ "rompath",                RO_STRING,  offsetof(settings_type, romdirs),          "roms" },
 #endif
 	{ "samplepath",             RO_STRING,  offsetof(settings_type, sampledirs),       "samples", },
 	{ "inipath",                RO_STRING,  offsetof(settings_type, inidir),           "ini" },
@@ -492,7 +490,7 @@ static const options_entry windows_opts[] =
 #ifndef MESS
 	{ "rompath;rp",               "roms",     0,                 "path to ROMsets and hard disk images" },
 #else
-	{ "biospath;bp",              "bios",     0,                 "path to BIOS sets" },
+	{ "rompath;rp",               "roms",     0,                 "path to ROMsets" },
 	{ "softwarepath;swp",         "software", 0,                 "path to software" },
 	{ "hash_directory;hash",      "hash",     0,                 "path to hash files" },
 #endif
@@ -632,9 +630,8 @@ BOOL OptionsInit()
 	options_set_string(SEARCHPATH_ROM, settings.romdirs);
 	options_set_string(SEARCHPATH_SAMPLE, settings.sampledirs);
 #ifdef MESS
-	options_set_string(SEARCHPATH_IMAGE, settings.mess.softwaredirs);
 	options_set_string(SEARCHPATH_HASH, settings.mess.hashdir);
-#endif
+#endif // MESS
 	return TRUE;
 
 }
@@ -871,7 +868,6 @@ options_type * GetSourceOptions(int driver_index )
 options_type * GetGameOptions(int driver_index, int folder_index )
 {
 	int parent_index, setting;
-	const game_driver *clone_of = NULL;
 	struct SettingsHandler handlers[3];
 
 	assert(0 <= driver_index && driver_index < num_games);
@@ -890,11 +886,8 @@ options_type * GetGameOptions(int driver_index, int folder_index )
 	//Sync in parent settings if it has one
 	if( DriverIsClone(driver_index))
 	{
-		if( ( clone_of = driver_get_clone(drivers[driver_index])) != NULL )
-		{
-			parent_index = GetDriverIndex(clone_of);
-			LoadSettingsFile(parent_index | SETTINGS_FILE_GAME, &game_options[driver_index], regGameOpts);
-		}
+		parent_index = GetParentIndex(drivers[driver_index]);
+		LoadSettingsFile(parent_index | SETTINGS_FILE_GAME, &game_options[driver_index], regGameOpts);
 	}
 
 	//last but not least, sync in game specific settings
@@ -2900,7 +2893,6 @@ BOOL GetFolderUsesDefaults(int folder_index, int driver_index)
 BOOL GetGameUsesDefaults(int driver_index)
 {
 	const options_type *opts = NULL;
-	const game_driver *clone_of = NULL;
 	int nParentIndex= -1;
 
 	if (driver_index < 0)
@@ -2911,8 +2903,7 @@ BOOL GetGameUsesDefaults(int driver_index)
 
 	if ((driver_index >= 0) && DriverIsClone(driver_index))
 	{
-		if( ( clone_of = driver_get_clone(drivers[driver_index])) != NULL )
-			nParentIndex = GetGameNameIndex( clone_of->name );
+		nParentIndex = GetParentIndex(drivers[driver_index]);
 		if( nParentIndex >= 0)
 			opts = GetGameOptions(nParentIndex, FALSE);
 		else
@@ -2928,7 +2919,6 @@ BOOL GetGameUsesDefaults(int driver_index)
 void SaveGameOptions(int driver_index)
 {
 	options_type Opts;
-	const game_driver *clone_of = NULL;
 	int nParentIndex= -1;
 	struct SettingsHandler handlers[3];
 	int setting;
@@ -2940,8 +2930,7 @@ void SaveGameOptions(int driver_index)
 	{
 		if( DriverIsClone(driver_index) )
 		{
-			if( ( clone_of = driver_get_clone(drivers[driver_index])) != NULL )
-				nParentIndex = GetGameNameIndex( clone_of->name );
+			nParentIndex = GetParentIndex(drivers[driver_index]);
 			if( nParentIndex >= 0)
 				CopyGameOptions(GetGameOptions(nParentIndex, FALSE), &Opts );
 			else

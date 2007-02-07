@@ -5,6 +5,12 @@
 //============================================================
 
 #include "winutils.h"
+#include "strconv.h"
+
+
+//============================================================
+//	win_scroll_window
+//============================================================
 
 void win_scroll_window(HWND window, WPARAM wparam, int scroll_bar, int scroll_delta_line)
 {
@@ -56,9 +62,6 @@ void win_scroll_window(HWND window, WPARAM wparam, int scroll_bar, int scroll_de
 	if (scroll_pos != si.nPos)
 	{
 		SetScrollPos(window, scroll_bar, scroll_pos, TRUE);
-		ScrollWindow(window, 0, si.nPos - scroll_pos, NULL, NULL);
+		ScrollWindowEx(window, 0, si.nPos - scroll_pos, NULL, NULL, NULL, NULL, SW_SCROLLCHILDREN | SW_INVALIDATE | SW_ERASE);
 	}
 }
-
-
-

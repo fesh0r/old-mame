@@ -22,9 +22,9 @@
 #include "windows/parallel.h"
 #endif
 
-#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#ifdef MAME_DEBUG
 #include "debug/debugcpu.h"
-#endif
+#endif /* MAME_DEBUG */
 
 typedef enum
 {
@@ -49,7 +49,8 @@ typedef enum
 	MESSTEST_COMMAND_IMAGE_PRELOAD,
 	MESSTEST_COMMAND_VERIFY_MEMORY,
 	MESSTEST_COMMAND_VERIFY_IMAGE,
-	MESSTEST_COMMAND_TRACE
+	MESSTEST_COMMAND_TRACE,
+	MESSTEST_COMMAND_RESET
 } messtest_command_type_t;
 
 struct messtest_command
@@ -151,6 +152,18 @@ static struct messtest_testcase current_testcase;
 
 
 
+static char *assemble_software_path(const game_driver *gamedrv, const char *filename)
+{
+	char *result;
+	if (osd_is_absolute_path(filename))
+		result = mame_strdup(filename);
+	else
+		result = assemble_5_strings("software", PATH_SEPARATOR, gamedrv->name, PATH_SEPARATOR, filename);
+	return result;
+}
+
+
+
 static void dump_screenshot(int write_file)
 {
 	mame_file_error filerr;
@@ -222,12 +235,41 @@ static void dump_screenshot(int write_file)
 
 
 
+static void messtest_output_error(void *param, const char *format, va_list argptr)
+{
+	char buffer[1024];
+	char *s;
+	int pos, nextpos;
+
+	vsnprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), format, argptr);
+	
+	pos = 0;
+	while(buffer[pos] != '\0')
+	{
+		s = strchr(&buffer[pos], '\n');
+		if (s)
+		{
+			*s = '\0';
+			nextpos = s + 1 - buffer;
+		}
+		else
+		{
+			nextpos = pos + strlen(&buffer[pos]);
+		}
+		report_message(MSG_FAILURE, &buffer[pos]);
+		pos = nextpos;
+	}
+}
+
+
+
 static messtest_result_t run_test(int flags, struct messtest_results *results)
 {
 	int driver_num;
 	messtest_result_t rc;
 	clock_t begin_time;
 	double real_run_time;
+	char *fullpath = NULL;
 
 	/* lookup driver */
 	for (driver_num = 0; drivers[driver_num]; driver_num++)
@@ -271,7 +313,8 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	/* preload any needed images */
 	while(current_command->command_type == MESSTEST_COMMAND_IMAGE_PRELOAD)
 	{
-		options.image_files[options.image_count].name = current_command->u.image_args.filename;
+		fullpath = assemble_software_path(drivers[driver_num], current_command->u.image_args.filename);
+		options.image_files[options.image_count].name = fullpath;
 		options.image_files[options.image_count].device_type = current_command->u.image_args.device_type;
 		options.image_files[options.image_count].device_index = -1;
 		options.image_count++;
@@ -281,7 +324,7 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	/* perform the test */
 	report_message(MSG_INFO, "Beginning test (driver '%s')", current_testcase.driver);
 	begin_time = clock();
-	mame_set_output_channel(OUTPUT_CHANNEL_ERROR, mame_null_output_callback, NULL, NULL, NULL);
+	mame_set_output_channel(OUTPUT_CHANNEL_ERROR, messtest_output_error, NULL, NULL, NULL);
 	mame_set_output_channel(OUTPUT_CHANNEL_WARNING, mame_null_output_callback, NULL, NULL, NULL);
 	mame_set_output_channel(OUTPUT_CHANNEL_INFO, mame_null_output_callback, NULL, NULL, NULL);
 	mame_set_output_channel(OUTPUT_CHANNEL_DEBUG, mame_null_output_callback, NULL, NULL, NULL);
@@ -324,6 +367,8 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 		results->rc = rc;
 		results->runtime_hash = runtime_hash;
 	}
+	if (fullpath)
+		free(fullpath);
 	return rc;
 }
 
@@ -599,6 +644,9 @@ static void command_image_loadcreate(void)
 	char buf[128];
 	const struct IODevice *dev;
 	const char *file_extensions;
+	char *filepath;
+	int success;
+	const game_driver *gamedrv;
 
 	device_slot = current_command->u.image_args.device_slot;
 	device_type = current_command->u.image_args.device_type;
@@ -658,33 +706,38 @@ static void command_image_loadcreate(void)
 	{
 		snprintf(buf, sizeof(buf) / sizeof(buf[0]),	"%s.%s",
 			current_testcase.name, file_extensions);
-		make_filename_temporary(buf, sizeof(buf) / sizeof(buf[0]));
+		osd_get_temp_filename(buf, ARRAY_LENGTH(buf), buf);
 		filename = buf;
 	}
 
-	/* actually create or load the image */
-	switch(current_command->command_type)
+	success = FALSE;
+	for (gamedrv = Machine->gamedrv; !success && gamedrv; gamedrv = mess_next_compatible_driver(gamedrv))
 	{
-		case MESSTEST_COMMAND_IMAGE_CREATE:
-			if (image_create(image, filename, format_index, NULL))
-			{
-				state = STATE_ABORTED;
-				report_message(MSG_FAILURE, "Failed to create image '%s': %s", filename, image_error(image));
-				return;
-			}
-			break;
-		
-		case MESSTEST_COMMAND_IMAGE_LOAD:
-			if (image_load(image, filename))
-			{
-				state = STATE_ABORTED;
-				report_message(MSG_FAILURE, "Failed to load image '%s': %s", filename, image_error(image));
-				return;
-			}
-			break;
+		/* assemble the full path */
+		filepath = assemble_software_path(gamedrv, filename);
 
-		default:
-			break;
+		/* actually create or load the image */
+		switch(current_command->command_type)
+		{
+			case MESSTEST_COMMAND_IMAGE_CREATE:
+				success = (image_create(image, filepath, format_index, NULL) == INIT_PASS);
+				break;
+			
+			case MESSTEST_COMMAND_IMAGE_LOAD:
+				success = (image_load(image, filepath) == INIT_PASS);
+				break;
+
+			default:
+				fatalerror("Unexpected error");
+				break;
+		}
+		free(filepath);
+	}
+	if (!success)
+	{
+		state = STATE_ABORTED;
+		report_message(MSG_FAILURE, "Failed to load/create image '%s': %s", filename, image_error(image));
+		return;
 	}
 }
 
@@ -815,7 +868,7 @@ static void command_verify_image(void)
 
 static void command_trace(void)
 {
-#if defined(MAME_DEBUG) && defined(NEW_DEBUGGER)
+#ifdef MAME_DEBUG
 	int cpunum;
 	FILE *file;
 	char filename[256];
@@ -838,6 +891,13 @@ static void command_trace(void)
 	state = STATE_ABORTED;
 	report_message(MSG_FAILURE, "Cannot trace; debugger not present");
 #endif
+}
+
+
+
+static void command_reset(void)
+{
+	mame_schedule_soft_reset(Machine);
 }
 
 
@@ -874,6 +934,7 @@ static const struct command_procmap_entry commands[] =
 	{ MESSTEST_COMMAND_VERIFY_MEMORY,	command_verify_memory },
 	{ MESSTEST_COMMAND_VERIFY_IMAGE,	command_verify_image },
 	{ MESSTEST_COMMAND_TRACE,			command_trace },
+	{ MESSTEST_COMMAND_RESET,			command_reset },
 	{ MESSTEST_COMMAND_END,				command_end }
 };
 
@@ -1376,6 +1437,21 @@ static void node_trace(xml_data_node *node)
 
 
 
+static void node_reset(xml_data_node *node)
+{
+	/* <reset> - perform a reset */
+	memset(&new_command, 0, sizeof(new_command));
+	new_command.command_type = MESSTEST_COMMAND_RESET;
+
+	if (!append_command())
+	{
+		error_outofmemory();
+		return;
+	}
+}
+
+
+
 void node_testmess(xml_data_node *node)
 {
 	xml_data_node *child_node;
@@ -1444,6 +1520,8 @@ void node_testmess(xml_data_node *node)
 				node_imageverify(child_node);
 			else if (!strcmp(child_node->name, "trace"))
 				node_trace(child_node);
+			else if (!strcmp(child_node->name, "reset"))
+				node_reset(child_node);
 		}
 
 		memset(&new_command, 0, sizeof(new_command));

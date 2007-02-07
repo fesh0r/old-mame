@@ -197,7 +197,7 @@ INPUT_PORTS_END
   PORT_BIT (0x1000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\\ ^") PORT_CODE(KEYCODE_BACKSLASH)	\
   PORT_BIT (0x2000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("' `") PORT_CODE(KEYCODE_QUOTE)	\
   PORT_BIT (0x4000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\" `") PORT_CODE(KEYCODE_BACKSLASH2)	 \
-  PORT_BIT (0x8000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xc7 \xe7") PORT_CODE(KEYCODE_ASTERISK)
+  PORT_BIT (0x8000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\x87 \xC3\xA7") PORT_CODE(KEYCODE_ASTERISK)
 
 #define KEYB_EXPERT11_ROW1	 \
   PORT_BIT (0x0100, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("8 '") PORT_CODE(KEYCODE_8)	\
@@ -231,7 +231,7 @@ INPUT_PORTS_END
 
 #define KEYB_EXPERT10_ROW2	 \
   PORT_BIT (0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("' \"") PORT_CODE(KEYCODE_QUOTE)	\
-  PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xc7 \xe7") PORT_CODE(KEYCODE_TILDE)	  \
+  PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\x87 \xC3\xA7") PORT_CODE(KEYCODE_TILDE)	  \
   PORT_BIT (0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(", <") PORT_CODE(KEYCODE_COMMA)	\
   PORT_BIT (0x0008, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(". >") PORT_CODE(KEYCODE_STOP)		\
   PORT_BIT (0x0010, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("/ ?") PORT_CODE(KEYCODE_SLASH)	\
@@ -241,7 +241,7 @@ INPUT_PORTS_END
 
 #define KEYB_EXPERT11_ROW2	 \
   PORT_BIT (0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("* @") PORT_CODE(KEYCODE_ASTERISK)   \
-  PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xc7 \xe7") PORT_CODE(KEYCODE_BACKSLASH)	  \
+  PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\x87 \xC3\xA7") PORT_CODE(KEYCODE_BACKSLASH)	  \
   PORT_BIT (0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(", <") PORT_CODE(KEYCODE_COMMA)	\
   PORT_BIT (0x0008, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(". >") PORT_CODE(KEYCODE_STOP)		\
   PORT_BIT (0x0010, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("/ ?") PORT_CODE(KEYCODE_SLASH)	\
@@ -375,7 +375,7 @@ INPUT_PORTS_START( msxuk )
 
  PORT_START /* 1 */
   PORT_BIT (0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("' \"") PORT_CODE(KEYCODE_QUOTE)
-  PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xa3 ~") PORT_CODE(KEYCODE_TILDE)
+  PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC2\xA3 ~") PORT_CODE(KEYCODE_TILDE)
   PORT_BIT (0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(", <") PORT_CODE(KEYCODE_COMMA)
   PORT_BIT (0x0008, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(". >") PORT_CODE(KEYCODE_STOP)
   PORT_BIT (0x0010, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("/ ?") PORT_CODE(KEYCODE_SLASH)
@@ -417,7 +417,7 @@ INPUT_PORTS_END
   PORT_BIT (0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("9 )") PORT_CODE(KEYCODE_9)	\
   PORT_BIT (0x0400, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("- =") PORT_CODE(KEYCODE_MINUS)	\
   PORT_BIT (0x0800, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("^ ~") PORT_CODE(KEYCODE_EQUALS)	\
-  PORT_BIT (0x1000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xa5 |") PORT_CODE(KEYCODE_BACKSLASH)	\
+  PORT_BIT (0x1000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC2\xA5 |") PORT_CODE(KEYCODE_BACKSLASH)	\
   PORT_BIT (0x2000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("@ `") PORT_CODE(KEYCODE_OPENBRACE)	\
   PORT_BIT (0x4000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("[ }") PORT_CODE(KEYCODE_CLOSEBRACE)	\
   PORT_BIT (0x8000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("; +") PORT_CODE(KEYCODE_COLON)
@@ -715,29 +715,23 @@ static VIDEO_START( msx2 )
 	return v9938_init(machine, MODEL_V9938, 0x20000, msx_vdp_interrupt);
 }
 
-static const TMS9928a_interface tms9928a_interface =
-{
-	TMS99x8A,
-	0x4000,
-	msx_vdp_interrupt
-};
-
 static MACHINE_DRIVER_START( msx )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 3579545)		  /* 3.579545 Mhz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT(msx_interrupt,1)
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
+	MDRV_MACHINE_START( msx )
 	MDRV_MACHINE_RESET( msx )
 
 	/* video hardware */
-	MDRV_TMS9928A( &tms9928a_interface )
+	MDRV_IMPORT_FROM(tms9928a)
 	MDRV_SCREEN_SIZE(15 + 256 + 15, 27 + 192 + 24)
-	MDRV_VISIBLE_AREA(15 - 8, 15 + 256 + 8 - 1, 27 - 24, 27 + 192 + 24 - 1)
+	MDRV_SCREEN_VISIBLE_AREA(15 - 8, 15 + 256 + 8 - 1, 27 - 24, 27 + 192 + 24 - 1)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -757,7 +751,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( msx_pal )
 	MDRV_IMPORT_FROM( msx )
-	MDRV_FRAMES_PER_SECOND(50)
+	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
 
@@ -767,16 +761,17 @@ static MACHINE_DRIVER_START( msx2 )
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 	MDRV_CPU_IO_MAP(readport2,writeport2)
 	MDRV_CPU_VBLANK_INT(msx2_interrupt,262)
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( msx2 )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512 + 32, (212 + 28) * 2)
-	MDRV_VISIBLE_AREA(0, 512 + 32 - 1, 0, (212 + 28) * 2 - 1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 512 + 32 - 1, 0, (212 + 28) * 2 - 1)
 	MDRV_PALETTE_LENGTH(512)
 	MDRV_COLORTABLE_LENGTH(512)
 	MDRV_PALETTE_INIT( v9938 )
@@ -799,6 +794,12 @@ static MACHINE_DRIVER_START( msx2 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)	
 
 	MDRV_NVRAM_HANDLER( msx2 )
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( msx2_pal )
+	MDRV_IMPORT_FROM( msx2 )
+	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
 
@@ -2256,20 +2257,20 @@ COMP( 1985, hotbit12, msx,		0,		msx,	 hotbit,   msx,		msx,	"Sharp / Epcom",	 "HB
 COMP( 1983, expert10, msx,		0,		msx,	 expert10, msx,		msx,	"Gradiente", "Expert (Brazil)" , 0)
 COMP( 1984, expert11, msx,		0,		msx,	 expert11, msx,		msx,	"Gradiente", "Expert Plus (Brazil)" , 0)
 COMP(1985, expertdp, msx,		0,		msx,	 expert11, msx,		msx,	"Gradiente", "Expert DDPlus (Brazil)", GAME_NOT_WORKING )
-COMP (1985, msx2,	  0,		msx,	msx2,	 msx2,	   msx2,	msx,	"ASCII & Microsoft", "MSX2", 0)
-COMP (1986, nms8220,  msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Philips", "NMS-8220 / 1st released version", 0)
-COMP (1986, nms8220a, msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Philips", "NMS-8220 / 2nd released version", 0)
-COMP (1986, vg8235,   msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Philips", "VG-8235", 0)
-COMP (1986, nms8245,  msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Philips", "NMS-8245", 0)
-COMP (1986, nms8250,  msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Philips", "NMS-8250", 0)
-COMP (1986, nms8255,  msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Philips", "NMS-8255", 0)
-COMP (1986, nms8280,  msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Philips", "NMS-8280", 0)
-COMP (1985, hbf9p,    msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Sony", "HB-F9P" , 0)
-COMP (1985, hbf500p,  msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Sony", "HB-F500P", 0)
-COMP (1985, hbf700d,  msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Sony", "HB-F700D (Germany)" , 0)
-COMP (1985, hbf700p,  msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Sony", "HB-F700P" , 0)
-COMP (1985, hbf700s,  msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Sony", "HB-F700S (Spain)", 0)
-COMP(1986, hbg900p,  msx2,		0,		msx2,	 msx2,	   msx2,	msx,	"Sony", "HB-G900P", GAME_NOT_WORKING )
+COMP (1985, msx2,	  0,		msx,	msx2_pal,	 msx2,	   msx2,	msx,	"ASCII & Microsoft", "MSX2", 0)
+COMP (1986, nms8220,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8220 / 1st released version", 0)
+COMP (1986, nms8220a, msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8220 / 2nd released version", 0)
+COMP (1986, vg8235,   msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "VG-8235", 0)
+COMP (1986, nms8245,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8245", 0)
+COMP (1986, nms8250,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8250", 0)
+COMP (1986, nms8255,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8255", 0)
+COMP (1986, nms8280,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8280", 0)
+COMP (1985, hbf9p,    msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-F9P" , 0)
+COMP (1985, hbf500p,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-F500P", 0)
+COMP (1985, hbf700d,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-F700D (Germany)" , 0)
+COMP (1985, hbf700p,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-F700P" , 0)
+COMP (1985, hbf700s,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-F700S (Spain)", 0)
+COMP(1986, hbg900p,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-G900P", GAME_NOT_WORKING )
 COMP(1985, fs5500,   msx2,		0,      msx2,    msx2jp,   msx2,    msx,    "National / Matsushita", "FS-5500F1/F2 (Japan)", GAME_NOT_WORKING )
 COMP(1986, fs4500,   msx2,		0,      msx2,    msx2jp,   msx2,    msx,    "National / Matsushita", "FS-4500 (Japan)", GAME_NOT_WORKING )
 COMP(1986, fs4700,   msx2,		0,      msx2,    msx2jp,   msx2,    msx,    "National / Matsushita", "FS-4700 (Japan)", GAME_NOT_WORKING )

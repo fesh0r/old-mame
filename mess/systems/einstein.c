@@ -1366,6 +1366,20 @@ static int einstein_cpu_acknowledge_int(int cpu)
 	return (vector<<1);
 }
 
+static const TMS9928a_interface tms9928a_interface =
+{
+	TMS9929A,
+	0x4000,
+	0, 0,
+	NULL
+};
+
+static MACHINE_START( einstein )
+{
+	TMS9928A_configure(&tms9928a_interface);
+	return 0;
+}
+
 static MACHINE_RESET( einstein )
 {
 	memory_set_bankptr(2, mess_ram+0x02000);
@@ -1667,27 +1681,21 @@ static VIDEO_UPDATE( einstein2 )
 	return 0;
 }
 
-static const TMS9928a_interface tms9928a_interface =
-{
-	TMS9929A,
-	0x4000,
-	NULL
-};
-
 static MACHINE_DRIVER_START( einstein )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, EINSTEIN_SYSTEM_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(einstein_mem, 0)
 	MDRV_CPU_IO_MAP(einstein_io, 0)
 	MDRV_CPU_CONFIG(einstein_daisy_chain)
-	MDRV_FRAMES_PER_SECOND(50)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
+	MDRV_MACHINE_START( einstein )
 	MDRV_MACHINE_RESET( einstein )
 
     /* video hardware */
-	MDRV_TMS9928A( &tms9928a_interface )
+	MDRV_IMPORT_FROM(tms9928a)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1706,7 +1714,7 @@ static MACHINE_DRIVER_START( einstei2 )
 
     /* video hardware */
 	MDRV_SCREEN_SIZE(640, 400)
-	MDRV_VISIBLE_AREA(0,640-1, 0, 400-1)
+	MDRV_SCREEN_VISIBLE_AREA(0,640-1, 0, 400-1)
 	MDRV_VIDEO_UPDATE( einstein2 )
 MACHINE_DRIVER_END
 

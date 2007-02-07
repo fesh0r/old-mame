@@ -217,23 +217,6 @@ enum {
 } FILESELECT_ENTRY_TYPE;
 
 
-static char *fs_dupe(const char *src, int len)
-{
-	char *dst;
-
-	/* malloc space for string + NULL char + extra char.*/
-	dst = malloc(len+2);
-	if (dst)
-	{
-		strcpy(dst, src);
-		/* put in NULL to cut string. */
-		dst[len+1]='\0';
-	}
-	return dst;
-
-}
-
-
 static void fs_free(void)
 {
 	if (fs_chunk > 0)
@@ -306,10 +289,13 @@ static int DECL_SPEC fs_compare(const void *p1, const void *p2)
 
 static void fs_generate_filelist(void)
 {
-	void *dir;
+	osd_directory *dir;
 	int qsort_start, count, i, n;
 	ui_menu_item *tmp_menu_item;
 	int *tmp_types;
+	static char curdir[260];
+
+	osd_getcurdir(curdir, ARRAY_LENGTH(curdir));
 
 	/* just to be safe */
 	fs_free();
@@ -326,7 +312,7 @@ static void fs_generate_filelist(void)
 
 	/* current directory */
 	n = fs_alloc();
-	fs_item[n].text = osd_get_cwd();
+	fs_item[n].text = curdir;
 	fs_types[n] = FILESELECT_NONE;
 
 	/* blank line */
@@ -370,31 +356,38 @@ static void fs_generate_filelist(void)
 	}
 
 	/* directory entries */
-	dir = osd_dir_open(".", current_filespecification);
+	dir = osd_opendir(".");
 	if (dir)
 	{
-		int len, filetype;
-		char filename[260];
-		len = osd_dir_get_entry(dir, filename, sizeof(filename), &filetype);
-		while (len > 0)
+		const osd_directory_entry *dirent;
+
+		while((dirent = osd_readdir(dir)) != NULL)
 		{
 			if (fs_total >= MAX_ENTRIES_IN_MENU)
 				break;
-			n = fs_alloc();
-			fs_item[n].text = fs_dupe(filename,len);
-			if (filetype)
+
+			switch(dirent->type)
 			{
-				fs_types[n] = FILESELECT_DIRECTORY;
-				fs_item[n].subtext = fs_directory;
+				case ENTTYPE_DIR:
+					n = fs_alloc();
+					fs_item[n].text = mame_strdup(dirent->name);
+					fs_types[n] = FILESELECT_DIRECTORY;
+					fs_item[n].subtext = fs_directory;
+					break;
+
+				case ENTTYPE_FILE:
+					n = fs_alloc();
+					fs_item[n].text = mame_strdup(dirent->name);
+					fs_types[n] = FILESELECT_FILE;
+					fs_item[n].subtext = fs_file;
+					break;
+
+				default:
+					/* ignore other file types */
+					break;
 			}
-			else
-			{
-				fs_types[n] = FILESELECT_FILE;
-				fs_item[n].subtext = fs_file;
-			}
-			len = osd_dir_get_entry(dir, filename, sizeof(filename), &filetype);
 		}
-		osd_dir_close(dir);
+		osd_closedir(dir);
 	}
 
 	logerror("fs_generate_filelist: sorting %d entries\n", n - qsort_start);
@@ -442,14 +435,14 @@ static int fileselect(int selected, const char *default_selection)
 		{
 			char *dirname;
 			dirname = osd_dirname((char *) default_selection);
-			osd_change_directory(dirname);
+			osd_setcurdir(dirname);
 			free(dirname);
 		}
 		else
 		{
-			osd_change_directory(mess_path);
-			osd_change_directory("software");
-			osd_change_directory(Machine->gamedrv->name);
+			osd_setcurdir(mess_path);
+			osd_setcurdir("software");
+			osd_setcurdir(Machine->gamedrv->name);
 		}
 	}
 
@@ -497,7 +490,7 @@ static int fileselect(int selected, const char *default_selection)
 			fs_item[sel & SEL_MASK].subtext = current_filespecification;
 
 			/* display the menu */
-			ui_menu_draw(fs_item, fs_total, sel & SEL_MASK);
+			ui_menu_draw(fs_item, fs_total, sel & SEL_MASK, NULL);
 
 			/* update string with any keys that are pressed */
 			name = update_entered_string();
@@ -520,7 +513,7 @@ static int fileselect(int selected, const char *default_selection)
 		}
 
 
-		ui_menu_draw(fs_item, fs_total, sel);
+		ui_menu_draw(fs_item, fs_total, sel, NULL);
 
 		/* borrowed from usrintrf.c */
 		visible = 0; //Machine->uiheight / (3 * Machine->uifontheight /2) -1;
@@ -590,7 +583,7 @@ static int fileselect(int selected, const char *default_selection)
 					}
 					else
 					{
-						strncpyz(entered_filename, osd_get_cwd(), sizeof(entered_filename) / sizeof(entered_filename[0]));
+						osd_getcurdir(entered_filename, sizeof(entered_filename) / sizeof(entered_filename[0]));
 						strncatz(entered_filename, fs_item[sel].text, sizeof(entered_filename) / sizeof(entered_filename[0]));
 					}
 
@@ -600,7 +593,7 @@ static int fileselect(int selected, const char *default_selection)
 
 				case FILESELECT_DIRECTORY:
 					/*	fs_chdir(fs_item[sel]); */
-					osd_change_directory(fs_item[sel].text);
+					osd_setcurdir(fs_item[sel].text);
 					fs_free();
 					break;
 
@@ -648,7 +641,7 @@ int filemanager(int selected)
 	char names[40][64];
 	int sel, total, arrowize, id;
 	const struct IODevice *dev;
-	mess_image *img;
+	mess_image *image;
 
 	sel = selected - 1;
 	total = 0;
@@ -658,9 +651,9 @@ int filemanager(int selected)
 	{
 		for (id = 0; id < dev->count; id++)
 		{
-			img = image_from_device_and_index(dev, id);
-			strcpy( names[total], image_typename_id(img) );
-			name = image_filename(img);
+			image = image_from_device_and_index(dev, id);
+			strcpy( names[total], image_typename_id(image) );
+			name = image_filename(image);
 
 			memset(&menu_items[total], 0, sizeof(menu_items[total]));
 			menu_items[total].text = (names[total]) ? names[total] : "---";
@@ -677,8 +670,8 @@ int filemanager(int selected)
 	/* if the fileselect() mode is active */
 	if (sel & (2 << SEL_BITS))
 	{
-		img = image_from_device_and_index(devices[previous_sel & SEL_MASK], ids[previous_sel & SEL_MASK]);
-		sel = fileselect(selected & ~(2 << SEL_BITS), image_filename(img));
+		image = image_from_device_and_index(devices[previous_sel & SEL_MASK], ids[previous_sel & SEL_MASK]);
+		sel = fileselect(selected & ~(2 << SEL_BITS), image_filename(image));
 		if (sel != 0 && sel != -1 && sel!=-2)
 			return sel | (2 << SEL_BITS);
 
@@ -690,8 +683,11 @@ int filemanager(int selected)
 			previous_sel = previous_sel & SEL_MASK;
 
 			/* attempt a filename change */
-			img = image_from_device_and_index(devices[previous_sel], ids[previous_sel]);
-			image_load(img, entered_filename[0] ? entered_filename : NULL);
+			image = image_from_device_and_index(devices[previous_sel], ids[previous_sel]);
+			if (entered_filename[0])
+				image_load(image, entered_filename);
+			else
+				image_unload(image);
 		}
 
 		sel = previous_sel;
@@ -714,7 +710,7 @@ int filemanager(int selected)
 		menu_items[sel & SEL_MASK].subtext = entered_filename;
 
 		/* display the menu */
-		ui_menu_draw(menu_items, total, sel & SEL_MASK);
+		ui_menu_draw(menu_items, total, sel & SEL_MASK, NULL);
 
 		/* update string with any keys that are pressed */
 		name = update_entered_string();
@@ -724,14 +720,14 @@ int filemanager(int selected)
 		{
 			/* yes */
 			sel &= SEL_MASK;
-			img = image_from_device_and_index(devices[sel], ids[sel]);
-			image_load(img, NULL);
+			image = image_from_device_and_index(devices[sel], ids[sel]);
+			image_load(image, NULL);
 		}
 
 		return sel + 1;
 	}
 
-	ui_menu_draw(menu_items, total, sel);
+	ui_menu_draw(menu_items, total, sel, NULL);
 
 	if (input_ui_pressed_repeat(IPT_UI_DOWN, 8))
 		sel = (sel + 1) % total;
@@ -743,7 +739,7 @@ int filemanager(int selected)
 	{
 		int os_sel;
 
-		img = NULL;
+		image = NULL;
 
 		/* Return to main menu? */
 		if (sel == total-1)
@@ -754,8 +750,8 @@ int filemanager(int selected)
 		/* no, let the osd code have a crack at changing files */
 		else
 		{
-			img = image_from_device_and_index(devices[sel], ids[sel]);
-			os_sel = osd_select_file(img, entered_filename);
+			image = image_from_device_and_index(devices[sel], ids[sel]);
+			os_sel = osd_select_file(image, entered_filename);
 		}
 
 		if (os_sel != 0)
@@ -763,7 +759,7 @@ int filemanager(int selected)
 			if (os_sel == 1)
 			{
 				/* attempt a filename change */
-				image_load(img, entered_filename);
+				image_load(image, entered_filename);
 			}
 		}
 		/* osd code won't handle it, lets use our clunky interface */
