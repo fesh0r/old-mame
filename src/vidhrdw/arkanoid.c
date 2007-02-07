@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/arkanoid.h"
 
 static UINT8 gfxbank, palettebank;
 extern UINT8 arkanoid_paddle_select;
@@ -81,9 +82,6 @@ VIDEO_START( arkanoid )
 
 	state_save_register_global(gfxbank);
 	state_save_register_global(palettebank);
-
-	if ( !bg_tilemap )
-		return 1;
 
 	return 0;
 }

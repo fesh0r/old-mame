@@ -1102,13 +1102,14 @@ static MACHINE_DRIVER_START( stagger1 )
 	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(afega_sound_cpu,0)
 
-	MDRV_FRAMES_PER_SECOND(56)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(56)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0, 256-1, 0, 256-1)	/* fixed */
+	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)	/* fixed */
 	MDRV_GFXDECODE(stagger1_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(768)
 
@@ -1123,8 +1124,8 @@ static MACHINE_DRIVER_START( stagger1 )
 	MDRV_SOUND_ROUTE(0, "left", 0.30)
 	MDRV_SOUND_ROUTE(1, "right", 0.30)
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000/132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.70)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.70)
 MACHINE_DRIVER_END
@@ -1162,7 +1163,7 @@ static MACHINE_DRIVER_START( popspops )
 
 	MDRV_PALETTE_INIT(grdnstrm)
 
-	MDRV_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
 	MDRV_VIDEO_UPDATE(bubl2000)
 MACHINE_DRIVER_END
 
@@ -1173,7 +1174,7 @@ static MACHINE_DRIVER_START( bubl2000 )
 	MDRV_IMPORT_FROM(grdnstrm)
 
 	/* video hardware */
-	MDRV_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)	/* added to do not break other games */
+	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)	/* added to do not break other games */
 	MDRV_VIDEO_UPDATE(bubl2000)
 MACHINE_DRIVER_END
 
@@ -1188,13 +1189,14 @@ static MACHINE_DRIVER_START( firehawk )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(firehawk_sound_cpu,0)
 
-	MDRV_FRAMES_PER_SECOND(56)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(56)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(8, 256-8-1, 16, 256-16-1)
+	MDRV_SCREEN_VISIBLE_AREA(8, 256-8-1, 16, 256-16-1)
 	MDRV_GFXDECODE(grdnstrm_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(768)
 	MDRV_COLORTABLE_LENGTH(768 + 16*256)
@@ -1206,12 +1208,12 @@ static MACHINE_DRIVER_START( firehawk )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000/132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000/132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2)
+	MDRV_SOUND_ADD(OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1237,13 +1239,14 @@ static MACHINE_DRIVER_START( twinactn )
 	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(twinactn_sound_cpu,0)
 
-	MDRV_FRAMES_PER_SECOND(56)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(56)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
 	MDRV_GFXDECODE(stagger1_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(768)
 
@@ -1253,8 +1256,8 @@ static MACHINE_DRIVER_START( twinactn )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000/132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1275,10 +1278,8 @@ static void decryptcode( int a23, int a22, int a21, int a20, int a19, int a18, i
 	int i;
 	UINT8 *RAM = memory_region( REGION_CPU1 );
 	size_t  size = memory_region_length( REGION_CPU1 );
-	UINT8 *buffer = malloc( size );
+	UINT8 *buffer = malloc_or_die( size );
 
-	if( buffer )
-	{
 		memcpy( buffer, RAM, size );
 		for( i = 0; i < size; i++ )
 		{
@@ -1286,7 +1287,6 @@ static void decryptcode( int a23, int a22, int a21, int a20, int a19, int a18, i
 				a11, a10, a9, a8, a7, a6, a5, a4, a3, a2, a1, a0 ) ];
 		}
 		free( buffer );
-	}
 }
 
 /***************************************************************************
@@ -1331,7 +1331,7 @@ ROM_END
 
 
 
-    6116         ym2145(?)  MSM6295   5    4MHz
+    6116         ym2151     MSM6295   5    4MHz
     1
     Z80        pLSI1032    4
                                       76C88

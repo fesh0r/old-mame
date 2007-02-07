@@ -2,7 +2,7 @@
 //
 //  debugwin.c - Win32 debug window handling
 //
-//  Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -11,6 +11,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <windowsx.h>
+#include <tchar.h>
 #ifdef _MSC_VER
 #include <zmouse.h>
 #endif
@@ -26,6 +27,8 @@
 #include "window.h"
 #include "video.h"
 #include "config.h"
+#include "strconv.h"
+#include "winutil.h"
 
 
 
@@ -137,7 +140,7 @@ struct _debugwin_info
 	char					edit_defstr[256];
 	void					(*process_string)(debugwin_info *, const char *);
 	WNDPROC 				original_editproc;
-	char					history[HISTORY_LENGTH][MAX_EDIT_STRING];
+	TCHAR					history[HISTORY_LENGTH][MAX_EDIT_STRING];
 	int						history_count;
 	int						last_history;
 
@@ -1533,13 +1536,13 @@ static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, L
 					case 13:
 					{
 						// fetch the text
-						SendMessage(wnd, WM_GETTEXT, (WPARAM)sizeof(buffer), (LPARAM)buffer);
+						SendMessage(wnd, WM_GETTEXT, (WPARAM)ARRAY_LENGTH(buffer), (LPARAM)buffer);
 
 						// add to the history if it's not a repeat of the last one
-						if (buffer[0] != 0 && strcmp(buffer, &info->history[0][0]))
+						if (buffer[0] != 0 && _tcscmp(buffer, &info->history[0][0]))
 						{
 							memmove(&info->history[1][0], &info->history[0][0], (HISTORY_LENGTH - 1) * MAX_EDIT_STRING);
-							strcpy(&info->history[0][0], buffer);
+							_tcscpy(&info->history[0][0], buffer);
 							if (info->history_count < HISTORY_LENGTH)
 								info->history_count++;
 						}
@@ -1547,7 +1550,14 @@ static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, L
 
 						// process
 						if (info->process_string)
-							(*info->process_string)(info, buffer);
+						{
+							char *utf8_buffer = utf8_from_tstring(buffer);
+							if (utf8_buffer != NULL)
+							{
+								(*info->process_string)(info, utf8_buffer);
+								free(utf8_buffer);
+							}
+						}
 						break;
 					}
 
@@ -1557,7 +1567,7 @@ static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, L
 						SendMessage(wnd, WM_GETTEXT, (WPARAM)sizeof(buffer), (LPARAM)buffer);
 
 						// if it's not empty, clear the text
-						if (strlen(buffer) > 0)
+						if (_tcslen(buffer) > 0)
 						{
 							info->ignore_char_lparam = lparam >> 16;
 							SendMessage(wnd, WM_SETTEXT, (WPARAM)0, (LPARAM)info->edit_defstr);
@@ -1590,10 +1600,18 @@ static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, L
 static void generic_create_window(int type)
 {
 	debugwin_info *info;
+	TCHAR *t_name;
+	TCHAR *t_description;
 	TCHAR title[256];
 
 	// create the window
-	sprintf(title, "Debug: %s [%s]", Machine->gamedrv->description, Machine->gamedrv->name);
+	t_name = tstring_from_utf8(Machine->gamedrv->name);
+	t_description = tstring_from_utf8(Machine->gamedrv->description);
+	if (t_name == NULL || t_description == NULL)
+		return;
+	_sntprintf(title, ARRAY_LENGTH(title), TEXT("Debug: %s [%s]"), t_description, t_name);
+	free(t_name);
+	free(t_description);
 	info = debug_window_create(title, NULL);
 	if (!info || !debug_view_create(info, 0, type))
 		return;
@@ -1650,12 +1668,20 @@ static void generic_recompute_children(debugwin_info *info)
 static void log_create_window(void)
 {
 	debugwin_info *info;
+	TCHAR *t_name;
+	TCHAR *t_description;
 	TCHAR title[256];
 	UINT32 width;
 	RECT bounds;
 
 	// create the window
-	sprintf(title, "Errorlog: %s [%s]", Machine->gamedrv->description, Machine->gamedrv->name);
+	t_name = tstring_from_utf8(Machine->gamedrv->name);
+	t_description = tstring_from_utf8(Machine->gamedrv->description);
+	if (t_name == NULL || t_description == NULL)
+		return;
+	_sntprintf(title, ARRAY_LENGTH(title), TEXT("Errorlog: %s [%s]"), t_description, t_name);
+	free(t_name);
+	free(t_description);
 	info = debug_window_create(title, NULL);
 	if (!info || !debug_view_create(info, 0, DVT_LOG))
 		return;
@@ -1792,7 +1818,7 @@ static void memory_update_selection(debugwin_info *info, memorycombo_item *ci)
 	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_RAW_OFFSET_XOR, ci->offset_xor);
 	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_RAW_LITTLE_ENDIAN, ci->little_endian);
 	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, ci->prefsize);
-	SetWindowText(info->wnd, ci->name);
+	win_set_window_text_utf8(info->wnd, ci->name);
 }
 
 
@@ -1808,7 +1834,7 @@ static void memory_create_window(void)
 	HMENU optionsmenu;
 
 	// create the window
-	info = debug_window_create("Memory", NULL);
+	info = debug_window_create(TEXT("Memory"), NULL);
 	if (!info || !debug_view_create(info, 0, DVT_MEMORY))
 		return;
 
@@ -1818,15 +1844,15 @@ static void memory_create_window(void)
 
 	// create the options menu
 	optionsmenu = CreatePopupMenu();
-	AppendMenu(optionsmenu, MF_ENABLED, ID_1_BYTE_CHUNKS, "1-byte chunks\tCtrl+1");
-	AppendMenu(optionsmenu, MF_ENABLED, ID_2_BYTE_CHUNKS, "2-byte chunks\tCtrl+2");
-	AppendMenu(optionsmenu, MF_ENABLED, ID_4_BYTE_CHUNKS, "4-byte chunks\tCtrl+4");
-	AppendMenu(optionsmenu, MF_DISABLED | MF_SEPARATOR, 0, "");
-	AppendMenu(optionsmenu, MF_ENABLED, ID_REVERSE_VIEW, "Reverse View\tCtrl+R");
-	AppendMenu(optionsmenu, MF_DISABLED | MF_SEPARATOR, 0, "");
-	AppendMenu(optionsmenu, MF_ENABLED, ID_INCREASE_MEM_WIDTH, "Increase bytes per line\tCtrl+P");
-	AppendMenu(optionsmenu, MF_ENABLED, ID_DECREASE_MEM_WIDTH, "Decrease bytes per line\tCtrl+O");
-	AppendMenu(GetMenu(info->wnd), MF_ENABLED | MF_POPUP, (UINT_PTR)optionsmenu, "Options");
+	AppendMenu(optionsmenu, MF_ENABLED, ID_1_BYTE_CHUNKS, TEXT("1-byte chunks\tCtrl+1"));
+	AppendMenu(optionsmenu, MF_ENABLED, ID_2_BYTE_CHUNKS, TEXT("2-byte chunks\tCtrl+2"));
+	AppendMenu(optionsmenu, MF_ENABLED, ID_4_BYTE_CHUNKS, TEXT("4-byte chunks\tCtrl+4"));
+	AppendMenu(optionsmenu, MF_DISABLED | MF_SEPARATOR, 0, TEXT(""));
+	AppendMenu(optionsmenu, MF_ENABLED, ID_REVERSE_VIEW, TEXT("Reverse View\tCtrl+R"));
+	AppendMenu(optionsmenu, MF_DISABLED | MF_SEPARATOR, 0, TEXT(""));
+	AppendMenu(optionsmenu, MF_ENABLED, ID_INCREASE_MEM_WIDTH, TEXT("Increase bytes per line\tCtrl+P"));
+	AppendMenu(optionsmenu, MF_ENABLED, ID_DECREASE_MEM_WIDTH, TEXT("Decrease bytes per line\tCtrl+O"));
+	AppendMenu(GetMenu(info->wnd), MF_ENABLED | MF_POPUP, (UINT_PTR)optionsmenu, TEXT("Options"));
 	memory_update_checkmarks(info);
 
 	// set up the view to track the initial expression
@@ -2107,19 +2133,19 @@ static void disasm_create_window(void)
 	UINT32 cpunum;
 
 	// create the window
-	info = debug_window_create("Disassembly", NULL);
+	info = debug_window_create(TEXT("Disassembly"), NULL);
 	if (!info || !debug_view_create(info, 0, DVT_DISASSEMBLY))
 		return;
 
 	// create the options menu
 	optionsmenu = CreatePopupMenu();
-	AppendMenu(optionsmenu, MF_ENABLED, ID_TOGGLE_BREAKPOINT, "Set breakpoint at cursor\tF9");
-	AppendMenu(optionsmenu, MF_ENABLED, ID_RUN_TO_CURSOR, "Run to cursor\tF4");
-	AppendMenu(optionsmenu, MF_DISABLED | MF_SEPARATOR, 0, "");
-	AppendMenu(optionsmenu, MF_ENABLED, ID_SHOW_RAW, "Raw opcodes\tCtrl+R");
-	AppendMenu(optionsmenu, MF_ENABLED, ID_SHOW_ENCRYPTED, "Encrypted opcodes\tCtrl+E");
-	AppendMenu(optionsmenu, MF_ENABLED, ID_SHOW_COMMENTS, "Comments\tCtrl+M");
-	AppendMenu(GetMenu(info->wnd), MF_ENABLED | MF_POPUP, (UINT_PTR)optionsmenu, "Options");
+	AppendMenu(optionsmenu, MF_ENABLED, ID_TOGGLE_BREAKPOINT, TEXT("Set breakpoint at cursor\tF9"));
+	AppendMenu(optionsmenu, MF_ENABLED, ID_RUN_TO_CURSOR, TEXT("Run to cursor\tF4"));
+	AppendMenu(optionsmenu, MF_DISABLED | MF_SEPARATOR, 0, TEXT(""));
+	AppendMenu(optionsmenu, MF_ENABLED, ID_SHOW_RAW, TEXT("Raw opcodes\tCtrl+R"));
+	AppendMenu(optionsmenu, MF_ENABLED, ID_SHOW_ENCRYPTED, TEXT("Encrypted opcodes\tCtrl+E"));
+	AppendMenu(optionsmenu, MF_ENABLED, ID_SHOW_COMMENTS, TEXT("Comments\tCtrl+M"));
+	AppendMenu(GetMenu(info->wnd), MF_ENABLED | MF_POPUP, (UINT_PTR)optionsmenu, TEXT("Options"));
 	disasm_update_checkmarks(info);
 
 	// set the handlers
@@ -2463,7 +2489,7 @@ static void disasm_update_caption(HWND wnd)
 
 	// then update the caption
 	sprintf(title, "Disassembly: %s (%d)", cpunum_name(cpunum), cpunum);
-	SetWindowText(wnd, title);
+	win_set_window_text_utf8(wnd, title);
 }
 
 
@@ -2481,7 +2507,7 @@ void console_create_window(void)
 	UINT32 cpunum;
 
 	// create the window
-	info = debug_window_create("Debug", NULL);
+	info = debug_window_create(TEXT("Debug"), NULL);
 	if (!info)
 		return;
 	main_console = info;
@@ -2677,7 +2703,7 @@ static void console_process_string(debugwin_info *info, const char *string)
 
 static void console_set_cpunum(int cpunum)
 {
-	TCHAR title[256], curtitle[256];
+	char title[256], curtitle[256];
 
 	// first set all the views to the new cpu number
 	if (main_console->view[0].view)
@@ -2686,10 +2712,10 @@ static void console_set_cpunum(int cpunum)
 		debug_view_set_property_UINT32(main_console->view[1].view, DVP_REGS_CPUNUM, cpunum);
 
 	// then update the caption
-	sprintf(title, "Debug: %s - CPU %d (%s)", Machine->gamedrv->name, cpu_getactivecpu(), activecpu_name());
-	GetWindowText(main_console->wnd, curtitle, sizeof(curtitle) / sizeof(curtitle[0]));
+	snprintf(title, ARRAY_LENGTH(title), "Debug: %s - CPU %d (%s)", Machine->gamedrv->name, cpu_getactivecpu(), activecpu_name());
+	win_get_window_text_utf8(main_console->wnd, curtitle, sizeof(curtitle) / sizeof(curtitle[0]));
 	if (strcmp(title, curtitle))
-		SetWindowText(main_console->wnd, title);
+		win_set_window_text_utf8(main_console->wnd, title);
 }
 
 

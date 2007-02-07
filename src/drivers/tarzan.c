@@ -31,11 +31,11 @@ static int decrypt_tarzan()
   file1_size = lseek(fd, 0, SEEK_END);
   lseek(fd, 0, SEEK_SET);
 
-  file1_data = malloc(file1_size);
+  file1_data = malloc_or_die(file1_size);
   read(fd, file1_data, file1_size);
   close(fd);
 
-  result_data = malloc(file1_size);
+  result_data = malloc_or_die(file1_size);
   for(i=0; i<file1_size/2; i++) {
     unsigned short x = file1_data[i];
 
@@ -94,13 +94,14 @@ static MACHINE_DRIVER_START( tarzan )
 	MDRV_CPU_ADD(Z80,8000000)		 /* ? */
 	MDRV_CPU_PROGRAM_MAP(tarzan_map,0)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0, 256-1, 0, 256-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)
 	MDRV_PALETTE_LENGTH(0x100)
 
 	MDRV_VIDEO_START(tarzan)

@@ -4,7 +4,7 @@
 
     Core MAME video routines.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -16,6 +16,7 @@
 #include "debugger.h"
 #include "vidhrdw/vector.h"
 #include "render.h"
+#include "rendutil.h"
 #include "ui.h"
 
 #include "snap.lh"
@@ -70,7 +71,7 @@ static int skipping_this_frame;
 static internal_screen_info scrinfo[MAX_SCREENS];
 
 /* speed computation */
-static cycles_t last_fps_time;
+static osd_ticks_t last_fps_time;
 static int frames_since_last_fps;
 static int rendered_frames_since_last_fps;
 static int vfcount;
@@ -81,6 +82,13 @@ static render_target *snap_target;
 static mame_bitmap *snap_bitmap;
 static mame_file *movie_file;
 static int movie_frame;
+
+/* crosshair bits */
+static mame_bitmap *crosshair_bitmap[MAX_PLAYERS];
+static render_texture *crosshair_texture[MAX_PLAYERS];
+static UINT8 crosshair_animate;
+static UINT8 crosshair_visible;
+static UINT8 crosshair_needed;
 
 /* misc other statics */
 static UINT32 leds_status;
@@ -94,10 +102,12 @@ static UINT32 leds_status;
 static void video_exit(running_machine *machine);
 static void allocate_graphics(const gfx_decode *gfxdecodeinfo);
 static void decode_graphics(const gfx_decode *gfxdecodeinfo);
-static void scale_vectorgames(int gfx_width, int gfx_height, int *width, int *height);
 static void init_buffered_spriteram(void);
 static void recompute_fps(int skipped_it);
 static void movie_record_frame(int scrnum);
+static void crosshair_init(void);
+static void crosshair_render(void);
+static void crosshair_free(void);
 static void rgb888_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
 
 
@@ -130,7 +140,7 @@ int video_init(running_machine *machine)
 			video_screen_configure(scrnum, state->width, state->height, &state->visarea, state->refresh);
 
 			/* reset VBLANK timing */
-			info->vblank_time = time_zero;
+			info->vblank_time = sub_mame_times(time_zero, double_to_mame_time(Machine->screen[0].vblank));
 
 			/* register for save states */
 			state_save_register_item("video", scrnum, info->vblank_time.seconds);
@@ -154,7 +164,7 @@ int video_init(running_machine *machine)
 		decode_graphics(machine->drv->gfxdecodeinfo);
 
 	/* reset performance data */
-	last_fps_time = osd_cycles();
+	last_fps_time = osd_ticks();
 	rendered_frames_since_last_fps = frames_since_last_fps = 0;
 	performance.game_speed_percent = 100;
 	performance.frames_per_second = machine->screen[0].refresh;
@@ -169,12 +179,18 @@ int video_init(running_machine *machine)
 		fatalerror("tilemap_init failed");
 
 	/* create a render target for snapshots */
-	snap_bitmap = NULL;
-	snap_target = render_target_alloc(layout_snap, RENDER_CREATE_SINGLE_FILE | RENDER_CREATE_HIDDEN);
-	assert(snap_target != NULL);
-	if (snap_target == NULL)
-		return 1;
-	render_target_set_layer_config(snap_target, 0);
+	if (Machine->drv->screen[0].tag != NULL)
+	{
+		snap_bitmap = NULL;
+		snap_target = render_target_alloc(layout_snap, RENDER_CREATE_SINGLE_FILE | RENDER_CREATE_HIDDEN);
+		assert(snap_target != NULL);
+		if (snap_target == NULL)
+			return 1;
+		render_target_set_layer_config(snap_target, 0);
+	}
+
+	/* create crosshairs */
+	crosshair_init();
 
 	return 0;
 }
@@ -188,6 +204,9 @@ static void video_exit(running_machine *machine)
 {
 	int scrnum;
 	int i;
+
+	/* free crosshairs */
+	crosshair_free();
 
 	/* stop recording any movie */
 	video_movie_end_recording();
@@ -228,6 +247,11 @@ void video_vblank_start(void)
 {
 	mame_time curtime = mame_timer_get_time();
 	int scrnum;
+
+	/* kludge: we get called at time 0 to reset, but at that point,
+       the time of last VBLANK is actually -vblank_duration */
+	if (curtime.seconds == 0 && curtime.subseconds == 0)
+		curtime = sub_mame_times(time_zero, double_to_mame_time(Machine->screen[0].vblank));
 
 	/* reset VBLANK timers for each screen -- fix me */
 	for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
@@ -440,6 +464,8 @@ void video_screen_configure(int scrnum, int width, int height, const rectangle *
 		/* if we're too small to contain this width/height, reallocate our bitmaps and textures */
 		if (width > curwidth || height > curheight)
 		{
+			mame_bitmap_format screen_format = state->format;
+
 			/* free what we have currently */
 			if (info->texture != NULL)
 				render_texture_free(info->texture);
@@ -453,16 +479,18 @@ void video_screen_configure(int scrnum, int width, int height, const rectangle *
 			curheight = MAX(height, curheight);
 
 			/* choose the texture format */
-			if (Machine->color_depth == 16)
-				info->format = TEXFORMAT_PALETTE16;
-			else if (Machine->color_depth == 15)
-				info->format = TEXFORMAT_RGB15;
-			else
-				info->format = TEXFORMAT_RGB32;
+			/* convert the screen format to a texture format */
+			switch (screen_format)
+			{
+				case BITMAP_FORMAT_INDEXED16:	info->format = TEXFORMAT_PALETTE16;		break;
+				case BITMAP_FORMAT_RGB15:		info->format = TEXFORMAT_RGB15;			break;
+				case BITMAP_FORMAT_RGB32:		info->format = TEXFORMAT_RGB32;			break;
+				default:						fatalerror("Invalid bitmap format!");	break;
+			}
 
 			/* allocate new stuff */
-			info->bitmap[0] = bitmap_alloc_depth(curwidth, curheight, Machine->color_depth);
-			info->bitmap[1] = bitmap_alloc_depth(curwidth, curheight, Machine->color_depth);
+			info->bitmap[0] = bitmap_alloc_format(curwidth, curheight, screen_format);
+			info->bitmap[1] = bitmap_alloc_format(curwidth, curheight, screen_format);
 			info->texture = render_texture_alloc(info->bitmap[0], visarea, config->palette_base, info->format, NULL, NULL);
 		}
 	}
@@ -686,8 +714,8 @@ static void recompute_fps(int skipped_it)
 	/* if we didn't skip this frame, we may be able to compute a new FPS */
 	if (!skipped_it && frames_since_last_fps >= FRAMES_PER_FPS_UPDATE)
 	{
-		cycles_t cps = osd_cycles_per_second();
-		cycles_t curr = osd_cycles();
+		osd_ticks_t cps = osd_ticks_per_second();
+		osd_ticks_t curr = osd_ticks();
 		double seconds_elapsed = (double)(curr - last_fps_time) * (1.0 / (double)cps);
 		double frames_per_sec = (double)frames_since_last_fps / seconds_elapsed;
 
@@ -745,14 +773,9 @@ void video_frame_update(void)
 		sound_frame_update();
 
 		/* finish updating the screens */
-		if (!paused)
 		for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
 			if (Machine->drv->screen[scrnum].tag != NULL)
 				video_screen_update_partial(scrnum, Machine->screen[scrnum].visarea.max_y);
-
-		/* update our movie recording state */
-		if (!paused)
-			movie_record_frame(0);
 
 		/* now add the quads for all the screens */
 		livemask = render_get_live_screens_mask();
@@ -777,10 +800,17 @@ void video_frame_update(void)
 				}
 			}
 
+		/* update our movie recording state */
+		if (!paused)
+			movie_record_frame(0);
+
 		/* reset the screen changed flags */
 		for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
 			scrinfo[scrnum].changed = 0;
 	}
+
+	/* draw any crosshairs */
+	crosshair_render();
 
 	/* draw the user interface */
 	ui_update_and_render();
@@ -843,6 +873,10 @@ static void save_frame_with(mame_file *fp, int scrnum, png_error (*write_handler
 
 	assert(scrnum >= 0 && scrnum < MAX_SCREENS);
 
+	/* if no screens, do nothing */
+	if (snap_target == NULL)
+		return;
+
 	/* select the appropriate view in our dummy target */
 	render_target_set_view(snap_target, scrnum);
 
@@ -855,7 +889,7 @@ static void save_frame_with(mame_file *fp, int scrnum, png_error (*write_handler
 	{
 		if (snap_bitmap != NULL)
 			bitmap_free(snap_bitmap);
-		snap_bitmap = bitmap_alloc_depth(width, height, 32);
+		snap_bitmap = bitmap_alloc_format(width, height, BITMAP_FORMAT_RGB32);
 		assert(snap_bitmap != NULL);
 	}
 
@@ -907,7 +941,7 @@ static mame_file_error mame_fopen_next(const char *pathoption, const char *exten
 	}
 
 	/* create the final file */
-    filerr = mame_fopen(pathoption, fname, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, file);
+    filerr = mame_fopen(pathoption, fname, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, file);
 
     /* free the name and get out */
     free(fname);
@@ -972,7 +1006,7 @@ void video_movie_begin_recording(const char *name)
 
 	/* create a new movie file and start recording */
 	if (name != NULL)
-		filerr = mame_fopen(SEARCHPATH_MOVIE, name, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &movie_file);
+		filerr = mame_fopen(SEARCHPATH_MOVIE, name, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &movie_file);
 	else
 		filerr = mame_fopen_next(SEARCHPATH_MOVIE, "mng", &movie_file);
 
@@ -1026,125 +1060,48 @@ static void movie_record_frame(int scrnum)
 ***************************************************************************/
 
 /*-------------------------------------------------
-    pp_* -- pixel plotting callbacks
--------------------------------------------------*/
-
-static void pp_8 (mame_bitmap *b, int x, int y, pen_t p)  { ((UINT8 *)b->line[y])[x] = p; }
-static void pp_16(mame_bitmap *b, int x, int y, pen_t p)  { ((UINT16 *)b->line[y])[x] = p; }
-static void pp_32(mame_bitmap *b, int x, int y, pen_t p)  { ((UINT32 *)b->line[y])[x] = p; }
-
-
-/*-------------------------------------------------
-    rp_* -- pixel reading callbacks
--------------------------------------------------*/
-
-static pen_t rp_8 (mame_bitmap *b, int x, int y)  { return ((UINT8 *)b->line[y])[x]; }
-static pen_t rp_16(mame_bitmap *b, int x, int y)  { return ((UINT16 *)b->line[y])[x]; }
-static pen_t rp_32(mame_bitmap *b, int x, int y)  { return ((UINT32 *)b->line[y])[x]; }
-
-
-/*-------------------------------------------------
-    pb_* -- box plotting callbacks
--------------------------------------------------*/
-
-static void pb_8 (mame_bitmap *b, int x, int y, int w, int h, pen_t p)  { int t=x; while(h-->0){ int c=w; x=t; while(c-->0){ ((UINT8 *)b->line[y])[x] = p; x++; } y++; } }
-static void pb_16(mame_bitmap *b, int x, int y, int w, int h, pen_t p)  { int t=x; while(h-->0){ int c=w; x=t; while(c-->0){ ((UINT16 *)b->line[y])[x] = p; x++; } y++; } }
-static void pb_32(mame_bitmap *b, int x, int y, int w, int h, pen_t p)  { int t=x; while(h-->0){ int c=w; x=t; while(c-->0){ ((UINT32 *)b->line[y])[x] = p; x++; } y++; } }
-
-
-/*-------------------------------------------------
     bitmap_alloc_core
 -------------------------------------------------*/
 
-mame_bitmap *bitmap_alloc_core(int width,int height,int depth,int use_auto)
+mame_bitmap *bitmap_alloc_core(int width, int height, mame_bitmap_format format, int use_auto)
 {
 	mame_bitmap *bitmap;
+	int bpp;
 
-	/* obsolete kludge: pass in negative depth to prevent orientation swapping */
-	if (depth < 0)
-		depth = -depth;
-
-	/* verify it's a depth we can handle */
-	if (depth != 8 && depth != 15 && depth != 16 && depth != 32)
-	{
-		logerror("osd_alloc_bitmap() unknown depth %d\n",depth);
-		return NULL;
-	}
+	/* invalid format means use the screen bitmap format */
+	if (format == 0)
+		format = Machine->screen[0].format;
+	bpp = bitmap_format_to_bpp(format);
 
 	/* allocate memory for the bitmap struct */
 	bitmap = use_auto ? auto_malloc(sizeof(mame_bitmap)) : malloc(sizeof(mame_bitmap));
 	if (bitmap != NULL)
 	{
-		int i, rowlen, rdwidth, bitmapsize, linearraysize, pixelsize;
-		UINT8 *bm;
+		int bitmapbytes;
 
 		/* initialize the basic parameters */
-		bitmap->depth = depth;
 		bitmap->width = width;
 		bitmap->height = height;
+		bitmap->bpp = bpp;
+		bitmap->format = format;
 
-		/* determine pixel size in bytes */
-		pixelsize = 1;
-		if (depth == 15 || depth == 16)
-			pixelsize = 2;
-		else if (depth == 32)
-			pixelsize = 4;
+		/* round the width to a multiple of 8 and add some padding */
+		bitmap->rowpixels = ((width + 7) & ~7) + BITMAP_SAFETY;
 
-		/* round the width to a multiple of 8 */
-		rdwidth = (width + 7) & ~7;
-		rowlen = rdwidth + 2 * BITMAP_SAFETY;
-		bitmap->rowpixels = rowlen;
-
-		/* now convert from pixels to bytes */
-		rowlen *= pixelsize;
-		bitmap->rowbytes = rowlen;
-
-		/* determine total memory for bitmap and line arrays */
-		bitmapsize = (height + 2 * BITMAP_SAFETY) * rowlen;
-		linearraysize = (height + 2 * BITMAP_SAFETY) * sizeof(UINT8 *);
-
-		/* align to 16 bytes */
-		linearraysize = (linearraysize + 15) & ~15;
+		/* determine total memory for bitmap */
+		bitmapbytes = (height + 2 * BITMAP_SAFETY) * bitmap->rowpixels * (bitmap->bpp / 8);
 
 		/* allocate the bitmap data plus an array of line pointers */
-		bitmap->line = use_auto ? auto_malloc(linearraysize + bitmapsize) : malloc(linearraysize + bitmapsize);
-		if (bitmap->line == NULL)
+		bitmap->base = use_auto ? auto_malloc(bitmapbytes) : malloc(bitmapbytes);
+		if (bitmap->base == NULL)
 		{
-			if (!use_auto) free(bitmap);
+			free(bitmap);
 			return NULL;
 		}
+		memset(bitmap->base, 0, bitmapbytes);
 
-		/* clear ALL bitmap, including safety area, to avoid garbage on right */
-		bm = (UINT8 *)bitmap->line + linearraysize;
-		memset(bm, 0, (height + 2 * BITMAP_SAFETY) * rowlen);
-
-		/* initialize the line pointers */
-		for (i = 0; i < height + 2 * BITMAP_SAFETY; i++)
-			bitmap->line[i] = &bm[i * rowlen + BITMAP_SAFETY * pixelsize];
-
-		/* adjust for the safety rows */
-		bitmap->line += BITMAP_SAFETY;
-		bitmap->base = bitmap->line[0];
-
-		/* set the pixel functions */
-		if (pixelsize == 1)
-		{
-			bitmap->read = rp_8;
-			bitmap->plot = pp_8;
-			bitmap->plot_box = pb_8;
-		}
-		else if (pixelsize == 2)
-		{
-			bitmap->read = rp_16;
-			bitmap->plot = pp_16;
-			bitmap->plot_box = pb_16;
-		}
-		else
-		{
-			bitmap->read = rp_32;
-			bitmap->plot = pp_32;
-			bitmap->plot_box = pb_32;
-		}
+		/* adjust the base to avoid safety rows */
+		bitmap->base = (UINT8 *)bitmap->base + (BITMAP_SAFETY * bitmap->rowpixels + BITMAP_SAFETY) * (bitmap->bpp / 8);
 	}
 
 	/* return the result */
@@ -1157,9 +1114,9 @@ mame_bitmap *bitmap_alloc_core(int width,int height,int depth,int use_auto)
     specific depth
 -------------------------------------------------*/
 
-mame_bitmap *bitmap_alloc_depth(int width, int height, int depth)
+mame_bitmap *bitmap_alloc_format(int width, int height, mame_bitmap_format format)
 {
-	return bitmap_alloc_core(width, height, depth, FALSE);
+	return bitmap_alloc_core(width, height, format, FALSE);
 }
 
 
@@ -1168,9 +1125,9 @@ mame_bitmap *bitmap_alloc_depth(int width, int height, int depth)
     for a specific depth
 -------------------------------------------------*/
 
-mame_bitmap *auto_bitmap_alloc_depth(int width, int height, int depth)
+mame_bitmap *auto_bitmap_alloc_format(int width, int height, mame_bitmap_format format)
 {
-	return bitmap_alloc_core(width, height, depth, TRUE);
+	return bitmap_alloc_core(width, height, format, TRUE);
 }
 
 
@@ -1180,16 +1137,303 @@ mame_bitmap *auto_bitmap_alloc_depth(int width, int height, int depth)
 
 void bitmap_free(mame_bitmap *bitmap)
 {
+	void *membase;
+
 	/* skip if NULL */
-	if (!bitmap)
+	if (bitmap == NULL)
 		return;
 
 	/* unadjust for the safety rows */
-	bitmap->line -= BITMAP_SAFETY;
+	membase = (UINT8 *)bitmap->base - (BITMAP_SAFETY * bitmap->rowpixels + BITMAP_SAFETY) * (bitmap->bpp / 8);
 
 	/* free the memory */
-	free(bitmap->line);
+	free(membase);
 	free(bitmap);
+}
+
+
+/*-------------------------------------------------
+    bitmap_format_to_bpp - given a format, return
+    the bpp
+-------------------------------------------------*/
+
+int bitmap_format_to_bpp(mame_bitmap_format format)
+{
+	/* choose a depth for the format */
+	switch (format)
+	{
+		case BITMAP_FORMAT_INDEXED8:
+			return 8;
+
+		case BITMAP_FORMAT_INDEXED16:
+		case BITMAP_FORMAT_RGB15:
+		case BITMAP_FORMAT_YUY16:
+			return 16;
+
+		case BITMAP_FORMAT_INDEXED32:
+		case BITMAP_FORMAT_RGB32:
+		case BITMAP_FORMAT_ARGB32:
+			return 32;
+
+		default:
+			fatalerror("bitmap_alloc_core: Invalid bitmap format");
+	}
+	return 0;
+}
+
+
+
+
+/***************************************************************************
+    CROSSHAIR RENDERING
+***************************************************************************/
+
+/* decripton of the bitmap data */
+#define CROSSHAIR_RAW_SIZE		100
+#define CROSSHAIR_RAW_ROWBYTES	((CROSSHAIR_RAW_SIZE + 7) / 8)
+
+/* raw bitmap */
+static const UINT8 crosshair_raw_top[] =
+{
+	0x00,0x20,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x40,0x00,
+	0x00,0x70,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xE0,0x00,
+	0x00,0xF8,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0xF0,0x00,
+	0x01,0xF8,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01,0xF8,0x00,
+	0x03,0xFC,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03,0xFC,0x00,
+	0x07,0xFE,0x00,0x00,0x00,0x0F,0xFE,0x00,0x00,0x00,0x07,0xFE,0x00,
+	0x0F,0xFF,0x00,0x00,0x01,0xFF,0xFF,0xF0,0x00,0x00,0x0F,0xFF,0x00,
+	0x1F,0xFF,0x80,0x00,0x1F,0xFF,0xFF,0xFF,0x00,0x00,0x1F,0xFF,0x80,
+	0x3F,0xFF,0x80,0x00,0xFF,0xFF,0xFF,0xFF,0xE0,0x00,0x1F,0xFF,0xC0,
+	0x7F,0xFF,0xC0,0x03,0xFF,0xFF,0xFF,0xFF,0xF8,0x00,0x3F,0xFF,0xE0,
+	0xFF,0xFF,0xE0,0x07,0xFF,0xFF,0xFF,0xFF,0xFC,0x00,0x7F,0xFF,0xF0,
+	0x7F,0xFF,0xF0,0x1F,0xFF,0xFF,0xFF,0xFF,0xFF,0x00,0xFF,0xFF,0xE0,
+	0x3F,0xFF,0xF8,0x7F,0xFF,0xFF,0xFF,0xFF,0xFF,0xC1,0xFF,0xFF,0xC0,
+	0x0F,0xFF,0xF8,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xE1,0xFF,0xFF,0x00,
+	0x07,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFB,0xFF,0xFE,0x00,
+	0x03,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFC,0x00,
+	0x01,0xFF,0xFF,0xFF,0xFF,0xF0,0x01,0xFF,0xFF,0xFF,0xFF,0xF8,0x00,
+	0x00,0x7F,0xFF,0xFF,0xFF,0x00,0x00,0x1F,0xFF,0xFF,0xFF,0xE0,0x00,
+	0x00,0x3F,0xFF,0xFF,0xF8,0x00,0x00,0x03,0xFF,0xFF,0xFF,0xC0,0x00,
+	0x00,0x1F,0xFF,0xFF,0xE0,0x00,0x00,0x00,0xFF,0xFF,0xFF,0x80,0x00,
+	0x00,0x0F,0xFF,0xFF,0x80,0x00,0x00,0x00,0x3F,0xFF,0xFF,0x00,0x00,
+	0x00,0x03,0xFF,0xFE,0x00,0x00,0x00,0x00,0x0F,0xFF,0xFC,0x00,0x00,
+	0x00,0x01,0xFF,0xFC,0x00,0x00,0x00,0x00,0x07,0xFF,0xF8,0x00,0x00,
+	0x00,0x03,0xFF,0xF8,0x00,0x00,0x00,0x00,0x01,0xFF,0xF8,0x00,0x00,
+	0x00,0x07,0xFF,0xFC,0x00,0x00,0x00,0x00,0x03,0xFF,0xFC,0x00,0x00,
+	0x00,0x0F,0xFF,0xFE,0x00,0x00,0x00,0x00,0x07,0xFF,0xFE,0x00,0x00,
+	0x00,0x0F,0xFF,0xFF,0x00,0x00,0x00,0x00,0x0F,0xFF,0xFE,0x00,0x00,
+	0x00,0x1F,0xFF,0xFF,0x80,0x00,0x00,0x00,0x1F,0xFF,0xFF,0x00,0x00,
+	0x00,0x1F,0xFF,0xFF,0x80,0x00,0x00,0x00,0x1F,0xFF,0xFF,0x00,0x00,
+	0x00,0x3F,0xFE,0xFF,0xC0,0x00,0x00,0x00,0x3F,0xFF,0xFF,0x80,0x00,
+	0x00,0x7F,0xFC,0x7F,0xE0,0x00,0x00,0x00,0x7F,0xE7,0xFF,0xC0,0x00,
+	0x00,0x7F,0xF8,0x3F,0xF0,0x00,0x00,0x00,0xFF,0xC3,0xFF,0xC0,0x00,
+	0x00,0xFF,0xF8,0x1F,0xF8,0x00,0x00,0x01,0xFF,0x83,0xFF,0xE0,0x00,
+	0x00,0xFF,0xF0,0x07,0xF8,0x00,0x00,0x01,0xFE,0x01,0xFF,0xE0,0x00,
+	0x00,0xFF,0xF0,0x03,0xFC,0x00,0x00,0x03,0xFC,0x01,0xFF,0xE0,0x00,
+	0x01,0xFF,0xE0,0x01,0xFE,0x00,0x00,0x07,0xF8,0x00,0xFF,0xF0,0x00,
+	0x01,0xFF,0xE0,0x00,0xFF,0x00,0x00,0x0F,0xF0,0x00,0xFF,0xF0,0x00,
+	0x01,0xFF,0xC0,0x00,0x3F,0x80,0x00,0x1F,0xC0,0x00,0x7F,0xF0,0x00,
+	0x01,0xFF,0xC0,0x00,0x1F,0x80,0x00,0x1F,0x80,0x00,0x7F,0xF0,0x00,
+	0x03,0xFF,0xC0,0x00,0x0F,0xC0,0x00,0x3F,0x00,0x00,0x7F,0xF8,0x00,
+	0x03,0xFF,0x80,0x00,0x07,0xE0,0x00,0x7E,0x00,0x00,0x3F,0xF8,0x00,
+	0x03,0xFF,0x80,0x00,0x01,0xF0,0x00,0xF8,0x00,0x00,0x3F,0xF8,0x00,
+	0x03,0xFF,0x80,0x00,0x00,0xF8,0x01,0xF0,0x00,0x00,0x3F,0xF8,0x00,
+	0x03,0xFF,0x80,0x00,0x00,0x78,0x01,0xE0,0x00,0x00,0x3F,0xF8,0x00,
+	0x07,0xFF,0x00,0x00,0x00,0x3C,0x03,0xC0,0x00,0x00,0x3F,0xFC,0x00,
+	0x07,0xFF,0x00,0x00,0x00,0x0E,0x07,0x00,0x00,0x00,0x1F,0xFC,0x00,
+	0x07,0xFF,0x00,0x00,0x00,0x07,0x0E,0x00,0x00,0x00,0x1F,0xFC,0x00,
+	0x07,0xFF,0x00,0x00,0x00,0x03,0x9C,0x00,0x00,0x00,0x1F,0xFC,0x00,
+	0x07,0xFF,0x00,0x00,0x00,0x01,0x98,0x00,0x00,0x00,0x1F,0xFC,0x00,
+	0x07,0xFF,0x00,0x00,0x00,0x00,0x60,0x00,0x00,0x00,0x1F,0xFC,0x00
+};
+
+/* per-player colors */
+static const rgb_t crosshair_colors[] =
+{
+	MAKE_RGB(0x40,0x40,0xff),
+	MAKE_RGB(0xff,0x40,0x40),
+	MAKE_RGB(0x40,0xff,0x40),
+	MAKE_RGB(0xff,0xff,0x40),
+	MAKE_RGB(0xff,0x40,0xff),
+	MAKE_RGB(0x40,0xff,0xff),
+	MAKE_RGB(0xff,0xff,0xff)
+};
+
+
+/*-------------------------------------------------
+    crosshair_init - initialize the crosshair
+    bitmaps and such
+-------------------------------------------------*/
+
+static void crosshair_init(void)
+{
+	input_port_entry *ipt;
+	int player;
+
+	/* determine who needs crosshairs */
+	crosshair_needed = 0x00;
+	for (ipt = Machine->input_ports; ipt->type != IPT_END; ipt++)
+		if (ipt->analog.crossaxis != CROSSHAIR_AXIS_NONE)
+			crosshair_needed |= 1 << ipt->player;
+
+	/* all visible by default */
+	crosshair_visible = crosshair_needed;
+
+	/* loop over each player and load or create a bitmap */
+	for (player = 0; player < MAX_PLAYERS; player++)
+		if (crosshair_needed & (1 << player))
+		{
+			char filename[20];
+
+			/* first try to load a bitmap for the crosshair */
+			sprintf(filename, "cross%d.png", player);
+			crosshair_bitmap[player] = render_load_png(NULL, filename, NULL, NULL);
+
+			/* if that didn't work, make one up */
+			if (crosshair_bitmap[player] == NULL)
+			{
+				rgb_t color = crosshair_colors[player];
+				int x, y;
+
+				/* allocate a blank bitmap to start with */
+				crosshair_bitmap[player] = bitmap_alloc_format(CROSSHAIR_RAW_SIZE, CROSSHAIR_RAW_SIZE, BITMAP_FORMAT_ARGB32);
+				fillbitmap(crosshair_bitmap[player], MAKE_ARGB(0x00,0xff,0xff,0xff), NULL);
+
+				/* extract the raw source data to it */
+				for (y = 0; y < CROSSHAIR_RAW_SIZE / 2; y++)
+				{
+					/* assume it is mirrored vertically */
+					UINT32 *dest0 = BITMAP_ADDR32(crosshair_bitmap[player], y, 0);
+					UINT32 *dest1 = BITMAP_ADDR32(crosshair_bitmap[player], CROSSHAIR_RAW_SIZE - 1 - y, 0);
+
+					/* extract to two rows simultaneously */
+					for (x = 0; x < CROSSHAIR_RAW_SIZE; x++)
+						if ((crosshair_raw_top[y * CROSSHAIR_RAW_ROWBYTES + x / 8] << (x % 8)) & 0x80)
+							dest0[x] = dest1[x] = MAKE_ARGB(0xff,0x00,0x00,0x00) | color;
+				}
+			}
+
+			/* create a texture to reference the bitmap */
+			crosshair_texture[player] = render_texture_alloc(crosshair_bitmap[player], NULL, 0, TEXFORMAT_ARGB32, render_texture_hq_scale, NULL);
+		}
+}
+
+
+/*-------------------------------------------------
+    video_crosshair_toggle - toggle crosshair
+    visibility
+-------------------------------------------------*/
+
+void video_crosshair_toggle(void)
+{
+	int player;
+
+	/* if we're all visible, turn all off */
+	if (crosshair_visible == crosshair_needed)
+		crosshair_visible = 0;
+
+	/* otherwise, turn on the first bit that isn't currently on and stop there */
+	else
+		for (player = 0; player < MAX_PLAYERS; player++)
+			if ((crosshair_needed & (1 << player)) && !(crosshair_visible & (1 << player)))
+			{
+				crosshair_visible |= 1 << player;
+				break;
+			}
+}
+
+
+/*-------------------------------------------------
+    crosshair_render - render the crosshairs
+-------------------------------------------------*/
+
+static void crosshair_render(void)
+{
+	float x[MAX_PLAYERS], y[MAX_PLAYERS];
+	input_port_entry *ipt;
+	int portnum = -1;
+	int player;
+	UINT8 tscale;
+
+	/* skip if not needed */
+	if (crosshair_visible == 0)
+		return;
+
+	/* animate via crosshair_animate */
+	crosshair_animate += 0x04;
+
+	/* compute a color scaling factor from the current animation value */
+	if (crosshair_animate < 0x80)
+		tscale = 0xa0 + (0x60 * (crosshair_animate & 0x7f) / 0x80);
+	else
+		tscale = 0xa0 + (0x60 * (~crosshair_animate & 0x7f) / 0x80);
+
+	/* read all the lightgun values */
+	for (ipt = Machine->input_ports; ipt->type != IPT_END; ipt++)
+	{
+		/* keep track of the port number */
+		if (ipt->type == IPT_PORT)
+			portnum++;
+
+		/* compute the values */
+		if (ipt->analog.crossaxis != CROSSHAIR_AXIS_NONE)
+		{
+			float value = (float)((readinputport(portnum) & ipt->mask) - ipt->analog.min) / (float)(ipt->analog.max - ipt->analog.min);
+			value = (value - 0.5f) * ipt->analog.crossscale + 0.5f;
+			value += ipt->analog.crossoffset;
+
+			/* switch off the axis */
+			switch (ipt->analog.crossaxis)
+			{
+				case CROSSHAIR_AXIS_X:
+					x[ipt->player] = value;
+					if (ipt->analog.crossaltaxis != 0)
+						y[ipt->player] = ipt->analog.crossaltaxis;
+					break;
+
+				case CROSSHAIR_AXIS_Y:
+					y[ipt->player] = value;
+					if (ipt->analog.crossaltaxis != 0)
+						x[ipt->player] = ipt->analog.crossaltaxis;
+					break;
+			}
+		}
+	}
+
+	/* draw all crosshairs */
+	for (player = 0; player < MAX_PLAYERS; player++)
+		if (crosshair_visible & (1 << player))
+		{
+			/* add a quad assuming a 4:3 screen (this is not perfect) */
+			render_screen_add_quad(0,
+						x[player] - 0.03f, y[player] - 0.04f,
+						x[player] + 0.03f, y[player] + 0.04f,
+						MAKE_ARGB(0xc0, tscale, tscale, tscale),
+						crosshair_texture[player], PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+		}
+}
+
+
+/*-------------------------------------------------
+    crosshair_free - free memory allocated for
+    the crosshairs
+-------------------------------------------------*/
+
+static void crosshair_free(void)
+{
+	int player;
+
+	/* free bitmaps and textures for each player */
+	for (player = 0; player < MAX_PLAYERS; player++)
+	{
+		if (crosshair_texture[player] != NULL)
+			render_texture_free(crosshair_texture[player]);
+		crosshair_texture[player] = NULL;
+
+		if (crosshair_bitmap[player] != NULL)
+			bitmap_free(crosshair_bitmap[player]);
+		crosshair_bitmap[player] = NULL;
+	}
 }
 
 

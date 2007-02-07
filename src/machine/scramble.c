@@ -33,6 +33,25 @@ MACHINE_RESET( sfx )
 	sfx_sh_init();
 }
 
+int monsterz_count = 0;
+MACHINE_RESET( monsterz )
+{
+/*
+// patch rom crc
+    UINT8 *ROM = memory_region(REGION_CPU1);
+    ROM[0x363f] = 0;
+    ROM[0x3640] = 0;
+    ROM[0x3641] = 0;
+
+    ROM[0xc5bc] = 0xaf;
+*/
+	machine_reset_scramble(machine);
+
+	sfx_sh_init();
+
+	monsterz_count = 0;
+}
+
 MACHINE_RESET( explorer )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
@@ -242,6 +261,18 @@ static ppi8255_interface sfx_ppi8255_intf =
 {
 	3, 									/* 3 chips */
 	{input_port_0_r, 0, soundlatch2_r},	/* Port A read */
+	{input_port_1_r, 0, 0},				/* Port B read */
+	{input_port_2_r, 0, 0},				/* Port C read */
+	{0, soundlatch_w, 0},				/* Port A write */
+	{0, scramble_sh_irqtrigger_w, 0},	/* Port B write */
+	{0, 0, 0}, 							/* Port C write */
+};
+
+/* extra chip for sample latch */
+static ppi8255_interface monsterz_ppi8255_intf =
+{
+	3, 									/* 3 chips */
+	{input_port_0_r, 0, 0},	/* Port A read */
 	{input_port_1_r, 0, 0},				/* Port B read */
 	{input_port_2_r, 0, 0},				/* Port C read */
 	{0, soundlatch_w, 0},				/* Port A write */
@@ -543,10 +574,8 @@ DRIVER_INIT( anteater )
 
 	RAM = memory_region(REGION_GFX1);
 
-	scratch = malloc(memory_region_length(REGION_GFX1));
+	scratch = malloc_or_die(memory_region_length(REGION_GFX1));
 
-	if (scratch)
-	{
 		memcpy(scratch, RAM, memory_region_length(REGION_GFX1));
 
 		for (i = 0; i < memory_region_length(REGION_GFX1); i++)
@@ -563,7 +592,6 @@ DRIVER_INIT( anteater )
 		}
 
 		free(scratch);
-	}
 }
 
 DRIVER_INIT( rescue )
@@ -582,10 +610,8 @@ DRIVER_INIT( rescue )
 
 	RAM = memory_region(REGION_GFX1);
 
-	scratch = malloc(memory_region_length(REGION_GFX1));
+	scratch = malloc_or_die(memory_region_length(REGION_GFX1));
 
-	if (scratch)
-	{
 		memcpy(scratch, RAM, memory_region_length(REGION_GFX1));
 
 		for (i = 0; i < memory_region_length(REGION_GFX1); i++)
@@ -602,7 +628,6 @@ DRIVER_INIT( rescue )
 		}
 
 		free(scratch);
-	}
 }
 
 DRIVER_INIT( minefld )
@@ -620,10 +645,8 @@ DRIVER_INIT( minefld )
 
 	RAM = memory_region(REGION_GFX1);
 
-	scratch = malloc(memory_region_length(REGION_GFX1));
+	scratch = malloc_or_die(memory_region_length(REGION_GFX1));
 
-	if (scratch)
-	{
 		memcpy(scratch, RAM, memory_region_length(REGION_GFX1));
 
 		for (i = 0; i < memory_region_length(REGION_GFX1); i++)
@@ -641,7 +664,6 @@ DRIVER_INIT( minefld )
 		}
 
 		free(scratch);
-	}
 }
 
 DRIVER_INIT( losttomb )
@@ -660,10 +682,8 @@ DRIVER_INIT( losttomb )
 
 	RAM = memory_region(REGION_GFX1);
 
-	scratch = malloc(memory_region_length(REGION_GFX1));
+	scratch = malloc_or_die(memory_region_length(REGION_GFX1));
 
-	if (scratch)
-	{
 		memcpy(scratch, RAM, memory_region_length(REGION_GFX1));
 
 		for (i = 0; i < memory_region_length(REGION_GFX1); i++)
@@ -680,7 +700,6 @@ DRIVER_INIT( losttomb )
 		}
 
 		free(scratch);
-	}
 }
 
 DRIVER_INIT( superbon )
@@ -830,6 +849,15 @@ DRIVER_INIT( mrkougb )
 DRIVER_INIT( sfx )
 {
 	ppi8255_init(&sfx_ppi8255_intf);
+}
+
+DRIVER_INIT( monsterz )
+{
+	ppi8255_init(&monsterz_ppi8255_intf);
+
+	/* extra ROM */
+	memory_install_read8_handler(1, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, MRA8_BANK1);
+	memory_set_bankptr(1, memory_region(REGION_CPU2) + 0x3000);
 }
 
 static READ8_HANDLER( scorpion_prot_r )

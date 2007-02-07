@@ -391,7 +391,7 @@ static void psikyosh_drawbackground( mame_bitmap *bitmap, const rectangle *clipr
 /* code is index of first tile and incremented across rows then down columns (adjusting for flip obviously) */
 /* sx and sy is top-left of entire sprite regardless of flip */
 /* Note that Level 5-4 of sbomberb boss is perfect! (Alpha blended zoomed) as well as S1945II logo */
-/* pixel is only plotted if z is >= priority_buffer->line[y][x] */
+/* pixel is only plotted if z is >= priority_buffer[y][x] */
 void psikyosh_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 		unsigned int code,unsigned int color,int flipx,int flipy,int offsx,int offsy,
 		const rectangle *clip,int transparency,int transparent_color,
@@ -406,7 +406,7 @@ void psikyosh_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 	profiler_mark(PROFILER_DRAWGFX);
 
 	assert(transparency == TRANSPARENCY_PEN || transparency == TRANSPARENCY_ALPHA || transparency == TRANSPARENCY_ALPHARANGE);
-	assert(dest_bmp->depth == 32);
+	assert(dest_bmp->bpp == 32);
 
 	/* KW 991012 -- Added code to force clip to bitmap boundary */
 	if(clip)
@@ -693,7 +693,7 @@ void psikyosh_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 				for( ypixel=0; ypixel<gfx->height; ypixel++ )
 				{
 					UINT8 *source = gfx->gfxdata + (source_base+ypixel) * gfx->line_modulo;
-					UINT8 *dest = (UINT8 *)zoom_bitmap->line[ypixel + ytile*gfx->height];
+					UINT8 *dest = BITMAP_ADDR8(zoom_bitmap, ypixel + ytile*gfx->height, 0);
 
 					for( xpixel=0; xpixel<gfx->width; xpixel++ )
 					{
@@ -771,9 +771,9 @@ void psikyosh_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = (UINT8 *)zoom_bitmap->line[y_index>>10];
-								UINT32 *dest = (UINT32 *)dest_bmp->line[y];
-								UINT16 *pri = (UINT16 *)z_bitmap->line[y];
+								UINT8 *source = BITMAP_ADDR8(zoom_bitmap, y_index>>10, 0);
+								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
+								UINT16 *pri = BITMAP_ADDR16(z_bitmap, y, 0);
 
 								int x, x_index = x_index_base;
 								for( x=sx; x<ex; x++ )
@@ -797,8 +797,8 @@ void psikyosh_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = (UINT8 *)zoom_bitmap->line[y_index>>10];
-								UINT32 *dest = (UINT32 *)dest_bmp->line[y];
+								UINT8 *source = BITMAP_ADDR8(zoom_bitmap, y_index>>10, 0);
+								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
 								for( x=sx; x<ex; x++ )
@@ -820,9 +820,9 @@ void psikyosh_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = (UINT8 *)zoom_bitmap->line[y_index>>10];
-								UINT32 *dest = (UINT32 *)dest_bmp->line[y];
-								UINT16 *pri = (UINT16 *)z_bitmap->line[y];
+								UINT8 *source = BITMAP_ADDR8(zoom_bitmap, y_index>>10, 0);
+								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
+								UINT16 *pri = BITMAP_ADDR16(z_bitmap, y, 0);
 
 								int x, x_index = x_index_base;
 								for( x=sx; x<ex; x++ )
@@ -846,8 +846,8 @@ void psikyosh_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = (UINT8 *)zoom_bitmap->line[y_index>>10];
-								UINT32 *dest = (UINT32 *)dest_bmp->line[y];
+								UINT8 *source = BITMAP_ADDR8(zoom_bitmap, y_index>>10, 0);
+								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
 								for( x=sx; x<ex; x++ )
@@ -869,9 +869,9 @@ void psikyosh_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = (UINT8 *)zoom_bitmap->line[y_index>>10];
-								UINT32 *dest = (UINT32 *)dest_bmp->line[y];
-								UINT16 *pri = (UINT16 *)z_bitmap->line[y];
+								UINT8 *source = BITMAP_ADDR8(zoom_bitmap, y_index>>10, 0);
+								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
+								UINT16 *pri = BITMAP_ADDR16(z_bitmap, y, 0);
 
 								int x, x_index = x_index_base;
 								for( x=sx; x<ex; x++ )
@@ -899,8 +899,8 @@ void psikyosh_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = (UINT8 *)zoom_bitmap->line[y_index>>10];
-								UINT32 *dest = (UINT32 *)dest_bmp->line[y];
+								UINT8 *source = BITMAP_ADDR8(zoom_bitmap, y_index>>10, 0);
+								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
 								for( x=sx; x<ex; x++ )
@@ -1053,13 +1053,10 @@ static void psikyosh_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect
 
 VIDEO_START( psikyosh )
 {
-	zoom_bitmap = 0, z_bitmap = 0;
-	if ((zoom_bitmap = auto_bitmap_alloc_depth(16*16, 16*16,8)) == 0) /* hw can do 16-tile wide sprites */
-		return 1;
+	zoom_bitmap = auto_bitmap_alloc_format(16*16, 16*16, BITMAP_FORMAT_INDEXED8);
 
 	/* Need 16-bit z-buffer */
-	if ((z_bitmap = auto_bitmap_alloc_depth(Machine->screen[0].width, Machine->screen[0].height, 16)) == 0)
-		return 1;
+	z_bitmap = auto_bitmap_alloc_format(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
 
 	Machine->gfx[1]->color_granularity=16; /* 256 colour sprites with palette selectable on 16 colour boundaries */
 
@@ -1086,16 +1083,12 @@ static void psikyosh_prelineblend( mame_bitmap *bitmap, const rectangle *cliprec
 	UINT32 *linefill = psikyosh_bgram; /* Per row */
 	int x,y;
 
-	if (bitmap->depth != 32)
-	{
-		popmessage("psikyosh_prelineblend needs 32-bit depth");
-		return;
-	}
+	assert(bitmap->bpp == 32);
 
 	profiler_mark(PROFILER_USER1);
 	for (y = cliprect->min_y; y <= cliprect->max_y; y += 1) {
 
-		dstline = (UINT32 *)(bitmap->line[y]);
+		dstline = BITMAP_ADDR32(bitmap, y, 0);
 
 		if(linefill[y]&0xff) /* Row */
 			for (x = cliprect->min_x; x <= cliprect->max_x; x += 1)
@@ -1111,12 +1104,12 @@ static void psikyosh_postlineblend( mame_bitmap *bitmap, const rectangle *clipre
 	UINT32 *lineblend = psikyosh_bgram+0x400/4; /* Per row */
 	int x,y;
 
-	assert(bitmap->depth == 32);
+	assert(bitmap->bpp == 32);
 
 	profiler_mark(PROFILER_USER2);
 	for (y = cliprect->min_y; y <= cliprect->max_y; y += 1) {
 
-		dstline = (UINT32 *)(bitmap->line[y]);
+		dstline = BITMAP_ADDR32(bitmap, y, 0);
 
 		if(lineblend[y]&0x80) /* Row */
 		{

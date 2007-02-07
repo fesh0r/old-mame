@@ -11,7 +11,7 @@ Additional tweaking by Jarek Burczynski
 
 UINT16 *magmax_scroll_x;
 UINT16 *magmax_scroll_y;
-unsigned short magmax_vreg;
+UINT16 magmax_vreg;
 static int flipscreen = 0;
 
 static UINT32 pens_line_tab[256];
@@ -20,7 +20,7 @@ static UINT32 *prom_tab = NULL;
 
 static void blit_horiz_pixel_line(mame_bitmap *b,int x,int y,int w, UINT32* pens)
 {
-	UINT16* lineadr = &(((UINT16*)b->line[y])[x]);
+	UINT16* lineadr = BITMAP_ADDR16(b, y, x);
 	while(w-->0)
 	{
 		*lineadr++ = (UINT16)(*pens);
@@ -92,11 +92,13 @@ VIDEO_START( magmax )
 	int i,v;
 	unsigned char * prom14D = memory_region(REGION_USER2);
 
+	/* Set up save state */
+	state_save_register_global(magmax_vreg);
+
 	prom_tab = auto_malloc(256 * sizeof(UINT32));
 
 	/* Allocate temporary bitmap */
- 	if ((tmpbitmap = auto_bitmap_alloc(256,256)) == 0)
-		return 1;
+ 	tmpbitmap = auto_bitmap_alloc(256,256);
 
 	for (i=0; i<256; i++)
 	{

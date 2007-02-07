@@ -5,7 +5,7 @@ Nintendo VS UniSystem and DualSystem - (c) 1984 Nintendo of America
     Portions of this code are heavily based on
     Brad Oliver's MESS implementation of the NES.
 
-RP2C04-001:
+RP2C04-0001:
 - Baseball
 - Freedom Force
 - Gradius
@@ -15,7 +15,7 @@ RP2C04-001:
 - Platoon
 - Super Xevious
 
-RP2C04-002:
+RP2C04-0002:
 - Castlevania
 - Ladies golf
 - Mach Rider (Endurance Course)
@@ -24,21 +24,21 @@ RP2C04-002:
 - Stroke N' Match Golf
 - Wrecking Crew
 
-RP2C04-003:
+RP2C04-0003:
 - Dr mario
 - Excite Bike
 - Goonies
 - Soccer
 - TKO Boxing
 
-RP2c05-004:
+RP2C04-0004:
 - Clu Clu Land
 - Excite Bike (Japan)
 - Ice Climber
 - Ice Climber Dual (Japan)
 - Super Mario Bros.
 
-Rcp2c03b:
+RC2C03B:
 - Battle City
 - Duck Hunt
 - Mahjang
@@ -1505,10 +1505,10 @@ INPUT_PORTS_START( duckhunt )
 	PORT_DIPSETTING(	0xc0, "100000" )
 
 	PORT_START	/* IN4 - FAKE - Gun X pos */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(30)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(30)
 
 	PORT_START	/* IN5 - FAKE - Gun Y pos */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( hogalley )
@@ -1539,10 +1539,10 @@ INPUT_PORTS_START( hogalley )
 	PORT_DIPSETTING(	0xc0, "100000" )
 
 	PORT_START	/* IN4 - FAKE - Gun X pos */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(30)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(30)
 
 	PORT_START	/* IN5 - FAKE - Gun Y pos */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( vsgshoe )
@@ -1574,10 +1574,10 @@ INPUT_PORTS_START( vsgshoe )
 	PORT_DIPSETTING(	0x80, "100000" )
 
 	PORT_START	/* IN4 - FAKE - Gun X pos */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(30)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(30)
 
 	PORT_START	/* IN5 - FAKE - Gun Y pos */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( vsfdf )
@@ -1610,10 +1610,10 @@ INPUT_PORTS_START( vsfdf )
 	PORT_DIPSETTING(	0x80, DEF_STR( On ) )
 
 	PORT_START	/* IN4 - FAKE - Gun X pos */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(30)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(30)
 
 	PORT_START	/* IN5 - FAKE - Gun Y pos */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( vstetris )
@@ -2091,15 +2091,16 @@ static MACHINE_DRIVER_START( vsnes )
 	MDRV_CPU_ADD(N2A03,N2A03_DEFAULTCLOCK)
 	MDRV_CPU_PROGRAM_MAP(vsnes_cpu1_map,0)
 								/* some carts also trigger IRQs */
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(( ( ( 1.0 / 60.0 ) * 1000000.0 ) / 262 ) * ( 262 - 239 ))
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(( ( ( 1.0 / 60.0 ) * 1000000.0 ) / 262 ) * ( 262 - 239 )))
 
 	MDRV_MACHINE_RESET(vsnes)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 30*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
 	MDRV_GFXDECODE(nes_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(8*4*16)
 	MDRV_COLORTABLE_LENGTH(4*8)
@@ -2129,8 +2130,8 @@ static MACHINE_DRIVER_START( vsdual )
 	MDRV_CPU_ADD(N2A03,N2A03_DEFAULTCLOCK)
 	MDRV_CPU_PROGRAM_MAP(vsnes_cpu2_map,0)
 								/* some carts also trigger IRQs */
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(( ( ( 1.0 / 60.0 ) * 1000000.0 ) / 262 ) * ( 262 - 239 ))
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(( ( ( 1.0 / 60.0 ) * 1000000.0 ) / 262 ) * ( 262 - 239 )))
 
 	MDRV_MACHINE_RESET(vsdual)
 
@@ -2142,16 +2143,18 @@ static MACHINE_DRIVER_START( vsdual )
 	MDRV_DEFAULT_LAYOUT(layout_dualhsxs)
 
 	MDRV_SCREEN_ADD("top", 0x000)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(( ( ( 1.0 / 60.0 ) * 1000000.0 ) / 262 ) * ( 262 - 239 )))
-	MDRV_SCREEN_MAXSIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
+	MDRV_SCREEN_SIZE(32*8, 32*8)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
 
 	MDRV_SCREEN_ADD("bottom", 0x000)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(( ( ( 1.0 / 60.0 ) * 1000000.0 ) / 262 ) * ( 262 - 239 )))
-	MDRV_SCREEN_MAXSIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
+	MDRV_SCREEN_SIZE(32*8, 32*8)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
 
 	MDRV_PALETTE_INIT(vsdual)
 	MDRV_VIDEO_START(vsdual)
@@ -2183,6 +2186,18 @@ ROM_START( suprmrio)
 	ROM_REGION( 0x10000,REGION_CPU1, 0 ) /* 6502 memory */
 	ROM_LOAD( "mds-sm4.1d",  0x8000, 0x2000, CRC(be4d5436) SHA1(08162a7c987f1939d09bebdb676f596c86abf465) )
 	ROM_LOAD( "mds-sm4.1c",  0xa000, 0x2000, CRC(0011fc5a) SHA1(5c2c49938a12affc03e64e5bdab307998be20020) )
+	ROM_LOAD( "mds-sm4.1b",  0xc000, 0x2000, CRC(b1b87893) SHA1(8563ceaca664cf4495ef1020c07179ca7e4af9f3) )
+	ROM_LOAD( "mds-sm4.1a",  0xe000, 0x2000, CRC(1abf053c) SHA1(f17db88ce0c9bf1ed88dc16b9650f11d10835cec) )
+
+	ROM_REGION( 0x4000,REGION_GFX1, 0  ) /* PPU memory */
+	ROM_LOAD( "mds-sm4.2b",  0x0000, 0x2000, CRC(42418d40) SHA1(22ab61589742cfa4cc6856f7205d7b4b8310bc4d) )
+	ROM_LOAD( "mds-sm4.2a",  0x2000, 0x2000, CRC(15506b86) SHA1(69ecf7a3cc8bf719c1581ec7c0d68798817d416f) )
+ROM_END
+
+ROM_START( suprmria )
+	ROM_REGION( 0x10000,REGION_CPU1, 0 ) /* 6502 memory */
+	ROM_LOAD( "mds-sm4.1d",  0x8000, 0x2000, CRC(be4d5436) SHA1(08162a7c987f1939d09bebdb676f596c86abf465) )
+	ROM_LOAD( "mds-sm4.1c",  0xa000, 0x2000, CRC(5e3fb550) SHA1(de4494e4dd52f7f7b04cf1d9019fd89fb90eaca9) ) /* this rom differs by TWO BYTES from the other version in suprmrio. this version has been dumped/observed on two known boards and one anonymous board */
 	ROM_LOAD( "mds-sm4.1b",  0xc000, 0x2000, CRC(b1b87893) SHA1(8563ceaca664cf4495ef1020c07179ca7e4af9f3) )
 	ROM_LOAD( "mds-sm4.1a",  0xe000, 0x2000, CRC(1abf053c) SHA1(f17db88ce0c9bf1ed88dc16b9650f11d10835cec) )
 
@@ -2814,6 +2829,7 @@ GAME( 1985, machridj, machridr, vsnes,   machridj, vspinbal, ROT0, "Nintendo",  
 GAME( 1986, rbibb,    0,        vsnes,   rbibb,    rbibb,    ROT0, "Namco",     "Vs. Atari R.B.I. Baseball (set 1)", 0 )
 GAME( 1986, rbibba,	  rbibb,    vsnes,   rbibb,    rbibb,    ROT0, "Namco",     "Vs. Atari R.B.I. Baseball (set 2)", 0 )
 GAME( 1986, suprmrio, 0,        vsnes,   suprmrio, suprmrio, ROT0, "Nintendo",  "Vs. Super Mario Bros.", 0 )
+GAME( 1986, suprmria, suprmrio, vsnes,   suprmrio, suprmrio, ROT0, "Nintendo",  "Vs. Super Mario Bros. (alt)", 0 )
 GAME( 1985, vsskykid, 0,        vsnes,   vsskykid, MMC3,	 ROT0, "Namco",     "Vs. Super SkyKid" , 0 )
 GAME( 1987, tkoboxng, 0,        vsnes,   tkoboxng, tkoboxng, ROT0, "Namco LTD.","Vs. TKO Boxing", GAME_WRONG_COLORS | GAME_IMPERFECT_GRAPHICS )
 GAME( 1984, smgolf,   0,        vsnes,   golf4s,   machridr, ROT0, "Nintendo",  "Vs. Stroke & Match Golf (Men Version)", 0 )

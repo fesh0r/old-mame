@@ -4,7 +4,7 @@
 
     Functions which handle the CPU memory access.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
     Caveats:
@@ -99,6 +99,7 @@
 
 #define MEM_DUMP		(0)
 #define VERBOSE			(0)
+#define ALLOW_ONLY_AUTO_MALLOC_BANKS	0
 
 
 #if VERBOSE
@@ -881,6 +882,8 @@ void memory_set_bankptr(int banknum, void *base)
 		fatalerror("memory_set_bankptr called with dynamic bank %d", banknum);
 	if (!base)
 		fatalerror("memory_set_bankptr called NULL base");
+	if (ALLOW_ONLY_AUTO_MALLOC_BANKS)
+		validate_auto_malloc_memory(base, bankdata[banknum].end - bankdata[banknum].base + 1);
 
 	/* set the base */
 	bank_ptr[banknum] = base;
@@ -2177,7 +2180,7 @@ static void register_for_save(int cpunum, int spacenum, offs_t start, void *base
 	char name[256];
 
 	sprintf(name, "%d.%08x-%08x", spacenum, start, (int)(start + numbytes - 1));
-	state_save_register_memory("memory", cpunum, name, base, bytes_per_element, numbytes / bytes_per_element);
+	state_save_register_memory("memory", cpunum, name, base, bytes_per_element, (UINT32)numbytes / bytes_per_element);
 }
 
 

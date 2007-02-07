@@ -80,9 +80,6 @@ VIDEO_START( targeth )
 	pant[0] = tilemap_create(get_tile_info_targeth_screen0,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,64,32);
 	pant[1] = tilemap_create(get_tile_info_targeth_screen1,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,64,32);
 
-	if (!pant[0] || !pant[1])
-		return 1;
-
 	tilemap_set_transparent_pen(pant[0],0);
 
 	return 0;
@@ -152,19 +149,5 @@ VIDEO_UPDATE( targeth )
 	tilemap_draw(bitmap,cliprect,pant[0],0,0);
 	targeth_draw_sprites(bitmap,cliprect);
 
-	/* draw crosshairs */
-	{
-		int posx, posy;
-
-		/* 1P Gun */
-		posx = readinputport(0) & 0x1ff;
-		posy = readinputport(1) & 0x0ff;
-		draw_crosshair(bitmap, posx - 0x17, posy + 1, cliprect, 0);
-
-		/* 2P Gun */
-		posx = readinputport(2) & 0x1ff;
-		posy = readinputport(3) & 0x0ff;
-		draw_crosshair(bitmap, posx - 0x17, posy + 1, cliprect, 1);
-	}
 	return 0;
 }

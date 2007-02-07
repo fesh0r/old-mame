@@ -37,25 +37,7 @@ write
 
 #include "driver.h"
 #include "sound/ay8910.h"
-
-
-extern unsigned char *marineb_column_scroll;
-extern int marineb_active_low_flipscreen;
-
-MACHINE_RESET( espial );
-PALETTE_INIT( espial );
-
-WRITE8_HANDLER( marineb_palbank0_w );
-WRITE8_HANDLER( marineb_palbank1_w );
-
-WRITE8_HANDLER( marineb_flipscreen_x_w );
-WRITE8_HANDLER( marineb_flipscreen_y_w );
-
-VIDEO_UPDATE( marineb );
-VIDEO_UPDATE( changes );
-VIDEO_UPDATE( springer );
-VIDEO_UPDATE( hoccer );
-VIDEO_UPDATE( hopprobo );
+#include "includes/espial.h"
 
 
 static MACHINE_RESET( marineb )
@@ -549,15 +531,16 @@ static MACHINE_DRIVER_START( marineb )
 	MDRV_CPU_IO_MAP(0,marineb_writeport)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(5000)	/* frames per second, vblank duration */
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(5000)	/* frames per second, vblank duration */)
 
 	MDRV_MACHINE_RESET(marineb)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(marineb_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(256)
 

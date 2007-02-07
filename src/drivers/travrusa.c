@@ -342,15 +342,16 @@ static MACHINE_DRIVER_START( travrusa )
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(56.75)
-	MDRV_VBLANK_DURATION(1790)	/* accurate frequency, measured on a Moon Patrol board, is 56.75Hz. */
+	MDRV_SCREEN_REFRESH_RATE(56.75)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(1790)	/* accurate frequency, measured on a Moon Patrol board, is 56.75Hz. */)
 				/* the Lode Runner manual (similar but different hardware) */
 				/* talks about 55Hz and 1790ms vblank duration. */
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(1*8, 31*8-1, 0*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 0*8, 32*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 
 	MDRV_PALETTE_LENGTH(128+16)
@@ -494,10 +495,8 @@ DRIVER_INIT( motorace )
 {
 	int A,j;
 	unsigned char *rom = memory_region(REGION_CPU1);
-	UINT8 *buffer = malloc(0x2000);
+	UINT8 *buffer = malloc_or_die(0x2000);
 
-	if (buffer)
-	{
 		memcpy(buffer,rom,0x2000);
 
 		/* The first CPU ROM has the address and data lines scrambled */
@@ -508,7 +507,6 @@ DRIVER_INIT( motorace )
 		}
 
 		free(buffer);
-	}
 }
 
 static DRIVER_INIT( shtridra )

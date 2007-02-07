@@ -2,7 +2,7 @@
 //
 //  winalloc.c - Win32 memory allocation routines
 //
-//  Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -14,7 +14,7 @@
 #include <windows.h>
 
 // MAME headers
-#include "mamecore.h"
+#include "osdcore.h"
 
 // undefine any redefines we have in the prefix
 #undef malloc
@@ -52,12 +52,20 @@ struct _memory_entry
 {
 	memory_entry *	next;
 	memory_entry *	prev;
-	UINT32			size;
+	size_t			size;
 	void *			base;
 	const char *	file;
 	int				line;
 	int				id;
 };
+
+
+
+//============================================================
+//  GLOBAL VARIABLES
+//============================================================
+
+int winalloc_in_main_code = FALSE;
 
 
 
@@ -246,7 +254,13 @@ void *realloc_file_line(void *memory, size_t size, const char *file, int line)
 		{
 			memory_entry *entry = find_entry(memory);
 			if (entry == NULL)
-				fprintf(stderr, "Error: realloc a non-existant block\n");
+			{
+				if (winalloc_in_main_code)
+				{
+					fprintf(stderr, "Error: realloc a non-existant block\n");
+					osd_break_into_debugger("Error: realloc a non-existant block");
+				}
+			}
 			else
 				memcpy(newmemory, memory, (size < entry->size) ? size : entry->size);
 		}
@@ -278,7 +292,11 @@ void CLIB_DECL free(void *memory)
 	entry = find_entry(memory);
 	if (entry == NULL)
 	{
-		fprintf(stderr, "Error: free a non-existant block\n");
+		if (winalloc_in_main_code)
+		{
+			fprintf(stderr, "Error: free a non-existant block\n");
+			osd_break_into_debugger("Error: free a non-existant block");
+		}
 		return;
 	}
 	free_entry(entry);
@@ -300,7 +318,11 @@ size_t CLIB_DECL _msize(void *memory)
 	memory_entry *entry = find_entry(memory);
 	if (entry == NULL)
 	{
-		fprintf(stderr, "Error: msize a non-existant block\n");
+		if (winalloc_in_main_code)
+		{
+			fprintf(stderr, "Error: msize a non-existant block\n");
+			osd_break_into_debugger("Error: msize a non-existant block");
+		}
 		return 0;
 	}
 	return entry->size;

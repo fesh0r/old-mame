@@ -1686,10 +1686,10 @@ void megadrive_init_io(void)
 	megadrive_io_tx_regs[1] = 0xff;
 	megadrive_io_tx_regs[2] = 0xff;
 
-	if (Machine->gamedrv->construct_ipt==construct_ipt_megadri6)
+	if (Machine->gamedrv->ipt==ipt_megadri6)
 		init_megadri6_io();
 
-	if (Machine->gamedrv->construct_ipt==construct_ipt_ssf2ghw)
+	if (Machine->gamedrv->ipt==ipt_ssf2ghw)
 		init_megadri6_io();
 }
 
@@ -3758,7 +3758,7 @@ void genesis_render_videobuffer_to_screenbuffer(int scanline)
 {
 	UINT16*lineptr;
 	int x;
-	lineptr = render_bitmap->line[scanline];
+	lineptr = BITMAP_ADDR16(render_bitmap, scanline, 0);
 
 	if (!MEGADRIVE_REG0C_SHADOW_HIGLIGHT)
 	{
@@ -3827,9 +3827,9 @@ INLINE UINT16 get_hposition(void)
 
 	time_elapsed_since_scanline_timer = mame_timer_timeelapsed(scanline_timer);
 
-	if (time_elapsed_since_scanline_timer.subseconds<(1000000000000000000LL/megadriv_framerate /megadrive_total_scanlines))
+	if (time_elapsed_since_scanline_timer.subseconds<(MAX_SUBSECONDS/megadriv_framerate /megadrive_total_scanlines))
 	{
-		value4 = (UINT16)(megadrive_max_hposition*((double)(time_elapsed_since_scanline_timer.subseconds) / (double)(1000000000000000000LL/megadriv_framerate /megadrive_total_scanlines)));
+		value4 = (UINT16)(megadrive_max_hposition*((double)(time_elapsed_since_scanline_timer.subseconds) / (double)(MAX_SUBSECONDS/megadriv_framerate /megadrive_total_scanlines)));
 	}
 	else /* in some cases (probably due to rounding errors) we get some stupid results (the odd huge value where the time elapsed is much higher than the scanline time??!).. hopefully by clamping the result to the maximum we limit errors */
 	{
@@ -4142,7 +4142,7 @@ static void scanline_timer_callback(int num)
 	{
 		genesis_scanline_counter++;
 //      mame_printf_debug("scanline %d\n",genesis_scanline_counter);
-		timer_adjust(scanline_timer,  SUBSECONDS_TO_DOUBLE(1000000000000000000LL/megadriv_framerate/megadrive_total_scanlines), 0, 0);
+		timer_adjust(scanline_timer,  SUBSECONDS_TO_DOUBLE(MAX_SUBSECONDS/megadriv_framerate/megadrive_total_scanlines), 0, 0);
 
 		timer_adjust(render_timer,  TIME_IN_USEC(1), 0, 0);
 
@@ -4425,7 +4425,7 @@ int megadrive_z80irq_hpos = 320;
 					count++;
 					count &=(0xffff>>1);
 
-					lineptr = render_bitmap->line[y*8+yy];
+					lineptr = BITMAP_ADDR16(render_bitmap, y*8+yy, 0);
 
 					//lineptr[x*8+xx*2]   = (dat & 0xf0)>>4;
 					//lineptr[x*8+xx*2+1] = (dat & 0x0f)>>0;
@@ -4451,7 +4451,7 @@ int megadrive_z80irq_hpos = 320;
 		UINT64 frametime;
 
 	//  /* reference */
-		frametime = 1000000000000000000LL/megadriv_framerate;
+		frametime = MAX_SUBSECONDS/megadriv_framerate;
 
 		time_elapsed_since_crap = mame_timer_timeelapsed(frame_timer);
 		xxx = MAME_TIME_TO_CYCLES(0,time_elapsed_since_crap);
@@ -4501,14 +4501,15 @@ MACHINE_DRIVER_START( megadriv )
 	MDRV_CPU_PROGRAM_MAP(z80_readmem,z80_writemem)
 	/* IRQ handled via the timers */
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(0) // Vblank handled manually.
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(0)) // Vblank handled manually.
 	MDRV_MACHINE_RESET(megadriv_reset)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER|VIDEO_RGB_DIRECT)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 
 	MDRV_SCREEN_SIZE(64*8, 64*8)
-	MDRV_VISIBLE_AREA(0, 32*8-1, 0, 28*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 0, 28*8-1)
 
 	MDRV_NVRAM_HANDLER(megadriv)
 
@@ -4547,7 +4548,7 @@ MACHINE_DRIVER_END
 MACHINE_DRIVER_START( megadpal )
 	MDRV_IMPORT_FROM(megadriv)
 
-	MDRV_FRAMES_PER_SECOND(50)
+	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( _32x )
@@ -4597,7 +4598,7 @@ void megadriv_init_common(void)
 
 	cpunum_set_info_fct(0, CPUINFO_PTR_M68K_TAS_CALLBACK, (void *)megadriv_tas_callback);
 
-	if ((Machine->gamedrv->construct_ipt==construct_ipt_megadri6) || (Machine->gamedrv->construct_ipt==construct_ipt_ssf2ghw))
+	if ((Machine->gamedrv->ipt==ipt_megadri6) || (Machine->gamedrv->ipt==ipt_ssf2ghw))
 	{
 		megadrive_io_read_data_port_ptr	= megadrive_io_read_data_port_6button;
 		megadrive_io_write_data_port_ptr = megadrive_io_write_data_port_6button;

@@ -272,9 +272,6 @@ VIDEO_START( wink )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 32, 32);
 
-	if ( !bg_tilemap )
-		return 1;
-
 	return 0;
 }
 
@@ -334,16 +331,17 @@ static MACHINE_DRIVER_START( wink )
 	MDRV_CPU_IO_MAP(wink_sound_io,0)
 	MDRV_CPU_PERIODIC_INT(wink_sound, TIME_IN_HZ(15625))
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(generic_1fill)
 	MDRV_MACHINE_RESET(wink)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(32)
 
@@ -395,12 +393,10 @@ static DRIVER_INIT( wink )
 {
 	unsigned int i;
 	UINT8 *ROM = memory_region(REGION_CPU1);
-	UINT8 *buffer = malloc(0x8000);
+	UINT8 *buffer = malloc_or_die(0x8000);
 
 	// protection module reverse engineered by HIGHWAYMAN
 
-	if (buffer)
-	{
 		memcpy(buffer,ROM,0x8000);
 
 		for (i = 0x0000; i <= 0x1fff; i++)
@@ -416,7 +412,6 @@ static DRIVER_INIT( wink )
 			ROM[i] = buffer[BITSWAP16(i,15,14,13, 11,12, 7, 9, 8,10, 6, 4, 5, 1, 2, 3, 0)];
 
 		free(buffer);
-	}
 
 	for (i = 0; i < 0x8000; i++)
 		ROM[i] += BITSWAP8(i & 0xff, 7,5,3,1,6,4,2,0);

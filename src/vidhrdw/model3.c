@@ -58,7 +58,6 @@ static void traverse_root_node(UINT32 address);
 extern int model3_irq_state;
 
 extern int model3_step;
-extern int model3_draw_crosshair;
 
 extern UINT32 *model3_vrom;
 
@@ -122,12 +121,7 @@ VIDEO_START( model3 )
 	int j,t;
 
 	bitmap3d = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
-	if (!bitmap3d)
-		return 1;
-
-	zbuffer = auto_bitmap_alloc_depth(Machine->screen[0].width, Machine->screen[0].height, 32);
-	if (!zbuffer)
-		return 1;
+	zbuffer = auto_bitmap_alloc_format(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED32);
 
 	m3_char_ram = auto_malloc(0x100000);
 	m3_tile_ram = auto_malloc(0x8000);
@@ -192,7 +186,7 @@ static void draw_tile_4bit(mame_bitmap *bitmap, int tx, int ty, int tilenum)
 	tile = &tile_base[tile_index];
 
 	for(y = ty; y < ty+8; y++) {
-		UINT16 *d = (UINT16*)bitmap->line[y^1];
+		UINT16 *d = BITMAP_ADDR16(bitmap, y^1, 0);
 		for(x = tx; x < tx+8; x+=2) {
 			UINT8 tile0, tile1;
 			UINT16 pix0, pix1;
@@ -227,7 +221,7 @@ static void draw_tile_8bit(mame_bitmap *bitmap, int tx, int ty, int tilenum)
 	tile = &tile_base[tile_index];
 
 	for(y = ty; y < ty+8; y++) {
-		UINT16 *d = (UINT16*)bitmap->line[y];
+		UINT16 *d = BITMAP_ADDR16(bitmap, y, 0);
 		int xx = 0;
 		for(x = tx; x < tx+8; x++) {
 			UINT8 tile0;
@@ -249,7 +243,7 @@ static void draw_texture_sheet(mame_bitmap *bitmap, const rectangle *cliprect)
 	int x,y;
 	for(y = cliprect->min_y; y <= cliprect->max_y; y++)
 	{
-		UINT16 *d = (UINT16*)bitmap->line[y];
+		UINT16 *d = BITMAP_ADDR16(bitmap, y, 0);
 		int index = (y*2)*2048;
 		for(x = cliprect->min_x; x <= cliprect->max_x; x++) {
 			UINT16 pix = texture_ram[0][index];
@@ -340,8 +334,8 @@ static void copy_screen(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int x,y;
 	for(y=cliprect->min_y; y <= cliprect->max_y; y++) {
-		UINT16 *d = (UINT16*)bitmap->line[y];
-		UINT16 *s = (UINT16*)bitmap3d->line[y];
+		UINT16 *d = BITMAP_ADDR16(bitmap, y, 0);
+		UINT16 *s = BITMAP_ADDR16(bitmap3d, y, 0);
 		for(x=cliprect->min_x; x <= cliprect->max_x; x++) {
 			UINT16 pix = s[x];
 			if(!(pix & 0x8000)) {
@@ -421,16 +415,6 @@ VIDEO_UPDATE( model3 )
 		draw_layer(bitmap3d, cliprect, 0, (model3_layer_enable >> 0) & 0x1);
 	}
 	//copy_screen(bitmap, cliprect);
-
-	if(model3_draw_crosshair) {
-		int gun1_x, gun1_y, gun2_x, gun2_y;
-		gun1_x = readinputport(5);
-		gun1_y = readinputport(6);
-		gun2_x = readinputport(7);
-		gun2_y = readinputport(8);
-		draw_crosshair(bitmap, gun1_x, gun1_y, cliprect, 0);
-		draw_crosshair(bitmap, gun2_x, gun2_y, cliprect, 1);
-	}
 
 	//draw_texture_sheet(bitmap, cliprect);
 

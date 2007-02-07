@@ -340,13 +340,11 @@ static void cia_timer_update(cia_timer *timer, UINT32 new_count)
 static void cia_timer_bump(cia_state *cia, int timer)
 {
 	cia_timer_update(&cia->timer[timer], ~0);
-	if (cia->timer[timer].count > 0x00)
-	{
-		if (cia->timer[timer].count == 0x00)
-			cia_timer_underflow(cia, timer);
-		else
-			cia_timer_update(&cia->timer[timer], cia->timer[timer].count - 1);
-	}
+
+	if (cia->timer[timer].count == 0x00)
+		cia_timer_underflow(cia, timer);
+	else
+		cia_timer_update(&cia->timer[timer], cia->timer[timer].count - 1);
 }
 
 
@@ -508,6 +506,13 @@ void cia_issue_index(int which)
 }
 
 
+void cia_set_input_sp(int which, int data)
+{
+	cia_state *cia = &cia_array[which];
+	cia->sp = data;
+}
+
+
 void cia_set_input_cnt(int which, int data)
 {
 	cia_state *cia = &cia_array[which];
@@ -529,6 +534,7 @@ void cia_set_input_cnt(int which, int data)
 			cia->serial >>= 1;
 			if (cia->sp)
 				cia->serial |= 0x80;
+
 			if (++cia->shift == 8)
 			{
 				cia->sdr = cia->serial;
@@ -694,9 +700,18 @@ void cia_write(int which, offs_t offset, UINT8 data)
 			timer = &cia->timer[(offset >> 1) & 1];
 			timer->latch = (timer->latch & 0x00ff) | (data << 8);
 
-			/* if the timer is off, update the count */
-			if (!(timer->mode & 0x01))
+			/* if the timer is one-shot, then force a start on it */
+			if (timer->mode & 0x08)
+			{
+				timer->mode |= 1;
 				cia_timer_update(timer, timer->latch);
+			}
+			else
+			{
+				/* if the timer is off, update the count */
+				if (!(timer->mode & 0x01))
+					cia_timer_update(timer, timer->latch);
+			}
 			break;
 
 		/* time of day latches */

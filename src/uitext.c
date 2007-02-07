@@ -5,7 +5,7 @@
     Functions used to retrieve text used by MAME, to aid in
     translation.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -60,8 +60,8 @@ static const char *mame_default_text[] =
 	HISTORYNAME " not available",
 
 	/* special characters */
-	"\xab",
-	"\xbb",
+	"\xc2\xab",
+	"\xc2\xbb",
 	"(more)",
 	"(more)",
 	"",
@@ -206,6 +206,8 @@ static const char *mame_default_text[] =
 	"Flip X",
 	"Flip Y",
 
+	"Driver Configuration",
+
 	NULL
 };
 
@@ -333,8 +335,6 @@ int uistring_init (mame_file *langfile)
 
 					/* Allocate storage and copy the string */
 						trans_text[str] = auto_strdup(transline);
-						if (!trans_text[str])
-							return 1;
 					}
 					str++;
 				}

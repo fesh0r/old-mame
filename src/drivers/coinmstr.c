@@ -537,9 +537,6 @@ VIDEO_START( coinmstr )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 8, 8, 46, 64);
 
-	if(!bg_tilemap)
-		return 1;
-
 	return 0;
 }
 
@@ -634,15 +631,16 @@ struct AY8910interface ay8912_interface =
 static MACHINE_DRIVER_START( coinmstr )
 	MDRV_CPU_ADD_TAG("cpu",Z80,8000000) // ?
 	MDRV_CPU_PROGRAM_MAP(coinmstr_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
-	MDRV_VISIBLE_AREA(0*8, 46*8-1, 0*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 46*8-1, 0*8, 32*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -811,11 +809,9 @@ DRIVER_INIT( coinmstr )
 {
 	UINT8 *rom = memory_region(REGION_USER1);
 	int length = memory_region_length(REGION_USER1);
-	UINT8 *buf = malloc(length);
+	UINT8 *buf = malloc_or_die(length);
 	int i;
 
-	if (buf)
-	{
 		memcpy(buf,rom,length);
 
 		for(i = 0; i < length; i++)
@@ -825,7 +821,6 @@ DRIVER_INIT( coinmstr )
 		}
 
 		free(buf);
-	}
 }
 
 

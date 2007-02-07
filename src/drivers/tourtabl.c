@@ -10,18 +10,7 @@
 #include "machine/6532riot.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/tiaintf.h"
-
-
-extern PALETTE_INIT( tia_NTSC );
-extern PALETTE_INIT( tia_PAL );
-
-extern VIDEO_START( tia );
-extern VIDEO_UPDATE( tia );
-
-extern READ8_HANDLER( tia_r );
-extern WRITE8_HANDLER( tia_w );
-
-extern void tia_init(void);
+#include "vidhrdw/tia.h"
 
 
 static UINT8* r6532_0_ram;
@@ -104,12 +93,13 @@ static const struct R6532interface r6532_interface_1 =
 };
 
 
-static MACHINE_RESET( tourtabl )
+static MACHINE_START( tourtabl )
 {
 	r6532_init(0, &r6532_interface_0);
 	r6532_init(1, &r6532_interface_1);
 
 	tia_init();
+	return 0;
 }
 
 
@@ -193,14 +183,15 @@ static MACHINE_DRIVER_START( tourtabl )
 	MDRV_CPU_ADD(M6502, 3579575 / 3)	/* actually M6507 */
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 
-	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_SCREEN_REFRESH_RATE(60)
 
-	MDRV_MACHINE_RESET(tourtabl)
+	MDRV_MACHINE_START(tourtabl)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(160, 262)
-	MDRV_VISIBLE_AREA(0, 159, 46, 245)
+	MDRV_SCREEN_VISIBLE_AREA(0, 159, 46, 245)
 	MDRV_PALETTE_LENGTH(128)
 	MDRV_PALETTE_INIT(tia_NTSC)
 

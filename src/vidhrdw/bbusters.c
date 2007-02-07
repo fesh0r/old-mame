@@ -75,9 +75,6 @@ VIDEO_START( bbuster )
 	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_cols,TILEMAP_TRANSPARENT,16,16,128,32);
 	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_cols,TILEMAP_TRANSPARENT,16,16,128,32);
 
-	if (!fix_tilemap || !pf1_tilemap || !pf2_tilemap)
-		return 1;
-
 	tilemap_set_transparent_pen(pf1_tilemap, 15);
 	tilemap_set_transparent_pen(fix_tilemap, 15);
 
@@ -89,9 +86,6 @@ VIDEO_START( mechatt )
 	fix_tilemap = tilemap_create(get_bbuster_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,32,32);
 	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_cols,TILEMAP_TRANSPARENT,16,16,256,32);
 	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_cols,TILEMAP_TRANSPARENT,16,16,256,32);
-
-	if (!fix_tilemap || !pf1_tilemap || !pf2_tilemap)
-		return 1;
 
 	tilemap_set_transparent_pen(pf1_tilemap, 15);
 	tilemap_set_transparent_pen(fix_tilemap, 15);
@@ -168,7 +162,7 @@ static void bbusters_draw_block(mame_bitmap *dest,int x,int y,int size,int flipx
 	while (scale_line_count) {
 
 		if (dy>=16 && dy<240) {
-			UINT16 *destline = (UINT16 *)dest->line[dy];
+			UINT16 *destline = BITMAP_ADDR16(dest, dy, 0);
 			UINT8 srcline=*scale_table_ptr;
 			const UINT8 *srcptr=0;
 
@@ -291,10 +285,6 @@ VIDEO_UPDATE( bbuster )
 	draw_sprites(bitmap,buffered_spriteram16_2,2,0,0);
 	draw_sprites(bitmap,buffered_spriteram16,1,0,0);
 	tilemap_draw(bitmap,cliprect,fix_tilemap,0,0);
-
-	draw_crosshair(bitmap,readinputport(6),readinputport(5),cliprect,0);
-	draw_crosshair(bitmap,readinputport(8),readinputport(7),cliprect,1);
-	draw_crosshair(bitmap,readinputport(10),readinputport(9),cliprect,2);
 	return 0;
 }
 
@@ -309,8 +299,5 @@ VIDEO_UPDATE( mechatt )
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	draw_sprites(bitmap,buffered_spriteram16,1,0,0);
 	tilemap_draw(bitmap,cliprect,fix_tilemap,0,0);
-
-	draw_crosshair(bitmap,readinputport(2),readinputport(3),cliprect,0);
-	draw_crosshair(bitmap,readinputport(4),readinputport(5),cliprect,1);
 	return 0;
 }

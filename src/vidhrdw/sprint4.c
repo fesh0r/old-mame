@@ -94,17 +94,7 @@ VIDEO_START( sprint4 )
 {
 	helper = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
 
-	if (helper == NULL)
-	{
-		return 1;
-	}
-
 	playfield = tilemap_create(sprint4_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	if (playfield == NULL)
-	{
-		return 1;
-	}
 
 	return 0;
 }
@@ -114,17 +104,7 @@ VIDEO_START( ultratnk )
 {
 	helper = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
 
-	if (helper == NULL)
-	{
-		return 1;
-	}
-
 	playfield = tilemap_create(ultratnk_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	if (playfield == NULL)
-	{
-		return 1;
-	}
 
 	return 0;
 }

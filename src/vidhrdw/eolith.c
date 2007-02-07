@@ -6,16 +6,16 @@ static UINT32 *eo_vram;
 
 static void plot_pixel_rgb(int x, int y, int color)
 {
-	if (Machine->color_depth == 32)
+	if (bitmaps[eolith_buffer]->bpp == 32)
 	{
 		UINT32 r = (color & 0x001f) << 3;
 		UINT32 g = (color & 0x03e0) >> 2;
 		UINT32 b = (color & 0x7c00) >> 7;
-		((UINT32 *)bitmaps[eolith_buffer]->line[y])[x] = b | (g<<8) | (r<<16);
+		*BITMAP_ADDR32(bitmaps[eolith_buffer], y, x) = b | (g<<8) | (r<<16);
 	}
 	else
 	{
-		((UINT16 *)bitmaps[eolith_buffer]->line[y])[x] = color;
+		*BITMAP_ADDR16(bitmaps[eolith_buffer], y, x) = color;
 	}
 }
 
@@ -65,9 +65,6 @@ VIDEO_START( eolith )
 	eo_vram = auto_malloc(0x40000*2);
 	bitmaps[0] = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height);
 	bitmaps[1] = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height);
-
-	if(!bitmaps[0] || !bitmaps[1])
-		return 1;
 
 	return 0;
 }

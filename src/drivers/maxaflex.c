@@ -228,12 +228,6 @@ void supervisor_board_check_coin_input(void)
 	}
 }
 
-static MACHINE_START(maxaflex)
-{
-	add_reset_callback(Machine, machine_reset_supervisor_board);
-	return machine_start_a600xl(machine);
-}
-
 int atari_input_disabled(void)
 {
 	return (portB_out & 0x80) == 0x00;
@@ -458,7 +452,7 @@ static MACHINE_DRIVER_START( a600xl )
 	MDRV_CPU_ADD_TAG("main", M6502, FREQ_17_EXACT)
 	MDRV_CPU_PROGRAM_MAP(a600xl_mem, 0)
 	MDRV_CPU_VBLANK_INT(a800xl_interrupt, TOTAL_LINES_60HZ)
-	MDRV_VBLANK_DURATION(0)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(0))
 
 	MDRV_CPU_ADD(M68705, 3579545)
 	MDRV_CPU_PROGRAM_MAP(mcu_mem,0)
@@ -466,11 +460,12 @@ static MACHINE_DRIVER_START( a600xl )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_VISIBLE_AREA(MIN_X, MAX_X, MIN_Y, MAX_Y)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_VISIBLE_AREA(MIN_X, MAX_X, MIN_Y, MAX_Y)
 	MDRV_PALETTE_LENGTH(sizeof(atari_palette) / sizeof(atari_palette[0]) / 3)
 	MDRV_COLORTABLE_LENGTH(sizeof(atari_colortable) / sizeof(atari_colortable[0]))
 	MDRV_PALETTE_INIT(atari)
-	MDRV_FRAMES_PER_SECOND(FRAME_RATE_60HZ)
+	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 	MDRV_DEFAULT_LAYOUT(layout_maxaflex)
 
@@ -487,7 +482,12 @@ static MACHINE_DRIVER_START( a600xl )
 	MDRV_SOUND_ADD(SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_MACHINE_START( maxaflex )
+	MDRV_MACHINE_START( a600xl )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( maxaflex )
+	MDRV_IMPORT_FROM( a600xl )
+	MDRV_MACHINE_RESET( supervisor_board )
 MACHINE_DRIVER_END
 
 ROM_START(maxaflex)
@@ -555,9 +555,9 @@ DRIVER_INIT( a600xl )
 	memcpy( memory_region(REGION_CPU1) + 0x5000, memory_region(REGION_CPU1) + 0xd000, 0x800 );
 }
 
-GAME( 1984, maxaflex, 0,		  a600xl, a600xl, a600xl, ROT0, "Exidy", "Max-A-Flex", NOT_A_DRIVER )
-GAME( 1982, mf_achas, maxaflex,  a600xl, a600xl, a600xl, ROT0, "Exidy / First Star Software", "Astro Chase (Max-A-Flex)", 0 )
-GAME( 1983, mf_brist, maxaflex,  a600xl, a600xl, a600xl, ROT0, "Exidy / First Star Software", "Bristles (Max-A-Flex)", 0 )
-GAME( 1983, mf_flip,  maxaflex,  a600xl, a600xl, a600xl, ROT0, "Exidy / First Star Software", "Flip & Flop (Max-A-Flex)", 0 )
-GAME( 1984, mf_bdash, maxaflex,  a600xl, a600xl, a600xl, ROT0, "Exidy / First Star Software", "Boulder Dash (Max-A-Flex)", 0 )
+GAME( 1984, maxaflex, 0,        maxaflex, a600xl, a600xl, ROT0, "Exidy", "Max-A-Flex", NOT_A_DRIVER )
+GAME( 1982, mf_achas, maxaflex, maxaflex, a600xl, a600xl, ROT0, "Exidy / First Star Software", "Astro Chase (Max-A-Flex)", 0 )
+GAME( 1983, mf_brist, maxaflex, maxaflex, a600xl, a600xl, ROT0, "Exidy / First Star Software", "Bristles (Max-A-Flex)", 0 )
+GAME( 1983, mf_flip,  maxaflex, maxaflex, a600xl, a600xl, ROT0, "Exidy / First Star Software", "Flip & Flop (Max-A-Flex)", 0 )
+GAME( 1984, mf_bdash, maxaflex, maxaflex, a600xl, a600xl, ROT0, "Exidy / First Star Software", "Boulder Dash (Max-A-Flex)", 0 )
 

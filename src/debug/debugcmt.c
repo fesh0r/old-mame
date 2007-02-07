@@ -4,7 +4,7 @@
 
     Debugger code-comment management functions.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -432,7 +432,7 @@ int debug_comment_save(void)
  		mame_file *fp;
 
  		fname = assemble_2_strings(Machine->basename, ".cmt");
- 		filerr = mame_fopen(SEARCHPATH_COMMENT, fname, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &fp);
+ 		filerr = mame_fopen(SEARCHPATH_COMMENT, fname, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &fp);
  		free(fname);
 
  		if (filerr == FILERR_NONE)

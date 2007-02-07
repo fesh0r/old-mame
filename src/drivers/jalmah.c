@@ -185,14 +185,8 @@ VIDEO_START( jalmah )
 	sc2_tilemap = tilemap_create(get_sc2_tile_info,bg_scan,TILEMAP_TRANSPARENT,16,16,256,32);
 	sc3_tilemap = tilemap_create(get_sc3_tile_info,tilemap_scan_cols,TILEMAP_TRANSPARENT,8,8,256,32);
 
-	if(!sc2_tilemap || !sc3_tilemap || !sc0_tilemap || !sc1_tilemap)
-		return 1;
-
 	jm_scrollram = auto_malloc(0x80);
 	jm_vregs = auto_malloc(0x40);
-
-	if (!jm_scrollram || !jm_vregs)
-		return 1;
 
 	tilemap_set_transparent_pen(sc0_tilemap,15);
 	tilemap_set_transparent_pen(sc1_tilemap,15);
@@ -1041,14 +1035,15 @@ static MACHINE_DRIVER_START( jalmah )
 	MDRV_CPU_PROGRAM_MAP(jalmah,0)
 	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_GFXDECODE(jalmah_gfxdecodeinfo)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_PALETTE_LENGTH(0x400)
 	MDRV_MACHINE_RESET(daireika)
 
@@ -1057,8 +1052,8 @@ static MACHINE_DRIVER_START( jalmah )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 4000000/165)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 4000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

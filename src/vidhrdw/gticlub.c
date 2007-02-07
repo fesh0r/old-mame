@@ -162,32 +162,17 @@ static int K001005_3d_fifo_ptr = 0;
 int K001005_init(void)
 {
 	K001005_bitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
-	if (!K001005_bitmap)
-		return 1;
 
-	K001005_zbuffer = auto_bitmap_alloc_depth(Machine->screen[0].width, Machine->screen[0].height, 32);
-	if (!K001005_zbuffer)
-		return 1;
+	K001005_zbuffer = auto_bitmap_alloc_format(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED32);
 
 	K001005_texture = auto_malloc(0x800000);
-	if (!K001005_texture)
-		return 1;
 
 	K001005_ram[0] = auto_malloc(0x140000 * sizeof(UINT16));
-	if (!K001005_ram[0])
-		return 1;
-
 	K001005_ram[1] = auto_malloc(0x140000 * sizeof(UINT16));
-	if (!K001005_ram[1])
-		return 1;
 
 	K001005_fifo = auto_malloc(0x800 * sizeof(UINT32));
-	if (!K001005_fifo)
-		return 1;
 
 	K001005_3d_fifo = auto_malloc(0x10000 * sizeof(UINT32));
-	if (!K001005_3d_fifo)
-		return 1;
 
 	return 0;
 }
@@ -428,8 +413,8 @@ static void draw_triangle(VERTEX v1, VERTEX v2, VERTEX v3, UINT32 color)
 			int x1, x2;
 			INT64 z;
 			const struct poly_scanline *scan = &scans->scanline[y - scans->sy];
-			UINT32 *fb = (UINT32*)K001005_bitmap->line[y];
-			UINT32 *zb = (UINT32*)K001005_zbuffer->line[y];
+			UINT32 *fb = BITMAP_ADDR32(K001005_bitmap, y, 0);
+			UINT32 *zb = BITMAP_ADDR32(K001005_zbuffer, y, 0);
 
 			x1 = scan->sx;
 			x2 = scan->ex;
@@ -501,8 +486,8 @@ static void draw_triangle_tex(VERTEX v1, VERTEX v2, VERTEX v3, UINT32 color)
 			int x1, x2;
 			INT64 u, v, z;
 			const struct poly_scanline *scan = &scans->scanline[y - scans->sy];
-			UINT32 *fb = (UINT32*)K001005_bitmap->line[y];
-			UINT32 *zb = (UINT32*)K001005_zbuffer->line[y];
+			UINT32 *fb = BITMAP_ADDR32(K001005_bitmap, y, 0);
+			UINT32 *zb = BITMAP_ADDR32(K001005_zbuffer, y, 0);
 
 			x1 = scan->sx;
 			x2 = scan->ex;
@@ -894,8 +879,8 @@ void K001005_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 
 	for (j=cliprect->min_y; j <= cliprect->max_y; j++)
 	{
-		UINT32 *bmp = (UINT32*)bitmap->line[j];
-		UINT32 *src = (UINT32*)K001005_bitmap->line[j];
+		UINT32 *bmp = BITMAP_ADDR32(bitmap, j, 0);
+		UINT32 *src = BITMAP_ADDR32(K001005_bitmap, j, 0);
 
 		for (i=cliprect->min_x; i <= cliprect->max_x; i++)
 		{

@@ -456,8 +456,6 @@ static void get_tile_info(int tile_index)
 VIDEO_START( marinedt )
 {
 	tx_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8, 8,32,32);
-	if (!tx_tilemap)
-		return 1;
 
 	tilemap_set_transparent_pen(tx_tilemap, 0);
 	tilemap_set_scrolldx(tx_tilemap, 0, 4*8);
@@ -466,9 +464,6 @@ VIDEO_START( marinedt )
 	tile = auto_bitmap_alloc(32 * 8, 32 * 8);
 	obj1 = auto_bitmap_alloc(32,32);
 	obj2 = auto_bitmap_alloc(32,32);
-
-	if (!tile || !obj1 || !obj2)
-		return 1;
 
 	return 0;
 }
@@ -601,13 +596,14 @@ static MACHINE_DRIVER_START( marinedt )
 	MDRV_CPU_IO_MAP(marinedt_readport,marinedt_writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(4*8+32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 4*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 4*8, 32*8-1)
 	MDRV_GFXDECODE(marinedt_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(64)
 

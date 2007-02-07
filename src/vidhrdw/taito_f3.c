@@ -603,12 +603,9 @@ VIDEO_START( f3 )
 	pivot_dirty = (UINT8 *)auto_malloc(2048);
 	pf_line_inf = auto_malloc(5 * sizeof(struct f3_playfield_line_inf));
 	sa_line_inf = auto_malloc(1 * sizeof(struct f3_spritealpha_line_inf));
-	pri_alp_bitmap = auto_bitmap_alloc_depth( Machine->screen[0].width, Machine->screen[0].height, -8 );
+	pri_alp_bitmap = auto_bitmap_alloc_format( Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED8 );
 	tile_opaque_sp = (UINT8 *)auto_malloc(Machine->gfx[2]->total_elements);
 	tile_opaque_pf = (UINT8 *)auto_malloc(Machine->gfx[1]->total_elements);
-
-	if (!vram_layer || !pixel_layer || !pri_alp_bitmap)
-		return 1;
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf2_tilemap,0);
@@ -821,30 +818,30 @@ WRITE32_HANDLER( f3_palette_24bit_w )
 
 static UINT8 add_sat[256][256];
 
-static const UINT8 *alpha_s_1_1;
-static const UINT8 *alpha_s_1_2;
-static const UINT8 *alpha_s_1_4;
-static const UINT8 *alpha_s_1_5;
-static const UINT8 *alpha_s_1_6;
-static const UINT8 *alpha_s_1_8;
-static const UINT8 *alpha_s_1_9;
-static const UINT8 *alpha_s_1_a;
+static int alpha_s_1_1;
+static int alpha_s_1_2;
+static int alpha_s_1_4;
+static int alpha_s_1_5;
+static int alpha_s_1_6;
+static int alpha_s_1_8;
+static int alpha_s_1_9;
+static int alpha_s_1_a;
 
-static const UINT8 *alpha_s_2a_0;
-static const UINT8 *alpha_s_2a_4;
-static const UINT8 *alpha_s_2a_8;
+static int alpha_s_2a_0;
+static int alpha_s_2a_4;
+static int alpha_s_2a_8;
 
-static const UINT8 *alpha_s_2b_0;
-static const UINT8 *alpha_s_2b_4;
-static const UINT8 *alpha_s_2b_8;
+static int alpha_s_2b_0;
+static int alpha_s_2b_4;
+static int alpha_s_2b_8;
 
-static const UINT8 *alpha_s_3a_0;
-static const UINT8 *alpha_s_3a_1;
-static const UINT8 *alpha_s_3a_2;
+static int alpha_s_3a_0;
+static int alpha_s_3a_1;
+static int alpha_s_3a_2;
 
-static const UINT8 *alpha_s_3b_0;
-static const UINT8 *alpha_s_3b_1;
-static const UINT8 *alpha_s_3b_2;
+static int alpha_s_3b_0;
+static int alpha_s_3b_1;
+static int alpha_s_3b_2;
 
 static UINT32 dval;
 static UINT8 pval;
@@ -868,7 +865,7 @@ static int (**dpix_sp[9])(UINT32 s_pix);
 {										\
 	int level = s;						\
 	if(level == 0) level = -1;			\
-	d = drawgfx_alpha_cache.alpha[level+1];		\
+	d = level+1;						\
 }
 
 INLINE void f3_alpha_set_level(void)
@@ -920,22 +917,22 @@ INLINE void f3_alpha_set_level(void)
 
 
 
-INLINE void f3_alpha_blend32_s( const UINT8 *alphas, UINT32 s )
+INLINE void f3_alpha_blend32_s( int alphas, UINT32 s )
 {
 	UINT8 *sc = (UINT8 *)&s;
 	UINT8 *dc = (UINT8 *)&dval;
-	dc[COLOR1] = alphas[sc[COLOR1]];
-	dc[COLOR2] = alphas[sc[COLOR2]];
-	dc[COLOR3] = alphas[sc[COLOR3]];
+	dc[COLOR1] = (alphas * sc[COLOR1]) >> 8;
+	dc[COLOR2] = (alphas * sc[COLOR2]) >> 8;
+	dc[COLOR3] = (alphas * sc[COLOR3]) >> 8;
 }
 
-INLINE void f3_alpha_blend32_d( const UINT8 *alphas, UINT32 s )
+INLINE void f3_alpha_blend32_d( int alphas, UINT32 s )
 {
 	UINT8 *sc = (UINT8 *)&s;
 	UINT8 *dc = (UINT8 *)&dval;
-	dc[COLOR1] = add_sat[dc[COLOR1]][alphas[sc[COLOR1]]];
-	dc[COLOR2] = add_sat[dc[COLOR2]][alphas[sc[COLOR2]]];
-	dc[COLOR3] = add_sat[dc[COLOR3]][alphas[sc[COLOR3]]];
+	dc[COLOR1] = add_sat[dc[COLOR1]][(alphas * sc[COLOR1]) >> 8];
+	dc[COLOR2] = add_sat[dc[COLOR2]][(alphas * sc[COLOR2]) >> 8];
+	dc[COLOR3] = add_sat[dc[COLOR3]][(alphas * sc[COLOR3]) >> 8];
 }
 
 /*============================================================================*/
@@ -1414,7 +1411,7 @@ INLINE void f3_drawscanlines(
 		yadv = -yadv;
 	}
 
-	dstp0 = (UINT8 *)pri_alp_bitmap->line[ty] + x;
+	dstp0 = BITMAP_ADDR8(pri_alp_bitmap, ty, x);
 
 	pdest_2a = f3_alpha_level_2ad ? 0x10 : 0;
 	pdest_2b = f3_alpha_level_2bd ? 0x20 : 0;
@@ -1427,7 +1424,7 @@ INLINE void f3_drawscanlines(
 
 	{
 		UINT32 *dsti0,*dsti;
-		dsti0 = (UINT32 *)bitmap->line[ty] + x;
+		dsti0 = BITMAP_ADDR32(bitmap, ty, x);
 		while(1)
 		{
 			int cx=0;
@@ -2076,11 +2073,11 @@ static void get_line_ram_info(tilemap *tmap, int sx, int sy, int pos, UINT32 *f3
 
 			/* set pixmap index */
 			line_t->x_count[y]=x_index_fx & 0xffff; // Fractional part
-			line_t->src_s[y]=src_s=(unsigned short *)srcbitmap->line[y_index];
+			line_t->src_s[y]=src_s=BITMAP_ADDR16(srcbitmap, y_index, 0);
 			line_t->src_e[y]=&src_s[width_mask+1];
 			line_t->src[y]=&src_s[x_index_fx>>16];
 
-			line_t->tsrc_s[y]=tsrc_s=(unsigned char *)transbitmap->line[y_index];
+			line_t->tsrc_s[y]=tsrc_s=BITMAP_ADDR8(transbitmap, y_index, 0);
 			line_t->tsrc[y]=&tsrc_s[x_index_fx>>16];
 		}
 
@@ -2197,16 +2194,16 @@ static void get_vram_info(tilemap *vram_tilemap, tilemap *pixel_tilemap, int sx,
 			/* set pixmap index */
 			line_t->x_count[y]=0xffff;
 			if (usePixelLayer)
-				line_t->src_s[y]=src_s=(unsigned short *)srcbitmap_pixel->line[sy&0xff];
+				line_t->src_s[y]=src_s=BITMAP_ADDR16(srcbitmap_pixel, sy&0xff, 0);
 			else
-				line_t->src_s[y]=src_s=(unsigned short *)srcbitmap_vram->line[sy&0x1ff];
+				line_t->src_s[y]=src_s=BITMAP_ADDR16(srcbitmap_vram, sy&0x1ff, 0);
 			line_t->src_e[y]=&src_s[vram_width_mask+1];
 			line_t->src[y]=&src_s[sx];
 
 			if (usePixelLayer)
-				line_t->tsrc_s[y]=tsrc_s=(unsigned char *)transbitmap_pixel->line[sy&0xff];
+				line_t->tsrc_s[y]=tsrc_s=BITMAP_ADDR8(transbitmap_pixel, sy&0xff, 0);
 			else
-				line_t->tsrc_s[y]=tsrc_s=(unsigned char *)transbitmap_vram->line[sy&0x1ff];
+				line_t->tsrc_s[y]=tsrc_s=BITMAP_ADDR8(transbitmap_vram, sy&0x1ff, 0);
 			line_t->tsrc[y]=&tsrc_s[sx];
 		}
 
@@ -2379,7 +2376,7 @@ static void f3_scanline_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 							sprite_pri_usage&=~sftbit;  // Disable sprite priority block
 						else
 						{
-							dpix_sp[1<<i]=dpix_n[2];
+							dpix_sp[sftbit]=dpix_n[2];
 							sprite_alpha_check|=sftbit;
 						}
 					}
@@ -2390,7 +2387,7 @@ static void f3_scanline_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 							if(f3_alpha_level_3as==0 && f3_alpha_level_3ad==255) sprite_pri_usage&=~sftbit;
 							else
 							{
-								dpix_sp[1<<i]=dpix_n[3];
+								dpix_sp[sftbit]=dpix_n[3];
 								sprite_alpha_check|=sftbit;
 								sprite_alpha_all_2a=0;
 							}
@@ -2400,7 +2397,7 @@ static void f3_scanline_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 							if(f3_alpha_level_3bs==0 && f3_alpha_level_3bd==255) sprite_pri_usage&=~sftbit;
 							else
 							{
-								dpix_sp[1<<i]=dpix_n[5];
+								dpix_sp[sftbit]=dpix_n[5];
 								sprite_alpha_check|=sftbit;
 								sprite_alpha_all_2a=0;
 							}
@@ -2733,13 +2730,13 @@ INLINE void f3_drawgfx( mame_bitmap *dest_bmp,const gfx_element *gfx,
 
 			if( ex>sx && ey>sy)
 			{ /* skip if inner loop doesn't draw anything */
-//              if (dest_bmp->depth == 32)
+//              if (dest_bmp->bpp == 32)
 				{
 					int y=ey-sy;
 					int x=(ex-sx-1)|(tile_opaque_sp[code % gfx->total_elements]<<4);
 					UINT8 *source0 = gfx->gfxdata + (source_base+y_index) * 16 + x_index_base;
-					UINT32 *dest0 = (UINT32 *)dest_bmp->line[sy]+sx;
-					UINT8 *pri0 = (UINT8 *)pri_alp_bitmap->line[sy]+sx;
+					UINT32 *dest0 = BITMAP_ADDR32(dest_bmp, sy, sx);
+					UINT8 *pri0 = BITMAP_ADDR8(pri_alp_bitmap, sy, sx);
 					int yadv = dest_bmp->rowpixels;
 					dy=dy*16;
 					while(1)
@@ -2898,14 +2895,14 @@ INLINE void f3_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 
 			if( ex>sx )
 			{ /* skip if inner loop doesn't draw anything */
-//              if (dest_bmp->depth == 32)
+//              if (dest_bmp->bpp == 32)
 				{
 					int y;
 					for( y=sy; y<ey; y++ )
 					{
 						UINT8 *source = gfx->gfxdata + (source_base+(y_index>>16)) * 16;
-						UINT32 *dest = (UINT32 *)dest_bmp->line[y];
-						UINT8 *pri = pri_alp_bitmap->line[y];
+						UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
+						UINT8 *pri = BITMAP_ADDR8(pri_alp_bitmap, y, 0);
 
 						int x, x_index = x_index_base;
 						for( x=sx; x<ex; x++ )

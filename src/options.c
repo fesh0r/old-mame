@@ -4,7 +4,7 @@
 
     Options file and command line management.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -88,8 +88,7 @@ static const options_entry core_options[] =
 #else
 	{ "biospath;bp",               "bios",      0,                 "path to BIOS sets" },
 	{ "hashpath;hash_directory;hash","hash",      0,                 "path to hash files" },
-	{ "softwarepath;swp",            "software",  0,                 "path to software" },
-#endif
+#endif /* MESS */
 	{ "samplepath;sp",               "samples",   0,                 "path to samplesets" },
 	{ "artpath;artwork_directory",   "artwork",   0,                 "path to artwork files" },
 	{ "ctrlrpath;ctrlr_directory",   "ctrlr",     0,                 "path to controller definitions" },

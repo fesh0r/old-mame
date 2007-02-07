@@ -4,7 +4,7 @@
 
     Generic graphic functions.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -91,6 +91,7 @@ struct _gfx_element
 #define GFX_DONT_FREE_GFXDATA	4	/* gfxdata was not malloc()ed, so don't free it on exit */
 
 
+typedef struct _gfx_decode gfx_decode;
 struct _gfx_decode
 {
 	int memory_region;	/* memory region where the data resides (usually 1) */
@@ -100,16 +101,14 @@ struct _gfx_decode
 	UINT16 color_codes_start;	/* offset in the color lookup table where color codes start */
 	UINT16 total_color_codes;	/* total number of color codes */
 };
-typedef struct _gfx_decode gfx_decode;
 
 
+typedef struct _alpha_cache alpha_cache;
 struct _alpha_cache
 {
-	const UINT8 *alphas;
-	const UINT8 *alphad;
-	UINT8 alpha[0x101][0x100];
+	int		alphas;
+	int		alphad;
 };
-typedef struct _alpha_cache alpha_cache;
 
 extern struct _alpha_cache drawgfx_alpha_cache;
 
@@ -126,7 +125,6 @@ enum
 	TRANSPARENCY_PEN_TABLE_RAW,	/* special pen remapping modes (see DRAWMODE_xxx below) with no remapping */
 	TRANSPARENCY_BLEND,			/* blend two bitmaps, shifting the source and ORing to the dest with remapping */
 	TRANSPARENCY_BLEND_RAW,		/* blend two bitmaps, shifting the source and ORing to the dest with no remapping */
-	TRANSPARENCY_ALPHAONE,		/* single pen transparency, single pen alpha */
 	TRANSPARENCY_ALPHA,			/* single pen transparency, other pens alpha */
 	TRANSPARENCY_ALPHARANGE,	/* single pen transparency, multiple pens alpha depending on array, see psikyosh.c */
 
@@ -149,11 +147,6 @@ enum
 /* Set this flag to 1 to make shadows only affect the background, leaving sprites at full brightness. */
 extern int pdrawgfx_shadow_lowpri;
 
-
-/* pointers to pixel functions.  They're set based on depth */
-#define plot_pixel(bm,x,y,p)	(*(bm)->plot)(bm,x,y,p)
-#define read_pixel(bm,x,y)		(*(bm)->read)(bm,x,y)
-#define plot_box(bm,x,y,w,h,p)	(*(bm)->plot_box)(bm,x,y,w,h,p)
 
 void drawgfx_init(running_machine *machine);
 
@@ -189,50 +182,6 @@ void pdraw_scanline16(mame_bitmap *bitmap,int x,int y,int length,const UINT16 *s
 void extract_scanline8(mame_bitmap *bitmap,int x,int y,int length,UINT8 *dst);
 void extract_scanline16(mame_bitmap *bitmap,int x,int y,int length,UINT16 *dst);
 
-
-/* Alpha blending functions */
-INLINE void alpha_set_level(int level)
-{
-	assert(level >= 0 && level <= 256);
-	drawgfx_alpha_cache.alphas = drawgfx_alpha_cache.alpha[level];
-	drawgfx_alpha_cache.alphad = drawgfx_alpha_cache.alpha[256-level];
-}
-
-
-INLINE UINT32 alpha_blend16(UINT32 d, UINT32 s)
-{
-	const UINT8 *alphas = drawgfx_alpha_cache.alphas;
-	const UINT8 *alphad = drawgfx_alpha_cache.alphad;
-	return (alphas[s & 0x1f] | (alphas[(s >> 5) & 0x1f] << 5) | (alphas[(s >> 10) & 0x1f] << 10))
-		+ (alphad[d & 0x1f] | (alphad[(d >> 5) & 0x1f] << 5) | (alphad[(d >> 10) & 0x1f] << 10));
-}
-
-
-INLINE UINT32 alpha_blend32(UINT32 d, UINT32 s)
-{
-	const UINT8 *alphas = drawgfx_alpha_cache.alphas;
-	const UINT8 *alphad = drawgfx_alpha_cache.alphad;
-	return (alphas[s & 0xff] | (alphas[(s >> 8) & 0xff] << 8) | (alphas[(s >> 16) & 0xff] << 16))
-		+ (alphad[d & 0xff] | (alphad[(d >> 8) & 0xff] << 8) | (alphad[(d >> 16) & 0xff] << 16));
-}
-
-
-INLINE UINT32 alpha_blend_r16(UINT32 d, UINT32 s, UINT8 level)
-{
-	const UINT8 *alphas = drawgfx_alpha_cache.alpha[level];
-	const UINT8 *alphad = drawgfx_alpha_cache.alpha[256 - level];
-	return (alphas[s & 0x1f] | (alphas[(s >> 5) & 0x1f] << 5) | (alphas[(s >> 10) & 0x1f] << 10))
-		+ (alphad[d & 0x1f] | (alphad[(d >> 5) & 0x1f] << 5) | (alphad[(d >> 10) & 0x1f] << 10));
-}
-
-
-INLINE UINT32 alpha_blend_r32( UINT32 d, UINT32 s, UINT8 level )
-{
-	const UINT8 *alphas = drawgfx_alpha_cache.alpha[level];
-	const UINT8 *alphad = drawgfx_alpha_cache.alpha[256 - level];
-	return (alphas[s & 0xff] | (alphas[(s >> 8) & 0xff] << 8) | (alphas[(s >> 16) & 0xff] << 16))
-		+ (alphad[d & 0xff] | (alphad[(d >> 8) & 0xff] << 8) | (alphad[(d >> 16) & 0xff] << 16));
-}
 
 /*
   Copy a bitmap applying rotation, zooming, and arbitrary distortion.
@@ -279,8 +228,80 @@ void mdrawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 		const rectangle *clip,int transparency,int transparent_color,int scalex,int scaley,
 		UINT32 priority_mask);
 
-void drawgfx_toggle_crosshair(void);
-void draw_crosshair(mame_bitmap *bitmap,int x,int y,const rectangle *clip,int player);
+
+
+INLINE void plot_pixel(mame_bitmap *bitmap, int x, int y, pen_t pen)
+{
+	switch (bitmap->bpp)
+	{
+		case 8:		*BITMAP_ADDR8(bitmap, y, x) = (UINT8)pen;		break;
+		case 16:	*BITMAP_ADDR16(bitmap, y, x) = (UINT16)pen;		break;
+		case 32:	*BITMAP_ADDR32(bitmap, y, x) = (UINT32)pen;		break;
+	}
+}
+
+INLINE pen_t read_pixel(mame_bitmap *bitmap, int x, int y)
+{
+	switch (bitmap->bpp)
+	{
+		case 8:		return *BITMAP_ADDR8(bitmap, y, x);
+		case 16:	return *BITMAP_ADDR16(bitmap, y, x);
+		case 32:	return *BITMAP_ADDR32(bitmap, y, x);
+	}
+	return 0;
+}
+
+INLINE void plot_box(mame_bitmap *bitmap, int x, int y, int width, int height, pen_t pen)
+{
+	rectangle clip;
+	clip.min_x = x;
+	clip.min_y = y;
+	clip.max_x = x + width - 1;
+	clip.max_y = y + height - 1;
+	fillbitmap(bitmap, pen, &clip);
+}
+
+/* Alpha blending functions */
+INLINE void alpha_set_level(int level)
+{
+	assert(level >= 0 && level <= 256);
+	drawgfx_alpha_cache.alphas = level;
+	drawgfx_alpha_cache.alphad = 256 - level;
+}
+
+
+INLINE UINT32 alpha_blend16(UINT32 d, UINT32 s)
+{
+	return ((((s & 0x001f) * drawgfx_alpha_cache.alphas + (d & 0x001f) * drawgfx_alpha_cache.alphad) >> 8)) |
+		   ((((s & 0x03e0) * drawgfx_alpha_cache.alphas + (d & 0x03e0) * drawgfx_alpha_cache.alphad) >> 8) & 0x03e0) |
+		   ((((s & 0x7c00) * drawgfx_alpha_cache.alphas + (d & 0x7c00) * drawgfx_alpha_cache.alphad) >> 8) & 0x7c00);
+}
+
+
+INLINE UINT32 alpha_blend32(UINT32 d, UINT32 s)
+{
+	return ((((s & 0x0000ff) * drawgfx_alpha_cache.alphas + (d & 0x0000ff) * drawgfx_alpha_cache.alphad) >> 8)) |
+		   ((((s & 0x00ff00) * drawgfx_alpha_cache.alphas + (d & 0x00ff00) * drawgfx_alpha_cache.alphad) >> 8) & 0x00ff00) |
+		   ((((s & 0xff0000) * drawgfx_alpha_cache.alphas + (d & 0xff0000) * drawgfx_alpha_cache.alphad) >> 8) & 0xff0000);
+}
+
+
+INLINE UINT32 alpha_blend_r16(UINT32 d, UINT32 s, UINT8 level)
+{
+	int alphad = 256 - level;
+	return ((((s & 0x001f) * level + (d & 0x001f) * alphad) >> 8)) |
+		   ((((s & 0x03e0) * level + (d & 0x03e0) * alphad) >> 8) & 0x03e0) |
+		   ((((s & 0x7c00) * level + (d & 0x7c00) * alphad) >> 8) & 0x7c00);
+}
+
+
+INLINE UINT32 alpha_blend_r32( UINT32 d, UINT32 s, UINT8 level )
+{
+	int alphad = 256 - level;
+	return ((((s & 0x0000ff) * level + (d & 0x0000ff) * alphad) >> 8)) |
+		   ((((s & 0x00ff00) * level + (d & 0x00ff00) * alphad) >> 8) & 0x00ff00) |
+		   ((((s & 0xff0000) * level + (d & 0xff0000) * alphad) >> 8) & 0xff0000);
+}
 
 
 #endif	/* __DRAWGFX_H__ */

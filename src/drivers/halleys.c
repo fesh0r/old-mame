@@ -214,7 +214,7 @@ static DWORD *internal_palette, *alpha_table;
 static BYTE *cpu1_base, *gfx1_base, *blitter_ram, *io_ram;
 static size_t blitter_ramsize, io_ramsize;
 
-static int game_id, init_success, blitter_busy, collision_count, stars_enabled, bgcolor, ffcount, ffhead, fftail;
+static int game_id, blitter_busy, collision_count, stars_enabled, bgcolor, ffcount, ffhead, fftail;
 static int mVectorType, sndnmi_mask, firq_level;
 static void *blitter_reset_timer;
 
@@ -1185,9 +1185,6 @@ static VIDEO_START( halleys )
 
 	int dst, src, c;
 
-	// abort if DRIVER_INIT failed
-	if (!init_success) return(1);
-
 	// create short cuts to scroll registers
 	scrolly0 = io_ram + HALLEYS_Y0;
 	scrollx0 = io_ram + HALLEYS_X0;
@@ -1233,7 +1230,7 @@ static void copy_scroll_op(mame_bitmap *bitmap, WORD *source, int sx, int sy)
 	if ((bch = CLIP_H - sy) < 0) bch = 0;
 
 	esi = source + CLIP_SKIP + (sy << SCREEN_WIDTH_L2);
-	edi = (WORD*)bitmap->line[VIS_MINY] + VIS_MINX;
+	edi = BITMAP_ADDR16(bitmap, VIS_MINY, VIS_MINX);
 	edx = bitmap->rowpixels;
 
 	// draw top split
@@ -1287,7 +1284,7 @@ static void copy_scroll_xp(mame_bitmap *bitmap, WORD *source, int sx, int sy)
 	if ((bch = CLIP_H - sy) < 0) bch = 0;
 
 	src_base = source + CLIP_SKIP + (sy << SCREEN_WIDTH_L2);
-	edi = (WORD*)bitmap->line[VIS_MINY] + VIS_MINX;
+	edi = BITMAP_ADDR16(bitmap, VIS_MINY, VIS_MINX);
 	dst_adv = bitmap->rowpixels - CLIP_W;
 
 	// draw top split
@@ -1311,7 +1308,7 @@ static void copy_fixed_xp(mame_bitmap *bitmap, WORD *source)
 	WORD ax, bx;
 
 	esi = source + CLIP_SKIP + CLIP_W;
-	edi = (WORD*)bitmap->line[VIS_MINY] + VIS_MINX + CLIP_W;
+	edi = BITMAP_ADDR16(bitmap, VIS_MINY, VIS_MINX + CLIP_W);
 	dst_pitch = bitmap->rowpixels;
 	ecx = -CLIP_W;
 	edx = CLIP_H;
@@ -1346,7 +1343,7 @@ static void copy_fixed_2b(mame_bitmap *bitmap, WORD *source)
 	WORD ax, bx;
 
 	esi = source + CLIP_SKIP + CLIP_W;
-	edi = (WORD*)bitmap->line[VIS_MINY] + VIS_MINX + CLIP_W;
+	edi = BITMAP_ADDR16(bitmap, VIS_MINY, VIS_MINX + CLIP_W);
 	dst_pitch = bitmap->rowpixels;
 	ecx = -CLIP_W;
 	edx = CLIP_H;
@@ -1395,7 +1392,7 @@ static void filter_bitmap(mame_bitmap *bitmap, int mask)
 
 	pal_ptr = internal_palette;
 	esi = mask | 0xffffff00;
-	edi = (DWORD*)((WORD*)bitmap->line[VIS_MINY] + VIS_MINX + CLIP_W);
+	edi = (DWORD*)BITMAP_ADDR16(bitmap, VIS_MINY, VIS_MINX + CLIP_W);
 	dst_pitch = bitmap->rowpixels >> 1;
 	ecx = -(CLIP_W>>1);
 	edx = CLIP_H;
@@ -1965,14 +1962,15 @@ static MACHINE_DRIVER_START( halleys )
 	MDRV_CPU_PROGRAM_MAP(sound_readmem, sound_writemem)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, TIME_IN_NSEC(27306667)) // 6000000/(4*16*16*10*16) = 36.621Hz(27306667ns period)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET(halleys)
 
 	// video hardware
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(SCREEN_WIDTH, SCREEN_HEIGHT)
-	MDRV_VISIBLE_AREA(VIS_MINX, VIS_MAXX, VIS_MINY, VIS_MAXY)
+	MDRV_SCREEN_VISIBLE_AREA(VIS_MINX, VIS_MAXX, VIS_MINY, VIS_MAXY)
 
 	MDRV_PALETTE_LENGTH(PALETTE_SIZE)
 	MDRV_PALETTE_INIT(halleys)
@@ -2150,7 +2148,7 @@ ROM_END
 //**************************************************************************
 // Driver Initializations
 
-static int init_common(void)
+static void init_common(void)
 {
 	BYTE *buf, *rom;
 	int addr, i;
@@ -2227,9 +2225,6 @@ static int init_common(void)
 
 		buf += 8;
 	}
-
-
-	return(1);
 }
 
 
@@ -2237,9 +2232,10 @@ static DRIVER_INIT( benberob )
 {
 	game_id = GAME_BENBEROB;
 
-	init_success = init_common();
+	init_common();
 
-	if (!(blitter_reset_timer = timer_alloc(blitter_reset))) init_success = 0;
+	if (!(blitter_reset_timer = timer_alloc(blitter_reset)))
+		fatalerror("timer_alloc failed");
 }
 
 
@@ -2248,7 +2244,7 @@ static DRIVER_INIT( halleys )
 	game_id = GAME_HALLEYS;
 	halleys_collision_detection = 0xb114;
 
-	init_success = init_common();
+	init_common();
 }
 
 static DRIVER_INIT( halley87 )
@@ -2256,7 +2252,7 @@ static DRIVER_INIT( halley87 )
 	game_id = GAME_HALLEYS;
 	halleys_collision_detection = 0xb10d;
 
-	init_success = init_common();
+	init_common();
 }
 
 

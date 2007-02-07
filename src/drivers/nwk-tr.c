@@ -228,16 +228,6 @@ int K001604_vh_start(int chip)
 		K001604_layer_16x16[chip][1] = tilemap_create(K001604_1_tile_info_layer_16x16, K001604_scan_layer_16x16_1, TILEMAP_OPAQUE, 16, 16, 64, 64);
 	}
 
-	if (!K001604_layer_8x8[chip][0] ||
-		!K001604_layer_8x8[chip][1] ||
-		!K001604_layer_8x8[chip][2] ||
-		!K001604_layer_8x8[chip][3] ||
-		!K001604_layer_16x16[chip][0] ||
-		!K001604_layer_16x16[chip][1])
-	{
-		return 1;
-	}
-
 	tilemap_set_transparent_pen(K001604_layer_8x8[chip][0], 0);
 	tilemap_set_transparent_pen(K001604_layer_8x8[chip][1], 0);
 	tilemap_set_transparent_pen(K001604_layer_8x8[chip][2], 0);
@@ -786,16 +776,17 @@ static MACHINE_DRIVER_START( nwktr )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(0)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(0))
 
 	MDRV_MACHINE_RESET(nwktr)
 	MDRV_NVRAM_HANDLER( timekeeper_0 )
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT | VIDEO_NEEDS_6BITS_PER_GUN)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 48*8)
-	MDRV_VISIBLE_AREA(0*8, 64*8-1, 0*8, 48*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 48*8-1)
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_VIDEO_START(nwktr)

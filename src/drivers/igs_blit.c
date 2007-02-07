@@ -481,7 +481,7 @@ void chmplst2_decrypt(void)
 	int i,j;
 	int rom_size = 0x80000;
 	UINT16 *src = (UINT16 *) (memory_region(REGION_CPU1));
-	UINT16 *result_data = malloc(rom_size);
+	UINT16 *result_data = malloc_or_die(rom_size);
 
  	for (i=0; i<rom_size/2; i++)
 	{
@@ -579,7 +579,7 @@ void chmplst2_decrypt_gfx(void)
 	int i;
 	unsigned rom_size = 0x200000;
 	UINT8 *src = (UINT8 *) (memory_region(REGION_GFX1));
-	UINT8 *result_data = malloc(rom_size);
+	UINT8 *result_data = malloc_or_die(rom_size);
 
 	for (i=0; i<rom_size; i++)
     	result_data[i] = src[BITSWAP24(i, 23,22,21,20, 19, 17,16,15, 13,12, 10,9,8,7,6,5,4, 2,1, 3, 11, 14, 18, 0)];
@@ -594,7 +594,7 @@ void chindrag_gfx_decrypt(void)
 	int i;
 	unsigned rom_size = 0x400000;
 	UINT8 *src = (UINT8 *) (memory_region(REGION_GFX1));
-	UINT8 *result_data = malloc(rom_size);
+	UINT8 *result_data = malloc_or_die(rom_size);
 
  	for (i=0; i<rom_size; i++)
     	result_data[i] = src[BITSWAP24(i, 23,22,21,20,19,18,17,16,15, 12, 13, 14, 11,10,9,8,7,6,5,4,3,2,1,0)];
@@ -2360,16 +2360,17 @@ static const gfx_decode gfxdecodeinfo_chmplst2[] =
 static MACHINE_DRIVER_START( igs_base )
 	MDRV_CPU_ADD_TAG("main",M68000, 22000000/3)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 //  MDRV_GFXDECODE(gfxdecodeinfo)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
-	MDRV_VISIBLE_AREA(0, 512-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 0, 240-1)
 	MDRV_PALETTE_LENGTH(0x800)
 
 	MDRV_VIDEO_START( igs )
@@ -2378,8 +2379,8 @@ static MACHINE_DRIVER_START( igs_base )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("OKIM6295", OKIM6295, 1047600 / 132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD_TAG("OKIM6295", OKIM6295, 1047600)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

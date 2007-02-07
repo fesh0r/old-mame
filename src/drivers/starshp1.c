@@ -8,40 +8,9 @@ Atari Starship 1 driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/starshp1.h"
 
 int starshp1_attract;
-
-extern unsigned char *starshp1_playfield_ram;
-extern unsigned char *starshp1_hpos_ram;
-extern unsigned char *starshp1_vpos_ram;
-extern unsigned char *starshp1_obj_ram;
-
-extern int starshp1_ship_explode;
-extern int starshp1_ship_picture;
-extern int starshp1_ship_hoffset;
-extern int starshp1_ship_voffset;
-extern int starshp1_ship_size;
-
-extern int starshp1_circle_hpos;
-extern int starshp1_circle_vpos;
-extern int starshp1_circle_size;
-extern int starshp1_circle_mod;
-extern int starshp1_circle_kill;
-
-extern int starshp1_phasor;
-extern int starshp1_collision_latch;
-extern int starshp1_starfield_kill;
-extern int starshp1_mux;
-
-extern READ8_HANDLER( starshp1_rng_r );
-
-extern WRITE8_HANDLER( starshp1_sspic_w );
-extern WRITE8_HANDLER( starshp1_ssadd_w );
-extern WRITE8_HANDLER( starshp1_playfield_w );
-
-extern VIDEO_UPDATE( starshp1 );
-extern VIDEO_EOF( starshp1 );
-extern VIDEO_START( starshp1 );
 
 static int starshp1_analog_in_select;
 
@@ -369,14 +338,15 @@ static MACHINE_DRIVER_START( starshp1 )
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 	MDRV_CPU_VBLANK_INT(starshp1_interrupt, 1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(22 * 1000000 / 15750)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(22 * 1000000 / 15750))
 
 	/* video hardware */
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 240)
-	MDRV_VISIBLE_AREA(0, 511, 0, 239)
+	MDRV_SCREEN_VISIBLE_AREA(0, 511, 0, 239)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_COLORTABLE_LENGTH(14)

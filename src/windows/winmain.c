@@ -2,7 +2,7 @@
 //
 //  winmain.c - Win32 main program
 //
-//  Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -13,6 +13,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <mmsystem.h>
+#include <tchar.h>
 
 // standard includes
 #include <time.h>
@@ -27,6 +28,8 @@
 #include "output.h"
 #include "config.h"
 #include "osdepend.h"
+#include "strconv.h"
+#include "winutil.h"
 
 #ifdef MESS
 #include "parallel.h"
@@ -70,9 +73,9 @@ static char mapfile_name[MAX_PATH];
 static LPTOP_LEVEL_EXCEPTION_FILTER pass_thru_filter;
 
 #ifndef MESS
-static const char helpfile[] = "docs\\windows.txt";
+static const TCHAR helpfile[] = TEXT("docs\\windows.txt");
 #else
-static const char helpfile[] = "mess.chm";
+static const TCHAR helpfile[] = TEXT("mess.chm");
 #endif
 
 
@@ -92,18 +95,10 @@ static void stop_profiler(void);
 
 
 //============================================================
-//  main
+//  utf8_main
 //============================================================
 
-#ifdef WINUI
-#define main main_
-#endif
-
-#ifdef MESS
-int __declspec(dllexport) DECL_SPEC main_(int argc, char **argv)
-#else
-int main(int argc, char **argv)
-#endif
+int utf8_main(int argc, char **argv)
 {
 	int game_index;
 	char *ext;
@@ -169,13 +164,6 @@ int main(int argc, char **argv)
 	// close errorlog, input and playback
 	cli_frontend_exit();
 
-#ifdef MALLOC_DEBUG
-	{
-		void check_unfreed_mem(void);
-		check_unfreed_mem();
-	}
-#endif
-
 	return res;
 }
 
@@ -189,7 +177,7 @@ static void output_oslog(running_machine *machine, const char *buffer)
 {
 	extern int win_erroroslog;
 	if (win_erroroslog)
-		OutputDebugString(buffer);
+		win_output_debug_string_utf8(buffer);
 }
 
 
@@ -221,124 +209,6 @@ int osd_init(running_machine *machine)
 		add_logerror_callback(machine, output_oslog);
 
 	return result;
-}
-
-
-
-//============================================================
-//  osd_alloc_executable
-//============================================================
-
-void *osd_alloc_executable(size_t size)
-{
-	return VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-}
-
-
-
-//============================================================
-//  osd_free_executable
-//============================================================
-
-void osd_free_executable(void *ptr, size_t size)
-{
-	VirtualFree(ptr, 0, MEM_RELEASE);
-}
-
-
-
-//============================================================
-//  osd_is_bad_read_ptr
-//============================================================
-
-int osd_is_bad_read_ptr(const void *ptr, size_t size)
-{
-	return IsBadReadPtr(ptr, size);
-}
-
-
-
-//============================================================
-//  osd_break_into_debugger
-//============================================================
-
-void osd_break_into_debugger(const char *message)
-{
-	if (IsDebuggerPresent())
-	{
-		OutputDebugString(message);
-		DebugBreak();
-	}
-}
-
-
-
-//============================================================
-//  osd_lock_alloc
-//============================================================
-
-osd_lock *osd_lock_alloc(void)
-{
-	osd_lock *lock = malloc_or_die(sizeof(*lock));
-	InitializeCriticalSection(&lock->critsect);
-	return lock;
-}
-
-
-
-//============================================================
-//  osd_lock_acquire
-//============================================================
-
-void osd_lock_acquire(osd_lock *lock)
-{
-#if DEBUG_SLOW_LOCKS
-	cycles_t cycles = osd_cycles();
-#endif
-	EnterCriticalSection(&lock->critsect);
-#if DEBUG_SLOW_LOCKS
-	cycles = osd_cycles() - cycles;
-	if (cycles > 10000) mame_printf_warning("Blocked %d cycles on lock acquire\n", (int)cycles);
-#endif
-}
-
-
-
-//============================================================
-//  osd_lock_try
-//============================================================
-
-int osd_lock_try(osd_lock *lock)
-{
-	int result = TRUE;
-	if (try_enter_critical_section != NULL)
-		result = (*try_enter_critical_section)(&lock->critsect);
-	else
-		EnterCriticalSection(&lock->critsect);
-	return result;
-}
-
-
-
-//============================================================
-//  osd_lock_release
-//============================================================
-
-void osd_lock_release(osd_lock *lock)
-{
-	LeaveCriticalSection(&lock->critsect);
-}
-
-
-
-//============================================================
-//  osd_lock_free
-//============================================================
-
-void osd_lock_free(osd_lock *lock)
-{
-	DeleteCriticalSection(&lock->critsect);
-	free(lock);
 }
 
 
@@ -380,7 +250,7 @@ static int check_for_double_click_start(int argc)
 
 #ifndef MESS
 		sprintf(message_text, APPLONGNAME " v%s - Multiple Arcade Machine Emulator\n"
-							  "Copyright (C) 1997-2006 by Nicola Salmoria and the MAME Team\n"
+							  "Copyright (C) 1997-2007 by Nicola Salmoria and the MAME Team\n"
 							  "\n"
 							  APPLONGNAME " is a console application, you should launch it from a command prompt.\n"
 							  "\n"
@@ -403,16 +273,16 @@ static int check_for_double_click_start(int argc)
 #endif
 
 		// pop up a messagebox with some information
-		button = MessageBox(NULL, message_text, APPLONGNAME " usage information...", MB_YESNO | MB_ICONASTERISK);
+		button = win_message_box_utf8(NULL, message_text, APPLONGNAME " usage information...", MB_YESNO | MB_ICONASTERISK);
 
 		if (button == IDYES)
 		{
 			// check if windows.txt exists
-			FILE *fp = fopen(helpfile, "r");
+			FILE *fp = _tfopen(helpfile, TEXT("r"));
 			if (fp)
 			{
 				HANDLE hShell32;
-				HINSTANCE (WINAPI *pfnShellExecuteA)(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, int nShowCmd);
+				HINSTANCE (WINAPI *pfnShellExecute)(HWND hwnd, LPCTSTR lpOperation, LPCTSTR lpFile, LPCTSTR lpParameters, LPCTSTR lpDirectory, int nShowCmd);
 
 				fclose(fp);
 
@@ -420,9 +290,13 @@ static int check_for_double_click_start(int argc)
 				hShell32 = LoadLibrary(TEXT("shell32.dll"));
 				if (NULL != hShell32)
 				{
-					pfnShellExecuteA = (HINSTANCE (WINAPI *)(HWND,LPCSTR,LPCSTR,LPCSTR,LPCSTR,int))GetProcAddress(hShell32, TEXT("ShellExecuteA"));
-					if (NULL != pfnShellExecuteA)
-						pfnShellExecuteA(NULL, "open", helpfile, NULL, NULL, SW_SHOWNORMAL);
+#ifdef UNICODE
+					pfnShellExecute = (HINSTANCE (WINAPI *)(HWND,LPCWSTR,LPCWSTR,LPCWSTR,LPCWSTR,int))GetProcAddress(hShell32, "ShellExecuteW");
+#else
+					pfnShellExecute = (HINSTANCE (WINAPI *)(HWND,LPCSTR,LPCSTR,LPCSTR,LPCSTR,int))GetProcAddress(hShell32, "ShellExecuteA");
+#endif
+					if (NULL != pfnShellExecute)
+						pfnShellExecute(NULL, TEXT("open"), helpfile, NULL, NULL, SW_SHOWNORMAL);
 					FreeLibrary(hShell32);
 				}
 			}
@@ -475,7 +349,9 @@ static LONG CALLBACK exception_filter(struct _EXCEPTION_POINTERS *info)
 		{ 0,								"UNKNOWN EXCEPTION" }
 	};
 	static int already_hit = 0;
+#ifndef PTR64
 	UINT32 code_start, code_size;
+#endif
 	int i;
 
 	// if we're hitting this recursively, just exit

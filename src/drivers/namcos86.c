@@ -1078,16 +1078,17 @@ static MACHINE_DRIVER_START( hopmappy )
 	MDRV_CPU_IO_MAP(mcu_port_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)	/* ??? */
 
-	MDRV_FRAMES_PER_SECOND(60.606060)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(800)	/* heavy interleaving needed to avoid hangs in rthunder */
 
 	MDRV_MACHINE_RESET(namco86)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
-	MDRV_VISIBLE_AREA(3 + 8*8, 3 + 44*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(3 + 8*8, 3 + 44*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(512)
 	MDRV_COLORTABLE_LENGTH(4096)
@@ -1556,9 +1557,8 @@ static DRIVER_INIT( namco86 )
 	/* shuffle tile ROMs so regular gfx unpack routines can be used */
 	gfx = memory_region(REGION_GFX1);
 	size = memory_region_length(REGION_GFX1) * 2 / 3;
-	buffer = malloc( size );
+	buffer = malloc_or_die( size );
 
-	if ( buffer )
 	{
 		unsigned char *dest1 = gfx;
 		unsigned char *dest2 = gfx + ( size / 2 );
@@ -1582,9 +1582,8 @@ static DRIVER_INIT( namco86 )
 
 	gfx = memory_region(REGION_GFX2);
 	size = memory_region_length(REGION_GFX2) * 2 / 3;
-	buffer = malloc( size );
+	buffer = malloc_or_die( size );
 
-	if ( buffer )
 	{
 		unsigned char *dest1 = gfx;
 		unsigned char *dest2 = gfx + ( size / 2 );

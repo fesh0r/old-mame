@@ -979,13 +979,14 @@ static MACHINE_DRIVER_START( galpanic )
 	MDRV_CPU_PROGRAM_MAP(galpanic,0)
 	MDRV_CPU_VBLANK_INT(galpanic_interrupt,2)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)	/* frames per second, vblank duration */
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION	/* frames per second, vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0, 256-1, 0, 224-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 224-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(1024 + 32768)
 	MDRV_COLORTABLE_LENGTH(1024)
@@ -997,8 +998,8 @@ static MACHINE_DRIVER_START( galpanic )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("oki", OKIM6295, 12000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD_TAG("oki", OKIM6295, 1584000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1051,8 +1052,8 @@ static MACHINE_DRIVER_START( supmodel )
 	MDRV_VIDEO_UPDATE(comad)
 
 	/* sound hardware */
-	MDRV_SOUND_REPLACE("oki", OKIM6295, 12000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_REPLACE("oki", OKIM6295, 1584000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1096,8 +1097,8 @@ static MACHINE_DRIVER_START( zipzap )
 	MDRV_VIDEO_UPDATE(comad)
 
 	/* sound hardware */
-	MDRV_SOUND_REPLACE("oki", OKIM6295, 8000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_REPLACE("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

@@ -45,19 +45,7 @@ starfira has one less rom in total than starfire but everything passes as
 ***************************************************************************/
 
 #include "driver.h"
-
-
-/* In vidhrdw/starfire.c */
-VIDEO_UPDATE( starfire );
-extern VIDEO_START( starfire );
-extern void starfire_video_update(int scanline, int count);
-
-WRITE8_HANDLER( starfire_videoram_w );
-READ8_HANDLER( starfire_videoram_r );
-WRITE8_HANDLER( starfire_colorram_w );
-READ8_HANDLER( starfire_colorram_r );
-WRITE8_HANDLER( starfire_vidctrl_w );
-WRITE8_HANDLER( starfire_vidctrl1_w );
+#include "includes/starfire.h"
 
 
 
@@ -315,15 +303,16 @@ static MACHINE_DRIVER_START( starfire )
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
 
-	MDRV_FRAMES_PER_SECOND(57)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(57)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(starfire)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0, 256-1, 32, 256-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 32, 256-1)
 	MDRV_PALETTE_LENGTH(64)
 
 	MDRV_VIDEO_START(starfire)

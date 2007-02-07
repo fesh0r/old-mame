@@ -4,7 +4,7 @@
 
     Controls execution of the core MAME system.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -108,7 +108,7 @@ typedef struct _region_info region_info;
 struct _region_info
 {
 	UINT8 *			base;
-	size_t			length;
+	UINT32			length;
 	UINT32			type;
 	UINT32			flags;
 };
@@ -633,7 +633,7 @@ static int memory_region_to_index(mame_private *mame, int num)
     region
 -------------------------------------------------*/
 
-UINT8 *new_memory_region(running_machine *machine, int type, size_t length, UINT32 flags)
+UINT8 *new_memory_region(running_machine *machine, int type, UINT32 length, UINT32 flags)
 {
 	mame_private *mame = machine->mame_data;
     int num;
@@ -697,7 +697,7 @@ UINT8 *memory_region(int num)
     memory region
 -------------------------------------------------*/
 
-size_t memory_region_length(int num)
+UINT32 memory_region_length(int num)
 {
 	running_machine *machine = Machine;
 	mame_private *mame = machine->mame_data;
@@ -916,6 +916,8 @@ void mame_printf_log(const char *format, ...)
     to the OSD layer
 -------------------------------------------------*/
 
+DECL_NORETURN static void fatalerror_common(running_machine *machine, int exitcode, const char *buffer) ATTR_NORETURN;
+
 static void fatalerror_common(running_machine *machine, int exitcode, const char *buffer)
 {
 	/* output and return */
@@ -1122,10 +1124,7 @@ static running_machine *create_machine(int game)
 		memset(machine->driver_data, 0, machine->drv->driver_data_size);
 	}
 
-	/* determine the color depth */
-	machine->color_depth = 16;
-	if (machine->drv->video_attributes & VIDEO_RGB_DIRECT)
-		machine->color_depth = (machine->drv->video_attributes & VIDEO_NEEDS_6BITS_PER_GUN) ? 32 : 15;
+	/* configure all screens to be the default */
 	for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
 		machine->screen[scrnum] = machine->drv->screen[scrnum].defstate;
 
@@ -1213,7 +1212,7 @@ static void init_machine(running_machine *machine)
 	/* initialize the input ports for the game */
 	/* this must be done before memory_init in order to allow specifying */
 	/* callbacks based on input port tags */
-	if (input_port_init(machine, machine->gamedrv->construct_ipt) != 0)
+	if (input_port_init(machine, machine->gamedrv->ipt) != 0)
 		fatalerror("input_port_init failed");
 
 	/* load the ROMs if we have some */
@@ -1413,7 +1412,7 @@ static void handle_save(running_machine *machine)
 	}
 
 	/* open the file */
-	filerr = mame_fopen(SEARCHPATH_STATE, mame->saveload_pending_file, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &file);
+	filerr = mame_fopen(SEARCHPATH_STATE, mame->saveload_pending_file, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
 	if (filerr == FILERR_NONE)
 	{
 		int cpunum;

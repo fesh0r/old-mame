@@ -2,7 +2,7 @@
 
     Generic MAME CD-ROM utilties - build IDE and SCSI CD-ROMs on top of this
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -117,6 +117,11 @@ cdrom_file *cdrom_open(chd_file *chd)
 
 	/* read the CD-ROM metadata */
 	err = parse_metadata(chd, &file->cdtoc);
+	if (err != CHDERR_NONE)
+	{
+		free(file);
+		return NULL;
+	}
 
 	#if VERBOSE
 	logerror("CD has %d tracks\n", file->cdtoc.numtrks);

@@ -112,9 +112,6 @@ VIDEO_START( calorie )
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,     16,16,16,16);
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,32,32);
 
-	if(!bg_tilemap || !fg_tilemap )
-		return 1;
-
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
 	return 0;
@@ -374,20 +371,21 @@ static MACHINE_DRIVER_START( calorie )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,4000000)		 /* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(calorie_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_CPU_ADD(Z80,3000000)		 /* 3 MHz */
 	MDRV_CPU_PROGRAM_MAP(calorie_sound_map,0)
 	MDRV_CPU_IO_MAP(calorie_sound_io_map,0)
-	MDRV_CPU_PERIODIC_INT(irq0_line_pulse,TIME_IN_HZ(64))
+	MDRV_CPU_PERIODIC_INT(irq0_line_hold,TIME_IN_HZ(64))
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0, 256-1, 16, 256-16-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 16, 256-16-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x100)
 

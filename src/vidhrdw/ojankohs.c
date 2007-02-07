@@ -285,8 +285,6 @@ VIDEO_START( ojankohs )
 	ojankohs_colorram = auto_malloc(0x1000);
 	ojankohs_paletteram = auto_malloc(0x800);
 
-	if (!ojankohs_tilemap) return 1;
-
 	return 0;
 }
 
@@ -297,8 +295,6 @@ VIDEO_START( ojankoy )
 	ojankohs_colorram = auto_malloc(0x1000);
 	ojankohs_paletteram = auto_malloc(0x800);
 
-	if (!ojankohs_tilemap) return 1;
-
 	return 0;
 }
 
@@ -307,8 +303,6 @@ VIDEO_START( ojankoc )
 	ojankoc_tmpbitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
 	ojankohs_videoram = auto_malloc(0x8000);
 	ojankohs_paletteram = auto_malloc(0x20);
-
-	if (!ojankoc_tmpbitmap) return 1;
 
 	return 0;
 }

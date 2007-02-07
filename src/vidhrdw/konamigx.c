@@ -11,7 +11,6 @@
 
 static int layer_colorbase[4];
 static INT32 gx_tilebanks[8], gx_oldbanks[8];
-static int gx_invertlayersBC;
 static int gx_tilemode, gx_rozenable, psac_colorbase, last_psac_colorbase;
 static tilemap *gx_psac_tilemap, *gx_psac_tilemap2;
 extern UINT32 *gx_psacram, *gx_subpaletteram32;
@@ -158,7 +157,6 @@ static int _gxcommoninitnosprites(void)
 
 	state_save_register_global_array(gx_tilebanks);
 
-	gx_invertlayersBC = 0;
 	gx_tilemode = 0;
 
 	// Documented relative offsets of non-flipped games are (-2, 0, 2, 3),(0, 0, 0, 0).
@@ -288,7 +286,6 @@ VIDEO_START(le2)
 
 	if (_gxcommoninitnosprites()) return 1;
 
-	gx_invertlayersBC = 1;
 	konamigx_mixer_primode(-1); // swapped layer B and C priorities?
 
 	return 0;
@@ -487,11 +484,6 @@ VIDEO_UPDATE(konamigx)
 	else
 		konamigx_mixer(bitmap, cliprect, 0, 0, 0, 0, 0);
 
-	if( gx_invertlayersBC )
-	{
-		draw_crosshair( bitmap, readinputport( 9)*287/0xff+24, readinputport(10)*223/0xff+16, cliprect, 0 );
-		draw_crosshair( bitmap, readinputport(11)*287/0xff+24, readinputport(12)*223/0xff+16, cliprect, 1 );
-	}
 	return 0;
 }
 

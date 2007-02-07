@@ -2,6 +2,7 @@
 
   Bellfruit Adder2 video board driver, (under heavy construction !!!)
 
+  30-12-2006: State save support added (J. Wallace)
   16-08-2005: Decoupled from AGEMAME by El Condor
   19-08-2005: Re-Animator
 
@@ -31,23 +32,23 @@ A000-BFFF  |R/W| D D D D D D D D | ?window into character RAM/ROM?
 -----------+---+-----------------+-----------------------------------------
 C000-DFFF  |?/W| D D D D D D D D | I/O registers
 C000       | W | ? ? ? ? ? ? D D | program ROM page select
-                                   controls what portion of the eprom is mapped
-                                   at 0000 - 7FFFF
+                                   controls what portion of the eprom is
+                                   mapped at 0000 - 7FFFF
 
-                                   _______________________________________
-                                   bit1 | bit0 | Address in eprom        |
-                                   -----+------+-------------------------+
-                                   0    | 0    | 00000 - 07FFF           |
-                                   -----+------+-------------------------+
-                                   0    | 1    | 08000 - 0FFFF (not used)|
-                                   -----+------+-------------------------+
-                                   1    | 0    | 10000 - 17FFF (not used)|
-                                   -----+------+-------------------------+
-                                   1    | 1    | 18000 - 1FFFF           |
+                                    ______________________________________
+                                   |bit1 | bit0 | Address in eprom        |
+                                   |-----+------+-------------------------+
+                                   |0    | 0    | 00000 - 07FFF           |
+                                   |-----+------+-------------------------+
+                                   |0    | 1    | 08000 - 0FFFF (not used)|
+                                   |-----+------+-------------------------+
+                                   |1    | 0    | 10000 - 17FFF (not used)|
+                                   |-----+------+-------------------------+
+                                   |1    | 1    | 18000 - 1FFFF           |
 
 -----------+---+-----------------+-----------------------------------------
 C001       | W | ? ? ? ? ? ? ? D | Palette enable (seems to turn off red)
-           |   |                 | 0 = palette disabled (red signal always 0 )
+           |   |                 | 0 = palette disabled (red signal always 0)
            |   |                 | 1 = palette enabled
 -----------+---+-----------------+-----------------------------------------
 C002       | W | ? ? ? ? D D D D | Character page register (not used)
@@ -61,7 +62,8 @@ C101       |R/W| ? ? ? ? ? ? ? D | Vertical Blanking IRQ enable
 C102       |R/W| ? ? ? ? ? ? ? D | Pre Vertical Blanking IRQ enable
            |   |                 |  bit0  0 = disabled
            |   |                 |        1 = enabled,
-           |   |                 |            generate IRQ 100 cycles before VBL
+           |   |                 |            generate IRQ 100 cycles
+           |   |                 |            before  VBL
 -----------+---+-----------------+-----------------------------------------
 C103       | R | ? ? ? D D D D D | IRQ status
            |   |                 |
@@ -95,20 +97,16 @@ E000-FFFF  | R | D D D D D D D D | 8K ROM
 #include "bfm_sc2.h"
 #include "rendlay.h"
 
-int adder2_show_alpha_display;	  // flag, set if alpha display need to be displayed
-
-//#define LOG_CTRL // show UART information
-
-// local prototypes ///////////////////////////////////////////////////////
-
-
+#ifdef MAME_DEBUG
+#define LOG_CTRL(x) logerror x // show UART information
+#else
+#define LOG_CTRL(x)
+#endif
 
 // local vars /////////////////////////////////////////////////////////////
 
 #define SL_DISPLAY    0x02	// displayed Adder screen,  1=screen1 0=screen0
 #define SL_ACCESS     0x01	// accessable Adder screen, 1=screen1 0=screen0
-
-
 
 static int adder2_screen_page_reg;		  // access/display select
 static int adder2_c101;
@@ -121,31 +119,6 @@ static UINT8 adder_screen_ram[2][0x1180];	// paged  display RAM
 
 static tilemap *tilemap0;  // tilemap screen0
 static tilemap *tilemap1;  // timemap screen1
-
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-
-static const gfx_layout charlayout =
-{
-	8,8,		  // 8 * 8 characters
-	8192,		  // 8192  characters
-	4,		  // 4     bits per pixel
-	{ 0,1,2,3 },
-	{ 0*4, 1*4, 2*4, 3*4, 4*4, 5*4, 6*4, 7*4 },
-	{ 0*8*4, 1*8*4, 2*8*4, 3*8*4, 4*8*4, 5*8*4, 6*8*4, 7*8*4 },
-	8*8*4
-};
-
-// this is a strange beast !!!!
-//
-// characters are grouped by 64 (512 pixels)
-// there are max 128 of these groups
-
-gfx_decode adder2_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1,  0, &charlayout, 0, 16 },
-	{ -1 } /* end of array */
-};
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -169,7 +142,6 @@ static void get_tile0_info(int tile_index)
 
 	SET_TILE_INFO(0, code, color, flags)
 }
-
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -212,20 +184,26 @@ VIDEO_RESET( adder2 )
 		memory_configure_bank(2, 0, 4, &rom[0x00000], 0x08000);
 
 		memory_set_bank(2,0&0x03);
-
 	}
 }
 
 VIDEO_START( adder2 )
 {
+	state_save_register_global(adder2_screen_page_reg);
+	state_save_register_global(adder2_c101);
+	state_save_register_global(adder2_rx);
+	state_save_register_global(adder_vbl_triggered);
+	state_save_register_global(adder_acia_triggered);
+
+	state_save_register_global(adder2_data_from_sc2);
+	state_save_register_global(sc2_data_from_adder);
+
+	state_save_register_item_array("Adder", 0, adder_ram);
+	state_save_register_item_2d_array("Adder", 0, adder_screen_ram);
+
 	tilemap0 = tilemap_create(get_tile0_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 50, 35);
 
-	if ( !tilemap0 ) return 1;
-
 	tilemap1 = tilemap_create(get_tile1_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 50, 35);
-
-	if ( !tilemap1 ) return 1;
-
 
 	return 0;
 }
@@ -238,18 +216,6 @@ VIDEO_UPDATE( adder2 )
 	if (screen == 0)
 	{
 		adder2_update(bitmap);
-		if ( sc2_show_door )
-		{
-			output_set_value("door",( Scorpion2_GetSwitchState(sc2_door_state>>4, sc2_door_state & 0x0F) ) );
-		}
-	}
-
-	if (screen == 1)
-	{
-		if ( adder2_show_alpha_display )
-		{
-			draw_14seg(bitmap,0,3,1);
-		}
 	}
 	return 0;
 }
@@ -293,7 +259,6 @@ MACHINE_RESET( adder2_init_vid )
 	// reset the board //////////////////////////////////////////////////////
 
 	on_scorpion2_reset();
-
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -415,18 +380,14 @@ static WRITE8_HANDLER( adder2_uart_ctrl_w )
 	sc2_data_from_adder  = 0;	// data available for sc2 from adder
 	sc2_adderdata		 = 0;	// data
 
-	#ifdef LOG_CTRL
-	logerror("adder2 uart ctrl:%02X\n", data);
-	#endif
+	LOG_CTRL(("adder2 uart ctrl:%02X\n", data));
 }
 
 ///////////////////////////////////////////////////////////////////////////
 
 static READ8_HANDLER( adder2_uart_rx_r )
 {
-	int data = read_from_sc2();
-
-	return data;
+	return read_from_sc2();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -464,8 +425,7 @@ void adder2_decode_char_roms(void)
 	{
 		UINT8 *s;
 
-		s = malloc( 0x40000 );
-		if ( s )
+		s = malloc_or_die( 0x40000 );
 		{
 			int x, y;
 
@@ -503,29 +463,45 @@ void adder2_decode_char_roms(void)
 
 ADDRESS_MAP_START( adder2_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 
-	AM_RANGE(0x0000, 0x7FFF) AM_READ(MRA8_BANK2)				// 8k  paged ROM (4 pages)
-	AM_RANGE(0xE000, 0xFFFF) AM_READ(MRA8_ROM)					// 8k  ROM
-
 	AM_RANGE(0x0000, 0x0000) AM_WRITE(adder2_screen_page_w)		// screen access/display select
+	AM_RANGE(0x0000, 0x7FFF) AM_READ(MRA8_BANK2)				// 8k  paged ROM (4 pages)
+	AM_RANGE(0x8000, 0x917F) AM_READWRITE(screen_ram_r, screen_ram_w)
+	AM_RANGE(0x9180, 0x9FFF) AM_READWRITE(normal_ram_r, normal_ram_w)
 
-	AM_RANGE(0x8000, 0x917F) AM_WRITE(screen_ram_w)
-	AM_RANGE(0x8000, 0x917F) AM_READ( screen_ram_r)
+	AM_RANGE(0xC000, 0xC000) AM_WRITE(adder2_rom_page_w)		// ROM page select
+	AM_RANGE(0xC001, 0xC001) AM_WRITE(adder2_c001_w)			// ??
 
-	AM_RANGE(0x9180, 0x9FFF) AM_WRITE(normal_ram_w)
-	AM_RANGE(0x9180, 0x9FFF) AM_READ( normal_ram_r)
+	AM_RANGE(0xC101, 0xC101) AM_READWRITE(adder2_vbl_ctrl_r, adder2_vbl_ctrl_w)
+	AM_RANGE(0xC103, 0xC103) AM_READ(adder2_irq_r);				// IRQ latch read
 
-	AM_RANGE(0xC000, 0xC000) AM_WRITE( adder2_rom_page_w )		// ROM page select
-	AM_RANGE(0xC001, 0xC001) AM_WRITE( adder2_c001_w )			// ??
+	// MC6850 compatible uart connected to main (scorpion2) board ///////////////////////////////////////
 
-	AM_RANGE(0xC101, 0xC101) AM_WRITE( adder2_vbl_ctrl_w )
-	AM_RANGE(0xC101, 0xC101) AM_READ(  adder2_vbl_ctrl_r )
-	AM_RANGE(0xC103, 0xC103) AM_READ(  adder2_irq_r );			// IRQ latch read
+	AM_RANGE(0xC200, 0xC200) AM_READWRITE( adder2_uart_ctrl_r, adder2_uart_ctrl_w );// 6850 compatible uart control reg
+	AM_RANGE(0xC201, 0xC201) AM_READWRITE( adder2_uart_rx_r, adder2_uart_tx_w );	// 6850 compatible uart data reg
 
-  // MC6850 compatible uart connected to main (scorpion2) board /////////////////////////////////////
-
-	AM_RANGE(0xC200, 0xC200) AM_READ(  adder2_uart_ctrl_r );	// 6850 compatible uart control reg read
-	AM_RANGE(0xC200, 0xC200) AM_WRITE( adder2_uart_ctrl_w );	// 6850 compatible uart control reg write
-	AM_RANGE(0xC201, 0xC201) AM_READ(  adder2_uart_rx_r );  	// 6850 compatible uart read  data
-	AM_RANGE(0xC201, 0xC201) AM_WRITE( adder2_uart_tx_w );  	// 6850 compatible uart write data
-
+	AM_RANGE(0xE000, 0xFFFF) AM_ROM								// 8k  ROM
 ADDRESS_MAP_END
+
+static const gfx_layout charlayout =
+{
+	8,8,		  // 8 * 8 characters
+	8192,		  // 8192  characters
+	4,		  // 4     bits per pixel
+	{ 0,1,2,3 },
+	{ 0*4, 1*4, 2*4, 3*4, 4*4, 5*4, 6*4, 7*4 },
+	{ 0*8*4, 1*8*4, 2*8*4, 3*8*4, 4*8*4, 5*8*4, 6*8*4, 7*8*4 },
+	8*8*4
+};
+
+// this is a strange beast !!!!
+//
+// characters are grouped by 64 (512 pixels)
+// there are max 128 of these groups
+
+gfx_decode adder2_gfxdecodeinfo[] =
+{
+	{ REGION_GFX1,  0, &charlayout, 0, 16 },
+	{ -1 } /* end of array */
+};
+
+///////////////////////////////////////////////////////////////////////////

@@ -14,7 +14,7 @@ Sound Chips  :  OKI M6295 + YM3812 [Optional]
 ---------------------------------------------------------------------------
 Year + Game         Board#
 ---------------------------------------------------------------------------
-19?? Magic Bubble     YS-1302
+19?? Magic Bubble     YS-1302 / YS102
 1997 Shocking
 1998 Bomb Kick        YS-0211
 ---------------------------------------------------------------------------
@@ -560,13 +560,14 @@ static MACHINE_DRIVER_START( magicbub )
 	MDRV_CPU_PROGRAM_MAP(yunsun16_sound_readmem,yunsun16_sound_writemem)
 	MDRV_CPU_IO_MAP(yunsun16_sound_readport,yunsun16_sound_writeport)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(0x180, 0xe0)
-	MDRV_VISIBLE_AREA(0+0x20, 0x180-1-0x20, 0, 0xe0-1)
+	MDRV_SCREEN_VISIBLE_AREA(0+0x20, 0x180-1-0x20, 0, 0xe0-1)
 	MDRV_GFXDECODE(yunsun16_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(8192)
 
@@ -581,8 +582,8 @@ static MACHINE_DRIVER_START( magicbub )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.20)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.20)
 
-	MDRV_SOUND_ADD(OKIM6295, 8000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.80)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.80)
 MACHINE_DRIVER_END
@@ -599,13 +600,14 @@ static MACHINE_DRIVER_START( shocking )
 	MDRV_CPU_PROGRAM_MAP(yunsun16_readmem,yunsun16_writemem)
 	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(0x180, 0xe0)
-	MDRV_VISIBLE_AREA(0, 0x180-1-4, 0, 0xe0-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 0x180-1-4, 0, 0xe0-1)
 	MDRV_GFXDECODE(yunsun16_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(8192)
 
@@ -615,8 +617,8 @@ static MACHINE_DRIVER_START( shocking )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000 / 132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -635,7 +637,31 @@ MACHINE_DRIVER_END
 
                                 Magic Bubble
 
-by Yun Sung YS102
+by Yun Sung YS1302
+
+PCB Layout
+----------
+
++-------------------------------------------------+
+|             u131               u20     6116     |
+| YM3014 6116  Z80 M6295         u22     6116     |
+| YM3812 u143                    u21              |
+|      62256                     u23     6116     |
+|      62256                             6116     |
+|                  PAL                      PAL   |
+|J                 PAL                      PAL   |
+|A  DSW1                       PAL                |
+|M                                          PAL   |
+|M  DSW2                PAL           6116  6116  |
+|A        PAL           PAL   ACTEL   6116  6116  |
+|         PAL  PAL      PAL   A1020B     u70 u74  |
+|              PAL                       u69 u73  |
+|                62256                   u68 u72  |
+|                62256                   u67 u71  |
+|        68000   u32                62256  62256  |
+|16MHz           u33                              |
++-------------------------------------------------+
+
 
 U143 -------------------27c512
 U23, 21, 22, 20, 131 ---27c010
@@ -647,7 +673,7 @@ U32, 33 .........most likely program
 U20-23 ..........most likely sprites
 U67-70 ..........most likely BG
 
-Actel A1020b is close to U67-70
+Actel A1020B is close to U67-70
 
 68HC000 p16 is close to  U32,33
 

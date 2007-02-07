@@ -4,7 +4,7 @@
 
     Debugger CPU/memory interface engine.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -57,7 +57,7 @@ static int steps_until_stop;
 static offs_t step_overout_breakpoint;
 static int step_overout_cpunum;
 static int key_check_counter;
-static cycles_t last_periodic_update_time;
+static osd_ticks_t last_periodic_update_time;
 static int break_on_vblank;
 static int break_on_interrupt;
 static int break_on_interrupt_cpunum;
@@ -800,10 +800,10 @@ void mame_debug_hook(void)
 			}
 
 			/* while we're here, check for a periodic update */
-			if (cpunum == last_stopped_cpunum && execution_state != EXECUTION_STATE_STOPPED && osd_cycles() > last_periodic_update_time + osd_cycles_per_second()/4)
+			if (cpunum == last_stopped_cpunum && execution_state != EXECUTION_STATE_STOPPED && osd_ticks() > last_periodic_update_time + osd_ticks_per_second()/4)
 			{
 				debug_view_update_all();
-				last_periodic_update_time = osd_cycles();
+				last_periodic_update_time = osd_ticks();
 			}
 		}
 	}
@@ -1013,7 +1013,7 @@ static void process_source_file(void)
 			*s = '\0';
 
 		/* strip whitespace */
-		i = strlen(buf);
+		i = (int)strlen(buf);
 		while((i > 0) && (isspace(buf[i-1])))
 			buf[--i] = '\0';
 

@@ -44,9 +44,6 @@ VIDEO_START( aeroboto )
 {
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,32,64);
 
-	if (!bg_tilemap)
-		return 1;
-
 	tilemap_set_transparent_pen(bg_tilemap,0);
 
 	tilemap_set_scroll_rows(bg_tilemap,64);
@@ -58,7 +55,7 @@ VIDEO_START( aeroboto )
 
 		rom = memory_region(REGION_GFX2);
 		length = memory_region_length(REGION_GFX2);
-		temp = malloc(length);
+		temp = malloc_or_die(length);
 		memcpy(temp, rom, length);
 
 		for (i=0; i<length; i++) rom[(i&~0xff)+(i<<5&0xe0)+(i>>3&0x1f)] = temp[i];

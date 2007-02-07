@@ -100,9 +100,6 @@ VIDEO_START( playch10 )
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
 
-	if ( !bg_tilemap )
-		return 1;
-
 	ppu2c0x_init( &ppu_interface );
 
 	return 0;
@@ -131,15 +128,6 @@ VIDEO_UPDATE( playch10 )
 			{
 				/* render the ppu */
 				ppu2c0x_render( 0, bitmap, 0, 0, 0, 0 );
-
-				/* if this is a gun game, draw a simple crosshair */
-				if ( pc10_gun_controller )
-				{
-					int x_center = readinputport( 5 );
-					int y_center = readinputport( 6 );
-
-					draw_crosshair(bitmap, x_center, y_center, cliprect, 0);
-				}
 			}
 			else
 				fillbitmap(bitmap, 0, cliprect);
@@ -173,15 +161,6 @@ VIDEO_UPDATE( playch10 )
 		{
 			/* render the ppu */
 			ppu2c0x_render( 0, bitmap, 0, 0, 0, 0 );
-
-			/* if this is a gun game, draw a simple crosshair */
-			if ( pc10_gun_controller )
-			{
-				int x_center = readinputport( 5 );
-				int y_center = readinputport( 6 );
-
-				draw_crosshair(bitmap, x_center, y_center, &top_monitor, 0);
-			}
 		}
 		else
 		{

@@ -1128,16 +1128,17 @@ static MACHINE_DRIVER_START( wecleman )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(wecleman_sound_readmem,wecleman_sound_writemem)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	MDRV_MACHINE_RESET(wecleman)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(320 +16, 224 +16)
-	MDRV_VISIBLE_AREA(0 +8, 320-1 +8, 0 +8, 224-1 +8)
+	MDRV_SCREEN_VISIBLE_AREA(0 +8, 320-1 +8, 0 +8, 224-1 +8)
 	MDRV_GFXDECODE(wecleman_gfxdecodeinfo)
 
 	MDRV_PALETTE_LENGTH(2048)
@@ -1184,14 +1185,15 @@ static MACHINE_DRIVER_START( hotchase )
 	MDRV_CPU_PERIODIC_INT( hotchase_sound_timer, TIME_IN_HZ(496) )
 
 	/* Amuse: every 2 ms */
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 224)
-	MDRV_VISIBLE_AREA(0, 320-1, 0, 224-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 224-1)
 	MDRV_GFXDECODE(hotchase_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(2048*2)
 
@@ -1292,9 +1294,7 @@ void wecleman_unpack_sprites(void)
 
 static void bitswap(UINT8 *src,size_t len,int _14,int _13,int _12,int _11,int _10,int _f,int _e,int _d,int _c,int _b,int _a,int _9,int _8,int _7,int _6,int _5,int _4,int _3,int _2,int _1,int _0)
 {
-	UINT8 *buffer = malloc(len);
-
-	if (buffer)
+	UINT8 *buffer = malloc_or_die(len);
 	{
 		int i;
 
@@ -1409,8 +1409,7 @@ void hotchase_sprite_decode( int num16_banks, int bank_size )
 	int i;
 
 	base = memory_region(REGION_GFX1);	// sprites
-	temp = malloc( bank_size );
-	if( !temp ) return;
+	temp = malloc_or_die( bank_size );
 
 	for( i = num16_banks; i >0; i-- ){
 		unsigned char *finish   = base + 2*bank_size*i;

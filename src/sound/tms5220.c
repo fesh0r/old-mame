@@ -5,6 +5,10 @@
      Written for MAME by Frank Palazzolo
      With help from Neill Corlett
      Additional tweaking by Aaron Giles
+     TMS6100 Speech Rom support added by Raphael Nabet
+     PRNG code by Jarek Burczynski backported from tms5110.c by Lord Nightmare
+     Chirp/excitation table fixes by Lord Nightmare
+     Various fixes by Lord Nightmare
 
 ***********************************************************************************************/
 
@@ -92,7 +96,7 @@ struct tms5220
 	INT32 u[11];
 	INT32 x[10];
 
-	INT8 randbit;
+	INT32 RNG;      /* the random noise generator configuration is: 1 + x + x^3 + x^4 + x^13 */
 
 
 	/* R Nabet : These have been added to emulate speech Roms */
@@ -169,7 +173,7 @@ void *tms5220_create(int index)
 	state_save_register_item_array("tms5220", index, tms->u);
 	state_save_register_item_array("tms5220", index, tms->x);
 
-	state_save_register_item("tms5220", index, tms->randbit);
+	state_save_register_item("tms5220", index, tms->RNG);
 
 	state_save_register_item("tms5220", index, tms->schedule_dummy_read);
 	state_save_register_item("tms5220", index, tms->data_register);
@@ -219,7 +223,7 @@ void tms5220_reset_chip(void *chip)
 
 	/* initialize the sample generators */
 	tms->interp_count = tms->sample_count = tms->pitch_count = 0;
-	tms->randbit = 0;
+        tms->RNG = 0x1FFF;
 	memset(tms->u, 0, sizeof(tms->u));
 	memset(tms->x, 0, sizeof(tms->x));
 
@@ -458,7 +462,7 @@ void tms5220_process(void *chip, INT16 *buffer, unsigned int size)
 {
 	struct tms5220 *tms = chip;
     int buf_count=0;
-    int i, interp_period;
+    int i, interp_period, cliptemp;
 
 tryagain:
 
@@ -625,16 +629,25 @@ tryagain:
         else if (tms->old_pitch == 0)
         {
             /* generate unvoiced samples here */
-            tms->randbit = (rand() % 2) * 2 - 1;
-            current_val = (tms->randbit * tms->current_energy) / 4;
+		    int bitout, randbit;
+		    if (tms->RNG&1)
+                randbit = -64; /* according to the patent it is (either + or -) half of the maximum value in the chirp table */
+            else
+                randbit = 64;
+
+            bitout = ((tms->RNG>>12)&1) ^
+                     ((tms->RNG>>10)&1) ^
+                     ((tms->RNG>> 9)&1) ^
+                     ((tms->RNG>> 0)&1);
+            tms->RNG >>= 1;
+            tms->RNG |= (bitout<<12);
+
+            current_val = (randbit * tms->current_energy) / 256;
         }
         else
         {
             /* generate voiced samples here */
-            if (tms->pitch_count < sizeof(chirptable))
-                current_val = (chirptable[tms->pitch_count] * tms->current_energy) / 256;
-            else
-                current_val = 0x00;
+            current_val = (chirptable[tms->pitch_count%sizeof(chirptable)] * tms->current_energy) / 256;
         }
 
         /* Lattice filter here */
@@ -652,14 +665,19 @@ tryagain:
 
         tms->x[0] = tms->u[0];
 
-        /* clipping, just like the chip */
+        /* clipping & wrapping, just like the patent shows */
 
-        if (tms->u[0] > 511)
+	cliptemp = tms->u[0];
+	if (cliptemp > 2047) cliptemp = -2048 + (cliptemp-2047);
+	else if (cliptemp < -2048) cliptemp = 2047 - (cliptemp+2048);
+
+	if (cliptemp > 511)
             buffer[buf_count] = 127<<8;
-        else if (tms->u[0] < -512)
+        else if (cliptemp < -512)
             buffer[buf_count] = -128<<8;
         else
-            buffer[buf_count] = tms->u[0] << 6;
+            buffer[buf_count] = cliptemp << 6;
+
 
         /* Update all counts */
 

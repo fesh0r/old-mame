@@ -370,7 +370,7 @@ are loaded in RAM then saved with cmd 0x42 (see code @ $5196 & $50d4)
 		case 0x42: /* save game settings to 93C46 EEPROM ($50d4) */
 		{
 			mame_file *f;
-			if ((f = nvram_fopen(Machine, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE)) != 0)
+			if ((f = nvram_fopen(Machine, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS)) != 0)
 			{
 				mame_fwrite(f,&mcu_ram[mcu_offset], 128);
 				mame_fclose(f);
@@ -775,14 +775,15 @@ static MACHINE_DRIVER_START( jchan )
 	MDRV_CPU_ADD(M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(jchan_sub,0)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
-	MDRV_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
 
 	MDRV_PALETTE_LENGTH(32768)
 

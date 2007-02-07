@@ -194,9 +194,6 @@ VIDEO_START( dacholer )
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,     8,8,32,32);
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,32,32);
 
-	if (!bg_tilemap || !fg_tilemap)
-		return 1;
-
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
 	return 0;
@@ -287,13 +284,14 @@ static MACHINE_DRIVER_START( dacholer )
 	MDRV_CPU_IO_MAP(snd_io_map, 0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, TIME_IN_HZ(120)) // too high?
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0, 256-1, 16, 256-1-16)
+	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 16, 256-1-16)
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 

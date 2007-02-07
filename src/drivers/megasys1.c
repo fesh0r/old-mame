@@ -658,8 +658,8 @@ static MACHINE_DRIVER_START( system_A )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem_A,sound_writemem_A)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_INTERLEAVE(2000)
 
@@ -667,8 +667,9 @@ static MACHINE_DRIVER_START( system_A )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo_ABC)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -684,13 +685,13 @@ static MACHINE_DRIVER_START( system_A )
 	MDRV_SOUND_ROUTE(0, "left", 0.80)
 	MDRV_SOUND_ROUTE(1, "right", 0.80)
 
-	MDRV_SOUND_ADD(OKIM6295, 4000000/132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 4000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
 
-	MDRV_SOUND_ADD(OKIM6295, 4000000/132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2)
+	MDRV_SOUND_ADD(OKIM6295, 4000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
 MACHINE_DRIVER_END
@@ -752,15 +753,16 @@ static MACHINE_DRIVER_START( system_D )
 	MDRV_CPU_PROGRAM_MAP(readmem_D,writemem_D)
 	MDRV_CPU_VBLANK_INT(interrupt_D,INTERRUPT_NUM_D)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(megasys1)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo_ABC)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -771,8 +773,8 @@ static MACHINE_DRIVER_START( system_D )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 12000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1980000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -817,13 +819,14 @@ static MACHINE_DRIVER_START( system_Z )
 	MDRV_CPU_PROGRAM_MAP(sound_readmem_z80,sound_writemem_z80)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo_Z)
 	MDRV_PALETTE_LENGTH(768)
 
@@ -2697,7 +2700,7 @@ static WRITE16_HANDLER( protection_peekaboo_w )
 
 	if ((protection_val & 0x90) == 0x90)
 	{
-		unsigned char *RAM = memory_region(okim6295_interface_region_1.region);
+		unsigned char *RAM = memory_region(okim6295_interface_region_1_pin7high.region);
 		int new_bank = (protection_val & 0x7) % 7;
 
 		if (bank != new_bank)
@@ -3442,8 +3445,7 @@ static void rodlandj_gfx_unmangle(int region)
 				| ((rom[i] & 0x48) << 1)
 				| ((rom[i] & 0x10) << 2);
 
-	buffer = malloc(size);
-	if (!buffer) return;
+	buffer = malloc_or_die(size);
 
 	memcpy(buffer,rom,size);
 
@@ -3472,8 +3474,7 @@ static void jitsupro_gfx_unmangle(int region)
 	for (i = 0;i < size;i++)
 		rom[i] =   BITSWAP8(rom[i],0x4,0x3,0x5,0x7,0x6,0x2,0x1,0x0);
 
-	buffer = malloc(size);
-	if (!buffer) return;
+	buffer = malloc_or_die(size);
 
 	memcpy(buffer,rom,size);
 

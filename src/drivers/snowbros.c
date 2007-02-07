@@ -1528,13 +1528,14 @@ static MACHINE_DRIVER_START( snowbros )
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 
-	MDRV_FRAMES_PER_SECOND(57.5) /* ~57.5 - confirmed */
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(57.5) /* ~57.5 - confirmed */
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -1579,8 +1580,8 @@ static MACHINE_DRIVER_START( semicom )
 	MDRV_SOUND_ROUTE(0, "mono", 0.10)
 	MDRV_SOUND_ROUTE(1, "mono", 0.10)
 
-	MDRV_SOUND_ADD_TAG("oki", OKIM6295, 7575)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD_TAG("oki", OKIM6295, 999900)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1621,13 +1622,14 @@ static MACHINE_DRIVER_START( honeydol )
 	MDRV_CPU_PROGRAM_MAP(honeydol_sound_readmem,honeydol_sound_writemem)
 	MDRV_CPU_IO_MAP(honeydol_sound_readport,honeydol_sound_writeport)
 
-	MDRV_FRAMES_PER_SECOND(57.5)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(57.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(honeydol_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x800/2)
 
@@ -1643,8 +1645,8 @@ static MACHINE_DRIVER_START( honeydol )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 
-	MDRV_SOUND_ADD_TAG("oki", OKIM6295, 7575) /* freq? */
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD_TAG("oki", OKIM6295, 999900) /* freq? */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1661,13 +1663,14 @@ static MACHINE_DRIVER_START( twinadv )
 	MDRV_CPU_IO_MAP(twinadv_sound_readport,twinadv_sound_writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(57.5)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(57.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(twinadv_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x100)
 
@@ -1677,8 +1680,8 @@ static MACHINE_DRIVER_START( twinadv )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	/* sound hardware */
-	MDRV_SOUND_ADD_TAG("oki", OKIM6295, 12000000/12/132) /* freq? */
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD_TAG("oki", OKIM6295, 12000000/12) /* freq? */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1716,8 +1719,8 @@ static MACHINE_DRIVER_START( finalttr )
 	MDRV_SOUND_ROUTE(0, "mono", 0.20)
 	MDRV_SOUND_ROUTE(1, "mono", 0.20)
 
-	MDRV_SOUND_REPLACE("oki", OKIM6295, 7575)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_REPLACE("oki", OKIM6295, 999900)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
@@ -1735,13 +1738,14 @@ static MACHINE_DRIVER_START( snowbro3 )
 	MDRV_CPU_PROGRAM_MAP(readmem3,writemem3)
 	MDRV_CPU_VBLANK_INT(snowbro3_interrupt,3)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(sb3_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(512)
 
@@ -1750,8 +1754,8 @@ static MACHINE_DRIVER_START( snowbro3 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 7575)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 999900)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -2600,7 +2604,7 @@ static DRIVER_INIT(4in1boot)
 	int len = memory_region_length(REGION_CPU1);
 
 	/* strange order */
-	if ((buffer = malloc(len)))
+	buffer = malloc_or_die(len);
 	{
 		int i;
 		for (i = 0;i < len; i++)
@@ -2615,7 +2619,7 @@ static DRIVER_INIT(4in1boot)
 	len = memory_region_length(REGION_CPU2);
 
 	/* strange order */
-	if ((buffer = malloc(len)))
+	buffer = malloc_or_die(len);
 	{
 		int i;
 		for (i = 0;i < len; i++)
@@ -2633,7 +2637,7 @@ static DRIVER_INIT(snowbro3)
 	int len = memory_region_length(REGION_CPU1);
 
 	/* strange order */
-	if ((buffer = malloc(len)))
+	buffer = malloc_or_die(len);
 	{
 		int i;
 		for (i = 0;i < len; i++)

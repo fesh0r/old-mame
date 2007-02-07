@@ -128,37 +128,9 @@ TODO:
 
 #include "driver.h"
 #include "sound/custom.h"
+#include "includes/warpwarp.h"
 #include "geebee.lh"
 #include "sos.lh"
-
-
-/* from vidhrdw/warpwarp.c */
-extern UINT8 *geebee_videoram,*warpwarp_videoram;
-extern int geebee_bgw;
-extern int warpwarp_ball_on;
-extern int warpwarp_ball_h, warpwarp_ball_v;
-extern int warpwarp_ball_sizex, warpwarp_ball_sizey;
-extern int geebee_handleoverlay;
-PALETTE_INIT( geebee );
-PALETTE_INIT( navarone );
-PALETTE_INIT( warpwarp );
-VIDEO_START( geebee );
-VIDEO_START( navarone );
-VIDEO_START( warpwarp );
-VIDEO_UPDATE( geebee );
-VIDEO_UPDATE( warpwarp );
-WRITE8_HANDLER( warpwarp_videoram_w );
-WRITE8_HANDLER( geebee_videoram_w );
-
-/* from sndhrdw/geebee.c */
-WRITE8_HANDLER( geebee_sound_w );
-void *geebee_sh_start(int clock, const struct CustomSound_interface *config);
-
-/* from sndhrdw/warpwarp.c */
-WRITE8_HANDLER( warpwarp_sound_w );
-WRITE8_HANDLER( warpwarp_music1_w );
-WRITE8_HANDLER( warpwarp_music2_w );
-void *warpwarp_sh_start(int clock, const struct CustomSound_interface *config);
 
 
 /*******************************************************
@@ -870,15 +842,16 @@ static MACHINE_DRIVER_START( geebee )
 	MDRV_CPU_ADD_TAG("main", 8080,18432000/9) 		/* 18.432 MHz / 9 */
 	MDRV_CPU_PROGRAM_MAP(readmem_geebee,writemem_geebee)
 	MDRV_CPU_IO_MAP(readport_geebee,writeport_geebee)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)	/* one interrupt per frame */
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)	/* one interrupt per frame */
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(34*8, 28*8)
-	MDRV_VISIBLE_AREA(0*8, 34*8-1, 0*8, 28*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 34*8-1, 0*8, 28*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo_1k)
 	MDRV_PALETTE_LENGTH(3)
 	MDRV_COLORTABLE_LENGTH(4*2)
@@ -914,13 +887,14 @@ static MACHINE_DRIVER_START( bombbee )
 	MDRV_CPU_PROGRAM_MAP(readmem_bombbee,writemem_bombbee)
 	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)	/* frames per second, vblank duration */
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION	/* frames per second, vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(34*8, 28*8)
-	MDRV_VISIBLE_AREA(0*8, 34*8-1, 0*8, 28*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 34*8-1, 0*8, 28*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo_color)
 	MDRV_PALETTE_LENGTH(256)
 	MDRV_COLORTABLE_LENGTH(2*256)

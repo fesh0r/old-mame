@@ -47,11 +47,8 @@ PALETTE_INIT( route16 )
 ***************************************************************************/
 VIDEO_START( route16 )
 {
-	if ((tmpbitmap1 = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height)) == 0)
-		return 1;
-
-	if ((tmpbitmap2 = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height)) == 0)
-		return 1;
+	tmpbitmap1 = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height);
+	tmpbitmap2 = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height);
 
 	video_flip = 0;
 	video_color_select_1 = 0;
@@ -126,10 +123,13 @@ WRITE8_HANDLER( stratvox_sn76477_w )
      * 1    - SN76477 vco
      * 0    - SN76477 enable
      ***************************************************************/
-    SN76477_mixer_w(0,(data >> 4) & 7);
-	SN76477_envelope_w(0,(data >> 2) & 3);
-    SN76477_vco_w(0,(data >> 1) & 1);
-    SN76477_enable_w(0,data & 1);
+    SN76477_enable_w(0, data & 1);
+    SN76477_vco_w(0, (data >> 1) & 1);
+	SN76477_envelope_2_w(0, (data >> 2) & 1);
+	SN76477_envelope_1_w(0, (data >> 3) & 1);
+    SN76477_mixer_c_w(0, (data >> 4) & 1);
+    SN76477_mixer_b_w(0, (data >> 5) & 1);
+    SN76477_mixer_a_w(0, (data >> 6) & 1);
 }
 
 /***************************************************************************

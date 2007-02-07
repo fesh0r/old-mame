@@ -103,14 +103,8 @@ VIDEO_START( safarir )
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
 
-	if (!bg_tilemap)
-		return 1;
-
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
-
-	if (!fg_tilemap)
-		return 1;
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 
@@ -234,11 +228,18 @@ struct SN76477interface sn76477_interface =
 	0	/* N/C */,		/* 16  vco_voltage       */
 	CAP_U(0.1) ,		/* 17  vco_cap           */
 	RES_K(8.2) ,		/* 18  vco_res           */
-	5.0		 ,		/* 19  pitch_voltage     */
+	5.0		 ,			/* 19  pitch_voltage     */
 	RES_K(120) ,		/* 20  slf_res           */
 	CAP_U(1.0) ,		/* 21  slf_cap           */
 	0	/* N/C */,		/* 23  oneshot_cap       */
-	0	/* N/C */		/* 24  oneshot_res       */
+	0	/* N/C */,		/* 24  oneshot_res       */
+	0,			    	/* 22    vco                    */
+	1,					/* 26 mixer A           */
+	1,					/* 25 mixer B           */
+	1,					/* 27 mixer C           */
+	1,					/* 1  envelope 1        */
+	1,					/* 28 envelope 2        */
+	1				    /* 9     enable */
 };
 
 static MACHINE_DRIVER_START( safarir )
@@ -247,13 +248,14 @@ static MACHINE_DRIVER_START( safarir )
 	MDRV_CPU_ADD(8080, 3072000)	/* 3 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(safarir_map, 0)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 26*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 26*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_COLORTABLE_LENGTH(2*7)

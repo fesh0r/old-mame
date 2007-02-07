@@ -10,6 +10,7 @@
 
 void *exidy_sh_start(int clock, const struct CustomSound_interface *config);
 void *victory_sh_start(int clock, const struct CustomSound_interface *config);
+void *berzerk_sh_start(int clock, const struct CustomSound_interface *config);
 
 WRITE8_HANDLER( exidy_shriot_w );
 WRITE8_HANDLER( exidy_sfxctrl_w );
@@ -57,6 +58,7 @@ VIDEO_EOF( exidy );
 VIDEO_UPDATE( exidy );
 
 INTERRUPT_GEN( exidy_vblank_interrupt );
+INTERRUPT_GEN( teetert_vblank_interrupt );
 
 WRITE8_HANDLER( exidy_characterram_w );
 WRITE8_HANDLER( exidy_color_w );

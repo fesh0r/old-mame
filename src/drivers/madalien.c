@@ -227,20 +227,11 @@ VIDEO_START( madalien )
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols_flip_x,
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
-	if ( !fg_tilemap )
-		return 1;
-
 	bg_tilemap_l = tilemap_create(get_bg_tile_info_l, tilemap_scan_cols_flip_x,
 		TILEMAP_OPAQUE, 16, 16, 16, 16);
 
-	if ( !bg_tilemap_l )
-		return 1;
-
 	bg_tilemap_r = tilemap_create(get_bg_tile_info_r, tilemap_scan_cols_flip_x,
 		TILEMAP_OPAQUE, 16, 16, 16, 16);
-
-	if ( !bg_tilemap_r )
-		return 1;
 
 	tilemap_set_transparent_pen( fg_tilemap, 0 );
 
@@ -253,12 +244,8 @@ VIDEO_START( madalien )
 	tilemap_set_flip(bg_tilemap_r, TILEMAP_FLIPY);
 
 	headlight_bitmap = auto_bitmap_alloc(128, 128);
-	if( !headlight_bitmap )
-		return 1;
 
 	flip_bitmap = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height);
-	if (!flip_bitmap)
-		return 1;
 
 	madalien_bgram = auto_malloc(0x1000);	/* ficticiuos background RAM for empty tile */
 
@@ -682,13 +669,14 @@ static MACHINE_DRIVER_START( madalien )
 	MDRV_CPU_PROGRAM_MAP(sound_readmem, sound_writemem)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse, 16)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(3072)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(3072))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 	MDRV_GFXDECODE(madalien_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(2*32)
 	MDRV_COLORTABLE_LENGTH(2*32)

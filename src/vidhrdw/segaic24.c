@@ -155,10 +155,6 @@ int sys24_tile_vh_start(UINT16 tile_mask)
 	sys24_tile_layer[2] = tilemap_create(sys24_tile_info_1s, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8, 8, 64, 64);
 	sys24_tile_layer[3] = tilemap_create(sys24_tile_info_1w, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8, 8, 64, 64);
 
-	if(!sys24_tile_layer[0] || !sys24_tile_layer[1] || !sys24_tile_layer[2] || !sys24_tile_layer[3]) {
-		return 1;
-	}
-
 	tilemap_set_transparent_pen(sys24_tile_layer[0], 0);
 	tilemap_set_transparent_pen(sys24_tile_layer[1], 0);
 	tilemap_set_transparent_pen(sys24_tile_layer[2], 0);
@@ -535,7 +531,7 @@ void sys24_tile_draw(mame_bitmap *bitmap, const rectangle *cliprect, int layer, 
 					 UINT16, UINT8, int, int, int, int, int, int, int);
 		int win = layer & 1;
 
-		if(Machine->drv->video_attributes & VIDEO_RGB_DIRECT)
+		if(bitmap->format != BITMAP_FORMAT_INDEXED16)
 			draw = sys24_tile_draw_rect_rgb;
 		else
 			draw = sys24_tile_draw_rect;
@@ -791,7 +787,7 @@ void sys24_sprite_draw(mame_bitmap *bitmap, const rectangle *cliprect, const int
 		flipy = source[4] & 0x8000;
 		sy = 1 << ((source[4] & 0x7000) >> 12);
 
-		pix = sys24_sprite_ram + (source[3] & 0x7fff)* 0x8;
+		pix = &sys24_sprite_ram[(source[3] & 0x3fff)* 0x8];
 		for(px=0; px<8; px++) {
 			int c;
 			c              = pix[px] >> 8;
@@ -839,11 +835,11 @@ void sys24_sprite_draw(mame_bitmap *bitmap, const rectangle *cliprect, const int
 										int zx1 = flipx ? 7-zx : zx;
 										UINT32 neweroffset = (newoffset+(zx1>>2))&0x1ffff; // crackdown sometimes attempts to use data past the end of spriteram
 										int c = (sys24_sprite_ram[neweroffset] >> (((~zx1) & 3) << 2)) & 0xf;
-										UINT8 *pri = ((UINT8 *)priority_bitmap->line[ypos1]) + xpos2;
+										UINT8 *pri = BITMAP_ADDR8(priority_bitmap, ypos1, xpos2);
 										if(!(*pri & pm[c])) {
 											c = colors[c];
 											if(c) {
-												UINT16 *dst = ((UINT16 *)bitmap->line[ypos1]) + xpos2;
+												UINT16 *dst = BITMAP_ADDR16(bitmap, ypos1, xpos2);
 												if(c==1)
 													*dst = (*dst) | 0x2000;
 												else

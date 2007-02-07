@@ -1601,16 +1601,17 @@ static MACHINE_DRIVER_START( ms32 )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(ms32_snd_readmem, ms32_snd_writemem)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1000)
 
 	MDRV_MACHINE_RESET(ms32)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER|VIDEO_NEEDS_6BITS_PER_GUN)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 28*8)
-	MDRV_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
 	MDRV_GFXDECODE(ms32_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x8000)
 
@@ -2152,8 +2153,7 @@ static void rearrange_sprites(void)
 	source_data = memory_region       ( REGION_GFX1 );
 	source_size = memory_region_length( REGION_GFX1 );
 
-	result_data = malloc(source_size);
-	if (!result_data) return;
+	result_data = malloc_or_die(source_size);
 
 	for(i=0; i<source_size; i++)
 	{
@@ -2178,8 +2178,7 @@ static void decrypt_ms32_tx(int addr_xor,int data_xor)
 	source_data = memory_region       ( REGION_GFX4 );
 	source_size = memory_region_length( REGION_GFX4 );
 
-	result_data = malloc(source_size);
-	if (!result_data) return;
+	result_data = malloc_or_die(source_size);
 
 	addr_xor ^= 0x1005d;
 
@@ -2233,8 +2232,7 @@ static void decrypt_ms32_bg(int addr_xor,int data_xor)
 	source_data = memory_region       ( REGION_GFX3 );
 	source_size = memory_region_length( REGION_GFX3 );
 
-	result_data = malloc(source_size);
-	if (!result_data) return;
+	result_data = malloc_or_die(source_size);
 
 	addr_xor ^= 0xc1c5b;
 

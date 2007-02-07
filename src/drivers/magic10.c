@@ -298,9 +298,6 @@ VIDEO_START( magic10 )
 	layer1_tilemap = tilemap_create(get_layer1_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,32,32);
 	layer2_tilemap = tilemap_create(get_layer2_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,64,64);
 
-	if(!layer0_tilemap || !layer1_tilemap || !layer2_tilemap)
-		return 1;
-
 	tilemap_set_transparent_pen(layer1_tilemap,0);
 	tilemap_set_transparent_pen(layer2_tilemap,0);
 
@@ -354,14 +351,15 @@ static MACHINE_DRIVER_START( magic10 )
 	MDRV_CPU_PROGRAM_MAP(magic10_map,0)
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
-	MDRV_VISIBLE_AREA(0*8, 44*8-1, 2*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 44*8-1, 2*8, 32*8-1)
 	MDRV_PALETTE_LENGTH(0x100)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 
@@ -370,8 +368,8 @@ static MACHINE_DRIVER_START( magic10 )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 8000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -390,7 +388,7 @@ static MACHINE_DRIVER_START( magic102 )
 	MDRV_CPU_MODIFY("cpu")
 	MDRV_CPU_PROGRAM_MAP(magic102_map,0)
 
-	MDRV_VISIBLE_AREA(0*8, 48*8-1, 0*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 0*8, 30*8-1)
 MACHINE_DRIVER_END
 
 /*

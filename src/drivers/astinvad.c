@@ -15,24 +15,7 @@ Space Intruder emulation by Lee Taylor (lee@defender.demon.co.uk),
 
 #include "driver.h"
 #include "sound/samples.h"
-
-
-extern VIDEO_UPDATE( astinvad );
-extern VIDEO_UPDATE( spaceint );
-
-extern VIDEO_START( astinvad );
-extern VIDEO_START( spcking2 );
-extern VIDEO_START( spaceint );
-
-extern WRITE8_HANDLER( astinvad_sound1_w );
-extern WRITE8_HANDLER( astinvad_sound2_w );
-extern WRITE8_HANDLER( astinvad_videoram_w );
-extern WRITE8_HANDLER( spaceint_sound1_w );
-extern WRITE8_HANDLER( spaceint_sound2_w );
-extern WRITE8_HANDLER( spaceint_videoram_w );
-extern WRITE8_HANDLER( spaceint_color_w);
-
-extern struct Samplesinterface astinvad_samples_interface;
+#include "includes/astinvad.h"
 
 
 static PALETTE_INIT( astinvad )
@@ -254,13 +237,14 @@ static MACHINE_DRIVER_START( astinvad )
 	MDRV_CPU_IO_MAP(astinvad_readport,astinvad_writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)    /* two interrupts per frame */
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 4*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 4*8, 32*8-1)
 	MDRV_PALETTE_LENGTH(8)
 
 	MDRV_PALETTE_INIT(astinvad)
@@ -282,7 +266,7 @@ static MACHINE_DRIVER_START( spcking2 )
 	MDRV_IMPORT_FROM(astinvad)
 
 	/* video hardware */
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 
 	MDRV_VIDEO_START( spcking2 )
 MACHINE_DRIVER_END
@@ -296,12 +280,13 @@ static MACHINE_DRIVER_START( spaceint )
 	MDRV_CPU_IO_MAP(spaceint_readport,spaceint_writeport)
 	MDRV_CPU_VBLANK_INT(spaceint_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_SCREEN_REFRESH_RATE(60)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
 	MDRV_PALETTE_LENGTH(8)
 
 	MDRV_PALETTE_INIT(astinvad)

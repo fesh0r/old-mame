@@ -218,11 +218,11 @@ INTERRUPT_GEN( gorf_interrupt )
 
 	if (interrupt_enable && (InterruptFlag & 0x10) && (CurrentScan==GorfDelay))
 	{
-		cpunum_set_input_line_and_vector(0, 0, PULSE_LINE, interrupt_vector & 0xf0);
+		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, interrupt_vector & 0xf0);
 	}
 	else if ((InterruptFlag & 0x08) && (CurrentScan == NextScanInt))
 	{
-		cpunum_set_input_line_and_vector(0, 0, PULSE_LINE, interrupt_vector);
+		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, interrupt_vector);
 	}
 }
 
@@ -1080,7 +1080,7 @@ VIDEO_UPDATE( seawolf2 )
 		if (centre<2)   centre=2;
 		if (centre>317) centre=317;
 
-		draw_crosshair(bitmap,centre,35,&Machine->screen[0].visarea,0);
+//      draw_crosshair(bitmap,centre,35,&Machine->screen[0].visarea,0);
 
 		/* Player 2 */
 
@@ -1091,7 +1091,7 @@ VIDEO_UPDATE( seawolf2 )
 			if (centre<1)   centre=1;
 			if (centre>316) centre=316;
 
-			draw_crosshair(bitmap,centre,33,&Machine->screen[0].visarea,1);
+//          draw_crosshair(bitmap,centre,33,&Machine->screen[0].visarea,1);
 		}
 	}
 	return 0;

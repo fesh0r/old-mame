@@ -4,7 +4,7 @@
 
     Core file I/O interface functions and definitions.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -13,6 +13,7 @@
 #define __FILEIO_H__
 
 #include "mamecore.h"
+#include "osdcore.h"
 #include "mame.h"
 #include "options.h"
 
@@ -22,11 +23,6 @@
     CONSTANTS
 ***************************************************************************/
 
-/* flags controlling file access */
-#define OPEN_FLAG_READ			0x0001		/* open for read */
-#define OPEN_FLAG_WRITE			0x0002		/* open for write */
-#define OPEN_FLAG_CREATE		0x0004		/* create & truncate file */
-
 /* search paths */
 #define SEARCHPATH_RAW			NULL
 #define SEARCHPATH_CHEAT		NULL
@@ -35,7 +31,7 @@
 
 #define SEARCHPATH_ROM			OPTION_ROMPATH
 #ifdef MESS
-#define SEARCHPATH_IMAGE		OPTION_IMAGEPATH
+#define SEARCHPATH_IMAGE		NULL
 #define SEARCHPATH_HASH			OPTION_HASHPATH
 #else
 #define SEARCHPATH_IMAGE		OPTION_ROMPATH

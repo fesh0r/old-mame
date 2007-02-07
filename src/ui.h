@@ -4,7 +4,7 @@
 
     Functions used to handle MAME's crude user interface.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -16,6 +16,7 @@
 
 #include "mamecore.h"
 #include "render.h"
+#include "unicode.h"
 
 
 /***************************************************************************
@@ -97,7 +98,7 @@ render_font *ui_get_font(void);
 float ui_get_line_height(void);
 
 /* returns the width of a character or string in the UI font */
-float ui_get_char_width(UINT16 ch);
+float ui_get_char_width(unicode_char ch);
 float ui_get_string_width(const char *s);
 
 /* draw an outlined box filled with a given color */

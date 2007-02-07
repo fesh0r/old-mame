@@ -43,24 +43,7 @@ Also....
 
 #include "driver.h"
 #include "sound/samples.h"
-
-extern unsigned char *astrof_color;
-extern unsigned char *tomahawk_protection;
-
-PALETTE_INIT( astrof );
-VIDEO_START( astrof );
-VIDEO_UPDATE( astrof );
-WRITE8_HANDLER( astrof_videoram_w );
-WRITE8_HANDLER( tomahawk_videoram_w );
-WRITE8_HANDLER( astrof_video_control1_w );
-WRITE8_HANDLER( astrof_video_control2_w );
-WRITE8_HANDLER( tomahawk_video_control2_w );
-READ8_HANDLER( tomahawk_protection_r );
-WRITE8_HANDLER( astrof_sample1_w );
-WRITE8_HANDLER( astrof_sample2_w );
-
-extern struct Samplesinterface astrof_samples_interface;
-extern struct Samplesinterface tomahawk_samples_interface;
+#include "includes/astrof.h"
 
 static int abattle_count;
 
@@ -307,13 +290,14 @@ static MACHINE_DRIVER_START( astrof )
 	MDRV_CPU_PROGRAM_MAP(astrof_map,0)
 	MDRV_CPU_VBLANK_INT(astrof_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(3400)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(3400))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(8, 256-1-8, 8, 256-1-8)
+	MDRV_SCREEN_VISIBLE_AREA(8, 256-1-8, 8, 256-1-8)
 	MDRV_PALETTE_LENGTH(16)
 
 	MDRV_PALETTE_INIT(astrof)

@@ -342,9 +342,9 @@ ADDRESS_MAP_END
 
 #define PLAYER1_CROSSHAIRS \
 	PORT_START				/* fake analog X */\
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(10)\
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(10)\
 	PORT_START				/* fake analog Y */\
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(10)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(10)
 
 
 INPUT_PORTS_START( sentetst )
@@ -791,11 +791,6 @@ INPUT_PORTS_START( triviag1 )
 	UNUSED_ANALOG_X4
 INPUT_PORTS_END
 
-
-INPUT_PORTS_ALIAS(triviag2, triviag1)
-INPUT_PORTS_ALIAS(triviasp, triviag1)
-INPUT_PORTS_ALIAS(triviayp, triviag1)
-INPUT_PORTS_ALIAS(triviabb, triviag1)
 
 INPUT_PORTS_START( triviaes )
 	PORT_START	/* IN0 */
@@ -1682,8 +1677,8 @@ static MACHINE_DRIVER_START( balsente )
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
 	MDRV_CPU_IO_MAP(cpu2_io_map,0)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
 	MDRV_MACHINE_RESET(balsente)
@@ -1691,8 +1686,9 @@ static MACHINE_DRIVER_START( balsente )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 240)
-	MDRV_VISIBLE_AREA(0, 255, 0, 239)
+	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
 	MDRV_PALETTE_LENGTH(1024)
 
 	MDRV_VIDEO_START(balsente)
@@ -2314,8 +2310,7 @@ static void expand_roms(UINT8 cd_rom_mask)
 	/* load EF           from 0x2e000-0x30000 */
 	/* ROM region must be 0x40000 total */
 
-	UINT8 *temp = malloc(0x20000);
-	if (temp)
+	UINT8 *temp = malloc_or_die(0x20000);
 	{
 		UINT8 *rom = memory_region(REGION_CPU1);
 		UINT32 base;
@@ -2458,10 +2453,10 @@ GAME( 1984, snakepit, 0,        balsente, snakepit, snakepit, ROT0, "Bally/Sente
 GAME( 1984, snakjack, 0,        balsente, snakjack, snakjack, ROT0, "Bally/Sente", "Snacks'n Jaxson", GAME_SUPPORTS_SAVE )
 GAME( 1984, stocker,  0,        balsente, stocker,  stocker,  ROT0, "Bally/Sente", "Stocker", GAME_SUPPORTS_SAVE )
 GAME( 1984, triviag1, 0,        balsente, triviag1, triviag1, ROT0, "Bally/Sente", "Trivial Pursuit (Genus I)", GAME_SUPPORTS_SAVE )
-GAME( 1984, triviag2, 0,        balsente, triviag2, triviag2, ROT0, "Bally/Sente", "Trivial Pursuit (Genus II)", GAME_SUPPORTS_SAVE )
-GAME( 1984, triviasp, 0,        balsente, triviasp, triviag2, ROT0, "Bally/Sente", "Trivial Pursuit (All Star Sports Edition)", GAME_SUPPORTS_SAVE )
-GAME( 1984, triviayp, 0,        balsente, triviayp, triviag2, ROT0, "Bally/Sente", "Trivial Pursuit (Young Players Edition)", GAME_SUPPORTS_SAVE )
-GAME( 1984, triviabb, 0,        balsente, triviabb, triviag2, ROT0, "Bally/Sente", "Trivial Pursuit (Baby Boomer Edition)", GAME_SUPPORTS_SAVE )
+GAME( 1984, triviag2, 0,        balsente, triviag1, triviag2, ROT0, "Bally/Sente", "Trivial Pursuit (Genus II)", GAME_SUPPORTS_SAVE )
+GAME( 1984, triviasp, 0,        balsente, triviag1, triviag2, ROT0, "Bally/Sente", "Trivial Pursuit (All Star Sports Edition)", GAME_SUPPORTS_SAVE )
+GAME( 1984, triviayp, 0,        balsente, triviag1, triviag2, ROT0, "Bally/Sente", "Trivial Pursuit (Young Players Edition)", GAME_SUPPORTS_SAVE )
+GAME( 1984, triviabb, 0,        balsente, triviag1, triviag2, ROT0, "Bally/Sente", "Trivial Pursuit (Baby Boomer Edition)", GAME_SUPPORTS_SAVE )
 GAME( 1987, triviaes, 0,        balsente, triviaes, triviaes, ROT0, "Bally/Sente", "Trivial Pursuit (Spanish Edition)", GAME_SUPPORTS_SAVE )
 GAME( 1985, gimeabrk, 0,        balsente, gimeabrk, gimeabrk, ROT0, "Bally/Sente", "Gimme A Break", GAME_SUPPORTS_SAVE )
 GAME( 1985, minigolf, 0,        balsente, minigolf, minigolf, ROT0, "Bally/Sente", "Mini Golf (set 1)", GAME_SUPPORTS_SAVE )

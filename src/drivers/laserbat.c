@@ -533,10 +533,7 @@ VIDEO_START( laserbat )
 	videoram = (UINT8 *)auto_malloc(0x400);
 	colorram = (UINT8 *)auto_malloc(0x400);
 
-	collision_bitmap = auto_bitmap_alloc_depth(Machine->screen[0].width,Machine->screen[0].height,8);
-
-	if (!bg_tilemap || !collision_bitmap)
-		return 1;
+	collision_bitmap = auto_bitmap_alloc_format(Machine->screen[0].width,Machine->screen[0].height,BITMAP_FORMAT_INDEXED8);
 
 	s2636_x_offset = -19;
 
@@ -565,22 +562,29 @@ VIDEO_UPDATE( laserbat )
 
 static struct SN76477interface sn76477_interface =
 {
-	RES_K(47), 		/*  4  noise_res         R21    47K */
-	0,				/*  5  filter_res        */
-	CAP_P(1000),	/*  6  filter_cap        C21    1000 pF */
-	0,				/*  7  decay_res         */
-	0,				/*  8  attack_decay_cap  */
-	0,				/* 10  attack_res        */
-	RES_K(47),		/* 11  amplitude_res     R26    47K */
-	0,				/* 12  feedback_res      */
-	1.6,			/* 16  vco_voltage       */
-	0,				/* 17  vco_cap           */
-	0,				/* 18  vco_res           */
-	5,				/* 19  pitch_voltage     */
-	RES_K(27),		/* 20  slf_res           R54    27K */
-	CAP_U(4.7),		/* 21  slf_cap           C24    4.7 uF */
-	0,				/* 23  oneshot_cap       */
-	0				/* 24  oneshot_res       */
+	RES_K(47), 		/*  4 noise_res         R21    47K */
+	0,				/*  5 filter_res (variable) */
+	CAP_P(1000),	/*  6 filter_cap        C21    1000 pF */
+	0,				/*  7 decay_res         */
+	0,				/*  8 attack_decay_cap  */
+	0,				/* 10 attack_res        */
+	RES_K(47),		/* 11 amplitude_res     R26    47K */
+	0,				/* 12 feedback_res (variable) */
+	5.0 * RES_K(2.2) / (RES_K(2.2) + RES_K(4.7)),	/* 16  vco_voltage       */
+	0,				/* 17 vco_cap           */
+	0,				/* 18 vco_res (variable) */
+	5.0,			/* 19 pitch_voltage     */
+	0,				/* 20 slf_res (variable) */
+	CAP_U(4.7),		/* 21 slf_cap           C24    4.7 uF */
+	0,				/* 23 oneshot_cap       */
+	0,				/* 24 oneshot_res       */
+	0,			    /* 22 vco (variable) */
+	0,			    /* 26 mixer A           */
+	0,			    /* 25 mixer B (variable) */
+	0,			    /* 27 mixer C           */
+	0,			    /* 1  envelope 1        */
+	1,			    /* 28 envelope 2        */
+	1			    /* 9  enable (variable) */
 };
 
 /* Cat'N Mouse sound ***********************************/
@@ -690,13 +694,14 @@ static MACHINE_DRIVER_START( laserbat )
 	MDRV_CPU_IO_MAP(laserbat_io_map,0)
 	MDRV_CPU_VBLANK_INT(laserbat_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(50)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(1*8, 29*8-1, 2*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(1*8, 29*8-1, 2*8, 32*8-1)
 
 	MDRV_GFXDECODE(laserbat_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(1024)
@@ -729,16 +734,17 @@ static MACHINE_DRIVER_START( catnmous )
 	MDRV_CPU_PROGRAM_MAP(catnmous_sound_map,0)
 	MDRV_CPU_PERIODIC_INT(zaccaria_cb1_toggle,TIME_IN_HZ(3580000/4096))
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_START(catnmous)
 	MDRV_MACHINE_RESET(catnmous)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 32*8-1)
 
 	MDRV_GFXDECODE(laserbat_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(1024)

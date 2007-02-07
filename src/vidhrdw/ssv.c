@@ -167,7 +167,7 @@ void ssv_drawgfx(	mame_bitmap *bitmap, const gfx_element *gfx,
 		if ( sy >= cliprect->min_y && sy <= cliprect->max_y )					\
 		{																		\
 			source	=	addr;													\
-			dest	=	(UINT16 *)bitmap->line[sy];								\
+			dest	=	BITMAP_ADDR16(bitmap, sy, 0);							\
 																				\
 			for ( sx = x0; sx != x1; sx += dx )									\
 			{																	\
@@ -237,9 +237,6 @@ VIDEO_START( gdfs )
 
 	gdfs_tmap			=	tilemap_create(	get_tile_info_0, tilemap_scan_rows,
 											TILEMAP_TRANSPARENT, 16,16, 0x100,0x100	);
-
-	if ( !gdfs_tmap)
-		return 1;
 
 	tilemap_set_transparent_pen(gdfs_tmap, 0);
 
@@ -412,9 +409,6 @@ WRITE16_HANDLER( paletteram16_xrgb_swap_word_w )
 	b = data1 & 0xff;
 
 	palette_set_color(Machine, offset>>1, r, g, b);
-
-	if (!(Machine->drv->video_attributes & VIDEO_NEEDS_6BITS_PER_GUN))
-		popmessage("driver should use VIDEO_NEEDS_6BITS_PER_GUN flag");
 }
 
 /***************************************************************************
@@ -1147,17 +1141,6 @@ VIDEO_UPDATE( gdfs )
 	tilemap_set_scrolly(gdfs_tmap,0,gdfs_tmapscroll[0x10/2]);
 	tilemap_draw(bitmap,cliprect, gdfs_tmap, 0, 0);
 
-#if 0
-	draw_crosshair(bitmap,
-		Machine->screen[0].visarea.min_x + ((Machine->screen[0].visarea.max_x - Machine->screen[0].visarea.min_x) * readinputport(5)) / 255,
-		Machine->screen[0].visarea.min_y + ((Machine->screen[0].visarea.max_y - Machine->screen[0].visarea.min_y) * readinputport(6)) / 255,
-		cliprect,0);
-
-	draw_crosshair(bitmap,
-		Machine->screen[0].visarea.min_x + ((Machine->screen[0].visarea.max_x - Machine->screen[0].visarea.min_x) * readinputport(7)) / 255,
-		Machine->screen[0].visarea.min_y + ((Machine->screen[0].visarea.max_y - Machine->screen[0].visarea.min_y) * readinputport(8)) / 255,
-		cliprect,1);
-#endif
 	return 0;
 }
 

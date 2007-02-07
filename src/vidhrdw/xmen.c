@@ -69,8 +69,8 @@ VIDEO_START( xmen6p )
 	if (K053247_vh_start(REGION_GFX2,53,-2,NORMAL_PLANE_ORDER,xmen_sprite_callback))
 		return 1;
 
-	screen_left = auto_bitmap_alloc_depth(64*8, 32*8, 16);
-	screen_right = auto_bitmap_alloc_depth(64*8, 32*8, 16);
+	screen_left = auto_bitmap_alloc_format(64*8, 32*8, BITMAP_FORMAT_INDEXED16);
+	screen_right = auto_bitmap_alloc_format(64*8, 32*8, BITMAP_FORMAT_INDEXED16);
 
 	return 0;
 }
@@ -153,11 +153,11 @@ VIDEO_UPDATE( xmen6p )
 
 		for(y=0;y<32*8;y++)
 		{
-			UINT16* line_dest = (UINT16 *)(bitmap->line[y]);
+			UINT16* line_dest = BITMAP_ADDR16(bitmap, y, 0);
 			UINT16* line_src;
 
-			if (screen==0) line_src = (UINT16 *)(screen_left->line[y]);
-			else line_src = (UINT16 *)(screen_right->line[y]);
+			if (screen==0) line_src = BITMAP_ADDR16(screen_left, y, 0);
+			else line_src = BITMAP_ADDR16(screen_right, y, 0);
 
 			for (x=12*8;x<52*8;x++)
 			{

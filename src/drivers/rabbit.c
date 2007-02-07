@@ -272,7 +272,7 @@ static void rabbit_clearspritebitmap( mame_bitmap *bitmap, const rectangle *clip
 
 	for (y=0; y<amounty;y++)
 	{
-		dstline = (UINT16 *)(rabbit_sprite_bitmap->line[(starty+y)&0xfff]);
+		dstline = BITMAP_ADDR16(rabbit_sprite_bitmap, (starty+y)&0xfff, 0);
 		memset(dstline+startx,0x00,amountx*2);
 	}
 }
@@ -312,8 +312,8 @@ static void rabbit_drawsprite_bitmap( mame_bitmap *bitmap, const rectangle *clip
 
 		if ((ydrawpos >= cliprect->min_y) && (ydrawpos <= cliprect->max_y))
 		{
-			srcline = (UINT16 *)(rabbit_sprite_bitmap->line[(starty+(y>>7))&0xfff]);
-			dstline = (UINT16 *)(bitmap->line[ydrawpos]);
+			srcline = BITMAP_ADDR16(rabbit_sprite_bitmap, (starty+(y>>7))&0xfff, 0);
+			dstline = BITMAP_ADDR16(bitmap, ydrawpos, 0);
 
 			for (x=0;x<xsize;x+=0x80)
 			{
@@ -1081,18 +1081,19 @@ static MACHINE_DRIVER_START( rabbit )
     lev 7 : 0x7c : 0000 3106 - unused?
 */
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
 
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*16, 64*16)
-	MDRV_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
-//  MDRV_VISIBLE_AREA(0*8, 64*16-1, 0*16, 64*16-1)
-//  MDRV_VISIBLE_AREA(0*8, 20*16-1, 32*16, 48*16-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
+//  MDRV_SCREEN_VISIBLE_AREA(0*8, 64*16-1, 0*16, 64*16-1)
+//  MDRV_SCREEN_VISIBLE_AREA(0*8, 20*16-1, 32*16, 48*16-1)
 
 	MDRV_PALETTE_LENGTH(0x4000)
 

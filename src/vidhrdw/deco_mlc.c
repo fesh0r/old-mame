@@ -29,11 +29,8 @@ VIDEO_START( mlc )
 	else
 		colour_mask=0x1f;
 
-	temp_bitmap = auto_bitmap_alloc_depth( 512, 512, -32 );
+	temp_bitmap = auto_bitmap_alloc_format( 512, 512, BITMAP_FORMAT_RGB32 );
 	mlc_buffered_spriteram = auto_malloc(0x3000);
-
-	if (!temp_bitmap)
-		return 1;
 
 	return 0;
 }
@@ -44,8 +41,8 @@ static void blitRaster(mame_bitmap *bitmap, int rasterMode)
 	int x,y;
 	for (y=0; y<256; y++) //todo
 	{
-		UINT32* src=(UINT32 *)temp_bitmap->line[y&0x1ff];
-		UINT32* dst=(UINT32 *)bitmap->line[y];
+		UINT32* src=BITMAP_ADDR32(temp_bitmap, y&0x1ff, 0);
+		UINT32* dst=BITMAP_ADDR32(bitmap, y, 0);
 		UINT32 xptr=(mlc_raster_table[0][y]<<13);
 
 		if (code_pressed(KEYCODE_X))
@@ -183,7 +180,7 @@ static void mlc_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 							{
 								UINT8 *source1 = gfx->gfxdata + (source_base1+(y_index>>16)) * gfx->line_modulo;
 								UINT8 *source2 = gfx->gfxdata + (source_base2+(y_index>>16)) * gfx->line_modulo;
-								UINT32 *dest = (UINT32 *)dest_bmp->line[y];
+								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
 
@@ -210,7 +207,7 @@ static void mlc_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 							for( y=sy; y<ey; y++ )
 							{
 								UINT8 *source = gfx->gfxdata + (source_base1+(y_index>>16)) * gfx->line_modulo;
-								UINT32 *dest = (UINT32 *)dest_bmp->line[y];
+								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
 								for( x=sx; x<ex; x++ )

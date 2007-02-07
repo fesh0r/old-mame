@@ -75,9 +75,6 @@ VIDEO_START(bestleag)
 	bg_tilemap = tilemap_create(get_bg_tile_info,bsb_bg_scan,TILEMAP_OPAQUE,16,16,128, 64);
 	fg_tilemap = tilemap_create(get_fg_tile_info,bsb_bg_scan,TILEMAP_TRANSPARENT,16,16,128, 64);
 
-	if(!tx_tilemap || !bg_tilemap || !fg_tilemap)
-		return 1;
-
 	tilemap_set_transparent_pen(tx_tilemap,15);
 	tilemap_set_transparent_pen(fg_tilemap,15);
 
@@ -324,12 +321,13 @@ static MACHINE_DRIVER_START( bestleag )
 	MDRV_CPU_PROGRAM_MAP(bestleag_map,0)
 	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x800)
@@ -339,8 +337,8 @@ static MACHINE_DRIVER_START( bestleag )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000/132) /* Hand-tuned */
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1000000) /* Hand-tuned */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.00)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.00)
 MACHINE_DRIVER_END

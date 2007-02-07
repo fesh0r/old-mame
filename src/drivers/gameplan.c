@@ -284,13 +284,20 @@ static const struct R6532interface r6532_interface =
 
 
 
+static MACHINE_START( gameplan )
+{
+	r6532_init(0, &r6532_interface);
+	return 0;
+}
+
+
+
 static MACHINE_RESET( gameplan )
 {
 	via_config(0, &via_0_interface);
 	via_config(1, &via_1_interface);
 	via_config(2, &via_2_interface);
 	via_reset();
-	r6532_init(0, &r6532_interface);
 }
 
 
@@ -952,17 +959,19 @@ static MACHINE_DRIVER_START( gameplan )
 	/* audio CPU */		/* 894.750 kHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_snd,writemem_snd)
 
-	MDRV_FRAMES_PER_SECOND(57)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(57)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)    /* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 
+	MDRV_MACHINE_START(gameplan)
 	MDRV_MACHINE_RESET(gameplan)
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0, 256-1, 0, 256-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)
 	MDRV_PALETTE_LENGTH(8)
 
 	MDRV_PALETTE_INIT(gameplan)

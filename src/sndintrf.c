@@ -4,7 +4,7 @@
 
     Core sound interface functions and definitions.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -146,14 +146,12 @@ void es8712_get_info(void *token, UINT32 state, sndinfo *info);
 void rf5c400_get_info(void *token, UINT32 state, sndinfo *info);
 void speaker_get_info(void *token, UINT32 state, sndinfo *info);
 void cdp1869_get_info(void *token, UINT32 state, sndinfo *info);
-
-#ifdef MESS
 void beep_get_info(void *token, UINT32 state, sndinfo *info);
 void wave_get_info(void *token, UINT32 state, sndinfo *info);
 void sid6581_get_info(void *token, UINT32 state, sndinfo *info);
 void sid8580_get_info(void *token, UINT32 state, sndinfo *info);
 void sp0256_get_info(void *token, UINT32 state, sndinfo *info);
-#endif
+void s14001a_get_info(void *token, UINT32 state, sndinfo *info);
 
 void filter_volume_get_info(void *token, UINT32 state, sndinfo *info);
 void filter_rc_get_info(void *token, UINT32 state, sndinfo *info);
@@ -407,8 +405,9 @@ static const struct
 #if (HAS_CDP1869)
 	{ SOUND_CDP1869, cdp1869_get_info },
 #endif
-
-#ifdef MESS
+#if (HAS_S14001A)
+	{ SOUND_S14001A, s14001a_get_info },
+#endif
 #if (HAS_BEEP)
 	{ SOUND_BEEP, beep_get_info },
 #endif
@@ -423,7 +422,6 @@ static const struct
 #endif
 #if (HAS_SP0256)
 	{ SOUND_SP0256, sp0256_get_info },
-#endif
 #endif
 
 	{ SOUND_FILTER_VOLUME, filter_volume_get_info },

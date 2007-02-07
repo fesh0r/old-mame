@@ -597,14 +597,15 @@ static MACHINE_DRIVER_START( dassault )
 	/* audio CPU */	/* Accurate */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(529)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(529))
 	MDRV_INTERLEAVE(140) /* 140 CPU slices per frame */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_RGB_DIRECT | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(4096)
 
@@ -623,13 +624,13 @@ static MACHINE_DRIVER_START( dassault )
 	MDRV_SOUND_ROUTE(0, "left", 0.45)
 	MDRV_SOUND_ROUTE(1, "right", 0.45)
 
-	MDRV_SOUND_ADD(OKIM6295, 7757)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1023924)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 
-	MDRV_SOUND_ADD(OKIM6295, 15514)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2)
+	MDRV_SOUND_ADD(OKIM6295, 2047848)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.25)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.25)
 MACHINE_DRIVER_END
@@ -860,7 +861,7 @@ static DRIVER_INIT( dassault )
 {
 	const UINT8 *src = memory_region(REGION_GFX1);
 	UINT8 *dst = memory_region(REGION_GFX2);
-	UINT8 *tmp = (UINT8 *)malloc(0x80000);
+	UINT8 *tmp = malloc_or_die(0x80000);
 
 	/* Playfield 4 also has access to the char graphics, make things easier
     by just copying the chars to both banks (if I just used a different gfx
@@ -880,7 +881,7 @@ static DRIVER_INIT( thndzone )
 {
 	const UINT8 *src = memory_region(REGION_GFX1);
 	UINT8 *dst = memory_region(REGION_GFX2);
-	UINT8 *tmp = (UINT8 *)malloc(0x80000);
+	UINT8 *tmp = malloc_or_die(0x80000);
 
 	/* Playfield 4 also has access to the char graphics, make things easier
     by just copying the chars to both banks (if I just used a different gfx

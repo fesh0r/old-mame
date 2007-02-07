@@ -4,7 +4,7 @@
 
     Driver by:
 
-    Ernesto Corvi & Mariusz Wojcieszek
+    Aaron Giles, Ernesto Corvi & Mariusz Wojcieszek
 
 ***************************************************************************/
 
@@ -33,8 +33,13 @@
  *************************************/
 
 /* 715909 Hz for NTSC, 709379 for PAL */
-#define O2_TIMER_RATE		(TIME_IN_HZ(Machine->drv->cpu[0].cpu_clock / 10))
+#define O2_TIMER_RATE				(TIME_IN_HZ(Machine->drv->cpu[0].cpu_clock / 10))
 
+/* How many CPU cycles we delay until we fire a pending interrupt */
+#define AMIGA_IRQ_DELAY_CYCLES		24
+
+/* How many CPU cycles we wait until we process a blit when the blitter-nasty bit is set */
+#define BLITTER_NASTY_DELAY			8
 
 
 /*************************************
@@ -61,6 +66,13 @@ struct _autoconfig_device
 
 UINT16 *amiga_chip_ram;
 size_t amiga_chip_ram_size;
+
+#if AMIGA_ACTION_REPLAY_1
+/* Action Replay 1 support */
+UINT16 *amiga_ar_ram;
+size_t amiga_ar_ram_size;
+#endif
+
 UINT16 *amiga_custom_regs;
 UINT16 *amiga_expansion_ram;
 UINT16 *amiga_autoconfig_mem;
@@ -69,6 +81,8 @@ const amiga_machine_interface *amiga_intf;
 
 static autoconfig_device *autoconfig_list;
 static autoconfig_device *cur_autoconfig;
+static mame_timer * amiga_irq_timer;
+static mame_timer * amiga_blitter_timer;
 
 const char *amiga_custom_names[0x100] =
 {
@@ -166,7 +180,8 @@ static void custom_reset(void);
 static void autoconfig_reset(void);
 static void amiga_cia_0_irq(int state);
 static void amiga_cia_1_irq(int state);
-
+static void amiga_irq_proc( int param );
+static void amiga_blitter_proc( int param );
 
 
 /*************************************
@@ -185,7 +200,7 @@ void amiga_machine_config(const amiga_machine_interface *intf)
 	memset(&cia_intf, 0, sizeof(cia_intf));
 	cia_intf[0].type = CIA8520;
 	cia_intf[0].clock = O2_TIMER_RATE;
-	cia_intf[0].tod_clock = Machine->screen[0].refresh;
+	cia_intf[0].tod_clock = 0;
 	cia_intf[0].irq_func = amiga_cia_0_irq;
 	cia_intf[0].port[0].read = intf->cia_0_portA_r;
 	cia_intf[0].port[0].write = intf->cia_0_portA_w;
@@ -195,13 +210,17 @@ void amiga_machine_config(const amiga_machine_interface *intf)
 
 	cia_intf[1].type = CIA8520;
 	cia_intf[1].clock = O2_TIMER_RATE;
-	cia_intf[1].tod_clock = Machine->screen[0].refresh;
+	cia_intf[1].tod_clock = 0;
 	cia_intf[1].irq_func = amiga_cia_1_irq;
 	cia_intf[1].port[0].read = intf->cia_1_portA_r;
 	cia_intf[1].port[0].write = intf->cia_1_portA_w;
 	cia_intf[1].port[1].read = intf->cia_1_portB_r;
 	cia_intf[1].port[1].write = intf->cia_1_portB_w;
 	cia_config(1, &cia_intf[1]);
+
+	/* setup the timers */
+	amiga_irq_timer = timer_alloc(amiga_irq_proc);
+	amiga_blitter_timer = timer_alloc(amiga_blitter_proc);
 }
 
 
@@ -209,9 +228,14 @@ static void amiga_m68k_reset(void)
 {
 	logerror("Executed RESET at PC=%06x\n", activecpu_get_pc());
 
-	/* reset all the devices */
+	/* Initialize the various chips */
+	cia_reset();
+	custom_reset();
+	autoconfig_reset();
+
+	/* set the overlay bit */
 	amiga_cia_w(0x1001/2, 1, 0);
-//  machine_reset_amiga();
+
 	if (activecpu_get_pc() < 0x80000)
 		memory_set_opbase(0);
 }
@@ -319,7 +343,12 @@ static void update_irqs(void)
 		cpunum_set_input_line(0, 7, CLEAR_LINE);
 }
 
-
+static void amiga_irq_proc( int param )
+{
+	(void)param;
+	update_irqs();
+	timer_reset( amiga_irq_timer, TIME_NEVER );
+}
 
 /*************************************
  *
@@ -673,7 +702,7 @@ static unsigned int blit_line(void)
 	/* see if folks are breaking the rules */
 	if ((CUSTOM_REG(REG_BLTSIZE) & 0x003f) != 0x0002)
 		logerror("Blitter: BLTSIZE.w != 2 in line mode!\n");
-	if ((CUSTOM_REG(REG_BLTCON0) & 0x0b00) != 0x0b00)
+	if ((CUSTOM_REG(REG_BLTCON0) & 0x0a00) != 0x0a00)
 		logerror("Blitter: Channel selection incorrect in line mode!\n" );
 
 	/* extract the length of the line */
@@ -741,8 +770,7 @@ static unsigned int blit_line(void)
 		blitsum |= tempd;
 
 		/* write to the destination */
-		if (CUSTOM_REG(REG_BLTCON0) & 0x0100)
-			amiga_chip_ram_w(CUSTOM_REG_LONG(REG_BLTDPTH), tempd);
+		amiga_chip_ram_w(CUSTOM_REG_LONG(REG_BLTDPTH), tempd);
 
 		/* always increment along the major axis */
 		if (CUSTOM_REG(REG_BLTCON1) & 0x0010)
@@ -817,7 +845,7 @@ static unsigned int blit_line(void)
  *
  *************************************/
 
-static void blitter_proc(int param)
+static void amiga_blitter_proc(int param)
 {
 	unsigned int blitsum = 0;
 
@@ -865,6 +893,9 @@ static void blitter_proc(int param)
 
 	/* signal an interrupt */
 	amiga_custom_w(REG_INTREQ, 0x8000 | INTENA_BLIT, 0);
+
+	/* reset the blitter timer */
+	timer_reset( amiga_blitter_timer, TIME_NEVER );
 }
 
 
@@ -877,7 +908,8 @@ static void blitter_proc(int param)
 
 static void blitter_setup(void)
 {
-	int ticks, width, height;
+	int 	ticks, width, height;
+	double	blittime;
 
 	/* is there another blitting in progress? */
 	if (CUSTOM_REG(REG_DMACON) & 0x4000)
@@ -912,11 +944,18 @@ static void blitter_setup(void)
 	if (height == 0)
 		height = 0x400;
 
-	/* set a timer */
-	timer_set((double)(ticks * width * height) * TIME_IN_HZ(Machine->drv->cpu[0].cpu_clock), 0, blitter_proc);
+	/* compute the blit time */
+	blittime = ticks * height * width;
+
+	/* if 'blitter-nasty' is set, then the blitter takes over the bus. Make the blit semi-immediate */
+	if ( CUSTOM_REG(REG_DMACON) & 0x0400 )
+		blittime = BLITTER_NASTY_DELAY;
 
 	/* signal blitter busy */
  	CUSTOM_REG(REG_DMACON) |= 0x4000;
+
+	/* set a timer */
+	timer_adjust( amiga_blitter_timer, TIME_IN_CYCLES( blittime, 0 ), 0, 0 );
 }
 
 
@@ -1025,16 +1064,19 @@ static void custom_reset(void)
 {
 	CUSTOM_REG(REG_DDFSTRT) = 0x18;
 	CUSTOM_REG(REG_DDFSTOP) = 0xd8;
+	CUSTOM_REG(REG_INTENA) = 0x0000;
 
 	switch (amiga_intf->chip_ram_mask)
 	{
 		case ANGUS_CHIP_RAM_MASK:
 		case FAT_ANGUS_CHIP_RAM_MASK:
 			CUSTOM_REG(REG_VPOSR) = 0x10 << 8;
+			CUSTOM_REG(REG_DENISEID) = 0xFFFF;
 			break;
 
 		case ECS_CHIP_RAM_MASK:
 			CUSTOM_REG(REG_VPOSR) = 0x30 << 8;
+			CUSTOM_REG(REG_DENISEID) = 0xFFFC;
 			break;
 	}
 }
@@ -1114,13 +1156,17 @@ READ16_HANDLER( amiga_custom_r )
 			temp = CUSTOM_REG(REG_CLXDAT);
 			CUSTOM_REG(REG_CLXDAT) = 0;
 			return temp;
+
+		case REG_DENISEID:
+			return CUSTOM_REG(REG_DENISEID);
+			break;
 	}
 
 #if LOG_CUSTOM
 	logerror("%06X:read from custom %s\n", safe_activecpu_get_pc(), amiga_custom_names[offset & 0xff]);
 #endif
 
-	return 0;
+	return 0xffff;
 }
 
 
@@ -1143,6 +1189,7 @@ static void finish_serial_write(int param)
 
 WRITE16_HANDLER( amiga_custom_w )
 {
+	UINT16 temp;
 	offset &= 0xff;
 
 #if LOG_CUSTOM
@@ -1180,6 +1227,11 @@ WRITE16_HANDLER( amiga_custom_w )
 			blitter_setup();
 			break;
 
+		case REG_SPR0PTH:	case REG_SPR1PTH:	case REG_SPR2PTH:	case REG_SPR3PTH:
+		case REG_SPR4PTH:	case REG_SPR5PTH:	case REG_SPR6PTH:	case REG_SPR7PTH:
+			data &= ( amiga_intf->chip_ram_mask >> 16 );
+			break;
+
 		case REG_SPR0PTL:	case REG_SPR1PTL:	case REG_SPR2PTL:	case REG_SPR3PTL:
 		case REG_SPR4PTL:	case REG_SPR5PTL:	case REG_SPR6PTL:	case REG_SPR7PTL:
 			amiga_sprite_dma_reset((offset - REG_SPR0PTL) / 2);
@@ -1197,6 +1249,10 @@ WRITE16_HANDLER( amiga_custom_w )
 			amiga_sprite_enable_comparitor((offset - REG_SPR0DATA) / 4, TRUE);
 			break;
 
+		case REG_COP1LCH:	case REG_COP2LCH:
+			data &= ( amiga_intf->chip_ram_mask >> 16 );
+			break;
+
 		case REG_COPJMP1:
 			copper_setpc(CUSTOM_REG_LONG(REG_COP1LCH));
 			break;
@@ -1207,14 +1263,14 @@ WRITE16_HANDLER( amiga_custom_w )
 
 		case REG_DDFSTRT:
 			/* impose hardware limits ( HRM, page 75 ) */
-			data &= 0xfc;
+			data &= 0xfe;
 			if (data < 0x18)
 				data = 0x18;
 			break;
 
 		case REG_DDFSTOP:
 			/* impose hardware limits ( HRM, page 75 ) */
-			data &= 0xfc;
+			data &= 0xfe;
 			if (data > 0xd8)
 				data = 0xd8;
 			break;
@@ -1225,20 +1281,40 @@ WRITE16_HANDLER( amiga_custom_w )
 			/* bits BBUSY (14) and BZERO (13) are read-only */
 			data &= 0x9fff;
 			data = (data & 0x8000) ? (CUSTOM_REG(offset) | (data & 0x7fff)) : (CUSTOM_REG(offset) & ~(data & 0x7fff));
+
+			/* if 'blitter-nasty' has been turned on and we have a blit pending, reschedule it */
+			if ( ( data & 0x400 ) && ( CUSTOM_REG(REG_DMACON) & 0x4000 ) )
+				timer_adjust( amiga_blitter_timer, TIME_IN_CYCLES( BLITTER_NASTY_DELAY, 0 ), 0, 0 );
+
 			break;
 
 		case REG_INTENA:
+			temp = data;
+
 			data = (data & 0x8000) ? (CUSTOM_REG(offset) | (data & 0x7fff)) : (CUSTOM_REG(offset) & ~(data & 0x7fff));
 			CUSTOM_REG(offset) = data;
-			update_irqs();
+
+			if ( temp & 0x8000  ) /* if we're enabling irq's, delay a bit */
+				timer_adjust( amiga_irq_timer, TIME_IN_CYCLES( AMIGA_IRQ_DELAY_CYCLES, 0 ), 0, 0 );
+			else /* if we're disabling irq's, process right away */
+				update_irqs();
 			break;
 
 		case REG_INTREQ:
-			data = (data & 0x8000) ? (CUSTOM_REG(offset) | (data & 0x7fff)) : (CUSTOM_REG(offset) & ~(data & 0x7fff));
-			CUSTOM_REG(offset) = data;
+			temp = data;
+			/* Update serial data line status if appropiate */
 			if (!(data & 0x8000) && (data & INTENA_RBF))
 				CUSTOM_REG(REG_SERDATR) &= ~0x8000;
-			update_irqs();
+
+			data = (data & 0x8000) ? (CUSTOM_REG(offset) | (data & 0x7fff)) : (CUSTOM_REG(offset) & ~(data & 0x7fff));
+			if ( cia_get_irq( 0 ) ) data |= INTENA_PORTS;
+			if ( cia_get_irq( 1 ) )	data |= INTENA_EXTER;
+			CUSTOM_REG(offset) = data;
+
+			if ( temp & 0x8000  ) /* if we're generating irq's, delay a bit */
+				timer_adjust( amiga_irq_timer, TIME_IN_CYCLES( AMIGA_IRQ_DELAY_CYCLES, 0 ), 0, 0 );
+			else /* if we're clearing irq's, process right away */
+				update_irqs();
 			break;
 
 		case REG_ADKCON:
@@ -1255,6 +1331,11 @@ WRITE16_HANDLER( amiga_custom_w )
 
 		case REG_AUD0DAT:	case REG_AUD1DAT:	case REG_AUD2DAT:	case REG_AUD3DAT:
 			amiga_audio_data_w((offset - REG_AUD0DAT) / 8, data);
+			break;
+
+		case REG_BPL1PTH:	case REG_BPL2PTH:	case REG_BPL3PTH:	case REG_BPL4PTH:
+		case REG_BPL5PTH:	case REG_BPL6PTH:
+			data &= ( amiga_intf->chip_ram_mask >> 16 );
 			break;
 
 		case REG_BPLCON0:

@@ -15,31 +15,49 @@ Sound Chips  :  YMZ280B or
 Other        :  93C46 EEPROM
 
 
------------------------------------------------------------------------------------
-Year + Game         License     PCB         Tilemaps        Sprites         Other
------------------------------------------------------------------------------------
-94  Mazinger Z      Banpresto   ?           038 9335EX706   013 9341E7009   Z80
-94  PowerInstinct 2 Atlus       ATG02?      038 9429WX709?  013             Z80 NMK 112
-95  P.I. Legends    Atlus       AT047G2-B   038 9429WX709   013 9341E7009   Z80 NMK 112
-95  Metamoqester    Banpresto   BP947A      038 9437WX711   013 9346E7002   Z80
-95  Sailor Moon     Banpresto   BP945A      038 9437WX711   013 9346E7002   Z80
-95  Donpachi        Atlus       AT-C01DP-2  038 9429WX727   013 8647-01     NMK 112
-96  Air Gallet      Banpresto   BP962A      038 9437WX711   013 9346E7002   Z80
-96  Hotdog Storm    Marble      ?           ?                               Z80
-97  Dodonpachi      Atlus       ATC03D2     ?
-98  Dangun Feveron  Nihon Sys.  CV01        038 9808WX003   013 9807EX004
-98  ESP Ra.De.      Atlus       ATC04       ?
-98  Uo Poko         Jaleco      CV02        038 9749WX001   013 9749EX004
-99  Guwange         Atlus       ATC05       ?
-99  Gaia Crusaders  Noise Factory ?         038 9838WX003   013 9918EX008
-99  Koro Koro Quest Takumi      TUG-01B     038 9838WX004   013 9838EX004
------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
+Year + Game         License       PCB         Tilemaps        Sprites         Other
+-----------------------------------------------------------------------------------------
+94  Mazinger Z      Banpresto     ?           038 9335EX706   013 9341E7009   Z80
+94  PowerInstinct 2 Atlus         ATG02?      038 9429WX709   013             Z80 NMK 112
+95  P.I. Legends    Atlus         AT047G2-B   038 9429WX709   013 9341E7009   Z80 NMK 112
+95  Metamoqester    Banpresto     BP947A      038 9437WX711   013 9346E7002   Z80
+95  Sailor Moon     Banpresto     BP945A      038 9437WX711   013 9346E7002   Z80
+95  Donpachi        Atlus         AT-C01DP-2  038 9429WX727   013 8647-01     NMK 112
+96  Air Gallet      Banpresto     BP962A      038 9437WX711   013 9346E7002   Z80
+96  Hotdog Storm    Marble        ?           ?                               Z80
+97  Dodonpachi      Atlus         ATC03D2     ?
+98  Dangun Feveron  Nihon System  CV01        038 9808WX003   013 9807EX004
+98  ESP Ra.De.      Atlus         ATC04       ?
+98  Uo Poko         Jaleco        CV02        038 9749WX001   013 9749EX004
+99  Guwange         Atlus         ATC05       ?
+99  Gaia Crusaders  Noise Factory ?           038 9838WX003   013 9918EX008
+99  Koro Koro Quest Takumi        TUG-01B     038 9838WX004   013 9838EX004
+01  Thunder Heroes  Primetek      ?           038 9838WX003   013 9918EX008
+-----------------------------------------------------------------------------------------
 
 To Do:
 
 - Sprite lag in some games (e.g. metmqstr). The sprites chip probably
   generates interrupts (unknown_irq)
 
+
+Stephh's notes (based on the games M68000 code and some tests) :
+
+1) 'gaia'
+
+  - Difficulty Dip Switch also affects "Bonus Life" Dip Switch
+
+
+2) 'theroes'
+
+  - This is a English/Chinese version, but from the manual, there might exist a English/Japanese one
+  - Difficulty Dip Switch also affects "Bonus Life" Dip Switch
+  - There are less degrees of difficulty in this version
+  - DSW2 bit 5 effect remains unknown :
+      * it is checked at address 0x008d16 at the begining of each sub-level
+      * it is checked at address 0x00c382 when you quickly push the joystick left or right twice
+    Any info is welcome !
 
 ***************************************************************************/
 
@@ -291,6 +309,11 @@ READ16_HANDLER( cave_input1_r )
 READ16_HANDLER( guwange_input1_r )
 {
 	return readinputport(1) | ((EEPROM_read_bit() & 0x01) << 7);
+}
+
+READ16_HANDLER( gaia_dsw_r )
+{
+	return readinputport(2) | (readinputport(3) << 8);
 }
 
 WRITE16_HANDLER( cave_eeprom_msb_w )
@@ -667,7 +690,7 @@ static ADDRESS_MAP_START( gaia_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc00000, 0xc0ffff) AM_READ(MRA16_RAM				)	// Palette
 	AM_RANGE(0xd00010, 0xd00011) AM_READ(input_port_0_word_r	)	// Inputs
 	AM_RANGE(0xd00012, 0xd00013) AM_READ(input_port_1_word_r	)	// Inputs
-	AM_RANGE(0xd00014, 0xd00015) AM_READ(input_port_2_word_r	)	// DIPS
+	AM_RANGE(0xd00014, 0xd00015) AM_READ(gaia_dsw_r   			)	// Dips
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gaia_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1469,7 +1492,7 @@ INPUT_PORTS_START( cave )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START1  )
 
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE(0x0200, IP_ACTIVE_LOW )
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? exit service mode
 	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? enter & exit service mode
 	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1521,7 +1544,7 @@ INPUT_PORTS_START( gaia )
 	PORT_START	// IN1 - Coins
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(6)
-	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE(0x0004, IP_ACTIVE_LOW )
 	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_START2 )
@@ -1537,51 +1560,87 @@ INPUT_PORTS_START( gaia )
 	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN2 - Dips
-	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0002, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0004, 0x0000, DEF_STR( Language ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( English ) )
-	PORT_DIPSETTING(      0x0004, DEF_STR( Japanese ) )
-	PORT_DIPNAME( 0x0078, 0x0078, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(      0x0048, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(      0x0050, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(      0x0060, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x0040, "2 Co./1 Cr./1 Cont." )
-	PORT_DIPSETTING(      0x0078, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x0058, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(      0x0070, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(      0x0068, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x0080, 0x0000, DEF_STR( Allow_Continue ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0080, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) )
-	PORT_DIPSETTING(      0x0100, "1" )
-	PORT_DIPSETTING(      0x0000, "2" )
-	PORT_DIPSETTING(      0x0300, "3" )
-	PORT_DIPSETTING(      0x0200, "4" )
-	PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0400, "150k/350k" )
-	PORT_DIPNAME( 0x1800, 0x1800, "Damage" )
-	PORT_DIPSETTING(      0x1800, "+0" )
-	PORT_DIPSETTING(      0x1000, "+1" )
-	PORT_DIPSETTING(      0x0800, "+2" )
-	PORT_DIPSETTING(      0x0000, "+3" )
-	PORT_DIPNAME( 0xe000, 0xe000, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(      0xc000, DEF_STR( Very_Easy) )
-	PORT_DIPSETTING(      0xa000, DEF_STR( Easy ) )
-	PORT_DIPSETTING(      0xe000, DEF_STR( Medium ) )
-	PORT_DIPSETTING(      0x6000, "Medium Hard" )
-	PORT_DIPSETTING(      0x8000, "Hard 1" )
-	PORT_DIPSETTING(      0x2000, "Hard 2" )
-	PORT_DIPSETTING(      0x4000, DEF_STR( Very_Hard ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
+	PORT_START_TAG("DSW1")	// Dips bank 1
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )      PORT_DIPLOCATION("SW1:1")
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Demo_Sounds ) )      PORT_DIPLOCATION("SW1:2")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Language ) )         PORT_DIPLOCATION("SW1:3")
+	PORT_DIPSETTING(    0x00, DEF_STR( English ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Japanese ) )
+	PORT_DIPNAME( 0x38, 0x38, DEF_STR( Coinage ) )          PORT_DIPLOCATION("SW1:4,5,6")
+	PORT_DIPSETTING(    0x08, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x00, "2 Coins/1 Credit (1 to continue)" )
+	PORT_DIPSETTING(    0x38, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x18, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(    0x30, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x28, DEF_STR( 1C_3C ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Free_Play ) )        PORT_DIPLOCATION("SW1:7")
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Allow_Continue ) )   PORT_DIPLOCATION("SW1:8")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
+
+	PORT_START_TAG("DSW2")	// Dips bank 2
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )            PORT_DIPLOCATION("SW2:1,2")
+	PORT_DIPSETTING(    0x01, "1" )
+	PORT_DIPSETTING(    0x00, "2" )
+	PORT_DIPSETTING(    0x03, "3" )
+	PORT_DIPSETTING(    0x02, "4" )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Bonus_Life ) )       PORT_DIPLOCATION("SW2:3")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x04, "150k/300k" ) PORT_CONDITION("DSW2",0xe0,PORTCOND_EQUALS,0xc0)
+	PORT_DIPSETTING(    0x04, "150k/350k" ) PORT_CONDITION("DSW2",0xe0,PORTCOND_EQUALS,0xa0)
+	PORT_DIPSETTING(    0x04, "150k/350k" ) PORT_CONDITION("DSW2",0xe0,PORTCOND_EQUALS,0xe0)
+	PORT_DIPSETTING(    0x04, "150k/400k" ) PORT_CONDITION("DSW2",0xe0,PORTCOND_EQUALS,0x60)
+	PORT_DIPSETTING(    0x04, "150k/400k" ) PORT_CONDITION("DSW2",0xe0,PORTCOND_EQUALS,0x80)
+	PORT_DIPSETTING(    0x04, "150k/400k" ) PORT_CONDITION("DSW2",0xe0,PORTCOND_EQUALS,0x20)
+	PORT_DIPSETTING(    0x04, "200k/500k" ) PORT_CONDITION("DSW2",0xe0,PORTCOND_EQUALS,0x40)
+	PORT_DIPSETTING(    0x04, "200k/500k" ) PORT_CONDITION("DSW2",0xe0,PORTCOND_EQUALS,0x00)
+	PORT_DIPNAME( 0x18, 0x18, "Damage" )                    PORT_DIPLOCATION("SW2:4,5")
+	PORT_DIPSETTING(    0x18, "+0" )
+	PORT_DIPSETTING(    0x10, "+1" )
+	PORT_DIPSETTING(    0x08, "+2" )
+	PORT_DIPSETTING(    0x00, "+3" )
+	PORT_DIPNAME( 0xe0, 0xe0, DEF_STR( Difficulty ) )       PORT_DIPLOCATION("SW2:6,7,8")
+	PORT_DIPSETTING(    0xc0, DEF_STR( Very_Easy ) )
+	PORT_DIPSETTING(    0xa0, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0xe0, DEF_STR( Medium ) )
+	PORT_DIPSETTING(    0x60, "Medium Hard" )
+	PORT_DIPSETTING(    0x80, "Hard 1" )
+	PORT_DIPSETTING(    0x20, "Hard 2" )
+	PORT_DIPSETTING(    0x40, DEF_STR( Very_Hard ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+INPUT_PORTS_END
+
+INPUT_PORTS_START( theroes )
+	PORT_INCLUDE(gaia)
+
+	PORT_MODIFY("DSW1")
+	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Language ) )         PORT_DIPLOCATION("SW1:3")
+	PORT_DIPSETTING(    0x00, DEF_STR( English ) )
+	PORT_DIPSETTING(    0x04, "Chinese" )
+
+	PORT_MODIFY("DSW2")
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Bonus_Life ) )       PORT_DIPLOCATION("SW2:3")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x04, "150k/300k" ) PORT_CONDITION("DSW2",0xc0,PORTCOND_EQUALS,0x80)
+	PORT_DIPSETTING(    0x04, "150k/350k" ) PORT_CONDITION("DSW2",0xc0,PORTCOND_EQUALS,0xc0)
+	PORT_DIPSETTING(    0x04, "150k/400k" ) PORT_CONDITION("DSW2",0xc0,PORTCOND_EQUALS,0x40)
+	PORT_DIPSETTING(    0x04, "200k/500k" ) PORT_CONDITION("DSW2",0xc0,PORTCOND_EQUALS,0x00)
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )          PORT_DIPLOCATION("SW2:6")
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Difficulty ) )       PORT_DIPLOCATION("SW2:7,8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Very_Easy ) )
+	PORT_DIPSETTING(    0xc0, DEF_STR( Medium ) )
+	PORT_DIPSETTING(    0x40, "Medium Hard" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 INPUT_PORTS_END
 
 /* Mazinger Z (has region stored in Eeprom) */
@@ -1597,7 +1656,7 @@ INPUT_PORTS_START( mazinger )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START1  )
 
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE(0x0200, IP_ACTIVE_LOW )
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? exit service mode
 	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? enter & exit service mode
 	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1643,7 +1702,7 @@ INPUT_PORTS_START( sailormn )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START1  )
 
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE(0x0200, IP_ACTIVE_LOW )
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? exit service mode
 	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? enter & exit service mode
 	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1704,7 +1763,7 @@ INPUT_PORTS_START( guwange )
 	PORT_START	// IN1 - Coins
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(6)
-	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE(0x0004, IP_ACTIVE_LOW )
 	PORT_BIT(  0x0008, IP_ACTIVE_LOW,  IPT_SERVICE1 )
 	PORT_BIT(  0x0010, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
 	PORT_BIT(  0x0020, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
@@ -1734,7 +1793,7 @@ INPUT_PORTS_START( metmqstr )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START1  )
 
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE(0x0200, IP_ACTIVE_LOW )
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? enter & exit service mode
 	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -2085,16 +2144,17 @@ static MACHINE_DRIVER_START( dfeveron )
 	MDRV_CPU_PROGRAM_MAP(dfeveron_readmem,dfeveron_writemem)
 	MDRV_CPU_VBLANK_INT(cave_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(cave)
 	MDRV_NVRAM_HANDLER(cave)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
-	MDRV_VISIBLE_AREA(0, 320-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
 	MDRV_GFXDECODE(dfeveron_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x800)
 	MDRV_COLORTABLE_LENGTH(0x8000)	/* $8000 palette entries for consistency with the other games */
@@ -2124,16 +2184,17 @@ static MACHINE_DRIVER_START( ddonpach )
 	MDRV_CPU_PROGRAM_MAP(ddonpach_readmem,ddonpach_writemem)
 	MDRV_CPU_VBLANK_INT(cave_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(cave)
 	MDRV_NVRAM_HANDLER(cave)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
-	MDRV_VISIBLE_AREA(0, 320-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
 	MDRV_GFXDECODE(ddonpach_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x8000)
 	MDRV_COLORTABLE_LENGTH(0x8000 + 0x40*16)	// $400 extra entries for layers 1&2
@@ -2163,16 +2224,17 @@ static MACHINE_DRIVER_START( donpachi )
 	MDRV_CPU_PROGRAM_MAP(donpachi_readmem,donpachi_writemem)
 	MDRV_CPU_VBLANK_INT(cave_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(cave)
 	MDRV_NVRAM_HANDLER(cave)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
-	MDRV_VISIBLE_AREA(0, 320-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
 	MDRV_GFXDECODE(donpachi_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x800)
 	MDRV_COLORTABLE_LENGTH(0x8000)	/* $8000 palette entries for consistency with the other games */
@@ -2184,13 +2246,13 @@ static MACHINE_DRIVER_START( donpachi )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(OKIM6295, 8000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.60)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.60)
 
-	MDRV_SOUND_ADD(OKIM6295, 16000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2)
+	MDRV_SOUND_ADD(OKIM6295, 2112000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -2207,16 +2269,17 @@ static MACHINE_DRIVER_START( esprade )
 	MDRV_CPU_PROGRAM_MAP(esprade_readmem,esprade_writemem)
 	MDRV_CPU_VBLANK_INT(cave_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(cave)
 	MDRV_NVRAM_HANDLER(cave)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
-	MDRV_VISIBLE_AREA(0, 320-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
 	MDRV_GFXDECODE(esprade_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x8000)
 
@@ -2244,15 +2307,16 @@ static MACHINE_DRIVER_START( gaia )
 	MDRV_CPU_PROGRAM_MAP(gaia_readmem,gaia_writemem)
 	MDRV_CPU_VBLANK_INT(cave_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(cave)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
-	MDRV_VISIBLE_AREA(0, 320-1, 0, 224-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 224-1)
 	MDRV_GFXDECODE(esprade_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x8000)
 
@@ -2280,16 +2344,17 @@ static MACHINE_DRIVER_START( guwange )
 	MDRV_CPU_PROGRAM_MAP(guwange_readmem,guwange_writemem)
 	MDRV_CPU_VBLANK_INT(cave_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(cave)
 	MDRV_NVRAM_HANDLER(cave)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
-	MDRV_VISIBLE_AREA(0, 320-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
 	MDRV_GFXDECODE(esprade_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x8000)
 
@@ -2321,16 +2386,17 @@ static MACHINE_DRIVER_START( hotdogst )
 	MDRV_CPU_PROGRAM_MAP(hotdogst_sound_readmem,hotdogst_sound_writemem)
 	MDRV_CPU_IO_MAP(hotdogst_sound_readport,hotdogst_sound_writeport)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(cave)
 	MDRV_NVRAM_HANDLER(cave)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(384, 240)
-	MDRV_VISIBLE_AREA(0, 384-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 384-1, 0, 240-1)
 	MDRV_GFXDECODE(hotdogst_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x800)
 	MDRV_COLORTABLE_LENGTH(0x8000)	/* $8000 palette entries for consistency with the other games */
@@ -2353,8 +2419,8 @@ static MACHINE_DRIVER_START( hotdogst )
 	MDRV_SOUND_ROUTE(3, "left",  0.80)
 	MDRV_SOUND_ROUTE(3, "right", 0.80)
 
-	MDRV_SOUND_ADD(OKIM6295, 8000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -2371,16 +2437,17 @@ static MACHINE_DRIVER_START( korokoro )
 	MDRV_CPU_PROGRAM_MAP(korokoro_readmem,korokoro_writemem)
 	MDRV_CPU_VBLANK_INT(cave_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(cave)
 	MDRV_NVRAM_HANDLER(korokoro)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
-	MDRV_VISIBLE_AREA(0, 320-1-2, 0, 240-1-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 320-1-2, 0, 240-1-1)
 	MDRV_GFXDECODE(korokoro_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x4000)
 	MDRV_COLORTABLE_LENGTH(0x8000)	/* $8000 palette entries for consistency with the other games */
@@ -2415,8 +2482,8 @@ static MACHINE_DRIVER_START( mazinger )
 	MDRV_CPU_PROGRAM_MAP(mazinger_sound_readmem,mazinger_sound_writemem)
 	MDRV_CPU_IO_MAP(mazinger_sound_readport,mazinger_sound_writeport)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_WATCHDOG_VBLANK_INIT(DEFAULT_60HZ_3S_VBLANK_WATCHDOG)
 
 	MDRV_MACHINE_RESET(cave)
@@ -2424,8 +2491,9 @@ static MACHINE_DRIVER_START( mazinger )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(384, 240)
-	MDRV_VISIBLE_AREA(0, 384-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 384-1, 0, 240-1)
 	MDRV_GFXDECODE(mazinger_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x4000)
 	MDRV_COLORTABLE_LENGTH(0x8000)	/* $8000 palette entries for consistency with the other games */
@@ -2448,8 +2516,8 @@ static MACHINE_DRIVER_START( mazinger )
 	MDRV_SOUND_ROUTE(3, "left",  0.60)
 	MDRV_SOUND_ROUTE(3, "right", 0.60)
 
-	MDRV_SOUND_ADD(OKIM6295, 8000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 2.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 2.0)
 MACHINE_DRIVER_END
@@ -2471,8 +2539,8 @@ static MACHINE_DRIVER_START( metmqstr )
 	MDRV_CPU_PROGRAM_MAP(metmqstr_sound_readmem,metmqstr_sound_writemem)
 	MDRV_CPU_IO_MAP(metmqstr_sound_readport,metmqstr_sound_writeport)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_WATCHDOG_VBLANK_INIT(DEFAULT_60HZ_3S_VBLANK_WATCHDOG)
 
 	MDRV_MACHINE_RESET(cave)	/* start with the watchdog armed */
@@ -2480,8 +2548,9 @@ static MACHINE_DRIVER_START( metmqstr )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(0x200, 240)
-	MDRV_VISIBLE_AREA(0x7d, 0x7d + 0x180-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0x7d, 0x7d + 0x180-1, 0, 240-1)
 	MDRV_GFXDECODE(donpachi_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x800)
 	MDRV_COLORTABLE_LENGTH(0x8000)	/* $8000 palette entries for consistency with the other games */
@@ -2498,13 +2567,13 @@ static MACHINE_DRIVER_START( metmqstr )
 	MDRV_SOUND_ROUTE(0, "left", 1.20)
 	MDRV_SOUND_ROUTE(1, "right", 1.20)
 
-	MDRV_SOUND_ADD(OKIM6295, 32000000 / 16 / 132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 32000000 / 16 )
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 
-	MDRV_SOUND_ADD(OKIM6295, 32000000 / 16 / 132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2)
+	MDRV_SOUND_ADD(OKIM6295, 32000000 / 16 )
+	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -2528,16 +2597,17 @@ static MACHINE_DRIVER_START( pwrinst2 )
 	MDRV_CPU_PROGRAM_MAP(pwrinst2_sound_readmem,pwrinst2_sound_writemem)
 	MDRV_CPU_IO_MAP(pwrinst2_sound_readport,pwrinst2_sound_writeport)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(cave)
 	MDRV_NVRAM_HANDLER(cave)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(0x200, 240)
-	MDRV_VISIBLE_AREA(0x70, 0x70 + 0x140-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0x70, 0x70 + 0x140-1, 0, 240-1)
 	MDRV_GFXDECODE(pwrinst2_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x5000/2)
 	MDRV_COLORTABLE_LENGTH(0x8000+0x2800)
@@ -2560,13 +2630,13 @@ static MACHINE_DRIVER_START( pwrinst2 )
 	MDRV_SOUND_ROUTE(3, "left",  0.80)
 	MDRV_SOUND_ROUTE(3, "right", 0.80)
 
-	MDRV_SOUND_ADD(OKIM6295, 3000000 / 165)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 3000000 )
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.80)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.80)
 
-	MDRV_SOUND_ADD(OKIM6295, 3000000 / 165)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2)
+	MDRV_SOUND_ADD(OKIM6295, 3000000 )
+	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7low)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.00)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.00)
 MACHINE_DRIVER_END
@@ -2588,8 +2658,8 @@ static MACHINE_DRIVER_START( sailormn )
 	MDRV_CPU_PROGRAM_MAP(sailormn_sound_readmem,sailormn_sound_writemem)
 	MDRV_CPU_IO_MAP(sailormn_sound_readport,sailormn_sound_writeport)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 //  MDRV_INTERLEAVE(10)
 
 	MDRV_MACHINE_RESET(cave)
@@ -2597,8 +2667,9 @@ static MACHINE_DRIVER_START( sailormn )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320+1, 240)
-	MDRV_VISIBLE_AREA(0+1, 320+1-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0+1, 320+1-1, 0, 240-1)
 	MDRV_GFXDECODE(sailormn_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x2000)
 	MDRV_COLORTABLE_LENGTH(0x8000)	/* $8000 palette entries for consistency with the other games */
@@ -2614,13 +2685,13 @@ static MACHINE_DRIVER_START( sailormn )
 	MDRV_SOUND_ROUTE(0, "left", 0.30)
 	MDRV_SOUND_ROUTE(1, "right", 0.30)
 
-	MDRV_SOUND_ADD(OKIM6295, 16000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 2112000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 
-	MDRV_SOUND_ADD(OKIM6295, 16000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2)
+	MDRV_SOUND_ADD(OKIM6295, 2112000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -2637,15 +2708,16 @@ static MACHINE_DRIVER_START( uopoko )
 	MDRV_CPU_PROGRAM_MAP(uopoko_readmem,uopoko_writemem)
 	MDRV_CPU_VBLANK_INT(cave_interrupt,1)
 
-	MDRV_FRAMES_PER_SECOND(15625/271.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(15625/271.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(cave)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
-	MDRV_VISIBLE_AREA(0, 320-1, 0, 240-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
 	MDRV_GFXDECODE(uopoko_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x8000)
 
@@ -2775,7 +2847,7 @@ BP962A.U77  23C16000    GFX
 
 ***************************************************************************/
 
-ROM_START( agallet )	// Shows "Taiwan Only" on the copyright notice screen.
+ROM_START( agallet ) /* PCB showed "Taiwan Only" on the copyright notice screen. Region byte in EEPROM */
 	ROM_REGION( 0x400000, REGION_CPU1, 0 )		/* 68000 code */
 	ROM_LOAD16_WORD_SWAP( "bp962a.u45", 0x000000, 0x080000, CRC(24815046) SHA1(f5eeae60b923ae850b335e7898a2760407631d8b) )
 	//empty
@@ -2814,7 +2886,7 @@ ROM_END
 
 /***************************************************************************
 
-                                Dangun Feveron
+              Fever SOS (International) / Dangun Feveron (Japan)
 
 Board:  CV01
 OSC:    28.0, 16.0, 16.9 MHz
@@ -2844,7 +2916,8 @@ ROM_END
 
 Fever SOS
 
-this doesn't work, I don't know why, roms should be good
+  The program code checks for 0x05 & 0x19 at the 17th & 18th byte in the EEPROM.  Therefore
+  you cannot convert a Dangun Feveron over to a Fever SOS by changing the 2 program roms
 
 Jumper JP1:
 INT Version - 2 & 3
@@ -2853,24 +2926,19 @@ JAP Version - 1 & 2
 However there are more differences:
 
 U4:
-INT Version  - 9838EX003
-JAP Version - 9807EX004
+INT Version - 013 9838EX003
+JAP Version - 013 9807EX004 (The second set of numbers are manufacture day codes)
 
 UA2 & UB2:
-INT Version  - 038 9838WX001
-JAP Version - 038 9808WX003
+INT Version - 038 9838WX001
+JAP Version - 038 9808WX003 (The second set of numbers are manufacture day codes)
 
 TA8030S (Beside SW1)
 INT Version  - NOT MOUNTED
 JAP Version - TA8030S (WatchDog Timer, might be controlled by JP1)
 
 U47 & U48 - Differ
-U38 & U37 - Differ
-
-These chips however are Static RAM so I don't think anything is wrong!
-
-I suspect the main difference is the graphics chips. Looks like the
-international version is running on different H/W ?
+U38 & U37 - Differ - These chips are Static RAM
 
 It actually looks like the international version is older than
 the Japanese version PCB wise, but the software date is 98/09/25
@@ -2930,8 +2998,8 @@ present in the japanese images...
 
 ROM_START( feversos )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* 68000 Code */
-	ROM_LOAD16_BYTE( "rom1.bin", 0x000000, 0x080000, CRC(24ef3ce6) SHA1(42799eebbb2686a837b8972aec684143deadca59) )
-	ROM_LOAD16_BYTE( "rom2.bin", 0x000001, 0x080000, CRC(64ff73fd) SHA1(7fc3a8469cec2361d373a4dac4a547c13ca5f709) )
+	ROM_LOAD16_BYTE( "cv01-u34.sos", 0x000000, 0x080000, CRC(24ef3ce6) SHA1(42799eebbb2686a837b8972aec684143deadca59) )
+	ROM_LOAD16_BYTE( "cv01-u33.sos", 0x000001, 0x080000, CRC(64ff73fd) SHA1(7fc3a8469cec2361d373a4dac4a547c13ca5f709) )
 
 	ROM_REGION( 0x800000 * 2, REGION_GFX1, 0 )		/* Sprites: * 2 , do not dispose */
 	ROM_LOAD( "cv01-u25.bin", 0x000000, 0x400000, CRC(a6f6a95d) SHA1(e1eb45cb5d0e6163edfd9d830633b913fb53c6ca) )
@@ -3162,7 +3230,7 @@ ROM_END
 
 /***************************************************************************
 
-                                    Esprade
+                                ESP Ra.De.
 
 ATC04
 OSC:    28.0, 16.0, 16.9 MHz
@@ -3171,8 +3239,8 @@ OSC:    28.0, 16.0, 16.9 MHz
 
 ROM_START( esprade )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* 68000 Code */
-	ROM_LOAD16_BYTE( "u42_i.bin", 0x000000, 0x080000, CRC(3b510a73) SHA1(ab1666eb826cb4a71588d86831dd18a2ef1c2a33) )
-	ROM_LOAD16_BYTE( "u41_i.bin", 0x000001, 0x080000, CRC(97c1b649) SHA1(37a56b7b9662219a356aee3f4b5cbb774ac4950e) )
+	ROM_LOAD16_BYTE( "u42.int", 0x000000, 0x080000, CRC(3b510a73) SHA1(ab1666eb826cb4a71588d86831dd18a2ef1c2a33) )
+	ROM_LOAD16_BYTE( "u41.int", 0x000001, 0x080000, CRC(97c1b649) SHA1(37a56b7b9662219a356aee3f4b5cbb774ac4950e) )
 
 	ROM_REGION( 0x1000000, REGION_GFX1, 0 )		/* Sprites (do not dispose) */
 	ROM_LOAD16_BYTE( "u63.bin", 0x000000, 0x400000, CRC(2f2fe92c) SHA1(9519e365248bcec8419786eabb16fe4aae299af5) )
@@ -3197,8 +3265,8 @@ ROM_END
 
 ROM_START( espradej )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* 68000 Code */
-	ROM_LOAD16_BYTE( "u42_ver2.bin", 0x000000, 0x080000, CRC(75d03c42) SHA1(1c176185b6f1531752b633a97f705ffa0cfeb5ad) )
-	ROM_LOAD16_BYTE( "u41_ver2.bin", 0x000001, 0x080000, CRC(734b3ef0) SHA1(f584227b85c347d62d5f179445011ce0f607bcfd) )
+	ROM_LOAD16_BYTE( "u42.bin", 0x000000, 0x080000, CRC(75d03c42) SHA1(1c176185b6f1531752b633a97f705ffa0cfeb5ad) )
+	ROM_LOAD16_BYTE( "u41.bin", 0x000001, 0x080000, CRC(734b3ef0) SHA1(f584227b85c347d62d5f179445011ce0f607bcfd) )
 
 	ROM_REGION( 0x1000000, REGION_GFX1, 0 )		/* Sprites (do not dispose) */
 	ROM_LOAD16_BYTE( "u63.bin", 0x000000, 0x400000, CRC(2f2fe92c) SHA1(9519e365248bcec8419786eabb16fe4aae299af5) )
@@ -3223,8 +3291,8 @@ ROM_END
 
 ROM_START( espradeo )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* 68000 Code */
-	ROM_LOAD16_BYTE( "u42.bin", 0x000000, 0x080000, CRC(0718c7e5) SHA1(c7d1f30bd2ef363cad15b6918f9980312a15809a) )
-	ROM_LOAD16_BYTE( "u41.bin", 0x000001, 0x080000, CRC(def30539) SHA1(957ad0b06f06689ae71393572592f6b8f818603a) )
+	ROM_LOAD16_BYTE( "u42.old", 0x000000, 0x080000, CRC(0718c7e5) SHA1(c7d1f30bd2ef363cad15b6918f9980312a15809a) )
+	ROM_LOAD16_BYTE( "u41.old", 0x000001, 0x080000, CRC(def30539) SHA1(957ad0b06f06689ae71393572592f6b8f818603a) )
 
 	ROM_REGION( 0x1000000, REGION_GFX1, 0 )		/* Sprites (do not dispose) */
 	ROM_LOAD16_BYTE( "u63.bin", 0x000000, 0x400000, CRC(2f2fe92c) SHA1(9519e365248bcec8419786eabb16fe4aae299af5) )
@@ -3310,6 +3378,68 @@ ROM_START( gaia )
 	ROM_LOAD( "snd1.447", 0x000000, 0x400000, CRC(92770a52) SHA1(81f6835e1b45eb0f367e4586fdda92466f02edb9) )
 	ROM_LOAD( "snd2.454", 0x400000, 0x400000, CRC(329ae1cf) SHA1(0c5e5074a5d8f4fb85ab4893bc953f192dcb301a) )
 	ROM_LOAD( "snd3.455", 0x800000, 0x400000, CRC(4048d64e) SHA1(5e4ec6d37e70484e2fcd04188385e79ef0b53026) )
+ROM_END
+
+/*
+Thunder Heroes
+Primetek Investments Ltd. , 2001
+
+A quasi-clone, remake or continuation of Gaia Crusaders but is clearly a different game.
+
+PCB Layout
+----------
+
+|------------------------------------------------------|
+| 4558  YAC516   YMZ280B     XILINX                    |
+| 4558   16MHz               XC9536    68000      PAL  |
+|                SND2                                  |
+|   VOL  SND3                TC51832   EPM0            |
+|                SND1                                  |
+|                            TC51832   EPM1            |
+|                    58257           28.322MHz         |
+|J                   58257                16MHz        |
+|A   58257  58257  58257  58257  58257                 |
+|M  DSW1                      58257   M514260  M514260 |
+|M                                                     |
+|A  DSW2 |------|  |------|  |------|  |--------|58257 |
+|        | 038  |  | 038  |  | 038  |  |  013   |      |
+|        |      |  |      |  |      |  |        |58257 |
+|        |------|  |------|  |------|  |        |      |
+|                                      |--------|      |
+|                         XILINX            OBJ2       |
+|                         XC9536                       |
+|       BG2       BG3       BG1             OBJ1       |
+|------------------------------------------------------|
+Notes:
+      68000 clock 16.00MHz
+      YMZ280B clock 16.000MHz
+      HSync 15.4kHz
+      VSync 58Hz
+      038/013 = Same video chips used on some Banpresto games
+*/
+
+ROM_START( theroes )
+	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_LOAD16_BYTE( "t-hero-epm1.u0127", 0x000000, 0x080000, CRC(09db7195) SHA1(6aa5aa80e3b74e405ed8f1b9b801ce4367756986) )
+	ROM_LOAD16_BYTE( "t-hero-epm0.u0129", 0x000001, 0x080000, CRC(2d4e3310) SHA1(7c3284a2adc7943db50933a209d037422f87f80b) )
+
+	ROM_REGION( 0x1000000, REGION_GFX1, 0 )  /* Sprites (do not dispose) */
+	ROM_LOAD( "t-hero-obj1.u0736", 0x000000, 0x400000, CRC(35090f7c) SHA1(035e6c12a87d9c7241eea34fc7e2170bec842acc) )
+	ROM_LOAD( "t-hero-obj2.u0738", 0x400000, 0x400000, CRC(71605108) SHA1(6070c26d8f22fafc81d97cacfef96ae652e355d0) )
+
+	ROM_REGION( 0x400000, REGION_GFX2, ROMREGION_DISPOSE )	/* Layer 0 */
+	ROM_LOAD( "t-hero-bg1.u0999", 0x000000, 0x400000, CRC(47b0fb40) SHA1(a7217b3d805b4255c589821cdadd9b190cada525) )
+
+	ROM_REGION( 0x400000, REGION_GFX3, ROMREGION_DISPOSE )	/* Layer 1 */
+	ROM_LOAD( "t-hero-bg2.u0995", 0x000000, 0x400000, CRC(b16237a1) SHA1(66aed2c5036492a17d20de90333e172a6f117851) )
+
+	ROM_REGION( 0x400000, REGION_GFX4, ROMREGION_DISPOSE )	/* Layer 2 */
+	ROM_LOAD( "t-hero-bg3.u0998", 0x000000, 0x400000, CRC(08eb5604) SHA1(3d32966708c73198272c40e6ddc680bf4c7919eb) )
+
+	ROM_REGION( 0xc00000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_LOAD( "crvsaders-snd1.u0447", 0x000000, 0x400000, CRC(92770a52) SHA1(81f6835e1b45eb0f367e4586fdda92466f02edb9) )
+	ROM_LOAD( "crvsaders-snd2.u0454", 0x400000, 0x400000, CRC(329ae1cf) SHA1(0c5e5074a5d8f4fb85ab4893bc953f192dcb301a) )
+	ROM_LOAD( "t-hero-snd3.u0455",    0x800000, 0x400000, CRC(52b0b2c0) SHA1(6e96698905391c21a4fedd60e2768734b58add4e) )
 ROM_END
 
 
@@ -3414,7 +3544,7 @@ Hardware is kind of Banpresto-ish
  68000-16 + 16MHZ OSC
  YMZ280B + YAC516-M + Xtal 16.9344MHz
  93C46 EEPROM
- Custom - 9838EX004 (QFP240), 9838WX004 (QFP144) + OSC 28MHz
+ Custom - 013 9838EX004 (QFP240), 038 9838WX004 (QFP144) + OSC 28MHz
  RAM - 62256 (x8), M5M44260 (x2)
  3volt battery
  GAL16V8H (x5)
@@ -3491,9 +3621,8 @@ ROM_END
 
 /***************************************************************************
 
-                                Metamoqester
+             Metamoqester (World) / Oni - The Ninja Master (Japan)
 
-[Ninja Master (World version)?]
 (C) 1995 Banpresto
 
 PCB: BP947A
@@ -3617,7 +3746,7 @@ ROM_END
 
 /***************************************************************************
 
-                            Power Instinct 2
+           Power Instinct 2 (USA) / Gouketsuji Ichizoku 2 (Japan)
 
 (c)1994 Atlus
 CPU: 68000, Z80
@@ -3723,8 +3852,7 @@ ROM_END
 
 /*
 
-Power Instinct Legends (US)
-Gouketsuji Ichizoku Saikyou Densetsu (Japan)
+Power Instinct Legends (US) / Gouketsuji Ichizoku Saikyou Densetsu (Japan)
 Atlus, 1995
 
 PCB Layout
@@ -3874,7 +4002,7 @@ ROM_END
 
 /***************************************************************************
 
-                                Sailor Moon
+                         Pretty Soldier Sailor Moon
 
 (C) 1995 Banpresto
 PCB: BP945A
@@ -4011,7 +4139,7 @@ ROM_END
 
 /***************************************************************************
 
-                                    Uo Poko
+                             Puzzle Uo Poko
 Board: CV02
 OSC:    28.0, 16.0, 16.9 MHz
 
@@ -4019,8 +4147,8 @@ OSC:    28.0, 16.0, 16.9 MHz
 
 ROM_START( uopoko )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* 68000 Code */
-	ROM_LOAD16_BYTE( "u26.bin", 0x000000, 0x080000, CRC(b445c9ac) SHA1(4dda1c6e19de629ea4d9061560c32a9f0deabd53) )
-	ROM_LOAD16_BYTE( "u25.bin", 0x000001, 0x080000, CRC(a1258482) SHA1(7f4adc4a6d069032aaf3d93eb60fde16b59483f8) )
+	ROM_LOAD16_BYTE( "u26.int", 0x000000, 0x080000, CRC(b445c9ac) SHA1(4dda1c6e19de629ea4d9061560c32a9f0deabd53) )
+	ROM_LOAD16_BYTE( "u25.int", 0x000001, 0x080000, CRC(a1258482) SHA1(7f4adc4a6d069032aaf3d93eb60fde16b59483f8) )
 
 	ROM_REGION( 0x400000 * 2, REGION_GFX1, 0 )		/* Sprites: * 2 , do not dispose */
 	ROM_LOAD( "u33.bin", 0x000000, 0x400000, CRC(5d142ad2) SHA1(f26abcf7a625a322b83df44fbd6e852bfb03663c) )
@@ -4034,8 +4162,8 @@ ROM_END
 
 ROM_START( uopokoj )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* 68000 Code */
-	ROM_LOAD16_BYTE( "u26j.bin", 0x000000, 0x080000, CRC(e7eec050) SHA1(cf3a77741029f96dbbec5ca7217a1723e4233cff) )
-	ROM_LOAD16_BYTE( "u25j.bin", 0x000001, 0x080000, CRC(68cb6211) SHA1(a6db0bc2e3e54b6992a44b7d52395917e66db49b) )
+	ROM_LOAD16_BYTE( "u26.bin", 0x000000, 0x080000, CRC(e7eec050) SHA1(cf3a77741029f96dbbec5ca7217a1723e4233cff) )
+	ROM_LOAD16_BYTE( "u25.bin", 0x000001, 0x080000, CRC(68cb6211) SHA1(a6db0bc2e3e54b6992a44b7d52395917e66db49b) )
 
 	ROM_REGION( 0x400000 * 2, REGION_GFX1, 0 )		/* Sprites: * 2 , do not dispose */
 	ROM_LOAD( "u33.bin", 0x000000, 0x400000, CRC(5d142ad2) SHA1(f26abcf7a625a322b83df44fbd6e852bfb03663c) )
@@ -4224,7 +4352,7 @@ DRIVER_INIT( mazinger )
 	init_cave(machine);
 
 	/* decrypt sprites */
-	if ((buffer = malloc(len)))
+	buffer = malloc_or_die(len);
 	{
 		int i;
 		for (i = 0;i < len; i++)
@@ -4267,7 +4395,7 @@ DRIVER_INIT( pwrins2j )
 
 	init_cave(machine);
 
-	if ((buffer = malloc(len)))
+	buffer = malloc_or_die(len);
 	{
 		 for(i=0; i<len/2; i++) 		{
 			j = BITSWAP24(i,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7, 2,4,6,1,5,3, 0);
@@ -4313,7 +4441,7 @@ DRIVER_INIT( sailormn )
 	init_cave(machine);
 
 	/* decrypt sprites */
-	if ((buffer = malloc(len)))
+	buffer = malloc_or_die(len);
 	{
 		int i;
 		for (i = 0;i < len; i++)
@@ -4391,4 +4519,6 @@ GAME( 1998, uopoko,   0,        uopoko,   cave,     uopoko,   ROT0,   "Cave (Jal
 GAME( 1998, uopokoj,  uopoko,   uopoko,   cave,     uopoko,   ROT0,   "Cave (Jaleco license)",                "Puzzle Uo Poko (Japan)"                  , 0 )
 GAME( 1999, guwange,  0,        guwange,  guwange,  guwange,  ROT270, "Atlus/Cave",                           "Guwange (Japan)"                         , 0 )
 GAME( 1999, gaia,     0,        gaia,     gaia,     gaia,     ROT0,   "Noise Factory",                        "Gaia Crusaders",        GAME_IMPERFECT_SOUND ) // cuts out occasionally
+GAME( 2001, theroes,  0,        gaia,     theroes,  gaia,     ROT0,   "Primetek Investments",                 "Thunder Heroes",        GAME_IMPERFECT_SOUND ) // cuts out occasionally
+
 GAME( 1999, korokoro, 0,        korokoro, korokoro, korokoro, ROT0,   "Takumi",                               "Koro Koro Quest (Japan)"                 , 0 )

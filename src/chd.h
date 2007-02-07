@@ -2,7 +2,7 @@
 
     MAME Compressed Hunks of Data file format
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -12,7 +12,7 @@
 #ifndef __CHD_H__
 #define __CHD_H__
 
-#include "mamecore.h"
+#include "osdcore.h"
 
 
 /***************************************************************************
@@ -121,7 +121,6 @@
 #define CHD_OPEN_READWRITE			2
 
 /* error types */
-typedef enum _chd_error chd_error;
 enum _chd_error
 {
 	CHDERR_NONE,
@@ -148,8 +147,11 @@ enum _chd_error
 	CHDERR_UNSUPPORTED_VERSION,
 	CHDERR_VERIFY_INCOMPLETE,
 	CHDERR_INVALID_METADATA,
-	CHDERR_INVALID_STATE
+	CHDERR_INVALID_STATE,
+	CHDERR_OPERATION_PENDING,
+	CHDERR_NO_ASYNC_OPERATION
 };
+typedef enum _chd_error chd_error;
 
 
 
@@ -249,8 +251,17 @@ chd_error chd_set_header(const char *filename, const chd_header *header);
 /* read one hunk from the CHD file */
 chd_error chd_read(chd_file *chd, UINT32 hunknum, void *buffer);
 
+/* read one hunk from the CHD file asynchronously */
+chd_error chd_read_async(chd_file *chd, UINT32 hunknum, void *buffer);
+
 /* write one hunk to a CHD file */
 chd_error chd_write(chd_file *chd, UINT32 hunknum, const void *buffer);
+
+/* write one hunk to a CHD file asynchronously */
+chd_error chd_write_async(chd_file *chd, UINT32 hunknum, const void *buffer);
+
+/* wait for a previously issued async read/write to complete and return the error */
+chd_error chd_async_complete(chd_file *chd);
 
 
 
@@ -272,9 +283,6 @@ chd_error chd_clone_metadata(chd_file *source, chd_file *dest);
 /* begin compressing data to a CHD */
 chd_error chd_compress_begin(chd_file *chd);
 
-/* set internal codec parameters */
-chd_error chd_compress_config(chd_file *chd, int param, void *config);
-
 /* compress the next hunk of data */
 chd_error chd_compress_hunk(chd_file *chd, const void *data, double *curratio);
 
@@ -294,6 +302,15 @@ chd_error chd_verify_hunk(chd_file *chd);
 /* finish verifying a CHD, returning the computed MD5 and SHA1 */
 chd_error chd_verify_finish(chd_file *chd, UINT8 *finalmd5, UINT8 *finalsha1);
 
+
+
+/* ----- codec interfaces ----- */
+
+/* set internal codec parameters */
+chd_error chd_codec_config(chd_file *chd, int param, void *config);
+
+/* return a string description of a codec */
+const char *chd_get_codec_name(UINT32 codec);
 
 
 #endif /* __CHD_H__ */

@@ -414,13 +414,14 @@ static MACHINE_DRIVER_START( ddayjlc )
 
 	MDRV_INTERLEAVE(100)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(32)
@@ -559,7 +560,7 @@ static DRIVER_INIT( ddayjlc )
 	{
 		UINT32 oldaddr, newadr, length,j;
 		UINT8 *src, *dst, *temp;
-		temp = malloc(0x10000);
+		temp = malloc_or_die(0x10000);
 		src = temp;
 		dst = memory_region(REGION_GFX1);
 		length = memory_region_length(REGION_GFX1);
@@ -573,6 +574,7 @@ static DRIVER_INIT( ddayjlc )
 			newadr+=32;
 			oldaddr+=16;
 		}
+		free(temp);
 	}
 
 	memory_set_bankptr( 1, memory_region(REGION_USER1) );

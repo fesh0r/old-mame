@@ -108,12 +108,6 @@ VIDEO_START( mazerbla )
 	tmpbitmaps[2] = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height);
 	tmpbitmaps[3] = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height);
 
-	if ((tmpbitmaps[0]==0) || (tmpbitmaps[1]==0) || (tmpbitmaps[2]==0) || (tmpbitmaps[3]==0))
-	{
-		logerror("too bad - run out of memory in video_start() ");
-		return 1;
-	}
-
 	return 0;
 }
 
@@ -1511,8 +1505,8 @@ but handled differently for now
 */
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* synchronization forced on the fly */
 
@@ -1520,8 +1514,9 @@ but handled differently for now
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_PALETTE_INIT(mazerbla)
@@ -1554,15 +1549,16 @@ but handled differently for now
 */
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(greatgun)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_PALETTE_INIT(mazerbla)

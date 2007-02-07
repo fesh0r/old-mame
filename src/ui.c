@@ -4,7 +4,7 @@
 
     Functions used to handle MAME's user interface.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -96,13 +96,13 @@ static int single_step;
 
 /* FPS counter display */
 static int showfps;
-static cycles_t showfps_end;
+static osd_ticks_t showfps_end;
 
 /* profiler display */
 static int show_profiler;
 
 /* popup text display */
-static cycles_t popup_text_end;
+static osd_ticks_t popup_text_end;
 
 /* messagebox buffer */
 static char messagebox_text[4096];
@@ -155,7 +155,10 @@ static INT32 slider_xoffset(INT32 newval, char *buffer, int arg);
 static INT32 slider_yoffset(INT32 newval, char *buffer, int arg);
 static INT32 slider_flicker(INT32 newval, char *buffer, int arg);
 static INT32 slider_beam(INT32 newval, char *buffer, int arg);
-
+#ifdef MAME_DEBUG
+static INT32 slider_crossscale(INT32 newval, char *buffer, int arg);
+static INT32 slider_crossoffset(INT32 newval, char *buffer, int arg);
+#endif
 
 
 /***************************************************************************
@@ -279,7 +282,7 @@ int ui_display_startup_screens(int show_disclaimer, int show_warnings, int show_
 
 	/* loop over states */
 	ui_set_handler(handler_ingame, 0);
-	for (state = 0; state < maxstate && !mame_is_scheduled_event_pending(Machine); state++)
+	for (state = -1; state < maxstate && !mame_is_scheduled_event_pending(Machine); state++)
 	{
 		/* default to standard colors */
 		messagebox_backcolor = UI_FILLCOLOR;
@@ -287,6 +290,20 @@ int ui_display_startup_screens(int show_disclaimer, int show_warnings, int show_
 		/* pick the next state */
 		switch (state)
 		{
+			case -1:
+				if (show_disclaimer)
+				{
+					sprintf(messagebox_text,
+						"Happy 10th Anniversary! It has been 10 years since the "
+						"original release of MAME 0.1.\n\nAfter 10 years, hundreds "
+						"of developers, thousands of games, and tens of thousands "
+						"(if not more) of hours of hard work, MAME development is "
+						"still going strong.\n\nThanks to everyone who has supported "
+						"this project over the years!");
+					ui_set_handler(handler_messagebox_anykey, 0);
+				}
+				break;
+
 			case 0:
 				if (show_disclaimer && sprintf_disclaimer(messagebox_text))
 					ui_set_handler(handler_messagebox_ok, 0);
@@ -333,15 +350,15 @@ int ui_display_startup_screens(int show_disclaimer, int show_warnings, int show_
 
 void ui_set_startup_text(const char *text, int force)
 {
-	static cycles_t lastupdatetime = 0;
-	cycles_t curtime = osd_cycles();
+	static osd_ticks_t lastupdatetime = 0;
+	osd_ticks_t curtime = osd_ticks();
 
 	/* copy in the new text */
 	strncpy(messagebox_text, text, sizeof(messagebox_text));
 	messagebox_backcolor = UI_FILLCOLOR;
 
 	/* don't update more than 4 times/second */
-	if (force || (curtime - lastupdatetime) > osd_cycles_per_second() / 4)
+	if (force || (curtime - lastupdatetime) > osd_ticks_per_second() / 4)
 	{
 		lastupdatetime = curtime;
 		video_frame_update();
@@ -369,17 +386,6 @@ void ui_update_and_render(void)
 			render_ui_add_rect(0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(alpha,0x00,0x00,0x00), PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
 	}
 
-	/* first draw the FPS counter */
-	if (showfps || osd_cycles() < showfps_end)
-		ui_draw_text_full(osd_get_fps_text(mame_get_performance_info()), 0.0f, 0.0f, 1.0f,
-					JUSTIFY_RIGHT, WRAP_WORD, DRAW_OPAQUE, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
-	else
-		showfps_end = 0;
-
-	/* draw the profiler if visible */
-	if (show_profiler)
-		ui_draw_text_full(profiler_get_text(), 0.0f, 0.0f, 1.0f, JUSTIFY_LEFT, WRAP_WORD, DRAW_OPAQUE, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
-
 	/* call the current UI handler */
 	assert(ui_handler_callback != NULL);
 	ui_handler_param = (*ui_handler_callback)(ui_handler_param);
@@ -387,16 +393,6 @@ void ui_update_and_render(void)
 	/* cancel takes us back to the ingame handler */
 	if (ui_handler_param == UI_HANDLER_CANCEL)
 		ui_set_handler(handler_ingame, 0);
-
-	/* then let the cheat engine display its stuff */
-	if (options.cheat)
-		cheat_display_watches();
-
-	/* finally, display any popup messages */
-	if (osd_cycles() < popup_text_end)
-		ui_draw_text_box(messagebox_text, JUSTIFY_CENTER, 0.5f, 0.9f, messagebox_backcolor);
-	else
-		popup_text_end = 0;
 
 	/* add a message if we are rescaling */
 	if (display_rescale_message)
@@ -444,7 +440,7 @@ float ui_get_line_height(void)
     single character
 -------------------------------------------------*/
 
-float ui_get_char_width(UINT16 ch)
+float ui_get_char_width(unicode_char ch)
 {
 	return render_font_get_char_width(ui_font, ui_get_line_height(), render_get_ui_aspect(), ch);
 }
@@ -457,7 +453,7 @@ float ui_get_char_width(UINT16 ch)
 
 float ui_get_string_width(const char *s)
 {
-	return render_font_get_string_width(ui_font, ui_get_line_height(), render_get_ui_aspect(), s);
+	return render_font_get_utf8string_width(ui_font, ui_get_line_height(), render_get_ui_aspect(), s);
 }
 
 
@@ -497,8 +493,9 @@ void ui_draw_text(const char *buf, float x, float y)
 void ui_draw_text_full(const char *origs, float x, float y, float wrapwidth, int justify, int wrap, int draw, rgb_t fgcolor, rgb_t bgcolor, float *totalwidth, float *totalheight)
 {
 	float lineheight = ui_get_line_height();
-	const UINT8 *s = (const UINT8 *)origs;
-	const UINT8 *linestart;
+	const char *ends = origs + strlen(origs);
+	const char *s = origs;
+	const char *linestart;
 	float cury = y;
 	float maxwidth = 0;
 
@@ -509,18 +506,25 @@ void ui_draw_text_full(const char *origs, float x, float y, float wrapwidth, int
 		return;
 
 	/* loop over lines */
-	while (*s)
+	while (*s != 0)
 	{
 		const char *lastspace = NULL;
 		int line_justify = justify;
+		unicode_char schar;
+		int scharcount;
 		float lastspace_width = 0;
 		float curwidth = 0;
 		float curx = x;
 
+		/* get the current character */
+		scharcount = uchar_from_utf8(&schar, s, ends - s);
+		if (scharcount == -1)
+			break;
+
 		/* if the line starts with a tab character, center it regardless */
-		if (*s == '\t')
+		if (schar == '\t')
 		{
-			s++;
+			s += scharcount;
 			line_justify = JUSTIFY_CENTER;
 		}
 
@@ -528,22 +532,27 @@ void ui_draw_text_full(const char *origs, float x, float y, float wrapwidth, int
 		linestart = s;
 
 		/* loop while we have characters and are less than the wrapwidth */
-		while (*s && curwidth <= wrapwidth)
+		while (*s != 0 && curwidth <= wrapwidth)
 		{
+			/* get the current chcaracter */
+			scharcount = uchar_from_utf8(&schar, s, ends - s);
+			if (scharcount == -1)
+				break;
+
 			/* if we hit a space, remember the location and the width there */
-			if (*s == ' ')
+			if (schar == ' ')
 			{
 				lastspace = s;
 				lastspace_width = curwidth;
 			}
 
 			/* if we hit a newline, stop immediately */
-			else if (*s == '\n')
+			else if (schar == '\n')
 				break;
 
 			/* add the width of this character and advance */
-			curwidth += ui_get_char_width(*s);
-			s++;
+			curwidth += ui_get_char_width(schar);
+			s += scharcount;
 		}
 
 		/* if we accumulated too much for the current width, we need to back off */
@@ -562,8 +571,13 @@ void ui_draw_text_full(const char *origs, float x, float y, float wrapwidth, int
 				/* if we didn't hit a space, back up one character */
 				else if (s > linestart)
 				{
-					s--;
-					curwidth -= ui_get_char_width(*s);
+					/* get the previous character */
+					s = (const char *)utf8_previous_char(s);
+					scharcount = uchar_from_utf8(&schar, s, ends - s);
+					if (scharcount == -1)
+						break;
+
+					curwidth -= ui_get_char_width(schar);
 				}
 			}
 
@@ -576,8 +590,13 @@ void ui_draw_text_full(const char *origs, float x, float y, float wrapwidth, int
 				/* while we are above the wrap width, back up one character */
 				while (curwidth > wrapwidth && s > linestart)
 				{
-					s--;
-					curwidth -= ui_get_char_width(*s);
+					/* get the previous character */
+					s = (const char *)utf8_previous_char(s);
+					scharcount = uchar_from_utf8(&schar, s, ends - s);
+					if (scharcount == -1)
+						break;
+
+					curwidth -= ui_get_char_width(schar);
 				}
 			}
 		}
@@ -599,12 +618,18 @@ void ui_draw_text_full(const char *origs, float x, float y, float wrapwidth, int
 		/* loop from the line start and add the characters */
 		while (linestart < s)
 		{
+			/* get the current character */
+			unicode_char linechar;
+			int linecharcount = uchar_from_utf8(&linechar, linestart, ends - linestart);
+			if (linecharcount == -1)
+				break;
+
 			if (draw != DRAW_NONE)
 			{
-				render_ui_add_char(curx, cury, lineheight, render_get_ui_aspect(), fgcolor, ui_font, *linestart);
-				curx += ui_get_char_width(*linestart);
+				render_ui_add_char(curx, cury, lineheight, render_get_ui_aspect(), fgcolor, ui_font, linechar);
+				curx += ui_get_char_width(linechar);
 			}
-			linestart++;
+			linestart += linecharcount;
 		}
 
 		/* append ellipses if needed */
@@ -626,10 +651,20 @@ void ui_draw_text_full(const char *origs, float x, float y, float wrapwidth, int
 		cury += lineheight;
 
 		/* skip past any spaces at the beginning of the next line */
-		if (*s == '\n')
-			s++;
+		scharcount = uchar_from_utf8(&schar, s, ends - s);
+		if (scharcount == -1)
+			break;
+
+		if (schar == '\n')
+			s += scharcount;
 		else
-			while (*s && isspace(*s)) s++;
+			while (*s && isspace(schar))
+			{
+				s += scharcount;
+				scharcount = uchar_from_utf8(&schar, s, ends - s);
+				if (scharcount == -1)
+					break;
+			}
 	}
 
 	/* report the width and height of the resulting space */
@@ -697,8 +732,8 @@ void CLIB_DECL ui_popup(const char *text, ...)
 	va_end(arg);
 
 	/* set a timer */
-	seconds = strlen(messagebox_text) / 40 + 2;
-	popup_text_end = osd_cycles() + osd_cycles_per_second() * seconds;
+	seconds = (int)strlen(messagebox_text) / 40 + 2;
+	popup_text_end = osd_ticks() + osd_ticks_per_second() * seconds;
 }
 
 
@@ -718,7 +753,7 @@ void CLIB_DECL ui_popup_time(int seconds, const char *text, ...)
 	va_end(arg);
 
 	/* set a timer */
-	popup_text_end = osd_cycles() + osd_cycles_per_second() * seconds;
+	popup_text_end = osd_ticks() + osd_ticks_per_second() * seconds;
 }
 
 
@@ -730,7 +765,7 @@ void CLIB_DECL ui_popup_time(int seconds, const char *text, ...)
 void ui_show_fps_temp(double seconds)
 {
 	if (!showfps)
-		showfps_end = osd_cycles() + seconds * osd_cycles_per_second();
+		showfps_end = osd_ticks() + seconds * osd_ticks_per_second();
 }
 
 
@@ -1090,6 +1125,27 @@ static UINT32 handler_ingame(UINT32 state)
 {
 	int is_paused = mame_is_paused(Machine);
 
+	/* first draw the FPS counter */
+	if (showfps || osd_ticks() < showfps_end)
+		ui_draw_text_full(osd_get_fps_text(mame_get_performance_info()), 0.0f, 0.0f, 1.0f,
+					JUSTIFY_RIGHT, WRAP_WORD, DRAW_OPAQUE, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
+	else
+		showfps_end = 0;
+
+	/* draw the profiler if visible */
+	if (show_profiler)
+		ui_draw_text_full(profiler_get_text(), 0.0f, 0.0f, 1.0f, JUSTIFY_LEFT, WRAP_WORD, DRAW_OPAQUE, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
+
+	/* let the cheat engine display its stuff */
+	if (options.cheat)
+		cheat_display_watches();
+
+	/* display any popup messages */
+	if (osd_ticks() < popup_text_end)
+		ui_draw_text_box(messagebox_text, JUSTIFY_CENTER, 0.5f, 0.9f, messagebox_backcolor);
+	else
+		popup_text_end = 0;
+
 	/* if we're single-stepping, pause now */
 	if (single_step)
 	{
@@ -1187,7 +1243,7 @@ static UINT32 handler_ingame(UINT32 state)
 
 	/* toggle crosshair display */
 	if (input_ui_pressed(IPT_UI_TOGGLE_CROSSHAIR))
-		drawgfx_toggle_crosshair();
+		video_crosshair_toggle();
 
 	return 0;
 }
@@ -1389,6 +1445,16 @@ static void slider_init(void)
 		slider_config(&slider_list[slider_count++], 0, 0, 1000, 10, slider_flicker, 0);
 		slider_config(&slider_list[slider_count++], 10, 100, 1000, 10, slider_beam, 0);
 	}
+
+#ifdef MAME_DEBUG
+	/* add crosshair adjusters */
+	for (in = Machine->input_ports; in && in->type != IPT_END; in++)
+		if (in->analog.crossaxis != CROSSHAIR_AXIS_NONE && in->player == 0)
+		{
+			slider_config(&slider_list[slider_count++], -3000, 1000, 3000, 100, slider_crossscale, in->analog.crossaxis);
+			slider_config(&slider_list[slider_count++], -3000, 0, 3000, 100, slider_crossoffset, in->analog.crossaxis);
+		}
+#endif
 }
 
 
@@ -1686,3 +1752,53 @@ static INT32 slider_beam(INT32 newval, char *buffer, int arg)
 	}
 	return floor(vector_get_beam() * 100.0f + 0.5f);
 }
+
+
+/*-------------------------------------------------
+    slider_crossscale - crosshair scale slider
+    callback
+-------------------------------------------------*/
+
+#ifdef MAME_DEBUG
+static INT32 slider_crossscale(INT32 newval, char *buffer, int arg)
+{
+	input_port_entry *in;
+
+	if (buffer != NULL)
+	{
+		for (in = Machine->input_ports; in && in->type != IPT_END; in++)
+			if (in->analog.crossaxis == arg)
+				in->analog.crossscale = (float)newval * 0.001f;
+		sprintf(buffer, "%s %s %1.3f", "Crosshair Scale", (in->analog.crossaxis == CROSSHAIR_AXIS_X) ? "X" : "Y", (float)newval * 0.001f);
+	}
+	for (in = Machine->input_ports; in && in->type != IPT_END; in++)
+		if (in->analog.crossaxis == arg)
+			return floor(in->analog.crossscale * 1000.0f + 0.5f);
+	return 0;
+}
+#endif
+
+
+/*-------------------------------------------------
+    slider_crossoffset - crosshair scale slider
+    callback
+-------------------------------------------------*/
+
+#ifdef MAME_DEBUG
+static INT32 slider_crossoffset(INT32 newval, char *buffer, int arg)
+{
+	input_port_entry *in;
+
+	if (buffer != NULL)
+	{
+		for (in = Machine->input_ports; in && in->type != IPT_END; in++)
+			if (in->analog.crossaxis == arg)
+				in->analog.crossoffset = (float)newval * 0.001f;
+		sprintf(buffer, "%s %s %1.3f", "Crosshair Offset", (in->analog.crossaxis == CROSSHAIR_AXIS_X) ? "X" : "Y", (float)newval * 0.001f);
+	}
+	for (in = Machine->input_ports; in && in->type != IPT_END; in++)
+		if (in->analog.crossaxis == arg)
+			return floor(in->analog.crossoffset * 1000.0f + 0.5f);
+	return 0;
+}
+#endif

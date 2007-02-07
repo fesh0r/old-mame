@@ -2,7 +2,7 @@
 //
 //  input.c - Win32 implementation of MAME input routines
 //
-//  Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -17,6 +17,7 @@
 #include <winioctl.h>
 #include <ctype.h>
 #include <stddef.h>
+#include <tchar.h>
 
 // undef WINNT for dinput.h to prevent duplicate definition
 #undef WINNT
@@ -37,6 +38,7 @@
 #include "debugwin.h"
 #include "video.h"
 #include "ui.h"
+#include "strconv.h"
 
 
 //============================================================
@@ -141,6 +143,7 @@ struct _raw_mouse
 //============================================================
 
 int							win_use_mouse;
+HANDLE							win_input_handle;
 
 
 
@@ -158,7 +161,7 @@ static int					dinput_version;
 
 // global states
 static int					input_paused;
-static cycles_t				last_poll;
+static osd_ticks_t			last_poll;
 
 // Controller override options
 static float				a2d_deadzone;
@@ -233,7 +236,7 @@ static void update_joystick_axes(void);
 static void init_keycodes(void);
 static void init_joycodes(void);
 static void poll_lightguns(void);
-static BOOL is_rm_rdp_mouse(const char *device_string);
+static BOOL is_rm_rdp_mouse(const TCHAR *device_string);
 static void process_raw_input(PRAWINPUT raw);
 static BOOL register_raw_mouse(void);
 static BOOL init_raw_mouse(void);
@@ -247,12 +250,12 @@ static void win_read_raw_mouse(void);
 
 typedef WINUSERAPI INT (WINAPI *pGetRawInputDeviceList)(OUT PRAWINPUTDEVICELIST pRawInputDeviceList, IN OUT PINT puiNumDevices, IN UINT cbSize);
 typedef WINUSERAPI INT (WINAPI *pGetRawInputData)(IN HRAWINPUT hRawInput, IN UINT uiCommand, OUT LPVOID pData, IN OUT PINT pcbSize, IN UINT cbSizeHeader);
-typedef WINUSERAPI INT (WINAPI *pGetRawInputDeviceInfoA)(IN HANDLE hDevice, IN UINT uiCommand, OUT LPVOID pData, IN OUT PINT pcbSize);
+typedef WINUSERAPI INT (WINAPI *pGetRawInputDeviceInfo)(IN HANDLE hDevice, IN UINT uiCommand, OUT LPVOID pData, IN OUT PINT pcbSize);
 typedef WINUSERAPI BOOL (WINAPI *pRegisterRawInputDevices)(IN PCRAWINPUTDEVICE pRawInputDevices, IN UINT uiNumDevices, IN UINT cbSize);
 
 static pGetRawInputDeviceList _GetRawInputDeviceList;
 static pGetRawInputData _GetRawInputData;
-static pGetRawInputDeviceInfoA _GetRawInputDeviceInfoA;
+static pGetRawInputDeviceInfo _GetRawInputDeviceInfo;
 static pRegisterRawInputDevices _RegisterRawInputDevices;
 
 
@@ -401,6 +404,8 @@ const int win_key_trans_table[][4] =
 	{ KEYCODE_LWIN, 		DIK_LWIN,			VK_LWIN, 		0 },
 	{ KEYCODE_RWIN, 		DIK_RWIN,			VK_RWIN, 		0 },
 	{ KEYCODE_MENU, 		DIK_APPS,			VK_APPS, 		0 },
+	{ KEYCODE_PAUSE, 		DIK_PAUSE,			VK_PAUSE,		0 },
+	{ KEYCODE_CANCEL,		0,					VK_CANCEL,		0 },
 
 	// New keys introduced in Windows 2000. These have no MAME codes to
 	// preserve compatibility with old config files that may refer to them
@@ -828,6 +833,7 @@ static BOOL CALLBACK enum_mouse_callback(LPCDIDEVICEINSTANCE instance, LPVOID re
 {
 	DIPROPDWORD value;
 	HRESULT result;
+	char *utf8_instance_name;
 
 	// if we're not out of mice, log this one
 	if (mouse_count > MAX_MICE)
@@ -844,7 +850,11 @@ static BOOL CALLBACK enum_mouse_callback(LPCDIDEVICEINSTANCE instance, LPVOID re
 		mouse_device2[mouse_count] = NULL;
 
 	// remember the name
-	strcpy(mouse_name[mouse_count], instance->tszInstanceName);
+	utf8_instance_name = utf8_from_tstring(instance->tszInstanceName);
+	if (utf8_instance_name == NULL)
+		goto cant_alloc_memory;
+	strcpy(mouse_name[mouse_count], utf8_instance_name);
+	free(utf8_instance_name);
 
 	// get the caps
 	mouse_caps[mouse_count].dwSize = STRUCTSIZE(DIDEVCAPS);
@@ -894,6 +904,7 @@ cant_set_coop_level:
 cant_set_format:
 cant_set_axis_mode:
 cant_get_caps:
+cant_alloc_memory:
 	if (mouse_device2[mouse_count])
 		IDirectInputDevice_Release(mouse_device2[mouse_count]);
 	IDirectInputDevice_Release(mouse_device[mouse_count]);
@@ -956,6 +967,7 @@ static BOOL CALLBACK enum_joystick_callback(LPCDIDEVICEINSTANCE instance, LPVOID
 	DIPROPDWORD value;
 	HRESULT result = DI_OK;
 	DWORD flags;
+	char *utf8_instance_name;
 
 	// if we're not out of mice, log this one
 	if (joystick_count >= MAX_JOYSTICKS)
@@ -972,7 +984,11 @@ static BOOL CALLBACK enum_joystick_callback(LPCDIDEVICEINSTANCE instance, LPVOID
 		joystick_device2[joystick_count] = NULL;
 
 	// remember the name
-	strcpy(joystick_name[joystick_count], instance->tszInstanceName);
+	utf8_instance_name = utf8_from_tstring(instance->tszInstanceName);
+	if (utf8_instance_name == NULL)
+		goto cant_alloc_memory;
+	strcpy(joystick_name[joystick_count], utf8_instance_name);
+	free(utf8_instance_name);
 
 	// get the caps
 	joystick_caps[joystick_count].dwSize = STRUCTSIZE(DIDEVCAPS);
@@ -1013,6 +1029,7 @@ cant_set_coop_level:
 cant_set_format:
 cant_set_axis_mode:
 cant_get_caps:
+cant_alloc_memory:
 	if (joystick_device2[joystick_count])
 		IDirectInputDevice_Release(joystick_device2[joystick_count]);
 	IDirectInputDevice_Release(joystick_device[joystick_count]);
@@ -1032,6 +1049,7 @@ int wininput_init(running_machine *machine)
 	const input_port_entry *inp;
 	HRESULT result;
 
+	win_input_handle = GetStdHandle(STD_INPUT_HANDLE);
 	add_pause_callback(machine, win_pause_input);
 	add_exit_callback(machine, wininput_exit);
 
@@ -1062,7 +1080,7 @@ int wininput_init(running_machine *machine)
 	if (Machine != NULL && Machine->gamedrv != NULL)
 	{
 		begin_resource_tracking();
-		inp = input_port_allocate(Machine->gamedrv->construct_ipt, NULL);
+		inp = input_port_allocate(Machine->gamedrv->ipt, NULL);
 		autoselect_analog_devices(inp, IPT_PADDLE,     IPT_PADDLE_V,   0,             ANALOG_TYPE_PADDLE,   "paddle");
 		autoselect_analog_devices(inp, IPT_AD_STICK_X, IPT_AD_STICK_Y, IPT_AD_STICK_Z,ANALOG_TYPE_ADSTICK,  "analog joystick");
 		autoselect_analog_devices(inp, IPT_LIGHTGUN_X, IPT_LIGHTGUN_Y, 0,             ANALOG_TYPE_LIGHTGUN, "lightgun");
@@ -1268,7 +1286,7 @@ void wininput_poll(void)
 	int i, j;
 
 	// remember when this happened
-	last_poll = osd_cycles();
+	last_poll = osd_ticks();
 
 	// periodically process events, in case they're not coming through
 	winwindow_process_events_periodic();
@@ -1565,7 +1583,7 @@ static int is_key_pressed(os_code keycode)
 	int dik = DICODE(keycode);
 
 	// make sure we've polled recently
-	if (osd_cycles() > last_poll + osd_cycles_per_second()/4)
+	if (osd_ticks() > last_poll + osd_ticks_per_second()/4)
 		wininput_poll();
 
 	// if the video window isn't visible, we have to get our events from the console
@@ -1574,9 +1592,10 @@ static int is_key_pressed(os_code keycode)
 		// warning: this code relies on the assumption that when you're polling for
 		// keyboard events before the system is initialized, they are all of the
 		// "press any key" to continue variety
-		int result = _kbhit();
-		if (result)
-			_getch();
+		DWORD result = 0;
+		INPUT_RECORD record;
+		if (GetNumberOfConsoleInputEvents(win_input_handle, &result) && result > 0)
+			ReadConsoleInput(win_input_handle, &record, 1, &result);
 		return result;
 	}
 
@@ -1619,8 +1638,8 @@ static void init_keycodes(void)
 			// if it worked, assume we have a valid key
 
 			// copy the name
-			char *namecopy = malloc(strlen(instance.tszName) + 1);
-			if (namecopy)
+			char *namecopy = utf8_from_tstring(instance.tszName);
+			if (namecopy != NULL)
 			{
 				input_code standardcode;
 				os_code code;
@@ -1650,7 +1669,7 @@ static void init_keycodes(void)
 				}
 
 				// fill in the key description
-				codelist[total_codes].name = strcpy(namecopy, instance.tszName);
+				codelist[total_codes].name = namecopy;
 				codelist[total_codes].oscode = code;
 				codelist[total_codes].inputcode = standardcode;
 				total_codes++;
@@ -1809,8 +1828,13 @@ static void init_joycodes(void)
 				result = IDirectInputDevice_GetObjectInfo(mouse_device[mouse], &instance, offsetof(DIMOUSESTATE, rgbButtons[button]), DIPH_BYOFFSET);
 				if (result == DI_OK)
 				{
-					sprintf(tempname, "%s%s", mousename, instance.tszName);
-					add_joylist_entry(tempname, JOYCODE(mouse, CODETYPE_MOUSEBUTTON, button), CODE_OTHER_DIGITAL);
+					char *utf8_name = utf8_from_tstring(instance.tszName);
+					if (utf8_name != NULL)
+					{
+						sprintf(tempname, "%s%s", mousename, utf8_name);
+						free(utf8_name);
+						add_joylist_entry(tempname, JOYCODE(mouse, CODETYPE_MOUSEBUTTON, button), CODE_OTHER_DIGITAL);
+					}
 				}
 			}
 		}
@@ -1850,29 +1874,34 @@ static void init_joycodes(void)
 			result = IDirectInputDevice_GetObjectInfo(joystick_device[stick], &instance, offsetof(DIJOYSTATE, lX) + axis * sizeof(LONG), DIPH_BYOFFSET);
 			if (result == DI_OK)
 			{
-				verbose_printf("Input:  Axis %d (%s)%s\n", axis, instance.tszName, joystick_digital[stick][axis] ? " - digital" : "");
-
-				// add analog axis
-				if (!joystick_digital[stick][axis])
+				char *utf8_name = utf8_from_tstring(instance.tszName);
+				if (utf8_name != NULL)
 				{
-					sprintf(tempname, "J%d %s", stick + 1, instance.tszName);
-					add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_JOYAXIS, axis), CODE_OTHER_ANALOG_ABSOLUTE);
+					verbose_printf("Input:  Axis %d (%s)%s\n", axis, utf8_name, joystick_digital[stick][axis] ? " - digital" : "");
+
+					// add analog axis
+					if (!joystick_digital[stick][axis])
+					{
+						sprintf(tempname, "J%d %s", stick + 1, utf8_name);
+						add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_JOYAXIS, axis), CODE_OTHER_ANALOG_ABSOLUTE);
+					}
+
+					// add negative value
+					sprintf(tempname, "J%d %s -", stick + 1, utf8_name);
+					add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_AXIS_NEG, axis), CODE_OTHER_DIGITAL);
+
+					// add positive value
+					sprintf(tempname, "J%d %s +", stick + 1, utf8_name);
+					add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_AXIS_POS, axis), CODE_OTHER_DIGITAL);
+
+					// get the axis range while we're here
+					joystick_range[stick][axis].diph.dwSize = sizeof(DIPROPRANGE);
+					joystick_range[stick][axis].diph.dwHeaderSize = sizeof(joystick_range[stick][axis].diph);
+					joystick_range[stick][axis].diph.dwObj = offsetof(DIJOYSTATE, lX) + axis * sizeof(LONG);
+					joystick_range[stick][axis].diph.dwHow = DIPH_BYOFFSET;
+					result = IDirectInputDevice_GetProperty(joystick_device[stick], DIPROP_RANGE, &joystick_range[stick][axis].diph);
+					free(utf8_name);
 				}
-
-				// add negative value
-				sprintf(tempname, "J%d %s -", stick + 1, instance.tszName);
-				add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_AXIS_NEG, axis), CODE_OTHER_DIGITAL);
-
-				// add positive value
-				sprintf(tempname, "J%d %s +", stick + 1, instance.tszName);
-				add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_AXIS_POS, axis), CODE_OTHER_DIGITAL);
-
-				// get the axis range while we're here
-				joystick_range[stick][axis].diph.dwSize = sizeof(DIPROPRANGE);
-				joystick_range[stick][axis].diph.dwHeaderSize = sizeof(joystick_range[stick][axis].diph);
-				joystick_range[stick][axis].diph.dwObj = offsetof(DIJOYSTATE, lX) + axis * sizeof(LONG);
-				joystick_range[stick][axis].diph.dwHow = DIPH_BYOFFSET;
-				result = IDirectInputDevice_GetProperty(joystick_device[stick], DIPROP_RANGE, &joystick_range[stick][axis].diph);
 			}
 		}
 
@@ -1888,8 +1917,13 @@ static void init_joycodes(void)
 			if (result == DI_OK)
 			{
 				// make the name for this item
-				sprintf(tempname, "J%d %s", stick + 1, instance.tszName);
-				add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_BUTTON, button), CODE_OTHER_DIGITAL);
+				char *utf8_name = utf8_from_tstring(instance.tszName);
+				if (utf8_name != NULL)
+				{
+					sprintf(tempname, "J%d %s", stick + 1, utf8_name);
+					free(utf8_name);
+					add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_BUTTON, button), CODE_OTHER_DIGITAL);
+				}
 			}
 		}
 
@@ -1904,21 +1938,27 @@ static void init_joycodes(void)
 			result = IDirectInputDevice_GetObjectInfo(joystick_device[stick], &instance, offsetof(DIJOYSTATE, rgdwPOV[pov]), DIPH_BYOFFSET);
 			if (result == DI_OK)
 			{
-				// add up direction
-				sprintf(tempname, "J%d %s U", stick + 1, instance.tszName);
-				add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_POV_UP, pov), CODE_OTHER_DIGITAL);
+				char *utf8_name = utf8_from_tstring(instance.tszName);
+				if (utf8_name != NULL)
+				{
+					// add up direction
+					sprintf(tempname, "J%d %s U", stick + 1, utf8_name);
+					add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_POV_UP, pov), CODE_OTHER_DIGITAL);
 
-				// add down direction
-				sprintf(tempname, "J%d %s D", stick + 1, instance.tszName);
-				add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_POV_DOWN, pov), CODE_OTHER_DIGITAL);
+					// add down direction
+					sprintf(tempname, "J%d %s D", stick + 1, utf8_name);
+					add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_POV_DOWN, pov), CODE_OTHER_DIGITAL);
 
-				// add left direction
-				sprintf(tempname, "J%d %s L", stick + 1, instance.tszName);
-				add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_POV_LEFT, pov), CODE_OTHER_DIGITAL);
+					// add left direction
+					sprintf(tempname, "J%d %s L", stick + 1, utf8_name);
+					add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_POV_LEFT, pov), CODE_OTHER_DIGITAL);
 
-				// add right direction
-				sprintf(tempname, "J%d %s R", stick + 1, instance.tszName);
-				add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_POV_RIGHT, pov), CODE_OTHER_DIGITAL);
+					// add right direction
+					sprintf(tempname, "J%d %s R", stick + 1, utf8_name);
+					add_joylist_entry(tempname, JOYCODE(stick, CODETYPE_POV_RIGHT, pov), CODE_OTHER_DIGITAL);
+
+					free(utf8_name);
+				}
 			}
 		}
 	}
@@ -2290,7 +2330,7 @@ void osd_customize_inputport_list(input_port_default_entry *defaults)
 			// alt-enter for fullscreen
 			case IPT_OSD_1:
 				idef->token = "TOGGLE_FULLSCREEN";
-				idef->name = "Toggle fullscreen";
+				idef->name = "Toggle Fullscreen";
 				seq_set_2(&idef->defaultseq, KEYCODE_LALT, KEYCODE_ENTER);
 				break;
 
@@ -2299,7 +2339,7 @@ void osd_customize_inputport_list(input_port_default_entry *defaults)
 				if (options.disable_normal_ui)
 				{
 					idef->token = "TOGGLE_MENUBAR";
-					idef->name = "Toggle menubar";
+					idef->name = "Toggle Menubar";
 					seq_set_1 (&idef->defaultseq, KEYCODE_SCRLOCK);
 				}
 				break;
@@ -2351,7 +2391,7 @@ void osd_customize_inputport_list(input_port_default_entry *defaults)
 //============================================================
 //  set_rawmouse_device_name
 //============================================================
-static void set_rawmouse_device_name(const char *raw_string, unsigned int mouse_num)
+static void set_rawmouse_device_name(const TCHAR *raw_string, unsigned int mouse_num)
 {
 	// This routine is used to get the mouse name.  This will give
 	// us the same name that DX will report on non-XP systems.
@@ -2366,11 +2406,10 @@ static void set_rawmouse_device_name(const char *raw_string, unsigned int mouse_
 	// The raw_string as passed is formatted as:
 	//   \??\type-id#hardware-id#instance-id#{DeviceClasses-id}
 
-	char reg_string[MAX_PATH] = "SYSTEM\\CurrentControlSet\\Enum\\";
-	TCHAR t_reg_string[2 * MAX_PATH];		// final reg string
-	char parent_id_prefix[MAX_PATH];		// the id we are looking for
-	char test_parent_id_prefix[MAX_PATH];	// the id we are testing
-	char *test_pos;							// general purpose test pointer for positioning
+	TCHAR reg_string[MAX_PATH] = TEXT("SYSTEM\\CurrentControlSet\\Enum\\");
+	TCHAR parent_id_prefix[MAX_PATH];		// the id we are looking for
+	TCHAR test_parent_id_prefix[MAX_PATH];	// the id we are testing
+	TCHAR *test_pos;						// general purpose test pointer for positioning
 	DWORD name_length = MAX_PATH;
 	DWORD instance, hardware;
 	HKEY hardware_key, reg_key, sub_key = NULL;
@@ -2382,24 +2421,23 @@ static void set_rawmouse_device_name(const char *raw_string, unsigned int mouse_
 	mouse_name[mouse_num][0] = 0;
 
 	// is string formated in RAW format?
-	if (strncmp(raw_string, "\\??\\", 4)) return;
-	key_pos = strlen(reg_string);
+	if (_tcsncmp(raw_string, TEXT("\\??\\"), 4)) return;
+	key_pos = _tcslen(reg_string);
 
 	// remove \??\ from start and add this onto the end of the key string
-	strcat(reg_string, raw_string + 4);
+	_tcscat(reg_string, raw_string + 4);
 	// then remove the final DeviceClasses string
-	*(strrchr(reg_string, '#')) = 0;
+	*(_tcsrchr(reg_string, '#')) = 0;
 
 	// convert the remaining 2 '#' to '\'
-	test_pos = strchr(reg_string, '#');
+	test_pos = _tcschr(reg_string, '#');
 	*test_pos = '\\';
-	*(strchr(test_pos, '#')) = '\\';
+	*(_tcschr(test_pos, '#')) = '\\';
 	// finialize registry key
-	lstrcpy (t_reg_string, reg_string);
 
 	// Open the key.  If we can't and we're HID then try USB
 	instance_result = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-							t_reg_string,
+							reg_string,
 							0, KEY_READ, &reg_key);
 	if (instance_result == ERROR_SUCCESS)
 	{
@@ -2419,23 +2457,22 @@ static void set_rawmouse_device_name(const char *raw_string, unsigned int mouse_
 	}
 
 	// give up if not HID
-	if (strncmp(raw_string + 4, "HID", 3)) return;
+	if (_tcsncmp(raw_string + 4, TEXT("HID"), 3)) return;
 
 	// Try and track down the parent USB device.
 	// The raw name we are passed contains the HID Hardware ID, and USB Parent ID.
 	// Some times the HID Hardware ID is the same as the USB Hardware ID.  But not always.
 	// We need to look in the device instances of the each USB hardware instance for the parent-id.
-	strncpy(reg_string + key_pos, "USB", 3);
-	test_pos = strrchr(reg_string, '\\');
-	strcpy(parent_id_prefix, test_pos + 1);
+	_tcsncpy(reg_string + key_pos, TEXT("USB"), 3);
+	test_pos = _tcsrchr(reg_string, '\\');
+	_tcscpy(parent_id_prefix, test_pos + 1);
 	key_pos += 4;
 	*(reg_string + key_pos) = 0;
-	hardware_key_pos = strlen(reg_string);
+	hardware_key_pos = _tcslen(reg_string);
 	// reg_string now contains the key name for the USB hardware.
 	// parent_id_prefix is the value we will be looking to match.
-	lstrcpy (t_reg_string, reg_string);
 	hardware_result = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-						t_reg_string,
+						reg_string,
 						0, KEY_READ, &hardware_key);
 	if (hardware_result != ERROR_SUCCESS) return;
 
@@ -2449,12 +2486,11 @@ static void set_rawmouse_device_name(const char *raw_string, unsigned int mouse_
 								&name_length, NULL, NULL, NULL, NULL);
 		if (hardware_result == ERROR_SUCCESS)
 		{
-			strcat(reg_string, "\\");
-			key_pos = strlen(reg_string);
+			_tcscat(reg_string, TEXT("\\"));
+			key_pos = _tcslen(reg_string);
 			// open hardware key
-			lstrcpy (t_reg_string, reg_string);
 			hardware_result = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-											t_reg_string,
+											reg_string,
 											0, KEY_READ, &reg_key);
 			if (hardware_result == ERROR_SUCCESS)
 			{
@@ -2471,9 +2507,8 @@ static void set_rawmouse_device_name(const char *raw_string, unsigned int mouse_
 					if (instance_result == ERROR_SUCCESS)
 					{
 						// open sub_key
-						lstrcpy (t_reg_string, reg_string);
 						instance_result = RegOpenKeyEx(HKEY_LOCAL_MACHINE,
-												t_reg_string,
+												reg_string,
 												0, KEY_READ, &sub_key);
 						if (instance_result == ERROR_SUCCESS)
 						{
@@ -2486,7 +2521,7 @@ static void set_rawmouse_device_name(const char *raw_string, unsigned int mouse_
 													&name_length) == ERROR_SUCCESS)
 							{
 								// is this the ParentIdPrefix that we are looking for?
-								if (!strncmp(test_parent_id_prefix, parent_id_prefix, strlen(test_parent_id_prefix)))
+								if (!_tcsncmp(test_parent_id_prefix, parent_id_prefix, _tcslen(test_parent_id_prefix)))
 									break;
 							} // keep looking
 							RegCloseKey(sub_key);
@@ -2532,9 +2567,9 @@ static void set_rawmouse_device_name(const char *raw_string, unsigned int mouse_
 //    is formatted. To determine root devices, you can check device status bits."
 //  So tell me, what are these (how you say) "status bits" and where can I get some?
 
-static BOOL is_rm_rdp_mouse(const char *device_string)
+static BOOL is_rm_rdp_mouse(const TCHAR *device_string)
 {
-	return !(strncmp(device_string, "\\??\\Root#RDP_MOU#0000#", 22));
+	return !(_tcsncmp(device_string, TEXT("\\??\\Root#RDP_MOU#0000#"), 22));
 }
 
 
@@ -2570,7 +2605,7 @@ static BOOL register_raw_mouse(void)
 static BOOL init_raw_mouse(void)
 {
 	PRAWINPUTDEVICELIST raw_input_device_list;
-	char *ps_name = NULL;
+	TCHAR *ps_name = NULL;
 	HMODULE user32;
 	int input_devices, size, i;
 
@@ -2581,8 +2616,12 @@ static BOOL init_raw_mouse(void)
 	if (!_RegisterRawInputDevices) goto cant_use_raw_input;
 	_GetRawInputDeviceList = (pGetRawInputDeviceList)GetProcAddress(user32,"GetRawInputDeviceList");
 	if (!_GetRawInputDeviceList) goto cant_use_raw_input;
-	_GetRawInputDeviceInfoA = (pGetRawInputDeviceInfoA)GetProcAddress(user32,"GetRawInputDeviceInfoA");
-	if (!_GetRawInputDeviceInfoA) goto cant_use_raw_input;
+#ifdef UNICODE
+	_GetRawInputDeviceInfo = (pGetRawInputDeviceInfo)GetProcAddress(user32,"GetRawInputDeviceInfoW");
+#else
+	_GetRawInputDeviceInfo = (pGetRawInputDeviceInfo)GetProcAddress(user32,"GetRawInputDeviceInfoA");
+#endif
+	if (!_GetRawInputDeviceInfo) goto cant_use_raw_input;
 	_GetRawInputData = (pGetRawInputData)GetProcAddress(user32,"GetRawInputData");
 	if (!_GetRawInputData) goto cant_use_raw_input;
 
@@ -2609,15 +2648,15 @@ static BOOL init_raw_mouse(void)
 			/* Get the device name and use it to determine if it's the RDP Terminal Services virtual device. */
 
 			// 1st call to GetRawInputDeviceInfo: Pass NULL to get the size of the device name
-			if ((*_GetRawInputDeviceInfoA)(raw_input_device_list[i].hDevice, RIDI_DEVICENAME, NULL, &size) != 0)
+			if ((*_GetRawInputDeviceInfo)(raw_input_device_list[i].hDevice, RIDI_DEVICENAME, NULL, &size) != 0)
 				goto cant_create_raw_input;
 
 			// Allocate the array to hold the name
-			if ((ps_name = (char *)malloc(sizeof(TCHAR) * size)) == NULL)
+			if ((ps_name = (TCHAR *)malloc(sizeof(TCHAR) * size)) == NULL)
 				goto cant_create_raw_input;
 
 			// 2nd call to GetRawInputDeviceInfo: Pass our pointer to get the device name
-			if ((int)(*_GetRawInputDeviceInfoA)(raw_input_device_list[i].hDevice, RIDI_DEVICENAME, ps_name, &size) < 0)
+			if ((int)(*_GetRawInputDeviceInfo)(raw_input_device_list[i].hDevice, RIDI_DEVICENAME, ps_name, &size) < 0)
 				goto cant_create_raw_input;
 
 			// Use this mouse if it's not an RDP mouse

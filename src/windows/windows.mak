@@ -31,6 +31,9 @@
 # path in order to make this work
 # WIN95_MULTIMON = 1
 
+# uncomment next line to enable a Unicode build
+# UNICODE = 1
+
 
 
 ###########################################################################
@@ -82,6 +85,10 @@ CC += /GL
 LD += /LTCG
 endif
 
+ifdef PTR64
+CC += /wd4267
+endif
+
 # filter X86_ASM define
 DEFS := $(filter-out -DX86_ASM,$(DEFS))
 
@@ -89,10 +96,7 @@ DEFS := $(filter-out -DX86_ASM,$(DEFS))
 DEFS += -D_CRT_SECURE_NO_DEPRECATE -DXML_STATIC -D__inline__=__inline -Dsnprintf=_snprintf -Dvsnprintf=_vsnprintf
 
 # make msvcprep into a pre-build step
-OSPREBUILD = msvcprep
-
-# rules for building vconv using the mingw tools for bootstrapping
-msvcprep: $(OBJ)/vconv.exe
+OSPREBUILD = $(OBJ)/vconv.exe
 
 $(OBJ)/vconv.exe: $(OBJ)/windows/vconv.o
 	@echo Linking $@...
@@ -120,7 +124,24 @@ CURPATH = ./
 
 
 #-------------------------------------------------
-# Windows-specific flags and libararies
+# OSD core library
+#-------------------------------------------------
+
+OSDCOREOBJS = \
+	$(OBJ)/$(MAMEOS)/main.o	\
+	$(OBJ)/$(MAMEOS)/strconv.o	\
+	$(OBJ)/$(MAMEOS)/windir.o \
+	$(OBJ)/$(MAMEOS)/winfile.o \
+	$(OBJ)/$(MAMEOS)/winmisc.o \
+	$(OBJ)/$(MAMEOS)/winsync.o \
+	$(OBJ)/$(MAMEOS)/wintime.o \
+	$(OBJ)/$(MAMEOS)/winutil.o \
+	$(OBJ)/$(MAMEOS)/winwork.o \
+
+
+
+#-------------------------------------------------
+# Windows-specific flags and libraries
 #-------------------------------------------------
 
 # add our prefix files to the mix
@@ -131,34 +152,10 @@ CFLAGS += -DWIN95_MULTIMON
 endif
 
 # add the windows libaries
-LIBS += -luser32 -lgdi32 -lddraw -ldsound -ldinput -ldxguid -lwinmm -ladvapi32 -lcomctl32
+LIBS += -luser32 -lgdi32 -lddraw -ldsound -ldinput -ldxguid -lwinmm -ladvapi32 -lcomctl32 -lshlwapi
 
 ifdef PTR64
 LIBS += -lbufferoverflowu
-endif
-
-# hack for Vista building: set the environment variable VISTA_MINGW_ROOT
-# to the base of your standard mingw install
-ifdef VISTA_MINGW_ROOT
-
-ifndef MSVC_BUILD
-CFLAGS += -I$(subst \,/,$(VISTA_MINGW_ROOT))/include -I$(subst \,/,$(VISTA_MINGW_ROOT))/lib/gcc/mingw32/3.4.2/include
-LDFLAGS += -Wl,-L,$(subst \,/,$(VISTA_MINGW_ROOT))/lib,-L,$(subst \,/,$(VISTA_MINGW_ROOT))/lib/gcc/mingw32/3.4.2
-
-OSPREBUILD = vistahack
-
-vistahack: crt2.o crtbegin.o crtend.o
-
-crt2.o: $(VISTA_MINGW_ROOT)\lib\crt2.o
-	cmd /c copy $< $@
-
-crtbegin.o: $(VISTA_MINGW_ROOT)\lib\gcc\mingw32\3.4.2\crtbegin.o
-	cmd /c copy $< $@
-
-crtend.o: $(VISTA_MINGW_ROOT)\lib\gcc\mingw32\3.4.2\crtend.o
-	cmd /c copy $< $@
-endif
-
 endif
 
 
@@ -175,12 +172,10 @@ OSOBJS = \
 	$(OBJ)/$(MAMEOS)/drawdd.o \
 	$(OBJ)/$(MAMEOS)/drawgdi.o \
 	$(OBJ)/$(MAMEOS)/drawnone.o \
-	$(OBJ)/$(MAMEOS)/fileio.o \
 	$(OBJ)/$(MAMEOS)/fronthlp.o \
 	$(OBJ)/$(MAMEOS)/input.o \
 	$(OBJ)/$(MAMEOS)/output.o \
 	$(OBJ)/$(MAMEOS)/sound.o \
-	$(OBJ)/$(MAMEOS)/ticker.o \
 	$(OBJ)/$(MAMEOS)/video.o \
 	$(OBJ)/$(MAMEOS)/window.o \
 	$(OBJ)/$(MAMEOS)/winmain.o
@@ -189,9 +184,6 @@ $(OBJ)/$(MAMEOS)/drawdd.o : rendersw.c
 
 $(OBJ)/$(MAMEOS)/drawgdi.o : rendersw.c
 
-
-OSTOOLOBJS = \
-	$(OBJ)/$(MAMEOS)/osd_tool.o
 
 # add debug-specific files
 ifdef DEBUG
@@ -214,14 +206,15 @@ endif
 # Windows-specific debug objects and flags
 #-------------------------------------------------
 
-OSDBGOBJS =
-OSDBGLDFLAGS =
-
 # debug build: enable guard pages on all memory allocations
 ifdef DEBUG
 DEFS += -DMALLOC_DEBUG
-OSDBGOBJS += $(OBJ)/$(MAMEOS)/winalloc.o
-OSDBGLDFLAGS += -Wl,--allow-multiple-definition
+LDFLAGS += -Wl,--allow-multiple-definition
+OSDCOREOBJS += $(OBJ)/$(MAMEOS)/winalloc.o
+endif
+
+ifdef UNICODE
+DEFS += -DUNICODE -D_UNICODE
 endif
 
 
@@ -242,7 +235,7 @@ endif
 # rule for making the ledutil sample
 #-------------------------------------------------
 
-ledutil$(EXE): $(OBJ)/windows/ledutil.o $(OSDBGOBJS)
+ledutil$(EXE): $(OBJ)/windows/ledutil.o $(OSDCORELIB)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) -mwindows $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
 
@@ -254,6 +247,6 @@ TOOLS += ledutil$(EXE)
 # generic rule for the resource compiler
 #-------------------------------------------------
 
-$(OBJ)/$(MAMEOS)/%.res: src/$(MAMEOS)/%.rc
+$(OBJ)/$(MAMEOS)/%.res: src/$(MAMEOS)/%.rc | $(OSPREBUILD)
 	@echo Compiling resources $<...
 	$(RC) $(RCDEFS) $(RCFLAGS) -o $@ -i $<

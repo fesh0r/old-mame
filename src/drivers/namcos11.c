@@ -898,16 +898,17 @@ static MACHINE_DRIVER_START( coh100 )
 	MDRV_CPU_PROGRAM_MAP( namcos11_map, 0 )
 	MDRV_CPU_VBLANK_INT( namcos11_vblank, 1 )
 
-	MDRV_FRAMES_PER_SECOND( 60 )
-	MDRV_VBLANK_DURATION( 0 )
+	MDRV_SCREEN_REFRESH_RATE( 60 )
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC( 0 ))
 
 	MDRV_MACHINE_RESET( namcos11 )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_VISIBLE_AREA( 0, 639, 0, 479 )
+	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
 	MDRV_PALETTE_LENGTH( 65536 )
 
 	MDRV_PALETTE_INIT( psx )
@@ -921,40 +922,6 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( coh110 )
 	MDRV_IMPORT_FROM( coh100 )
 	MDRV_VIDEO_START( psx_type2 )
-MACHINE_DRIVER_END
-
-static int lightgunx( const char *tag )
-{
-	const int portmin = 0xd8;
-	const int portmax = 0x387;
-	int x = ( readinputportbytag( tag ) - portmin );
-	x *= ( Machine->screen[0].visarea.max_x - Machine->screen[0].visarea.min_x );
-	x /= ( portmax - portmin );
-	return Machine->screen[0].visarea.min_x + x;
-}
-
-static int lightguny( const char *tag )
-{
-	const int portmin = 0x2c;
-	const int portmax = 0x11b;
-	int y = ( readinputportbytag( tag ) - portmin );
-	y *= ( Machine->screen[0].visarea.max_y - Machine->screen[0].visarea.min_y );
-	y /= ( portmax - portmin );
-	return Machine->screen[0].visarea.min_y + y;
-}
-
-static VIDEO_UPDATE( lightgun )
-{
-	video_update_psx( machine, screen, bitmap, cliprect );
-
-	draw_crosshair( bitmap, lightgunx( "GUN1X" ), lightguny( "GUN1Y" ), cliprect, 0 );
-	draw_crosshair( bitmap, lightgunx( "GUN2X" ), lightguny( "GUN2Y" ), cliprect, 1 );
-	return 0;
-}
-
-static MACHINE_DRIVER_START( coh110g )
-	MDRV_IMPORT_FROM( coh110 )
-	MDRV_VIDEO_UPDATE( lightgun )
 MACHINE_DRIVER_END
 
 INPUT_PORTS_START( namcos11 )
@@ -1156,16 +1123,16 @@ INPUT_PORTS_START( ptblnk2a )
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG( "GUN1X" )
-	PORT_BIT( 0xffff, 0x022f, IPT_LIGHTGUN_X ) PORT_MINMAX( 0xd8, 0x387 ) PORT_SENSITIVITY( 100 ) PORT_KEYDELTA( 15 ) PORT_PLAYER( 1 )
+	PORT_BIT( 0xffff, 0x022f, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX( 0xd8, 0x387 ) PORT_SENSITIVITY( 100 ) PORT_KEYDELTA( 15 ) PORT_PLAYER( 1 )
 
 	PORT_START_TAG( "GUN1Y" )
-	PORT_BIT( 0xffff, 0x00a8, IPT_LIGHTGUN_Y ) PORT_MINMAX( 0x2c, 0x11b ) PORT_SENSITIVITY( 50 ) PORT_KEYDELTA( 15 ) PORT_PLAYER( 1 )
+	PORT_BIT( 0xffff, 0x00a8, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX( 0x2c, 0x11b ) PORT_SENSITIVITY( 50 ) PORT_KEYDELTA( 15 ) PORT_PLAYER( 1 )
 
 	PORT_START_TAG( "GUN2X" )
-	PORT_BIT( 0xffff, 0x022f, IPT_LIGHTGUN_X ) PORT_MINMAX( 0xd8, 0x387 ) PORT_SENSITIVITY( 100 ) PORT_KEYDELTA( 15 ) PORT_PLAYER( 2 )
+	PORT_BIT( 0xffff, 0x022f, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX( 0xd8, 0x387 ) PORT_SENSITIVITY( 100 ) PORT_KEYDELTA( 15 ) PORT_PLAYER( 2 )
 
 	PORT_START_TAG( "GUN2Y" )
-	PORT_BIT( 0xffff, 0x00a8, IPT_LIGHTGUN_Y ) PORT_MINMAX( 0x2c, 0x11b ) PORT_SENSITIVITY( 50 ) PORT_KEYDELTA( 15 ) PORT_PLAYER( 2 )
+	PORT_BIT( 0xffff, 0x00a8, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX( 0x2c, 0x11b ) PORT_SENSITIVITY( 50 ) PORT_KEYDELTA( 15 ) PORT_PLAYER( 2 )
 INPUT_PORTS_END
 
 INPUT_PORTS_START( pocketrc )
@@ -1711,4 +1678,4 @@ GAME( 1996, danceyes,  0,        coh110, namcos11, namcos11, ROT0, "Namco", "Dan
 GAME( 1996, pocketrc,  0,        coh110, pocketrc, namcos11, ROT0, "Namco", "Pocket Racer (PKR1/VER.B)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1997, starswep,  0,        coh110, namcos11, namcos11, ROT0, "Axela/Namco", "Star Sweep (STP1/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1998, myangel3,  0,        coh110, myangel3, namcos11, ROT0, "Namco", "Kosodate Quiz My Angel 3 (KQT1/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1999, ptblnk2a,  ptblank2, coh110g, ptblnk2a, namcos11, ROT0, "Namco", "Point Blank 2 (GNB3/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1999, ptblnk2a,  ptblank2, coh110, ptblnk2a, namcos11, ROT0, "Namco", "Point Blank 2 (GNB3/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )

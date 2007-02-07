@@ -2,7 +2,7 @@
 //
 //  config.c - Win32 configuration routines
 //
-//  Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -25,6 +25,7 @@
 #include "video.h"
 #include "render.h"
 #include "rendutil.h"
+#include "inptport.h"
 #include "debug/debugcpu.h"
 #include "debug/debugcon.h"
 
@@ -93,15 +94,18 @@ static char *extract_path(const char *name, char *dest, int destsize);
 static const options_entry windows_opts[] =
 {
 	// core commands
+	{ NULL,                       NULL,       OPTION_HEADER,     "CORE COMMANDS" },
 	{ "help;h;?",                 "0",        OPTION_COMMAND,    "show help message" },
 	{ "validate;valid",           "0",        OPTION_COMMAND,    "perform driver validation on all game drivers" },
 
 	// configuration commands
+	{ NULL,                       NULL,       OPTION_HEADER,     "CONFIGURATION COMMANDS" },
 	{ "createconfig;cc",          "0",        OPTION_COMMAND,    "create the default configuration file" },
 	{ "showconfig;sc",            "0",        OPTION_COMMAND,    "display running parameters" },
 	{ "showusage;su",             "0",        OPTION_COMMAND,    "show this help" },
 
 	// frontend commands
+	{ NULL,                       NULL,       OPTION_HEADER,     "FRONTEND COMMANDS" },
 	{ "listxml;lx",               "0",        OPTION_COMMAND,    "all available info on driver in XML format" },
 	{ "listfull;ll",              "0",        OPTION_COMMAND,    "short name, full name" },
 	{ "listsource;ls",            "0",        OPTION_COMMAND,    "driver sourcefile" },
@@ -534,23 +538,24 @@ static void execute_commands(const char *argv0)
 	if (options_get_bool("createconfig"))
 	{
 		char basename[128];
-		FILE *file;
+		mame_file *file;
+		mame_file_error filerr;
 
 		// make the base name
 		extract_base_name(argv0, basename, ARRAY_LENGTH(basename) - 5);
 		strcat(basename, ".ini");
-		file = fopen(basename, "w");
+		filerr = mame_fopen(NULL, basename, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
 
 		// error if unable to create the file
-		if (file == NULL)
+		if (filerr)
 		{
 			fprintf(stderr, "Unable to create file %s\n", basename);
 			exit(1);
 		}
 
 		// output the configuration and exit cleanly
-		options_output_ini_file(file);
-		fclose(file);
+		options_output_ini_mame_file(file);
+		mame_fclose(file);
 		exit(0);
 	}
 
@@ -586,7 +591,7 @@ static void display_help(void)
 {
 #ifndef MESS
 	mame_printf_info("M.A.M.E. v%s - Multiple Arcade Machine Emulator\n"
-		   "Copyright (C) 1997-2006 by Nicola Salmoria and the MAME Team\n\n",build_version);
+		   "Copyright (C) 1997-2007 by Nicola Salmoria and the MAME Team\n\n",build_version);
 	mame_printf_info("%s\n", mame_disclaimer);
 	mame_printf_info("Usage:  MAME gamename [options]\n\n"
 		   "        MAME -showusage    for a brief list of options\n"
@@ -672,7 +677,7 @@ static void extract_options(const game_driver *driver, machine_config *drv)
 	// debugging options
 	if (options_get_bool("log"))
 	{
-		mame_file_error filerr = mame_fopen(SEARCHPATH_DEBUGLOG, "error.log", OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &options.logfile);
+		mame_file_error filerr = mame_fopen(SEARCHPATH_DEBUGLOG, "error.log", OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &options.logfile);
 		assert_always(filerr == FILERR_NONE, "unable to open log file");
 	}
 	win_erroroslog = options_get_bool("oslog");
@@ -735,7 +740,7 @@ static void setup_record(const char *filename, const game_driver *driver)
 	inp_header inp_header;
 
 	// open the record file
-	filerr = mame_fopen(SEARCHPATH_INPUTLOG, filename, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &options.record);
+	filerr = mame_fopen(SEARCHPATH_INPUTLOG, filename, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &options.record);
 	assert_always(filerr == FILERR_NONE, "Failed to open file for recording");
 
 	// create a header

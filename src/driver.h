@@ -4,7 +4,7 @@
 
     Include this with all MAME files. Includes all the core system pieces.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -114,12 +114,12 @@
 */
 
 /* The default is to have no VBLANK timing -- this is historical, and a bad idea */
-#define DEFAULT_60HZ_VBLANK_DURATION		0
-#define DEFAULT_30HZ_VBLANK_DURATION		0
+#define DEFAULT_60HZ_VBLANK_DURATION		TIME_IN_USEC(0)
+#define DEFAULT_30HZ_VBLANK_DURATION		TIME_IN_USEC(0)
 
 /* If you use IPT_VBLANK, you need a duration different from 0 */
-#define DEFAULT_REAL_60HZ_VBLANK_DURATION	2500
-#define DEFAULT_REAL_30HZ_VBLANK_DURATION	2500
+#define DEFAULT_REAL_60HZ_VBLANK_DURATION	TIME_IN_USEC(2500)
+#define DEFAULT_REAL_30HZ_VBLANK_DURATION	TIME_IN_USEC(2500)
 
 
 
@@ -132,12 +132,6 @@
 /* should VIDEO_UPDATE by called at the start of VBLANK or at the end? */
 #define	VIDEO_UPDATE_BEFORE_VBLANK		0x0000
 #define	VIDEO_UPDATE_AFTER_VBLANK		0x0002
-
-/* set this to use a direct RGB bitmap rather than a palettized bitmap */
-#define VIDEO_RGB_DIRECT	 			0x0004
-
-/* set this if the color resolution of *any* component is 6 bits or more */
-#define VIDEO_NEEDS_6BITS_PER_GUN		0x0008
 
 /* automatically extend the palette creating a darker copy for shadows */
 #define VIDEO_HAS_SHADOWS				0x0010
@@ -231,7 +225,7 @@ struct _game_driver
 	const char *		year;						/* year the game was released */
 	const char *		manufacturer;				/* manufacturer of the game */
 	void 				(*drv)(machine_config *);	/* machine driver constructor */
-	void 				(*construct_ipt)(input_port_init_params *param); /* input port constructor */
+	const input_port_token *ipt;					/* pointer to array of input port tokens */
 	void				(*driver_init)(running_machine *machine); /* DRIVER_INIT callback */
 	const rom_entry *	rom;						/* pointer to list of ROMs for the game */
 
@@ -291,11 +285,8 @@ struct _game_driver
 
 #define MDRV_CPU_REPLACE(tag, type, clock)								\
 	cpu = driver_find_cpu(machine, tag);								\
-	if (cpu)															\
-	{																	\
-		cpu->cpu_type = (CPU_##type);									\
-		cpu->cpu_clock = (clock);										\
-	}																	\
+	cpu->cpu_type = (CPU_##type);										\
+	cpu->cpu_clock = (clock);											\
 
 
 /* CPU parameters */
@@ -415,6 +406,9 @@ struct _game_driver
 #define MDRV_SCREEN_MODIFY(tag)											\
 	screen = driver_find_screen(machine, tag);							\
 
+#define MDRV_SCREEN_FORMAT(_format)										\
+	screen->defstate.format = (_format);								\
+
 #define MDRV_SCREEN_RAW_PARAMS(pixclock, htotal, hbend, hbstart, vtotal, vbend, vbstart) \
 	screen->defstate.refresh = (float)(pixclock) / (float)(htotal) / (float)(vtotal); \
 	screen->defstate.vblank = ((float)((vtotal) - ((vbstart) - (vbend))) / (float)(vtotal) * TIME_IN_HZ(screen->defstate.refresh)); \
@@ -431,7 +425,7 @@ struct _game_driver
 #define MDRV_SCREEN_VBLANK_TIME(time)									\
 	screen->defstate.vblank = (time);									\
 
-#define MDRV_SCREEN_MAXSIZE(_width, _height)							\
+#define MDRV_SCREEN_SIZE(_width, _height)								\
 	screen->defstate.width = (_width);									\
 	screen->defstate.height = (_height);								\
 
@@ -440,20 +434,6 @@ struct _game_driver
 	screen->defstate.visarea.max_x = (maxx);							\
 	screen->defstate.visarea.min_y = (miny);							\
 	screen->defstate.visarea.max_y = (maxy);							\
-
-
-/* video backwards compatibility */
-#define MDRV_FRAMES_PER_SECOND(rate)									\
-	MDRV_SCREEN_REFRESH_RATE(rate)										\
-
-#define MDRV_VBLANK_DURATION(duration)									\
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(duration))						\
-
-#define MDRV_SCREEN_SIZE(width, height)									\
-	MDRV_SCREEN_MAXSIZE(width, height)									\
-
-#define MDRV_VISIBLE_AREA(minx, maxx, miny, maxy)						\
-	MDRV_SCREEN_VISIBLE_AREA(minx, maxx, miny, maxy)					\
 
 
 /* add/remove speakers */
@@ -491,8 +471,7 @@ struct _game_driver
 
 #define MDRV_SOUND_MODIFY(tag)											\
 	sound = driver_find_sound(machine, tag);							\
-	if (sound)															\
-		sound->routes = 0;												\
+	sound->routes = 0;													\
 
 #define MDRV_SOUND_CONFIG(_config)										\
 	if (sound)															\
@@ -534,7 +513,7 @@ game_driver driver_##NAME =					\
 	#YEAR,									\
 	COMPANY,								\
 	construct_##MACHINE,					\
-	construct_ipt_##INPUT,					\
+	ipt_##INPUT,					\
 	init_##INIT,							\
 	rom_##NAME,								\
 	(MONITOR)|(FLAGS),						\
@@ -552,7 +531,7 @@ game_driver driver_##NAME =					\
 	#YEAR,									\
 	COMPANY,								\
 	construct_##MACHINE,					\
-	construct_ipt_##INPUT,					\
+	ipt_##INPUT,					\
 	init_##INIT,							\
 	rom_##NAME,								\
 	(MONITOR)|(FLAGS),						\
@@ -570,7 +549,7 @@ game_driver driver_##NAME =					\
 	#YEAR,									\
 	COMPANY,								\
 	construct_##MACHINE,					\
-	construct_ipt_##INPUT,					\
+	ipt_##INPUT,					\
 	init_##INIT,							\
 	rom_##NAME,								\
 	(MONITOR)|(FLAGS),						\

@@ -94,9 +94,6 @@ VIDEO_START( drtomy )
 	tilemap_bg = tilemap_create(get_tile_info_bg,tilemap_scan_rows,TILEMAP_OPAQUE,      16,16,32,32);
 	tilemap_fg = tilemap_create(get_tile_info_fg,tilemap_scan_rows,TILEMAP_TRANSPARENT, 16,16,32,32);
 
-	if (!tilemap_bg || !tilemap_fg)
-		return 1;
-
 	tilemap_set_transparent_pen(tilemap_fg,0);
 
 	return 0;
@@ -261,13 +258,14 @@ static MACHINE_DRIVER_START( drtomy )
 	MDRV_CPU_PROGRAM_MAP(drtomy_map,0)
 	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*16, 32*16)
-	MDRV_VISIBLE_AREA(0, 320-1, 16, 256-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 16, 256-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -277,8 +275,8 @@ static MACHINE_DRIVER_START( drtomy )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 26000000/16/165)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 26000000/16)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.8)
 MACHINE_DRIVER_END
 

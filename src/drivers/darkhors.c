@@ -143,9 +143,6 @@ VIDEO_START( darkhors )
 	darkhors_tmap2			=	tilemap_create(	get_tile_info_1, tilemap_scan_rows,
 												TILEMAP_TRANSPARENT, 16,16, 0x40,0x40	);
 
-	if ( !darkhors_tmap || !darkhors_tmap2 )
-		return 1;
-
 	tilemap_set_transparent_pen(darkhors_tmap, 0);
 	tilemap_set_transparent_pen(darkhors_tmap2, 0);
 
@@ -608,15 +605,16 @@ static MACHINE_DRIVER_START( darkhors )
 	MDRV_CPU_PROGRAM_MAP(darkhors_readmem,darkhors_writemem)
 	MDRV_CPU_VBLANK_INT(darkhors,3)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(darkhors)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(0x190, 0x100)
-	MDRV_VISIBLE_AREA(0, 0x190-1, 8, 0x100-8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 0x190-1, 8, 0x100-8-1)
 	MDRV_GFXDECODE(darkhors_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(0x10000)
 
@@ -626,8 +624,8 @@ static MACHINE_DRIVER_START( darkhors )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 4000)	// ??
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 528000)	// ??
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

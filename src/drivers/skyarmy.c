@@ -101,8 +101,6 @@ VIDEO_START( skyarmy )
 {
         skyarmy_tilemap = tilemap_create(get_skyarmy_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
         tilemap_set_scroll_cols(skyarmy_tilemap,32);
-        if(!skyarmy_tilemap)
-		return 1;
 	return 0;
 }
 
@@ -269,16 +267,17 @@ static MACHINE_DRIVER_START( skyarmy )
 	MDRV_CPU_ADD(Z80,4000000)
 	MDRV_CPU_PROGRAM_MAP(skyarmy_readmem,skyarmy_writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 	MDRV_CPU_PERIODIC_INT(skyarmy_nmi_source,TIME_IN_HZ(650))	/* Hz */
 
 	/* video hardware */
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8,32*8)
-	MDRV_VISIBLE_AREA(0*8,32*8-1,1*8,31*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8,32*8-1,1*8,31*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(32)
 

@@ -5,7 +5,7 @@
     Functions used to retrieve text used by MAME, to aid in
     translation.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -201,6 +201,8 @@ enum
 	UI_rotate_counterclockwise,
 	UI_flip_x,
 	UI_flip_y,
+
+	UI_configuration,
 
 	UI_last_mame_entry
 };

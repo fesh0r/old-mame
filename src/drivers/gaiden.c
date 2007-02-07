@@ -974,15 +974,16 @@ static MACHINE_DRIVER_START( shadoww )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 								/* IRQs are triggered by the YM2203 */
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(raiga)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(4096)
 
@@ -1005,15 +1006,15 @@ static MACHINE_DRIVER_START( shadoww )
 	MDRV_SOUND_ROUTE(2, "mono", 0.15)
 	MDRV_SOUND_ROUTE(3, "mono", 0.60)
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000/132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( raiga )
 	MDRV_IMPORT_FROM(shadoww)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_RGB_DIRECT)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 
 	MDRV_VIDEO_START(raiga)
 	MDRV_VIDEO_UPDATE(raiga)
@@ -1031,13 +1032,14 @@ static MACHINE_DRIVER_START( drgnbowl )
 	MDRV_CPU_PROGRAM_MAP(drgnbowl_sound_map,0)
 	MDRV_CPU_IO_MAP(drgnbowl_sound_port_map,0)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(drgnbowl_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(4096)
 
@@ -1050,8 +1052,8 @@ static MACHINE_DRIVER_START( drgnbowl )
 	MDRV_SOUND_ADD(YM2151, 4000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000/132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -1492,9 +1494,7 @@ static DRIVER_INIT( drgnbowl )
 	int i;
 	UINT8 *ROM = memory_region(REGION_CPU1);
 	size_t  size = memory_region_length(REGION_CPU1);
-	UINT8 *buffer = malloc(size);
-
-	if(!buffer) return;
+	UINT8 *buffer = malloc_or_die(size);
 
 	memcpy(buffer,ROM,size);
 	for( i = 0; i < size; i++ )
@@ -1511,9 +1511,7 @@ static DRIVER_INIT( drgnbowl )
 
 	ROM = memory_region(REGION_GFX2);
 	size = memory_region_length(REGION_GFX2);
-	buffer = malloc(size);
-
-	if(!buffer) return;
+	buffer = malloc_or_die(size);
 
 	memcpy(buffer,ROM,size);
 	for( i = 0; i < size; i++ )

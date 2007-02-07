@@ -5,13 +5,10 @@
 ***************************************************************************/
 
 #include "driver.h"
-
-extern UINT8* fgoal_video_ram;
+#include "includes/fgoal.h"
 
 static mame_bitmap *fgbitmap;
 static mame_bitmap *bgbitmap;
-
-extern int fgoal_player;
 
 static UINT8 xpos;
 static UINT8 ypos;
@@ -42,7 +39,7 @@ VIDEO_START( fgoal )
 	fgbitmap = auto_bitmap_alloc(256, 256);
 	bgbitmap = auto_bitmap_alloc(256, 256);
 
-	return fgbitmap == 0 || bgbitmap == 0;
+	return 0;
 }
 
 
@@ -110,10 +107,10 @@ VIDEO_UPDATE( fgoal )
 
 	for (y = 0; y < 256; y++)
 	{
-		UINT16* p = bitmap->line[y];
+		UINT16* p = BITMAP_ADDR16(bitmap, y, 0);
 
-		const UINT16* FG = fgbitmap->line[y];
-		const UINT16* BG = bgbitmap->line[y];
+		const UINT16* FG = BITMAP_ADDR16(fgbitmap, y, 0);
+		const UINT16* BG = BITMAP_ADDR16(bgbitmap, y, 0);
 
 		for (x = 0; x < 256; x += 8)
 		{

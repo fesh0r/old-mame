@@ -84,6 +84,10 @@ BUILD_ZLIB = 1
 # uncomment next line to generate a link map for exception handling in windows
 # MAP = 1
 
+# specify optimization level or leave commented to use the default
+# (default is OPTIMIZE = 3 normally, or OPTIMIZE = 0 with symbols)
+# OPTIMIZE = 3
+
 
 ###########################################################################
 ##################   END USER-CONFIGURABLE OPTIONS   ######################
@@ -98,6 +102,15 @@ BUILD_ZLIB = 1
 ifdef PTR64
 X86_MIPS3_DRC =
 X86_PPC_DRC =
+endif
+
+# specify a default optimization level if none explicitly stated
+ifndef OPTIMIZE
+ifndef SYMBOLS
+OPTIMIZE = 3
+else
+OPTIMIZE = 0
+endif
 endif
 
 
@@ -196,12 +209,10 @@ endif
 CFLAGS = -std=gnu89 -Isrc -Isrc/includes -Isrc/$(MAMEOS) -I$(OBJ)/layout
 
 ifdef SYMBOLS
-CFLAGS += -O0 -Wall -Wno-unused -g
-else
-CFLAGS += -DNDEBUG \
-	$(ARCH) -O3 -fno-strict-aliasing \
-	-Werror -Wall \
-	-Wno-sign-compare \
+CFLAGS += -g
+endif
+
+CFLAGS += -Wall \
 	-Wno-unused-functions \
 	-Wpointer-arith \
 	-Wbad-function-cast \
@@ -211,7 +222,12 @@ CFLAGS += -DNDEBUG \
 	-Wformat-security \
 	-Wwrite-strings \
 	-Wdeclaration-after-statement
+
+ifneq ($(OPTIMIZE),0)
+CFLAGS += -Werror -DNDEBUG $(ARCH) -fno-strict-aliasing
 endif
+
+CFLAGS += -O$(OPTIMIZE)
 
 # extra options needed *only* for the osd files
 CFLAGSOSDEPEND = $(CFLAGS)
@@ -245,11 +261,10 @@ VPATH = src $(wildcard src/cpu/*)
 #-------------------------------------------------
 
 OBJDIRS = \
-	obj \
-	$(OBJ) \
 	$(OBJ)/cpu \
 	$(OBJ)/sound \
 	$(OBJ)/debug \
+	$(OBJ)/tools \
 	$(OBJ)/drivers \
 	$(OBJ)/layout \
 	$(OBJ)/machine \
@@ -258,7 +273,7 @@ OBJDIRS = \
 	$(OBJ)/$(MAMEOS) \
 
 ifdef MESS
-OBJDIRS += 
+OBJDIRS +=
 	$(OBJ)/mess \
 	$(OBJ)/mess/systems \
 	$(OBJ)/mess/machine \
@@ -276,6 +291,8 @@ endif
 CPULIB = $(OBJ)/libcpu.a
 
 SOUNDLIB = $(OBJ)/libsound.a
+
+OSDCORELIB = $(OBJ)/$(MAMEOS)/libocore.a
 
 
 
@@ -344,7 +361,7 @@ emulator: maketree $(EMULATOR)
 
 extra: $(TOOLS)
 
-maketree: $(sort $(OBJDIRS)) $(OSPREBUILD)
+maketree: $(sort $(OBJDIRS))
 
 clean:
 	@echo Deleting object tree $(OBJ)...
@@ -361,7 +378,7 @@ clean:
 #-------------------------------------------------
 
 $(sort $(OBJDIRS)):
-	$(MD) $@
+	$(MD) -p $@
 
 
 
@@ -369,27 +386,27 @@ $(sort $(OBJDIRS)):
 # executable targets and dependencies
 #-------------------------------------------------
 
-$(EMULATOR): $(COREOBJS) $(OSOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $(EXPAT) $(ZLIB) $(OSDBGOBJS)
+$(EMULATOR): $(COREOBJS) $(OSOBJS) $(CPULIB) $(SOUNDLIB) $(DRVLIBS) $(EXPAT) $(ZLIB) $(OSDCORELIB)
 # always recompile the version string
 	$(CC) $(CDEFS) $(CFLAGS) -c src/version.c -o $(OBJ)/version.o
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@ $(MAPFLAGS)
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@ $(MAPFLAGS)
 
-file2str$(EXE): $(OBJ)/file2str.o $(OSDBGOBJS)
+file2str$(EXE): $(OBJ)/tools/file2str.o $(OSDCORELIB)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-romcmp$(EXE): $(OBJ)/romcmp.o $(OBJ)/unzip.o $(OBJ)/mamecore.o $(ZLIB) $(OSDBGOBJS)
+romcmp$(EXE): $(OBJ)/tools/romcmp.o $(OBJ)/unzip.o $(OBJ)/mamecore.o $(ZLIB) $(OSDCORELIB)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-chdman$(EXE): $(OBJ)/chdman.o $(OBJ)/chd.o $(OBJ)/chdcd.o $(OBJ)/cdrom.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o $(ZLIB) $(OSTOOLOBJS) $(OSDBGOBJS)
+chdman$(EXE): $(OBJ)/tools/chdman.o $(OBJ)/chd.o $(OBJ)/tools/chdcd.o $(OBJ)/cdrom.o $(OBJ)/md5.o $(OBJ)/sha1.o $(OBJ)/version.o $(ZLIB) $(OSDCORELIB)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
-jedutil$(EXE): $(OBJ)/jedutil.o $(OBJ)/jedparse.o $(OSDBGOBJS)
+jedutil$(EXE): $(OBJ)/tools/jedutil.o $(OBJ)/jedparse.o $(OSDCORELIB)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
 
 
@@ -405,6 +422,8 @@ endif
 
 $(SOUNDLIB): $(SOUNDOBJS)
 
+$(OSDCORELIB): $(OSDCOREOBJS)
+
 $(OBJ)/libexpat.a: $(OBJ)/expat/xmlparse.o $(OBJ)/expat/xmlrole.o $(OBJ)/expat/xmltok.o
 
 $(OBJ)/libz.a: $(OBJ)/zlib/adler32.o $(OBJ)/zlib/compress.o $(OBJ)/zlib/crc32.o $(OBJ)/zlib/deflate.o \
@@ -417,19 +436,19 @@ $(OBJ)/libz.a: $(OBJ)/zlib/adler32.o $(OBJ)/zlib/compress.o $(OBJ)/zlib/crc32.o 
 # generic rules
 #-------------------------------------------------
 
-$(OBJ)/$(MAMEOS)/%.o: src/$(MAMEOS)/%.c
+$(OBJ)/$(MAMEOS)/%.o: src/$(MAMEOS)/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGSOSDEPEND) -c $< -o $@
 
-$(OBJ)/%.o: src/%.c
+$(OBJ)/%.o: src/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -c $< -o $@
 
-$(OBJ)/%.pp: src/%.c
+$(OBJ)/%.pp: src/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -E $< -o $@
 
-$(OBJ)/%.s: src/%.c
+$(OBJ)/%.s: src/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -S $< -o $@
 

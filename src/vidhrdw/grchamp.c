@@ -109,16 +109,12 @@ VIDEO_START( grchamp )
 	grchamp_state *state = machine->driver_data;
 
 	state->work_bitmap = auto_bitmap_alloc(32,32);
-	if (!state->work_bitmap)
-		return 1;
 
 	/* allocate tilemaps for each of the three sections */
 	state->text_tilemap = tilemap_create(get_text_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 32,32);
 	state->left_tilemap = tilemap_create(get_left_tile_info, get_memory_offset, TILEMAP_OPAQUE, 8,8, 64,32);
 	state->right_tilemap = tilemap_create(get_right_tile_info, get_memory_offset, TILEMAP_OPAQUE, 8,8, 64,32);
 	state->center_tilemap = tilemap_create(get_center_tile_info, get_memory_offset, TILEMAP_OPAQUE, 8,8, 64,32);
-	if (!state->left_tilemap || !state->center_tilemap || !state->right_tilemap)
-		return 1;
 
 	return 0;
 }

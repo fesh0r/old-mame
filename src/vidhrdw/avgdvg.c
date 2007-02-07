@@ -86,6 +86,7 @@ typedef struct _vgdata
 	UINT8 intensity;
 	UINT8 color;
 	UINT8 enspkl;
+	UINT8 spkl_shift;
 	UINT8 map;
 
 	UINT16 hst;
@@ -800,7 +801,19 @@ static int mhavoc_strobe2(vgdata *vg)
 
 			vg->intensity = (vg->dvy >> 4) & 0xf;
 			vg->map = (vg->dvy >> 8) & 0x3;
-			vg->enspkl = (vg->dvy & 0x800) >> 11;
+			if (vg->dvy & 0x800)
+			{
+				vg->enspkl = 1;
+				vg->spkl_shift = ((vg->dvy >> 3) & 1)
+					| ((vg->dvy >> 1) & 2)
+					| ((vg->dvy << 1) & 4)
+					| ((vg->dvy << 2) & 8)
+					| ((mame_rand(Machine) & 0x7) << 4);
+			}
+			else
+			{
+				vg->enspkl = 0;
+			}
 
 			/* Major Havoc can do X-flipping by inverting the DAC input */
 			if (vg->dvy & 0x400)
@@ -968,29 +981,83 @@ static int tempest_strobe3(vgdata *vg)
 
 static int mhavoc_strobe3(vgdata *vg)
 {
-	int cycles, r, g, b, bit0, bit1, bit2, bit3;
+	int cycles, r, g, b, bit0, bit1, bit2, bit3, dx, dy, i;
 
 	UINT8 data;
 
-	cycles = avg_common_strobe3(vg);
+	vg->halt = OP0;
+	cycles = 0;
 
 	if ((vg->op & 5) == 0)
 	{
-		if (vg->enspkl)
-			data = mhavoc_colorram[16 + (mame_rand(Machine) & 0xf)];
+		if (OP1)
+		{
+			cycles = 0x100 - (vg->timer & 0xff);
+		}
 		else
+		{
+			cycles = 0x8000 - vg->timer;
+		}
+		vg->timer = 0;
+		dx = ((((vg->dvx >> 3) ^ vg->xdac_xor) - 0x200) * (vg->scale ^ 0xff));
+		dy = ((((vg->dvy >> 3) ^ vg->ydac_xor) - 0x200) * (vg->scale ^ 0xff));
+
+
+		if (vg->enspkl)
+		{
+			for (i=0; i<cycles/8; i++)
+			{
+				vg->xpos += dx/2;
+				vg->ypos -= dy/2;
+				data = mhavoc_colorram[0xf +
+									   (((vg->spkl_shift & 1) << 3)
+										| (vg->spkl_shift & 4)
+										| ((vg->spkl_shift & 0x10) >> 3)
+										| ((vg->spkl_shift & 0x40) >> 6))];
+				bit3 = (~data >> 3) & 1;
+				bit2 = (~data >> 2) & 1;
+				bit1 = (~data >> 1) & 1;
+				bit0 = (~data >> 0) & 1;
+				r = bit3 * 0xcb + bit2 * 0x34;
+				g = bit1 * 0xcb;
+				b = bit0 * 0xcb;
+
+				vg_add_point_buf(vg->xpos, vg->ypos, MAKE_RGB(r, g, b),
+								 (((vg->int_latch >> 1) == 1)? vg->intensity: vg->int_latch & 0xe) << 4);
+				vg->spkl_shift = (((vg->spkl_shift & 0x40) >> 6)
+								  ^ ((vg->spkl_shift & 0x20) >> 5)
+								  ^ 1 )
+					| (vg->spkl_shift << 1);
+
+				if ((vg->spkl_shift & 0x7f) == 0x7f)
+					vg->spkl_shift = 0;
+			}
+		}
+		else
+		{
+			vg->xpos += (dx * cycles) >> 4;
+			vg->ypos -= (dy * cycles) >> 4;
 			data = mhavoc_colorram[vg->color];
 
-		bit3 = (~data >> 3) & 1;
-		bit2 = (~data >> 2) & 1;
-		bit1 = (~data >> 1) & 1;
-		bit0 = (~data >> 0) & 1;
-		r = bit3 * 0xcb + bit2 * 0x34;
-		g = bit1 * 0xcb;
-		b = bit0 * 0xcb;
+			bit3 = (~data >> 3) & 1;
+			bit2 = (~data >> 2) & 1;
+			bit1 = (~data >> 1) & 1;
+			bit0 = (~data >> 0) & 1;
+			r = bit3 * 0xcb + bit2 * 0x34;
+			g = bit1 * 0xcb;
+			b = bit0 * 0xcb;
 
-		vg_add_point_buf(vg->xpos, vg->ypos, MAKE_RGB(r, g, b),
-						 (((vg->int_latch >> 1) == 1)? vg->intensity: vg->int_latch & 0xe) << 4);
+			vg_add_point_buf(vg->xpos, vg->ypos, MAKE_RGB(r, g, b),
+							 (((vg->int_latch >> 1) == 1)? vg->intensity: vg->int_latch & 0xe) << 4);
+		}
+	}
+	if (OP2)
+	{
+		cycles = 0x8000 - vg->timer;
+		vg->timer = 0;
+		vg->xpos = xcenter;
+		vg->ypos = ycenter;
+		vg_add_point_buf(vg->xpos, vg->ypos, 0, 0);
 	}
 
 	return cycles;
@@ -1207,12 +1274,12 @@ MACHINE_RESET( avgdvg )
  *
  ************************************/
 
-static int avgdvg_init(void)
+static VIDEO_START( avgdvg )
 {
-	xmin = Machine->screen[0].visarea.min_x;
-	ymin = Machine->screen[0].visarea.min_y;
-	xmax = Machine->screen[0].visarea.max_x;
-	ymax = Machine->screen[0].visarea.max_y;
+	xmin = machine->screen[0].visarea.min_x;
+	ymin = machine->screen[0].visarea.min_y;
+	xmax = machine->screen[0].visarea.max_x;
+	ymax = machine->screen[0].visarea.max_y;
 
 	xcenter = ((xmax + xmin) / 2) << 16;
 	ycenter = ((ymax + ymin) / 2) << 16;
@@ -1230,7 +1297,39 @@ static int avgdvg_init(void)
 	vg->xdac_xor = 0x200;
 	vg->ydac_xor = 0x200;
 
-	return video_start_vector(Machine);
+	state_save_register_item("AVG", 0, vg->pc);
+	state_save_register_item("AVG", 0, vg->sp);
+	state_save_register_item("AVG", 0, vg->dvx);
+	state_save_register_item("AVG", 0, vg->dvy);
+	state_save_register_item("AVG", 0, vg->dvy12);
+	state_save_register_item("AVG", 0, vg->timer);
+	state_save_register_item_array("AVG", 0, vg->stack);
+	state_save_register_item("AVG", 0, vg->data);
+	state_save_register_item("AVG", 0, vg->state_latch);
+	state_save_register_item("AVG", 0, vg->int_latch);
+	state_save_register_item("AVG", 0, vg->scale);
+	state_save_register_item("AVG", 0, vg->bin_scale);
+	state_save_register_item("AVG", 0, vg->intensity);
+	state_save_register_item("AVG", 0, vg->color);
+	state_save_register_item("AVG", 0, vg->enspkl);
+	state_save_register_item("AVG", 0, vg->spkl_shift);
+	state_save_register_item("AVG", 0, vg->map);
+	state_save_register_item("AVG", 0, vg->hst);
+	state_save_register_item("AVG", 0, vg->lst);
+	state_save_register_item("AVG", 0, vg->izblank);
+	state_save_register_item("AVG", 0, vg->op);
+	state_save_register_item("AVG", 0, vg->halt);
+	state_save_register_item("AVG", 0, vg->sync_halt);
+	state_save_register_item("AVG", 0, vg->xdac_xor);
+	state_save_register_item("AVG", 0, vg->ydac_xor);
+	state_save_register_item("AVG", 0, vg->xpos);
+	state_save_register_item("AVG", 0, vg->ypos);
+	state_save_register_item("AVG", 0, vg->clipx_min);
+	state_save_register_item("AVG", 0, vg->clipy_min);
+	state_save_register_item("AVG", 0, vg->clipx_max);
+	state_save_register_item("AVG", 0, vg->clipy_max);
+
+	return video_start_vector(machine);
 }
 
 
@@ -1378,7 +1477,7 @@ VIDEO_START( dvg )
 	vgc = &dvg_default;
 	vg = &vgd;
 	vg->state_prom = memory_region(REGION_PROMS);
-	return avgdvg_init();
+	return video_start_avgdvg(machine);
 }
 
 VIDEO_START( avg )
@@ -1386,7 +1485,7 @@ VIDEO_START( avg )
 	vgc = &avg_default;
 	vg = &vgd;
 	vg->state_prom = memory_region(REGION_PROMS);
-	return avgdvg_init();
+	return video_start_avgdvg(machine);
 }
 
 VIDEO_START( avg_starwars )
@@ -1394,7 +1493,7 @@ VIDEO_START( avg_starwars )
 	vgc = &avg_starwars;
 	vg = &vgd;
 	vg->state_prom = memory_region(REGION_PROMS) + 0x1000;
-	return avgdvg_init();
+	return video_start_avgdvg(machine);
 }
 
 VIDEO_START( avg_tempest )
@@ -1402,7 +1501,7 @@ VIDEO_START( avg_tempest )
 	vgc = &avg_tempest;
 	vg = &vgd;
 	vg->state_prom = memory_region(REGION_PROMS);
-	return avgdvg_init();
+	return video_start_avgdvg(machine);
 }
 
 VIDEO_START( avg_mhavoc )
@@ -1410,7 +1509,7 @@ VIDEO_START( avg_mhavoc )
 	vgc = &avg_mhavoc;
 	vg = &vgd;
 	vg->state_prom = memory_region(REGION_PROMS);
-	return avgdvg_init();
+	return video_start_avgdvg(machine);
 }
 
 VIDEO_START( avg_bzone )
@@ -1418,7 +1517,7 @@ VIDEO_START( avg_bzone )
 	vgc = &avg_bzone;
 	vg = &vgd;
 	vg->state_prom = memory_region(REGION_PROMS);
-	return avgdvg_init();
+	return video_start_avgdvg(machine);
 }
 
 VIDEO_START( avg_quantum )
@@ -1426,6 +1525,6 @@ VIDEO_START( avg_quantum )
 	vgc = &avg_quantum;
 	vg = &vgd;
 	vg->state_prom = memory_region(REGION_PROMS);
-	return avgdvg_init();
+	return video_start_avgdvg(machine);
 }
 

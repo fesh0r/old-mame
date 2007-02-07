@@ -72,6 +72,7 @@ UINT16 *metro_K053936_ram;
 static tilemap *metro_K053936_tilemap;
 
 static UINT16 *metro_tiletable_old;
+static UINT8 *dirtyindex;
 
 
 static void metro_K053936_get_tile_info(int tile_index)
@@ -398,6 +399,7 @@ VIDEO_START( metro_14100 )
 
 	alloc_empty_tiles();
 	metro_tiletable_old = auto_malloc(metro_tiletable_size);
+	dirtyindex = auto_malloc(metro_tiletable_size/4);
 
 	bg_tilemap[0] = tilemap_create(get_tile_info_0,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
 	bg_tilemap[1] = tilemap_create(get_tile_info_1,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
@@ -406,9 +408,6 @@ VIDEO_START( metro_14100 )
 	tilemap_16x16[0] = NULL;
 	tilemap_16x16[1] = NULL;
 	tilemap_16x16[2] = NULL;
-
-	if (!bg_tilemap[0] || !bg_tilemap[1] || !bg_tilemap[2] )
-		return 1;
 
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
@@ -425,6 +424,7 @@ VIDEO_START( metro_14220 )
 
 	alloc_empty_tiles();
 	metro_tiletable_old = auto_malloc(metro_tiletable_size);
+	dirtyindex = auto_malloc(metro_tiletable_size/4);
 
 	bg_tilemap[0] = tilemap_create(get_tile_info_0_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
 	bg_tilemap[1] = tilemap_create(get_tile_info_1_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
@@ -433,9 +433,6 @@ VIDEO_START( metro_14220 )
 	tilemap_16x16[0] = NULL;
 	tilemap_16x16[1] = NULL;
 	tilemap_16x16[2] = NULL;
-
-	if (!bg_tilemap[0] || !bg_tilemap[1] || !bg_tilemap[2])
-		return 1;
 
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
@@ -456,6 +453,7 @@ VIDEO_START( metro_14300 )
 
 	alloc_empty_tiles();
 	metro_tiletable_old = auto_malloc(metro_tiletable_size);
+	dirtyindex = auto_malloc(metro_tiletable_size/4);
 
 	bg_tilemap[0] = tilemap_create(get_tile_info_0_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
 	bg_tilemap[1] = tilemap_create(get_tile_info_1_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
@@ -464,10 +462,6 @@ VIDEO_START( metro_14300 )
 	tilemap_16x16[0] = tilemap_create(get_tile_info_0_16x16_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,WIN_NX,WIN_NY);
 	tilemap_16x16[1] = tilemap_create(get_tile_info_1_16x16_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,WIN_NX,WIN_NY);
 	tilemap_16x16[2] = tilemap_create(get_tile_info_2_16x16_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,WIN_NX,WIN_NY);
-
-	if (!bg_tilemap[0] || !bg_tilemap[1] || !bg_tilemap[2]
-			|| !tilemap_16x16[0] || !tilemap_16x16[1] || !tilemap_16x16[2])
-		return 1;
 
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
@@ -489,9 +483,6 @@ VIDEO_START( blzntrnd )
 	metro_K053936_tilemap = tilemap_create(metro_K053936_get_tile_info, tilemap_scan_rows,
 								TILEMAP_OPAQUE, 8,8, 256, 512 );
 
-	if (!metro_K053936_tilemap)
-		return 1;
-
 	K053936_wraparound_enable(0, 0);
 	K053936_set_offset(0, -69, -21);
 
@@ -511,9 +502,6 @@ VIDEO_START( gstrik2 )
 
 	metro_K053936_tilemap = tilemap_create(metro_K053936_gstrik2_get_tile_info, tilemap_scan_gstrik2,
 								TILEMAP_OPAQUE, 16,16, 128, 256 );
-
-	if (!metro_K053936_tilemap)
-		return 1;
 
 	K053936_wraparound_enable(0, 0);
 	K053936_set_offset(0, -69, -19);
@@ -846,7 +834,7 @@ static void draw_layers(mame_bitmap *bitmap, const rectangle *cliprect, int pri,
 
 
 /* Dirty tilemaps when the tiles set changes */
-static void dirty_tiles(int layer,UINT16 *vram,UINT8 *dirtyindex)
+static void dirty_tiles(int layer,UINT16 *vram)
 {
 	int col,row;
 
@@ -872,11 +860,8 @@ static void dirty_tiles(int layer,UINT16 *vram,UINT8 *dirtyindex)
 VIDEO_UPDATE( metro )
 {
 	int i,pri,layers_ctrl = -1;
-	UINT8 *dirtyindex;
 	UINT16 screenctrl = *metro_screenctrl;
 
-	dirtyindex = malloc(metro_tiletable_size/4);
-	if (dirtyindex)
 	{
 		int dirty = 0;
 
@@ -896,11 +881,10 @@ VIDEO_UPDATE( metro )
 
 		if (dirty)
 		{
-			dirty_tiles(0,metro_vram_0,dirtyindex);
-			dirty_tiles(1,metro_vram_1,dirtyindex);
-			dirty_tiles(2,metro_vram_2,dirtyindex);
+			dirty_tiles(0,metro_vram_0);
+			dirty_tiles(1,metro_vram_1);
+			dirty_tiles(2,metro_vram_2);
 		}
-		free(dirtyindex);
 	}
 
 	metro_sprite_xoffs	=	metro_videoregs[0x06/2] - Machine->screen[0].width  / 2;

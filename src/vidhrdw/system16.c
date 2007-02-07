@@ -135,6 +135,7 @@ int sys16_fg_priority_value;
 int sys16_18_mode;
 int sys16_tilebank_switch;
 int sys16_rowscroll_scroll;
+int shinobl_kludge;
 
 /* video registers */
 int sys16_tile_bank1;
@@ -245,8 +246,8 @@ static void draw_sprite( //*
 			while( ycount>=height ){
 				if( sy>=cliprect->min_y && sy<=cliprect->max_y ){
 					source = addr;
-					dest = (UINT16 *)bitmap->line[sy];
-					pri = priority_bitmap->line[sy];
+					dest = BITMAP_ADDR16(bitmap, sy, 0);
+					pri = BITMAP_ADDR8(priority_bitmap, sy, 0);
 					sx = x0;
 					xcount = 0;
 					for( x=width; x; x-=2 ){
@@ -301,8 +302,8 @@ static void draw_sprite( //*
 			while( ycount>=height ){
 				if( sy>=cliprect->min_y && sy<=cliprect->max_y ){
 					source = addr;
-					dest = (UINT16 *)bitmap->line[sy];
-					pri = priority_bitmap->line[sy];
+					dest = BITMAP_ADDR16(bitmap, sy, 0);
+					pri = BITMAP_ADDR8(priority_bitmap, sy, 0);
 					sx = x0;
 					xcount = 0;
 					for( x=width; x; x-=2 ){
@@ -585,6 +586,15 @@ static void get_bg_tile_info( int offset ){
 	int data = source[offset%(64*32)];
 	int tile_number = (data&0xfff) + 0x1000*((data&sys16_tilebank_switch)?sys16_tile_bank1:sys16_tile_bank0);
 
+	if (!shinobl_kludge)
+	{
+		SET_TILE_INFO(
+				0,
+				tile_number,
+				(data>>6)&0x7f,
+				0)
+	}
+	else
 	{
 		SET_TILE_INFO(
 				0,
@@ -616,6 +626,15 @@ static void get_fg_tile_info( int offset ){
 	int data = source[offset%(64*32)];
 	int tile_number = (data&0xfff) + 0x1000*((data&sys16_tilebank_switch)?sys16_tile_bank1:sys16_tile_bank0);
 
+	if (!shinobl_kludge)
+	{
+		SET_TILE_INFO(
+				0,
+				tile_number,
+				(data>>6)&0x7f,
+				0)
+	}
+	else
 	{
 		SET_TILE_INFO(
 				0,
@@ -623,6 +642,7 @@ static void get_fg_tile_info( int offset ){
 				(data>>5)&0x7f,
 				0)
 	}
+
 	switch(sys16_fg_priority_mode){
 	case 1: // alien syndrome
 		tile_info.priority = (data&0x8000)?1:0;
@@ -645,13 +665,12 @@ static void get_bg2_tile_info( int offset ){
 	int data = source[offset%(64*32)];
 	int tile_number = (data&0xfff) + 0x1000*((data&0x1000)?sys16_tile_bank1:sys16_tile_bank0);
 
-	{
-		SET_TILE_INFO(
-				0,
-				tile_number,
-				(data>>5)&0x7f,
-				0)
-	}
+	SET_TILE_INFO(
+			0,
+			tile_number,
+			(data>>6)&0x7f,
+			0)
+
 	tile_info.priority = 0;
 }
 
@@ -660,13 +679,12 @@ static void get_fg2_tile_info( int offset ){
 	int data = source[offset%(64*32)];
 	int tile_number = (data&0xfff) + 0x1000*((data&0x1000)?sys16_tile_bank1:sys16_tile_bank0);
 
-	{
-		SET_TILE_INFO(
-				0,
-				tile_number,
-				(data>>5)&0x7f,
-				0)
-	}
+	SET_TILE_INFO(
+			0,
+			tile_number,
+			(data>>6)&0x7f,
+			0)
+
 	if((data&0xff00) >= sys16_fg_priority_value) tile_info.priority = 1;
 	else tile_info.priority = 0;
 }
@@ -708,6 +726,16 @@ static void get_text_tile_info( int offset ){
 	const UINT16 *source = sys16_textram;
 	int tile_number = source[offset];
 	int pri = tile_number >> 8;
+
+	if (!shinobl_kludge)
+	{
+		SET_TILE_INFO(
+				0,
+				(tile_number&0x1ff) + sys16_tile_bank0 * 0x1000,
+				(tile_number>>9)%8,
+				0)
+	}
+	else
 	{
 		SET_TILE_INFO(
 				0,
@@ -715,6 +743,7 @@ static void get_text_tile_info( int offset ){
 				(tile_number>>8)%8,
 				0)
 	}
+
 	if(pri>=sys16_textlayer_lo_min && pri<=sys16_textlayer_lo_max)
 		tile_info.priority = 1;
 	if(pri>=sys16_textlayer_hi_min && pri<=sys16_textlayer_hi_max)
@@ -789,7 +818,7 @@ VIDEO_START( system16 ){
 	if(!strcmp(Machine->gamedrv->name, "hangon"))
 		num_sprites = 128;
 
-	if( background && foreground && text_layer ){
+	{
 		/* initialize all entries to black - needed for Golden Axe*/
 		int i;
 		for( i=0; i<Machine->drv->total_colors; i++ ){
@@ -830,7 +859,6 @@ VIDEO_START( system16 ){
 
 		return 0;
 	}
-	return 1;
 }
 
 VIDEO_START( system18old ){
@@ -860,12 +888,9 @@ VIDEO_START( system18old ){
 		8,8,
 		64*2,32*2 );
 
+	if( video_start_system16(machine) )
+		return 1;
 
-
-
-
-	if( background2 && foreground2 ){
-		if( video_start_system16(machine)==0 ){
 			tilemap_set_transparent_pen( foreground2, 0 );
 
 			if(sys18_splittab_fg_x){
@@ -889,9 +914,6 @@ VIDEO_START( system18old ){
 			sys16_fg_priority_value=0x2000;
 
 			return 0;
-		}
-	}
-	return 1;
 }
 
 /***************************************************************************/

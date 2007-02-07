@@ -314,12 +314,13 @@ static MACHINE_DRIVER_START( fcombat )
 	MDRV_CPU_ADD(Z80, 10000000/3)
 	MDRV_CPU_PROGRAM_MAP(fcombat_readmem2,fcombat_writemem2)
 
-	MDRV_FRAMES_PER_SECOND(60)
+	MDRV_SCREEN_REFRESH_RATE(60)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
-	MDRV_VISIBLE_AREA(12*8, 52*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(12*8, 52*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(32)
 	MDRV_COLORTABLE_LENGTH(256*3)
@@ -353,9 +354,7 @@ static DRIVER_INIT( fcombat )
 	UINT8 *src, *dst, *temp;
 
 	/* allocate some temporary space */
-	temp = malloc(0x10000);
-	if (!temp)
-		return;
+	temp = malloc_or_die(0x10000);
 
 	/* make a temporary copy of the character data */
 	src = temp;

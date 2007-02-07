@@ -118,8 +118,6 @@ static void get_bg3_tile_info(int tile_index)
 VIDEO_START( senjyo )
 {
 	bgbitmap = auto_bitmap_alloc(256,256);
-	if (!bgbitmap)
-		return 1;
 
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,32,32);
 	if (senjyo)
@@ -134,10 +132,6 @@ VIDEO_START( senjyo )
 		bg2_tilemap = tilemap_create(get_bg2_tile_info,     tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,16,32);	/* only 16x32 used by Star Force */
 		bg3_tilemap = tilemap_create(get_bg3_tile_info,     tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,16,32);	/* only 16x32 used by Star Force */
 	}
-
-
-	if (!fg_tilemap || !bg1_tilemap || !bg2_tilemap || !bg3_tilemap)
-		return 1;
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg1_tilemap,0);

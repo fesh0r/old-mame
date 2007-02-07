@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/dkong.h"
 
 
 static UINT8 gfx_bank, palette_bank;
@@ -168,9 +169,6 @@ VIDEO_START( dkong )
 	state_save_register_global(grid_on);
 
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	if ( !bg_tilemap )
-		return 1;
 
 	return 0;
 }
@@ -347,12 +345,6 @@ VIDEO_UPDATE( dkong )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	draw_sprites(bitmap, 0x40, 1);
-
-	if (!strcmp(Machine->gamedrv->name, "shootgal"))
-	{
-		draw_crosshair( bitmap, readinputport(0) + 8, readinputport(1) + 3, cliprect, 0 );
-	}
-
 	return 0;
 }
 

@@ -1508,9 +1508,6 @@ int K007342_vh_start(int gfx_index, void (*callback)(int tmap, int bank, int *co
 	K007342_ram = auto_malloc(0x2000);
 	K007342_scroll_ram = auto_malloc(0x0200);
 
-	if (!K007342_tilemap[0] || !K007342_tilemap[1])
-		return 1;
-
 	memset(K007342_ram,0,0x2000);
 
 	K007342_colorram_0 = &K007342_ram[0x0000];
@@ -2019,9 +2016,6 @@ int K052109_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int 
 	K052109_tilemap[2] = tilemap_create(K052109_get_tile_info2,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32);
 
 	K052109_ram = auto_malloc(0x6000);
-
-	if (!K052109_tilemap[0] || !K052109_tilemap[1] || !K052109_tilemap[2])
-		return 1;
 
 	memset(K052109_ram,0,0x6000);
 
@@ -3742,7 +3736,7 @@ int K053247_vh_start(int gfx_memory_region, int dx, int dy, int plane0,int plane
 	}
 
 #if VERBOSE
-	if (Machine->color_depth == 32)
+	if (Machine->screen[0].format == BITMAP_FORMAT_RGB32)
 	{
 		if ((Machine->drv->video_attributes & (VIDEO_HAS_SHADOWS|VIDEO_HAS_HIGHLIGHTS)) != VIDEO_HAS_SHADOWS+VIDEO_HAS_HIGHLIGHTS)
 			popmessage("driver missing SHADOWS or HIGHLIGHTS flag");
@@ -4218,11 +4212,11 @@ void K053247_sprites_draw(mame_bitmap *bitmap,const rectangle *cliprect) //*
 	/*
         safeguard older drivers missing any of the following video attributes:
 
-        VIDEO_NEEDS_6BITS_PER_GUN | VIDEO_RGB_DIRECT | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS
+        VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS
     */
 	if (Machine->drv->video_attributes & VIDEO_HAS_SHADOWS)
 	{
-		if (Machine->color_depth == 32 && (Machine->drv->video_attributes & VIDEO_HAS_HIGHLIGHTS))
+		if (bitmap->bpp == 32 && (Machine->drv->video_attributes & VIDEO_HAS_HIGHLIGHTS))
 			shdmask = 3; // enable all shadows and highlights
 		else
 			shdmask = 0; // enable default shadows
@@ -4686,9 +4680,6 @@ int K051316_vh_start(int chip, int gfx_memory_region,int bpp,
 	K051316_tilemap[chip] = tilemap_create(get_tile_info[chip],tilemap_scan_rows,tilemap_type,16,16,32,32);
 
 	K051316_ram[chip] = auto_malloc(0x800);
-
-	if (!K051316_tilemap[chip])
-		return 1;
 
 	tilemap_set_transparent_pen(K051316_tilemap[chip],transparent_pen);
 
@@ -7309,7 +7300,7 @@ void K054338_fill_solid_bg(mame_bitmap *bitmap)
 	for (y = 0; y < bitmap->height; y++)
 	{
 		pLine = (UINT32 *)bitmap->base;
-		pLine += ((bitmap->rowbytes / 4)*y);
+		pLine += (bitmap->rowpixels*y);
 		for (x = 0; x < bitmap->width; x++)
 			*pLine++ = bgcolor;
 	}
@@ -7328,7 +7319,7 @@ void K054338_fill_backcolor(mame_bitmap *bitmap, int mode) // (see p.67)
 	clipw = (Machine->screen[0].visarea.max_x - clipx + 4) & ~3;
 	cliph = Machine->screen[0].visarea.max_y - clipy + 1;
 
-	dst_ptr = (UINT32 *)bitmap->line[clipy];
+	dst_ptr = BITMAP_ADDR32(bitmap, clipy, 0);
 	dst_pitch = bitmap->rowpixels;
 	dst_ptr += clipx;
 
@@ -7619,42 +7610,12 @@ READ16_HANDLER( K053250_1_rom_r )
 
 #if 0
 
-// old code (for reference; do not remove)
-#define ADJUST_FOR_ORIENTATION(type, orientation, bitmapi, bitmapp, x, y)	\
-	int dy = ((type *)bitmap->line[1]) - ((type *)bitmap->line[0]);			\
-	int dyp = ((UINT8 *)bitmapp->line[1]) - ((UINT8 *)bitmapp->line[0]);	\
-	type *dsti = (type *)bitmapi->line[0] + y * dy + x;						\
-	UINT8 *dstp = (UINT8 *)bitmapp->line[0] + y * dyp + x;					\
-	int xadv = 1;															\
-	if (orientation)														\
-	{																		\
-		int tx = x, ty = y, temp;											\
-		if ((orientation) & ORIENTATION_SWAP_XY)							\
-		{																	\
-			temp = tx; tx = ty; ty = temp;									\
-			xadv = dy;														\
-		}																	\
-		if ((orientation) & ORIENTATION_FLIP_X)								\
-		{																	\
-			tx = bitmap->width - 1 - tx;									\
-			if (!((orientation) & ORIENTATION_SWAP_XY)) xadv = -xadv;		\
-		}																	\
-		if ((orientation) & ORIENTATION_FLIP_Y)								\
-		{																	\
-			ty = bitmap->height - 1 - ty;									\
-			if ((orientation) & ORIENTATION_SWAP_XY) xadv = -xadv;			\
-		}																	\
-		/* can't lookup line because it may be negative! */					\
-		dsti = ((type *)bitmapi->line[0]) + dy * ty + tx;					\
-		dstp = ((UINT8 *)bitmapp->line[0]) + dyp * ty + tx;					\
-	}
-
 static void K053250_pdraw_scanline8(
 		mame_bitmap *bitmap,int x,int y,int length,
 		const UINT8 *src,pen_t *pens,int transparent_pen,UINT32 orient,int pri)
 {
 	/* 8bpp destination */
-	if (bitmap->depth == 8)
+	if (bitmap->bpp == 8)
 	{
 		/* adjust in case we're oddly oriented */
 		ADJUST_FOR_ORIENTATION(UINT8, orient, bitmap, priority_bitmap, x, y);
@@ -7711,7 +7672,7 @@ static void K053250_pdraw_scanline8(
 	}
 
 	/* 16bpp destination */
-	else if(bitmap->depth == 15 || bitmap->depth == 16)
+	else if(bitmap->bpp == 16)
 	{
 		/* adjust in case we're oddly oriented */
 		ADJUST_FOR_ORIENTATION(UINT16, orient, bitmap, priority_bitmap, x, y);
@@ -8131,16 +8092,16 @@ INLINE void K053250_pdraw_scanline32(mame_bitmap *bitmap, pen_t *palette, UINT8 
 		// calculate target increment for horizontal scanlines which is exactly one
 		dst_adv = 1;
 		dst_offset = dst_length;
-		pri_base = (UINT8 *)priority_bitmap->line[linepos] + dst_start + dst_offset;
-		dst_base = (UINT32 *)bitmap->line[linepos] + dst_start + dst_length;
+		pri_base = BITMAP_ADDR8(priority_bitmap, linepos, dst_start + dst_offset);
+		dst_base = BITMAP_ADDR32(bitmap, linepos, dst_start + dst_length);
 	}
 	else
 	{
 		// calculate target increment for vertical scanlines which is the bitmap's pitch value
 		dst_adv = bitmap->rowpixels;
 		dst_offset= dst_length * dst_adv;
-		pri_base = (UINT8 *)priority_bitmap->line[dst_start] + linepos + dst_offset;
-		dst_base = (UINT32 *)bitmap->line[dst_start] + linepos + dst_offset;
+		pri_base = BITMAP_ADDR8(priority_bitmap, dst_start, linepos + dst_offset);
+		dst_base = BITMAP_ADDR32(bitmap, dst_start, linepos + dst_offset);
 	}
 
 #if 0

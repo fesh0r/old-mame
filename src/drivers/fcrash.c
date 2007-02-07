@@ -39,29 +39,6 @@ from 2.bin to 9.bin program eproms
 #include "cpu/m68000/m68kmame.h"
 #include "cps1.h"
 
-/* in drivers/cps1.c */
-extern READ16_HANDLER( cps1_dsw_r );
-extern READ16_HANDLER( cps1_in0_r );
-extern READ16_HANDLER( cps1_in1_r );
-extern READ16_HANDLER( cps1_in2_r );
-extern READ16_HANDLER( cps1_in3_r );
-extern WRITE16_HANDLER( cps1_coinctrl_w );
-extern WRITE16_HANDLER( cps1_coinctrl2_w );
-extern gfx_decode cps1_gfxdecodeinfo[];
-extern INTERRUPT_GEN( cps1_interrupt );
-
-/* in vidhrdw/cps1.c */
-extern tilemap *cps1_bg_tilemap[3];
-extern UINT16 *cps1_gfxram;
-extern UINT16 *cps1_output;
-extern int cps1_port(int offset);
-extern void cps1_get_video_base(void);
-extern void cps1_build_palette(void);
-extern int cps1_scroll1x, cps1_scroll1y;
-extern int cps1_scroll2x, cps1_scroll2y;
-extern int cps1_scroll3x, cps1_scroll3y;
-extern UINT16 *cps1_other;
-
 /* not verified */
 #define CPS1_ROWSCROLL_OFFS     0x20    /* base of row scroll offsets in other RAM */
 
@@ -359,13 +336,14 @@ static MACHINE_DRIVER_START( fcrash )
 //  /* audio CPU */
 //  MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
-	MDRV_VISIBLE_AREA(8*8, (64-8)*8-1, 2*8, 30*8-1 )
+	MDRV_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 2*8, 30*8-1 )
 	MDRV_GFXDECODE(cps1_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(4096)
 

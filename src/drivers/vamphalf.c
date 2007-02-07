@@ -325,15 +325,16 @@ static MACHINE_DRIVER_START( common )
 	MDRV_CPU_PROGRAM_MAP(common_map,0)
 	MDRV_CPU_VBLANK_INT(irq4_line_pulse, 1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(93C46_vamphalf)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 512)
-	MDRV_VISIBLE_AREA(31, 350, 16, 255)
+	MDRV_SCREEN_VISIBLE_AREA(31, 350, 16, 255)
 
 	MDRV_PALETTE_LENGTH(0x8000)
 	MDRV_GFXDECODE(gfxdecodeinfo)
@@ -348,8 +349,8 @@ static MACHINE_DRIVER_START( sound_ym_oki )
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
-	MDRV_SOUND_ADD(OKIM6295, 1789772.5 / 132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1789772.5 )
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -584,8 +585,8 @@ PCB Layout
 F-E1-16-001
 |----------------------------------------------|
 |       M6295       VROM1    N341256           |
-|  YM3016                                      |
-|       YMXXXX    |---------|N341256           |
+|  YM3012                                      |
+|       YM2151    |---------|N341256           |
 |                 |Quicklogi|                  |
 |                 |c        |N341256           |
 |J                |QL2003-  |                  |
@@ -606,7 +607,7 @@ F-E1-16-001
 Notes:
       E1-16T clock : 50.000MHz
       M6295 clock  : 1.7897725MHz (14.31818/8). Sample Rate = 1789772.5 / 132
-      YMXXXX clock : 3.579545MHz (14.31818/4). Chip is either YM2151 or YM3812, actually stamped 'KA51'
+      YM2151 clock : 3.579545MHz (14.31818/4). Chip stamped 'KA51' on one PCB, BS901 on another
       VSync        : 60Hz
       N341256      : NKK N341256SJ-15 32K x8 SRAM (SOJ28)
       GM71C18163   : LG Semi GM71C18163 1M x16 EDO DRAM (SOJ44)

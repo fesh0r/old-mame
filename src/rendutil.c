@@ -4,7 +4,7 @@
 
     Core rendering utilities.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -605,7 +605,7 @@ mame_bitmap *render_load_png(const char *dirname, const char *filename, mame_bit
 	/* non-alpha case */
 	if (alphadest == NULL)
 	{
-		bitmap = bitmap_alloc_depth(png.width, png.height, 32);
+		bitmap = bitmap_alloc_format(png.width, png.height, BITMAP_FORMAT_ARGB32);
 		if (bitmap != NULL)
 			copy_png_to_bitmap(bitmap, &png, hasalpha);
 	}

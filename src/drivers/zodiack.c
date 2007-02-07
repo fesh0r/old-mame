@@ -20,29 +20,10 @@ TODO:
 
 #include "driver.h"
 #include "sound/ay8910.h"
+#include "includes/espial.h"
 
-extern UINT8 *zodiack_videoram2;
-extern UINT8 *zodiack_attributesram;
-extern UINT8 *zodiack_bulletsram;
-extern size_t zodiack_bulletsram_size;
-
-extern WRITE8_HANDLER( zodiack_videoram_w );
-extern WRITE8_HANDLER( zodiack_videoram2_w );
-extern WRITE8_HANDLER( zodiack_attributes_w );
-extern WRITE8_HANDLER( zodiack_flipscreen_w );
-
-extern PALETTE_INIT( zodiack );
-extern VIDEO_START( zodiack );
-extern VIDEO_UPDATE( zodiack );
 
 int percuss_hardware;
-
-extern MACHINE_RESET( espial );
-extern WRITE8_HANDLER( zodiac_master_interrupt_enable_w );
-extern INTERRUPT_GEN( zodiac_master_interrupt );
-extern WRITE8_HANDLER( zodiac_master_soundlatch_w );
-extern WRITE8_HANDLER( espial_sound_nmi_enable_w );
-extern INTERRUPT_GEN( espial_sound_nmi_gen );
 
 
 static MACHINE_RESET( zodiack )
@@ -504,15 +485,16 @@ static MACHINE_DRIVER_START( zodiack )
 	MDRV_CPU_IO_MAP(0,sound_writeport)
 	MDRV_CPU_VBLANK_INT(espial_sound_nmi_gen,8)	/* IRQs are triggered by the main CPU */
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)  /* frames per second, vblank duration */
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION  /* frames per second, vblank duration */)
 
 	MDRV_MACHINE_RESET(zodiack)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(49)
 	MDRV_COLORTABLE_LENGTH(4*8+2*8+2*1)

@@ -5,7 +5,7 @@
     Functions needed to generate timing and synchronization between several
     CPUs.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -16,6 +16,7 @@
 #define __TIMER_H__
 
 #include "mamecore.h"
+#include <math.h>
 
 
 /***************************************************************************
@@ -57,7 +58,11 @@
 
 /* macro for the RC time constant on a 74LS123 with C > 1000pF */
 /* R is in ohms, C is in farads */
-#define TIME_OF_74LS123(r,c)	(0.45 * (double)(r) * ((double)(c))
+#define TIME_OF_74LS123(r,c)	(0.45 * (double)(r) * ((double)(c)))
+
+/* macro for the RC time constant on a 555 timer IC */
+/* R is in ohms, C is in farads */
+#define TIME_OF_555(r,c)	(1.1 * (double)(r) * ((double)(c)))
 
 /* macros that map all allocations to provide file/line/functions to the callee */
 #define mame_timer_alloc(c)				_mame_timer_alloc(c, __FILE__, __LINE__, #c)
@@ -193,7 +198,7 @@ INLINE mame_time double_to_mame_time(double _time)
 		return time_never;
 
 	/* set seconds to the integral part */
-	abstime.seconds = (seconds_t)_time;
+	abstime.seconds = floor(_time);
 
 	/* set subseconds to the fractional part */
 	_time -= (double)abstime.seconds;

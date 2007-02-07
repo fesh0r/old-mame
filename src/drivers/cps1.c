@@ -160,14 +160,6 @@ Stephh's log (2006.09.20) :
 
 #include "cps1.h"       /* External CPS1 definitions */
 
-/* in machine/kabuki.c */
-void wof_decode(void);
-void dino_decode(void);
-void punisher_decode(void);
-void slammast_decode(void);
-
-
-
 READ16_HANDLER( cps1_dsw_r )
 {
 	static const char *dswname[3] = { "DSWA", "DSWB", "DSWC" };
@@ -235,6 +227,12 @@ static WRITE8_HANDLER( cps1_snd_bankswitch_w )
 	memory_set_bankptr(1,&RAM[0x10000 + bankaddr]);
 
 	if (data & 0xfe) logerror("%04x: write %02x to f004\n",activecpu_get_pc(),data);
+}
+
+static WRITE8_HANDLER( cps1_oki_pin7_w )
+{
+	logerror("%04x: write %02x to f006 (Oki Pin 7)\n",activecpu_get_pc(),data);
+	OKIM6295_set_pin7(0, (data & 1));
 }
 
 static WRITE16_HANDLER( cps1_sound_fade_w )
@@ -505,7 +503,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf001, 0xf001) AM_WRITE(YM2151_data_port_0_w)
 	AM_RANGE(0xf002, 0xf002) AM_WRITE(OKIM6295_data_0_w)
 	AM_RANGE(0xf004, 0xf004) AM_WRITE(cps1_snd_bankswitch_w)
-//  AM_RANGE(0xf006, 0xf006) AM_WRITE(MWA8_NOP) /* ???? Unknown ???? */
+	AM_RANGE(0xf006, 0xf006) AM_WRITE(cps1_oki_pin7_w) /* controls pin 7 of OKI chip */
 ADDRESS_MAP_END
 
 ADDRESS_MAP_START( qsound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -3928,13 +3926,14 @@ static MACHINE_DRIVER_START( cps1 )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_NEEDS_6BITS_PER_GUN)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
-	MDRV_VISIBLE_AREA(8*8, (64-8)*8-1, 2*8, 30*8-1 )
+	MDRV_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 2*8, 30*8-1 )
 	MDRV_GFXDECODE(cps1_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(4096)
 
@@ -3950,20 +3949,8 @@ static MACHINE_DRIVER_START( cps1 )
 	MDRV_SOUND_ROUTE(0, "mono", 0.35)
 	MDRV_SOUND_ROUTE(1, "mono", 0.35)
 
-	MDRV_SOUND_ADD_TAG("okim", OKIM6295, 7576)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
-MACHINE_DRIVER_END
-
-
-static MACHINE_DRIVER_START( forgottn )
-
-	/* basic machine hardware */
-	MDRV_IMPORT_FROM(cps1)
-
-	/* sound hardware */
-	MDRV_SOUND_REPLACE("okim", OKIM6295, 6061)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD_TAG("okim", OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // pin 7 can be changed by the game code, see f006 on z80
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
@@ -7776,8 +7763,8 @@ static DRIVER_INIT( pang3 )
 
 
 
-GAME( 1988, forgottn, 0,        forgottn, forgottn, cps1,     ROT0,   "Capcom", "Forgotten Worlds (US)", 0 )
-GAME( 1988, lostwrld, forgottn, forgottn, forgottn, cps1,     ROT0,   "Capcom", "Lost Worlds (Japan)", 0 )
+GAME( 1988, forgottn, 0,        cps1,     forgottn, cps1,     ROT0,   "Capcom", "Forgotten Worlds (US)", 0 )
+GAME( 1988, lostwrld, forgottn, cps1,     forgottn, cps1,     ROT0,   "Capcom", "Lost Worlds (Japan)", 0 )
 GAME( 1988, ghouls,   0,        cps1,     ghouls,   cps1,     ROT0,   "Capcom", "Ghouls'n Ghosts (World)" , 0)						// Wed.26.10.1988 in the ROMS
 GAME( 1988, ghoulsu,  ghouls,   cps1,     ghoulsu,  cps1,     ROT0,   "Capcom", "Ghouls'n Ghosts (US)" , 0)						// Wed.26.10.1988 in the ROMS
 GAME( 1988, daimakai, ghouls,   cps1,     daimakai, cps1,     ROT0,   "Capcom", "Dai Makai-Mura (Japan)" , 0)						// Wed.26.10.1988 in the ROMS

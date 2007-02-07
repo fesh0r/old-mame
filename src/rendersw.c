@@ -4,7 +4,7 @@
 
     Software-only rasterization system.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -105,7 +105,7 @@ INLINE float round_nearest(float f)
 }
 
 
-INLINE UINT32 ycc_to_rgb(UINT8 y, UINT8 cr, UINT8 cb)
+INLINE UINT32 ycc_to_rgb(UINT8 y, UINT8 cb, UINT8 cr)
 {
 	/* original equations:
 

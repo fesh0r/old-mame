@@ -152,13 +152,7 @@ Notes:
 
 #include "driver.h"
 #include "sound/x1_010.h"
-
-extern unsigned char *tnzs_objram, *tnzs_sharedram;
-extern unsigned char *tnzs_vdcram, *tnzs_scrollram, *tnzs_objctrl, *tnzs_bg_flag;
-
-PALETTE_INIT( arknoid2 );
-VIDEO_UPDATE( tnzs );
-VIDEO_EOF( tnzs );
+#include "includes/tnzs.h"
 
 static UINT8 last_trackball_val[2] = {0,0};
 
@@ -341,17 +335,18 @@ static MACHINE_DRIVER_START( champbwl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 16000000/4) /* 4MHz */
 	MDRV_CPU_PROGRAM_MAP(champbwl_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(57.5)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(57.5)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 48*8-1, 1*8, 31*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 1*8, 31*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(512)
 

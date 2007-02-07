@@ -5,17 +5,7 @@ Atari Sprint 8 driver
 ***************************************************************************/
 
 #include "driver.h"
-
-extern VIDEO_EOF( sprint8 );
-extern VIDEO_START( sprint8 );
-extern VIDEO_UPDATE( sprint8 );
-
-extern WRITE8_HANDLER( sprint8_video_ram_w );
-
-extern UINT8* sprint8_video_ram;
-extern UINT8* sprint8_pos_h_ram;
-extern UINT8* sprint8_pos_v_ram;
-extern UINT8* sprint8_pos_d_ram;
+#include "includes/sprint8.h"
 
 static int steer_dir[8];
 static int steer_flag[8];
@@ -545,14 +535,15 @@ static MACHINE_DRIVER_START( sprint8 )
 	MDRV_CPU_ADD(M6800, 11055000 / 11) /* ? */
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(29 * 1000000 / 15750)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(29 * 1000000 / 15750))
 	MDRV_MACHINE_RESET(sprint8)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 261)
-	MDRV_VISIBLE_AREA(0, 495, 0, 231)
+	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 231)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(18)
 	MDRV_COLORTABLE_LENGTH(36)

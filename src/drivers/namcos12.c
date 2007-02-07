@@ -1320,64 +1320,6 @@ static struct C352interface c352_interface =
 	REGION_SOUND1
 };
 
-static int gunxmin;
-static int gunxmax;
-static int gunxflip;
-static int gunymin;
-static int gunymax;
-static int gunyflip;
-
-static int gunx( int port )
-{
-	int x = readinputport( port );
-	if( gunxflip )
-	{
-		x = gunxmax - x;
-	}
-	else
-	{
-		x = x - gunxmin;
-	}
-	x *= ( Machine->screen[0].visarea.max_x - Machine->screen[0].visarea.min_x );
-	x /= ( gunxmax - gunxmin );
-	return Machine->screen[0].visarea.min_x + x;
-}
-
-static int guny( int port )
-{
-	int y = readinputport( port );
-	if( gunyflip )
-	{
-		y = gunymax - y;
-	}
-	else
-	{
-		y = y - gunymin;
-	}
-	y *= ( Machine->screen[0].visarea.max_y - Machine->screen[0].visarea.min_y );
-	y /= ( gunymax - gunymin );
-	return Machine->screen[0].visarea.min_y + y;
-}
-
-static void s12_draw_crosshair( mame_bitmap *bitmap, const char *xtag, const char *ytag, const rectangle *cliprect, int player )
-{
-	int xindex = port_tag_to_index( xtag );
-	int yindex = port_tag_to_index( ytag );
-	if( xindex != -1 && yindex != -1 )
-	{
-		draw_crosshair( bitmap, gunx( xindex ), guny( yindex ), cliprect, player );
-	}
-}
-
-static VIDEO_UPDATE( coh700g )
-{
-	video_update_psx( machine, screen, bitmap, cliprect );
-
-	s12_draw_crosshair( bitmap, "IN3", "IN4", cliprect, 0 );
-	s12_draw_crosshair( bitmap, "IN5", "IN6", cliprect, 1 );
-	return 0;
-}
-
 static DRIVER_INIT( namcos12 )
 {
 	psx_driver_init();
@@ -1393,14 +1335,6 @@ static DRIVER_INIT( ptblank2 )
 	*( (UINT32 *)( memory_region( REGION_USER1 ) + 0x331c4 ) ) = 0;
 
 	system11gun_install();
-
-	gunxmin = 0xd8;
-	gunxmax = 0x387;
-	gunxflip = 0;
-
-	gunymin = 0x2c;
-	gunymax = 0x11b;
-	gunyflip = 0;
 }
 
 static DRIVER_INIT( ghlpanic )
@@ -1408,27 +1342,11 @@ static DRIVER_INIT( ghlpanic )
 	init_namcos12(machine);
 
 	system11gun_install();
-
-	gunxmin = 0xc0;
-	gunxmax = 0x35f;
-	gunxflip = 0;
-
-	gunymin = 0x1a;
-	gunymax = 0x109;
-	gunyflip = 0;
 }
 
 static DRIVER_INIT( golgo13 )
 {
 	init_namcos12(machine);
-
-	gunxmin = 0x9c;
-	gunxmax = 0x29b;
-	gunxflip = 0;
-
-	gunymin = 0x1f;
-	gunymax = 0x1de;
-	gunyflip = 1;
 }
 
 static MACHINE_DRIVER_START( coh700 )
@@ -1442,8 +1360,8 @@ static MACHINE_DRIVER_START( coh700 )
 	MDRV_CPU_IO_MAP( s12h8iomap, 0 )
 	MDRV_CPU_VBLANK_INT( irq1_line_pulse, 1 );
 
-	MDRV_FRAMES_PER_SECOND( 60 )
-	MDRV_VBLANK_DURATION( 0 )
+	MDRV_SCREEN_REFRESH_RATE( 60 )
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC( 0 ))
 
 	MDRV_MACHINE_START( namcos12 )
 	MDRV_MACHINE_RESET( namcos12 )
@@ -1451,8 +1369,9 @@ static MACHINE_DRIVER_START( coh700 )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_VISIBLE_AREA( 0, 639, 0, 479 )
+	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
 	MDRV_PALETTE_LENGTH( 65536 )
 
 	MDRV_PALETTE_INIT( psx )
@@ -1468,12 +1387,6 @@ static MACHINE_DRIVER_START( coh700 )
 	MDRV_SOUND_ROUTE(1, "left", 1.00)
 	MDRV_SOUND_ROUTE(2, "right", 1.00)
 	MDRV_SOUND_ROUTE(3, "left", 1.00)
-MACHINE_DRIVER_END
-
-static MACHINE_DRIVER_START( coh700g )
-	MDRV_IMPORT_FROM( coh700 )
-
-	MDRV_VIDEO_UPDATE( coh700g )
 MACHINE_DRIVER_END
 
 INPUT_PORTS_START( namcos12 )
@@ -1533,16 +1446,16 @@ INPUT_PORTS_START( ptblank2 )
 	PORT_BIT( 0x00ee, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("IN3")
-	PORT_BIT( 0xffff, 0x022f, IPT_LIGHTGUN_X ) PORT_MINMAX(0xd8,0x387) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xffff, 0x022f, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0xd8,0x387) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	PORT_START_TAG("IN4")
-	PORT_BIT( 0xffff, 0x00a8, IPT_LIGHTGUN_Y ) PORT_MINMAX(0x2c,0x11b) PORT_SENSITIVITY(50) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xffff, 0x00a8, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0x2c,0x11b) PORT_SENSITIVITY(50) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	PORT_START_TAG("IN5")
-	PORT_BIT( 0xffff, 0x022f, IPT_LIGHTGUN_X ) PORT_MINMAX(0xd8,0x387) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(2)
+	PORT_BIT( 0xffff, 0x022f, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0xd8,0x387) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
 	PORT_START_TAG("IN6")
-	PORT_BIT( 0xffff, 0x00a8, IPT_LIGHTGUN_Y ) PORT_MINMAX(0x2c,0x11b) PORT_SENSITIVITY(50) PORT_KEYDELTA(15) PORT_PLAYER(2)
+	PORT_BIT( 0xffff, 0x00a8, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0x2c,0x11b) PORT_SENSITIVITY(50) PORT_KEYDELTA(15) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( ghlpanic )
@@ -1555,16 +1468,16 @@ INPUT_PORTS_START( ghlpanic )
 	PORT_BIT( 0x00ee, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("IN3")
-	PORT_BIT( 0xffff, 0x0210, IPT_LIGHTGUN_X ) PORT_MINMAX(0xc0,0x35f) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xffff, 0x0210, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0xc0,0x35f) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	PORT_START_TAG("IN4")
-	PORT_BIT( 0xffff, 0x0091, IPT_LIGHTGUN_Y ) PORT_MINMAX(0x1a,0x109) PORT_SENSITIVITY(50) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xffff, 0x0091, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0x1a,0x109) PORT_SENSITIVITY(50) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	PORT_START_TAG("IN5")
-	PORT_BIT( 0xffff, 0x0210, IPT_LIGHTGUN_X ) PORT_MINMAX(0xc0,0x35f) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(2)
+	PORT_BIT( 0xffff, 0x0210, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0xc0,0x35f) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
 	PORT_START_TAG("IN6")
-	PORT_BIT( 0xffff, 0x0091, IPT_LIGHTGUN_Y ) PORT_MINMAX(0x1a,0x109) PORT_SENSITIVITY(50) PORT_KEYDELTA(15) PORT_PLAYER(2)
+	PORT_BIT( 0xffff, 0x0091, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0x1a,0x109) PORT_SENSITIVITY(50) PORT_KEYDELTA(15) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 INPUT_PORTS_START( golgo13 )
@@ -1580,10 +1493,10 @@ INPUT_PORTS_START( golgo13 )
 	PORT_BIT( 0x10ee, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("IN3")
-	PORT_BIT( 0xffff, 0x019b, IPT_LIGHTGUN_X ) PORT_MINMAX(0x9c,0x29b) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(1)
+	PORT_BIT( 0xffff, 0x019b, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0x9c,0x29b) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	PORT_START_TAG("IN4")
-	PORT_BIT( 0xffff, 0x00fe, IPT_LIGHTGUN_Y ) PORT_MINMAX(0x1f,0x1de) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(1) PORT_REVERSE
+	PORT_BIT( 0xffff, 0x00fe, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, -1.0, 0.0, 0) PORT_MINMAX(0x1f,0x1de) PORT_SENSITIVITY(100) PORT_KEYDELTA(15) PORT_PLAYER(1) PORT_REVERSE
 INPUT_PORTS_END
 
 ROM_START( aquarush )
@@ -2194,16 +2107,16 @@ GAME( 1998, tenkomor,  0,        coh700,   namcos12, namcos12, ROT90, "Namco",  
 GAME( 1998, tenkomoj,  tenkomor, coh700,   namcos12, namcos12, ROT90, "Namco",        "Tenkomori Shooting (TKM1/VER.A1)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC036 */
 GAME( 1998, fgtlayer,  0,        coh700,   namcos12, namcos12, ROT0, "Arika/Namco",   "Fighting Layer (FTL0/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC037 */
 GAME( 1999, pacapp,    0,        coh700,   namcos12, namcos12, ROT0, "Produce/Namco", "Paca Paca Passion (PPP1/VER.A2)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC038 */
-GAME( 1999, ptblank2,  0,        coh700g,  ptblank2, ptblank2, ROT0, "Namco",         "Point Blank 2 (GNB5/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC042 */
+GAME( 1999, ptblank2,  0,        coh700,   ptblank2, ptblank2, ROT0, "Namco",         "Point Blank 2 (GNB5/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC042 */
 GAME( 1999, sws99,     0,        coh700,   namcos12, namcos12, ROT0, "Namco",         "Super World Stadium '99 (SS91/VER.A3)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC043 */
 GAME( 1999, tektagt,   0,        coh700,   namcos12, namcos12, ROT0, "Namco",         "Tekken Tag Tournament (TEG3/VER.C1)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) /* KC044 */
 GAME( 1999, tektagta,  tektagt,  coh700,   namcos12, namcos12, ROT0, "Namco",         "Tekken Tag Tournament (TEG3/VER.B)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) /* KC044 */
 GAME( 1999, tektagtb,  tektagt,  coh700,   namcos12, namcos12, ROT0, "Namco",         "Tekken Tag Tournament (TEG1/VER.B)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) /* KC044 */
 GAME( 1999, tektagtc,  tektagt,  coh700,   namcos12, namcos12, ROT0, "Namco",         "Tekken Tag Tournament (TEG1/VER.A3)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) /* KC044 */
-GAME( 1999, ghlpanic,  0,        coh700g,  ghlpanic, ghlpanic, ROT0, "Namco",         "Ghoul Panic (OB2/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC045 */
+GAME( 1999, ghlpanic,  0,        coh700,   ghlpanic, ghlpanic, ROT0, "Namco",         "Ghoul Panic (OB2/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC045 */
 GAME( 1999, pacapp2,   0,        coh700,   namcos12, namcos12, ROT0, "Produce/Namco", "Paca Paca Passion 2 (PKS1/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC046 */
 GAME( 1999, mrdrillr,  0,        coh700,   namcos12, namcos12, ROT0, "Namco",         "Mr Driller (DRI1/VER.A2)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC048 */
 GAME( 1999, pacappsp,  0,        coh700,   namcos12, namcos12, ROT0, "Produce/Namco", "Paca Paca Passion Special (PSP1/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC052 */
 GAME( 1999, aquarush,  0,        coh700,   namcos12, namcos12, ROT0, "Namco",         "Aqua Rush (AQ1/VER.A1)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC053 */
-GAME( 1999, golgo13,   0,        coh700g,  golgo13,  golgo13,  ROT0, "Raizing/Namco", "Golgo 13 (GLG1/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC054 */
-GAME( 1999, g13knd,    0,        coh700g,  golgo13,  golgo13,  ROT0, "Raizing/Namco", "Golgo 13 Kiseki no Dandou (GLS1/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC059 */
+GAME( 1999, golgo13,   0,        coh700,   golgo13,  golgo13,  ROT0, "Raizing/Namco", "Golgo 13 (GLG1/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC054 */
+GAME( 1999, g13knd,    0,        coh700,   golgo13,  golgo13,  ROT0, "Raizing/Namco", "Golgo 13 Kiseki no Dandou (GLS1/VER.A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND ) /* KC059 */

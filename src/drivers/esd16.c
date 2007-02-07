@@ -541,13 +541,14 @@ static MACHINE_DRIVER_START( multchmp )
 	MDRV_CPU_IO_MAP(multchmp_sound_readport,multchmp_sound_writeport)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,32)	/* IRQ By Main CPU */
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(0x140, 0x100)
-	MDRV_VISIBLE_AREA(0, 0x140-1, 0+8, 0x100-8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0, 0x140-1, 0+8, 0x100-8-1)
 	MDRV_GFXDECODE(esd16_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(768)
 
@@ -560,8 +561,8 @@ static MACHINE_DRIVER_START( multchmp )
 	MDRV_SOUND_ADD(YM3812, 4000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(OKIM6295, 8000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 MACHINE_DRIVER_END
 
@@ -613,17 +614,36 @@ MACHINE_DRIVER_END
 /***************************************************************************
 
                                 Multi Champ
+PCB Layout
+----------
 
-(C) ESD 1998
+ESD 11-09-98
++-----------------------------------------+
+|       YM3812   6116    su10         fu27|
+|VOL    YM3014   su06    M6295        fu32|
+|           PAL  Z80                  fu26|
+|        6116                         fu30|
+|J       6116            Actel        fu28|
+|A DSWA DSWB    76C256   A40MX04      fu31|
+|M              76C256                fu29|
+|M    cu03 76C256   6116 Actel    PAL fu33|
+|A    cu02 76C256   6116 A40MX04  PAL ju07|
+|      68000              6116        ju03|
+|       PAL               6116 PAL    ju04|
+|       PAL               6116 PAL    ju05|
+|16MHz 14MHz              6116 PAL    ju06|
++-----------------------------------------+
+
+(C) ESD 1998, 1999
 PCB No. ESD 11-09-98    (Probably the manufacture date)
-CPU: MC68HC000FN16 (68000, 68 pin square socketed)
-SND: Z80, U6612 (YM3812), AD-65 (OKI 6295), U6614 (YM3014)
+CPU: MC68HC000FN16 (68000, 68 pin PLCC socketed)
+SND: Z80 (Z0840006PSC), U6614/U6612 (YM3014/YM3812), AD-65 (OKI M6295)
 OSC: 16.000MHz, 14.000MHz
 RAM: 4 x 62256, 9 x 6116
 DIPS: 2 x 8 position
 Dip info is in Japanese! I will scan and make it available on my site for translation.
 
-Other Chips: 2 x ACTEL A40MX04 (84 pin square socketed)
+Other Chips: 2 x Actel A40MX04-F FPGA (PLCC84)
 8 PAL's (not dumped)
 
 ROMS:
@@ -631,18 +651,18 @@ ROMS:
 MULTCHMP.U02  \   Main Program     MX27C2000
 MULTCHMP.U03  /                    MX27C2000
 MULTCHMP.U06   -- Sound Program    27C010
-MULTCHMP.U10   -- ADPCM Samples ?  27C010
+MULTCHMP.U10   -- ADPCM Samples    27C010
 MULTCHMP.U27 -\                    27C4001
 MULTCHMP.U28   \                   27C4001
 MULTCHMP.U29    |                  27C4001
-MULTCHMP.U30    |                  27C4001
+MULTCHMP.U30    + Backgrounds      27C4001
 MULTCHMP.U31    |                  27C4001
 MULTCHMP.U32    |                  27C4001
-MULTCHMP.U33    +- GFX             27C4001
-MULTCHMP.U34    |                  27C4001
-MULTCHMP.U35    |                  MX27C2000
-MULTCHMP.U36    |                  MX27C2000
-MULTCHMP.U37    |                  MX27C2000
+MULTCHMP.U33   /                   27C4001
+MULTCHMP.U34 -/                    27C4001
+MULTCHMP.U35 -\                    MX27C2000
+MULTCHMP.U36   \                   MX27C2000
+MULTCHMP.U37    +- Sprites         MX27C2000
 MULTCHMP.U38   /                   MX27C2000
 MULTCHMP.U39 -/                    MX27C2000
 

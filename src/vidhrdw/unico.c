@@ -39,10 +39,6 @@ Note:   if MAME_DEBUG is defined, pressing Z with:
 #include "driver.h"
 #include "unico.h"
 
-/* Variables defined in drivers: */
-
-extern int unico_has_lightgun;
-
 /* Variables needed by drivers: */
 
 UINT16 *unico_vram_0,   *unico_scrollx_0, *unico_scrolly_0;
@@ -155,8 +151,6 @@ VIDEO_START( unico )
 	tilemap_2 = tilemap_create(	get_tile_info_2,tilemap_scan_rows,
 								TILEMAP_TRANSPARENT,	16,16,	0x40, 0x40);
 
-	if (!tilemap_0 || !tilemap_1 || !tilemap_2)	return 1;
-
 	sprites_scrolldx = -0x3f;
 	sprites_scrolldy = -0x0e;
 
@@ -184,8 +178,6 @@ VIDEO_START( zeropnt2 )
 
 	tilemap_2 = tilemap_create(	get_tile_info32_2,tilemap_scan_rows,
 								TILEMAP_TRANSPARENT,	16,16,	0x40, 0x40);
-
-	if (!tilemap_0 || !tilemap_1 || !tilemap_2)	return 1;
 
 	sprites_scrolldx = -0x3f;
 	sprites_scrolldy = -0x0e;
@@ -380,18 +372,6 @@ if ( code_pressed(KEYCODE_Z) || code_pressed(KEYCODE_X) )
 	/* Sprites are drawn last, using pdrawgfx */
 	if (layers_ctrl & 8)	unico_draw_sprites(bitmap,cliprect);
 
-	/* Draw the gunsight for ligth gun games */
-	if (unico_has_lightgun) {
-		draw_crosshair(bitmap,
-			readinputport(6)*384/256,
-			readinputport(5)*224/256,
-			cliprect,0);
-
-		draw_crosshair(bitmap,
-			readinputport(4)*384/256,
-			readinputport(3)*224/256,
-			cliprect,1);
-	}
 	return 0;
 }
 
@@ -431,18 +411,6 @@ if ( code_pressed(KEYCODE_Z) || code_pressed(KEYCODE_X) )
 	/* Sprites are drawn last, using pdrawgfx */
 	if (layers_ctrl & 8)	unico_draw_sprites32(bitmap,cliprect);
 
-	/* Draw the gunsight for ligth gun games */
-	if (unico_has_lightgun) {
-		draw_crosshair(bitmap,
-			readinputport(6)*384/256,
-			readinputport(5)*224/256,
-			cliprect,0);
-
-		draw_crosshair(bitmap,
-			readinputport(4)*384/256,
-			readinputport(3)*224/256,
-			cliprect,1);
-	}
 	return 0;
 }
 

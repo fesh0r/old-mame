@@ -83,11 +83,6 @@ static UINT32 defval;
     IMPLEMENTATION
 ***************************************************************************/
 
-#if 0
-#pragma mark INLINE HELPERS
-#endif
-
-
 static void illegal(void)
 {
 #ifdef MAME_DEBUG
@@ -141,11 +136,6 @@ static void update_special(int dreg)
 /***************************************************************************
     CONDITION CODES
 ***************************************************************************/
-
-#if 0
-#pragma mark -
-#pragma mark CONDITION CODES
-#endif
 
 #define	CONDITION_LO	(IREG(TMR_ST) & CFLAG)
 #define CONDITION_LS	(IREG(TMR_ST) & (CFLAG | ZFLAG))
@@ -201,11 +191,6 @@ static int condition(int which)
 /***************************************************************************
     FLOATING POINT HELPERS
 ***************************************************************************/
-
-#if 0
-#pragma mark -
-#pragma mark FLOATING POINT HELPERS
-#endif
 
 #if USE_FP
 void double_to_dsp_with_flags(double val, union genreg *result)
@@ -730,11 +715,6 @@ static void mpyf(union genreg *dst, union genreg *src1, union genreg *src2)
     INDIRECT MEMORY REFS
 ***************************************************************************/
 
-#if 0
-#pragma mark -
-#pragma mark INDIRECT MEMORY REFS
-#endif
-
 /* immediate displacement variants */
 
 static UINT32 mod00_d(UINT8 ar)
@@ -1224,11 +1204,6 @@ static UINT32 (*indirect_1_def[0x20])(UINT8) =
 };
 
 
-
-#if 0
-#pragma mark -
-#pragma mark GENERAL OPS
-#endif
 
 /*-----------------------------------------------------*/
 
@@ -2360,12 +2335,12 @@ static void maxspeed(void) { unimplemented(); }
 	CLR_NVUF();														\
 	if (man < 0x7fffff80)											\
 	{																\
-		SET_MANTISSA(&tms32031.r[dreg], (man + 0x80) & 0xffffff00);	\
+		SET_MANTISSA(&tms32031.r[dreg], ((UINT32)man + 0x80) & 0xffffff00);	\
 		OR_NUF(&tms32031.r[dreg]);									\
 	}																\
 	else if (FREGEXP(dreg) < 127)									\
 	{																\
-		SET_MANTISSA(&tms32031.r[dreg], (man + 0x80) & 0x7fffff00);	\
+		SET_MANTISSA(&tms32031.r[dreg], ((UINT32)man + 0x80) & 0x7fffff00);	\
 		SET_EXPONENT(&tms32031.r[dreg], FREGEXP(dreg) + 1);			\
 		OR_NUF(&tms32031.r[dreg]);									\
 	}																\
@@ -2934,12 +2909,6 @@ static void iack_ind(void)
 	if (tms32031.iack_w)
 		(*tms32031.iack_w)(CLEAR_LINE, addr);
 }
-
-
-#if 0
-#pragma mark -
-#pragma mark 3-OPERAND OPS
-#endif
 
 /*-----------------------------------------------------*/
 
@@ -3542,12 +3511,6 @@ static void xor3_indind(void)
 }
 
 /*-----------------------------------------------------*/
-
-
-#if 0
-#pragma mark -
-#pragma mark CONDITIONAL LOAD OPS
-#endif
 
 static void ldfu_reg(void)
 {
@@ -5263,12 +5226,6 @@ static void ldizuf_imm(void)
 
 /*-----------------------------------------------------*/
 
-
-#if 0
-#pragma mark -
-#pragma mark BRANCH OPS
-#endif
-
 INLINE void execute_delayed(UINT32 newpc)
 {
 	tms32031.delayed = 1;
@@ -5469,14 +5426,6 @@ static void retsc_reg(void)
 		tms32031_icount -= 3*2;
 	}
 }
-
-/*-----------------------------------------------------*/
-
-
-#if 0
-#pragma mark -
-#pragma mark PARALLEL OPS
-#endif
 
 /*-----------------------------------------------------*/
 
@@ -6073,11 +6022,6 @@ static void xor3sti(void)
 /***************************************************************************
     FUNCTION TABLE
 ***************************************************************************/
-
-#if 0
-#pragma mark -
-#pragma mark FUNCTION TABLE
-#endif
 
 void (*tms32031ops[])(void) =
 {

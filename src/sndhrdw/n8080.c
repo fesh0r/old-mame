@@ -8,14 +8,8 @@
 #include "cpu/i8039/i8039.h"
 #include "sound/sn76477.h"
 #include "sound/dac.h"
+#include "includes/n8080.h"
 #include <math.h>
-
-extern int helifire_flash;
-
-extern int spacefev_red_screen;
-extern int spacefev_red_cannon;
-
-extern void spacefev_start_red_cannon(void);
 
 static int n8080_hardware;
 
@@ -54,6 +48,13 @@ struct SN76477interface sheriff_sn76477_interface =
 	CAP_N(47)  ,  /* 21 */
 	CAP_N(47)  ,  /* 23 */
 	RES_K(560) ,  /* 24 */
+	0,			  /* 22 vco */
+	0,			  /* 26 mixer A */
+	0,			  /* 25 mixer B */
+	0,			  /* 27 mixer C */
+	1,			  /* 1  envelope 1 */
+	0,			  /* 28 envelope 2 */
+	1			  /* 9  enable */
 };
 
 
@@ -75,6 +76,13 @@ struct SN76477interface spacefev_sn76477_interface =
 	CAP_N(47)  ,  /* 21 */
 	CAP_N(47)  ,  /* 23 */
 	RES_K(820) ,  /* 24 */
+	0,			  /* 22 vco */
+	0,			  /* 26 mixer A */
+	0,			  /* 25 mixer B */
+	0,			  /* 27 mixer C */
+	1,			  /* 1  envelope 1 */
+	0,			  /* 28 envelope 2 */
+	1			  /* 9  enable */
 };
 
 
@@ -92,9 +100,9 @@ static void spacefev_update_SN76477_status(void)
 		dblR1 = 1 / (1 / RES_K(620) + 1 / dblR1); /* ? */
 	}
 
-	SN76477_set_decay_res(0, dblR0);
+	SN76477_decay_res_w(0, dblR0);
 
-	SN76477_set_vco_res(0, dblR1);
+	SN76477_vco_res_w(0, dblR1);
 
 	SN76477_enable_w(0,
 		!mono_flop[0] &&
@@ -111,11 +119,11 @@ static void sheriff_update_SN76477_status(void)
 {
 	if (mono_flop[1])
 	{
-		SN76477_set_vco_voltage(0, 5);
+		SN76477_vco_voltage_w(0, 5);
 	}
 	else
 	{
-		SN76477_set_vco_voltage(0, 0);
+		SN76477_vco_voltage_w(0, 0);
 	}
 
 	SN76477_enable_w(0,
@@ -421,7 +429,7 @@ static void spacefev_vco_voltage_timer(int dummy)
 		voltage = 5 * (1 - exp(- timer_timeelapsed(sound_timer[2]) / 0.22));
 	}
 
-	SN76477_set_vco_voltage(0, voltage);
+	SN76477_vco_voltage_w(0, voltage);
 }
 
 
@@ -450,13 +458,6 @@ static MACHINE_RESET( spacefev_sound )
 	sound_timer[1] = timer_alloc(stop_mono_flop);
 	sound_timer[2] = timer_alloc(stop_mono_flop);
 
-	SN76477_envelope_1_w(0, 1);
-	SN76477_envelope_2_w(0, 0);
-	SN76477_mixer_a_w(0, 0);
-	SN76477_mixer_b_w(0, 0);
-	SN76477_mixer_c_w(0, 0);
-	SN76477_noise_clock_w(0, 0);
-
 	mono_flop[0] = 0;
 	mono_flop[1] = 0;
 	mono_flop[2] = 0;
@@ -472,13 +473,6 @@ static MACHINE_RESET( sheriff_sound )
 
 	sound_timer[0] = timer_alloc(stop_mono_flop);
 	sound_timer[1] = timer_alloc(stop_mono_flop);
-
-	SN76477_envelope_1_w(0, 1);
-	SN76477_envelope_2_w(0, 0);
-	SN76477_mixer_a_w(0, 0);
-	SN76477_mixer_b_w(0, 0);
-	SN76477_mixer_c_w(0, 0);
-	SN76477_noise_clock_w(0, 0);
 
 	mono_flop[0] = 0;
 	mono_flop[1] = 0;

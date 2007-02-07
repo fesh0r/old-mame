@@ -4,7 +4,7 @@
 
     Core sound interface functions and definitions.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -106,14 +106,12 @@ enum
 	SOUND_RF5C400,
 	SOUND_SPEAKER,
 	SOUND_CDP1869,
-
-#ifdef MESS
 	SOUND_BEEP,
 	SOUND_WAVE,
 	SOUND_SID6581,
 	SOUND_SID8580,
 	SOUND_SP0256,
-#endif
+	SOUND_S14001A,
 
 	/* filters start here */
 	SOUND_FILTER_VOLUME,

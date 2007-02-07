@@ -291,16 +291,17 @@ static MACHINE_DRIVER_START( pirates )
 	MDRV_CPU_PROGRAM_MAP(pirates_readmem,pirates_writemem)
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(pirates)
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 32*8)
-	MDRV_VISIBLE_AREA(0*8, 36*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 2*8, 30*8-1)
 	MDRV_PALETTE_LENGTH(0x2000)
 
 	MDRV_VIDEO_START(pirates)
@@ -308,8 +309,8 @@ static MACHINE_DRIVER_START( pirates )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1333333/165)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1)
+	MDRV_SOUND_ADD(OKIM6295, 1333333)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -370,9 +371,7 @@ static void pirates_decrypt_68k(void)
 
     rom_size = memory_region_length(REGION_CPU1);
 
-    buf = malloc(rom_size);
-
-    if (!buf) return;
+    buf = malloc_or_die(rom_size);
 
     rom = (UINT16 *)memory_region(REGION_CPU1);
     memcpy (buf, rom, rom_size);
@@ -401,9 +400,7 @@ static void pirates_decrypt_p(void)
 
     rom_size = memory_region_length(REGION_GFX1);
 
-    buf = malloc(rom_size);
-
-    if (!buf) return;
+    buf = malloc_or_die(rom_size);
 
     rom = memory_region(REGION_GFX1);
     memcpy (buf, rom, rom_size);
@@ -427,9 +424,7 @@ static void pirates_decrypt_s(void)
 
     rom_size = memory_region_length(REGION_GFX2);
 
-    buf = malloc(rom_size);
-
-    if (!buf) return;
+    buf = malloc_or_die(rom_size);
 
     rom = memory_region(REGION_GFX2);
     memcpy (buf, rom, rom_size);
@@ -454,9 +449,7 @@ static void pirates_decrypt_oki(void)
 
     rom_size = memory_region_length(REGION_SOUND1);
 
-    buf = malloc(rom_size);
-
-    if (!buf) return;
+    buf = malloc_or_die(rom_size);
 
     rom = memory_region(REGION_SOUND1);
     memcpy (buf, rom, rom_size);

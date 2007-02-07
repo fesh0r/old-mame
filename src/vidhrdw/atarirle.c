@@ -342,20 +342,16 @@ int atarirle_init(int map, const struct atarirle_desc *desc)
 	memset(mo->spriteram, 0, sizeof(mo->spriteram[0]) * mo->spriteramsize);
 
 	/* allocate bitmaps */
-	mo->vram[0][0] = auto_bitmap_alloc_depth(Machine->screen[0].width, Machine->screen[0].height, 16);
-	mo->vram[0][1] = auto_bitmap_alloc_depth(Machine->screen[0].width, Machine->screen[0].height, 16);
-	if (!mo->vram[0][0] || !mo->vram[0][1])
-		return 0;
+	mo->vram[0][0] = auto_bitmap_alloc_format(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	mo->vram[0][1] = auto_bitmap_alloc_format(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
 	fillbitmap(mo->vram[0][0], 0, NULL);
 	fillbitmap(mo->vram[0][1], 0, NULL);
 
 	/* allocate alternate bitmaps if needed */
 	if (mo->vrammask.mask != 0)
 	{
-		mo->vram[1][0] = auto_bitmap_alloc_depth(Machine->screen[0].width, Machine->screen[0].height, 16);
-		mo->vram[1][1] = auto_bitmap_alloc_depth(Machine->screen[0].width, Machine->screen[0].height, 16);
-		if (!mo->vram[1][0] || !mo->vram[1][1])
-			return 0;
+		mo->vram[1][0] = auto_bitmap_alloc_format(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+		mo->vram[1][1] = auto_bitmap_alloc_format(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
 		fillbitmap(mo->vram[1][0], 0, NULL);
 		fillbitmap(mo->vram[1][1], 0, NULL);
 	}
@@ -929,17 +925,11 @@ void draw_rle(struct atarirle_data *mo, mame_bitmap *bitmap, int code, int color
 		return;
 
 	/* 16-bit case */
-	if (bitmap->depth == 16)
-	{
-		if (!hflip)
-			draw_rle_zoom(bitmap, info, palettebase, x, y, xscale << 4, yscale << 4, clip);
-		else
-			draw_rle_zoom_hflip(bitmap, info, palettebase, x, y, xscale << 4, yscale << 4, clip);
-	}
-
-	/* other cases */
+	assert(bitmap->bpp == 16);
+	if (!hflip)
+		draw_rle_zoom(bitmap, info, palettebase, x, y, xscale << 4, yscale << 4, clip);
 	else
-		logerror("Unsupported bitmap depth = %d\n", bitmap->depth);
+		draw_rle_zoom_hflip(bitmap, info, palettebase, x, y, xscale << 4, yscale << 4, clip);
 }
 
 
@@ -1005,7 +995,7 @@ void draw_rle_zoom(mame_bitmap *bitmap, const struct atarirle_info *gfx,
 	/* loop top to bottom */
 	for (y = sy; y <= ey; y++, sourcey += dy)
 	{
-		UINT16 *dest = &((UINT16 *)bitmap->line[y])[sx];
+		UINT16 *dest = BITMAP_ADDR16(bitmap, y, sx);
 		int j, sourcex = dx / 2, rle_end = 0;
 		const UINT16 *base;
 		int entry_count;
@@ -1068,7 +1058,7 @@ void draw_rle_zoom(mame_bitmap *bitmap, const struct atarirle_info *gfx,
 		/* clipped case */
 		else
 		{
-			const UINT16 *end = &((const UINT16 *)bitmap->line[y])[ex];
+			const UINT16 *end = BITMAP_ADDR16(bitmap, y, ex);
 			int to_be_skipped = pixels_to_skip;
 
 			/* decode the pixels */
@@ -1194,7 +1184,7 @@ void draw_rle_zoom_hflip(mame_bitmap *bitmap, const struct atarirle_info *gfx,
 	/* loop top to bottom */
 	for (y = sy; y <= ey; y++, sourcey += dy)
 	{
-		UINT16 *dest = &((UINT16 *)bitmap->line[y])[ex];
+		UINT16 *dest = BITMAP_ADDR16(bitmap, y, ex);
 		int j, sourcex = dx / 2, rle_end = 0;
 		const UINT16 *base;
 		int entry_count;
@@ -1257,7 +1247,7 @@ void draw_rle_zoom_hflip(mame_bitmap *bitmap, const struct atarirle_info *gfx,
 		/* clipped case */
 		else
 		{
-			const UINT16 *start = &((const UINT16 *)bitmap->line[y])[sx];
+			const UINT16 *start = BITMAP_ADDR16(bitmap, y, sx);
 			int to_be_skipped = pixels_to_skip;
 
 			/* decode the pixels */

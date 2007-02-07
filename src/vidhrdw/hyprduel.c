@@ -73,6 +73,7 @@ UINT16 hyprduel_scrollx[3][RASTER_LINES+1];
 UINT16 hyprduel_scrolly[3][RASTER_LINES+1];
 
 static UINT16 *hypr_tiletable_old;
+static UINT8 *dirtyindex;
 
 
 /***************************************************************************
@@ -321,13 +322,11 @@ VIDEO_START( hyprduel_14220 )
 {
 	alloc_empty_tiles();
 	hypr_tiletable_old = auto_malloc(hyprduel_tiletable_size);
+	dirtyindex = auto_malloc(hyprduel_tiletable_size/4);
 
 	bg_tilemap[0] = tilemap_create(get_tile_info_0_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
 	bg_tilemap[1] = tilemap_create(get_tile_info_1_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
 	bg_tilemap[2] = tilemap_create(get_tile_info_2_8bit,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,WIN_NX,WIN_NY);
-
-	if (!bg_tilemap[0] || !bg_tilemap[1] || !bg_tilemap[2])
-		return 1;
 
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
@@ -588,7 +587,7 @@ static void draw_layers(mame_bitmap *bitmap, const rectangle *cliprect, int pri,
 
 
 /* Dirty tilemaps when the tiles set changes */
-static void dirty_tiles(int layer,UINT16 *vram,UINT8 *dirtyindex)
+static void dirty_tiles(int layer,UINT16 *vram)
 {
 	int col,row;
 
@@ -610,11 +609,8 @@ static void dirty_tiles(int layer,UINT16 *vram,UINT8 *dirtyindex)
 VIDEO_UPDATE( hyprduel )
 {
 	int i,pri,layers_ctrl = -1;
-	UINT8 *dirtyindex;
 	UINT16 screenctrl = *hyprduel_screenctrl;
 
-	dirtyindex = malloc(hyprduel_tiletable_size/4);
-	if (dirtyindex)
 	{
 		int dirty = 0;
 
@@ -634,11 +630,10 @@ VIDEO_UPDATE( hyprduel )
 
 		if (dirty)
 		{
-			dirty_tiles(0,hyprduel_vram_0,dirtyindex);
-			dirty_tiles(1,hyprduel_vram_1,dirtyindex);
-			dirty_tiles(2,hyprduel_vram_2,dirtyindex);
+			dirty_tiles(0,hyprduel_vram_0);
+			dirty_tiles(1,hyprduel_vram_1);
+			dirty_tiles(2,hyprduel_vram_2);
 		}
-		free(dirtyindex);
 	}
 
 	hyprduel_sprite_xoffs	=	hyprduel_videoregs[0x06/2] - Machine->screen[0].width  / 2;

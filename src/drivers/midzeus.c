@@ -44,8 +44,6 @@ VIDEO_START( midzeus )
 	int i;
 
 	waveram = auto_malloc(2 * WAVERAM_WIDTH * WAVERAM_HEIGHT * sizeof(*waveram));
-	if (!waveram)
-		return 1;
 
 	for (i = 0; i < 32768; i++)
 		palette_set_color(machine, i, pal5bit(i >> 10), pal5bit(i >> 5), pal5bit(i >> 0));
@@ -1408,16 +1406,17 @@ MACHINE_DRIVER_START( midzeus )
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
 
-	MDRV_FRAMES_PER_SECOND(57)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(57)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(midzeus)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 432)
-	MDRV_VISIBLE_AREA(0, 511, 0, 399)
+	MDRV_SCREEN_VISIBLE_AREA(0, 511, 0, 399)
 	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(midzeus)

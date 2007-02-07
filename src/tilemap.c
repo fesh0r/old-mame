@@ -4,7 +4,7 @@
 
     Generic tilemap management system.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -130,9 +130,9 @@ static struct
 /***********************************************************************************/
 
 static void tilemap_dispose( tilemap *tmap );
-static int PenToPixel_Init( tilemap *tmap );
+static void PenToPixel_Init( tilemap *tmap );
 static void PenToPixel_Term( tilemap *tmap );
-static int mappings_create( tilemap *tmap );
+static void mappings_create( tilemap *tmap );
 static void mappings_dispose( tilemap *tmap );
 static void mappings_update( tilemap *tmap );
 static void recalculate_scroll( tilemap *tmap );
@@ -143,7 +143,7 @@ static void update_tile_info( tilemap *tmap, UINT32 cached_indx, UINT32 cached_c
 
 /***********************************************************************************/
 
-static int PenToPixel_Init( tilemap *tmap )
+static void PenToPixel_Init( tilemap *tmap )
 {
 	/*
         Construct a table for all tile orientations in advance.
@@ -153,33 +153,24 @@ static int PenToPixel_Init( tilemap *tmap )
     */
 	int i,x,y,tx,ty;
 	UINT32 *pPenToPixel;
-	int lError;
 
-	lError = 0;
 	for( i=0; i<4; i++ )
 	{
-		pPenToPixel = malloc( tmap->num_pens*sizeof(UINT32) );
-		if( pPenToPixel==NULL )
+		pPenToPixel = malloc_or_die( tmap->num_pens*sizeof(UINT32) );
+
+		tmap->pPenToPixel[i] = pPenToPixel;
+		for( ty=0; ty<tmap->cached_tile_height; ty++ )
 		{
-			lError = 1;
-		}
-		else
-		{
-			tmap->pPenToPixel[i] = pPenToPixel;
-			for( ty=0; ty<tmap->cached_tile_height; ty++ )
+			for( tx=0; tx<tmap->cached_tile_width; tx++ )
 			{
-				for( tx=0; tx<tmap->cached_tile_width; tx++ )
-				{
-					x = tx;
-					y = ty;
-					if( i&TILE_FLIPX ) x = tmap->cached_tile_width-1-x;
-					if( i&TILE_FLIPY ) y = tmap->cached_tile_height-1-y;
-					*pPenToPixel++ = x+y*MAX_TILESIZE;
-				}
+				x = tx;
+				y = ty;
+				if( i&TILE_FLIPX ) x = tmap->cached_tile_width-1-x;
+				if( i&TILE_FLIPY ) y = tmap->cached_tile_height-1-y;
+				*pPenToPixel++ = x+y*MAX_TILESIZE;
 			}
 		}
 	}
-	return lError;
 }
 
 static void PenToPixel_Term( tilemap *tmap )
@@ -259,7 +250,7 @@ UINT32 tilemap_scan_cols_flip_xy( UINT32 col, UINT32 row, UINT32 num_cols, UINT3
 
 /***********************************************************************************/
 
-static int mappings_create( tilemap *tmap )
+static void mappings_create( tilemap *tmap )
 {
 	int max_memory_offset = 0;
 	UINT32 col,row;
@@ -277,15 +268,9 @@ static int mappings_create( tilemap *tmap )
 	max_memory_offset++;
 	tmap->max_memory_offset = max_memory_offset;
 	/* logical to cached (tmap_mark_dirty) */
-	tmap->memory_offset_to_cached_indx = malloc( sizeof(int)*max_memory_offset );
-	if( tmap->memory_offset_to_cached_indx )
-	{
-		/* cached to logical (get_tile_info) */
-		tmap->cached_indx_to_memory_offset = malloc( sizeof(UINT32)*tmap->num_tiles );
-		if( tmap->cached_indx_to_memory_offset ) return 0; /* no error */
-		free( tmap->memory_offset_to_cached_indx );
-	}
-	return -1; /* error */
+	tmap->memory_offset_to_cached_indx = malloc_or_die( sizeof(int)*max_memory_offset );
+	/* cached to logical (get_tile_info) */
+	tmap->cached_indx_to_memory_offset = malloc_or_die( sizeof(UINT32)*tmap->num_tiles );
 }
 
 static void mappings_dispose( tilemap *tmap )
@@ -739,16 +724,15 @@ static void install_draw_handlers( tilemap *tmap )
 
 INLINE tilemap_draw_func pick_draw_func( mame_bitmap *dest )
 {
-	switch (dest ? dest->depth : Machine->color_depth)
+	switch (dest ? dest->bpp : bitmap_format_to_bpp(Machine->screen[0].format))
 	{
 		case 32:
 			return draw32BPP;
 
 		case 16:
-		case 15:
 			return draw16BPP;
 	}
-	exit(1);
+	fatalerror("Illegal destination drawing depth");
 	return NULL;
 }
 
@@ -761,10 +745,10 @@ int tilemap_init( running_machine *machine )
 	screen_height	= Machine->screen[0].height;
 	first_tilemap	= NULL;
 
-	priority_bitmap = bitmap_alloc_depth( screen_width, screen_height, -8 );
+	priority_bitmap = bitmap_alloc_format( screen_width, screen_height, BITMAP_FORMAT_INDEXED8 );
 	if( priority_bitmap )
 	{
-		priority_bitmap_pitch_line = ((UINT8 *)priority_bitmap->line[1]) - ((UINT8 *)priority_bitmap->line[0]);
+		priority_bitmap_pitch_line = priority_bitmap->rowpixels;
 		add_exit_callback(machine, tilemap_exit);
 		return 0;
 	}
@@ -805,112 +789,105 @@ tilemap *tilemap_create(
 	tilemap *tmap;
 	UINT32 row;
 	int num_tiles;
+	int instance = 0;
+	tilemap *tm;
 
-	tmap = calloc( 1,sizeof( tilemap ) );
-	if( tmap )
+	tmap = malloc_or_die( sizeof( tilemap ) );
+	memset(tmap, 0, sizeof(tilemap));
+
+	num_tiles = num_cols*num_rows;
+	tmap->num_logical_cols = num_cols;
+	tmap->num_logical_rows = num_rows;
+	tmap->logical_tile_width = tile_width;
+	tmap->logical_tile_height = tile_height;
+	tmap->logical_colscroll = malloc_or_die(num_cols*tile_width*sizeof(INT32));
+	memset(tmap->logical_colscroll, 0, num_cols*tile_width*sizeof(INT32));
+	tmap->logical_rowscroll = malloc_or_die(num_rows*tile_height*sizeof(INT32));
+	memset(tmap->logical_rowscroll, 0, num_rows*tile_height*sizeof(INT32));
+	tmap->num_cached_cols = num_cols;
+	tmap->num_cached_rows = num_rows;
+	tmap->num_tiles = num_tiles;
+	tmap->num_pens = tile_width*tile_height;
+	tmap->cached_tile_width = tile_width;
+	tmap->cached_tile_height = tile_height;
+	tmap->cached_width = tile_width*num_cols;
+	tmap->cached_height = tile_height*num_rows;
+	tmap->tile_get_info = tile_get_info;
+	tmap->get_memory_offset = get_memory_offset;
+	tmap->orientation = ROT0;
+
+	/* various defaults */
+	tmap->enable = 1;
+	tmap->type = type;
+	tmap->logical_scroll_rows = tmap->cached_scroll_rows = 1;
+	tmap->logical_scroll_cols = tmap->cached_scroll_cols = 1;
+	tmap->transparent_pen = -1;
+	tmap->tile_depth = 0;
+	tmap->tile_granularity = 0;
+
+	tmap->cached_rowscroll	= malloc_or_die(tmap->cached_height * sizeof(INT32));
+	memset(tmap->cached_rowscroll, 0, tmap->cached_height * sizeof(INT32));
+	tmap->cached_colscroll	= malloc_or_die(tmap->cached_width * sizeof(INT32));
+	memset(tmap->cached_colscroll, 0, tmap->cached_width * sizeof(INT32));
+
+	tmap->transparency_data = malloc_or_die( num_tiles );
+	tmap->transparency_data_row = malloc_or_die( sizeof(UINT8 *)*num_rows );
+
+	tmap->pixmap = bitmap_alloc_format( tmap->cached_width, tmap->cached_height, BITMAP_FORMAT_INDEXED16 );
+	tmap->transparency_bitmap = bitmap_alloc_format( tmap->cached_width, tmap->cached_height, BITMAP_FORMAT_INDEXED8 );
+
+	mappings_create( tmap );
+
+	tmap->pixmap_pitch_line = tmap->pixmap->rowpixels;
+	tmap->pixmap_pitch_row = tmap->pixmap_pitch_line*tile_height;
+
+	tmap->transparency_bitmap_pitch_line = tmap->transparency_bitmap->rowpixels;
+	tmap->transparency_bitmap_pitch_row = tmap->transparency_bitmap_pitch_line*tile_height;
+
+	for( row=0; row<num_rows; row++ )
 	{
-		num_tiles = num_cols*num_rows;
-		tmap->num_logical_cols = num_cols;
-		tmap->num_logical_rows = num_rows;
-		tmap->logical_tile_width = tile_width;
-		tmap->logical_tile_height = tile_height;
-		tmap->logical_colscroll = calloc(num_cols*tile_width,sizeof(INT32));
-		tmap->logical_rowscroll = calloc(num_rows*tile_height,sizeof(INT32));
-		tmap->num_cached_cols = num_cols;
-		tmap->num_cached_rows = num_rows;
-		tmap->num_tiles = num_tiles;
-		tmap->num_pens = tile_width*tile_height;
-		tmap->cached_tile_width = tile_width;
-		tmap->cached_tile_height = tile_height;
-		tmap->cached_width = tile_width*num_cols;
-		tmap->cached_height = tile_height*num_rows;
-		tmap->tile_get_info = tile_get_info;
-		tmap->get_memory_offset = get_memory_offset;
-		tmap->orientation = ROT0;
-
-		/* various defaults */
-		tmap->enable = 1;
-		tmap->type = type;
-		tmap->logical_scroll_rows = tmap->cached_scroll_rows = 1;
-		tmap->logical_scroll_cols = tmap->cached_scroll_cols = 1;
-		tmap->transparent_pen = -1;
-		tmap->tile_depth = 0;
-		tmap->tile_granularity = 0;
-
-		tmap->cached_rowscroll	= calloc(tmap->cached_height,sizeof(INT32));
-		tmap->cached_colscroll	= calloc(tmap->cached_width, sizeof(INT32));
-
-		tmap->transparency_data = malloc( num_tiles );
-		tmap->transparency_data_row = malloc( sizeof(UINT8 *)*num_rows );
-
-		tmap->pixmap = bitmap_alloc_depth( tmap->cached_width, tmap->cached_height, -16 );
-		tmap->transparency_bitmap = bitmap_alloc_depth( tmap->cached_width, tmap->cached_height, -8 );
-
-		if( tmap->logical_rowscroll && tmap->cached_rowscroll &&
-			tmap->logical_colscroll && tmap->cached_colscroll &&
-			tmap->pixmap &&
-			tmap->transparency_data &&
-			tmap->transparency_data_row &&
-			tmap->transparency_bitmap &&
-			(mappings_create( tmap )==0) )
-		{
-			tmap->pixmap_pitch_line = tmap->pixmap->rowpixels;
-			tmap->pixmap_pitch_row = tmap->pixmap_pitch_line*tile_height;
-
-			tmap->transparency_bitmap_pitch_line = tmap->transparency_bitmap->rowpixels;
-			tmap->transparency_bitmap_pitch_row = tmap->transparency_bitmap_pitch_line*tile_height;
-
-			for( row=0; row<num_rows; row++ )
-			{
-				tmap->transparency_data_row[row] = tmap->transparency_data+num_cols*row;
-			}
-			install_draw_handlers( tmap );
-			mappings_update( tmap );
-			memset( tmap->transparency_data, TILE_FLAG_DIRTY, num_tiles );
-			tmap->next = first_tilemap;
-			first_tilemap = tmap;
-			if( PenToPixel_Init( tmap ) == 0 )
-			{
-				int instance = 0;
-				tilemap *tm;
-
-				recalculate_scroll(tmap);
-
-				/* compute the index of this entry */
-				for (tm = first_tilemap; tm; tm = tm->next)
-					instance++;
-
-				/* save relevant state */
-				state_save_register_item("tilemap", instance, tmap->enable);
-				state_save_register_item("tilemap", instance, tmap->attributes);
-				state_save_register_item("tilemap", instance, tmap->transparent_pen);
-				state_save_register_item_array("tilemap", instance, tmap->fgmask);
-				state_save_register_item_array("tilemap", instance, tmap->bgmask);
-				state_save_register_item("tilemap", instance, tmap->dx);
-				state_save_register_item("tilemap", instance, tmap->dx_if_flipped);
-				state_save_register_item("tilemap", instance, tmap->dy);
-				state_save_register_item("tilemap", instance, tmap->dy_if_flipped);
-				state_save_register_item("tilemap", instance, tmap->cached_scroll_rows);
-				state_save_register_item("tilemap", instance, tmap->cached_scroll_cols);
-				state_save_register_item_pointer("tilemap", instance, tmap->cached_rowscroll, tmap->cached_height);
-				state_save_register_item_pointer("tilemap", instance, tmap->cached_colscroll, tmap->cached_width);
-				state_save_register_item("tilemap", instance, tmap->logical_scroll_rows);
-				state_save_register_item("tilemap", instance, tmap->logical_scroll_cols);
-				state_save_register_item_pointer("tilemap", instance, tmap->logical_rowscroll, num_rows*tile_height);
-				state_save_register_item_pointer("tilemap", instance, tmap->logical_colscroll, num_cols*tile_width);
-				state_save_register_item("tilemap", instance, tmap->orientation);
-				state_save_register_item("tilemap", instance, tmap->palette_offset);
-				state_save_register_item("tilemap", instance, tmap->tile_depth);
-				state_save_register_item("tilemap", instance, tmap->tile_granularity);
-
-				/* reset everything after a load */
-				state_save_register_func_postload_ptr(tilemap_postload, tmap);
-				return tmap;
-			}
-		}
-		tilemap_dispose( tmap );
+		tmap->transparency_data_row[row] = tmap->transparency_data+num_cols*row;
 	}
-	return 0;
+	install_draw_handlers( tmap );
+	mappings_update( tmap );
+	memset( tmap->transparency_data, TILE_FLAG_DIRTY, num_tiles );
+	tmap->next = first_tilemap;
+	first_tilemap = tmap;
+
+	PenToPixel_Init( tmap );
+
+	recalculate_scroll(tmap);
+
+	/* compute the index of this entry */
+	for (tm = first_tilemap; tm; tm = tm->next)
+		instance++;
+
+	/* save relevant state */
+	state_save_register_item("tilemap", instance, tmap->enable);
+	state_save_register_item("tilemap", instance, tmap->attributes);
+	state_save_register_item("tilemap", instance, tmap->transparent_pen);
+	state_save_register_item_array("tilemap", instance, tmap->fgmask);
+	state_save_register_item_array("tilemap", instance, tmap->bgmask);
+	state_save_register_item("tilemap", instance, tmap->dx);
+	state_save_register_item("tilemap", instance, tmap->dx_if_flipped);
+	state_save_register_item("tilemap", instance, tmap->dy);
+	state_save_register_item("tilemap", instance, tmap->dy_if_flipped);
+	state_save_register_item("tilemap", instance, tmap->cached_scroll_rows);
+	state_save_register_item("tilemap", instance, tmap->cached_scroll_cols);
+	state_save_register_item_pointer("tilemap", instance, tmap->cached_rowscroll, tmap->cached_height);
+	state_save_register_item_pointer("tilemap", instance, tmap->cached_colscroll, tmap->cached_width);
+	state_save_register_item("tilemap", instance, tmap->logical_scroll_rows);
+	state_save_register_item("tilemap", instance, tmap->logical_scroll_cols);
+	state_save_register_item_pointer("tilemap", instance, tmap->logical_rowscroll, num_rows*tile_height);
+	state_save_register_item_pointer("tilemap", instance, tmap->logical_colscroll, num_cols*tile_width);
+	state_save_register_item("tilemap", instance, tmap->orientation);
+	state_save_register_item("tilemap", instance, tmap->palette_offset);
+	state_save_register_item("tilemap", instance, tmap->tile_depth);
+	state_save_register_item("tilemap", instance, tmap->tile_granularity);
+
+	/* reset everything after a load */
+	state_save_register_func_postload_ptr(tilemap_postload, tmap);
+	return tmap;
 }
 
 static void tilemap_dispose( tilemap *tmap )
@@ -1266,10 +1243,10 @@ profiler_mark(PROFILER_TILEMAP_DRAW);
 		}
 		else
 		{
-			blit.screen_bitmap_pitch_line = ((UINT8 *)dest->line[1]) - ((UINT8 *)dest->line[0]);
-			switch( dest->depth )
+			blit.screen_bitmap_pitch_line = dest->rowpixels;
+			switch( dest->format )
 			{
-			case 32:
+			case BITMAP_FORMAT_RGB32:
 				if (priority)
 				{
 					if( flags&TILEMAP_ALPHA )
@@ -1297,9 +1274,8 @@ profiler_mark(PROFILER_TILEMAP_DRAW);
 						blit.draw_opaque = (blitopaque_t)npdo32;
 					}
 				}
-				blit.screen_bitmap_pitch_line /= 4;
 				break;
-			case 15:
+			case BITMAP_FORMAT_RGB15:
 				if( flags&TILEMAP_ALPHA )
 				{
 					blit.draw_masked = (blitmask_t)pbt15;
@@ -1310,10 +1286,8 @@ profiler_mark(PROFILER_TILEMAP_DRAW);
 					blit.draw_masked = (blitmask_t)pdt15;
 					blit.draw_opaque = (blitopaque_t)pdo15;
 				}
-				blit.screen_bitmap_pitch_line /= 2;
 				break;
-
-			case 16:
+			case BITMAP_FORMAT_INDEXED16:
 				if (tmap->palette_offset)
 				{
 					blit.draw_masked = (blitmask_t)pdt16pal;
@@ -1329,11 +1303,10 @@ profiler_mark(PROFILER_TILEMAP_DRAW);
 					blit.draw_masked = (blitmask_t)pdt16np;
 					blit.draw_opaque = (blitopaque_t)pdo16np;
 				}
-				blit.screen_bitmap_pitch_line /= 2;
 				break;
 
 			default:
-				exit(1);
+				fatalerror("tilemap_draw_primask: Invalid bitmap format");
 				break;
 			}
 			blit.screen_bitmap_pitch_row = blit.screen_bitmap_pitch_line*tmap->cached_tile_height;
@@ -1574,9 +1547,9 @@ profiler_mark(PROFILER_TILEMAP_DRAW_ROZ);
 				}
 			}
 
-			switch( dest->depth )
+			switch( dest->format )
 			{
-			case 32:
+			case BITMAP_FORMAT_RGB32:
 
 				/* Opaque drawing routines not present due to difficulty with
                 optimization using current ROZ methods
@@ -1600,7 +1573,7 @@ profiler_mark(PROFILER_TILEMAP_DRAW_ROZ);
 					wraparound,cliprect,mask,value,priority,priority_mask,tmap->palette_offset);
 				break;
 
-			case 15:
+			case BITMAP_FORMAT_RGB15:
 				if( flags&TILEMAP_ALPHA )
 					blit.draw_masked = (blitmask_t)pbt15;
 				else
@@ -1610,7 +1583,7 @@ profiler_mark(PROFILER_TILEMAP_DRAW_ROZ);
 					wraparound,cliprect,mask,value,priority,priority_mask,tmap->palette_offset);
 				break;
 
-			case 16:
+			case BITMAP_FORMAT_INDEXED16:
 				if (tmap->palette_offset)
 					blit.draw_masked = (blitmask_t)pdt16pal;
 				else if (priority)
@@ -1623,7 +1596,8 @@ profiler_mark(PROFILER_TILEMAP_DRAW_ROZ);
 				break;
 
 			default:
-				exit(1);
+				fatalerror("tilemap_draw_roz: Invalid bitmap format\n");
+				break;
 			}
 		} /* tmap->enable */
 profiler_mark(PROFILER_END);
@@ -1678,26 +1652,24 @@ void tilemap_nb_draw( mame_bitmap *dest, UINT32 number, UINT32 scrollx, UINT32 s
 	tilemap *tmap = tilemap_nb_find( number );
 
 	blit.screen_bitmap = dest;
-	blit.screen_bitmap_pitch_line = ((UINT8 *)dest->line[1]) - ((UINT8 *)dest->line[0]);
-	switch( dest->depth )
+	blit.screen_bitmap_pitch_line = dest->rowpixels;
+	switch( dest->format )
 	{
-	case 32:
+	case BITMAP_FORMAT_RGB32:
+	case BITMAP_FORMAT_ARGB32:
 		blit.draw_opaque = (blitopaque_t)pdo32np;
-		blit.screen_bitmap_pitch_line /= 4;
 		break;
 
-	case 15:
+	case BITMAP_FORMAT_RGB15:
 		blit.draw_opaque = (blitopaque_t)pdo15np;
-		blit.screen_bitmap_pitch_line /= 2;
 		break;
 
-	case 16:
+	case BITMAP_FORMAT_INDEXED16:
 		blit.draw_opaque = (blitopaque_t)pdo16palnp;
-		blit.screen_bitmap_pitch_line /= 2;
 		break;
 
 	default:
-		exit(1);
+		fatalerror("tilemap_nb_draw: Invalid bitmap format");
 		break;
 	}
 	priority_bitmap_pitch_row = priority_bitmap_pitch_line*tmap->cached_tile_height;
@@ -1856,11 +1828,11 @@ DECLARE(copyroz_core,(mame_bitmap *bitmap,tilemap *tmap,
 						x = sx;
 						cx = startx;
 						cy = starty >> 16;
-						dest = ((DATA_TYPE *)bitmap->line[sy]) + sx;
+						dest = BITMAP_ADDR(bitmap, DATA_TYPE, sy, sx);
 
-						pri = ((UINT8 *)priority_bitmap->line[sy]) + sx;
-						src = (UINT16 *)srcbitmap->line[cy];
-						pMask = (UINT8 *)transparency_bitmap->line[cy];
+						pri = BITMAP_ADDR8(priority_bitmap, sy, sx);
+						src = BITMAP_ADDR16(srcbitmap, cy, 0);
+						pMask = BITMAP_ADDR8(transparency_bitmap, cy, 0);
 
 						while (x <= ex && cx < srcbitmap->width)
 						{
@@ -1896,11 +1868,11 @@ DECLARE(copyroz_core,(mame_bitmap *bitmap,tilemap *tmap,
 						x = sx;
 						cx = startx;
 						cy = starty >> 16;
-						dest = ((DATA_TYPE *)bitmap->line[sy]) + sx;
+						dest = BITMAP_ADDR(bitmap, DATA_TYPE, sy, sx);
 
-						pri = ((UINT8 *)priority_bitmap->line[sy]) + sx;
-						src = (UINT16 *)srcbitmap->line[cy];
-						pMask = (UINT8 *)transparency_bitmap->line[cy];
+						pri = BITMAP_ADDR8(priority_bitmap, sy, sx);
+						src = BITMAP_ADDR16(srcbitmap, cy, 0);
+						pMask = BITMAP_ADDR8(transparency_bitmap, cy, 0);
 
 						while (x <= ex && cx < widthshifted)
 						{
@@ -1930,13 +1902,13 @@ DECLARE(copyroz_core,(mame_bitmap *bitmap,tilemap *tmap,
 				x = sx;
 				cx = startx;
 				cy = starty;
-				dest = ((DATA_TYPE *)bitmap->line[sy]) + sx;
-				pri = ((UINT8 *)priority_bitmap->line[sy]) + sx;
+				dest = BITMAP_ADDR(bitmap, DATA_TYPE, sy, sx);
+				pri = BITMAP_ADDR8(priority_bitmap, sy, sx);
 				while (x <= ex)
 				{
-					if( (((UINT8 *)transparency_bitmap->line[(cy>>16)&ymask])[(cx>>16)&xmask]&mask) == value )
+					if( (*BITMAP_ADDR8(transparency_bitmap, (cy>>16)&ymask, (cx>>16)&xmask) & mask) == value )
 					{
-						ROZ_PLOT_PIXEL(((((UINT16 *)srcbitmap->line[(cy >> 16) & ymask])[(cx >> 16) & xmask]+palette_offset))) ;
+						ROZ_PLOT_PIXEL((*BITMAP_ADDR16(srcbitmap, (cy >> 16) & ymask, (cx >> 16) & xmask) + palette_offset));
 					}
 					cx += incxx;
 					cy += incxy;
@@ -1956,15 +1928,15 @@ DECLARE(copyroz_core,(mame_bitmap *bitmap,tilemap *tmap,
 				x = sx;
 				cx = startx;
 				cy = starty;
-				dest = ((DATA_TYPE *)bitmap->line[sy]) + sx;
-				pri = ((UINT8 *)priority_bitmap->line[sy]) + sx;
+				dest = BITMAP_ADDR(bitmap, DATA_TYPE, sy, sx);
+				pri = BITMAP_ADDR8(priority_bitmap, sy, sx);
 				while (x <= ex)
 				{
 					if (cx < widthshifted && cy < heightshifted)
 					{
-						if( (((UINT8 *)transparency_bitmap->line[cy>>16])[cx>>16]&mask)==value )
+						if( (*BITMAP_ADDR8(transparency_bitmap, cy>>16, cx>>16) & mask)==value )
 						{
-							ROZ_PLOT_PIXEL((((UINT16 *)srcbitmap->line[cy >> 16])[cx >> 16]+palette_offset)) ;
+							ROZ_PLOT_PIXEL((*BITMAP_ADDR16(srcbitmap, cy >> 16, cx >> 16) + palette_offset));
 						}
 					}
 					cx += incxx;
@@ -2029,10 +2001,10 @@ DECLARE( draw, (tilemap *tmap, int xpos, int ypos, int mask, int value ),
 
 	if( x1<x2 && y1<y2 ) /* do nothing if totally clipped */
 	{
-		priority_bitmap_baseaddr = xpos + (UINT8 *)priority_bitmap->line[y1];
+		priority_bitmap_baseaddr = BITMAP_ADDR8(priority_bitmap, y1, xpos);
 		if( screen )
 		{
-			dest_baseaddr = xpos + (DATA_TYPE *)screen->line[y1];
+			dest_baseaddr = BITMAP_ADDR(screen, DATA_TYPE, y1, xpos);
 		}
 
 		/* convert screen coordinates to source tilemap coordinates */
@@ -2041,8 +2013,8 @@ DECLARE( draw, (tilemap *tmap, int xpos, int ypos, int mask, int value ),
 		x2 -= xpos;
 		y2 -= ypos;
 
-		source_baseaddr = (UINT16 *)tmap->pixmap->line[y1];
-		mask_baseaddr = tmap->transparency_bitmap->line[y1];
+		source_baseaddr = BITMAP_ADDR16(tmap->pixmap, y1, 0);
+		mask_baseaddr = BITMAP_ADDR8(tmap->transparency_bitmap, y1, 0);
 
 		c1 = x1/tmap->cached_tile_width; /* round down */
 		c2 = (x2+tmap->cached_tile_width-1)/tmap->cached_tile_width; /* round up */
@@ -2224,13 +2196,13 @@ static UINT8 TRANSP(HandleTransparencyBitmask)(tilemap *tmap, UINT32 x0, UINT32 
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 
 				pen = data>>4;
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 			}
 			pPenData += pitch/2;
 		}
@@ -2246,7 +2218,7 @@ static UINT8 TRANSP(HandleTransparencyBitmask)(tilemap *tmap, UINT32 x0, UINT32 
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 			}
 			pPenData += pitch;
 		}
@@ -2263,12 +2235,12 @@ static UINT8 TRANSP(HandleTransparencyBitmask)(tilemap *tmap, UINT32 x0, UINT32 
 			y = y0+(yx/MAX_TILESIZE);
 			if( bDontIgnoreTransparency && (pBitmask[bitoffs/8]&(0x80>>(bitoffs&7))) == 0 )
 			{
-				((UINT8 *)transparency_bitmap->line[y])[x] = code_transparent;
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code_transparent;
 				bWhollyOpaque = 0;
 			}
 			else
 			{
-				((UINT8 *)transparency_bitmap->line[y])[x] = code_opaque;
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code_opaque;
 				bWhollyTransparent = 0;
 			}
 			bitoffs++;
@@ -2318,15 +2290,15 @@ static UINT8 TRANSP(HandleTransparencyColor)(tilemap *tmap, UINT32 x0, UINT32 y0
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				if( PAL_GET(pen)==transparent_color )
 				{
-					((UINT8 *)transparency_bitmap->line[y])[x] = code_transparent;
+					*BITMAP_ADDR8(transparency_bitmap, y, x) = code_transparent;
 					bWhollyOpaque = 0;
 				}
 				else
 				{
-					((UINT8 *)transparency_bitmap->line[y])[x] = code_opaque;
+					*BITMAP_ADDR8(transparency_bitmap, y, x) = code_opaque;
 					bWhollyTransparent = 0;
 				}
 
@@ -2334,15 +2306,15 @@ static UINT8 TRANSP(HandleTransparencyColor)(tilemap *tmap, UINT32 x0, UINT32 y0
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				if( PAL_GET(pen)==transparent_color )
 				{
-					((UINT8 *)transparency_bitmap->line[y])[x] = code_transparent;
+					*BITMAP_ADDR8(transparency_bitmap, y, x) = code_transparent;
 					bWhollyOpaque = 0;
 				}
 				else
 				{
-					((UINT8 *)transparency_bitmap->line[y])[x] = code_opaque;
+					*BITMAP_ADDR8(transparency_bitmap, y, x) = code_opaque;
 					bWhollyTransparent = 0;
 				}
 			}
@@ -2360,15 +2332,15 @@ static UINT8 TRANSP(HandleTransparencyColor)(tilemap *tmap, UINT32 x0, UINT32 y0
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				if( PAL_GET(pen)==transparent_color )
 				{
-					((UINT8 *)transparency_bitmap->line[y])[x] = code_transparent;
+					*BITMAP_ADDR8(transparency_bitmap, y, x) = code_transparent;
 					bWhollyOpaque = 0;
 				}
 				else
 				{
-					((UINT8 *)transparency_bitmap->line[y])[x] = code_opaque;
+					*BITMAP_ADDR8(transparency_bitmap, y, x) = code_opaque;
 					bWhollyTransparent = 0;
 				}
 			}
@@ -2423,15 +2395,15 @@ static UINT8 TRANSP(HandleTransparencyPen)(tilemap *tmap, UINT32 x0, UINT32 y0, 
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				if( pen==transparent_pen )
 				{
-					((UINT8 *)transparency_bitmap->line[y])[x] = code_transparent;
+					*BITMAP_ADDR8(transparency_bitmap, y, x) = code_transparent;
 					bWhollyOpaque = 0;
 				}
 				else
 				{
-					((UINT8 *)transparency_bitmap->line[y])[x] = code_opaque;
+					*BITMAP_ADDR8(transparency_bitmap, y, x) = code_opaque;
 					bWhollyTransparent = 0;
 				}
 
@@ -2439,8 +2411,8 @@ static UINT8 TRANSP(HandleTransparencyPen)(tilemap *tmap, UINT32 x0, UINT32 y0, 
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
-				((UINT8 *)transparency_bitmap->line[y])[x] = (pen==transparent_pen)?code_transparent:code_opaque;
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = (pen==transparent_pen)?code_transparent:code_opaque;
 			}
 			pPenData += pitch/2;
 		}
@@ -2456,16 +2428,16 @@ static UINT8 TRANSP(HandleTransparencyPen)(tilemap *tmap, UINT32 x0, UINT32 y0, 
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				if( pen==transparent_pen )
 				{
-					((UINT8 *)transparency_bitmap->line[y])[x] = code_transparent;
+					*BITMAP_ADDR8(transparency_bitmap, y, x) = code_transparent;
 					bWhollyOpaque = 0;
 
 				}
 				else
 				{
-					((UINT8 *)transparency_bitmap->line[y])[x] = code_opaque;
+					*BITMAP_ADDR8(transparency_bitmap, y, x) = code_opaque;
 					bWhollyTransparent = 0;
 				}
 			}
@@ -2514,21 +2486,21 @@ static UINT8 TRANSP(HandleTransparencyPenBit)(tilemap *tmap, UINT32 x0, UINT32 y
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				code = ((pen&penbit)==penbit)?code_front:code_back;
 				and_flags &= code;
 				or_flags |= code;
-				((UINT8 *)transparency_bitmap->line[y])[x] = code;
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code;
 
 				pen = data>>4;
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				code = ((pen&penbit)==penbit)?code_front:code_back;
 				and_flags &= code;
 				or_flags |= code;
-				((UINT8 *)transparency_bitmap->line[y])[x] = code;
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code;
 			}
 			pPenData += pitch/2;
 		}
@@ -2544,11 +2516,11 @@ static UINT8 TRANSP(HandleTransparencyPenBit)(tilemap *tmap, UINT32 x0, UINT32 y
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				code = ((pen&penbit)==penbit)?code_front:code_back;
 				and_flags &= code;
 				or_flags |= code;
-				((UINT8 *)transparency_bitmap->line[y])[x] = code;
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code;
 			}
 			pPenData += pitch;
 		}
@@ -2594,25 +2566,25 @@ static UINT8 TRANSP(HandleTransparencyPens)(tilemap *tmap, UINT32 x0, UINT32 y0,
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				code = code_transparent;
 				if( !((1<<pen)&fgmask) ) code |= TILE_FLAG_FG_OPAQUE;
 				if( !((1<<pen)&bgmask) ) code |= TILE_FLAG_BG_OPAQUE;
 				and_flags &= code;
 				or_flags |= code;
-				((UINT8 *)transparency_bitmap->line[y])[x] = code;
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code;
 
 				pen = data>>4;
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				code = code_transparent;
 				if( !((1<<pen)&fgmask) ) code |= TILE_FLAG_FG_OPAQUE;
 				if( !((1<<pen)&bgmask) ) code |= TILE_FLAG_BG_OPAQUE;
 				and_flags &= code;
 				or_flags |= code;
-				((UINT8 *)transparency_bitmap->line[y])[x] = code;
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code;
 			}
 			pPenData += pitch/2;
 		}
@@ -2628,13 +2600,13 @@ static UINT8 TRANSP(HandleTransparencyPens)(tilemap *tmap, UINT32 x0, UINT32 y0,
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
 				code = code_transparent;
 				if( !((1<<pen)&fgmask) ) code |= TILE_FLAG_FG_OPAQUE;
 				if( !((1<<pen)&bgmask) ) code |= TILE_FLAG_BG_OPAQUE;
 				and_flags &= code;
 				or_flags |= code;
-				((UINT8 *)transparency_bitmap->line[y])[x] = code;
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code;
 			}
 			pPenData += pitch;
 		}
@@ -2675,15 +2647,15 @@ static UINT8 TRANSP(HandleTransparencyNone)(tilemap *tmap, UINT32 x0, UINT32 y0,
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
-				((UINT8 *)transparency_bitmap->line[y])[x] = code_opaque;
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code_opaque;
 
 				pen = data>>4;
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
-				((UINT8 *)transparency_bitmap->line[y])[x] = code_opaque;
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code_opaque;
 			}
 			pPenData += pitch/2;
 		}
@@ -2699,8 +2671,8 @@ static UINT8 TRANSP(HandleTransparencyNone)(tilemap *tmap, UINT32 x0, UINT32 y0,
 				yx = *pPenToPixel++;
 				x = x0+(yx%MAX_TILESIZE);
 				y = y0+(yx/MAX_TILESIZE);
-				*(x+(UINT16 *)pixmap->line[y]) = PAL_GET(pen);
-				((UINT8 *)transparency_bitmap->line[y])[x] = code_opaque;
+				*BITMAP_ADDR16(pixmap, y, x) = PAL_GET(pen);
+				*BITMAP_ADDR8(transparency_bitmap, y, x) = code_opaque;
 			}
 			pPenData += pitch;
 		}

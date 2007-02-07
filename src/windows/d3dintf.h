@@ -2,7 +2,7 @@
 //
 //  drawd3di.h - Direct3D 8/9 interface abstractions
 //
-//  Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -99,7 +99,6 @@ struct _d3d_adapter_identifier
 //  Caps enumeration
 //============================================================
 
-typedef enum _d3d_caps_index d3d_caps_index;
 enum _d3d_caps_index
 {
 	CAPS_PRESENTATION_INTERVALS,
@@ -116,6 +115,7 @@ enum _d3d_caps_index
 	CAPS_MAX_TEXTURE_HEIGHT,
 	CAPS_STRETCH_RECT_FILTER
 };
+typedef enum _d3d_caps_index d3d_caps_index;
 
 
 //============================================================

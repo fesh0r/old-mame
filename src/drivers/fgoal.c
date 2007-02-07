@@ -17,13 +17,7 @@ Differences between these sets include
 ***************************************************************************/
 
 #include "driver.h"
-
-extern VIDEO_START( fgoal );
-extern VIDEO_UPDATE( fgoal );
-
-extern WRITE8_HANDLER( fgoal_color_w );
-extern WRITE8_HANDLER( fgoal_xpos_w );
-extern WRITE8_HANDLER( fgoal_ypos_w );
+#include "includes/fgoal.h"
 
 UINT8* fgoal_video_ram;
 
@@ -404,13 +398,14 @@ static MACHINE_DRIVER_START( fgoal )
 	MDRV_CPU_PROGRAM_MAP(cpu_map, 0)
 
 	MDRV_MACHINE_RESET(fgoal)
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(24 * 1000000 / 15750)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(24 * 1000000 / 15750))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 263)
-	MDRV_VISIBLE_AREA(0, 255, 16, 255)
+	MDRV_SCREEN_VISIBLE_AREA(0, 255, 16, 255)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(64 + 2)
 	MDRV_COLORTABLE_LENGTH(128 + 16)

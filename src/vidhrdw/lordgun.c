@@ -138,9 +138,6 @@ VIDEO_START( lordgun )
 	tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
 								TILEMAP_TRANSPARENT, 8,8, 0x40,0x20 );
 
-	if (!tilemap_0 || !tilemap_1 || !tilemap_2 || !tilemap_3)
-		return 1;
-
 	tilemap_set_scroll_rows(tilemap_0,1);
 	tilemap_set_scroll_cols(tilemap_0,1);
 	tilemap_set_transparent_pen(tilemap_0,0x3f);
@@ -268,7 +265,7 @@ static void lordgun_draw_sprites(mame_bitmap *bitmap)
 VIDEO_UPDATE( lordgun )
 {
 	int layers_ctrl = -1;
-	int i,y;
+	int y;
 
 #ifdef MAME_DEBUG
 if (code_pressed(KEYCODE_Z))
@@ -311,10 +308,5 @@ if (code_pressed(KEYCODE_Z))
 	if (layers_ctrl & 16)	lordgun_draw_sprites(bitmap);
 	if (layers_ctrl & 8)	tilemap_draw(bitmap, cliprect, tilemap_3, 0, 0);
 
-	for (i = 0; i < 2; i++)
-	{
-		lorddgun_calc_gun_scr(i);
-		draw_crosshair(bitmap, lordgun_gun[i].scr_x,lordgun_gun[i].scr_y, cliprect,i);
-	}
 	return 0;
 }

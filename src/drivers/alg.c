@@ -35,6 +35,7 @@ static render_texture *video_texture;
 static render_texture *overlay_texture;
 
 static void video_cleanup(running_machine *machine);
+static void response_timer(int param);
 
 
 
@@ -103,30 +104,20 @@ static void video_cleanup(running_machine *machine)
 
 static VIDEO_UPDATE( alg )
 {
-	int i;
-
-	/* draw the crosshair into the tmpbitmap, which is where the Amiga draws */
-	for (i = 0; i < 2; i++)
-	{
-		int x, y;
-
-		if (get_lightgun_pos(i, &x, &y))
-			draw_crosshair(tmpbitmap, x, y, &Machine->screen[screen].visarea, i);
-	}
-
 	/* composite the video */
 	if (!video_skip_this_frame())
 	{
-		mame_bitmap *bitmap = laserdisc_get_video(discinfo);
+		mame_bitmap *vidbitmap;
 		rectangle fixedvis = Machine->screen[screen].visarea;
 		fixedvis.max_x++;
 		fixedvis.max_y++;
 
 		/* first lay down the video data */
+		laserdisc_get_video(discinfo, &vidbitmap);
 		if (video_texture == NULL)
-			video_texture = render_texture_alloc(bitmap, NULL, 0, TEXFORMAT_YUY16, NULL, NULL);
+			video_texture = render_texture_alloc(vidbitmap, NULL, 0, TEXFORMAT_YUY16, NULL, NULL);
 		else
-			render_texture_set_bitmap(video_texture, bitmap, NULL, 0, TEXFORMAT_YUY16);
+			render_texture_set_bitmap(video_texture, vidbitmap, NULL, 0, TEXFORMAT_YUY16);
 
 		/* then overlay the Amiga video */
 		if (overlay_texture == NULL)
@@ -144,6 +135,30 @@ static VIDEO_UPDATE( alg )
 		popmessage("%s", laserdisc_describe_state(discinfo));
 
 	return 0;
+}
+
+
+
+/*************************************
+ *
+ *  Machine start/reset
+ *
+ *************************************/
+
+static MACHINE_START( alg )
+{
+	discinfo = laserdisc_init(LASERDISC_TYPE_LDP1450, get_disk_handle(0), 1);
+	serial_timer = timer_alloc(response_timer);
+	serial_timer_active = FALSE;
+
+	return 0;
+}
+
+
+static MACHINE_RESET( alg )
+{
+	machine_reset_amiga(machine);
+	laserdisc_reset(discinfo, 0);
 }
 
 
@@ -176,8 +191,7 @@ static void response_timer(int param)
 static void vsync_callback(void)
 {
 	/* only clock the disc every other frame */
-	if (cpu_getcurrentframe() % 2 == 1)
-		laserdisc_vsync(discinfo);
+	laserdisc_vsync(discinfo);
 
 	/* if we have data available, set a timer to read it */
 	if (!serial_timer_active && laserdisc_line_r(discinfo, LASERDISC_LINE_DATA_AVAIL) == ASSERT_LINE)
@@ -386,10 +400,10 @@ INPUT_PORTS_START( alg )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("GUN1X")		/* referenced by lightgun_pos_r */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
 	PORT_START_TAG("GUN1Y")		/* referenced by lightgun_pos_r */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(1)
 INPUT_PORTS_END
 
 
@@ -407,10 +421,10 @@ INPUT_PORTS_START( alg_2p )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(lightgun_holster_r, NULL)
 
 	PORT_START_TAG("GUN2X")		/* referenced by lightgun_pos_r */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
 	PORT_START_TAG("GUN2Y")		/* referenced by lightgun_pos_r */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX(0,255) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
 	PORT_START_TAG("TRIGGERS")	/* referenced by lightgun_trigger_r and lightgun_holster_r */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
@@ -447,16 +461,18 @@ static MACHINE_DRIVER_START( alg_r1 )
 	MDRV_CPU_PROGRAM_MAP(main_map_r1,0)
 	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 262)
 
-	MDRV_FRAMES_PER_SECOND(59.997)
-	MDRV_VBLANK_DURATION(0)
+	MDRV_SCREEN_REFRESH_RATE(59.97)
+	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(0))
 
-	MDRV_MACHINE_RESET(amiga)
+	MDRV_MACHINE_START(alg)
+	MDRV_MACHINE_RESET(alg)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512*2, 262)
-	MDRV_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 244+8-1)
+	MDRV_SCREEN_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 244+8-1)
 	MDRV_PALETTE_LENGTH(4097)
 	MDRV_PALETTE_INIT(amiga)
 
@@ -468,10 +484,15 @@ static MACHINE_DRIVER_START( alg_r1 )
 
 	MDRV_SOUND_ADD(CUSTOM, 3579545)
 	MDRV_SOUND_CONFIG(amiga_custom_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
-	MDRV_SOUND_ROUTE(2, "right", 0.50)
-	MDRV_SOUND_ROUTE(3, "left", 0.50)
+	MDRV_SOUND_ROUTE(0, "left", 0.25)
+	MDRV_SOUND_ROUTE(1, "right", 0.25)
+	MDRV_SOUND_ROUTE(2, "right", 0.25)
+	MDRV_SOUND_ROUTE(3, "left", 0.25)
+
+	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
+	MDRV_SOUND_ROUTE(0, "left", 1.0)
+	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -491,10 +512,10 @@ static MACHINE_DRIVER_START( picmatic )
 	MDRV_CPU_PROGRAM_MAP(main_map_picmatic,0)
 	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 312)
 
-	MDRV_FRAMES_PER_SECOND(50)
+	MDRV_SCREEN_REFRESH_RATE(50)
 
 	MDRV_SCREEN_SIZE(512*2, 312)
-	MDRV_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 300+8-1)
+	MDRV_SCREEN_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 300+8-1)
 MACHINE_DRIVER_END
 
 
@@ -537,6 +558,9 @@ ROM_START( maddoga )
 	ROM_REGION( 0x20000, REGION_USER2, 0 )
 	ROM_LOAD16_BYTE( "maddog_01.dat", 0x000000, 0x10000, CRC(04572557) SHA1(3dfe2ce94ced8701a3e73ed5869b6fbe1c8b3286) )
 	ROM_LOAD16_BYTE( "maddog_02.dat", 0x000001, 0x10000, CRC(f64014ec) SHA1(d343a2cb5d8992153b8c916f39b11d3db736543d))
+
+	DISK_REGION( REGION_DISKS )
+	DISK_IMAGE_READONLY( "maddog", 0, NO_DUMP )
 ROM_END
 
 
@@ -565,6 +589,9 @@ ROM_START( maddog )
 	ROM_REGION( 0x40000, REGION_USER2, 0 )
 	ROM_LOAD16_BYTE( "md_2.03_1.bin", 0x000000, 0x20000, CRC(6f5b8f2d) SHA1(bbf32bb27a998d53744411d75efdbdb730855809) )
 	ROM_LOAD16_BYTE( "md_2.03_2.bin", 0x000001, 0x20000, CRC(a50d3c04) SHA1(4cf100fdb5b2f2236539fd0ec33b3db19c64a6b8) )
+
+	DISK_REGION( REGION_DISKS )
+	DISK_IMAGE_READONLY( "maddog", 0, NO_DUMP )
 ROM_END
 
 
@@ -700,10 +727,6 @@ static void alg_init(void)
 	/* set up memory */
 	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
 	memory_configure_bank(1, 1, 1, memory_region(REGION_USER1), 0);
-
-	discinfo = laserdisc_init(LASERDISC_TYPE_LDP1450);
-	serial_timer = timer_alloc(response_timer);
-	serial_timer_active = FALSE;
 }
 
 

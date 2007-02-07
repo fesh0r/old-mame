@@ -4,7 +4,7 @@
 
     Core rendering system.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -898,7 +898,7 @@ float render_get_ui_aspect(void)
 
 		/* if we have a valid pixel aspect, apply that and return */
 		if (target->pixel_aspect != 0.0f)
-			return aspect * target->pixel_aspect;
+			return aspect / target->pixel_aspect;
 
 		/* if not, clamp for extreme proportions */
 		if (aspect < 0.66f)
@@ -1530,7 +1530,7 @@ static int load_layout_files(render_target *target, const char *layoutfile, int 
 	}
 
 	/* now do the built-in layouts for single-screen games */
-	if (Machine->drv->screen[1].tag == NULL)
+	if (Machine->drv->screen[0].tag != NULL && Machine->drv->screen[1].tag == NULL)
 	{
 		if (Machine->gamedrv->flags & ORIENTATION_SWAP_XY)
 			*nextfile = layout_file_load(NULL, layout_vertical);
@@ -2219,6 +2219,7 @@ void render_texture_set_bitmap(render_texture *texture, mame_bitmap *bitmap, con
 static int render_texture_get_scaled(render_texture *texture, UINT32 dwidth, UINT32 dheight, render_texinfo *texinfo, render_ref **reflist)
 {
 	UINT8 bpp = (texture->format == TEXFORMAT_PALETTE16 || texture->format == TEXFORMAT_PALETTEA16 || texture->format == TEXFORMAT_RGB15 || texture->format == TEXFORMAT_YUY16) ? 16 : 32;
+	const rgb_t *palbase = (texture->format == TEXFORMAT_PALETTE16 || texture->format == TEXFORMAT_PALETTEA16) ? palette_get_adjusted_colors(Machine) + texture->palettebase : NULL;
 	scaled_texture *scaled = NULL;
 	int swidth, sheight;
 	int scalenum;
@@ -2239,7 +2240,7 @@ static int render_texture_get_scaled(render_texture *texture, UINT32 dwidth, UIN
 		texinfo->rowpixels = texture->bitmap->rowpixels;
 		texinfo->width = swidth;
 		texinfo->height = sheight;
-		texinfo->palette = palette_get_adjusted_colors(Machine) + texture->palettebase;
+		texinfo->palette = palbase;
 		texinfo->seqid = ++texture->curseq;
 		return TRUE;
 	}
@@ -2278,7 +2279,7 @@ static int render_texture_get_scaled(render_texture *texture, UINT32 dwidth, UIN
 		}
 
 		/* allocate a new bitmap */
-		scaled->bitmap = bitmap_alloc_depth(dwidth, dheight, 32);
+		scaled->bitmap = bitmap_alloc_format(dwidth, dheight, BITMAP_FORMAT_ARGB32);
 		scaled->seqid = ++texture->curseq;
 
 		/* let the scaler do the work */
@@ -2291,7 +2292,7 @@ static int render_texture_get_scaled(render_texture *texture, UINT32 dwidth, UIN
 	texinfo->rowpixels = scaled->bitmap->rowpixels;
 	texinfo->width = dwidth;
 	texinfo->height = dheight;
-	texinfo->palette = palette_get_adjusted_colors(Machine) + texture->palettebase;
+	texinfo->palette = palbase;
 	texinfo->seqid = scaled->seqid;
 	return TRUE;
 }

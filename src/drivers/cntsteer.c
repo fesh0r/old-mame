@@ -84,9 +84,6 @@ VIDEO_START( zerotrgt )
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,       TILEMAP_OPAQUE,     16,16,64,64);
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows_flip_x,TILEMAP_TRANSPARENT, 8, 8,32,32);
 
-	if( !bg_tilemap || !fg_tilemap )
-		return 1;
-
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
 	tilemap_set_flip(bg_tilemap, TILEMAP_FLIPX|TILEMAP_FLIPY);
@@ -741,13 +738,14 @@ static MACHINE_DRIVER_START( cntsteer )
 //  MDRV_CPU_PROGRAM_MAP(sound_map,0)
 //  MDRV_CPU_VBLANK_INT(nmi_line_pulse,16) /* ? */ // should be interrupt, 16?
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 
 	// interleave 200?
 	MDRV_GFXDECODE(cntsteer_gfxdecodeinfo)
@@ -777,13 +775,14 @@ static MACHINE_DRIVER_START( zerotrgt )
 	MDRV_CPU_VBLANK_INT(irq0_line_pulse,16) /* ? */ // should be interrupt, 16?
 	MDRV_CPU_PERIODIC_INT(sound_interrupt, TIME_IN_HZ(1000))
 
-	MDRV_FRAMES_PER_SECOND(60)
-	MDRV_VBLANK_DURATION(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 
 	MDRV_MACHINE_RESET(zerotrgt)
 

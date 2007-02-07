@@ -79,7 +79,7 @@ DrawRozHelper(
 {
 	tilemap_set_palette_offset( tmap, rozInfo->color );
 
-	if( bitmap->depth == 15 || bitmap->depth == 16 )
+	if( bitmap->bpp == 16 )
 	{
 		UINT32 size_mask = rozInfo->size-1;
 		mame_bitmap *srcbitmap = tilemap_get_pixmap( tmap );
@@ -93,7 +93,7 @@ DrawRozHelper(
 			int x = sx;
 			UINT32 cx = startx;
 			UINT32 cy = starty;
-			UINT16 *dest = ((UINT16 *)bitmap->line[sy]) + sx;
+			UINT16 *dest = BITMAP_ADDR16(bitmap, sy, sx);
 			while( x <= clip->max_x )
 			{
 				UINT32 xpos = (cx>>16);
@@ -108,9 +108,9 @@ DrawRozHelper(
 					goto L_SkipPixel;
 				}
 
-				if( ((UINT8 *)transparency_bitmap->line[ypos])[xpos]&TILE_FLAG_FG_OPAQUE )
+				if( *BITMAP_ADDR8(transparency_bitmap, ypos, xpos)&TILE_FLAG_FG_OPAQUE )
 				{
-					*dest = ((UINT16 *)srcbitmap->line[ypos])[xpos]+rozInfo->color;
+					*dest = *BITMAP_ADDR16(srcbitmap, ypos, xpos)+rozInfo->color;
 				}
 L_SkipPixel:
 				cx += rozInfo->incxx;
@@ -323,59 +323,11 @@ READ16_HANDLER( namcos2_sprite_ram_r )
 
 /**************************************************************************/
 
-static void
-DrawCrossshair( mame_bitmap *bitmap, const rectangle *cliprect )
-{
-	int x1port, y1port, x2port, y2port;
-	int beamx, beamy;
-
-	switch( namcos2_gametype )
-	{
-	case NAMCOS2_GOLLY_GHOST:
-		x1port = 0;
-		y1port = 1;
-		x2port = 2;
-		y2port = 3;
-		break;
-	case NAMCOS2_BUBBLE_TROUBLE:
-		x1port = 0;
-		y1port = 1;
-		x2port = 2;
-		y2port = 3;
-		break;
-	case NAMCOS2_LUCKY_AND_WILD:
-		x1port = 4;
-		y1port = 2;
-		x2port = 3;
-		y2port = 1;
-		break;
-	case NAMCOS2_STEEL_GUNNER_2:
-		x1port = 4;
-		x2port = 5;
-		y1port = 6;
-		y2port = 7;
-		break;
-	default:
-		return;
-	}
-
-	beamx = readinputport(2+x1port)*bitmap->width/256;
-	beamy = readinputport(2+y1port)*bitmap->height/256;
-	draw_crosshair( bitmap, beamx, beamy, cliprect, 0 );
-
-	beamx = readinputport(2+x2port)*bitmap->width/256;
-	beamy = readinputport(2+y2port)*bitmap->height/256;
-	draw_crosshair( bitmap, beamx, beamy, cliprect, 1 );
-}
-
-/**************************************************************************/
-
 VIDEO_START( namcos2 )
 {
 	if( namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB)==0 )
 	{
 		tilemap_roz = tilemap_create(get_tile_info_roz,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,256,256);
-		if( tilemap_roz )
 		{
 			tilemap_set_transparent_pen(tilemap_roz,0xff);
 			DrawSpriteInit();
@@ -424,7 +376,6 @@ VIDEO_UPDATE( namcos2_default )
 			namcos2_draw_sprites( bitmap, &clip, pri/2, namcos2_gfx_ctrl );
 		}
 	}
-	DrawCrossshair( bitmap,&clip );
 	return 0;
 }
 
@@ -504,7 +455,6 @@ VIDEO_UPDATE( luckywld )
 		}
 		namco_obj_draw( bitmap, &clip, pri );
 	}
-	DrawCrossshair( bitmap,&clip );
 	return 0;
 }
 
@@ -534,7 +484,6 @@ VIDEO_UPDATE( sgunner )
 		namco_tilemap_draw( bitmap, &clip, pri );
 		namco_obj_draw( bitmap, &clip, pri );
 	}
-	DrawCrossshair( bitmap,&clip );
 	return 0;
 }
 

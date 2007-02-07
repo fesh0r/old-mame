@@ -4,7 +4,7 @@
 
     General core utilities and macros used throughout MAME.
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -98,21 +98,6 @@ typedef struct _mame_file mame_file;
 typedef struct _chd_file chd_file;
 
 
-/* These values are returned as error codes by osd_open() */
-enum _mame_file_error
-{
-	FILERR_NONE,
-	FILERR_FAILURE,
-	FILERR_OUT_OF_MEMORY,
-	FILERR_NOT_FOUND,
-	FILERR_ACCESS_DENIED,
-	FILERR_ALREADY_OPEN,
-	FILERR_TOO_MANY_FILES,
-	FILERR_INVALID_DATA
-};
-typedef enum _mame_file_error mame_file_error;
-
-
 /* pen_t is used to represent pixel values in mame_bitmaps */
 typedef UINT32 pen_t;
 
@@ -126,23 +111,31 @@ typedef INT32 stream_sample_t;
 typedef UINT32 input_code;
 
 
+/* mame_bitmap_format describes the various bitmap formats we use */
+enum _mame_bitmap_format
+{
+	BITMAP_FORMAT_INVALID = 0,		/* invalid format */
+	BITMAP_FORMAT_INDEXED8,			/* 8bpp indexed */
+	BITMAP_FORMAT_INDEXED16,		/* 16bpp indexed */
+	BITMAP_FORMAT_INDEXED32,		/* 32bpp indexed */
+	BITMAP_FORMAT_RGB15,			/* 15bpp 5-5-5 RGB */
+	BITMAP_FORMAT_RGB32,			/* 32bpp 8-8-8 RGB */
+	BITMAP_FORMAT_ARGB32,			/* 32bpp 8-8-8-8 ARGB */
+	BITMAP_FORMAT_YUY16				/* 16bpp 8-8 Y/Cb, Y/Cr in sequence */
+};
+typedef enum _mame_bitmap_format mame_bitmap_format;
+
+
 /* mame_bitmaps are used throughout the code */
 typedef struct _mame_bitmap mame_bitmap;
 struct _mame_bitmap
 {
-	int width,height;	/* width and height of the bitmap */
-	int depth;			/* bits per pixel */
-	void **line;		/* pointers to the start of each line - can be UINT8 **, UINT16 ** or UINT32 ** */
-
-	/* alternate way of accessing the pixels */
-	void *base;			/* pointer to pixel (0,0) (adjusted for padding) */
-	int rowpixels;		/* pixels per row (including padding) */
-	int rowbytes;		/* bytes per row (including padding) */
-
-	/* functions to render in the correct orientation */
-	void (*plot)(struct _mame_bitmap *bitmap,int x,int y,pen_t pen);
-	pen_t (*read)(struct _mame_bitmap *bitmap,int x,int y);
-	void (*plot_box)(struct _mame_bitmap *bitmap,int x,int y,int width,int height,pen_t pen);
+	/* core information */
+	mame_bitmap_format format;	/* format of the bitmap */
+	int width, height;			/* width and height of the bitmap */
+	int bpp;					/* bits per pixel */
+	void *base;					/* pointer to pixel (0,0) (adjusted for padding) */
+	int rowpixels;				/* pixels per row (including padding) */
 };
 
 
@@ -153,7 +146,6 @@ struct _rectangle
 	int min_x,max_x;
 	int min_y,max_y;
 };
-
 
 
 /***************************************************************************
@@ -174,8 +166,6 @@ typedef union
 #endif
 	UINT32 d;
 } PAIR;
-
-
 
 
 /***************************************************************************
@@ -285,6 +275,15 @@ typedef union
 #define U64(val) val
 #define S64(val) val
 #endif
+
+
+/* Macros for accessing bitmap pixels */
+#define BITMAP_ADDR(bitmap, type, y, x)	\
+	((type *)(bitmap)->base + (y) * (bitmap)->rowpixels + (x))
+
+#define BITMAP_ADDR8(bitmap, y, x)	BITMAP_ADDR(bitmap, UINT8, y, x)
+#define BITMAP_ADDR16(bitmap, y, x)	BITMAP_ADDR(bitmap, UINT16, y, x)
+#define BITMAP_ADDR32(bitmap, y, x)	BITMAP_ADDR(bitmap, UINT32, y, x)
 
 
 /* Macros for normalizing data into big or little endian formats */
@@ -590,15 +589,33 @@ INLINE int bcd_adjust(int value)
 }
 
 
-INLINE int dec_2_bcd(int a)
+INLINE UINT32 dec_2_bcd(UINT32 a)
 {
-	return (a % 10) | ((a / 10) << 4);
+	UINT32 result = 0;
+	int shift = 0;
+
+	while (a != 0)
+	{
+		result |= (a % 10) << shift;
+		a /= 10;
+		shift += 4;
+	}
+	return result;
 }
 
 
-INLINE int bcd_2_dec(int a)
+INLINE UINT32 bcd_2_dec(UINT32 a)
 {
-	return (a & 0xf) + (a >> 4) * 10;
+	UINT32 result = 0;
+	UINT32 scale = 1;
+
+	while (a != 0)
+	{
+		result += (a & 0x0f) * scale;
+		a >>= 4;
+		scale *= 10;
+	}
+	return result;
 }
 
 

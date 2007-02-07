@@ -40,13 +40,7 @@ VIDEO_START( triplhnt )
 {
 	helper = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
 
-	if (helper == NULL)
-		return 1;
-
 	bg_tilemap = tilemap_create(get_tile_info, get_memory_offset, 0, 16, 16, 16, 16);
-
-	if (bg_tilemap == NULL)
-		return 1;
 
 	return 0;
 }
@@ -145,16 +139,11 @@ static void triplhnt_draw_sprites(mame_bitmap* bitmap, const rectangle* cliprect
 
 VIDEO_UPDATE( triplhnt )
 {
-	int cross_x = readinputport(8);
-	int cross_y = readinputport(9);
-
 	tilemap_mark_all_tiles_dirty(bg_tilemap);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
 	triplhnt_draw_sprites(bitmap, cliprect);
-
-	draw_crosshair(bitmap, cross_x, cross_y, cliprect, 0);
 
 	discrete_sound_w(TRIPLHNT_BEAR_ROAR_DATA, triplhnt_playfield_ram[0xfa] & 15);
 	discrete_sound_w(TRIPLHNT_SHOT_DATA, triplhnt_playfield_ram[0xfc] & 15);

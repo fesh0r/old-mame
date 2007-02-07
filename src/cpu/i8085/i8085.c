@@ -108,6 +108,14 @@
  * - INR r, DCR r, ADD r, SUB r, CMP r instructions should affect parity flag.
  *   Fixed only for non x86 asm version (#define i8080_EXACT 1).
  *
+ * 23-Dec-2006 Tomasz Slanina
+ *
+ * - SIM fixed
+ *
+ * 28-Jan-2007 Zsolt Vasvari
+ *
+ * - Removed archaic i8080_EXACT flag.
+ *
  *****************************************************************************/
 
 /*int survival_prot = 0; */
@@ -391,10 +399,16 @@ INLINE void execute_one(int opcode)
 			break;
 
 		case 0x30:
-			if( I.cputype ) {
+			if( I.cputype )
+			{
 				i8085_ICount -= 7;		/* SIM  */
-				if ((I.IM ^ I.AF.b.h) & 0x80)
-					if (I.sod_callback) (*I.sod_callback)(I.AF.b.h >> 7);
+
+				if (I.AF.b.h & 0x40) //SOE - only when bit 0x40 is set!
+				{
+					I.IM &=~IM_SOD;
+					if (I.AF.b.h & 0x80) I.IM |= IM_SOD; //is it needed ?
+					if (I.sod_callback) (*I.sod_callback)(I.AF.b.h >> 7); //SOD - data = bit 0x80
+				}
 //AT
 				//I.IM &= (IM_SID + IM_IEN + IM_TRAP);
 				//I.IM |= (I.AF.b.h & ~(IM_SID + IM_SOD + IM_IEN + IM_TRAP));
@@ -402,12 +416,12 @@ INLINE void execute_one(int opcode)
 				// overwrite RST5.5-7.5 interrupt masks only when bit 0x08 of the accumulator is set
 				if (I.AF.b.h & 0x08)
 					I.IM = (I.IM & ~(IM_RST55+IM_RST65+IM_RST75)) | (I.AF.b.h & (IM_RST55+IM_RST65+IM_RST75));
-//ZT
-				if (I.AF.b.h & 0x80) I.IM |= IM_SOD;
+
 			} else {
 				i8085_ICount -= 4;		/* NOP undocumented */
 			}
 			break;
+
 		case 0x31: i8085_ICount -= 10;	/* LXI SP,nnnn */
 			I.SP.w.l = ARG16();
 			break;
@@ -1577,7 +1591,7 @@ void i8080_set_irq_line(int irqline, int state)
  * Generic set_info
  **************************************************************************/
 
-static void i8085_set_info(UINT32 state, union cpuinfo *info)
+static void i8085_set_info(UINT32 state, cpuinfo *info)
 {
 	switch (state)
 	{
@@ -1588,7 +1602,7 @@ static void i8085_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + I8085_RST75_LINE:i8085_set_irq_line(I8085_RST75_LINE, info->i); break;
 		case CPUINFO_INT_INPUT_STATE + INPUT_LINE_NMI:	i8085_set_irq_line(INPUT_LINE_NMI, info->i); break;
 
-		case CPUINFO_INT_PC:							I.PC.w.l = info->i; change_pc(I.PC.d); break;
+		case CPUINFO_INT_PC:							I.PC.w.l = info->i; change_pc(I.PC.d);	break;
 		case CPUINFO_INT_REGISTER + I8085_PC:			I.PC.w.l = info->i;						break;
 		case CPUINFO_INT_SP:							I.SP.w.l = info->i;						break;
 		case CPUINFO_INT_REGISTER + I8085_SP:			I.SP.w.l = info->i;						break;
@@ -1605,7 +1619,7 @@ static void i8085_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_I8085_SID:						if (info->i) I.IM |= IM_SID; else I.IM &= ~IM_SID; break;
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_I8085_SOD_CALLBACK:			I.sod_callback = (void (*)(int))info->f;break;
+		case CPUINFO_PTR_I8085_SOD_CALLBACK:			I.sod_callback = (void (*)(int))info->f; break;
 	}
 }
 
@@ -1615,7 +1629,7 @@ static void i8085_set_info(UINT32 state, union cpuinfo *info)
  * Generic get_info
  **************************************************************************/
 
-void i8085_get_info(UINT32 state, union cpuinfo *info)
+void i8085_get_info(UINT32 state, cpuinfo *info)
 {
 	switch (state)
 	{
@@ -1677,14 +1691,14 @@ void i8085_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &i8085_ICount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "8085A"); break;
-		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s = cpuintrf_temp_str(), "Intel 8080"); break;
-		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s = cpuintrf_temp_str(), "1.1"); break;
-		case CPUINFO_STR_CORE_FILE:						strcpy(info->s = cpuintrf_temp_str(), __FILE__); break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s = cpuintrf_temp_str(), "Copyright (c) 1999 Juergen Buchmueller, all rights reserved."); break;
+		case CPUINFO_STR_NAME:							strcpy(info->s, "8085A");				break;
+		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Intel 8080");			break;
+		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.1");					break;
+		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) 1999 Juergen Buchmueller, all rights reserved."); break;
 
 		case CPUINFO_STR_FLAGS:
-			sprintf(info->s = cpuintrf_temp_str(), "%c%c%c%c%c%c%c%c",
+			sprintf(info->s, "%c%c%c%c%c%c%c%c",
 				I.AF.b.l & 0x80 ? 'S':'.',
 				I.AF.b.l & 0x40 ? 'Z':'.',
 				I.AF.b.l & 0x20 ? '?':'.',
@@ -1695,17 +1709,17 @@ void i8085_get_info(UINT32 state, union cpuinfo *info)
 				I.AF.b.l & 0x01 ? 'C':'.');
 			break;
 
-		case CPUINFO_STR_REGISTER + I8085_AF:			sprintf(info->s = cpuintrf_temp_str(), "AF:%04X", I.AF.w.l); break;
-		case CPUINFO_STR_REGISTER + I8085_BC:			sprintf(info->s = cpuintrf_temp_str(), "BC:%04X", I.BC.w.l); break;
-		case CPUINFO_STR_REGISTER + I8085_DE:			sprintf(info->s = cpuintrf_temp_str(), "DE:%04X", I.DE.w.l); break;
-		case CPUINFO_STR_REGISTER + I8085_HL:			sprintf(info->s = cpuintrf_temp_str(), "HL:%04X", I.HL.w.l); break;
-		case CPUINFO_STR_REGISTER + I8085_SP:			sprintf(info->s = cpuintrf_temp_str(), "SP:%04X", I.SP.w.l); break;
-		case CPUINFO_STR_REGISTER + I8085_PC:			sprintf(info->s = cpuintrf_temp_str(), "PC:%04X", I.PC.w.l); break;
-		case CPUINFO_STR_REGISTER + I8085_IM:			sprintf(info->s = cpuintrf_temp_str(), "IM:%02X", I.IM); break;
-		case CPUINFO_STR_REGISTER + I8085_HALT:			sprintf(info->s = cpuintrf_temp_str(), "HALT:%d", I.HALT); break;
-		case CPUINFO_STR_REGISTER + I8085_IREQ:			sprintf(info->s = cpuintrf_temp_str(), "IREQ:%02X", I.IREQ); break;
-		case CPUINFO_STR_REGISTER + I8085_ISRV:			sprintf(info->s = cpuintrf_temp_str(), "ISRV:%02X", I.ISRV); break;
-		case CPUINFO_STR_REGISTER + I8085_VECTOR:		sprintf(info->s = cpuintrf_temp_str(), "VEC:%02X", I.INTR); break;
+		case CPUINFO_STR_REGISTER + I8085_AF:			sprintf(info->s, "AF:%04X", I.AF.w.l);	break;
+		case CPUINFO_STR_REGISTER + I8085_BC:			sprintf(info->s, "BC:%04X", I.BC.w.l);	break;
+		case CPUINFO_STR_REGISTER + I8085_DE:			sprintf(info->s, "DE:%04X", I.DE.w.l);	break;
+		case CPUINFO_STR_REGISTER + I8085_HL:			sprintf(info->s, "HL:%04X", I.HL.w.l);	break;
+		case CPUINFO_STR_REGISTER + I8085_SP:			sprintf(info->s, "SP:%04X", I.SP.w.l);	break;
+		case CPUINFO_STR_REGISTER + I8085_PC:			sprintf(info->s, "PC:%04X", I.PC.w.l);	break;
+		case CPUINFO_STR_REGISTER + I8085_IM:			sprintf(info->s, "IM:%02X", I.IM);		break;
+		case CPUINFO_STR_REGISTER + I8085_HALT:			sprintf(info->s, "HALT:%d", I.HALT);	break;
+		case CPUINFO_STR_REGISTER + I8085_IREQ:			sprintf(info->s, "IREQ:%02X", I.IREQ);	break;
+		case CPUINFO_STR_REGISTER + I8085_ISRV:			sprintf(info->s, "ISRV:%02X", I.ISRV);	break;
+		case CPUINFO_STR_REGISTER + I8085_VECTOR:		sprintf(info->s, "VEC:%02X", I.INTR);	break;
 	}
 }
 
@@ -1715,7 +1729,7 @@ void i8085_get_info(UINT32 state, union cpuinfo *info)
  * CPU-specific get_info/set_info
  **************************************************************************/
 
-static void i8080_set_info(UINT32 state, union cpuinfo *info)
+static void i8080_set_info(UINT32 state, cpuinfo *info)
 {
 	switch (state)
 	{
@@ -1723,15 +1737,11 @@ static void i8080_set_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + I8080_INTR_LINE:	i8080_set_irq_line(I8080_INTR_LINE, info->i); break;
 		case CPUINFO_INT_INPUT_STATE + INPUT_LINE_NMI:	i8080_set_irq_line(INPUT_LINE_NMI, info->i); break;
 
-		/* --- the following bits of info are set as pointers to data or functions --- */
-
-		default:
-			i8085_set_info(state, info);
-			break;
+		default:										i8085_set_info(state, info);			break;
 	}
 }
 
-void i8080_get_info(UINT32 state, union cpuinfo *info)
+void i8080_get_info(UINT32 state, cpuinfo *info)
 {
 	switch (state)
 	{
@@ -1745,11 +1755,9 @@ void i8080_get_info(UINT32 state, union cpuinfo *info)
 		case CPUINFO_PTR_INIT:							info->init = i8080_init;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "8080"); break;
+		case CPUINFO_STR_NAME:							strcpy(info->s, "8080");				break;
 
-		default:
-			i8085_get_info(state, info);
-			break;
+		default:										i8085_get_info(state, info);			break;
 	}
 }
 #endif

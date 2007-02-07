@@ -109,10 +109,7 @@ VIDEO_START( wolfpack )
 
 	LFSR = auto_malloc(0x8000);
 
-	if ((helper = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height)) == NULL)
-	{
-		return 1;
-	}
+	helper = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height);
 
 	for (i = 0; i < 0x8000; i++)
 	{
@@ -254,7 +251,7 @@ static void draw_water(mame_bitmap* bitmap, const rectangle* cliprect)
 
 	for (y = rect.min_y; y <= rect.max_y; y++)
 	{
-		UINT16* p = bitmap->line[y];
+		UINT16* p = BITMAP_ADDR16(bitmap, y, 0);
 
 		for (x = rect.min_x; x <= rect.max_x; x++)
 		{
