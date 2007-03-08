@@ -311,10 +311,8 @@ static int rescale_notifier(running_machine *machine, int width, int height)
 int ui_display_startup_screens(int show_disclaimer, int show_warnings, int show_gameinfo)
 {
 #ifdef MESS
-	const int minstate = 0;
 	const int maxstate = 4;
 #else
-	const int minstate = -1;
 	const int maxstate = 3;
 #endif
 	int state;

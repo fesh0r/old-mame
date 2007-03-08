@@ -8702,15 +8702,18 @@ Pinout of cartridge is in mess/messroms/svision.txt
 
 MESS Emulation State:
 
-Very preliminary support
-
-Preliminary sound support
-
-No serial port
-
-No TV adapter support
-
-Work stopped until more cartridges are available
+There is still a lot open to do:
+* support for the 4 in 1 power selected cartridges
+(power off/on cycle selects nexts 64k image in cartridge, done via hardware)
+* tvlink emulation (microcontroller not dumped yet, basically 2 supervision, 1st for inputs transmitted tvlink cartridge, 2nd for game, microcontroller for copying game video data to crtc ram)
+* probably tvlink (4 colors out of a palette of 4096) simulation, but only my Tron supports tvlink color
+selection
+* multiple supervisions linked together via serial port, but only my Tron supports 2 player via serial link
+(svisions is transmitting buttons of 2nd supervision to serial port in the needed protocoll)
+* selection of type of handheld/hardware via menu
+(but handheld, tvlink pal and tvlink ntsc are based on different clocks)
+* selection of a palette in configuration menu instead of selection via driver
+* switching audio to mono (like handheld internal speaker, tvlink)
 
 
 $end
