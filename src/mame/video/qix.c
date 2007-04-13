@@ -58,7 +58,7 @@ void qix_scanline_callback(int scanline)
 	scanline += SCANLINE_INCREMENT;
 	if (scanline > 256)
 		scanline = SCANLINE_INCREMENT;
-	timer_set(cpu_getscanlinetime(scanline), scanline, qix_scanline_callback);
+	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, qix_scanline_callback);
 }
 
 
@@ -71,7 +71,7 @@ void qix_scanline_callback(int scanline)
 
 READ8_HANDLER( qix_scanline_r )
 {
-	int scanline = cpu_getscanline();
+	int scanline = video_screen_get_vpos(0);
 	return (scanline <= 0xff) ? scanline : 0;
 }
 
@@ -216,7 +216,7 @@ WRITE8_HANDLER( qix_palettebank_w )
 	/* set the bank value */
 	if (qix_palettebank != (data & 3))
 	{
-		video_screen_update_partial(0, cpu_getscanline() - 1);
+		video_screen_update_partial(0, video_screen_get_vpos(0) - 1);
 		qix_palettebank = data & 3;
 	}
 
@@ -234,7 +234,7 @@ WRITE8_HANDLER( qix_palettebank_w )
 
 VIDEO_UPDATE( qix )
 {
-	pen_t *pens = &Machine->pens[qix_palettebank * 256];
+	pen_t *pens = &machine->pens[qix_palettebank * 256];
 	UINT8 *vram;
 	UINT8 scanline[256];
 	int x,y;

@@ -101,12 +101,16 @@ typedef struct CDP1869_interface
 {
 	int ntsc_pal;			// display format (NTSC/PAL)
 	int charrom_region;		// memory region to load CHARRAM from
-	int charram_size;		// CHARRAM size
-	int pageram_size;		// PAGERAM size
+	UINT16 charram_size;	// CHARRAM size
+	UINT16 pageram_size;	// PAGERAM size
+	UINT8 (*get_color_bits)(UINT8 cramdata, UINT16 cramaddr, UINT16 pramaddr); // 0x01 = PCB, 0x02 = CCB0, 0x04 = CCB1
 } CDP1869_interface;
 
 WRITE8_HANDLER ( cdp1869_out3_w );
-WRITE8_HANDLER ( cdp1869_out_w );
+WRITE8_HANDLER ( cdp1869_out4_w );
+WRITE8_HANDLER ( cdp1869_out5_w );
+WRITE8_HANDLER ( cdp1869_out6_w );
+WRITE8_HANDLER ( cdp1869_out7_w );
 
 PALETTE_INIT( cdp1869 );
 VIDEO_START( cdp1869 );
@@ -118,5 +122,7 @@ WRITE8_HANDLER ( cdp1869_charram_w );
 WRITE8_HANDLER ( cdp1869_pageram_w );
 
 void cdp1869_configure(const CDP1869_interface *intf);
+
+UINT16 cdp1869_get_cma(UINT16 offset);
 
 #endif

@@ -624,7 +624,7 @@ static void updatevisiblearea( void )
 	visarea.min_x = visarea.min_y = 0;
 	visarea.max_x = m_n_screenwidth - 1;
 	visarea.max_y = m_n_screenheight - 1;
-	video_screen_configure(0, m_n_screenwidth, m_n_screenheight, &visarea, refresh);
+	video_screen_configure(0, m_n_screenwidth, m_n_screenheight, &visarea, HZ_TO_SUBSECONDS(refresh));
 }
 
 static int psx_gpu_init( void )
@@ -934,7 +934,7 @@ VIDEO_UPDATE( psx )
 			n_line = n_lines;
 			while( n_line > 0 )
 			{
-				draw_scanline16( bitmap, n_x + n_left, n_y + n_top, n_columns, m_p_p_vram[ n_y + m_n_displaystarty ] + n_x + n_displaystartx, Machine->pens, -1 );
+				draw_scanline16( bitmap, n_x + n_left, n_y + n_top, n_columns, m_p_p_vram[ n_y + m_n_displaystarty ] + n_x + n_displaystartx, machine->pens, -1 );
 				n_y++;
 				n_line--;
 			}

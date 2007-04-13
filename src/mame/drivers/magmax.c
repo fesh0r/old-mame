@@ -66,13 +66,13 @@ static void scanline_callback(int scanline)
 	scanline += 128;
 	scanline &= 255;
 
-	timer_adjust(interrupt_timer, cpu_getscanlinetime( scanline ), scanline, 0);
+	mame_timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, time_zero);
 }
 
 static MACHINE_START( magmax )
 {
 	/* Create interrupt timer */
-	interrupt_timer = timer_alloc(scanline_callback);
+	interrupt_timer = mame_timer_alloc(scanline_callback);
 
 	/* Set up save state */
 	state_save_register_global(sound_latch);
@@ -85,7 +85,7 @@ static MACHINE_START( magmax )
 
 static MACHINE_RESET( magmax )
 {
-	timer_adjust(interrupt_timer, cpu_getscanlinetime(64), 64, 0);
+	mame_timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, 64, 0), 64, time_zero);
 
 #if 0
 	{
@@ -273,48 +273,48 @@ INPUT_PORTS_START( magmax )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	/* Dipswitch */
-	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Lives ) )	PORT_DIPLOCATION("SW1:1,2")
 	PORT_DIPSETTING(      0x0003, "3" )
 	PORT_DIPSETTING(      0x0002, "4" )
 	PORT_DIPSETTING(      0x0001, "5" )
 	PORT_DIPSETTING(      0x0000, "6" )
-	PORT_DIPNAME( 0x000c, 0x000c, DEF_STR( Bonus_Life ) )
+	PORT_DIPNAME( 0x000c, 0x000c, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SW1:3,4")
 	PORT_DIPSETTING(      0x000c, "30000 every" )
 	PORT_DIPSETTING(      0x0004, "70000 every" )
 	PORT_DIPSETTING(      0x0008, "50000 every" )
 	PORT_DIPSETTING(      0x0000, "90000 every" )
-	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Demo_Sounds ) )
+	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW1:5")
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0010, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0000, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x0020, 0x0000, DEF_STR( Cabinet ) )	PORT_DIPLOCATION("SW1:6")
 	PORT_DIPSETTING(      0x0000, DEF_STR( Upright ) )
 	PORT_DIPSETTING(      0x0020, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )	PORT_DIPLOCATION("SW1:7")
 	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )	PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Coin_A ) )
+	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Coin_A ) )	PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(      0x0100, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(      0x0300, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(      0x0200, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Coin_B ) )	PORT_DIPLOCATION("SW2:3,4")
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0400, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(      0x0c00, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x0800, DEF_STR( 1C_6C ) )
-	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:5")
 	PORT_DIPSETTING(      0x1000, DEF_STR( Easy ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Hard ) )
-	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Flip_Screen ) )
+	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Flip_Screen ) )	PORT_DIPLOCATION("SW2:6")
 	PORT_DIPSETTING(      0x2000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Unknown) )
+	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Unknown) )	PORT_DIPLOCATION("SW2:7")
 	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) )	PORT_DIPLOCATION("SW2:8")
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
@@ -374,7 +374,6 @@ static MACHINE_DRIVER_START( magmax )
 	MDRV_CPU_IO_MAP(magmax_soundreadport,magmax_soundwriteport)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
 	MDRV_MACHINE_START(magmax)

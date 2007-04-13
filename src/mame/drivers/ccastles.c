@@ -226,7 +226,7 @@ static MACHINE_START( ccastles )
 	visarea.max_x = 255;
 	visarea.min_y = ccastles_vblank_end;
 	visarea.max_y = ccastles_vblank_start - 1;
-	video_screen_configure(0, 320, 256, &visarea, (float)PIXEL_CLOCK / (float)VTOTAL / (float)HTOTAL);
+	video_screen_configure(0, 320, 256, &visarea, HZ_TO_SUBSECONDS(PIXEL_CLOCK) * VTOTAL * HTOTAL);
 
 	/* configure the ROM banking */
 	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU1) + 0xa000, 0x6000);
@@ -484,10 +484,7 @@ static MACHINE_DRIVER_START( ccastles )
 
 	MDRV_SCREEN_ADD("main", 0)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_REFRESH_RATE((float)PIXEL_CLOCK / (float)VTOTAL / (float)HTOTAL)
-	MDRV_SCREEN_SIZE(HTOTAL, VTOTAL)
-	MDRV_SCREEN_VBLANK_TIME(0)			/* VBLANK is handled manually */
-	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 231)
+	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, 0, HTOTAL - 1, VTOTAL, 0, VTOTAL - 1)	/* will be adjusted later */
 
 	MDRV_VIDEO_START(ccastles)
 	MDRV_VIDEO_UPDATE(ccastles)

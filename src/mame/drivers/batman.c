@@ -59,10 +59,13 @@ static void update_interrupts(void)
 static MACHINE_RESET( batman )
 {
 	atarigen_eeprom_reset();
-	atarivc_reset(atarivc_eof_data, 2);
+	atarivc_reset(0, atarivc_eof_data, 2);
 	atarigen_interrupt_reset(update_interrupts);
-	atarigen_scanline_timer_reset(batman_scanline_update, 8);
+	atarigen_scanline_timer_reset(0, batman_scanline_update, 8);
 	atarijsa_reset();
+	atarigen_init_save_state();
+	state_save_register_global(latch_data);
+
 }
 
 
@@ -96,7 +99,7 @@ static WRITE16_HANDLER( latch_w )
 	/* alpha bank is selected by the upper 4 bits */
 	if ((oldword ^ latch_data) & 0x7000)
 	{
-		video_screen_update_partial(0, cpu_getscanline());
+		video_screen_update_partial(0, video_screen_get_vpos(0));
 		tilemap_mark_all_tiles_dirty(atarigen_alpha_tilemap);
 		batman_alpha_tile_bank = (latch_data >> 12) & 7;
 	}
@@ -226,7 +229,6 @@ static MACHINE_DRIVER_START( batman )
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(batman)
 	MDRV_NVRAM_HANDLER(atarigen)
@@ -234,7 +236,8 @@ static MACHINE_DRIVER_START( batman )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(42*8, 30*8)
+	/* the vert size is copied from beathead.c.  Needs to be verified */
+	MDRV_SCREEN_SIZE(42*8, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 42*8-1, 0*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(2048)
@@ -346,4 +349,4 @@ static DRIVER_INIT( batman )
  *
  *************************************/
 
-GAME( 1991, batman, 0, batman, batman, batman, ROT0, "Atari Games", "Batman", 0 )
+GAME( 1991, batman, 0, batman, batman, batman, ROT0, "Atari Games", "Batman", GAME_SUPPORTS_SAVE )

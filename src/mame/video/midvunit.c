@@ -17,6 +17,9 @@
 #define LOG_DMA				(0)
 
 
+#define DMA_CLOCK			40000000
+
+
 #if KEEP_STATISTICS
 #define ADD_TO_PIXEL_COUNT(a)	do { if ((a) > 0) pixelcount += (a); } while (0)
 #else
@@ -33,6 +36,7 @@
 UINT16 *midvunit_videoram;
 UINT32 *midvunit_textureram;
 
+static UINT16 video_regs[16];
 static UINT16 dma_data[16];
 static UINT8 dma_data_index;
 static UINT16 page_control;
@@ -56,13 +60,13 @@ static int polycount, pixelcount, lastfps, framecount, totalframes;
 static void scanline_timer_cb(int scanline)
 {
 	cpunum_set_input_line(0, 0, ASSERT_LINE);
-	timer_adjust(scanline_timer, cpu_getscanlinetime(scanline + 1), scanline, 0);
+	mame_timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline + 1, 0), scanline, time_zero);
 }
 
 
 VIDEO_START( midvunit )
 {
-	scanline_timer = timer_alloc(scanline_timer_cb);
+	scanline_timer = mame_timer_alloc(scanline_timer_cb);
 	return 0;
 }
 
@@ -1071,7 +1075,7 @@ WRITE32_HANDLER( midvunit_page_control_w )
 		polycount = pixelcount = 0;
 		framecount++;
 #endif
-		video_screen_update_partial(0, cpu_getscanline() - 1);
+		video_screen_update_partial(0, video_screen_get_vpos(0) - 1);
 	}
 	page_control = data;
 }
@@ -1092,15 +1096,33 @@ READ32_HANDLER( midvunit_page_control_r )
 
 WRITE32_HANDLER( midvunit_video_control_w )
 {
-	/* the only thing that matters is the vblank int */
+	UINT16 old = video_regs[offset];
+
+	/* update the data */
+	COMBINE_DATA(&video_regs[offset]);
+
+	/* update the scanline timer */
 	if (offset == 0)
-		timer_adjust(scanline_timer, cpu_getscanlinetime((data & 0x1ff) + 1), data & 0x1ff, 0);
+		mame_timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, (data & 0x1ff) + 1, 0), data & 0x1ff, time_zero);
+
+	/* if something changed, update our parameters */
+	if (old != video_regs[offset] && video_regs[6] != 0 && video_regs[11] != 0)
+	{
+		rectangle visarea;
+
+		/* derive visible area from blanking */
+		visarea.min_x = 0;
+		visarea.max_x = (video_regs[6] + video_regs[2] - video_regs[5]) % video_regs[6];
+		visarea.min_y = 0;
+		visarea.max_y = (video_regs[11] + video_regs[7] - video_regs[10]) % video_regs[11];
+		video_screen_configure(0, video_regs[6], video_regs[11], &visarea, HZ_TO_SUBSECONDS(MIDVUNIT_VIDEO_CLOCK / 2) * video_regs[6] * video_regs[11]);
+	}
 }
 
 
 READ32_HANDLER( midvunit_scanline_r )
 {
-	return cpu_getscanline();
+	return video_screen_get_vpos(0);
 }
 
 
@@ -1197,7 +1219,7 @@ VIDEO_UPDATE( midvunit )
 
 	/* adjust the offset */
 	offset += xoffs;
-	offset += 512 * cliprect->min_y;
+	offset += 512 * (cliprect->min_y - machine->screen[0].visarea.min_y);
 
 	/* loop over rows */
 	for (y = cliprect->min_y; y <= cliprect->max_y; y++)

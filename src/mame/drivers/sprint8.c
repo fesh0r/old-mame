@@ -117,7 +117,7 @@ static MACHINE_RESET( sprint8 )
 	collision_reset = 0;
 	collision_index = 0;
 
-	timer_pulse(TIME_IN_HZ(60), 0, input_callback);
+	mame_timer_pulse(video_screen_get_frame_period(0), 0, input_callback);
 }
 
 
@@ -536,11 +536,10 @@ static MACHINE_DRIVER_START( sprint8 )
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(29 * 1000000 / 15750))
 	MDRV_MACHINE_RESET(sprint8)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 261)
 	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 231)

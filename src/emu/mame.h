@@ -15,6 +15,7 @@
 #include "mamecore.h"
 #include "video.h"
 #include "restrack.h"
+#include "options.h"
 #include <stdarg.h>
 
 #ifdef MESS
@@ -53,6 +54,7 @@
 /* MESS vs. MAME abstractions */
 #ifndef MESS
 #define APPNAME					"MAME"
+#define APPNAME_LOWER			"mame"
 #define CONFIGNAME				"mame"
 #define APPLONGNAME				"M.A.M.E."
 #define CAPGAMENOUN				"GAME"
@@ -62,6 +64,7 @@
 #define HISTORYNAME				"History"
 #else
 #define APPNAME					"MESS"
+#define APPNAME_LOWER			"mess"
 #define CONFIGNAME				"mess"
 #define APPLONGNAME				"M.E.S.S."
 #define CAPGAMENOUN				"SYSTEM"
@@ -141,6 +144,7 @@ typedef void (*output_callback)(void *param, const char *format, va_list argptr)
 
 /* forward type declarations */
 typedef struct _mame_private mame_private;
+typedef struct _video_private video_private;
 typedef struct _palette_private palette_private;
 typedef struct _streams_private streams_private;
 
@@ -182,6 +186,7 @@ struct _running_machine
 
 	/* internal core information */
 	mame_private *			mame_data;			/* internal data from mame.c */
+	video_private *			video_data;			/* internal data from video.c */
 	palette_private *		palette_data;		/* internal data from palette.c */
 	streams_private *		streams_data;		/* internal data from streams.c */
 
@@ -216,75 +221,9 @@ struct _mame_system_time
 
 
 /***************************************************************************
-    OPTIONS PASSED FROM THE FRONTEND
-***************************************************************************/
-
-#ifdef MESS
-/*
- * This is a filename and it's associated peripheral type
- * The types are defined in device.h (IO_...)
- */
-struct ImageFile
-{
-	const char *name;
-	iodevice_t device_type;
-	const char *device_tag;
-	int device_index;
-};
-#endif /* MESS */
-
-
-/* The host platform should fill these fields with the preferences specified in the GUI */
-/* or on the commandline. */
-typedef struct _global_options global_options;
-struct _global_options
-{
-	mame_file *	record;			/* handle to file to record input to */
-	mame_file *	playback;		/* handle to file to playback input from */
-	mame_file *	language_file;	/* handle to file for localization */
-	mame_file *	logfile;		/* handle to file for debug logging */
-
-	UINT8		mame_debug;		/* 1 to enable debugging */
-	UINT8		cheat;			/* 1 to enable cheating */
-	UINT8 		skip_disclaimer;/* 1 to skip the disclaimer screen at startup */
-	UINT8 		skip_gameinfo;	/* 1 to skip the game info screen at startup */
-	UINT8 		skip_warnings;	/* 1 to skip the warnings screen at startup */
-
-	int			samplerate;		/* sound sample playback rate, in Hz */
-	UINT8		use_samples;	/* 1 to enable external .wav samples */
-
-	float		brightness;		/* default brightness of the display */
-	float		contrast;		/* default brightness of the display */
-	float		gamma;			/* default gamma correction of the display */
-	float		pause_bright;	/* fractional brightness when in pause */
-
-	int			beam;			/* vector beam width */
-	float		vector_flicker;	/* vector beam flicker effect control */
-	UINT8 		antialias;		/* 1 to enable antialiasing on vectors */
-
-	const char * savegame;		/* string representing a savegame to load; if one length then interpreted as a character */
-	UINT8		auto_save;		/* 1 to automatically save/restore at startup/quitting time */
-	char *		bios;			/* specify system bios (if used), 0 is default */
-
-	const char *controller;	/* controller-specific cfg to load */
-
-#ifdef MESS
-	UINT32	ram;
-	struct ImageFile image_files[32];
-	int		image_count;
-	int		disable_normal_ui;
-	int		min_width;		/* minimum width for the display */
-	int		min_height;		/* minimum height for the display */
-#endif /* MESS */
-};
-
-
-
-/***************************************************************************
     GLOBALS
 ***************************************************************************/
 
-extern global_options options;
 extern running_machine *Machine;
 extern const char *mame_disclaimer;
 extern char giant_string_buffer[];

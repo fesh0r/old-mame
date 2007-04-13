@@ -619,11 +619,11 @@ DRIVER_INIT( atari )
 	offs_t ram_top;
 	offs_t ram_size;
 
-	if (!strcmp(Machine->gamedrv->name, "a400")
-		|| !strcmp(Machine->gamedrv->name, "a400pal")
-		|| !strcmp(Machine->gamedrv->name, "a800")
-		|| !strcmp(Machine->gamedrv->name, "a800pal")
-		|| !strcmp(Machine->gamedrv->name, "a800xl"))
+	if (!strcmp(machine->gamedrv->name, "a400")
+		|| !strcmp(machine->gamedrv->name, "a400pal")
+		|| !strcmp(machine->gamedrv->name, "a800")
+		|| !strcmp(machine->gamedrv->name, "a800pal")
+		|| !strcmp(machine->gamedrv->name, "a800xl"))
 	{
 		ram_size = 0xA000;
 	}
@@ -897,7 +897,7 @@ DEVICE_LOAD( a800xl_cart )
 	UINT8 *mem = memory_region(REGION_CPU1);
 	char *fname;
 	mame_file *basic_fp;
-	mame_file_error filerr;
+	file_error filerr;
 	unsigned size;
 
 	fname = assemble_3_strings(Machine->gamedrv->name, PATH_SEPARATOR, "basic.rom");

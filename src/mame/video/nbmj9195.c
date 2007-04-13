@@ -131,8 +131,7 @@ void nbmj9195_blitter_w(int vram, int offset, int data)
 					break;
 		case 0x01:	nbmj9195_scrollx[vram] = (nbmj9195_scrollx[vram] & 0x0100) | data; break;
 		case 0x02:	nbmj9195_scrollx[vram] = (nbmj9195_scrollx[vram] & 0x00ff) | ((data << 8) & 0x0100);
-					new_line = cpu_getscanline();
-					if (new_line > SCANLINE_MAX) new_line = SCANLINE_MAX;
+					new_line = video_screen_get_vpos(0);
 					if (nbmj9195_flipscreen[vram])
 					{
 						for ( ; nbmj9195_scanline[vram] < new_line; nbmj9195_scanline[vram]++)
@@ -381,7 +380,9 @@ static void nbmj9195_gfxdraw(int vram)
 	}
 
 	nb19010_busyflag = 0;
-	timer_set((double)nb19010_busyctr * TIME_IN_NSEC(1650), 0, blitter_timer_callback);
+
+	/* 1650ns per count */
+	mame_timer_set(make_mame_time(0, nb19010_busyctr * 1650 * (MAX_SUBSECONDS / 1000000000)), 0, blitter_timer_callback);
 }
 
 /******************************************************************************
@@ -403,11 +404,11 @@ WRITE8_HANDLER( nbmj9195_clut_1_w )		{ nbmj9195_clut_w(1, offset, data); }
 ******************************************************************************/
 VIDEO_START( nbmj9195_1layer )
 {
-	nbmj9195_tmpbitmap[0] = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
-	nbmj9195_videoram[0] = auto_malloc(Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16));
+	nbmj9195_tmpbitmap[0] = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	nbmj9195_videoram[0] = auto_malloc(machine->screen[0].width * machine->screen[0].height * sizeof(UINT16));
 	nbmj9195_palette = auto_malloc(0x200 * sizeof(UINT8));
 	nbmj9195_clut[0] = auto_malloc(0x1000 * sizeof(UINT8));
-	memset(nbmj9195_videoram[0], 0x0000, (Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16)));
+	memset(nbmj9195_videoram[0], 0x0000, (machine->screen[0].width * machine->screen[0].height * sizeof(UINT16)));
 	nbmj9195_scanline[0] = nbmj9195_scanline[1] = SCANLINE_MIN;
 	nb19010_busyflag = 1;
 	gfxdraw_mode = 0;
@@ -416,15 +417,15 @@ VIDEO_START( nbmj9195_1layer )
 
 VIDEO_START( nbmj9195_2layer )
 {
-	nbmj9195_tmpbitmap[0] = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
-	nbmj9195_tmpbitmap[1] = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
-	nbmj9195_videoram[0] = auto_malloc(Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16));
-	nbmj9195_videoram[1] = auto_malloc(Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16));
+	nbmj9195_tmpbitmap[0] = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	nbmj9195_tmpbitmap[1] = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	nbmj9195_videoram[0] = auto_malloc(machine->screen[0].width * machine->screen[0].height * sizeof(UINT16));
+	nbmj9195_videoram[1] = auto_malloc(machine->screen[0].width * machine->screen[0].height * sizeof(UINT16));
 	nbmj9195_palette = auto_malloc(0x200 * sizeof(UINT8));
 	nbmj9195_clut[0] = auto_malloc(0x1000 * sizeof(UINT8));
 	nbmj9195_clut[1] = auto_malloc(0x1000 * sizeof(UINT8));
-	memset(nbmj9195_videoram[0], 0x0000, (Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16)));
-	memset(nbmj9195_videoram[1], 0x0000, (Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16)));
+	memset(nbmj9195_videoram[0], 0x0000, (machine->screen[0].width * machine->screen[0].height * sizeof(UINT16)));
+	memset(nbmj9195_videoram[1], 0x0000, (machine->screen[0].width * machine->screen[0].height * sizeof(UINT16)));
 	nbmj9195_scanline[0] = nbmj9195_scanline[1] = SCANLINE_MIN;
 	nb19010_busyflag = 1;
 	gfxdraw_mode = 1;
@@ -433,19 +434,19 @@ VIDEO_START( nbmj9195_2layer )
 
 VIDEO_START( nbmj9195_nb22090 )
 {
-	nbmj9195_tmpbitmap[0] = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
-	nbmj9195_tmpbitmap[1] = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
-	nbmj9195_videoram[0] = auto_malloc(Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16));
-	nbmj9195_videoram[1] = auto_malloc(Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16));
-	nbmj9195_videoworkram[0] = auto_malloc(Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16));
-	nbmj9195_videoworkram[1] = auto_malloc(Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16));
+	nbmj9195_tmpbitmap[0] = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	nbmj9195_tmpbitmap[1] = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	nbmj9195_videoram[0] = auto_malloc(machine->screen[0].width * machine->screen[0].height * sizeof(UINT16));
+	nbmj9195_videoram[1] = auto_malloc(machine->screen[0].width * machine->screen[0].height * sizeof(UINT16));
+	nbmj9195_videoworkram[0] = auto_malloc(machine->screen[0].width * machine->screen[0].height * sizeof(UINT16));
+	nbmj9195_videoworkram[1] = auto_malloc(machine->screen[0].width * machine->screen[0].height * sizeof(UINT16));
 	nbmj9195_nb22090_palette = auto_malloc(0xc00 * sizeof(UINT8));
 	nbmj9195_clut[0] = auto_malloc(0x1000 * sizeof(UINT8));
 	nbmj9195_clut[1] = auto_malloc(0x1000 * sizeof(UINT8));
-	memset(nbmj9195_videoram[0], 0x0000, (Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16)));
-	memset(nbmj9195_videoram[1], 0x0000, (Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16)));
-	memset(nbmj9195_videoworkram[0], 0x0000, (Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16)));
-	memset(nbmj9195_videoworkram[1], 0x0000, (Machine->screen[0].width * Machine->screen[0].height * sizeof(UINT16)));
+	memset(nbmj9195_videoram[0], 0x0000, (machine->screen[0].width * machine->screen[0].height * sizeof(UINT16)));
+	memset(nbmj9195_videoram[1], 0x0000, (machine->screen[0].width * machine->screen[0].height * sizeof(UINT16)));
+	memset(nbmj9195_videoworkram[0], 0x0000, (machine->screen[0].width * machine->screen[0].height * sizeof(UINT16)));
+	memset(nbmj9195_videoworkram[1], 0x0000, (machine->screen[0].width * machine->screen[0].height * sizeof(UINT16)));
 	nbmj9195_scanline[0] = nbmj9195_scanline[1] = SCANLINE_MIN;
 	nb19010_busyflag = 1;
 	gfxdraw_mode = 2;
@@ -466,9 +467,9 @@ VIDEO_UPDATE( nbmj9195 )
 	{
 		nbmj9195_screen_refresh = 0;
 
-		for (y = 0; y < Machine->screen[0].height; y++)
+		for (y = 0; y < machine->screen[0].height; y++)
 		{
-			for (x = 0; x < Machine->screen[0].width; x++)
+			for (x = 0; x < machine->screen[0].width; x++)
 			{
 				update_pixel(0, x, y);
 
@@ -504,11 +505,11 @@ VIDEO_UPDATE( nbmj9195 )
 	if (nbmj9195_dispflag[0])
 	{
 		// nbmj9195 1layer
-		copyscrollbitmap(bitmap, nbmj9195_tmpbitmap[0], SCANLINE_MAX, nbmj9195_scrollx_raster[0], 1, &scrolly[0], &Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+		copyscrollbitmap(bitmap, nbmj9195_tmpbitmap[0], SCANLINE_MAX, nbmj9195_scrollx_raster[0], 1, &scrolly[0], &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
 	}
 	else
 	{
-		fillbitmap(bitmap, Machine->pens[0x0ff], 0);
+		fillbitmap(bitmap, machine->pens[0x0ff], 0);
 	}
 
 	if (nbmj9195_dispflag[1])
@@ -516,12 +517,12 @@ VIDEO_UPDATE( nbmj9195 )
 		if (gfxdraw_mode == 1)
 		{
 			// nbmj9195 2layer
-			copyscrollbitmap(bitmap, nbmj9195_tmpbitmap[1], SCANLINE_MAX, nbmj9195_scrollx_raster[1], 1, &scrolly[1], &Machine->screen[0].visarea, TRANSPARENCY_PEN, Machine->pens[0x0ff]);
+			copyscrollbitmap(bitmap, nbmj9195_tmpbitmap[1], SCANLINE_MAX, nbmj9195_scrollx_raster[1], 1, &scrolly[1], &machine->screen[0].visarea, TRANSPARENCY_PEN, machine->pens[0x0ff]);
 		}
 		if (gfxdraw_mode == 2)
 		{
 			// nbmj9195 nb22090 2layer
-			copyscrollbitmap(bitmap, nbmj9195_tmpbitmap[1], SCANLINE_MAX, nbmj9195_scrollx_raster[1], 1, &scrolly[1], &Machine->screen[0].visarea, TRANSPARENCY_PEN, Machine->pens[0x1ff]);
+			copyscrollbitmap(bitmap, nbmj9195_tmpbitmap[1], SCANLINE_MAX, nbmj9195_scrollx_raster[1], 1, &scrolly[1], &machine->screen[0].visarea, TRANSPARENCY_PEN, machine->pens[0x1ff]);
 		}
 	}
 	return 0;

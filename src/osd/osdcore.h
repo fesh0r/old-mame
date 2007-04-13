@@ -28,6 +28,11 @@
     FILE I/O INTERFACES
 ***************************************************************************/
 
+/* Make sure we have a path separator (default to /) */
+#ifndef PATH_SEPARATOR
+#define PATH_SEPARATOR			"/"
+#endif
+
 /* flags controlling file access */
 #define OPEN_FLAG_READ			0x0001		/* open for read */
 #define OPEN_FLAG_WRITE			0x0002		/* open for write */
@@ -35,7 +40,7 @@
 #define OPEN_FLAG_CREATE_PATHS	0x0008		/* create paths as necessary */
 
 /* error codes returned by routines below */
-enum _mame_file_error
+enum _file_error
 {
 	FILERR_NONE,
 	FILERR_FAILURE,
@@ -47,7 +52,7 @@ enum _mame_file_error
 	FILERR_INVALID_DATA,
 	FILERR_INVALID_ACCESS
 };
-typedef enum _mame_file_error mame_file_error;
+typedef enum _file_error file_error;
 
 /* osd_file is an opaque type which represents an open file */
 typedef struct _osd_file osd_file;
@@ -76,7 +81,7 @@ typedef struct _osd_file osd_file;
 
     Return value:
 
-        a mame_file_error describing any error that occurred while opening
+        a file_error describing any error that occurred while opening
         the file, or FILERR_NONE if no error occurred
 
     Notes:
@@ -92,7 +97,7 @@ typedef struct _osd_file osd_file;
         alternate path separators (specified by users and placed into the
         options database).
 -----------------------------------------------------------------------------*/
-mame_file_error osd_open(const char *path, UINT32 openflags, osd_file **file, UINT64 *filesize);
+file_error osd_open(const char *path, UINT32 openflags, osd_file **file, UINT64 *filesize);
 
 
 /*-----------------------------------------------------------------------------
@@ -104,10 +109,10 @@ mame_file_error osd_open(const char *path, UINT32 openflags, osd_file **file, UI
 
     Return value:
 
-        a mame_file_error describing any error that occurred while closing
+        a file_error describing any error that occurred while closing
         the file, or FILERR_NONE if no error occurred
 -----------------------------------------------------------------------------*/
-mame_file_error osd_close(osd_file *file);
+file_error osd_close(osd_file *file);
 
 
 /*-----------------------------------------------------------------------------
@@ -129,10 +134,10 @@ mame_file_error osd_close(osd_file *file);
 
     Return value:
 
-        a mame_file_error describing any error that occurred while reading
+        a file_error describing any error that occurred while reading
         from the file, or FILERR_NONE if no error occurred
 -----------------------------------------------------------------------------*/
-mame_file_error osd_read(osd_file *file, void *buffer, UINT64 offset, UINT32 length, UINT32 *actual);
+file_error osd_read(osd_file *file, void *buffer, UINT64 offset, UINT32 length, UINT32 *actual);
 
 
 /*-----------------------------------------------------------------------------
@@ -154,10 +159,10 @@ mame_file_error osd_read(osd_file *file, void *buffer, UINT64 offset, UINT32 len
 
     Return value:
 
-        a mame_file_error describing any error that occurred while writing to
+        a file_error describing any error that occurred while writing to
         the file, or FILERR_NONE if no error occurred
 -----------------------------------------------------------------------------*/
-mame_file_error osd_write(osd_file *file, const void *buffer, UINT64 offset, UINT32 length, UINT32 *actual);
+file_error osd_write(osd_file *file, const void *buffer, UINT64 offset, UINT32 length, UINT32 *actual);
 
 
 /*-----------------------------------------------------------------------------
@@ -169,10 +174,10 @@ mame_file_error osd_write(osd_file *file, const void *buffer, UINT64 offset, UIN
 
     Return value:
 
-        a mame_file_error describing any error that occurred while deleting
+        a file_error describing any error that occurred while deleting
         the file, or FILERR_NONE if no error occurred
 -----------------------------------------------------------------------------*/
-mame_file_error osd_rmfile(const char *filename);
+file_error osd_rmfile(const char *filename);
 
 
 /*-----------------------------------------------------------------------------
@@ -391,6 +396,31 @@ osd_ticks_t osd_ticks_per_second(void);
 osd_ticks_t osd_profiling_ticks(void);
 
 
+/*-----------------------------------------------------------------------------
+    osd_sleep: sleep for the specified time interval
+
+    Parameters:
+
+        duration - an osd_ticks_t value that specifies how long we should
+            sleep
+
+    Return value:
+
+        None
+
+    Notes:
+
+        The OSD layer should try to sleep for as close to the specified
+        duration as possible, or less. This is used as a mechanism to
+        "give back" unneeded time to other programs running in the system.
+        On a simple, non multitasking system, this routine can be a no-op.
+        If there is significant volatility in the amount of time that the
+        sleep occurs for, the OSD layer should strive to sleep for less time
+        than specified rather than sleeping too long.
+-----------------------------------------------------------------------------*/
+void osd_sleep(osd_ticks_t duration);
+
+
 
 /***************************************************************************
     SYNCHRONIZATION INTERFACES
@@ -485,6 +515,10 @@ void osd_lock_free(osd_lock *lock);
    how to configure the queue */
 #define WORK_QUEUE_FLAG_IO			0x0001
 #define WORK_QUEUE_FLAG_MULTI		0x0002
+
+/* these flags can be set when queueing a work item to indicate how to handle
+   its deconstruction */
+#define WORK_ITEM_FLAG_AUTO_RELEASE	0x0001
 
 /* osd_work_queue is an opaque type which represents a queue of work items */
 typedef struct _osd_work_queue osd_work_queue;
@@ -586,6 +620,11 @@ void osd_work_queue_free(osd_work_queue *queue);
         param - a void * parameter that can be used to pass data to the
             function
 
+        flags - one or more of the WORK_ITEM_FLAG_* values ORed together:
+
+            WORK_ITEM_FLAG_AUTO_RELEASE - indicates that the work item
+                should be automatically freed when it is complete
+
     Return value:
 
         A pointer to an allocated osd_work_item representing the item.
@@ -595,7 +634,7 @@ void osd_work_queue_free(osd_work_queue *queue);
         On single-threaded systems, this function may actually execute the
         work item immediately before returning.
 -----------------------------------------------------------------------------*/
-osd_work_item *osd_work_item_queue(osd_work_queue *queue, osd_work_callback callback, void *param);
+osd_work_item *osd_work_item_queue(osd_work_queue *queue, osd_work_callback callback, void *param, UINT32 flags);
 
 
 /*-----------------------------------------------------------------------------

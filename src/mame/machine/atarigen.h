@@ -35,18 +35,18 @@ typedef void (*atarigen_scanline_callback)(int scanline);
 
 struct atarivc_state_desc
 {
-	int latch1;								/* latch #1 value (-1 means disabled) */
-	int latch2;								/* latch #2 value (-1 means disabled) */
-	int rowscroll_enable;					/* true if row-scrolling is enabled */
-	int palette_bank;						/* which palette bank is enabled */
-	int pf0_xscroll;						/* playfield 1 xscroll */
-	int pf0_xscroll_raw;					/* playfield 1 xscroll raw value */
-	int pf0_yscroll;						/* playfield 1 yscroll */
-	int pf1_xscroll;						/* playfield 2 xscroll */
-	int pf1_xscroll_raw;					/* playfield 2 xscroll raw value */
-	int pf1_yscroll;						/* playfield 2 yscroll */
-	int mo_xscroll;							/* sprite xscroll */
-	int mo_yscroll;							/* sprite xscroll */
+	UINT32 latch1;								/* latch #1 value (-1 means disabled) */
+	UINT32 latch2;								/* latch #2 value (-1 means disabled) */
+	UINT32 rowscroll_enable;					/* true if row-scrolling is enabled */
+	UINT32 palette_bank;						/* which palette bank is enabled */
+	UINT32 pf0_xscroll;						/* playfield 1 xscroll */
+	UINT32 pf0_xscroll_raw;					/* playfield 1 xscroll raw value */
+	UINT32 pf0_yscroll;						/* playfield 1 yscroll */
+	UINT32 pf1_xscroll;						/* playfield 2 xscroll */
+	UINT32 pf1_xscroll_raw;					/* playfield 2 xscroll raw value */
+	UINT32 pf1_yscroll;						/* playfield 2 yscroll */
+	UINT32 mo_xscroll;							/* sprite xscroll */
+	UINT32 mo_yscroll;							/* sprite xscroll */
 };
 
 
@@ -99,7 +99,7 @@ extern struct atarivc_state_desc atarivc_state;
 void atarigen_interrupt_reset(atarigen_int_callback update_int);
 void atarigen_update_interrupts(void);
 
-void atarigen_scanline_int_set(int scanline);
+void atarigen_scanline_int_set(int scrnum, int scanline);
 INTERRUPT_GEN( atarigen_scanline_int_gen );
 WRITE16_HANDLER( atarigen_scanline_int_ack_w );
 WRITE32_HANDLER( atarigen_scanline_int_ack32_w );
@@ -183,8 +183,7 @@ void atarigen_set_oki6295_vol(int volume);
     VIDEO CONTROLLER
 ---------------------------------------------------------------*/
 
-void atarivc_reset(UINT16 *eof_data, int playfields);
-void atarivc_update(const UINT16 *data);
+void atarivc_reset(int scrnum, UINT16 *eof_data, int playfields);
 
 WRITE16_HANDLER( atarivc_w );
 READ16_HANDLER( atarivc_r );
@@ -220,7 +219,7 @@ WRITE16_HANDLER( atarigen_playfield2_latched_msb_w );
     VIDEO HELPERS
 ---------------------------------------------------------------*/
 
-void atarigen_scanline_timer_reset(atarigen_scanline_callback update_graphics, int frequency);
+void atarigen_scanline_timer_reset(int scrnum, atarigen_scanline_callback update_graphics, int frequency);
 int atarigen_get_hblank(int scrnum);
 WRITE16_HANDLER( atarigen_halt_until_hblank_0_w );
 WRITE16_HANDLER( atarigen_666_paletteram_w );
@@ -236,6 +235,11 @@ void atarigen_swap_mem(void *ptr1, void *ptr2, int bytes);
 void atarigen_blend_gfx(int gfx0, int gfx1, int mask0, int mask1);
 
 
+/*---------------------------------------------------------------
+    STATE SAVE
+---------------------------------------------------------------*/
+
+void atarigen_init_save_state(void);
 
 /*##########################################################################
     GENERAL ATARI NOTES

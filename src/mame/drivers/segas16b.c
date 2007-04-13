@@ -832,6 +832,7 @@ WW.B11    Object 5 - Even
 #include "system16.h"
 #include "machine/segaic16.h"
 #include "machine/fd1094.h"
+#include "machine/mc8123.h"
 #include "sound/2151intf.h"
 #include "sound/2413intf.h"
 #include "sound/upd7759.h"
@@ -843,11 +844,12 @@ WW.B11    Object 5 - Even
  *
  *************************************/
 
-#define ROM_BOARD_171_5358		(0)		/* 171-5358 */
-#define ROM_BOARD_171_5521		(1)		/* 171-5521 */
-#define ROM_BOARD_171_5704		(1)		/* 171-5704 - don't know any diff between this and 171-5521 */
-#define ROM_BOARD_ATOMICP		(2)		/* (custom Korean) */
-#define ROM_BOARD_171_5797		(3)		/* 171-5797 */
+#define ROM_BOARD_171_5358_SMALL (0)	/* 171-5358 with smaller ROMs */
+#define ROM_BOARD_171_5358		(1)		/* 171-5358 */
+#define ROM_BOARD_171_5521		(2)		/* 171-5521 */
+#define ROM_BOARD_171_5704		(2)		/* 171-5704 - don't know any diff between this and 171-5521 */
+#define ROM_BOARD_ATOMICP		(3)		/* (custom Korean) */
+#define ROM_BOARD_171_5797		(4)		/* 171-5797 */
 
 
 
@@ -883,7 +885,7 @@ static const UINT8 *i8751_initial_config;
  *************************************/
 
 extern void fd1094_machine_init(void);
-extern void fd1094_driver_init(void);
+extern void fd1094_driver_init(void (*set_decrypted)(UINT8 *));
 
 static READ16_HANDLER( misc_io_r );
 static WRITE16_HANDLER( misc_io_w );
@@ -901,6 +903,20 @@ static WRITE16_HANDLER( atomicp_sound_w );
  *  Memory mapping tables
  *
  *************************************/
+
+static const struct segaic16_memory_map_entry rom_171_5358_info_small[] =
+{
+	{ 0x3d/2, 0x00000, 0x04000, 0xffc000,      ~0, misc_io_r,             misc_io_w,             NULL,                  "I/O space" },
+	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, MRA16_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
+	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, MRA16_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
+	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, MRA16_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
+	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, MRA16_BANK13,          MWA16_BANK13,          &segaic16_spriteram_0, "object RAM" },
+	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, MRA16_BANK14,          MWA16_BANK14,          &workram,              "work RAM" },
+	{ 0x29/2, 0x00000, 0x20000, 0xfe0000, 0x20000, MRA16_BANK15,          MWA16_ROM,             NULL,                  "ROM 2" },
+	{ 0x25/2, 0x00000, 0x20000, 0xfe0000, 0x10000, MRA16_BANK16,          MWA16_ROM,             NULL,                  "ROM 1" },
+	{ 0x21/2, 0x00000, 0x20000, 0xfe0000, 0x00000, MRA16_BANK17,          MWA16_ROM,             NULL,                  "ROM 0" },
+	{ 0 }
+};
 
 static const struct segaic16_memory_map_entry rom_171_5358_info[] =
 {
@@ -960,6 +976,7 @@ static const struct segaic16_memory_map_entry rom_171_5797_info[] =
 
 static const struct segaic16_memory_map_entry *region_info_list[] =
 {
+	&rom_171_5358_info_small[0],
 	&rom_171_5358_info[0],
 	&rom_171_5704_info[0],
 	&rom_atomicp_info[0],
@@ -1000,17 +1017,7 @@ static void system16b_generic_init(int _rom_board)
 	segaic16_memory_mapper_init(0, region_info_list[rom_board], sound_w, NULL);
 
 	/* init the FD1094 */
-	fd1094_driver_init();
-
-#ifdef MAME_DEBUG
-if (strcmp(Machine->gamedrv->name, "exctleag") == 0 ||
-	strcmp(Machine->gamedrv->name, "suprleag") == 0 ||
-	strcmp(Machine->gamedrv->name, "bullet") == 0 ||
-	strcmp(Machine->gamedrv->name, "altbeaj1") == 0)
-{
-	fd1094_find_global_keys((const UINT16 *)memory_region(REGION_CPU1), memory_region(REGION_USER1));
-}
-#endif
+	fd1094_driver_init(segaic16_memory_mapper_set_decrypted);
 
 	/* reset the custom handlers and other pointers */
 	custom_io_r = NULL;
@@ -1052,11 +1059,11 @@ static MACHINE_RESET( system16b )
 
 	/* if we have a fake i8751 handler, disable the actual 8751 */
 	if (i8751_vblank_hook != NULL)
-		timer_set(TIME_NOW, 0, suspend_i8751);
+		mame_timer_set(time_zero, 0, suspend_i8751);
 
 	/* configure sprite banks */
 	for (i = 0; i < 16; i++)
-		segaic16_sprites_set_bank(0, i, (rom_board == ROM_BOARD_171_5358) ? alternate_banklist[i] : default_banklist[i]);
+		segaic16_sprites_set_bank(0, i, (rom_board == ROM_BOARD_171_5358 || rom_board == ROM_BOARD_171_5358_SMALL) ? alternate_banklist[i] : default_banklist[i]);
 }
 
 
@@ -1069,7 +1076,7 @@ static void atomicp_sound_irq(int param)
 static MACHINE_RESET( atomicp )
 {
 	machine_reset_system16b(machine);
-	timer_pulse(TIME_IN_HZ(atomicp_sound_rate), 0, atomicp_sound_irq);
+	mame_timer_pulse(MAME_TIME_IN_HZ(atomicp_sound_rate), 0, atomicp_sound_irq);
 }
 
 
@@ -1235,6 +1242,7 @@ static WRITE8_HANDLER( upd7759_control_w )
 		switch (rom_board)
 		{
 			case ROM_BOARD_171_5358:
+			case ROM_BOARD_171_5358_SMALL:
 				/*
                     D5 : /CS for ROM at A11
                     D4 : /CS for ROM at A10
@@ -2005,6 +2013,55 @@ static INPUT_PORTS_START( bayroute )
 	PORT_DIPSETTING(    0x80, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+INPUT_PORTS_END
+
+
+static INPUT_PORTS_START( bullet )
+	PORT_INCLUDE( system16b_generic )
+
+	PORT_MODIFY("SERVICE")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START3 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN3 )
+
+	PORT_MODIFY("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_LEFT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_LEFT ) PORT_8WAY PORT_PLAYER(1)
+
+	PORT_MODIFY("UNUSED")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_DOWN ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_UP ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_RIGHT ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_LEFT ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_DOWN ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_UP ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_RIGHT ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_LEFT ) PORT_8WAY PORT_PLAYER(3)
+
+	PORT_MODIFY("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_LEFT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_LEFT ) PORT_8WAY PORT_PLAYER(2)
+
+	PORT_MODIFY("DSW")
+	PORT_DIPUNUSED( 0x01, 0x01 )	/* 2p vs. 3p */
+	PORT_DIPUNUSED( 0x02, 0x02 )
+	PORT_DIPUNUSED( 0x04, 0x04 )
+	PORT_DIPUNUSED( 0x08, 0x08 )
+	PORT_DIPUNUSED( 0x10, 0x10 )
+	PORT_DIPUNUSED( 0x20, 0x20 )
+	PORT_DIPUNUSED( 0x40, 0x40 )
+	PORT_DIPUNUSED( 0x80, 0x80 )
 INPUT_PORTS_END
 
 
@@ -3003,12 +3060,10 @@ static MACHINE_DRIVER_START( system16b )
 	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 5000000)
-	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(1000000 * (262 - 224) / (262 * 60)))
 
 	MDRV_MACHINE_RESET(system16b)
 	MDRV_NVRAM_HANDLER(system16b)
@@ -3016,7 +3071,7 @@ static MACHINE_DRIVER_START( system16b )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(40*8, 28*8)
+	MDRV_SCREEN_SIZE(342,262)	/* to be verified */
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(2048*3)
@@ -3091,7 +3146,7 @@ MACHINE_DRIVER_END
     ROM Board: 171-5358
 */
 ROM_START( aceattac )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x040000, REGION_CPU1, 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr11491.a4", 0x000000, 0x10000, CRC(f3c19c36) SHA1(e45ca6d1d943d6cc140867055033884c738e2ac2) )
 	ROM_LOAD16_BYTE( "epr11489.a1", 0x000001, 0x10000, CRC(bbe623c5) SHA1(6d047699c7b6df7ebb7a3c9bee032e2536eed84c) )
 	ROM_LOAD16_BYTE( "epr11492.a5", 0x020000, 0x10000, CRC(d8bd3139) SHA1(54915d4e8a616e0e54135ca34daf4357b8bfa068) )
@@ -3099,6 +3154,8 @@ ROM_START( aceattac )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 ) /* decryption key */
 	ROM_LOAD( "317-0059.key", 0x0000, 0x2000, NO_DUMP )
+
+	ROM_REGION16_BE( 0x040000, REGION_USER2, ROMREGION_ERASE00 ) /* working overlay */
 
 	ROM_REGION( 0x30000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
 	ROM_LOAD( "epr11493.b9",  0x00000, 0x10000, CRC(654485d9) SHA1(b431270564c4e33fd70c8c85af1fcbff8b59ba49) )
@@ -3368,6 +3425,9 @@ ROM_START( altbeas4 )
 	ROM_LOAD( "epr-11686.a10",    0x00000, 0x08000, CRC(828a45b3) SHA1(df921701b411afac1b6716b6798a1bffc2180133) )	// encrypted
 	ROM_LOAD( "opr-11672.a11",    0x10000, 0x20000, CRC(bbd7f460) SHA1(bbc5c2219cb3a827d84062b19affd9780da2a3cf) )
 	ROM_LOAD( "opr-11673.a12",    0x30000, 0x20000, CRC(400c4a36) SHA1(de4bdfa91734410e0a7f6a16bf8336db172f458a) )
+
+	ROM_REGION( 0x2000, REGION_USER2, 0 ) /* MC8123 key */
+	ROM_LOAD( "317-0066.key",  0x0000, 0x2000, CRC(ed85a054) SHA1(dcc84ec077a8a489f45abfd2bf4a9ba377da28a5) )
 ROM_END
 
 /**************************************************************************************************************************
@@ -3442,6 +3502,9 @@ ROM_START( altbeas2 )
 	ROM_LOAD( "epr-11686.a10",    0x00000, 0x08000, CRC(828a45b3) SHA1(df921701b411afac1b6716b6798a1bffc2180133) )	// encrypted
 	ROM_LOAD( "opr-11672.a11",    0x10000, 0x20000, CRC(bbd7f460) SHA1(bbc5c2219cb3a827d84062b19affd9780da2a3cf) )
 	ROM_LOAD( "opr-11673.a12",    0x30000, 0x20000, CRC(400c4a36) SHA1(de4bdfa91734410e0a7f6a16bf8336db172f458a) )
+
+	ROM_REGION( 0x2000, REGION_USER2, 0 ) /* MC8123 key */
+	ROM_LOAD( "317-0066.key",  0x0000, 0x2000, CRC(ed85a054) SHA1(dcc84ec077a8a489f45abfd2bf4a9ba377da28a5) )
 ROM_END
 
 /**************************************************************************************************************************
@@ -3456,6 +3519,8 @@ ROM_START( altbeaj1 )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 ) /* decryption key */
 	ROM_LOAD( "317-0065.key", 0x0000, 0x2000, NO_DUMP )
+
+	ROM_REGION16_BE( 0x040000, REGION_USER2, ROMREGION_ERASE00 ) /* working overlay */
 
 	ROM_REGION( 0x60000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
 	ROM_LOAD( "opr-11674.a14", 0x00000, 0x20000, CRC(a57a66d5) SHA1(5103583d48997abad12a0c5fee26431c486ced52) )
@@ -3806,8 +3871,10 @@ ROM_START( bullet )
 	ROM_LOAD16_BYTE( "epr11012.a6",  0x020000, 0x08000, CRC(3992f159) SHA1(50686b394693ab01cbd159ae661f326c8eee50b8) )
 	ROM_LOAD16_BYTE( "epr11009.a3",  0x020001, 0x08000, CRC(df199999) SHA1(2669e923aa4f1bedc788401f44ad19c318658f00) )
 
-	ROM_REGION( 0x2000, REGION_USER1, 0 ) /* decryption key */
-	ROM_LOAD( "317-0041.key", 0x0000, 0x2000, NO_DUMP )
+	ROM_REGION( 0x2000, REGION_USER1, 0 ) /* decryption key -- still WIP */
+	ROM_LOAD( "317-0041.key", 0x0000, 0x2000, BAD_DUMP CRC(a30ae46c) SHA1(5e7361ab1f1d30c59d7f29152bc6f7175a0aa102) )
+
+	ROM_REGION16_BE( 0x040000, REGION_USER2, ROMREGION_ERASE00 ) /* working overlay */
 
 	ROM_REGION( 0x30000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
 	ROM_LOAD( "epr10994.b9",  0x00000, 0x10000, CRC(3035468a) SHA1(778366815a2a74188d72d64c5e1e95215bc4ca81) )
@@ -4244,6 +4311,8 @@ ROM_START( exctleag )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 ) /* decryption key */
 	ROM_LOAD( "317-0079.key", 0x0000, 0x2000, NO_DUMP )
+
+	ROM_REGION16_BE( 0x060000, REGION_USER2, ROMREGION_ERASE00 ) /* working overlay */
 
 	ROM_REGION( 0x30000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
 	ROM_LOAD( "epr11942.b09", 0x00000, 0x10000, CRC(eb70e827) SHA1(0617b4411a90087c277354c3653fe994bc4fc580) )
@@ -5120,6 +5189,9 @@ ROM_START( shinobi3 )
 	ROM_LOAD( "epr11372.a7", 0x00000, 0x8000, CRC(0824269a) SHA1(501ab1b80c6e8a4b0ccda148c13fa96c71c7300d) )	// MC8123B (317-0054) encrypted version of epr11287.a7
 	ROM_LOAD( "epr11288.a8", 0x10000, 0x8000, CRC(c8df8460) SHA1(0aeb41a493df155edb5f600f53ec43b798927dff) )
 	ROM_LOAD( "epr11289.a9", 0x20000, 0x8000, CRC(e5a4cf30) SHA1(d1982da7a550c11ab2253f5d64ac6ab847da0a04) )
+
+	ROM_REGION( 0x2000, REGION_USER2, 0 ) /* MC8123 key */
+	ROM_LOAD( "317-0054.key",  0x0000, 0x2000, CRC(39fd4535) SHA1(93bbb139d2d5acc6a1e338d92077e79a5e880b2e) )
 ROM_END
 
 /**************************************************************************************************************************
@@ -5267,7 +5339,7 @@ ROM_END
     ROM Board: 171-5358
 */
 ROM_START( suprleag )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x060000, REGION_CPU1, 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr11133.a04", 0x00000, 0x10000, CRC(eed72f37) SHA1(80b68abdb90a63b30754dd031e85b1020dcc0cc4) )
 	ROM_LOAD16_BYTE( "epr11130.a01", 0x00001, 0x10000, CRC(e2451676) SHA1(d2f71d9fca933e63e2bd5ee48217801ab0cb049c) )
 	ROM_LOAD16_BYTE( "epr11134.a05", 0x20000, 0x10000, CRC(ccd857f5) SHA1(2566bb458bdd365db403e8229ecdad79e23076a1) )
@@ -5277,6 +5349,8 @@ ROM_START( suprleag )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 ) /* decryption key */
 	ROM_LOAD( "317-0045.key", 0x0000, 0x2000, NO_DUMP )
+
+	ROM_REGION16_BE( 0x060000, REGION_USER2, ROMREGION_ERASE00 ) /* working overlay */
 
 	ROM_REGION( 0x30000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
 	ROM_LOAD( "epr11136.b09", 0x00000, 0x10000, CRC(c3860ce4) SHA1(af7618f3b5a0e8d6374877c7815ba69fff218a45) )
@@ -5814,6 +5888,12 @@ ROM_END
  *
  *************************************/
 
+static DRIVER_INIT( generic_5358_small )
+{
+	system16b_generic_init(ROM_BOARD_171_5358_SMALL);
+}
+
+
 static DRIVER_INIT( generic_5358 )
 {
 	system16b_generic_init(ROM_BOARD_171_5358);
@@ -5876,9 +5956,8 @@ static DRIVER_INIT( altbeas5_5521 )
 
 static DRIVER_INIT( altbeas4_5521 )
 {
-	extern void mc8123_decrypt_0066(void);
 	init_generic_5521(machine);
-	mc8123_decrypt_0066();
+	mc8123_decrypt_rom(1, memory_region(REGION_USER2), 0, 0);
 }
 
 
@@ -5955,9 +6034,8 @@ static DRIVER_INIT( defense_5358 )
 
 static DRIVER_INIT( shinobi3_5358 )
 {
-	extern void mc8123_decrypt_0054(void);
 	init_generic_5358(machine);
-	mc8123_decrypt_0054();
+	mc8123_decrypt_rom(1, memory_region(REGION_USER2), 0, 0);
 }
 
 
@@ -6023,50 +6101,6 @@ static DRIVER_INIT( snapper )
 }
 
 
-#ifdef MAME_DEBUG
-#include "cpu/m68000/m68k.h"
-static void test_key(int shift, UINT8 bindex, UINT32 seed, UINT32 global)
-{
-	extern unsigned int m68k_disassemble_raw(char* str_buff, unsigned int pc, const unsigned char* opdata, const unsigned char* argdata, unsigned int cpu_type);
-	extern unsigned int m68k_is_valid_instruction(unsigned int instruction, unsigned int cpu_type);
-	static const UINT32 bvals[4] = { 0x52005, 0x7600F, 0x1A019, 0x3E023 };
-	int length = memory_region_length(REGION_CPU1);
-	static UINT16 *decrypted;
-	UINT8 testkey[0x2000];
-	int score = 0;
-	int pc, i;
-
-	if (decrypted == NULL)
-		decrypted = malloc_or_die(length);
-
-	testkey[0] = global >> 24;
-	testkey[1] = global >> 16;
-	testkey[2] = global >> 8;
-	testkey[3] = global;
-	for (i = 4; i < 0x2000; i++)
-	{
-		UINT8 byteval = ((seed << 4) | 0xd) >> (shift + 4);
-		byteval |= 0xc0;//(i < 0x1000) ? 0x40 : 0x80;
-		testkey[i] = byteval;
-		seed = seed * 0x10029 + bvals[bindex];
-	}
-
-	for (pc = 0x400; pc < 0x10000; )
-	{
-		UINT16 curop = decrypted[pc/2];
-		if (m68k_is_valid_instruction(curop, M68K_CPU_TYPE_68000))
-		{
-			char dummybuf[100];
-			score++;
-			pc += m68k_disassemble_raw(dummybuf, pc, (UINT8 *)&decrypted[pc/2], (UINT8 *)&decrypted[pc/2], M68K_CPU_TYPE_68000);
-		}
-		else
-			pc += 2;
-	}
-}
-#endif
-
-
 
 /*************************************
  *
@@ -6090,7 +6124,7 @@ GAME( 1990, aurailj,  aurail,   system16b,      aurail,   aurailj_5704,  ROT0,  
 GAME( 1989, bayroute, 0,        system16b,      bayroute, generic_5704,  ROT0,   "Sunsoft / Sega", "Bay Route (set 3, World, FD1094 317-0116)", 0 )
 GAME( 1989, bayroutj, bayroute, system16b,      bayroute, generic_5704,  ROT0,   "Sunsoft / Sega", "Bay Route (set 2, Japan, FD1094 317-0115)", 0 )
 GAME( 1989, bayrout1, bayroute, system16b,      bayroute, generic_5358,  ROT0,   "Sunsoft / Sega", "Bay Route (set 1, US, unprotected)", 0 )
-GAME( 1987, bullet,   0,        system16b,      generic,  generic_5358,  ROT0,   "Sega",           "Bullet (FD1094 317-0041)", GAME_NOT_WORKING )
+GAME( 1987, bullet,   0,        system16b,      bullet,   generic_5358_small,  ROT0,   "Sega",           "Bullet (FD1094 317-0041)", GAME_UNEMULATED_PROTECTION )
 /* Charon */
 GAME( 1991, cotton,   0,        system16b,      cotton,   generic_5704,  ROT0,   "Sega / Success", "Cotton (set 3, World, FD1094 317-0181a)", 0 )
 GAME( 1991, cottonu,  cotton,   system16b,      cotton,   generic_5704,  ROT0,   "Sega / Success", "Cotton (set 2, US, FD1094 317-0180)", 0 )

@@ -197,29 +197,41 @@ Points to note, known and proven information deleted from this map:
 #include "sound/2610intf.h"
 
 
-/* values probed by Razoola from the real board */
-#define RASTER_LINES 264
-/* VBLANK should fire on line 248 */
-#define RASTER_COUNTER_START 0x1f0	/* value assumed right after vblank */
-#define RASTER_COUNTER_RELOAD 0x0f8	/* value assumed after 0x1ff */
-#define RASTER_LINE_RELOAD (0x200 - RASTER_COUNTER_START)
+UINT32 neogeo_animation_counter;
+UINT32 neogeo_has_trackball;
 
-#define SCANLINE_ADJUST 3	/* in theory should be 0, give or take an off-by-one mistake */
+static UINT8 animation_speed=4;
+static UINT32 scanline_interrupt_control;
+static UINT32 scanline_interrupt_offset;
+static UINT32 vblank_interrupt_pending;
+static UINT32 scanline_interrupt_pending;
+static mame_timer *scanline_interrupt_timer;
+static mame_timer *vblank_interrupt_timer;
+static mame_timer *animation_timer;
+static UINT32 trackball_select;
 
 
-/******************************************************************************/
 
-unsigned int neogeo_frame_counter;
-unsigned int neogeo_frame_counter_speed=4;
+static void adjust_scanline_timer(void)
+{
+	if (scanline_interrupt_offset != 0)
+	{
+		mame_time period = double_to_mame_time(TIME_IN_HZ(NEOGEO_PIXEL_CLOCK) * scanline_interrupt_offset);
+		//logerror("y: %02x  x: %02x  offset: %x %x\n", video_screen_get_vpos(0), video_screen_get_hpos(0), scanline_interrupt_offset / NEOGEO_HTOTAL, scanline_interrupt_offset % NEOGEO_HTOTAL);
 
-/******************************************************************************/
+		mame_timer_adjust(scanline_interrupt_timer, period, 0, time_zero);
+	}
+}
 
-static INT32 irq2start=1000,irq2control;
-static INT32 current_rastercounter,current_rasterline,scanline_read;
-static UINT32 irq2pos_value;
-static INT32 vblank_int,scanline_int;
 
-/*  flags for irq2control:
+static void adjust_animation_timer(void)
+{
+	mame_time period = double_to_mame_time(mame_time_to_double(video_screen_get_frame_period(0)) * (animation_speed + 1));
+	mame_timer_adjust(animation_timer, period, 0, time_zero);
+}
+
+
+/*  flags for scanline_interrupt_control:
 
     0x07 unused? kof94 sets some random combination of these at the character
          selection screen but only because it does andi.w #$ff2f, $3c0006. It
@@ -259,8 +271,8 @@ static void update_interrupts(void)
 	int level = 0;
 
 	/* determine which interrupt is active */
-	if (vblank_int) level = 1;
-	if (scanline_int) level = 2;
+	if (vblank_interrupt_pending) level = 1;
+	if (scanline_interrupt_pending) level = 2;
 
 	/* either set or clear the appropriate lines */
 	if (level)
@@ -269,79 +281,86 @@ static void update_interrupts(void)
 		cpunum_set_input_line(0, 7, CLEAR_LINE);
 }
 
-static WRITE16_HANDLER( neo_irqack_w )
+
+static WRITE16_HANDLER( interrupt_ack_w )
 {
 	if (ACCESSING_LSB)
 	{
-		if (data & 4) vblank_int = 0;
-		if (data & 2) scanline_int = 0;
+		if (data & 0x04) vblank_interrupt_pending = 0;
+		if (data & 0x02) scanline_interrupt_pending = 0;
+
 		update_interrupts();
 	}
 }
 
 
-static INT32 fc = 0;
-
-static INT32 neogeo_raster_enable = 1;
-
-static INTERRUPT_GEN( neogeo_raster_interrupt )
+static void vblank_interrupt_callback(int param)
 {
-	int line = RASTER_LINES - cpu_getiloops();
+logerror("+++ VBLANK @ %d,%d\n", video_screen_get_vpos(0), video_screen_get_hpos(0));
+	/* add a timer tick to the pd4990a */
+	pd4990a_addretrace();
 
-	current_rasterline = line;
-
-	{
-		int l = line;
-
-		if (l == RASTER_LINES) l = 0;	/* vblank */
-		if (l < RASTER_LINE_RELOAD)
-			current_rastercounter = RASTER_COUNTER_START + l;
-		else
-			current_rastercounter = RASTER_COUNTER_RELOAD + l - RASTER_LINE_RELOAD;
-	}
-
-	if (irq2control & IRQ2CTRL_ENABLE)
-	{
-		if (line == irq2start)
-		{
-//logerror("trigger IRQ2 at raster line %d (raster counter %d)\n",line,current_rastercounter);
-			if (irq2control & IRQ2CTRL_AUTOLOAD_REPEAT)
-				irq2start += (irq2pos_value + 3) / 0x180;	/* ridhero gives 0x17d */
-
-			scanline_int = 1;
-		}
-	}
-
-	if (line == RASTER_LINES)	/* vblank */
-	{
-		current_rasterline = 0;
-
-		if (irq2control & IRQ2CTRL_AUTOLOAD_VBLANK)
-			irq2start = (irq2pos_value + 3) / 0x180;	/* ridhero gives 0x17d */
-		else
-			irq2start = 1000;
-
-
-		/* Add a timer tick to the pd4990a */
-		pd4990a_addretrace();
-
-		/* Animation counter */
-		if (!(irq2control & IRQ2CTRL_AUTOANIM_STOP))
-		{
-			if (fc++>neogeo_frame_counter_speed)	/* fixed animation speed */
-			{
-				fc=0;
-				neogeo_frame_counter++;
-			}
-		}
-
-		/* return a standard vblank interrupt */
-//logerror("trigger IRQ1\n");
-		vblank_int = 1;	   /* vertical blank */
-	}
+	vblank_interrupt_pending = 1;
 
 	update_interrupts();
+
+	/* set timer for next VBLANK */
+	mame_timer_adjust(vblank_interrupt_timer, video_screen_get_time_until_pos(0, NEOGEO_VBSTART, 0), 0, time_zero);
+
+	if (scanline_interrupt_control & IRQ2CTRL_AUTOLOAD_VBLANK)
+	{
+		//logerror("AUTOLOAD_VBLANK ");
+		adjust_scanline_timer();
+	}
 }
+
+
+static void scanline_interrupt_callback(int param)
+{
+logerror("--- Scanline @ %d,%d\n", video_screen_get_vpos(0), video_screen_get_hpos(0));
+	if (scanline_interrupt_control & IRQ2CTRL_ENABLE)
+	{
+		logerror("*** Scanline interrupt (IRQ2) ***  y: %02x  x: %02x\n", video_screen_get_vpos(0), video_screen_get_hpos(0));
+		scanline_interrupt_pending = 1;
+
+		update_interrupts();
+	}
+
+	if (scanline_interrupt_control & IRQ2CTRL_AUTOLOAD_REPEAT)
+	{
+		logerror("AUTOLOAD_REPEAT ");
+		adjust_scanline_timer();
+	}
+}
+
+
+static void animation_timer_callback(int param)
+{
+	if (!(scanline_interrupt_control & IRQ2CTRL_AUTOANIM_STOP))
+	{
+		neogeo_animation_counter++;
+	}
+
+	adjust_animation_timer();
+}
+
+
+void neogeo_create_timers(void)
+{
+	scanline_interrupt_timer = mame_timer_alloc(scanline_interrupt_callback);
+	vblank_interrupt_timer = mame_timer_alloc(vblank_interrupt_callback);
+	animation_timer = mame_timer_alloc(animation_timer_callback);
+}
+
+
+void neogeo_start_timers(void)
+{
+logerror("Starting timers @ %d,%d\n", video_screen_get_vpos(0), video_screen_get_hpos(0));
+	mame_timer_adjust(vblank_interrupt_timer, video_screen_get_time_until_pos(0, NEOGEO_VBSTART, 0), 0, time_zero);
+	adjust_animation_timer();
+}
+
+
 
 static INT32 pending_command;
 static INT32 result_code;
@@ -423,12 +442,9 @@ cpu #0 (PC=00C18C40): unmapped memory word write to 00380000 = 0000 & 00FF
 
 
 
-int neogeo_has_trackball;
-static int ts;
-
 static WRITE16_HANDLER( trackball_select_16_w )
 {
-	ts = data & 1;
+	trackball_select = data & 1;
 }
 
 static READ16_HANDLER( controller1_16_r )
@@ -436,7 +452,7 @@ static READ16_HANDLER( controller1_16_r )
 	UINT16 res;
 
 	if (neogeo_has_trackball)
-		res = (readinputport(ts?7:0) << 8) + readinputport(3);
+		res = (readinputport(trackball_select?7:0) << 8) + readinputport(3);
 	else
 		res = (readinputport(0) << 8) + readinputport(3);
 
@@ -466,7 +482,7 @@ static READ16_HANDLER( popbounc1_16_r )
 {
 	UINT16 res;
 
-	res = (readinputport(ts?0:7) << 8) + readinputport(3);
+	res = (readinputport(trackball_select?0:7) << 8) + readinputport(3);
 
 	return res;
 }
@@ -475,7 +491,7 @@ static READ16_HANDLER( popbounc2_16_r )
 {
 	UINT16 res;
 
-	res = (readinputport(ts?1:8) << 8);
+	res = (readinputport(trackball_select?1:8) << 8);
 
 	return res;
 }
@@ -506,7 +522,8 @@ logerror("PC %06x: warning: bankswitch to empty bank %02x\n",activecpu_get_pc(),
 /* TODO: Figure out how this really works! */
 static READ16_HANDLER( neo_control_16_r )
 {
-	int res;
+	UINT16 res;
+	UINT16 v_counter;
 
 	/*
         The format of this very important location is:  AAAA AAAA A??? BCCC
@@ -530,10 +547,16 @@ static READ16_HANDLER( neo_control_16_r )
           speed in level 2.
     */
 
-	scanline_read = 1;	/* needed for raster_busy optimization */
+	/* the vertical counter chain goes from 0xf8 - 0x1ff */
+	v_counter = video_screen_get_vpos(0) + 0x100;
 
-	res =	((current_rastercounter << 7) & 0xff80) |	/* raster counter */
-			(neogeo_frame_counter & 0x0007);			/* frame counter */
+	if (v_counter > 0x200)
+	{
+		v_counter = v_counter - 0x108;
+	}
+
+	res = ((v_counter << 7) & 0xff80) |				/* raster counter */
+		   (neogeo_animation_counter & 0x0007);		/* frame counter */
 
 	logerror("PC %06x: neo_control_16_r (%04x)\n",activecpu_get_pc(),res);
 
@@ -544,37 +567,44 @@ static READ16_HANDLER( neo_control_16_r )
 /* this does much more than this, but I'm not sure exactly what */
 WRITE16_HANDLER( neo_control_16_w )
 {
+	UINT8 new_animation_speed;
+
 	logerror("%06x: neo_control_16_w %04x\n",activecpu_get_pc(),data);
 
-	/* Auto-Anim Speed Control */
-	neogeo_frame_counter_speed = (data >> 8) & 0xff;
 
-	irq2control = data & 0xff;
+	new_animation_speed = (data >> 8) & 0xff;
+
+	if (animation_speed != new_animation_speed)
+	{
+		animation_speed = new_animation_speed;
+
+		adjust_animation_timer();
+	}
+
+
+	scanline_interrupt_control = data & 0xff;
 }
 
-static WRITE16_HANDLER( neo_irq2pos_16_w )
+static WRITE16_HANDLER( scanline_interrupt_offset_w )
 {
-	logerror("%06x: neo_irq2pos_16_w offset %d %04x\n",activecpu_get_pc(),offset,data);
+	//logerror("%06x: scanline_interrupt_offset_w offset %d %04x\n",activecpu_get_pc(),offset,data);
 
 	if (offset)
-		irq2pos_value = (irq2pos_value & 0xffff0000) | (UINT32)data;
+		scanline_interrupt_offset = (scanline_interrupt_offset & 0xffff0000) | (UINT32)data;
 	else
-		irq2pos_value = (irq2pos_value & 0x0000ffff) | ((UINT32)data << 16);
+		scanline_interrupt_offset = (scanline_interrupt_offset & 0x0000ffff) | ((UINT32)data << 16);
 
-	if (irq2control & IRQ2CTRL_LOAD_RELATIVE)
+	if (scanline_interrupt_control & IRQ2CTRL_LOAD_RELATIVE)
 	{
-//      int line = (irq2pos_value + 3) / 0x180; /* ridhero gives 0x17d */
-		int line = (irq2pos_value + 0x3b) / 0x180;	/* turfmast goes as low as 0x145 */
-
-		irq2start = current_rasterline + line;
-
-		logerror("irq2start = %d, current_rasterline = %d, current_rastercounter = %d\n",irq2start,current_rasterline,current_rastercounter);
+		/* counting from VBLANK */
+		//logerror("LOAD_RELATIVE ");
+ 		adjust_scanline_timer();
 	}
 }
 
 
 
-static READ16_HANDLER ( neogeo_video_r )
+static READ16_HANDLER( neogeo_video_r )
 {
 
 	/* 8-bit reads of the low byte do NOT return the correct value on real hardware */
@@ -587,14 +617,12 @@ static READ16_HANDLER ( neogeo_video_r )
 		return 0xff;
 	}
 
-	offset &=0x3;
-
-	switch (offset<<1)
+	switch (offset & 0x03)
 	{
-		case 0: retdata=neogeo_vidram16_data_r(0,mem_mask);break;
-		case 2: retdata=neogeo_vidram16_data_r(0,mem_mask);break;
-		case 4:	retdata=neogeo_vidram16_modulo_r(0,mem_mask);break;
-		case 6:	retdata=neo_control_16_r(0,mem_mask);break;
+	case 0x00: retdata = neogeo_vidram16_data_r(0, mem_mask); break;
+	case 0x01: retdata = neogeo_vidram16_data_r(0, mem_mask); break;
+	case 0x02: retdata = neogeo_vidram16_modulo_r(0, mem_mask); break;
+	case 0x03: retdata = neo_control_16_r(0, mem_mask); break;
 	}
 
 	return retdata;
@@ -602,24 +630,18 @@ static READ16_HANDLER ( neogeo_video_r )
 
 static WRITE16_HANDLER( neogeo_video_w )
 {
-	int line = RASTER_LINES - cpu_getiloops();
+	video_screen_update_partial(0, video_screen_get_vpos(0) + 1);
 
-	/* If Video RAM changes force a partial update to the previous line */
-	video_screen_update_partial(0, line-24); // tuned by ssideki4 / msyogui
-
-
-	offset &=0x7;
-
-	switch (offset<<1)
+	switch (offset & 0x07)
 	{
-		case 0x0:neogeo_vidram16_offset_w(0,data,mem_mask); break;
-		case 0x2:neogeo_vidram16_data_w(0,data,mem_mask); break;
-		case 0x4:neogeo_vidram16_modulo_w(0,data,mem_mask); break;
-		case 0x6:neo_control_16_w(0,data,mem_mask); break;
-		case 0x8:neo_irq2pos_16_w(0,data,mem_mask); break;
-		case 0xa:neo_irq2pos_16_w(1,data,mem_mask); break;
-		case 0xc:neo_irqack_w(0,data,mem_mask); break;
-		case 0xe:break; /* Unknown, see control_r */
+	case 0x00: neogeo_vidram16_offset_w(0, data, mem_mask); break;
+	case 0x01: neogeo_vidram16_data_w(0, data, mem_mask); break;
+	case 0x02: neogeo_vidram16_modulo_w(0, data, mem_mask); break;
+	case 0x03: neo_control_16_w(0, data, mem_mask); break;
+	case 0x04: scanline_interrupt_offset_w(0, data, mem_mask); break;
+	case 0x05: scanline_interrupt_offset_w(1, data, mem_mask); break;
+	case 0x06: interrupt_ack_w(0, data, mem_mask); break;
+	case 0x07: break; /* Unknown, see control_r */
 	}
 }
 
@@ -726,50 +748,36 @@ For and example of this see routine at 0xb013c in kof2002
 
 /* Mirroring information thanks to Razoola */
 
-static ADDRESS_MAP_START( neogeo_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)							/* Rom bank 1 */
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_BANK1) AM_MIRROR(0x0f0000)	/* Ram bank 1 (mirrored to 0x1fffff) */
-	AM_RANGE(0x200000, 0x2fffff) AM_READ(MRA16_BANK4)						/* Rom bank 2 */
+static ADDRESS_MAP_START( neogeo_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x0fffff) AM_ROM										/* Rom bank 1 */
+	AM_RANGE(0x100000, 0x10ffff) AM_MIRROR(0x0f0000) AM_RAMBANK(1)			/* WORK RAM (mirrored to 0x1fffff) */
+	/* Some games have protection devices in the 0x200000 region, it appears to map to cart space, not surprising, the rom is read here too */
+	AM_RANGE(0x200000, 0x2fffff) AM_ROMBANK(4)								/* Rom bank 2 */
+	AM_RANGE(0x2ffff0, 0x2fffff) AM_WRITE(neo_bankswitch_w)					/* Bankswitch for standard games */
 	AM_RANGE(0x300000, 0x31ffff) AM_READ(controller1and4_16_r)				/* Inputs */
+	AM_RANGE(0x300000, 0x31ffff) AM_WRITE(watchdog_reset16_w)				/* Watchdog, NOTE, odd addresses only! */
 	AM_RANGE(0x320000, 0x33ffff) AM_READ(timer16_r)							/* Coins, Calendar, Z80 communication */
+	AM_RANGE(0x320000, 0x33ffff) AM_WRITE(neo_z80_w)						/* Sound CPU  EVEN BYTES only!*/
 	AM_RANGE(0x340000, 0x35ffff) AM_READ(controller2_16_r)					/* Inputs */
 	AM_RANGE(0x380000, 0x39ffff) AM_READ(controller3_16_r)					/* Inputs */
-	AM_RANGE(0x3c0000, 0x3dffff) AM_READ(neogeo_video_r)					/* Video Hardware */
-	AM_RANGE(0x400000, 0x7fffff) AM_READ(neogeo_paletteram16_r)				/* Palette */
-	AM_RANGE(0x800000, 0x800fff) AM_READ(neogeo_memcard16_r)				/* Memory Card */
-	AM_RANGE(0xc00000, 0xc1ffff) AM_READ(MRA16_BANK3) AM_MIRROR(0x0e0000)	/* Bios rom (mirrored every 128k for standard bios) */
-	AM_RANGE(0xd00000, 0xd0ffff) AM_READ(neogeo_sram16_r) AM_MIRROR(0x0f0000)	/* 64k battery backed SRAM */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( neogeo_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)	  /* ghost pilots writes to ROM */
-	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_BANK1) AM_MIRROR(0x0f0000)	/* WORK RAM (mirrored to 0x1fffff) */
-	/* Some games have protection devices in the 0x200000 region, it appears to map to cart space, not surprising, the rom is read here too */
-	AM_RANGE(0x2ffff0, 0x2fffff) AM_WRITE(neo_bankswitch_w)			/* Bankswitch for standard games */
-	AM_RANGE(0x300000, 0x31ffff) AM_WRITE(watchdog_reset16_w)		/* Watchdog, NOTE, odd addresses only! */
-	AM_RANGE(0x320000, 0x33ffff) AM_WRITE(neo_z80_w)				/* Sound CPU  EVEN BYTES only!*/
-	AM_RANGE(0x380000, 0x39ffff) AM_WRITE(neogeo_syscontrol_w)		/* Coin Counters, LEDs, Clock etc. */
-	AM_RANGE(0x3a0000, 0x3affff) AM_WRITE(neogeo_syscontrol2_w)		/* BIOS / Game select etc. */
-	AM_RANGE(0x3c0000, 0x3dffff) AM_WRITE(neogeo_video_w)			/* Video Hardware */
-	AM_RANGE(0x400000, 0x4fffff) AM_WRITE(neogeo_paletteram16_w)	/* Palettes */
-	AM_RANGE(0x800000, 0x800fff) AM_WRITE(neogeo_memcard16_w)		/* Memory card */
-	AM_RANGE(0xd00000, 0xd0ffff) AM_WRITE(neogeo_sram16_w) AM_BASE(&neogeo_sram16) AM_MIRROR(0x0f0000)	/* 64k battery backed SRAM */
+	AM_RANGE(0x380000, 0x39ffff) AM_WRITE(neogeo_syscontrol_w)				/* Coin Counters, LEDs, Clock etc. */
+	AM_RANGE(0x3a0000, 0x3affff) AM_WRITE(neogeo_syscontrol2_w)				/* BIOS / Game select etc. */
+	AM_RANGE(0x3c0000, 0x3dffff) AM_READWRITE(neogeo_video_r, neogeo_video_w) /* Video Hardware */
+	AM_RANGE(0x400000, 0x7fffff) AM_MIRROR(0x3fe000) AM_READWRITE(neogeo_paletteram16_r, neogeo_paletteram16_w)	/* Palette */
+	AM_RANGE(0x800000, 0x800fff) AM_READWRITE(neogeo_memcard16_r, neogeo_memcard16_w)/* Memory Card */
+	AM_RANGE(0xc00000, 0xc1ffff) AM_MIRROR(0x0e0000) AM_ROMBANK(3)			/* Bios rom (mirrored every 128k for standard bios) */
+	AM_RANGE(0xd00000, 0xd0ffff) AM_MIRROR(0x0f0000) AM_READWRITE(neogeo_sram16_r, neogeo_sram16_w) AM_BASE(&neogeo_sram16) /* 64k battery backed SRAM */
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
-static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK5)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_BANK6)
-	AM_RANGE(0xe000, 0xefff) AM_READ(MRA8_BANK7)
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_BANK8)
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xf7ff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(MWA8_RAM)
+static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(5)
+	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK(6)
+	AM_RANGE(0xe000, 0xefff) AM_ROMBANK(7)
+	AM_RANGE(0xf000, 0xf7ff) AM_ROMBANK(8)
+	AM_RANGE(0xf800, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 
@@ -1320,17 +1328,13 @@ struct YM2610interface neogeo_ym2610_interface =
 static MACHINE_DRIVER_START( neogeo )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M68000, 12000000) /* verified */
-	MDRV_CPU_PROGRAM_MAP(neogeo_readmem,neogeo_writemem)
-	MDRV_CPU_VBLANK_INT(neogeo_raster_interrupt,RASTER_LINES)
+	MDRV_CPU_ADD_TAG("main", M68000, NEOGEO_68K_CLOCK) /* verified */
+	MDRV_CPU_PROGRAM_MAP(neogeo_map,0)
 
-	MDRV_CPU_ADD(Z80, 4000000) /* verified */
-	/* audio CPU */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
+	MDRV_CPU_ADD(Z80, NEOGEO_Z80_CLOCK) /* verified */
+	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(neo_readio,neo_writeio)
 
-	MDRV_SCREEN_REFRESH_RATE(15625.0 / 264) /* verified with real PCB */
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_WATCHDOG_TIME_INIT(TIME_IN_SEC(0.128762))
 
 	MDRV_MACHINE_START(neogeo)
@@ -1341,8 +1345,7 @@ static MACHINE_DRIVER_START( neogeo )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
-	MDRV_SCREEN_SIZE(40*8, 32*8)
-    MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_RAW_PARAMS(NEOGEO_PIXEL_CLOCK, NEOGEO_HTOTAL, NEOGEO_HBEND, NEOGEO_HBSTART, NEOGEO_VTOTAL, NEOGEO_VBEND, NEOGEO_VBSTART)
 	MDRV_GFXDECODE(neogeo_mvs_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(4096)
 
@@ -1352,7 +1355,7 @@ static MACHINE_DRIVER_START( neogeo )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2610, 8000000)
+	MDRV_SOUND_ADD(YM2610, NEOGEO_YM2610_CLOCK)
 	MDRV_SOUND_CONFIG(neogeo_ym2610_interface)
 	MDRV_SOUND_ROUTE(0, "left",  0.60)
 	MDRV_SOUND_ROUTE(0, "right", 0.60)
@@ -6211,7 +6214,7 @@ ROM_START( matrim ) /* Encrypted Set */
 ROM_END
 
 
-ROM_START( pnyaa ) /* Encrypted Set */
+ROM_START( pnyaa ) /* Encrypted Set, MVS VERSION */
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )
 	ROM_LOAD16_WORD_SWAP( "267-p1.bin", 0x000000, 0x100000, CRC(112fe2c0) SHA1(01420e051f0bdbd4f68ce306a3738161b96f8ba8) )
 
@@ -6235,8 +6238,8 @@ ROM_START( pnyaa ) /* Encrypted Set */
 
 	ROM_REGION( 0x1000000, REGION_GFX3, 0 )
 	/* Encrypted */
-	ROM_LOAD16_BYTE( "267-c1.bin", 0x0000000, 0x800000, BAD_DUMP CRC(2e20617a) SHA1(ed73724377a321aa024a5886eb148c416d4451aa) ) /* Plane 0,1 */
-	ROM_LOAD16_BYTE( "267-c2.bin", 0x0000001, 0x800000, BAD_DUMP CRC(4edfa720) SHA1(1407a1d0d44f73c1a196c95d368d6451b17f6176) ) /* Plane 2,3 */
+	ROM_LOAD16_BYTE( "267-c1.bin", 0x0000000, 0x800000, CRC(5eebee65) SHA1(7eb3eefdeb24e19831d0f51d4ea07a0292c25ab6) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "267-c2.bin", 0x0000001, 0x800000, CRC(2b67187b) SHA1(149c3efd3c444fd0d35a97fa2268102bf76be3ed) ) /* Plane 2,3 */
 ROM_END
 
 ROM_START( mslug5 ) /* Encrypted Set */
@@ -6424,8 +6427,8 @@ ROM_END
 
 ROM_START( svc ) /* Encrypted Set, MVS Set */
 	ROM_REGION( 0x800000, REGION_CPU1, 0 )
-	ROM_LOAD32_WORD_SWAP( "269-p1c.bin", 0x000000, 0x400000, CRC(38e2005e) SHA1(1b902905916a30969282f1399a756e32ff069097) )
-	ROM_LOAD32_WORD_SWAP( "269-p2c.bin", 0x000002, 0x400000, CRC(6d13797c) SHA1(3cb71a95cea6b006b44cac0f547df88aec0007b7) )
+	ROM_LOAD32_WORD_SWAP( "269-p1.bin", 0x000000, 0x400000, CRC(38e2005e) SHA1(1b902905916a30969282f1399a756e32ff069097) )
+	ROM_LOAD32_WORD_SWAP( "269-p2.bin", 0x000002, 0x400000, CRC(6d13797c) SHA1(3cb71a95cea6b006b44cac0f547df88aec0007b7) )
 
 	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, REGION_GFX1, 0 ) /* larger char set */
@@ -6435,25 +6438,25 @@ ROM_START( svc ) /* Encrypted Set, MVS Set */
 
 	ROM_REGION( 0x80000, REGION_USER4, 0 )
 	/* Encrypted, we load it here for reference and replace with decrypted ROM */
-	ROM_LOAD( "269-m1c.bin", 0x00000, 0x20000, CRC(7d337756) SHA1(205b8b5be7acc8d564fe17835795f25b13c27d7a) )
+	ROM_LOAD( "269-m1.bin", 0x00000, 0x20000, CRC(7d337756) SHA1(205b8b5be7acc8d564fe17835795f25b13c27d7a) )
 	/* Decrypted */
 	NEO_BIOS_SOUND_128K( "269-m1_decrypted.bin", CRC(447b3123) SHA1(a09adc2c0ee2ee0f01287ceb97474a1a58093bd2) )
 
 	ROM_REGION( 0x1000000, REGION_SOUND1, 0 )
 	/* Encrypted */
-	ROM_LOAD( "269-v1c.bin", 0x000000, 0x800000, CRC(c659b34c) SHA1(1931e8111ef43946f68699f8707334c96f753a1e) )
-	ROM_LOAD( "269-v2c.bin", 0x800000, 0x800000, CRC(dd903835) SHA1(e58d38950a7a8697bb22a1cc7a371ae6664ae8f9) )
+	ROM_LOAD( "269-v1.bin", 0x000000, 0x800000, CRC(c659b34c) SHA1(1931e8111ef43946f68699f8707334c96f753a1e) )
+	ROM_LOAD( "269-v2.bin", 0x800000, 0x800000, CRC(dd903835) SHA1(e58d38950a7a8697bb22a1cc7a371ae6664ae8f9) )
 
 	ROM_REGION( 0x4000000, REGION_GFX3, 0 )
 	/* Encrypted */
-	ROM_LOAD16_BYTE( "269-c1c.bin", 0x0000000, 0x800000, CRC(887b4068) SHA1(227cdcf7a10a415f1e3afe7ae97acc9afc2cc8e1) ) /* Plane 0,1 */
-	ROM_LOAD16_BYTE( "269-c2c.bin", 0x0000001, 0x800000, CRC(4e8903e4) SHA1(31daaa4fd6c23e8f0a8428931c513d97d2eee1bd) ) /* Plane 2,3 */
-	ROM_LOAD16_BYTE( "269-c3c.bin", 0x1000000, 0x800000, CRC(7d9c55b0) SHA1(1f94a948b3e3c31b3ff05518ef525031a3cb2c62) ) /* Plane 0,1 */
-	ROM_LOAD16_BYTE( "269-c4c.bin", 0x1000001, 0x800000, CRC(8acb5bb6) SHA1(2c27d6e309646d7b84da85f78c06e4aaa74e844b) ) /* Plane 2,3 */
-	ROM_LOAD16_BYTE( "269-c5c.bin", 0x2000000, 0x800000, CRC(097a4157) SHA1(54d839f55d27f68c704a94ea3c63c644ffc22ca4) ) /* Plane 0,1 */
-	ROM_LOAD16_BYTE( "269-c6c.bin", 0x2000001, 0x800000, CRC(e19df344) SHA1(20448add53ab25dd3a8f0b681131ad3b9c68acc9) ) /* Plane 2,3 */
-	ROM_LOAD16_BYTE( "269-c7c.bin", 0x3000000, 0x800000, CRC(d8f0340b) SHA1(43114af7557361a8903bb8cf8553f602946a9220) ) /* Plane 0,1 */
-	ROM_LOAD16_BYTE( "269-c8c.bin", 0x3000001, 0x800000, CRC(2570b71b) SHA1(99266e1c2ffcf324793fb5c55325fbc7e6265ac0) ) /* Plane 2,3 */
+	ROM_LOAD16_BYTE( "269-c1r.bin", 0x0000000, 0x800000, CRC(887b4068) SHA1(227cdcf7a10a415f1e3afe7ae97acc9afc2cc8e1) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "269-c2r.bin", 0x0000001, 0x800000, CRC(4e8903e4) SHA1(31daaa4fd6c23e8f0a8428931c513d97d2eee1bd) ) /* Plane 2,3 */
+	ROM_LOAD16_BYTE( "269-c3r.bin", 0x1000000, 0x800000, CRC(7d9c55b0) SHA1(1f94a948b3e3c31b3ff05518ef525031a3cb2c62) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "269-c4r.bin", 0x1000001, 0x800000, CRC(8acb5bb6) SHA1(2c27d6e309646d7b84da85f78c06e4aaa74e844b) ) /* Plane 2,3 */
+	ROM_LOAD16_BYTE( "269-c5r.bin", 0x2000000, 0x800000, CRC(097a4157) SHA1(54d839f55d27f68c704a94ea3c63c644ffc22ca4) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "269-c6r.bin", 0x2000001, 0x800000, CRC(e19df344) SHA1(20448add53ab25dd3a8f0b681131ad3b9c68acc9) ) /* Plane 2,3 */
+	ROM_LOAD16_BYTE( "269-c7r.bin", 0x3000000, 0x800000, CRC(d8f0340b) SHA1(43114af7557361a8903bb8cf8553f602946a9220) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "269-c8r.bin", 0x3000001, 0x800000, CRC(2570b71b) SHA1(99266e1c2ffcf324793fb5c55325fbc7e6265ac0) ) /* Plane 2,3 */
 ROM_END
 
 
@@ -6617,7 +6620,7 @@ ROM_START( svcsplus )
 	ROM_LOAD16_BYTE( "svc-c8.bin", 0x3000001, 0x800000, CRC(366deee5) SHA1(d477ad7a5987fd6c7ef2c1680fbb7c884654590e) )
 ROM_END
 
-ROM_START( samsho5 ) /* Encrypted Set */
+ROM_START( samsho5 ) /* Encrypted Set, MVS VERSION */
 	ROM_REGION( 0x800000, REGION_CPU1, 0 )
 	ROM_LOAD16_WORD_SWAP( "270-p1.bin", 0x000000, 0x400000, CRC(4a2a09e6) SHA1(2644de02cdab8ccc605488a7c76b8c9cd1d5bcb9) )
 	ROM_LOAD16_WORD_SWAP( "270-p2.bin", 0x400000, 0x400000, CRC(e0c74c85) SHA1(df24a4ee76438e40c2f04a714175a7f85cacdfe0) )
@@ -6630,7 +6633,7 @@ ROM_START( samsho5 ) /* Encrypted Set */
 
 	ROM_REGION( 0x80000, REGION_USER4, 0 )
 	/* Encrypted, we load it here for reference and replace with decrypted ROM */
-	ROM_LOAD( "270-m1.bin", 0x00000, 0x40000, CRC(e4a5ab0c) SHA1(dcf74be51593a9c96607f3f776a1210b43df4ac9) )
+	ROM_LOAD( "270-m1.bin", 0x00000, 0x80000, CRC(49c9901a) SHA1(2623e9765a0eba58fee2de72851e9dc502344a3d) )
 	/* Decrypted */
 	NEO_BIOS_SOUND_256K( "270-m1_decrypted.bin", CRC(e94a5e2b) SHA1(53ef2ad6583060af69fdde73576e09ba88affa55) ) /* not a 100% match for encrypted version */
 
@@ -6666,7 +6669,7 @@ ROM_START( samsho5h ) /* Encrypted Set, Alternate Set */
 
 	ROM_REGION( 0x80000, REGION_USER4, 0 )
 	/* Encrypted, we load it here for reference and replace with decrypted ROM */
-	ROM_LOAD( "270-m1.bin", 0x00000, 0x40000, CRC(e4a5ab0c) SHA1(dcf74be51593a9c96607f3f776a1210b43df4ac9) )
+	ROM_LOAD( "270-m1.bin", 0x00000, 0x80000, CRC(49c9901a) SHA1(2623e9765a0eba58fee2de72851e9dc502344a3d) )
 	/* Decrypted */
 	NEO_BIOS_SOUND_256K( "270-m1_decrypted.bin", CRC(e94a5e2b) SHA1(53ef2ad6583060af69fdde73576e09ba88affa55) ) /* not a 100% match for encrypted version */
 
@@ -6702,7 +6705,7 @@ ROM_START( samsho5b )
 
 	ROM_REGION( 0x80000, REGION_USER4, 0 )
 	/* Encrypted, we load it here for reference and replace with decrypted ROM */
-	ROM_LOAD( "270-m1.bin", 0x00000, 0x40000, CRC(e4a5ab0c) SHA1(dcf74be51593a9c96607f3f776a1210b43df4ac9) )
+	ROM_LOAD( "270-m1.bin", 0x00000, 0x80000, CRC(49c9901a) SHA1(2623e9765a0eba58fee2de72851e9dc502344a3d) )
 	/* Decrypted */
 	NEO_BIOS_SOUND_256K( "270-m1_decrypted.bin", CRC(e94a5e2b) SHA1(53ef2ad6583060af69fdde73576e09ba88affa55) ) /* not a 100% match for encrypted version */
 
@@ -7959,21 +7962,15 @@ static void neogeo_init_cpu_banks(void)
 
 void neogeo_register_main_savestate(void)
 {
-	state_save_register_global(neogeo_frame_counter);
-	state_save_register_global(neogeo_frame_counter_speed);
-	state_save_register_global(current_rastercounter);
-	state_save_register_global(current_rasterline);
-	state_save_register_global(scanline_read);
-	state_save_register_global(irq2start);
-	state_save_register_global(irq2control);
-	state_save_register_global(irq2pos_value);
-	state_save_register_global(vblank_int);
-	state_save_register_global(scanline_int);
-	state_save_register_global(fc);
-	state_save_register_global(neogeo_raster_enable);
+	state_save_register_global(neogeo_animation_counter);
+	state_save_register_global(animation_speed);
+	state_save_register_global(scanline_interrupt_control);
+	state_save_register_global(scanline_interrupt_offset);
+	state_save_register_global(vblank_interrupt_pending);
+	state_save_register_global(scanline_interrupt_pending);
 	state_save_register_global(pending_command);
 	state_save_register_global(result_code);
-	state_save_register_global(ts);
+	state_save_register_global(trackball_select);
 	state_save_register_global_array(bank);
 	state_save_register_global(neogeo_rng);
 	state_save_register_global(cpu1_second_bankaddress);

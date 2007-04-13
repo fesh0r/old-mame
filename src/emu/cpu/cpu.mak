@@ -678,6 +678,23 @@ $(CPUOBJ)/mb88xx/mb88xx.o:	$(CPUSRC)/mb88xx/mb88xx.c \
 
 
 #-------------------------------------------------
+# Fujitsu MB86233
+#-------------------------------------------------
+
+CPUDEFS += -DHAS_MB86233=$(if $(filter MB86233,$(CPUS)),1,0)
+
+ifneq ($(filter MB86233,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/mb86233
+CPUOBJS += $(CPUOBJ)/mb86233/mb86233.o
+DBGOBJS += $(CPUOBJ)/mb86233/mb86233d.o
+endif
+
+$(CPUOBJ)/mb86233/mb86233.o:	$(CPUSRC)/mb86233/mb86233.c \
+								$(CPUSRC)/mb86233/mb86233.h
+
+
+
+#-------------------------------------------------
 # Microchip PIC16C5x
 #-------------------------------------------------
 
@@ -1283,6 +1300,23 @@ endif
 
 $(CPUOBJ)/mips/psx.o:	$(CPUSRC)/mips/psx.c \
 						$(CPUSRC)/mips/psx.h
+
+
+
+#-------------------------------------------------
+# SSP1610
+#-------------------------------------------------
+
+CPUDEFS += -DHAS_SSP1610=$(if $(filter SSP1610,$(CPUS)),1,0)
+
+ifneq ($(filter SSP1610,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/ssp1610
+CPUOBJS += $(CPUOBJ)/ssp1610/ssp1610.o
+DBGOBJS += $(CPUOBJ)/ssp1610/ssp1610d.o
+endif
+
+$(CPUOBJ)/ssp1610/ssp1610.o:	$(CPUSRC)/ssp1610/ssp1610.c \
+								$(CPUSRC)/ssp1610/ssp1610.h
 
 
 

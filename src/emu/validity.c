@@ -673,7 +673,7 @@ static int validate_gfx(int drivnum, const machine_config *drv, const UINT32 *re
 			int len, avail, plane, start;
 
 			/* determine which plane is the largest */
- 			start = 0;
+			start = 0;
 			for (plane = 0; plane < MAX_GFX_PLANES; plane++)
 				if (gfx->gfxlayout->planeoffset[plane] > start)
 					start = gfx->gfxlayout->planeoffset[plane];
@@ -896,16 +896,16 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 					/* relative devices do not use PORT_MINMAX */
 					if (inp->analog.min || inp->analog.max != inp->mask)
 					{
-                      mame_printf_error("%s: %s - relative ports do not use PORT_MINMAX\n", driver->source_file, driver->name);
-                      error = TRUE;
+					  mame_printf_error("%s: %s - relative ports do not use PORT_MINMAX\n", driver->source_file, driver->name);
+					  error = TRUE;
 					}
 
 					/* relative devices do not use a default value */
 					/* the counter is at 0 on power up */
 					if (inp->default_value)
 					{
-                      mame_printf_error("%s: %s - relative ports do not use a default value other then 0\n", driver->source_file, driver->name);
-                      error = TRUE;
+					  mame_printf_error("%s: %s - relative ports do not use a default value other then 0\n", driver->source_file, driver->name);
+					  error = TRUE;
 					}
 				}
 			}
@@ -1152,6 +1152,7 @@ int mame_validitychecks(int game)
 	input_port_entry *inputports = NULL;
 	int drivnum;
 	int error = FALSE;
+	UINT16 lsbtest;
 	UINT8 a, b;
 
 	/* basic system checks */
@@ -1167,6 +1168,18 @@ int mame_validitychecks(int game)
 	if (sizeof(UINT32) != 4)	{ mame_printf_error("UINT32 must be 32 bits\n"); error = TRUE; }
 	if (sizeof(INT64)  != 8)	{ mame_printf_error("INT64 must be 64 bits\n"); error = TRUE; }
 	if (sizeof(UINT64) != 8)	{ mame_printf_error("UINT64 must be 64 bits\n"); error = TRUE; }
+#ifdef PTR64
+	if (sizeof(void *) != 8)	{ mame_printf_error("PTR64 flag enabled, but was compiled for 32-bit target\n"); error = TRUE; }
+#else
+	if (sizeof(void *) != 4)	{ mame_printf_error("PTR64 flag not enabled, but was compiled for 64-bit target\n"); error = TRUE; }
+#endif
+	lsbtest = 0;
+	*(UINT8 *)&lsbtest = 0xff;
+#ifdef LSB_FIRST
+	if (lsbtest == 0xff00)		{ mame_printf_error("LSB_FIRST specified, but running on a big-endian machine\n"); error = TRUE; }
+#else
+	if (lsbtest == 0x00ff)		{ mame_printf_error("LSB_FIRST not specified, but running on a little-endian machine\n"); error = TRUE; }
+#endif
 
 	/* make sure the CPU and sound interfaces are up and running */
 	cpuintrf_init(NULL);

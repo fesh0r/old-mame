@@ -52,6 +52,7 @@ typedef struct _tilemap tilemap;
     available in alpha mode, ignore_transparency isn't.
 */
 
+typedef struct _tile_data tile_data;
 struct _tile_data
 {
 	/*
@@ -70,7 +71,6 @@ struct _tile_data
 	UINT8 *mask_data;		/* for TILEMAP_BITMASK */
 	void *user_data;		/* user-supplied tilemap-wide pointer */
 };
-typedef struct _tile_data tile_data;
 
 extern tile_data tile_info;
 
@@ -110,8 +110,7 @@ extern tile_data tile_info;
 extern mame_bitmap *priority_bitmap;
 
 /* don't call these from drivers - they are called from mame.c */
-int tilemap_init( running_machine *machine );
-void tilemap_exit( running_machine *machine );
+void tilemap_init( running_machine *machine );
 
 tilemap *tilemap_create(
 	void (*tile_get_info)( int memory_offset ),

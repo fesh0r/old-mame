@@ -93,7 +93,7 @@ static WRITE8_HANDLER( sbw_videoram_w )
 
 VIDEO_UPDATE(sbowling)
 {
-	fillbitmap(bitmap,Machine->pens[0x18],cliprect);
+	fillbitmap(bitmap,machine->pens[0x18],cliprect);
 	tilemap_draw(bitmap,cliprect,sb_tilemap,0,0);
 	copybitmap(bitmap,tmpbitmap,0,0,0,0,cliprect, TRANSPARENCY_PEN, color_prom_address);
 	return 0;
@@ -101,7 +101,7 @@ VIDEO_UPDATE(sbowling)
 
 VIDEO_START(sbowling)
 {
-	tmpbitmap = auto_bitmap_alloc(32*8,32*8,Machine->screen[0].format);
+	tmpbitmap = auto_bitmap_alloc(32*8,32*8,machine->screen[0].format);
 	sb_tilemap = tilemap_create(get_sb_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 32, 32);
 	return 0;
 }
@@ -133,7 +133,7 @@ static READ8_HANDLER( pix_data_r )
 
 static INTERRUPT_GEN( sbw_interrupt )
 {
-	int vector = cpu_getvblank() ? 0xcf : 0xd7;	/* RST 08h/10h */
+	int vector = video_screen_get_vblank(0) ? 0xcf : 0xd7;	/* RST 08h/10h */
 
 	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, vector);
 }
@@ -303,7 +303,7 @@ static PALETTE_INIT( sbowling )
 		3,	resistances_rg, outputs_g,	0,	100,
 		2,	resistances_b,  outputs_b,	0,	100);
 
-	for (i = 0;i < Machine->drv->total_colors;i++)
+	for (i = 0;i < machine->drv->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -335,13 +335,12 @@ static MACHINE_DRIVER_START( sbowling )
 	MDRV_CPU_IO_MAP(port_map,0)
 	MDRV_CPU_VBLANK_INT(sbw_interrupt, 2)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
+	MDRV_SCREEN_SIZE(32*8, 262)		/* vert size taken from mw8080bw */
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
 	MDRV_PALETTE_LENGTH(0x400)
 	MDRV_PALETTE_INIT(sbowling)

@@ -65,7 +65,7 @@ WRITE8_HANDLER( meadows_videoram_w )
 WRITE8_HANDLER( meadows_spriteram_w )
 {
 	if (spriteram[offset] != data)
-		video_screen_update_partial(0, cpu_getscanline());
+		video_screen_update_partial(0, video_screen_get_vpos(0));
 	spriteram[offset] = data;
 }
 
@@ -108,7 +108,7 @@ VIDEO_UPDATE( meadows )
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
 	/* draw the sprites */
-	if (Machine->gfx[1])
+	if (machine->gfx[1])
 		draw_sprites(bitmap, cliprect);
 	return 0;
 }

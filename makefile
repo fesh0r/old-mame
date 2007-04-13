@@ -201,7 +201,7 @@ SRC = src
 # compile-time definitions
 #-------------------------------------------------
 
-DEFS = -DX86_ASM -DLSB_FIRST -DINLINE="static __inline__" -Dasm=__asm__ -DCRLF=3
+DEFS = -DLSB_FIRST -DINLINE="static __inline__" -DCRLF=3
 
 ifdef PTR64
 DEFS += -DPTR64
@@ -227,6 +227,7 @@ CFLAGS = \
 	-I$(SRC)/$(TARGET)/includes \
 	-I$(OBJ)/$(TARGET)/layout \
 	-I$(SRC)/emu \
+	-I$(OBJ)/emu \
 	-I$(OBJ)/emu/layout \
 	-I$(SRC)/lib/util \
 	-I$(SRC)/osd \
@@ -420,6 +421,11 @@ $(OBJ)/%.s: $(SRC)/%.c | $(OSPREBUILD)
 $(OBJ)/%.lh: $(SRC)/%.lay $(FILE2STR)
 	@echo Converting $<...
 	@$(FILE2STR) $< $@ layout_$(basename $(notdir $<))
+
+$(OBJ)/%.fh: $(SRC)/%.png $(PNG2BDC)
+	@echo Converting $<...
+	@$(PNG2BDC) $< $(OBJ)/temp.bdc
+	@$(FILE2STR) $(OBJ)/temp.bdc $@ font_$(basename $(notdir $<)) UINT8
 
 $(OBJ)/%.a:
 	@echo Archiving $@...

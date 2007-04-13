@@ -70,8 +70,8 @@ struct _path_iterator
 static void fileio_exit(running_machine *machine);
 
 /* file open/close */
-static mame_file_error fopen_internal(const char *searchpath, const char *filename, UINT32, UINT32 flags, mame_file **file);
-static mame_file_error fopen_attempt_zipped(char *fullname, const char *filename, UINT32 crc, UINT32 openflags, mame_file *file);
+static file_error fopen_internal(const char *searchpath, const char *filename, UINT32, UINT32 flags, mame_file **file);
+static file_error fopen_attempt_zipped(char *fullname, const char *filename, UINT32 crc, UINT32 openflags, mame_file *file);
 
 /* CHD callbacks */
 static chd_interface_file *chd_open_cb(const char *filename, const char *mode);
@@ -85,7 +85,7 @@ static int path_iterator_init(path_iterator *iterator, const char *searchpath);
 static int path_iterator_get_next(path_iterator *iterator, char *buffer, int buflen);
 
 /* misc helpers */
-static mame_file_error load_zipped_file(mame_file *file);
+static file_error load_zipped_file(mame_file *file);
 static int zip_filename_match(const zip_file_header *header, const char *filename, int filenamelen);
 
 
@@ -142,7 +142,7 @@ static void fileio_exit(running_machine *machine)
     return an error code
 -------------------------------------------------*/
 
-mame_file_error mame_fopen(const char *searchpath, const char *filename, UINT32 openflags, mame_file **file)
+file_error mame_fopen(const char *searchpath, const char *filename, UINT32 openflags, mame_file **file)
 {
 	return fopen_internal(searchpath, filename, 0, openflags, file);
 }
@@ -153,9 +153,46 @@ mame_file_error mame_fopen(const char *searchpath, const char *filename, UINT32 
     and return an error code
 -------------------------------------------------*/
 
-mame_file_error mame_fopen_crc(const char *searchpath, const char *filename, UINT32 crc, UINT32 openflags, mame_file **file)
+file_error mame_fopen_crc(const char *searchpath, const char *filename, UINT32 crc, UINT32 openflags, mame_file **file)
 {
 	return fopen_internal(searchpath, filename, crc, openflags | OPEN_FLAG_HAS_CRC, file);
+}
+
+
+/*-------------------------------------------------
+    mame_fopen_ram - open a "file" which is
+    actually just an array of data in RAM
+-------------------------------------------------*/
+
+file_error mame_fopen_ram(const void *data, UINT32 length, UINT32 openflags, mame_file **file)
+{
+	file_error filerr;
+
+	/* allocate the file itself */
+	*file = malloc(sizeof(**file));
+	if (*file == NULL)
+		return FILERR_OUT_OF_MEMORY;
+
+	/* reset the file handle */
+	memset(*file, 0, sizeof(**file));
+	(*file)->openflags = openflags;
+#ifdef DEBUG_COOKIE
+	(*file)->debug_cookie = DEBUG_COOKIE;
+#endif
+
+	/* attempt to open the file directly */
+	filerr = core_fopen_ram(data, length, openflags, &(*file)->file);
+	if (filerr == FILERR_NONE)
+		goto error;
+
+	/* handle errors and return */
+error:
+	if (filerr != FILERR_NONE)
+	{
+		mame_fclose(*file);
+		*file = NULL;
+	}
+	return filerr;
 }
 
 
@@ -163,9 +200,9 @@ mame_file_error mame_fopen_crc(const char *searchpath, const char *filename, UIN
     fopen_internal - open a file
 -------------------------------------------------*/
 
-static mame_file_error fopen_internal(const char *searchpath, const char *filename, UINT32 crc, UINT32 openflags, mame_file **file)
+static file_error fopen_internal(const char *searchpath, const char *filename, UINT32 crc, UINT32 openflags, mame_file **file)
 {
-	mame_file_error filerr = FILERR_NOT_FOUND;
+	file_error filerr = FILERR_NOT_FOUND;
 	path_iterator iterator;
 	int maxlen, pathlen;
 	char *fullname;
@@ -243,7 +280,7 @@ error:
     ZIPped file
 -------------------------------------------------*/
 
-static mame_file_error fopen_attempt_zipped(char *fullname, const char *filename, UINT32 crc, UINT32 openflags, mame_file *file)
+static file_error fopen_attempt_zipped(char *fullname, const char *filename, UINT32 crc, UINT32 openflags, mame_file *file)
 {
 	char *dirsep = fullname + strlen(fullname);
 	zip_error ziperr;
@@ -647,7 +684,7 @@ const char *mame_fhash(mame_file *file, UINT32 functions)
 
 chd_interface_file *chd_open_cb(const char *filename, const char *mode)
 {
-	mame_file_error filerr;
+	file_error filerr;
 	mame_file *file;
 
 	/* look for read-only drives first in the ROM path */
@@ -745,7 +782,7 @@ static int path_iterator_init(path_iterator *iterator, const char *searchpath)
 
 	/* reset the structure */
 	memset(iterator, 0, sizeof(*iterator));
-	iterator->base = (searchpath != NULL) ? options_get_string(searchpath) : "";
+	iterator->base = (searchpath != NULL) ? options_get_string(mame_options(), searchpath) : "";
 	iterator->cur = iterator->base;
 
 	/* determine the maximum path embedded here */
@@ -806,9 +843,9 @@ static int path_iterator_get_next(path_iterator *iterator, char *buffer, int buf
     load_zipped_file - load a ZIPped file
 -------------------------------------------------*/
 
-static mame_file_error load_zipped_file(mame_file *file)
+static file_error load_zipped_file(mame_file *file)
 {
-	mame_file_error filerr;
+	file_error filerr;
 	zip_error ziperr;
 
 	assert(file->file == NULL);

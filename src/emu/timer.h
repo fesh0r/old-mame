@@ -41,6 +41,10 @@
 #define SUBSECONDS_TO_DOUBLE(x)		((double)(x) * (1.0 / (double)MAX_SUBSECONDS))
 #define DOUBLE_TO_SUBSECONDS(x)		((subseconds_t)((x) * (double)MAX_SUBSECONDS))
 
+/* hertz to subseconds macros */
+#define SUBSECONDS_TO_HZ(x)			((double)MAX_SUBSECONDS / (double)(x))
+#define HZ_TO_SUBSECONDS(x)			(MAX_SUBSECONDS / (x))
+
 /* convert cycles on a given CPU to/from mame_time */
 #define MAME_TIME_TO_CYCLES(cpu,t)	((t).seconds * cycles_per_second[cpu] + (t).subseconds / subseconds_per_cycle[cpu])
 #define MAME_TIME_IN_CYCLES(c,cpu)	(make_mame_time((c) / cycles_per_second[cpu], (c) * subseconds_per_cycle[cpu]))
@@ -55,7 +59,7 @@
 
 /* useful macros for describing mame_times */
 #define MAME_TIME_IN_HZ(hz)		make_mame_time(0, MAX_SUBSECONDS / (hz))
-#define MAME_TIME_IN_SEC(s)		make_mame_time((s), 0)
+#define MAME_TIME_IN_SEC(s)		make_mame_time((s)  / 1, (s) % 1 /* mod here errors on doubles, which is intended */)
 #define MAME_TIME_IN_MSEC(ms)	make_mame_time((ms) / 1000, ((ms) % 1000) * (MAX_SUBSECONDS / 1000))
 #define MAME_TIME_IN_USEC(us)	make_mame_time((us) / 1000000, ((us) % 1000000) * (MAX_SUBSECONDS / 1000000))
 #define MAME_TIME_IN_NSEC(ns)	make_mame_time((ns) / 1000000000, ((ns) % 1000000000) * (MAX_SUBSECONDS / 1000000000))
@@ -157,6 +161,8 @@ void _mame_timer_set(mame_time duration, INT32 param, void (*callback)(int), con
 void _mame_timer_set_ptr(mame_time duration, void *param, void (*callback)(void *), const char *file, int line, const char *func);
 void mame_timer_reset(mame_timer *which, mame_time duration);
 int mame_timer_enable(mame_timer *which, int enable);
+int mame_timer_get_param(mame_timer *which);
+void *mame_timer_get_param_ptr(mame_timer *which);
 mame_time mame_timer_timeelapsed(mame_timer *which);
 mame_time mame_timer_timeleft(mame_timer *which);
 mame_time mame_timer_get_time(void);

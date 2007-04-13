@@ -13,7 +13,7 @@ WRITE8_HANDLER( blockade_videoram_w )
 
 	if (input_port_3_r(0) & 0x80)
 	{
-		logerror("blockade_videoram_w: scanline %d\n", cpu_getscanline());
+		logerror("blockade_videoram_w: scanline %d\n", video_screen_get_vpos(0));
 		cpu_spinuntil_int();
 	}
 }
@@ -35,6 +35,6 @@ VIDEO_START( blockade )
 
 VIDEO_UPDATE( blockade )
 {
-	tilemap_draw(bitmap, &Machine->screen[0].visarea, bg_tilemap, 0, 0);
+	tilemap_draw(bitmap, &machine->screen[0].visarea, bg_tilemap, 0, 0);
 	return 0;
 }

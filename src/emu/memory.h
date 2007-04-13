@@ -200,7 +200,7 @@ typedef struct _data_accessors data_accessors;
 
 /* ----- banking constants ----- */
 #define MAX_BANKS				66						/* maximum number of banks */
-#define MAX_BANK_ENTRIES		255						/* maximum number of possible bank values */
+#define MAX_BANK_ENTRIES		256						/* maximum number of possible bank values */
 #define MAX_EXPLICIT_BANKS		32						/* maximum number of explicitly-defined banks */
 #define STATIC_BANKMAX			(STATIC_RAM - 1)		/* handler constant of last bank */
 
@@ -893,7 +893,7 @@ void io_write_qword_64le(offs_t address, UINT64 data);
 ***************************************************************************/
 
 /* ----- memory setup function ----- */
-int			memory_init(running_machine *machine);
+void		memory_init(running_machine *machine);
 void		memory_exit(running_machine *machine);
 void		memory_set_context(int activecpu);
 

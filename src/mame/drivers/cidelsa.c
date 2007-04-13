@@ -5,6 +5,15 @@
 #include "sound/cdp1869.h"
 #include "sound/ay8910.h"
 
+/*
+
+    TODO:
+
+    - convert to use new video timing system when it is available
+    - fix COP420 core to get sound in Draco
+
+*/
+
 #define DESTRYER_CHR1	3579000.0 // unverified
 #define DESTRYER_CHR2	5714300.0
 #define ALTAIR_CHR1		3579000.0 // unverified
@@ -16,7 +25,8 @@
 /* CDP1802 Interface */
 
 static int cdp1869_prd;
-extern int cdp1869_pcb;
+static int cdp1869_pcb;
+static UINT8 cidelsa_pcb[0x800];  // 2048x1 bit PCB ram
 
 static int cidelsa_in_ef(void)
 {
@@ -45,7 +55,7 @@ READ8_HANDLER ( cidelsa_input_port_0_r )
 /* Sound Interface */
 
 static int draco_sound;
-static int draco_g;
+static int draco_ay_latch;
 
 WRITE8_HANDLER ( draco_sound_bankswitch_w )
 {
@@ -54,7 +64,31 @@ WRITE8_HANDLER ( draco_sound_bankswitch_w )
 
 WRITE8_HANDLER ( draco_sound_g_w )
 {
-    draco_g = data;
+	/*
+
+     G1 G0  description
+
+      0  0  IAB     inactive
+      0  1  DWS     write to PSG
+      1  0  DTB     read from PSG
+      1  1  INTAK   latch address
+
+    */
+
+	switch (data)
+	{
+	case 0x01:
+		AY8910_write_port_0_w(0, draco_ay_latch);
+		break;
+
+	case 0x02:
+		draco_ay_latch = AY8910_read_port_0_r(0);
+		break;
+
+	case 0x03:
+		AY8910_control_port_0_w(0, draco_ay_latch);
+		break;
+	}
 }
 
 READ8_HANDLER ( draco_sound_in_r )
@@ -62,29 +96,14 @@ READ8_HANDLER ( draco_sound_in_r )
 	return draco_sound & 0x07;
 }
 
+READ8_HANDLER ( draco_sound_ay8910_r )
+{
+	return draco_ay_latch;
+}
+
 WRITE8_HANDLER ( draco_sound_ay8910_w )
 {
-	/*
-
-     G1 G0  description
-
-      0  0  inactive
-      0  1  read from PSG
-      1  0  write to PSG
-      1  1  latch address
-
-    */
-
-	switch(draco_g)
-	{
-	case 0x02:
-		AY8910_write_port_0_w(0, data);
-		break;
-
-	case 0x03:
-		AY8910_control_port_0_w(0, data);
-		break;
-	}
+	draco_ay_latch = data;
 }
 
 WRITE8_HANDLER ( draco_ay8910_port_a_w )
@@ -183,6 +202,20 @@ WRITE8_HANDLER ( draco_out1_w )
     draco_sound = (data & 0xe0) >> 5;
 }
 
+WRITE8_HANDLER ( cidelsa_charram_w )
+{
+	int addr = cdp1869_get_cma(offset);
+	cidelsa_pcb[addr] = activecpu_get_reg(CDP1802_Q);
+	cdp1869_charram_w(offset, data);
+}
+
+READ8_HANDLER ( cidelsa_charram_r )
+{
+	int addr = cdp1869_get_cma(offset);
+	cdp1869_pcb = cidelsa_pcb[addr];
+	return cdp1869_charram_r(offset);
+}
+
 /* Memory Maps */
 
 // Destroyer
@@ -190,14 +223,14 @@ WRITE8_HANDLER ( draco_out1_w )
 static ADDRESS_MAP_START( destryer_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x20ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0xf400, 0xf7ff) AM_READWRITE(cdp1869_charram_r, cdp1869_charram_w)
+	AM_RANGE(0xf400, 0xf7ff) AM_READWRITE(cidelsa_charram_r, cidelsa_charram_w)
 	AM_RANGE(0xf800, 0xffff) AM_READWRITE(cdp1869_pageram_r, cdp1869_pageram_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( destryea_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x3000, 0x30ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0xf400, 0xf7ff) AM_READWRITE(cdp1869_charram_r, cdp1869_charram_w)
+	AM_RANGE(0xf400, 0xf7ff) AM_READWRITE(cidelsa_charram_r, cidelsa_charram_w)
 	AM_RANGE(0xf800, 0xffff) AM_READWRITE(cdp1869_pageram_r, cdp1869_pageram_w)
 ADDRESS_MAP_END
 
@@ -205,7 +238,10 @@ static ADDRESS_MAP_START( destryer_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_READWRITE(cidelsa_input_port_0_r, destryer_out1_w)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_1_r)
 	AM_RANGE(0x03, 0x03) AM_WRITE(cdp1869_out3_w)
-	AM_RANGE(0x04, 0x07) AM_WRITE(cdp1869_out_w)
+	AM_RANGE(0x04, 0x04) AM_WRITE(cdp1869_out4_w)
+	AM_RANGE(0x05, 0x05) AM_WRITE(cdp1869_out5_w)
+	AM_RANGE(0x06, 0x06) AM_WRITE(cdp1869_out6_w)
+	AM_RANGE(0x07, 0x07) AM_WRITE(cdp1869_out7_w)
 ADDRESS_MAP_END
 
 // Altair
@@ -213,7 +249,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( altair_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x2fff) AM_ROM
 	AM_RANGE(0x3000, 0x30ff) AM_RAM
-	AM_RANGE(0xf400, 0xf7ff) AM_READWRITE(cdp1869_charram_r, cdp1869_charram_w)
+	AM_RANGE(0xf400, 0xf7ff) AM_READWRITE(cidelsa_charram_r, cidelsa_charram_w)
 	AM_RANGE(0xf800, 0xffff) AM_READWRITE(cdp1869_pageram_r, cdp1869_pageram_w)
 ADDRESS_MAP_END
 
@@ -221,8 +257,10 @@ static ADDRESS_MAP_START( altair_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_READWRITE(cidelsa_input_port_0_r, altair_out1_w)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_1_r)
 	AM_RANGE(0x03, 0x03) AM_WRITE(cdp1869_out3_w)
-	AM_RANGE(0x04, 0x04) AM_READ(input_port_2_r)
-	AM_RANGE(0x04, 0x07) AM_WRITE(cdp1869_out_w)
+	AM_RANGE(0x04, 0x04) AM_READWRITE(input_port_2_r, cdp1869_out4_w)
+	AM_RANGE(0x05, 0x05) AM_WRITE(cdp1869_out5_w)
+	AM_RANGE(0x06, 0x06) AM_WRITE(cdp1869_out6_w)
+	AM_RANGE(0x07, 0x07) AM_WRITE(cdp1869_out7_w)
 ADDRESS_MAP_END
 
 // Draco
@@ -230,7 +268,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( draco_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x8000, 0x83ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0xf400, 0xf7ff) AM_READWRITE(cdp1869_charram_r, cdp1869_charram_w)
+	AM_RANGE(0xf400, 0xf7ff) AM_READWRITE(cidelsa_charram_r, cidelsa_charram_w)
 	AM_RANGE(0xf800, 0xffff) AM_READWRITE(cdp1869_pageram_r, cdp1869_pageram_w)
 ADDRESS_MAP_END
 
@@ -238,8 +276,10 @@ static ADDRESS_MAP_START( draco_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_READWRITE(cidelsa_input_port_0_r, draco_out1_w)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_1_r)
 	AM_RANGE(0x03, 0x03) AM_WRITE(cdp1869_out3_w)
-	AM_RANGE(0x04, 0x04) AM_READ(input_port_2_r)
-	AM_RANGE(0x04, 0x07) AM_WRITE(cdp1869_out_w)
+	AM_RANGE(0x04, 0x04) AM_READWRITE(input_port_2_r, cdp1869_out4_w)
+	AM_RANGE(0x05, 0x05) AM_WRITE(cdp1869_out5_w)
+	AM_RANGE(0x06, 0x06) AM_WRITE(cdp1869_out6_w)
+	AM_RANGE(0x07, 0x07) AM_WRITE(cdp1869_out7_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( draco_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -249,7 +289,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( draco_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(COP400_PORT_D, COP400_PORT_D) AM_WRITE(draco_sound_bankswitch_w)
 	AM_RANGE(COP400_PORT_G, COP400_PORT_G) AM_WRITE(draco_sound_g_w)
-	AM_RANGE(COP400_PORT_L, COP400_PORT_L) AM_READWRITE(AY8910_read_port_0_r, draco_sound_ay8910_w)
+	AM_RANGE(COP400_PORT_L, COP400_PORT_L) AM_READWRITE(draco_sound_ay8910_r, draco_sound_ay8910_w)
 	AM_RANGE(COP400_PORT_IN, COP400_PORT_IN) AM_READ(draco_sound_in_r)
 ADDRESS_MAP_END
 
@@ -433,6 +473,31 @@ static INTERRUPT_GEN( draco_interrupt )
 	}
 }
 
+static MACHINE_START( destryer )
+{
+	state_save_register_global_array(cidelsa_pcb);
+	state_save_register_global(cdp1869_prd);
+	state_save_register_global(cdp1869_pcb);
+
+	return 0;
+}
+
+static MACHINE_START( draco )
+{
+	state_save_register_global_array(cidelsa_pcb);
+	state_save_register_global(cdp1869_prd);
+	state_save_register_global(cdp1869_pcb);
+	state_save_register_global(draco_sound);
+	state_save_register_global(draco_ay_latch);
+
+	return 0;
+}
+
+static MACHINE_RESET( destryer )
+{
+	cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+}
+
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( destryer )
@@ -445,6 +510,8 @@ static MACHINE_DRIVER_START( destryer )
 	MDRV_CPU_CONFIG(cidelsa_cdp1802_config)
 	MDRV_CPU_VBLANK_INT(altair_interrupt, CDP1869_TOTAL_SCANLINES_PAL)
 	MDRV_NVRAM_HANDLER(generic_0fill)
+	MDRV_MACHINE_START(destryer)
+	MDRV_MACHINE_RESET(destryer)
 
 	// video hardware
 
@@ -476,6 +543,8 @@ static MACHINE_DRIVER_START( destryea )
 	MDRV_CPU_CONFIG(cidelsa_cdp1802_config)
 	MDRV_CPU_VBLANK_INT(altair_interrupt, CDP1869_TOTAL_SCANLINES_PAL)
 	MDRV_NVRAM_HANDLER(generic_0fill)
+	MDRV_MACHINE_START(destryer)
+	MDRV_MACHINE_RESET(destryer)
 
 	// video hardware
 
@@ -506,6 +575,8 @@ static MACHINE_DRIVER_START( altair )
 	MDRV_CPU_IO_MAP(altair_io_map, 0)
 	MDRV_CPU_CONFIG(cidelsa_cdp1802_config)
 	MDRV_CPU_VBLANK_INT(altair_interrupt, CDP1869_TOTAL_SCANLINES_PAL)
+	MDRV_MACHINE_START(destryer)
+	MDRV_MACHINE_RESET(destryer)
 
 	// video hardware
 
@@ -537,6 +608,8 @@ static MACHINE_DRIVER_START( draco )
 	MDRV_CPU_CONFIG(cidelsa_cdp1802_config)
 	MDRV_CPU_VBLANK_INT(draco_interrupt, CDP1869_TOTAL_SCANLINES_PAL)
 	MDRV_NVRAM_HANDLER(generic_0fill)
+	MDRV_MACHINE_START(draco)
+	MDRV_MACHINE_RESET(destryer)
 
 	MDRV_CPU_ADD(COP420, DRACO_SND_CHR1) // COP402N
 	MDRV_CPU_PROGRAM_MAP(draco_sound_map, 0)
@@ -568,12 +641,22 @@ MACHINE_DRIVER_END
 
 /* Driver Initialization */
 
+static UINT8 cidelsa_get_color_bits(UINT8 cramdata, UINT16 cramaddr, UINT16 pramaddr)
+{
+	int ccb0 = (cramdata & 0x40) >> 4;
+	int ccb1 = (cramdata & 0x80) >> 6;
+	int pcb = cidelsa_pcb[cramaddr];
+
+	return ccb0 + ccb1 + pcb;
+}
+
 static const CDP1869_interface destryer_CDP1869_interface =
 {
 	CDP1869_PAL,
 	REGION_INVALID,
 	0x800,
-	0x400
+	0x400,
+	cidelsa_get_color_bits
 };
 
 DRIVER_INIT( cidelsa )
@@ -586,7 +669,8 @@ static const CDP1869_interface draco_CDP1869_interface =
 	CDP1869_PAL,
 	REGION_INVALID,
 	0x800,
-	0x800
+	0x800,
+	cidelsa_get_color_bits
 };
 
 DRIVER_INIT( draco )
@@ -646,4 +730,4 @@ ROM_END
 GAME( 1980, destryer, 0, 		destryer, destryer, cidelsa, ROT90, "Cidelsa", "Destroyer (Cidelsa) (set 1)", GAME_IMPERFECT_SOUND )
 GAME( 1980, destryea, destryer, destryea, destryer, cidelsa, ROT90, "Cidelsa", "Destroyer (Cidelsa) (set 2)", GAME_IMPERFECT_SOUND )
 GAME( 1981, altair,   0, 		altair,   altair,   cidelsa, ROT90, "Cidelsa", "Altair", GAME_IMPERFECT_SOUND )
-GAME( 1981, draco,    0, 		draco,    draco,    draco, 	 ROT90, "Cidelsa", "Draco", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND )
+GAME( 1981, draco,    0, 		draco,    draco,    draco, 	 ROT90, "Cidelsa", "Draco", GAME_IMPERFECT_COLORS | GAME_NO_SOUND )

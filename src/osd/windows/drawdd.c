@@ -27,6 +27,7 @@
 // MAMEOS headers
 #include "winmain.h"
 #include "window.h"
+#include "config.h"
 
 
 
@@ -106,6 +107,7 @@ struct _mode_enum_info
 	win_window_info *		window;
 	INT32 					minimum_width, minimum_height;
 	INT32 					target_width, target_height;
+	double					target_refresh;
 	float 					best_score;
 };
 
@@ -425,7 +427,7 @@ static int drawdd_window_draw(win_window_info *window, HDC dc, int update)
 	if (result != DD_OK) verbose_printf("DirectDraw: Error %08X unlocking blit surface\n", (int)result);
 
 	// sync to VBLANK
-	if ((video_config.waitvsync || video_config.syncrefresh) && video_config.throttle && (!window->fullscreen || dd->back == NULL))
+	if ((video_config.waitvsync || video_config.syncrefresh) && video_get_throttle() && (!window->fullscreen || dd->back == NULL))
 	{
 		result = IDirectDraw7_WaitForVerticalBlank(dd->ddraw, DDWAITVB_BLOCKBEGIN, NULL);
 		if (result != DD_OK) verbose_printf("DirectDraw: Error %08X waiting for VBLANK\n", (int)result);
@@ -586,9 +588,9 @@ static int ddraw_create_surfaces(win_window_info *window)
 	if (window->fullscreen)
 	{
 		// only set the gamma if it's not 1.0f
-		float brightness = options_get_float("full_screen_brightness");
-		float contrast = options_get_float("full_screen_contrast");
-		float gamma = options_get_float("full_screen_gamma");
+		float brightness = options_get_float(mame_options(), WINOPTION_FULLSCREENBRIGHTNESS);
+		float contrast = options_get_float(mame_options(), WINOPTION_FULLLSCREENCONTRAST);
+		float gamma = options_get_float(mame_options(), WINOPTION_FULLSCREENGAMMA);
 		if (brightness != 1.0f || contrast != 1.0f || gamma != 1.0f)
 		{
 			// see if we can get a GammaControl object
@@ -1252,10 +1254,10 @@ static HRESULT WINAPI enum_modes_callback(LPDDSURFACEDESC2 desc, LPVOID context)
 		size_score = 2.0f;
 
 	// compute refresh score
-	refresh_score = 1.0f / (1.0f + fabs((double)desc->dwRefreshRate - Machine->screen[0].refresh));
+	refresh_score = 1.0f / (1.0f + fabs((double)desc->dwRefreshRate - einfo->target_refresh));
 
 	// if refresh is smaller than we'd like, it only scores up to 0.1
-	if ((double)desc->dwRefreshRate < Machine->screen[0].refresh)
+	if ((double)desc->dwRefreshRate < einfo->target_refresh)
 		refresh_score *= 0.1;
 
 	// if we're looking for a particular refresh, make sure it matches
@@ -1298,6 +1300,7 @@ static void pick_best_mode(win_window_info *window)
 	// use those as the target for now
 	einfo.target_width = einfo.minimum_width * MAX(1, video_config.prescale);
 	einfo.target_height = einfo.minimum_height * MAX(1, video_config.prescale);
+	einfo.target_refresh = SUBSECONDS_TO_HZ(Machine->screen[0].refresh);
 
 	// if we're not stretching, allow some slop on the minimum since we can handle it
 	if (!video_config.hwstretch)

@@ -34,6 +34,7 @@
 #include "input.h"
 #include "debugwin.h"
 #include "strconv.h"
+#include "config.h"
 
 #ifdef MESS
 #include "menu.h"
@@ -199,7 +200,7 @@ int winwindow_init(running_machine *machine)
 	size_t temp;
 
 	// determine if we are using multithreading or not
-	multithreading_enabled = options_get_bool("multithreading");
+	multithreading_enabled = options_get_bool(mame_options(), WINOPTION_MULTITHREADING);
 
 	// get the main thread ID before anything else
 	main_threadid = GetCurrentThreadId();
@@ -348,7 +349,7 @@ void winwindow_process_events(int ingame)
 #if defined(MAME_DEBUG)
 	if (ingame)
 	{
-		is_debugger_visible = (options.mame_debug && debugwin_is_debugger_visible());
+		is_debugger_visible = (Machine != NULL && Machine->debug_mode && debugwin_is_debugger_visible());
 		debugwin_update_during_game();
 	}
 #endif
@@ -475,7 +476,7 @@ void winwindow_toggle_full_screen(void)
 
 #ifdef MAME_DEBUG
 	// if we are in debug mode, never go full screen
-	if (options.mame_debug)
+	if (options_get_bool(mame_options(), OPTION_DEBUG))
 		return;
 #endif
 
@@ -584,12 +585,10 @@ int winwindow_video_window_create(int index, win_monitor_info *monitor, const wi
 	window->target = render_target_alloc(NULL, 0);
 	if (window->target == NULL)
 		goto error;
-	render_target_set_orientation(window->target, video_orientation);
-	render_target_set_layer_config(window->target, video_config.layerconfig);
 
 	// set the specific view
 	sprintf(option, "view%d", index);
-	set_starting_view(index, window, options_get_string(option));
+	set_starting_view(index, window, options_get_string(mame_options(), option));
 
 	// remember the current values in case they change
 	window->targetview = render_target_get_view(window->target);
@@ -603,7 +602,7 @@ int winwindow_video_window_create(int index, win_monitor_info *monitor, const wi
 		sprintf(window->title, APPNAME ": %s [%s] - Screen %d", Machine->gamedrv->description, Machine->gamedrv->name, index);
 
 	// set the initial maximized state
-	window->startmaximized = options_get_bool("maximize");
+	window->startmaximized = options_get_bool(mame_options(), WINOPTION_MAXIMIZE);
 
 	// finish the window creation on the window thread
 	if (multithreading_enabled)
@@ -707,7 +706,7 @@ void winwindow_video_window_update(win_window_info *window)
 		mtlog_add("winwindow_video_window_update: try lock");
 
 		// only block if we're throttled
-		if (video_config.throttle || timeGetTime() - last_update_time > 250)
+		if (video_get_throttle() || timeGetTime() - last_update_time > 250)
 			osd_lock_acquire(window->render_lock);
 		else
 			got_lock = osd_lock_try(window->render_lock);
@@ -814,7 +813,7 @@ static int create_window_class(void)
 
 static void set_starting_view(int index, win_window_info *window, const char *view)
 {
-	const char *defview = options_get_string("view");
+	const char *defview = options_get_string(mame_options(), WINOPTION_VIEW);
 	int viewindex = -1;
 
 	assert(GetCurrentThreadId() == main_threadid);
@@ -1148,6 +1147,10 @@ static int complete_create(win_window_info *window)
 	// set a pointer back to us
 	SetWindowLongPtr(window->hwnd, GWLP_USERDATA, (LONG_PTR)window);
 
+	// skip the positioning stuff for -video none */
+	if (video_config.mode == VIDEO_MODE_NONE)
+		return 0;
+
 	// adjust the window position to the initial width/height
 	tempwidth = (window->maxwidth != 0) ? window->maxwidth : 640;
 	tempheight = (window->maxheight != 0) ? window->maxheight : 480;
@@ -1169,8 +1172,7 @@ static int complete_create(win_window_info *window)
 		// finish off by trying to initialize DirectX; if we fail, ignore it
 		if ((*draw.window_init)(window))
 			return 1;
-		if (video_config.mode != VIDEO_MODE_NONE)
-			ShowWindow(window->hwnd, SW_SHOW);
+		ShowWindow(window->hwnd, SW_SHOW);
 	}
 
 	// clear the window

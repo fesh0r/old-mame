@@ -751,7 +751,7 @@ VIDEO_START( atari )
 
 	/* reset the ANTIC color tables */
 	for( i = 0; i < 256; i ++ )
-        antic.color_lookup[i] = (Machine->pens[0] << 8) + Machine->pens[0];
+        antic.color_lookup[i] = (machine->pens[0] << 8) + machine->pens[0];
 
 	LOG(("atari cclk_init\n"));
     cclk_init();
@@ -764,7 +764,7 @@ VIDEO_START( atari )
 	LOG(("atari prio_init\n"));
     prio_init();
 
-	for( i = 0; i < Machine->screen[0].height; i++ )
+	for( i = 0; i < machine->screen[0].height; i++ )
     {
 		antic.video[i] = auto_malloc(sizeof(VIDEO));
 		memset(antic.video[i], 0, sizeof(VIDEO));
@@ -1067,10 +1067,10 @@ static int cycle(void)
 
 static void after(int cycles, void (*function)(int), const char *funcname)
 {
-    double duration = cpu_getscanlineperiod() * cycles / CYCLES_PER_LINE;
+    mame_time duration = make_mame_time(0, mame_time_to_subseconds(video_screen_get_scan_period(0)) * cycles / CYCLES_PER_LINE);
     (void)funcname;
-	LOG(("           after %3d (%5.1f us) %s\n", cycles, duration * 1.0e6, funcname));
-	timer_set(duration, 0, function);
+	LOG(("           after %3d (%5.1f us) %s\n", cycles, mame_time_to_double(duration) * 1.0e6, funcname));
+	mame_timer_set(duration, 0, function);
 }
 
 static void antic_issue_dli(int param)

@@ -25,7 +25,7 @@ VIDEO_START(laserbas)
 {
 	vram1=auto_malloc(0x8000);
 	vram2=auto_malloc(0x8000);
-	tmpbitmap = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height,Machine->screen[0].format);
+	tmpbitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
 	return 0;
 }
 
@@ -35,17 +35,17 @@ VIDEO_UPDATE(laserbas)
  	for(y=0;y<256;y++)
 		for(x=0;x<128;x++)
 		{
-			plot_pixel(tmpbitmap, x*2, y,  Machine->pens[vram1[y*128+x]&0xf]+16);
-			plot_pixel(tmpbitmap, x*2+1, y, Machine->pens[vram1[y*128+x]>>4]+16);
+			plot_pixel(tmpbitmap, x*2, y,  machine->pens[vram1[y*128+x]&0xf]+16);
+			plot_pixel(tmpbitmap, x*2+1, y, machine->pens[vram1[y*128+x]>>4]+16);
 		}
-	copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+	copybitmap(bitmap,tmpbitmap,0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
 	for(y=0;y<256;y++)
 		for(x=0;x<128;x++)
 		{
-			plot_pixel(tmpbitmap, x*2, y,  Machine->pens[vram2[y*128+x]&0xf]);
-			plot_pixel(tmpbitmap, x*2+1, y, Machine->pens[vram2[y*128+x]>>4]);
+			plot_pixel(tmpbitmap, x*2, y,  machine->pens[vram2[y*128+x]&0xf]);
+			plot_pixel(tmpbitmap, x*2+1, y, machine->pens[vram2[y*128+x]>>4]);
 		}
-	copybitmap(bitmap,tmpbitmap,0,0,0,0,&Machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+	copybitmap(bitmap,tmpbitmap,0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
 	return 0;
 }
 
@@ -123,7 +123,7 @@ INPUT_PORTS_END
 
 INTERRUPT_GEN( laserbas_interrupt )
 {
-	if(cpu_getvblank())
+	if(video_screen_get_vblank(0))
 		 cpunum_set_input_line(0, 0, HOLD_LINE);
 	else
 		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
@@ -136,7 +136,6 @@ static MACHINE_DRIVER_START( laserbas )
 	MDRV_CPU_VBLANK_INT(laserbas_interrupt,2)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)

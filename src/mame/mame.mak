@@ -41,20 +41,20 @@ CPUS += M6502
 CPUS += M65C02
 CPUS += M65SC02
 #CPUS += M65CE02
-#CPUS += M6509
+CPUS += M6509
 CPUS += M6510
-#CPUS += M6510T
-#CPUS += M7501
-#CPUS += M8502
+CPUS += M6510T
+CPUS += M7501
+CPUS += M8502
 CPUS += N2A03
 CPUS += DECO16
-#CPUS += M4510
+CPUS += M4510
 CPUS += H6280
 CPUS += I86
 CPUS += I88
 CPUS += I186
-#CPUS += I188
-#CPUS += I286
+CPUS += I188
+CPUS += I286
 CPUS += V20
 CPUS += V30
 CPUS += V33
@@ -92,7 +92,7 @@ CPUS += T11
 CPUS += S2650
 CPUS += TMS34010
 CPUS += TMS34020
-#CPUS += TMS9900
+CPUS += TMS9900
 #CPUS += TMS9940
 CPUS += TMS9980
 #CPUS += TMS9985
@@ -129,27 +129,27 @@ CPUS += QED5271
 CPUS += RM7000
 CPUS += SH2
 CPUS += DSP32C
-#CPUS += PIC16C54
+CPUS += PIC16C54
 CPUS += PIC16C55
-#CPUS += PIC16C56
+CPUS += PIC16C56
 CPUS += PIC16C57
-#CPUS += PIC16C58
+CPUS += PIC16C58
 CPUS += G65816
 CPUS += SPC700
 CPUS += E116T
-#CPUS += E116XT
-#CPUS += E116XS
-#CPUS += E116XSR
+CPUS += E116XT
+CPUS += E116XS
+CPUS += E116XSR
 CPUS += E132N
-#CPUS += E132T
-#CPUS += E132XN
+CPUS += E132T
+CPUS += E132XN
 CPUS += E132XT
-#CPUS += E132XS
-#CPUS += E132XSR
+CPUS += E132XS
+CPUS += E132XSR
 CPUS += GMS30C2116
-#CPUS += GMS30C2132
-#CPUS += GMS30C2216
-#CPUS += GMS30C2232
+CPUS += GMS30C2132
+CPUS += GMS30C2216
+CPUS += GMS30C2232
 CPUS += I386
 CPUS += I486
 CPUS += PENTIUM
@@ -162,7 +162,7 @@ CPUS += M37710
 CPUS += PPC403
 CPUS += PPC602
 CPUS += PPC603
-# CPUS += MPC8240
+CPUS += MPC8240
 CPUS += SE3208
 CPUS += MC68HC11
 CPUS += ADSP21062
@@ -174,22 +174,24 @@ CPUS += CDP1802
 CPUS += COP420
 CPUS += COP410
 CPUS += TLCS90
-# CPUS += MB8843
+CPUS += MB8843
 CPUS += MB8844
-# CPUS += APEXC
-# CPUS += CP1610
-# CPUS += F8
-# CPUS += LH5801
-# CPUS += PDP1
-# CPUS += SATURN
-# CPUS += SC61860
-# CPUS += TX0_64KW
-# CPUS += TX0_8KW
-# CPUS += Z80GB
-# CPUS += TMS7000
-# CPUS += TMS7000_EXL
-# CPUS += SM8500
-# CPUS += V30MZ
+CPUS += MB86233
+CPUS += SSP1610
+CPUS += APEXC
+CPUS += CP1610
+CPUS += F8
+CPUS += LH5801
+CPUS += PDP1
+CPUS += SATURN
+CPUS += SC61860
+CPUS += TX0_64KW
+CPUS += TX0_8KW
+CPUS += Z80GB
+CPUS += TMS7000
+CPUS += TMS7000_EXL
+CPUS += SM8500
+CPUS += V30MZ
 
 
 
@@ -409,6 +411,7 @@ $(MAMEOBJ)/shared.a: \
  	$(MACHINE)/idectrl.o \
  	$(MACHINE)/intelfsh.o \
 	$(MACHINE)/laserdsc.o \
+	$(MACHINE)/mb14241.o \
 	$(MACHINE)/mc146818.o \
 	$(MACHINE)/msm6242.o \
 	$(MACHINE)/nmk112.o \
@@ -529,7 +532,7 @@ $(MAMEOBJ)/atari.a: \
 	$(DRIVERS)/skydiver.o $(AUDIO)/skydiver.o $(VIDEO)/skydiver.o \
 	$(DRIVERS)/skyraid.o $(VIDEO)/skyraid.o \
 	$(DRIVERS)/sprint2.o $(AUDIO)/sprint2.o $(VIDEO)/sprint2.o \
-	$(DRIVERS)/sprint4.o $(VIDEO)/sprint4.o \
+	$(DRIVERS)/sprint4.o $(VIDEO)/sprint4.o $(AUDIO)/sprint4.o \
 	$(DRIVERS)/sprint8.o $(VIDEO)/sprint8.o \
 	$(DRIVERS)/starshp1.o $(VIDEO)/starshp1.o \
 	$(DRIVERS)/starwars.o $(MACHINE)/starwars.o $(AUDIO)/starwars.o \
@@ -541,7 +544,7 @@ $(MAMEOBJ)/atari.a: \
 	$(DRIVERS)/tourtabl.o $(VIDEO)/tia.o \
 	$(DRIVERS)/triplhnt.o $(AUDIO)/triplhnt.o $(VIDEO)/triplhnt.o \
 	$(DRIVERS)/tunhunt.o $(VIDEO)/tunhunt.o \
-	$(DRIVERS)/ultratnk.o $(AUDIO)/ultratnk.o \
+	$(DRIVERS)/ultratnk.o $(VIDEO)/ultratnk.o \
 	$(DRIVERS)/videopin.o $(AUDIO)/videopin.o $(VIDEO)/videopin.o \
 	$(DRIVERS)/vindictr.o $(VIDEO)/vindictr.o \
 	$(DRIVERS)/wolfpack.o $(VIDEO)/wolfpack.o \
@@ -757,8 +760,13 @@ $(MAMEOBJ)/greyhnd.a: \
 
 $(MAMEOBJ)/igs.a: \
 	$(DRIVERS)/csk.o $(VIDEO)/csk.o \
+	$(DRIVERS)/ddz.o \
+	$(DRIVERS)/dunhuang.o \
 	$(DRIVERS)/goldstar.o $(VIDEO)/goldstar.o \
 	$(DRIVERS)/igs_blit.o \
+	$(DRIVERS)/igs_180.o \
+	$(DRIVERS)/igs_m027.o \
+	$(DRIVERS)/igs_m68.o \
 	$(DRIVERS)/iqblock.o $(VIDEO)/iqblock.o \
 	$(DRIVERS)/lordgun.o $(VIDEO)/lordgun.o \
 	$(DRIVERS)/pgm.o $(VIDEO)/pgm.o \
@@ -933,9 +941,9 @@ $(MAMEOBJ)/midcoin.a: \
 	$(DRIVERS)/wink.o \
 
 $(MAMEOBJ)/midw8080.a: \
-	$(DRIVERS)/8080bw.o $(MACHINE)/8080bw.o $(AUDIO)/8080bw.o $(VIDEO)/8080bw.o \
+	$(DRIVERS)/8080bw.o $(AUDIO)/8080bw.o $(VIDEO)/8080bw.o \
 	$(DRIVERS)/m79amb.o $(VIDEO)/m79amb.o \
-	$(DRIVERS)/mw8080bw.o $(AUDIO)/mw8080bw.o $(VIDEO)/mw8080bw.o \
+	$(DRIVERS)/mw8080bw.o $(MACHINE)/mw8080bw.o $(AUDIO)/mw8080bw.o $(VIDEO)/mw8080bw.o \
 	$(DRIVERS)/rotaryf.o \
 	$(DRIVERS)/sspeedr.o $(VIDEO)/sspeedr.o \
 
@@ -1162,7 +1170,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/segas16b.o $(VIDEO)/segas16b.o \
 	$(DRIVERS)/segas18.o $(VIDEO)/segas18.o \
 	$(DRIVERS)/segas32.o $(MACHINE)/segas32.o $(VIDEO)/segas32.o \
-	$(DRIVERS)/segasyse.o $(VIDEO)/segasyse.o \
+	$(DRIVERS)/segae.o $(DRIVERS)/segasyse.o $(VIDEO)/segasyse.o \
 	$(DRIVERS)/segaxbd.o $(VIDEO)/segaxbd.o \
 	$(DRIVERS)/segaybd.o $(VIDEO)/segaybd.o \
 	$(DRIVERS)/ssf2md.o \
@@ -1180,6 +1188,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/zaxxon.o $(AUDIO)/zaxxon.o $(VIDEO)/zaxxon.o \
 	$(MACHINE)/fd1089.o \
 	$(MACHINE)/fd1094.o \
+	$(MACHINE)/fddebug.o \
 	$(MACHINE)/mc8123.o \
 	$(MACHINE)/s16fd.o \
 	$(MACHINE)/s24fd.o \
@@ -1503,7 +1512,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/artmagic.o $(VIDEO)/artmagic.o \
 	$(DRIVERS)/attckufo.o $(AUDIO)/attckufo.o $(VIDEO)/attckufo.o \
 	$(DRIVERS)/aztarac.o $(AUDIO)/aztarac.o $(VIDEO)/aztarac.o \
-	$(DRIVERS)/beaminv.o $(VIDEO)/beaminv.o \
+	$(DRIVERS)/beaminv.o \
 	$(DRIVERS)/bmcbowl.o \
 	$(DRIVERS)/carrera.o \
 	$(DRIVERS)/cave.o $(VIDEO)/cave.o \
@@ -1531,6 +1540,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/freekick.o $(VIDEO)/freekick.o \
 	$(DRIVERS)/funworld.o $(VIDEO)/funworld.o \
 	$(DRIVERS)/go2000.o \
+	$(DRIVERS)/good.o \
 	$(DRIVERS)/gotcha.o $(VIDEO)/gotcha.o \
 	$(DRIVERS)/gumbo.o $(VIDEO)/gumbo.o \
 	$(DRIVERS)/gunpey.o \

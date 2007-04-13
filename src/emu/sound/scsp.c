@@ -9,7 +9,6 @@
 
     Unsupported:
         - FM mode (VF3 uses it, Hanagumi might late in the title song...)
-        - on-board programmable DSP and related functionality
 
     ChangeLog:
     * November 25, 2003 (ES) Fixed buggy timers and envelope overflows.
@@ -166,7 +165,7 @@ struct _SLOT
 #define SCITMA	6
 #define SCITMB	7
 
-#define USEDSP
+//#define USEDSP
 
 #define REVERB_LEN	0x10000
 #define REVERB_DIF	6000
@@ -183,6 +182,7 @@ struct _SCSP
 	signed short RINGBUF[64];
 	unsigned char BUFPTR;
 	unsigned char *SCSPRAM;
+	UINT32 SCSPRAM_LENGTH;
 	char Master;
 	void (*Int68kCB)(int irq);
 	sound_stream * stream;
@@ -459,7 +459,11 @@ static void SCSP_Init(struct _SCSP *SCSP, const struct SCSPinterface *intf)
 		if (intf->region)
 		{
 			SCSP->SCSPRAM = memory_region(intf->region);
+			SCSP->SCSPRAM_LENGTH = memory_region_length(intf->region);
+#ifdef USEDSP
 			SCSP->DSP.SCSPRAM = (UINT16 *)SCSP->SCSPRAM;
+			SCSP->DSP.SCSPRAM_LENGTH =  memory_region_length(intf->region)/2;
+#endif
 			SCSP->SCSPRAM += intf->roffset;
 		}
 	}
@@ -823,7 +827,7 @@ void SCSP_TimersAddTicks(struct _SCSP *SCSP, int ticks)
 	}
 }
 
-#if 0
+#ifndef USEDSP
 static signed int *bufl1,*bufr1;
 #define SCSPNAME(_8bit,lfo,alfo,loop) \
 static void SCSP_Update##_8bit##lfo##alfo##loop(struct _SCSP *SCSP, struct _SLOT *slot,unsigned int Enc,unsigned int nsamples)
@@ -1308,7 +1312,9 @@ void SCSP_set_ram_base(int which, void *base)
 	if (SCSP)
 	{
 		SCSP->SCSPRAM = base;
+#ifdef USEDSP
 		SCSP->DSP.SCSPRAM = base;
+#endif
 	}
 }
 

@@ -77,7 +77,7 @@ static UINT64 tempvar[NUM_TEMP_VARIABLES];
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static void debug_cpu_exit(running_machine *machine);
+void debug_cpu_exit(running_machine *machine);
 static void perform_trace(debug_cpu_info *info);
 static void prepare_for_step_overout(void);
 static void process_source_file(void);
@@ -288,7 +288,7 @@ void debug_cpu_init(running_machine *machine)
     debug_cpu_exit - free all memory
 -------------------------------------------------*/
 
-static void debug_cpu_exit(running_machine *machine)
+void debug_cpu_exit(running_machine *machine)
 {
 	int cpunum, spacenum;
 
@@ -638,7 +638,7 @@ static UINT64 get_logunmap(UINT32 ref)
 
 static UINT64 get_beamx(UINT32 ref)
 {
-	return video_screen_get_hpos(0);
+	return video_screen_get_hpos(ref);
 }
 
 
@@ -648,7 +648,7 @@ static UINT64 get_beamx(UINT32 ref)
 
 static UINT64 get_beamy(UINT32 ref)
 {
-	return cpu_getscanline();
+	return video_screen_get_vpos(ref);
 }
 
 
@@ -729,6 +729,10 @@ void mame_debug_hook(void)
 	if (info->trace.file)
 		perform_trace(info);
 
+	/* per-instruction hook? */
+	if (info->instrhook != NULL && (*info->instrhook)(curpc))
+		execution_state = EXECUTION_STATE_STOPPED;
+
 	/* check for execution breakpoints */
 	if (execution_state != EXECUTION_STATE_STOPPED)
 	{
@@ -741,9 +745,9 @@ void mame_debug_hook(void)
 		}
 
 		/* see if we hit a target time */
-		if (break_on_time && (compare_mame_times(mame_timer_get_time(), break_on_time_target) > 0))
+		if (break_on_time && compare_mame_times(mame_timer_get_time(), break_on_time_target) > 0)
 		{
-			debug_console_printf("Stopped at time interval %.1g\n", timer_get_time());
+			debug_console_printf("Stopped at time interval %.1g\n", mame_time_to_double(mame_timer_get_time()));
 			break_on_time = 0;
 			execution_state = EXECUTION_STATE_STOPPED;
 		}
@@ -1107,6 +1111,17 @@ void debug_get_memory_hooks(int cpunum, debug_hook_read_ptr *read, debug_hook_wr
 		*write = standard_debug_hook_write;
 	else
 		*write = NULL;
+}
+
+
+/*-------------------------------------------------
+    debug_set_instruction_hook - set a hook to
+    be called on each instruction for a given CPU
+-------------------------------------------------*/
+
+void debug_set_instruction_hook(int cpunum, int (*hook)(offs_t pc))
+{
+	debug_cpuinfo[cpunum].instrhook = hook;
 }
 
 

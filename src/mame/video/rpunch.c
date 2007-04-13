@@ -78,7 +78,7 @@ static void crtc_interrupt_gen(int param)
 {
 	cpunum_set_input_line(0, 1, HOLD_LINE);
 	if (param != 0)
-		timer_adjust(crtc_timer, TIME_IN_HZ(Machine->screen[0].refresh * param), 0, TIME_IN_HZ(Machine->screen[0].refresh * param));
+		mame_timer_adjust(crtc_timer, make_mame_time(0, Machine->screen[0].refresh / param), 0, make_mame_time(0, Machine->screen[0].refresh / param));
 }
 
 
@@ -95,7 +95,7 @@ VIDEO_START( rpunch )
 		memset(rpunch_bitmapram, 0xff, rpunch_bitmapram_size);
 
 	/* reset the timer */
-	crtc_timer = timer_alloc(crtc_interrupt_gen);
+	crtc_timer = mame_timer_alloc(crtc_interrupt_gen);
 	return 0;
 }
 
@@ -173,7 +173,7 @@ WRITE16_HANDLER( rpunch_crtc_data_w )
 		{
 			/* only register we know about.... */
 			case 0x0b:
-				timer_adjust(crtc_timer, cpu_getscanlinetime(Machine->screen[0].visarea.max_y + 1), (data == 0xc0) ? 2 : 1, 0);
+				mame_timer_adjust(crtc_timer, video_screen_get_time_until_pos(0, Machine->screen[0].visarea.max_y + 1, 0), (data == 0xc0) ? 2 : 1, time_zero);
 				break;
 
 			default:

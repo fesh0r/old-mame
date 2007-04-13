@@ -72,7 +72,7 @@ VIDEO_START( segae )
 		if (segae_vdp_start(temp)) return 1;
 
 	cache_bitmap = auto_malloc( (16+256+16) * 192); /* 16 pixels either side to simplify drawing */
-
+	memset(cache_bitmap, 0, (16+256+16) * 192);
 	return 0;
 }
 
@@ -83,7 +83,7 @@ VIDEO_UPDATE( segae )
 	/*- Draw from cache_bitmap to screen -*/
 
 	for (i = 0;i < 192;i++)
-		draw_scanline8(bitmap,0,i,256,&cache_bitmap[i * (16+256+16) +16],&Machine->pens[segasyse_palettebase],15);
+		draw_scanline8(bitmap,0,i,256,&cache_bitmap[i * (16+256+16) +16],&machine->pens[segasyse_palettebase],15);
 	return 0;
 }
 
@@ -485,14 +485,12 @@ void segae_drawtilesline(UINT8 *dest, int line, UINT8 chip, UINT8 pri)
 
 void segae_drawspriteline(UINT8 *dest, UINT8 chip, UINT8 line)
 {
-	/* todo: figure out what riddle of pythagoras hates about this */
-
 	int nosprites;
 	int loopcount;
 
 	UINT16 spritebase;
 
-	nosprites = 0;
+	nosprites = 63; // if there is no end marker we draw everything (ridleofp)
 
 	spritebase =  (segae_vdp_regs[chip][5] & 0x7e) << 7;
 	spritebase += (segae_vdp_vrambank[chip] * 0x4000);
@@ -509,8 +507,6 @@ void segae_drawspriteline(UINT8 *dest, UINT8 chip, UINT8 line)
 			break;
 		}
 	}
-
-	if (!strcmp(Machine->gamedrv->name,"ridleofp")) nosprites = 63; /* why, there must be a bug elsewhere i guess ?! */
 
 	/*- draw sprites IN REVERSE ORDER -*/
 

@@ -99,7 +99,7 @@ static VIDEO_START( common )
 	memset(&dma_state, 0, sizeof(dma_state));
 
 	/* set up scanline 0 timer */
-	timer_set(cpu_getscanlinetime(0), 0, scanline0_callback);
+	mame_timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, scanline0_callback);
 	return 0;
 }
 
@@ -276,8 +276,8 @@ WRITE16_HANDLER( midyunit_control_w )
 		{
 			if (autoerase_enable)
 			{
-				logerror("autoerase off @ %d\n", cpu_getscanline());
-				update_partial(cpu_getscanline() - 1, 1);
+				logerror("autoerase off @ %d\n", video_screen_get_vpos(0));
+				update_partial(video_screen_get_vpos(0) - 1, 1);
 			}
 			autoerase_enable = 0;
 		}
@@ -287,8 +287,8 @@ WRITE16_HANDLER( midyunit_control_w )
 		{
 			if (!autoerase_enable)
 			{
-				logerror("autoerase on @ %d\n", cpu_getscanline());
-				update_partial(cpu_getscanline() - 1, 1);
+				logerror("autoerase on @ %d\n", video_screen_get_vpos(0));
+				update_partial(video_screen_get_vpos(0) - 1, 1);
 			}
 			autoerase_enable = 1;
 		}
@@ -674,7 +674,7 @@ WRITE16_HANDLER( midyunit_dma_w )
 	if (FAST_DMA)
 		dma_callback(1);
 	else
-		timer_set(TIME_IN_NSEC(41 * dma_state.width * dma_state.height), 0, dma_callback);
+		mame_timer_set(MAME_TIME_IN_NSEC(41 * dma_state.width * dma_state.height), 0, dma_callback);
 
 	profiler_mark(PROFILER_END);
 }
@@ -765,7 +765,7 @@ WRITE16_HANDLER( midyunit_io_register_w )
 	{
 		int oldval = tms34010_io_register_r(offset, mem_mask);
 		if ((data & ~mem_mask) != (oldval & ~mem_mask))
-			update_partial(cpu_getscanline(), 1);
+			update_partial(video_screen_get_vpos(0), 1);
 	}
 
 	/* pass the write through */
@@ -783,14 +783,14 @@ WRITE16_HANDLER( midyunit_io_register_w )
 VIDEO_EOF( midyunit )
 {
 	/* finish updating/autoerasing, even if we skipped a frame */
-	update_partial(Machine->screen[0].visarea.max_y, 0);
+	update_partial(machine->screen[0].visarea.max_y, 0);
 }
 
 
 static void scanline0_callback(int param)
 {
 	last_update_scanline = 0;
-	timer_set(cpu_getscanlinetime(0), 0, scanline0_callback);
+	mame_timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, scanline0_callback);
 }
 
 
@@ -811,14 +811,14 @@ VIDEO_UPDATE( midyunit )
 	cpuintrf_push_context(0);
 	heblnk = tms34010_io_register_r(REG_HEBLNK, 0);
 	hsblnk = tms34010_io_register_r(REG_HSBLNK, 0);
-	leftscroll = (Machine->screen[0].visarea.max_x + 1 - Machine->screen[0].visarea.min_x) - (hsblnk - heblnk) * 2;
+	leftscroll = (machine->screen[0].visarea.max_x + 1 - machine->screen[0].visarea.min_x) - (hsblnk - heblnk) * 2;
 	if (leftscroll < 0)
 		leftscroll = 0;
 	cpuintrf_pop_context();
 
 	/* determine the base of the videoram */
 	offset = (~tms34010_get_DPYSTRT(0) & 0x1ff0) << 5;
-	offset += 512 * (cliprect->min_y - Machine->screen[0].visarea.min_y);
+	offset += 512 * (cliprect->min_y - machine->screen[0].visarea.min_y);
 
 	/* determine how many pixels to copy */
 	xoffs = cliprect->min_x;

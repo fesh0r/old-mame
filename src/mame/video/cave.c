@@ -201,8 +201,8 @@ PALETTE_INIT( pwrinst2 )
 		for( pen = 0; pen < 16; pen++ )
 			colortable[color * 256 + pen] = color * 16 + pen;
 
-	for( color = 0x8000; color < Machine->drv->color_table_len; color++ )
-			colortable[color] = (color - 0x8000) % Machine->drv->total_colors;
+	for( color = 0x8000; color < machine->drv->color_table_len; color++ )
+			colortable[color] = (color - 0x8000) % machine->drv->total_colors;
 }
 
 PALETTE_INIT( korokoro )
@@ -807,7 +807,7 @@ static void cave_sprite_check( const rectangle *clip )
 
 			case CAVE_SPRITETYPE_ZOOM | CAVE_SPRITETYPE_ZBUF:
 				cave_sprite_draw = sprite_draw_cave_zbuf;
-				if(!mame_get_performance_info()->partial_updates_this_frame)
+				if (clip->min_y == Machine->screen[0].visarea.min_y)
 				{
 					if(!(sprite_zbuf_baseval += MAX_SPRITE_NUM))
 						fillbitmap(sprite_zbuf,0,&Machine->screen[0].visarea);
@@ -816,7 +816,7 @@ static void cave_sprite_check( const rectangle *clip )
 
 			case CAVE_SPRITETYPE_ZBUF:
 				cave_sprite_draw = sprite_draw_donpachi_zbuf;
-				if(!mame_get_performance_info()->partial_updates_this_frame)
+				if (clip->min_y == Machine->screen[0].visarea.min_y)
 				{
 					if(!(sprite_zbuf_baseval += MAX_SPRITE_NUM))
 						fillbitmap(sprite_zbuf,0,&Machine->screen[0].visarea);

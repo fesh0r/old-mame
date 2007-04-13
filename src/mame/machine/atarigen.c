@@ -18,7 +18,7 @@
     CONSTANTS
 ##########################################################################*/
 
-#define SOUND_INTERLEAVE_RATE		TIME_IN_USEC(50)
+#define SOUND_INTERLEAVE_RATE		MAME_TIME_IN_USEC(50)
 #define SOUND_INTERLEAVE_REPEAT		20
 
 
@@ -31,7 +31,7 @@ UINT8 				atarigen_scanline_int_state;
 UINT8 				atarigen_sound_int_state;
 UINT8 				atarigen_video_int_state;
 
-const UINT16 *	atarigen_eeprom_default;
+const UINT16 *		atarigen_eeprom_default;
 UINT16 *			atarigen_eeprom;
 size_t 				atarigen_eeprom_size;
 
@@ -65,32 +65,34 @@ struct atarivc_state_desc atarivc_state;
 ##########################################################################*/
 
 static atarigen_int_callback update_int_callback;
-static void *		scanline_interrupt_timer;
+static void *			scanline_interrupt_timer;
 
-static UINT8 		eeprom_unlocked;
+static UINT8 			eeprom_unlocked;
 
-static UINT8 		atarigen_slapstic_num;
-static UINT16 *	atarigen_slapstic;
-static int			atarigen_slapstic_bank;
-static void *		atarigen_slapstic_bank0;
+static UINT8			atarigen_slapstic_num;
+static UINT16 *			atarigen_slapstic;
+static UINT32			atarigen_slapstic_bank;
+static void *			atarigen_slapstic_bank0;
 
-static UINT8 		sound_cpu_num;
-static UINT8 		atarigen_cpu_to_sound;
-static UINT8 		atarigen_sound_to_cpu;
-static UINT8 		timed_int;
-static UINT8 		ym2151_int;
+static UINT8 			sound_cpu_num;
+static UINT8 			atarigen_cpu_to_sound;
+static UINT8 			atarigen_sound_to_cpu;
+static UINT8 			timed_int;
+static UINT8 			ym2151_int;
 
 static atarigen_scanline_callback scanline_callback;
-static int 			scanlines_per_callback;
-static double 		scanline_callback_period;
-static int 			last_scanline;
+static UINT32 			scanlines_per_callback;
 
-static int 			actual_vc_latch0;
-static int 			actual_vc_latch1;
-static UINT8		atarivc_playfields;
+static UINT32 			actual_vc_latch0;
+static UINT32 			actual_vc_latch1;
+static UINT8			atarivc_playfields;
 
-static int			playfield_latch;
-static int			playfield2_latch;
+static UINT32			playfield_latch;
+static UINT32			playfield2_latch;
+
+static mame_timer *		scanline_timer[ATARIMO_MAX];
+static mame_timer *		vblank_timer[ATARIMO_MAX];
+static mame_timer *		atarivc_eof_update_timer[ATARIMO_MAX];
 
 
 
@@ -111,12 +113,14 @@ static void delayed_6502_sound_w(int param);
 
 static void atarigen_set_vol(int volume, int type);
 
-static void vblank_timer(int param);
-static void scanline_timer(int scanline);
+static void vblank_timer_callback(int param);
+static void scanline_timer_callback(int scanline);
 
-static void atarivc_common_w(offs_t offset, UINT16 newword);
+static void atarivc_common_w(int scrnum, offs_t offset, UINT16 newword);
 
 static void unhalt_cpu(int param);
+
+static void atarivc_eof_update(int scrnum);
 
 
 
@@ -131,6 +135,8 @@ static void unhalt_cpu(int param);
 
 void atarigen_interrupt_reset(atarigen_int_callback update_int)
 {
+	int i;
+
 	/* set the callback */
 	update_int_callback = update_int;
 
@@ -138,8 +144,16 @@ void atarigen_interrupt_reset(atarigen_int_callback update_int)
 	atarigen_video_int_state = atarigen_sound_int_state = atarigen_scanline_int_state = 0;
 	scanline_interrupt_timer = NULL;
 
+	/* create timers */
+
+	for (i=0; i<ATARIMO_MAX; i++)
+	{
+		scanline_timer[i] = mame_timer_alloc(scanline_timer_callback);
+		vblank_timer[i] = mame_timer_alloc(vblank_timer_callback);
+	}
+
 	/* create a timer for scanlines */
-	scanline_interrupt_timer = timer_alloc(scanline_interrupt_callback);
+	scanline_interrupt_timer = mame_timer_alloc(scanline_interrupt_callback);
 }
 
 
@@ -161,9 +175,9 @@ void atarigen_update_interrupts(void)
     scanline interrupt should be generated.
 ---------------------------------------------------------------*/
 
-void atarigen_scanline_int_set(int scanline)
+void atarigen_scanline_int_set(int scrnum, int scanline)
 {
-	timer_adjust(scanline_interrupt_timer, cpu_getscanlinetime(scanline), 0, 0);
+	mame_timer_adjust(scanline_interrupt_timer, video_screen_get_time_until_pos(scrnum, scanline, 0), 0, video_screen_get_frame_period(scrnum));
 }
 
 
@@ -265,9 +279,6 @@ static void scanline_interrupt_callback(int param)
 {
 	/* generate the interrupt */
 	atarigen_scanline_int_gen();
-
-	/* set a new timer to go off at the same scan line next frame */
-	timer_adjust(scanline_interrupt_timer, TIME_IN_HZ(Machine->screen[0].refresh), 0, 0);
 }
 
 
@@ -588,7 +599,7 @@ void atarigen_ym2151_irq_gen(int irq)
 
 WRITE16_HANDLER( atarigen_sound_reset_w )
 {
-	timer_set(TIME_NOW, 0, delayed_sound_reset);
+	mame_timer_set(time_zero, 0, delayed_sound_reset);
 }
 
 
@@ -599,7 +610,7 @@ WRITE16_HANDLER( atarigen_sound_reset_w )
 
 void atarigen_sound_reset(void)
 {
-	timer_set(TIME_NOW, 1, delayed_sound_reset);
+	mame_timer_set(time_zero, 1, delayed_sound_reset);
 }
 
 
@@ -613,19 +624,19 @@ void atarigen_sound_reset(void)
 WRITE16_HANDLER( atarigen_sound_w )
 {
 	if (ACCESSING_LSB)
-		timer_set(TIME_NOW, data & 0xff, delayed_sound_w);
+		mame_timer_set(time_zero, data & 0xff, delayed_sound_w);
 }
 
 WRITE16_HANDLER( atarigen_sound_upper_w )
 {
 	if (ACCESSING_MSB)
-		timer_set(TIME_NOW, (data >> 8) & 0xff, delayed_sound_w);
+		mame_timer_set(time_zero, (data >> 8) & 0xff, delayed_sound_w);
 }
 
 WRITE32_HANDLER( atarigen_sound_upper32_w )
 {
 	if (ACCESSING_MSB32)
-		timer_set(TIME_NOW, (data >> 24) & 0xff, delayed_sound_w);
+		mame_timer_set(time_zero, (data >> 24) & 0xff, delayed_sound_w);
 }
 
 
@@ -665,7 +676,7 @@ READ32_HANDLER( atarigen_sound_upper32_r )
 
 WRITE8_HANDLER( atarigen_6502_sound_w )
 {
-	timer_set(TIME_NOW, data, delayed_6502_sound_w);
+	mame_timer_set(time_zero, data, delayed_6502_sound_w);
 }
 
 
@@ -708,7 +719,7 @@ void update_6502_irq(void)
 static void sound_comm_timer(int reps_left)
 {
 	if (--reps_left)
-		timer_set(SOUND_INTERLEAVE_RATE, reps_left, sound_comm_timer);
+		mame_timer_set(SOUND_INTERLEAVE_RATE, reps_left, sound_comm_timer);
 }
 
 
@@ -750,7 +761,7 @@ static void delayed_sound_w(int param)
 
 	/* allocate a high frequency timer until a response is generated */
 	/* the main CPU is *very* sensistive to the timing of the response */
-	timer_set(SOUND_INTERLEAVE_RATE, SOUND_INTERLEAVE_REPEAT, sound_comm_timer);
+	mame_timer_set(SOUND_INTERLEAVE_RATE, SOUND_INTERLEAVE_REPEAT, sound_comm_timer);
 }
 
 
@@ -838,18 +849,14 @@ void atarigen_set_oki6295_vol(int volume)
     atarigen_scanline_timer_reset: Sets up the scanline timer.
 ---------------------------------------------------------------*/
 
-void atarigen_scanline_timer_reset(atarigen_scanline_callback update_graphics, int frequency)
+void atarigen_scanline_timer_reset(int scrnum, atarigen_scanline_callback update_graphics, int frequency)
 {
 	/* set the scanline callback */
 	scanline_callback = update_graphics;
-	scanline_callback_period = (double)frequency * cpu_getscanlineperiod();
 	scanlines_per_callback = frequency;
 
-	/* compute the last scanline */
-	last_scanline = (int)(TIME_IN_HZ(Machine->screen[0].refresh) / cpu_getscanlineperiod());
-
-	/* set a timer to go off on the next VBLANK */
-	timer_set(cpu_getscanlinetime(Machine->screen[0].height), 0, vblank_timer);
+	/* start the VBLANK timer */
+	mame_timer_adjust(vblank_timer[scrnum], time_zero, scrnum, time_zero);
 }
 
 
@@ -858,13 +865,13 @@ void atarigen_scanline_timer_reset(atarigen_scanline_callback update_graphics, i
     timers.
 ---------------------------------------------------------------*/
 
-static void vblank_timer(int param)
+static void vblank_timer_callback(int scrnum)
 {
 	/* set a timer to go off at scanline 0 */
-	timer_set(Machine->screen[0].vblank, 0, scanline_timer);
+	mame_timer_adjust(scanline_timer[scrnum], video_screen_get_time_until_pos(scrnum, 0, 0), (scrnum << 16) | 0, time_zero);
 
 	/* set a timer to go off on the next VBLANK */
-	timer_set(cpu_getscanlinetime(Machine->screen[0].height), 1, vblank_timer);
+	mame_timer_adjust(vblank_timer[scrnum], video_screen_get_time_until_pos(scrnum, Machine->screen[scrnum].visarea.max_y + 1, 0), scrnum, time_zero);
 }
 
 
@@ -873,8 +880,11 @@ static void vblank_timer(int param)
     the periodic callback to the main system.
 ---------------------------------------------------------------*/
 
-static void scanline_timer(int scanline)
+static void scanline_timer_callback(int param)
 {
+	int scanline = param & 0x0fff;
+	int scrnum = param >> 16;
+
 	/* callback */
 	if (scanline_callback)
 	{
@@ -882,8 +892,9 @@ static void scanline_timer(int scanline)
 
 		/* generate another? */
 		scanline += scanlines_per_callback;
-		if (scanline < last_scanline && scanlines_per_callback)
-			timer_set(scanline_callback_period, scanline, scanline_timer);
+
+		if (scanline < Machine->screen[scrnum].height && scanlines_per_callback)
+			mame_timer_adjust(scanline_timer[scrnum], video_screen_get_time_until_pos(scrnum, scanline, 0), (scrnum << 16) | scanline, time_zero);
 	}
 }
 
@@ -898,50 +909,14 @@ static void scanline_timer(int scanline)
     it into the video controller registers every refresh.
 ---------------------------------------------------------------*/
 
-static void atarivc_eof_update(int param)
-{
-	atarivc_update(atarivc_eof_data);
-	timer_set(cpu_getscanlinetime(0), 0, atarivc_eof_update);
-}
-
-
-/*---------------------------------------------------------------
-    atarivc_reset: Initializes the video controller.
----------------------------------------------------------------*/
-
-void atarivc_reset(UINT16 *eof_data, int playfields)
-{
-	/* this allows us to manually reset eof_data to NULL if it's not used */
-	atarivc_eof_data = eof_data;
-	atarivc_playfields = playfields;
-
-	/* clear the RAM we use */
-	memset(atarivc_data, 0, 0x40);
-	memset(&atarivc_state, 0, sizeof(atarivc_state));
-
-	/* reset the latches */
-	atarivc_state.latch1 = atarivc_state.latch2 = -1;
-	actual_vc_latch0 = actual_vc_latch1 = -1;
-
-	/* start a timer to go off a little before scanline 0 */
-	if (atarivc_eof_data)
-		timer_set(cpu_getscanlinetime(0), 0, atarivc_eof_update);
-}
-
-
-/*---------------------------------------------------------------
-    atarivc_update: Copies the data from the specified location
-    once/frame into the video controller registers.
----------------------------------------------------------------*/
-
-void atarivc_update(const UINT16 *data)
+static void atarivc_eof_update(int scrnum)
 {
 	int i;
 
 	/* echo all the commands to the video controller */
 	for (i = 0; i < 0x1c; i++)
-		if (data[i])
-			atarivc_common_w(i, data[i]);
+		if (atarivc_eof_data[i])
+			atarivc_common_w(scrnum, i, atarivc_eof_data[i]);
 
 	/* update the scroll positions */
 	atarimo_set_xscroll(0, atarivc_state.mo_xscroll);
@@ -955,6 +930,7 @@ void atarivc_update(const UINT16 *data)
 		tilemap_set_scrollx(atarigen_playfield2_tilemap, 0, atarivc_state.pf1_xscroll);
 		tilemap_set_scrolly(atarigen_playfield2_tilemap, 0, atarivc_state.pf1_yscroll);
 	}
+	mame_timer_adjust(atarivc_eof_update_timer[scrnum], video_screen_get_time_until_pos(scrnum, 0, 0), scrnum, time_zero);
 
 	/* use this for debugging the video controller values */
 #if 0
@@ -974,6 +950,33 @@ void atarivc_update(const UINT16 *data)
 
 
 /*---------------------------------------------------------------
+    atarivc_reset: Initializes the video controller.
+---------------------------------------------------------------*/
+
+void atarivc_reset(int scrnum, UINT16 *eof_data, int playfields)
+{
+	/* this allows us to manually reset eof_data to NULL if it's not used */
+	atarivc_eof_data = eof_data;
+	atarivc_playfields = playfields;
+
+	/* clear the RAM we use */
+	memset(atarivc_data, 0, 0x40);
+	memset(&atarivc_state, 0, sizeof(atarivc_state));
+
+	/* reset the latches */
+	atarivc_state.latch1 = atarivc_state.latch2 = -1;
+	actual_vc_latch0 = actual_vc_latch1 = -1;
+
+	atarivc_eof_update_timer[scrnum] = mame_timer_alloc(atarivc_eof_update);
+
+	/* start a timer to go off a little before scanline 0 */
+	if (atarivc_eof_data)
+		mame_timer_adjust(atarivc_eof_update_timer[scrnum], video_screen_get_time_until_pos(scrnum, 0, 0), scrnum, time_zero);
+}
+
+
+
+/*---------------------------------------------------------------
     atarivc_w: Handles an I/O write to the video controller.
 ---------------------------------------------------------------*/
 
@@ -983,7 +986,7 @@ WRITE16_HANDLER( atarivc_w )
 	int newword = oldword;
 
 	COMBINE_DATA(&newword);
-	atarivc_common_w(offset, newword);
+	atarivc_common_w(0, offset, newword); 	/* need to support scrnum */
 }
 
 
@@ -993,7 +996,7 @@ WRITE16_HANDLER( atarivc_w )
     write.
 ---------------------------------------------------------------*/
 
-static void atarivc_common_w(offs_t offset, UINT16 newword)
+static void atarivc_common_w(int scrnum, offs_t offset, UINT16 newword)
 {
 	int oldword = atarivc_data[offset];
 	atarivc_data[offset] = newword;
@@ -1011,7 +1014,7 @@ static void atarivc_common_w(offs_t offset, UINT16 newword)
 		/* set the scanline interrupt here */
 		case 0x03:
 			if (oldword != newword)
-				atarigen_scanline_int_set(newword & 0x1ff);
+				atarigen_scanline_int_set(scrnum, newword & 0x1ff);
 			break;
 
 		/* latch enable */
@@ -1027,7 +1030,7 @@ static void atarivc_common_w(offs_t offset, UINT16 newword)
 			/* check for palette banking */
 			if (atarivc_state.palette_bank != (((newword & 0x0400) >> 10) ^ 1))
 			{
-				video_screen_update_partial(0, cpu_getscanline());
+				video_screen_update_partial(scrnum, video_screen_get_vpos(scrnum));
 				atarivc_state.palette_bank = ((newword & 0x0400) >> 10) ^ 1;
 			}
 			break;
@@ -1109,11 +1112,11 @@ READ16_HANDLER( atarivc_r )
 	/* also sets bit 0x4000 if we're in VBLANK */
 	if (offset == 0)
 	{
-		int result = cpu_getscanline();
+		int result = video_screen_get_vpos(0);	/* need to support scrum */
 
 		if (result > 255)
 			result = 255;
-		if (result > Machine->screen[0].visarea.max_y)
+		if (result > Machine->screen[0].visarea.max_y)	/* need to support scrum */
 			result |= 0x4000;
 
 		return result;
@@ -1315,7 +1318,7 @@ int atarigen_get_hblank(int scrnum)
 WRITE16_HANDLER( atarigen_halt_until_hblank_0_w )
 {
 	/* halt the CPU until the next HBLANK */
-	int hpos = video_screen_get_hpos(0);	/* perhaps should support scrnum */
+	int hpos = video_screen_get_hpos(0);	/* need to support scrnum */
 	int hblank = Machine->screen[0].width * 9 / 10;
 	double fraction;
 
@@ -1325,7 +1328,7 @@ WRITE16_HANDLER( atarigen_halt_until_hblank_0_w )
 
 	/* halt and set a timer to wake up */
 	fraction = (double)(hblank - hpos) / (double)Machine->screen[0].width;
-	timer_set(cpu_getscanlineperiod() * fraction, 0, unhalt_cpu);
+	mame_timer_set(double_to_mame_time(mame_time_to_double(video_screen_get_scan_period(0)) * fraction), 0, unhalt_cpu);
 	cpunum_set_input_line(0, INPUT_LINE_HALT, ASSERT_LINE);
 }
 
@@ -1481,3 +1484,48 @@ void atarigen_blend_gfx(int gfx0, int gfx1, int mask0, int mask1)
 }
 
 
+/*##########################################################################
+    SAVE STATE
+##########################################################################*/
+
+void atarigen_init_save_state(void)
+{
+	state_save_register_global(atarigen_scanline_int_state);
+	state_save_register_global(atarigen_sound_int_state);
+	state_save_register_global(atarigen_video_int_state);
+
+	state_save_register_global(atarigen_cpu_to_sound_ready);
+	state_save_register_global(atarigen_sound_to_cpu_ready);
+
+	state_save_register_global(atarivc_state.latch1);				/* latch #1 value (-1 means disabled) */
+	state_save_register_global(atarivc_state.latch2);				/* latch #2 value (-1 means disabled) */
+	state_save_register_global(atarivc_state.rowscroll_enable);		/* true if row-scrolling is enabled */
+	state_save_register_global(atarivc_state.palette_bank);			/* which palette bank is enabled */
+	state_save_register_global(atarivc_state.pf0_xscroll);			/* playfield 1 xscroll */
+	state_save_register_global(atarivc_state.pf0_xscroll_raw);		/* playfield 1 xscroll raw value */
+	state_save_register_global(atarivc_state.pf0_yscroll);			/* playfield 1 yscroll */
+	state_save_register_global(atarivc_state.pf1_xscroll);			/* playfield 2 xscroll */
+	state_save_register_global(atarivc_state.pf1_xscroll_raw);		/* playfield 2 xscroll raw value */
+	state_save_register_global(atarivc_state.pf1_yscroll);			/* playfield 2 yscroll */
+	state_save_register_global(atarivc_state.mo_xscroll);			/* sprite xscroll */
+	state_save_register_global(atarivc_state.mo_yscroll);			/* sprite xscroll */
+
+	state_save_register_global(eeprom_unlocked);
+
+	state_save_register_global(atarigen_slapstic_num);
+	state_save_register_global(atarigen_slapstic_bank);
+
+	state_save_register_global(sound_cpu_num);
+	state_save_register_global(atarigen_cpu_to_sound);
+	state_save_register_global(atarigen_sound_to_cpu);
+	state_save_register_global(timed_int);
+	state_save_register_global(ym2151_int);
+
+	state_save_register_global(scanlines_per_callback);
+
+	state_save_register_global(actual_vc_latch0);
+	state_save_register_global(actual_vc_latch1);
+
+	state_save_register_global(playfield_latch);
+	state_save_register_global(playfield2_latch);
+}

@@ -439,7 +439,7 @@ VIDEO_START( toaplan1 )
 
 READ16_HANDLER( toaplan1_frame_done_r )
 {
-	return cpu_getvblank();
+	return video_screen_get_vblank(0);
 }
 
 WRITE16_HANDLER( toaplan1_tile_offsets_w )
@@ -1178,7 +1178,7 @@ VIDEO_UPDATE( rallybik )
 	toaplan1_log_vram();
 #endif
 
-	fillbitmap(bitmap,Machine->pens[0],cliprect);
+	fillbitmap(bitmap,machine->pens[0],cliprect);
 
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_IGNORE_TRANSPARENCY | 0,0);
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_IGNORE_TRANSPARENCY | 1,0);
@@ -1203,7 +1203,7 @@ VIDEO_UPDATE( toaplan1 )
 #endif
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,Machine->pens[0x120],cliprect);
+	fillbitmap(bitmap,machine->pens[0x120],cliprect);
 
 	tilemap_draw(bitmap,cliprect,pf4_tilemap,TILEMAP_IGNORE_TRANSPARENCY,0);
 	for (priority = 8; priority < 16; priority++)
@@ -1230,7 +1230,7 @@ VIDEO_UPDATE( demonwld )
 #endif
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,Machine->pens[0x120],cliprect);
+	fillbitmap(bitmap,machine->pens[0x120],cliprect);
 
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_IGNORE_TRANSPARENCY | 0,0);
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_IGNORE_TRANSPARENCY | 1,0);

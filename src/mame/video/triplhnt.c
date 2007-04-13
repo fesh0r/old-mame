@@ -38,7 +38,7 @@ static void get_tile_info(int tile_index)
 
 VIDEO_START( triplhnt )
 {
-	helper = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
+	helper = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
 
 	bg_tilemap = tilemap_create(get_tile_info, get_memory_offset, 0, 16, 16, 16, 16);
 
@@ -132,7 +132,7 @@ static void triplhnt_draw_sprites(mame_bitmap* bitmap, const rectangle* cliprect
 
 	if (hit_line != 999 && hit_code != 999)
 	{
-		timer_set(cpu_getscanlinetime(hit_line), hit_code, triplhnt_hit_callback);
+		mame_timer_set(video_screen_get_time_until_pos(0, hit_line, 0), hit_code, triplhnt_hit_callback);
 	}
 }
 

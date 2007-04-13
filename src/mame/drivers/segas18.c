@@ -75,7 +75,7 @@ static UINT8 lghost_value, lghost_select;
  *************************************/
 
 extern void fd1094_machine_init(void);
-extern void fd1094_driver_init(void);
+extern void fd1094_driver_init(void (*set_decrypted)(UINT8 *));
 
 static READ16_HANDLER( misc_io_r );
 static WRITE16_HANDLER( misc_io_w );
@@ -175,7 +175,7 @@ static void system18_generic_init(int _rom_board)
 	segaic16_memory_mapper_init(0, region_info_list[rom_board], sound_w, sound_r);
 
 	/* init the FD1094 */
-	fd1094_driver_init();
+	fd1094_driver_init(segaic16_memory_mapper_set_decrypted);
 
 	/* reset the custom handlers and other pointers */
 	custom_io_r = NULL;
@@ -202,7 +202,7 @@ MACHINE_RESET( system18 )
 	fd1094_machine_init();
 
 	/* if we are running with a real live 8751, we need to boost the interleave at startup */
-	if (Machine->drv->cpu[2].cpu_type == CPU_I8751)
+	if (machine->drv->cpu[2].cpu_type == CPU_I8751)
 		timer_set(TIME_NOW, 0, boost_interleave);
 }
 
@@ -1266,7 +1266,6 @@ static MACHINE_DRIVER_START( system18 )
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(1000000 * (262 - 224) / (262 * 60)))
 
 	MDRV_MACHINE_RESET(system18)
 	MDRV_NVRAM_HANDLER(system18)
@@ -1274,7 +1273,7 @@ static MACHINE_DRIVER_START( system18 )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(40*8, 28*8)
+	MDRV_SCREEN_SIZE(342,262)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(2048*3+2048)

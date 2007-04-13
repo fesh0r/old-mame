@@ -86,7 +86,7 @@ PALETTE_INIT( royalmah )
 {
 	int i;
 
-	for (i = 0;i < Machine->drv->total_colors;i++)
+	for (i = 0;i < machine->drv->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -117,7 +117,7 @@ PALETTE_INIT( mjderngr )
 {
 	int i;
 
-	for (i = 0;i < Machine->drv->total_colors;i++)
+	for (i = 0;i < machine->drv->total_colors;i++)
 	{
 		int x =	(color_prom[i]<<8) + color_prom[0x200+i];
 		/* The bits are in reverse order! */
@@ -197,7 +197,7 @@ VIDEO_UPDATE( royalmah )
 			royalmah_videoram_w(offs, videoram[offs]);
 		}
 	}
-	copybitmap(bitmap,tmpbitmap,flip_screen_x,flip_screen_y,0,0,&Machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+	copybitmap(bitmap,tmpbitmap,flip_screen_x,flip_screen_y,0,0,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
 	return 0;
 }
 
@@ -1780,10 +1780,10 @@ INPUT_PORTS_START( janptr96 )
 	PORT_DIPSETTING(    0x20, "2 3 6 8 12 15 30 50" )
 	PORT_DIPSETTING(    0x10, "1 2 3 5 10 25 50 100" )
 	PORT_DIPNAME( 0xc0, 0xc0, "Maximum Bet" )
-	PORT_DIPSETTING(    0x00, "1" )
-	PORT_DIPSETTING(    0x40, "5" )
-	PORT_DIPSETTING(    0x80, "10" )
-	PORT_DIPSETTING(    0xc0, "20" )
+	PORT_DIPSETTING(    0x00, "20" )
+	PORT_DIPSETTING(    0x40, "10" )
+	PORT_DIPSETTING(    0x80, "5" )
+	PORT_DIPSETTING(    0xc0, "1" )
 
 	PORT_START_TAG("DSWTOP")	/* IN15 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )

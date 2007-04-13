@@ -55,6 +55,7 @@
 #include "cpu/i960/i960.h"
 #include "cpu/m68000/m68k.h"
 #include "cpu/sharc/sharc.h"
+#include "cpu/mb86233/mb86233.h"
 #include "sound/scsp.h"
 #include "sound/multipcm.h"
 #include "sound/2612intf.h"
@@ -73,21 +74,35 @@ static int      model2_timerrun[4];
 static void    *model2_timers[4];
 static int model2_ctrlmode;
 
+static UINT32 *tgp_program;
+
+enum {
+	DSP_TYPE_TGP	= 1,
+	DSP_TYPE_SHARC	= 2,
+	DSP_TYPE_TGPX4	= 3,
+} DSP_TYPE;
+
+static int dsp_type;
+
 
 
 #define COPRO_FIFOIN_SIZE	32000
 static int copro_fifoin_rpos, copro_fifoin_wpos;
 static UINT32 copro_fifoin_data[COPRO_FIFOIN_SIZE];
 static int copro_fifoin_num = 0;
-static UINT32 copro_fifoin_pop(void)
+static int copro_fifoin_pop(UINT32 *result)
 {
 	UINT32 r;
-	//if (copro_fifoin_wpos == copro_fifoin_rpos)
+
 	if (copro_fifoin_num == 0)
 	{
+		if (dsp_type == DSP_TYPE_TGP)
+			return 0;
+
 		fatalerror("Copro FIFOIN underflow (at %08X)", activecpu_get_pc());
 		return 0;
 	}
+
 	r = copro_fifoin_data[copro_fifoin_rpos++];
 
 	if (copro_fifoin_rpos == COPRO_FIFOIN_SIZE)
@@ -96,29 +111,29 @@ static UINT32 copro_fifoin_pop(void)
 	}
 
 	copro_fifoin_num--;
-	if (copro_fifoin_num == 0)
+	if (dsp_type == DSP_TYPE_SHARC)
 	{
-		cpuintrf_push_context(2);
-		sharc_set_flag_input(0, ASSERT_LINE);
-		cpuintrf_pop_context();
-
-		//cpunum_set_input_line(2, SHARC_INPUT_FLAG0, ASSERT_LINE);
+		if (copro_fifoin_num == 0)
+		{
+			cpuintrf_push_context(2);
+			sharc_set_flag_input(0, ASSERT_LINE);
+			cpuintrf_pop_context();
+		}
+		else
+		{
+			cpuintrf_push_context(2);
+			sharc_set_flag_input(0, CLEAR_LINE);
+			cpuintrf_pop_context();
+		}
 	}
-	else
-	{
-		cpuintrf_push_context(2);
-		sharc_set_flag_input(0, CLEAR_LINE);
-		cpuintrf_pop_context();
 
-		//cpunum_set_input_line(2, SHARC_INPUT_FLAG0, CLEAR_LINE);
-	}
+	*result = r;
 
-	return r;
+	return 1;
 }
 
 static void copro_fifoin_push(UINT32 data)
 {
-	//if (copro_fifoin_wpos == copro_fifoin_rpos)
 	if (copro_fifoin_num == COPRO_FIFOIN_SIZE)
 	{
 		fatalerror("Copro FIFOIN overflow (at %08X)", activecpu_get_pc());
@@ -133,14 +148,15 @@ static void copro_fifoin_push(UINT32 data)
 		copro_fifoin_wpos = 0;
 	}
 
-
 	copro_fifoin_num++;
-	// clear FIFO empty flag on SHARC
-	cpuintrf_push_context(2);
-	sharc_set_flag_input(0, CLEAR_LINE);
-	cpuintrf_pop_context();
 
-	//cpunum_set_input_line(2, SHARC_INPUT_FLAG0, CLEAR_LINE);
+	// clear FIFO empty flag on SHARC
+	if (dsp_type == DSP_TYPE_SHARC)
+	{
+		cpuintrf_push_context(2);
+		sharc_set_flag_input(0, CLEAR_LINE);
+		cpuintrf_pop_context();
+	}
 }
 
 
@@ -151,37 +167,38 @@ static int copro_fifoout_num = 0;
 static UINT32 copro_fifoout_pop(void)
 {
 	UINT32 r;
-	//if (copro_fifoout_wpos == copro_fifoout_rpos)
+
 	if (copro_fifoout_num == 0)
 	{
 		// Reading from empty FIFO causes the i960 to enter wait state
 		i960_stall();
 		return 0;
 	}
+
 	r = copro_fifoout_data[copro_fifoout_rpos++];
 
 	if (copro_fifoout_rpos == COPRO_FIFOOUT_SIZE)
 	{
 		copro_fifoout_rpos = 0;
 	}
+
 	copro_fifoout_num--;
 
 	// set SHARC flag 1: 0 if space available, 1 if FIFO full
-	if (copro_fifoout_num == COPRO_FIFOOUT_SIZE)
+	if (dsp_type == DSP_TYPE_SHARC)
 	{
-		cpuintrf_push_context(2);
-		sharc_set_flag_input(1, ASSERT_LINE);
-		cpuintrf_pop_context();
-
-		//cpunum_set_input_line(2, SHARC_INPUT_FLAG1, ASSERT_LINE);
-	}
-	else
-	{
-		cpuintrf_push_context(2);
-		sharc_set_flag_input(1, CLEAR_LINE);
-		cpuintrf_pop_context();
-
-		//cpunum_set_input_line(2, SHARC_INPUT_FLAG1, CLEAR_LINE);
+		if (copro_fifoout_num == COPRO_FIFOOUT_SIZE)
+		{
+			cpuintrf_push_context(2);
+			sharc_set_flag_input(1, ASSERT_LINE);
+			cpuintrf_pop_context();
+		}
+		else
+		{
+			cpuintrf_push_context(2);
+			sharc_set_flag_input(1, CLEAR_LINE);
+			cpuintrf_pop_context();
+		}
 	}
 
 	return r;
@@ -207,21 +224,24 @@ static void copro_fifoout_push(UINT32 data)
 	copro_fifoout_num++;
 
 	// set SHARC flag 1: 0 if space available, 1 if FIFO full
-	if (copro_fifoout_num == COPRO_FIFOOUT_SIZE)
+	if (dsp_type == DSP_TYPE_SHARC)
 	{
-		cpuintrf_push_context(2);
-		sharc_set_flag_input(1, ASSERT_LINE);
-		cpuintrf_pop_context();
+		if (copro_fifoout_num == COPRO_FIFOOUT_SIZE)
+		{
+			cpuintrf_push_context(2);
+			sharc_set_flag_input(1, ASSERT_LINE);
+			cpuintrf_pop_context();
 
-		//cpunum_set_input_line(2, SHARC_INPUT_FLAG1, ASSERT_LINE);
-	}
-	else
-	{
-		cpuintrf_push_context(2);
-		sharc_set_flag_input(1, CLEAR_LINE);
-		cpuintrf_pop_context();
+			//cpunum_set_input_line(2, SHARC_INPUT_FLAG1, ASSERT_LINE);
+		}
+		else
+		{
+			cpuintrf_push_context(2);
+			sharc_set_flag_input(1, CLEAR_LINE);
+			cpuintrf_pop_context();
 
-		//cpunum_set_input_line(2, SHARC_INPUT_FLAG1, CLEAR_LINE);
+			//cpunum_set_input_line(2, SHARC_INPUT_FLAG1, CLEAR_LINE);
+		}
 	}
 }
 
@@ -329,6 +349,11 @@ static MACHINE_RESET(model2o)
 	timer_adjust(model2_timers[1], TIME_NEVER, 0, 0);
 	timer_adjust(model2_timers[2], TIME_NEVER, 0, 0);
 	timer_adjust(model2_timers[3], TIME_NEVER, 0, 0);
+
+	// hold TGP in halt until we have code
+	cpunum_set_input_line(2, INPUT_LINE_HALT, ASSERT_LINE);
+
+	dsp_type = DSP_TYPE_TGP;
 }
 
 static MACHINE_RESET(model2)
@@ -340,6 +365,8 @@ static MACHINE_RESET(model2)
 
 	// copy the 68k vector table into RAM
 	memcpy(memory_region(REGION_CPU2), memory_region(REGION_CPU2)+0x80000, 16);
+
+	dsp_type = DSP_TYPE_TGP;
 }
 
 static MACHINE_RESET(model2b)
@@ -353,6 +380,15 @@ static MACHINE_RESET(model2b)
 	cpunum_set_input_line(2, SHARC_INPUT_FLAG0, ASSERT_LINE);
 	// clear FIFOOUT buffer full flag on SHARC
 	cpunum_set_input_line(2, SHARC_INPUT_FLAG1, CLEAR_LINE);
+
+	dsp_type = DSP_TYPE_SHARC;
+}
+
+static MACHINE_RESET(model2c)
+{
+	machine_reset_model2(machine);
+
+	dsp_type = DSP_TYPE_TGPX4;
 }
 
 static void chcolor(pen_t color, UINT16 data)
@@ -476,27 +512,7 @@ static WRITE32_HANDLER( copro_ctl1_w )
 		else
 		{
 			logerror("Boot copro, %d dwords\n", model2_coprocnt);
-		}
-	}
-
-	model2_coproctl = data;
-}
-
-static WRITE32_HANDLER( copro_sharc_ctl1_w )
-{
-	// did hi bit change?
-	if ((data ^ model2_coproctl) == 0x80000000)
-	{
-		if (data & 0x80000000)
-		{
-			logerror("Start copro upload\n");
-			model2_coprocnt = 0;
-		}
-		else
-		{
-			logerror("Boot copro, %d dwords\n", model2_coprocnt);
 			cpunum_set_input_line(2, INPUT_LINE_HALT, CLEAR_LINE);
-			//cpu_spinuntil_time(TIME_IN_USEC(1000));       // Give the SHARC enough time to boot itself
 		}
 	}
 
@@ -513,7 +529,7 @@ static WRITE32_HANDLER(copro_function_port_w)
 	copro_fifoin_push(d);
 }
 
-static READ32_HANDLER(copro_sharc_fifo_r)
+static READ32_HANDLER(copro_fifo_r)
 {
 	if ((strcmp(Machine->gamedrv->name, "manxtt" ) == 0) || (strcmp(Machine->gamedrv->name, "srallyc" ) == 0))
 	{
@@ -526,13 +542,20 @@ static READ32_HANDLER(copro_sharc_fifo_r)
 	}
 }
 
-static WRITE32_HANDLER(copro_sharc_fifo_w)
+static WRITE32_HANDLER(copro_fifo_w)
 {
 	if (model2_coproctl & 0x80000000)
 	{
-		cpuintrf_push_context(2);
-		sharc_external_dma_write(model2_coprocnt, data & 0xffff);
-		cpuintrf_pop_context();
+		if (dsp_type == DSP_TYPE_SHARC)
+		{
+			cpuintrf_push_context(2);
+			sharc_external_dma_write(model2_coprocnt, data & 0xffff);
+			cpuintrf_pop_context();
+		}
+		else if (dsp_type == DSP_TYPE_TGP)
+		{
+			tgp_program[model2_coprocnt] = data;
+		}
 
 		model2_coprocnt++;
 	}
@@ -1213,7 +1236,10 @@ static ADDRESS_MAP_START( model2o_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00220000, 0x0023ffff) AM_ROM AM_REGION(REGION_CPU1, 0x20000)
 
 	AM_RANGE(0x00804000, 0x00807fff) AM_READWRITE(geo_prg_r, geo_prg_w)
-	AM_RANGE(0x00884000, 0x00887fff) AM_READWRITE(copro_prg_r, copro_prg_w)
+
+	AM_RANGE(0x00804000, 0x00807fff) AM_READWRITE(geo_prg_r, geo_prg_w)
+	AM_RANGE(0x00880000, 0x00883fff) AM_WRITE(copro_function_port_w)
+	AM_RANGE(0x00884000, 0x00887fff) AM_READWRITE(copro_fifo_r, copro_fifo_w)
 
 	AM_RANGE(0x00980000, 0x00980003) AM_WRITE( copro_ctl1_w )
 	AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_ctl1_w )
@@ -1233,7 +1259,10 @@ static ADDRESS_MAP_START( model2a_crx_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00200000, 0x0023ffff) AM_RAM
 
 	AM_RANGE(0x00804000, 0x00807fff) AM_READWRITE(geo_prg_r, geo_prg_w)
-	AM_RANGE(0x00884000, 0x00887fff) AM_READWRITE(copro_prg_r, copro_prg_w)
+
+	AM_RANGE(0x00804000, 0x00807fff) AM_READWRITE(geo_prg_r, geo_prg_w)
+	AM_RANGE(0x00880000, 0x00883fff) AM_WRITE(copro_function_port_w)
+	AM_RANGE(0x00884000, 0x00887fff) AM_READWRITE(copro_fifo_r, copro_fifo_w)
 
 	AM_RANGE(0x00980000, 0x00980003) AM_WRITE( copro_ctl1_w )
 	AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_ctl1_w )
@@ -1258,10 +1287,10 @@ static ADDRESS_MAP_START( model2b_crx_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	//AM_RANGE(0x00840000, 0x00840fff) AM_WRITE(geo_sharc_iop_w)
 
 	AM_RANGE(0x00880000, 0x00883fff) AM_WRITE(copro_function_port_w)
-	AM_RANGE(0x00884000, 0x00887fff) AM_READWRITE(copro_sharc_fifo_r, copro_sharc_fifo_w)
+	AM_RANGE(0x00884000, 0x00887fff) AM_READWRITE(copro_fifo_r, copro_fifo_w)
 	AM_RANGE(0x008c0000, 0x008c0fff) AM_WRITE(copro_sharc_iop_w)
 
-	AM_RANGE(0x00980000, 0x00980003) AM_WRITE( copro_sharc_ctl1_w )
+	AM_RANGE(0x00980000, 0x00980003) AM_WRITE( copro_ctl1_w )
 
 	AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_ctl1_w )
 	//AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_sharc_ctl1_w )
@@ -1611,11 +1640,16 @@ static struct MultiPCM_interface m1_multipcm_interface_2 =
 
 
 
+/*****************************************************************************/
+// SHARC memory maps
 
 static READ32_HANDLER(copro_sharc_input_fifo_r)
 {
+	UINT32 result;
 	//mame_printf_debug("SHARC FIFOIN pop at %08X\n", activecpu_get_pc());
-	return copro_fifoin_pop();
+
+	copro_fifoin_pop(&result);
+	return result;
 }
 
 static WRITE32_HANDLER(copro_sharc_output_fifo_w)
@@ -1645,7 +1679,21 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( geo_sharc_map, ADDRESS_SPACE_DATA, 32 )
 ADDRESS_MAP_END
 
+/*****************************************************************************/
+// TGP memory maps
 
+static ADDRESS_MAP_START( copro_tgp_map, ADDRESS_SPACE_PROGRAM, 32 )
+	AM_RANGE(0x00000000, 0x00007fff) AM_RAM AM_BASE(&tgp_program)
+	AM_RANGE(0xff800000, 0xff9fffff) AM_ROM AM_REGION(REGION_CPU3, 0)
+ADDRESS_MAP_END
+
+/*****************************************************************************/
+
+static struct mb86233_config tgp_config =
+{
+	copro_fifoin_pop,
+	copro_fifoout_push,
+};
 
 
 
@@ -1657,6 +1705,10 @@ static MACHINE_DRIVER_START( model2o )
 
 	MDRV_CPU_ADD(M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(model1_snd, 0)
+
+	MDRV_CPU_ADD(MB86233, 16000000)
+	MDRV_CPU_CONFIG(tgp_config)
+	MDRV_CPU_PROGRAM_MAP(copro_tgp_map, 0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
@@ -1698,6 +1750,10 @@ static MACHINE_DRIVER_START( model2a )
 
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(model2_snd, 0)
+
+	MDRV_CPU_ADD(MB86233, 16000000)
+	MDRV_CPU_CONFIG(tgp_config)
+	MDRV_CPU_PROGRAM_MAP(copro_tgp_map, 0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
@@ -1782,7 +1838,7 @@ static MACHINE_DRIVER_START( model2c )
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
-	MDRV_MACHINE_RESET(model2)
+	MDRV_MACHINE_RESET(model2c)
 	MDRV_NVRAM_HANDLER( model2 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
@@ -1963,10 +2019,10 @@ ROM_END
 
 ROM_START( vf2 )
 	ROM_REGION( 0x200000, REGION_CPU1, 0 ) // i960 program
-        ROM_LOAD32_WORD( "epr-18385.12",    0x000000, 0x020000, CRC(78ed2d41) SHA1(471c19389ceeec6138107dd81863320bd4825327) )
-        ROM_LOAD32_WORD( "epr-18386.13",    0x000002, 0x020000, CRC(3418f428) SHA1(0f51e389e13efc172a26471331a60c459ad43c38) )
-        ROM_LOAD32_WORD( "epr-18387.14",    0x040000, 0x020000, CRC(124a8453) SHA1(26fb787451824fc6060724e37fe0ba6bb66796cb) )
-        ROM_LOAD32_WORD( "epr-18388.15",    0x040002, 0x020000, CRC(8d347980) SHA1(da79e51ad501b9560c4ed7cf1ec768daad93efe0) )
+	ROM_LOAD32_WORD( "epr-18385.12",    0x000000, 0x020000, CRC(78ed2d41) SHA1(471c19389ceeec6138107dd81863320bd4825327) )
+	ROM_LOAD32_WORD( "epr-18386.13",    0x000002, 0x020000, CRC(3418f428) SHA1(0f51e389e13efc172a26471331a60c459ad43c38) )
+	ROM_LOAD32_WORD( "epr-18387.14",    0x040000, 0x020000, CRC(124a8453) SHA1(26fb787451824fc6060724e37fe0ba6bb66796cb) )
+	ROM_LOAD32_WORD( "epr-18388.15",    0x040002, 0x020000, CRC(8d347980) SHA1(da79e51ad501b9560c4ed7cf1ec768daad93efe0) )
 
 	ROM_REGION32_LE( 0x2400000, REGION_USER1, 0 ) // Data
 	ROM_LOAD32_WORD( "mpr-17560.10", 0x000000, 0x200000, CRC(d1389864) SHA1(88e9a8b6b0f58c96957015179e7ff10f837040e6) )
@@ -2106,7 +2162,7 @@ ROM_START( srallyc )
 	ROM_LOAD32_WORD( "mpr-17884.bin", 0x800000, 0x200000, CRC(4cfc95e1) SHA1(81d927b8c4f9d0c4c5e29d676b30f30f83751fdc) )
 	ROM_LOAD32_WORD( "mpr-17885.bin", 0x800002, 0x200000, CRC(a08d2467) SHA1(9449ac8f8f9ce8d8e536b05a91e46841fed7f2d0) )
 
-	ROM_REGION( 0x400000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
 	ROM_LOAD32_WORD( "mpr-17754.bin", 0x000000, 0x200000, CRC(81a84f67) SHA1(c0a9b690523a529e4015e9af10dc3fb2a1726f08) )
 	ROM_LOAD32_WORD( "mpr-17755.bin", 0x000002, 0x200000, CRC(2a6e7da4) SHA1(e60803ae951489fe47d66731d15c32249ca547b4) )
 
@@ -2154,13 +2210,10 @@ ROM_START( manxtt )
 	ROM_LOAD32_WORD( "mpr-18747.bin", 0x800000, 0x200000, CRC(f2ecac6f) SHA1(879d7b277e238d1d8713f2b604bc3db407aa249d) )
 	ROM_LOAD32_WORD( "mpr-18748.bin", 0x800002, 0x200000, CRC(7815d634) SHA1(bfeff77630759c88b2191ea7e1ff78e0d70cbdf5) )
 	ROM_LOAD32_WORD( "mpr-18862.bin", 0xc00000, 0x080000, CRC(9adc3a30) SHA1(029db946338f8e0eccace8590082cc96bdf13e31) )
-	ROM_RELOAD     (                  0xd00000, 0x080000 )
-	ROM_RELOAD     (                  0xe00000, 0x080000 )
-	ROM_RELOAD     (                  0xf00000, 0x080000 )
 	ROM_LOAD32_WORD( "mpr-18863.bin", 0xc00002, 0x080000, CRC(603742e9) SHA1(f78a5f7e582d313880c734158bb0fa68b256a58a) )
-	ROM_RELOAD     (                  0xd00002, 0x080000 )
-	ROM_RELOAD     (                  0xe00002, 0x080000 )
-	ROM_RELOAD     (                  0xf00002, 0x080000 )
+	ROM_COPY( REGION_USER1, 0xc00000, 0xd00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0xc00000, 0xe00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0xc00000, 0xf00000, 0x100000 )
 
 	ROM_REGION( 0x2000000, REGION_USER2, 0 ) // Models
 	ROM_LOAD32_WORD( "mpr-18753.bin", 0x000000, 0x200000, CRC(33ddaa0d) SHA1(26f643d6b9cecf08bd249290a670a0edea1b5be4) )
@@ -2170,7 +2223,7 @@ ROM_START( manxtt )
 	ROM_LOAD32_WORD( "mpr-18755.bin", 0x000000, 0x200000, CRC(fd1fa53c) SHA1(d8dabbd6efcc2752879cce3df2cb99b65e043eca) )
 	ROM_LOAD32_WORD( "mpr-18758.bin", 0x800002, 0x200000, CRC(1b5473d0) SHA1(658e33503f6990f4d9a954c63efad5f53d15f3a4) )
 
-	ROM_REGION( 0x400000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
 	ROM_LOAD32_WORD( "mpr-18761.bin", 0x000000, 0x200000, CRC(4e39ec05) SHA1(50696cd320f1a6492e0c193713acbce085d959cd) )
 	ROM_LOAD32_WORD( "mpr-18762.bin", 0x000002, 0x200000, CRC(4ab165d8) SHA1(7ff42a4c7236fec76f94f2d0c5537e503bcc98e5) )
 
@@ -2191,48 +2244,84 @@ ROM_START( manxtt )
 	MODEL2A_VID_BOARD
 ROM_END
 
+ROM_START( motoraid )
+	ROM_REGION( 0x200000, REGION_CPU1, 0 ) // i960 program
+	ROM_LOAD32_WORD( "epr20007.12",  0x000000, 0x080000, CRC(f040c108) SHA1(a6a0fa8fb9d62d0cc2ac84ea3ad457953952d980) )
+	ROM_LOAD32_WORD( "epr20008.13",  0x000002, 0x080000, CRC(78976e1a) SHA1(fd15e8c81b3b2f3bdf3bb8d9414b9b8a6f1f000f) )
+
+	ROM_REGION32_LE( 0x2400000, REGION_USER1, 0 ) // Data
+	ROM_LOAD32_WORD( "mpr-20019.10",   0x0000000, 0x400000, CRC(49053727) SHA1(0543d19d1d60b1d12b4409c1491782f2232da685) )
+	ROM_LOAD32_WORD( "mpr-20020.11",   0x0000002, 0x400000, CRC(cc5ddb15) SHA1(19e15e0e9ec1bb5d1b789876778fbb487cfea1ba) )
+	ROM_LOAD32_WORD( "mpr-20017.8",    0x0800000, 0x400000, CRC(4e206acd) SHA1(b48b5bd3a2f68c62d16516a037fbd45f49283d23) )
+	ROM_LOAD32_WORD( "mpr-20018.9",    0x0800002, 0x400000, CRC(e7ed0e85) SHA1(78a0c72095a664c4b6e529beea46a31ae0a99e5a) )
+	ROM_LOAD32_WORD( "mpr-20015.6",    0x1000000, 0x400000, CRC(23427339) SHA1(3e37cfcb4dcc8976805934faf8805cd83acde66e) )
+	ROM_LOAD32_WORD( "mpr-20016.7",    0x1000002, 0x400000, CRC(c99a83f4) SHA1(b057d61478f7dc7a32ad233473f1a63498b3779e) )
+	ROM_LOAD32_WORD( "epr20013.4",     0x1800000, 0x080000, CRC(a4478f52) SHA1(28f430319b34e715ca57ce4e01be23a786eab4bc) )
+	ROM_LOAD32_WORD( "epr20014.5",     0x1800002, 0x080000, CRC(1aa541be) SHA1(c4cc61a42e89aaae075ad1b6e8df2907c5710d3e) )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1900000, 0x100000 ) // rgn,srcoffset,offset,length.
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1a00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1b00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1c00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1d00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1e00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1f00000, 0x100000 )
+
+	ROM_REGION( 0x2000000, REGION_USER2, 0 ) // Models
+	ROM_LOAD32_WORD( "mpr-20023", 0x0000000, 0x400000, CRC(016be8d6) SHA1(804f69cd342e25cf1bed48e778981d67c4d1c9c7) )
+	ROM_LOAD32_WORD( "mpr-20026", 0x0000002, 0x400000, CRC(20044a30) SHA1(46be0cc2b8a4a3f530d081d11c6099d814977270) )
+	ROM_LOAD32_WORD( "mpr-20024", 0x0800000, 0x400000, CRC(62fd2d5b) SHA1(6a386a666ae57da5e47364da7b97da9c913710ef) )
+	ROM_LOAD32_WORD( "mpr-20027", 0x0800002, 0x400000, CRC(b2504ea6) SHA1(17c23c64b1080ab6a8eb282cabcd7d7612193045) )
+	ROM_LOAD32_WORD( "mpr-20025", 0x1000000, 0x400000, CRC(d4ecd0be) SHA1(9df0d1db32b818dad28f9eeab3bc19c56d27ec6d) )
+	ROM_LOAD32_WORD( "mpr-20028", 0x1000002, 0x400000, CRC(3147e0e1) SHA1(9aa0e13c8dc5073a603279a538cc7662531dfd19) )
+
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
+	ROM_LOAD32_WORD( "epr20012", 0x000000, 0x100000, CRC(f53db4e3) SHA1(4474610eed52248e5e36be438eff5d39f076b134) )
+	ROM_LOAD32_WORD( "epr20011", 0x000002, 0x100000, CRC(794c026c) SHA1(85abd667491fd019ee18ba256fd580356f4e1fe9) )
+
+	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
+	ROM_LOAD32_WORD( "mpr-20022", 0x000000, 0x400000, CRC(9e47b3c2) SHA1(c73279e837f56c0417c07ba3c642af28fe9a24fa))
+	ROM_LOAD32_WORD( "mpr-20021", 0x000002, 0x400000, CRC(3cbf36cb) SHA1(059cea17f9d6f5960d9fd869c36ffb6fcf230c1a) )
+
+	ROM_REGION( 0x100000, REGION_CPU2, 0 ) // Sound program
+	ROM_LOAD16_WORD_SWAP( "epr20029", 0x080000, 0x080000, CRC(927d31b9) SHA1(e7a18ccf5a0b9ebf18ae1d5518973fa3b4eb4653) )
+
+	ROM_REGION( 0x800000, REGION_SOUND1, 0 ) // Samples
+	ROM_LOAD( "mpr20030", 0x000000, 0x200000, CRC(b70ab686) SHA1(006911ce6332091d17808855c60a72fe928df778) )
+	ROM_LOAD( "mpr20031", 0x200000, 0x200000, CRC(84da70e4) SHA1(77962afcac82589cc7bc852329335676ae3e23cf) )
+	ROM_LOAD( "mpr20032", 0x400000, 0x200000, CRC(15516d35) SHA1(bced0d30f9b6ab579a11ac069cbb9d6d91352246) )
+	ROM_LOAD( "mpr20033", 0x600000, 0x200000, CRC(8c8ed187) SHA1(a9e8e2d38b23716df2e211748c52b6b666f4c111) )
+
+	MODEL2_CPU_BOARD
+	MODEL2A_VID_BOARD
+ROM_END
+
 ROM_START( skytargt )
 	ROM_REGION( 0x200000, REGION_CPU1, 0 ) // i960 program
 	ROM_LOAD32_WORD( "epr-18406.12", 0x000000, 0x080000, CRC(fde9c00a) SHA1(01cd519daaf6138d9df4940bf8bb5923a1f163df) )
 	ROM_LOAD32_WORD( "epr-18407.13", 0x000002, 0x080000, CRC(35f8b529) SHA1(faf6dcf8f345c1e7968823f2dba60afcd88f37c2) )
 
 	ROM_REGION32_LE( 0x2400000, REGION_USER1, 0 ) // Data
-	ROM_LOAD32_WORD( "mpr-18415.10", 0x0000000, 0x400000, CRC(d7a1bbd7) SHA1(3061cc68755ca36255f325135aa44659afc3498c) )
-	ROM_LOAD32_WORD( "mpr-18416.11", 0x0000002, 0x400000, CRC(b77c9243) SHA1(6ffeef418364df9e08398c7564142cbf5750beb2) )
-	ROM_LOAD32_WORD( "mpr-18417.8",  0x0800000, 0x400000, CRC(a0d03f63) SHA1(88b97a76f0a85a3977915808eee4d64b69734e88) )
-	ROM_LOAD32_WORD( "mpr-18418.9",  0x0800002, 0x400000, CRC(c7a6f97f) SHA1(cf7c6887519e53d7fa321a2ad888b1673e16565b) )
-	ROM_LOAD32_WORD( "epr-18404.6",  0x1000000, 0x080000, CRC(f1407ec4) SHA1(d6805faea657ea0f998fb2470d7d24aa78a02bd4) )
-	ROM_RELOAD     (                 0x1100000, 0x080000)
-	ROM_RELOAD     (                 0x1200000, 0x080000)
-	ROM_RELOAD     (                 0x1300000, 0x080000)
-	ROM_RELOAD     (                 0x1400000, 0x080000)
-	ROM_RELOAD     (                 0x1500000, 0x080000)
-	ROM_RELOAD     (                 0x1600000, 0x080000)
-	ROM_RELOAD     (                 0x1700000, 0x080000)
-	ROM_RELOAD     (                 0x1800000, 0x080000)
-	ROM_RELOAD     (                 0x1900000, 0x080000)
-	ROM_RELOAD     (                 0x1a00000, 0x080000)
-	ROM_RELOAD     (                 0x1b00000, 0x080000)
-	ROM_RELOAD     (                 0x1c00000, 0x080000)
-	ROM_RELOAD     (                 0x1d00000, 0x080000)
-	ROM_RELOAD     (                 0x1e00000, 0x080000)
-	ROM_RELOAD     (                 0x1f00000, 0x080000)
-	ROM_LOAD32_WORD( "epr-18405.7",  0x1000002, 0x080000, CRC(00b40f9e) SHA1(21b6b390d8635349ba76899acea176954a24985e) )
-	ROM_RELOAD     (                 0x1100002, 0x080000)
-	ROM_RELOAD     (                 0x1200002, 0x080000)
-	ROM_RELOAD     (                 0x1300002, 0x080000)
-	ROM_RELOAD     (                 0x1400002, 0x080000)
-	ROM_RELOAD     (                 0x1500002, 0x080000)
-	ROM_RELOAD     (                 0x1600002, 0x080000)
-	ROM_RELOAD     (                 0x1700002, 0x080000)
-	ROM_RELOAD     (                 0x1800002, 0x080000)
-	ROM_RELOAD     (                 0x1900002, 0x080000)
-	ROM_RELOAD     (                 0x1a00002, 0x080000)
-	ROM_RELOAD     (                 0x1b00002, 0x080000)
-	ROM_RELOAD     (                 0x1c00002, 0x080000)
-	ROM_RELOAD     (                 0x1d00002, 0x080000)
-	ROM_RELOAD     (                 0x1e00002, 0x080000)
-	ROM_RELOAD     (                 0x1f00002, 0x080000)
+	ROM_LOAD32_WORD( "mpr-18415.10",   0x0000000, 0x400000, CRC(d7a1bbd7) SHA1(3061cc68755ca36255f325135aa44659afc3498c) )
+	ROM_LOAD32_WORD( "mpr-18416.11",   0x0000002, 0x400000, CRC(b77c9243) SHA1(6ffeef418364df9e08398c7564142cbf5750beb2) )
+	ROM_LOAD32_WORD( "mpr-18417.8",    0x0800000, 0x400000, CRC(a0d03f63) SHA1(88b97a76f0a85a3977915808eee4d64b69734e88) )
+	ROM_LOAD32_WORD( "mpr-18418.9",    0x0800002, 0x400000, CRC(c7a6f97f) SHA1(cf7c6887519e53d7fa321a2ad888b1673e16565b) )
+	ROM_LOAD32_WORD( "epr-18404.6",    0x1000000, 0x080000, CRC(f1407ec4) SHA1(d6805faea657ea0f998fb2470d7d24aa78a02bd4) )
+	ROM_LOAD32_WORD( "epr-18405.7",    0x1000002, 0x080000, CRC(00b40f9e) SHA1(21b6b390d8635349ba76899acea176954a24985e) )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1100000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1200000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1300000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1400000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1500000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1600000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1700000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1800000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1900000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1a00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1b00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1c00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1d00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1e00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1f00000, 0x100000 )
 
 	ROM_REGION( 0x800000, REGION_USER5, 0 ) // Coprocessor Data ROM
 	ROM_LOAD32_WORD( "mpr-18420.28", 0x000000, 0x200000, CRC(92b87817) SHA1(b6949b745d0bedeecd6d0240f8911cb345c16d8d) )
@@ -2266,20 +2355,17 @@ ROM_START( vcop2 )
 	ROM_LOAD32_WORD( "epr-18519.15", 0x100002, 0x080000, CRC(31a30edc) SHA1(caf3c2676508a2ed032d3657ac640a257f04bdd4) )
 
 	ROM_REGION32_LE( 0x2400000, REGION_USER1, 0 ) // Data
-	ROM_LOAD32_WORD( "mpr-18516.10", 0x000000, 0x200000, CRC(a3928ff0) SHA1(5a9695fb5eda394a1111a05ee5fb9cce29970e91) )
-	ROM_LOAD32_WORD( "mpr-18517.11", 0x000002, 0x200000, CRC(4bd73da4) SHA1(a4434bce019729e2148a95e3a6dea38de7f789c1) )
-	ROM_LOAD32_WORD( "mpr-18514.8",  0x400000, 0x200000, CRC(791283c5) SHA1(006fb22eefdd9205ede9a74fe53cbffe8c8fd45b) )
-	ROM_LOAD32_WORD( "mpr-18515.9",  0x400002, 0x200000, CRC(6ba1ffec) SHA1(70f493aa4eb93edce8dd5b7b532d1f50f81069ce) )
-	ROM_LOAD32_WORD( "mpr-18522.6",  0x800000, 0x200000, CRC(61d18536) SHA1(cc467cb26a8fccc48837d000fe9e1c41b0c0f4f9) )
-	ROM_LOAD32_WORD( "mpr-18523.7",  0x800002, 0x200000, CRC(61d08dc4) SHA1(40d8231d184582c0fc01ad874371aaec7dfcc337) )
-	ROM_LOAD32_WORD( "mpr-18520.4",  0xc00000, 0x080000, CRC(1d4ec5e8) SHA1(44c4b5560d150909342e4182496f136c8c5e2edb) )
-	ROM_RELOAD     (                 0xd00000, 0x080000 )
-	ROM_RELOAD     (                 0xe00000, 0x080000 )
-	ROM_RELOAD     (                 0xf00000, 0x080000 )
-	ROM_LOAD32_WORD( "mpr-18521.5",  0xc00002, 0x080000, CRC(b8b3781c) SHA1(11956fe912c34d6a86a6b91d55987f6bead73473) )
-	ROM_RELOAD     (                 0xd00002, 0x080000 )
-	ROM_RELOAD     (                 0xe00002, 0x080000 )
-	ROM_RELOAD     (                 0xf00002, 0x080000 )
+	ROM_LOAD32_WORD( "mpr-18516.10",  0x000000, 0x200000, CRC(a3928ff0) SHA1(5a9695fb5eda394a1111a05ee5fb9cce29970e91) )
+	ROM_LOAD32_WORD( "mpr-18517.11",  0x000002, 0x200000, CRC(4bd73da4) SHA1(a4434bce019729e2148a95e3a6dea38de7f789c1) )
+	ROM_LOAD32_WORD( "mpr-18514.8",   0x400000, 0x200000, CRC(791283c5) SHA1(006fb22eefdd9205ede9a74fe53cbffe8c8fd45b) )
+	ROM_LOAD32_WORD( "mpr-18515.9",   0x400002, 0x200000, CRC(6ba1ffec) SHA1(70f493aa4eb93edce8dd5b7b532d1f50f81069ce) )
+	ROM_LOAD32_WORD( "mpr-18522.6",   0x800000, 0x200000, CRC(61d18536) SHA1(cc467cb26a8fccc48837d000fe9e1c41b0c0f4f9) )
+	ROM_LOAD32_WORD( "mpr-18523.7",   0x800002, 0x200000, CRC(61d08dc4) SHA1(40d8231d184582c0fc01ad874371aaec7dfcc337) )
+	ROM_LOAD32_WORD( "mpr-18520.4",   0xc00000, 0x080000, CRC(1d4ec5e8) SHA1(44c4b5560d150909342e4182496f136c8c5e2edb) )
+	ROM_LOAD32_WORD( "mpr-18521.5",   0xc00002, 0x080000, CRC(b8b3781c) SHA1(11956fe912c34d6a86a6b91d55987f6bead73473) )
+	ROM_COPY( REGION_USER1, 0xc00000, 0xd00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0xc00000, 0xe00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0xc00000, 0xf00000, 0x100000 )
 
 	ROM_REGION( 0x2000000, REGION_USER2, 0 ) // Models
 	ROM_LOAD32_WORD( "mpr-18513.16", 0x000000, 0x200000, CRC(777a3633) SHA1(edc2798c4d88975ce67b54fc0db008e7d24db6ef) )
@@ -2318,6 +2404,8 @@ ROM_START( dynamcop )
 	ROM_LOAD32_WORD("mpr-20794.7",  0x1000002, 0x400000, CRC(8e5cd1db) SHA1(d90e86d38bda12f2d0f99e23a42928f05bde3ea8) )
 	ROM_LOAD32_WORD("mpr-20791.4",  0x1800000, 0x400000, CRC(4883d0df) SHA1(b98af63e81f6c1b2766d7e96acbd1821bba000d4) )
 	ROM_LOAD32_WORD("mpr-20792.5",  0x1800002, 0x400000, CRC(47becfa2) SHA1(a333885872a64b322f3cb464a70352d73654b1b3) )
+
+	ROM_REGION( 0x800000, REGION_CPU3, ROMREGION_ERASE00 ) // TGP data (COPRO sockets)
 
 	ROM_REGION( 0x2000000, REGION_USER2, 0 ) // Models
 	ROM_LOAD32_WORD("mpr-20799.16", 0x0000000, 0x400000, CRC(424571bf) SHA1(18a4e8d0e968fff3b645b59a0023b0ef38d51924) )
@@ -2445,42 +2533,27 @@ ROM_START( schamp )
 	ROM_LOAD32_WORD("epr-19002.16", 0x000002, 0x080000, CRC(46f510da) SHA1(edcbf61122db568ccaa4c3106f507087c1740c9b) )
 
 	ROM_REGION32_LE( 0x2000000, REGION_USER1, 0 ) // Data
-	ROM_LOAD32_WORD("mpr-19007.11", 0x0000000, 0x400000, CRC(8b8ff751) SHA1(5343a9a2502052e3587424c984bd48caa7564849) )
-	ROM_LOAD32_WORD("mpr-19008.12", 0x0000002, 0x400000, CRC(a94654f5) SHA1(39ad2e9431543ea6cbc0307bc39933cf64956a74) )
-	ROM_LOAD32_WORD("mpr-19005.9",  0x0800000, 0x400000, CRC(98cd1127) SHA1(300c9cdef199f31255bacb95399e9c75be73f817) )
-	ROM_LOAD32_WORD("mpr-19006.10", 0x0800002, 0x400000, CRC(e79f0a26) SHA1(37a4ff13cfccfda587ca59a9ef08b5914d2c28d4) )
-	ROM_LOAD32_WORD("epr-19003.7",  0x1000000, 0x080000, CRC(63bae5c5) SHA1(cbd55b7b7376ac2f67befaf4c43eef3727ba7b7f) )
-	ROM_RELOAD     (                0x1100000, 0x080000)
-	ROM_RELOAD     (                0x1200000, 0x080000)
-	ROM_RELOAD     (                0x1300000, 0x080000)
-	ROM_RELOAD     (                0x1400000, 0x080000)
-	ROM_RELOAD     (                0x1500000, 0x080000)
-	ROM_RELOAD     (                0x1600000, 0x080000)
-	ROM_RELOAD     (                0x1700000, 0x080000)
-	ROM_RELOAD     (                0x1800000, 0x080000)
-	ROM_RELOAD     (                0x1900000, 0x080000)
-	ROM_RELOAD     (                0x1a00000, 0x080000)
-	ROM_RELOAD     (                0x1b00000, 0x080000)
-	ROM_RELOAD     (                0x1c00000, 0x080000)
-	ROM_RELOAD     (                0x1d00000, 0x080000)
-	ROM_RELOAD     (                0x1e00000, 0x080000)
-	ROM_RELOAD     (                0x1f00000, 0x080000)
-	ROM_LOAD32_WORD("epr-19004.8",  0x1000002, 0x080000, CRC(c10c9f39) SHA1(cf806501dbfa48d16cb7ed5f39a6146f734ba455) )
-	ROM_RELOAD     (                0x1100002, 0x080000)
-	ROM_RELOAD     (                0x1200002, 0x080000)
-	ROM_RELOAD     (                0x1300002, 0x080000)
-	ROM_RELOAD     (                0x1400002, 0x080000)
-	ROM_RELOAD     (                0x1500002, 0x080000)
-	ROM_RELOAD     (                0x1600002, 0x080000)
-	ROM_RELOAD     (                0x1700002, 0x080000)
-	ROM_RELOAD     (                0x1800002, 0x080000)
-	ROM_RELOAD     (                0x1900002, 0x080000)
-	ROM_RELOAD     (                0x1a00002, 0x080000)
-	ROM_RELOAD     (                0x1b00002, 0x080000)
-	ROM_RELOAD     (                0x1c00002, 0x080000)
-	ROM_RELOAD     (                0x1d00002, 0x080000)
-	ROM_RELOAD     (                0x1e00002, 0x080000)
-	ROM_RELOAD     (                0x1f00002, 0x080000)
+	ROM_LOAD32_WORD("mpr-19007.11",    0x0000000, 0x400000, CRC(8b8ff751) SHA1(5343a9a2502052e3587424c984bd48caa7564849) )
+	ROM_LOAD32_WORD("mpr-19008.12",    0x0000002, 0x400000, CRC(a94654f5) SHA1(39ad2e9431543ea6cbc0307bc39933cf64956a74) )
+	ROM_LOAD32_WORD("mpr-19005.9",     0x0800000, 0x400000, CRC(98cd1127) SHA1(300c9cdef199f31255bacb95399e9c75be73f817) )
+	ROM_LOAD32_WORD("mpr-19006.10",    0x0800002, 0x400000, CRC(e79f0a26) SHA1(37a4ff13cfccfda587ca59a9ef08b5914d2c28d4) )
+	ROM_LOAD32_WORD("epr-19003.7",     0x1000000, 0x080000, CRC(63bae5c5) SHA1(cbd55b7b7376ac2f67befaf4c43eef3727ba7b7f) )
+	ROM_LOAD32_WORD("epr-19004.8",     0x1000002, 0x080000, CRC(c10c9f39) SHA1(cf806501dbfa48d16cb7ed5f39a6146f734ba455) )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1100000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1200000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1300000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1400000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1500000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1600000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1700000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1800000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1900000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1a00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1b00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1c00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1d00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1e00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1f00000, 0x100000 )
 
 	ROM_REGION( 0x800000, REGION_USER5, 0 ) // Coprocessor Data ROM
 	ROM_LOAD32_WORD("mpr-19015.29", 0x000000, 0x200000, CRC(c74d99e3) SHA1(9914be9925b86af6af670745b5eba3a9e4f24af9) )
@@ -2518,15 +2591,15 @@ ROM_START( stcc )
 	ROM_LOAD32_WORD("mpr-19258.12",  0x000002, 0x400000, CRC(f5ba7d78) SHA1(9c8304a1f856d1ded869ed2b86de52129510f019) )
 	ROM_LOAD32_WORD("epr-19270.9",   0x800000, 0x080000, CRC(7bd1d04e) SHA1(0490f3abc97af16e05f0dc9623e8fc635b1d4262) )
 	ROM_LOAD32_WORD("epr-19271.10",  0x800002, 0x080000, CRC(d2d74f85) SHA1(49e7a1e6478122b4f0e679d7b336fb34044b503b) )
-	ROM_COPY(REGION_USER1,           0x800000, 0x900000, 0x100000)
-	ROM_COPY(REGION_USER1,           0x800000, 0xa00000, 0x100000)
-	ROM_COPY(REGION_USER1,           0x800000, 0xb00000, 0x100000)
-	ROM_COPY(REGION_USER1,           0x800000, 0xc00000, 0x100000)
-	ROM_COPY(REGION_USER1,           0x800000, 0xd00000, 0x100000)
-	ROM_COPY(REGION_USER1,           0x800000, 0xe00000, 0x100000)
-	ROM_COPY(REGION_USER1,           0x800000, 0xf00000, 0x100000)
+	ROM_COPY(REGION_USER1, 0x800000, 0x900000, 0x100000)
+	ROM_COPY(REGION_USER1, 0x800000, 0xa00000, 0x100000)
+	ROM_COPY(REGION_USER1, 0x800000, 0xb00000, 0x100000)
+	ROM_COPY(REGION_USER1, 0x800000, 0xc00000, 0x100000)
+	ROM_COPY(REGION_USER1, 0x800000, 0xd00000, 0x100000)
+	ROM_COPY(REGION_USER1, 0x800000, 0xe00000, 0x100000)
+	ROM_COPY(REGION_USER1, 0x800000, 0xf00000, 0x100000)
 
-	ROM_REGION( 0x400000, REGION_CPU3, 0 ) // TGPx4 program
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGPx4 program
 	ROM_LOAD32_WORD("mpr-19255.29", 0x000000, 0x200000, CRC(d78bf030) SHA1(e6b3d8422613d22db50cf6c251f9a21356d96653) )
 	ROM_LOAD32_WORD("mpr-19256.30", 0x000002, 0x200000, CRC(cb2b2d9e) SHA1(86b2b8bb6074352f72eb81e616093a1ba6f5163f) )
 
@@ -2607,30 +2680,24 @@ ROM_START( hotd )
 	ROM_LOAD32_WORD("epr-19695.14", 0x100002, 0x080000, CRC(cd52b461) SHA1(bc96ab2a4ba7f30c0b89814acc8931c8bf800a82) )
 
 	ROM_REGION32_LE( 0x2000000, REGION_USER1, 0 ) // Data
-	ROM_LOAD32_WORD("mpr-19704.11", 0x0000000, 0x400000, CRC(aa80dbb0) SHA1(24e63f4392847f288971469cd10448536eb435d4) )
-	ROM_LOAD32_WORD("mpr-19705.12", 0x0000002, 0x400000, CRC(f906843b) SHA1(bee4f43b3ad15d93a2f9f07b873c9cf5d228e2f9) )
-	ROM_LOAD32_WORD("mpr-19702.9",  0x0800000, 0x400000, CRC(fc8aa3b7) SHA1(b64afb17d9c97277d8c4f20811f14f65a61cbb56) )
-	ROM_LOAD32_WORD("mpr-19703.10", 0x0800002, 0x400000, CRC(208d993d) SHA1(e5c45ea5621f99661a87ffe88e24764d2bbcb51e) )
-	ROM_LOAD32_WORD("mpr-19700.7",  0x1000000, 0x400000, CRC(0558cfd3) SHA1(94440839d3325176c2d03f39a78949d0ef040bba) )
-	ROM_LOAD32_WORD("mpr-19701.8",  0x1000002, 0x400000, CRC(224a8929) SHA1(933770546d46abca400e7f524eff2ae89241e56d) )
-	ROM_LOAD32_WORD("epr-19698.5",  0x1800000, 0x080000, CRC(e7a7b6ea) SHA1(77cb53f8730fdb55080b70910ab8c750d79acb02) )
-	ROM_RELOAD     (                0x1900000, 0x080000)
-	ROM_RELOAD     (                0x1a00000, 0x080000)
-	ROM_RELOAD     (                0x1b00000, 0x080000)
-	ROM_RELOAD     (                0x1c00000, 0x080000)
-	ROM_RELOAD     (                0x1d00000, 0x080000)
-	ROM_RELOAD     (                0x1e00000, 0x080000)
-	ROM_RELOAD     (                0x1f00000, 0x080000)
-	ROM_LOAD32_WORD("epr-19699.6",  0x1800002, 0x080000, CRC(8160b3d9) SHA1(9dab483c60624dddba8085e94a4325739592ec17) )
-	ROM_RELOAD     (                0x1900002, 0x080000)
-	ROM_RELOAD     (                0x1a00002, 0x080000)
-	ROM_RELOAD     (                0x1b00002, 0x080000)
-	ROM_RELOAD     (                0x1c00002, 0x080000)
-	ROM_RELOAD     (                0x1d00002, 0x080000)
-	ROM_RELOAD     (                0x1e00002, 0x080000)
-	ROM_RELOAD     (                0x1f00002, 0x080000)
+	ROM_LOAD32_WORD("mpr-19704.11",    0x0000000, 0x400000, CRC(aa80dbb0) SHA1(24e63f4392847f288971469cd10448536eb435d4) )
+	ROM_LOAD32_WORD("mpr-19705.12",    0x0000002, 0x400000, CRC(f906843b) SHA1(bee4f43b3ad15d93a2f9f07b873c9cf5d228e2f9) )
+	ROM_LOAD32_WORD("mpr-19702.9",     0x0800000, 0x400000, CRC(fc8aa3b7) SHA1(b64afb17d9c97277d8c4f20811f14f65a61cbb56) )
+	ROM_LOAD32_WORD("mpr-19703.10",    0x0800002, 0x400000, CRC(208d993d) SHA1(e5c45ea5621f99661a87ffe88e24764d2bbcb51e) )
+	ROM_LOAD32_WORD("mpr-19700.7",     0x1000000, 0x400000, CRC(0558cfd3) SHA1(94440839d3325176c2d03f39a78949d0ef040bba) )
+	ROM_LOAD32_WORD("mpr-19701.8",     0x1000002, 0x400000, CRC(224a8929) SHA1(933770546d46abca400e7f524eff2ae89241e56d) )
+	ROM_LOAD32_WORD("epr-19698.5",     0x1800000, 0x080000, CRC(e7a7b6ea) SHA1(77cb53f8730fdb55080b70910ab8c750d79acb02) )
+	ROM_LOAD32_WORD("epr-19699.6",     0x1800002, 0x080000, CRC(8160b3d9) SHA1(9dab483c60624dddba8085e94a4325739592ec17) )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1900000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1a00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1b00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1c00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1d00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1e00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1f00000, 0x100000 )
 
-	ROM_REGION( 0x100000, REGION_CPU3, 0 ) // TGPx4 program
+
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGPx4 program
 	ROM_LOAD32_WORD("epr-19707.29",  0x000000, 0x080000, CRC(384fd133) SHA1(6d060378d0f801b04d12e7ee874f2fa0572992d9) )
 	ROM_LOAD32_WORD("epr-19706.30",  0x000002, 0x080000, CRC(1277531c) SHA1(08d3e733ba9989fcd32290634171c73f26ab6e2b) )
 
@@ -2797,42 +2864,27 @@ ROM_START( indy500 )
 	ROM_LOAD32_WORD("epr-18255a.16", 0x000002, 0x080000, CRC(784daab8) SHA1(299e87f8ec7bdefa6f94f4ab65e29e91f290611e) )
 
 	ROM_REGION32_LE( 0x2000000, REGION_USER1, 0 ) // Data
-	ROM_LOAD32_WORD("mpr-18237.11", 0x0000000, 0x400000, CRC(37e4255a) SHA1(3ee69a5b9364048dfab242773d97f3af430845b7) )
-	ROM_LOAD32_WORD("mpr-18238.12", 0x0000002, 0x400000, CRC(bf837bac) SHA1(6624417b65f15f20427bc42c27283f10342c76b5) )
-	ROM_LOAD32_WORD("mpr-18239.9",  0x0800000, 0x400000, CRC(9a2db86e) SHA1(0b81f6037657af7d96ed5e9bfef407d87cbcc294) )
-	ROM_LOAD32_WORD("mpr-18240.10", 0x0800002, 0x400000, CRC(ab46a35f) SHA1(67da857db7155a858a1fa575b6c50f4be3c9ab7c) )
-	ROM_LOAD32_WORD("epr-18389.7",  0x1000000, 0x080000, CRC(d22ea019) SHA1(ef10bb0ffcb1bbcf4672bb5f705a27679a793764) )
-	ROM_RELOAD     (                0x1100000, 0x080000)
-	ROM_RELOAD     (                0x1200000, 0x080000)
-	ROM_RELOAD     (                0x1300000, 0x080000)
-	ROM_RELOAD     (                0x1400000, 0x080000)
-	ROM_RELOAD     (                0x1500000, 0x080000)
-	ROM_RELOAD     (                0x1600000, 0x080000)
-	ROM_RELOAD     (                0x1700000, 0x080000)
-	ROM_RELOAD     (                0x1800000, 0x080000)
-	ROM_RELOAD     (                0x1900000, 0x080000)
-	ROM_RELOAD     (                0x1a00000, 0x080000)
-	ROM_RELOAD     (                0x1b00000, 0x080000)
-	ROM_RELOAD     (                0x1c00000, 0x080000)
-	ROM_RELOAD     (                0x1d00000, 0x080000)
-	ROM_RELOAD     (                0x1e00000, 0x080000)
-	ROM_RELOAD     (                0x1f00000, 0x080000)
-	ROM_LOAD32_WORD("epr-18390.8",  0x1000002, 0x080000, CRC(38e796e5) SHA1(b23cfe45c363d616a65decd57aeb8ae61d5370e9) )
-	ROM_RELOAD     (                0x1100002, 0x080000)
-	ROM_RELOAD     (                0x1200002, 0x080000)
-	ROM_RELOAD     (                0x1300002, 0x080000)
-	ROM_RELOAD     (                0x1400002, 0x080000)
-	ROM_RELOAD     (                0x1500002, 0x080000)
-	ROM_RELOAD     (                0x1600002, 0x080000)
-	ROM_RELOAD     (                0x1700002, 0x080000)
-	ROM_RELOAD     (                0x1800002, 0x080000)
-	ROM_RELOAD     (                0x1900002, 0x080000)
-	ROM_RELOAD     (                0x1a00002, 0x080000)
-	ROM_RELOAD     (                0x1b00002, 0x080000)
-	ROM_RELOAD     (                0x1c00002, 0x080000)
-	ROM_RELOAD     (                0x1d00002, 0x080000)
-	ROM_RELOAD     (                0x1e00002, 0x080000)
-	ROM_RELOAD     (                0x1f00002, 0x080000)
+	ROM_LOAD32_WORD("mpr-18237.11",    0x0000000, 0x400000, CRC(37e4255a) SHA1(3ee69a5b9364048dfab242773d97f3af430845b7) )
+	ROM_LOAD32_WORD("mpr-18238.12",    0x0000002, 0x400000, CRC(bf837bac) SHA1(6624417b65f15f20427bc42c27283f10342c76b5) )
+	ROM_LOAD32_WORD("mpr-18239.9",     0x0800000, 0x400000, CRC(9a2db86e) SHA1(0b81f6037657af7d96ed5e9bfef407d87cbcc294) )
+	ROM_LOAD32_WORD("mpr-18240.10",    0x0800002, 0x400000, CRC(ab46a35f) SHA1(67da857db7155a858a1fa575b6c50f4be3c9ab7c) )
+	ROM_LOAD32_WORD("epr-18389.7",     0x1000000, 0x080000, CRC(d22ea019) SHA1(ef10bb0ffcb1bbcf4672bb5f705a27679a793764) )
+	ROM_LOAD32_WORD("epr-18390.8",     0x1000002, 0x080000, CRC(38e796e5) SHA1(b23cfe45c363d616a65decd57aeb8ae61d5370e9) )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1100000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1200000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1300000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1400000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1500000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1600000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1700000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1800000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1900000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1a00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1b00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1c00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1d00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1e00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1f00000, 0x100000 )
 
 	ROM_REGION( 0x800000, REGION_USER5, 0 ) // Coprocessor Data ROM
 	ROM_LOAD32_WORD("epr-18249.29", 0x000000, 0x080000, CRC(a399f023) SHA1(8b453313c16d935701ed7dbf71c1607c40aede63) )
@@ -2875,7 +2927,7 @@ ROM_START( bel )
 	ROM_LOAD32_WORD("mpr-20227.5",    0xc00000, 0x200000, CRC(1277686e) SHA1(fff27006659458300001425261b944e690f1d494) )
 	ROM_LOAD32_WORD("mpr-20228.6",    0xc00002, 0x200000, CRC(49cb5568) SHA1(ee3273302830f3499c7d4e548b629c51e0369e8a) )
 
-	ROM_REGION( 0x400000, REGION_CPU3, 0 ) // TGPx4 program
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGPx4 program
 	ROM_LOAD32_WORD("mpr-20236.29",   0x000000, 0x200000, CRC(8de9a3c2) SHA1(e7fde1fd509531e1002ff813163067dc0d134536) )
 	ROM_LOAD32_WORD("mpr-20235.30",   0x000002, 0x200000, CRC(78fa11ef) SHA1(a60deabb662e9c09f5d6342dc1a1c6045744d93f) )
 
@@ -2945,7 +2997,7 @@ ROM_START( topskatr )
 	ROM_LOAD32_WORD("mpr-19737.9",   0x800000, 0x400000, CRC(281a7dde) SHA1(71d5ba434328a81969bfdc71ac1160c5ff3ae9d3) )
 	ROM_LOAD32_WORD("mpr-19738.10",  0x800002, 0x400000, CRC(f688327e) SHA1(68c9db242ef7e8f98979e968a09e4b093bc5d470) )
 
-	ROM_REGION( 0x400000, REGION_CPU3, 0 ) // TGPx4 program
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGPx4 program
 	ROM_LOAD32_WORD("mpr-19743.29",  0x000000, 0x200000, CRC(d41a41bf) SHA1(a5f6b24e6526d0d2ef9c526c273c018d1e0fed59) )
 	ROM_LOAD32_WORD("mpr-19744.30",  0x000002, 0x200000, CRC(84f203bf) SHA1(4952b764e6bf6cd735018738c5eff08781ee2315) )
 
@@ -3287,42 +3339,28 @@ ROM_START( fvipers )
 	ROM_LOAD32_WORD("epr-18605d.14", 0x040002, 0x020000, CRC(7dddf81f) SHA1(3e0da0eaf1f98dbbd4ca5f78c04052b347b234b2) )
 
 	ROM_REGION32_LE( 0x2000000, REGION_USER1, 0 ) // Data
-	ROM_LOAD32_WORD("mpr-18614.11", 0x0000000, 0x400000, CRC(0ebc899f) SHA1(49c80b11b207cba4ec10fbb7cc140f3a5b039e82) )
-	ROM_LOAD32_WORD("mpr-18615.12", 0x0000002, 0x400000, CRC(018abdb7) SHA1(59e5b6378404e10ace4f3675428d61d3ae9d1963) )
-	ROM_LOAD32_WORD("mpr-18612.9",  0x0800000, 0x400000, CRC(1f174cd1) SHA1(89b56dd2f350edd093dc06f4cc258652c26b1d45) )
-	ROM_LOAD32_WORD("mpr-18613.10", 0x0800002, 0x400000, CRC(f057cdf2) SHA1(e16d5de2a00670aba4fbe0dc88ccf317de9842be) )
-	ROM_LOAD32_WORD("epr-18610d.7", 0x1000000, 0x080000, CRC(a1871703) SHA1(8d7b362a8fd9d63f5cea2f3fab97e5fe3fa30d87) )
-	ROM_RELOAD     (                0x1100000, 0x080000)
-	ROM_RELOAD     (                0x1200000, 0x080000)
-	ROM_RELOAD     (                0x1300000, 0x080000)
-	ROM_RELOAD     (                0x1400000, 0x080000)
-	ROM_RELOAD     (                0x1500000, 0x080000)
-	ROM_RELOAD     (                0x1600000, 0x080000)
-	ROM_RELOAD     (                0x1700000, 0x080000)
-	ROM_LOAD32_WORD("epr-18611d.8", 0x1000002, 0x080000, CRC(39a75fee) SHA1(c962805f03e2503dd1671ba3e906c6e306a92e48) )
-	ROM_RELOAD     (                0x1100002, 0x080000)
-	ROM_RELOAD     (                0x1200002, 0x080000)
-	ROM_RELOAD     (                0x1300002, 0x080000)
-	ROM_RELOAD     (                0x1400002, 0x080000)
-	ROM_RELOAD     (                0x1500002, 0x080000)
-	ROM_RELOAD     (                0x1600002, 0x080000)
-	ROM_RELOAD     (                0x1700002, 0x080000)
-	ROM_LOAD32_WORD("epr-18608d.5", 0x1800000, 0x080000, CRC(5bc11881) SHA1(97ce5faf9719cb02dd3a15d47245cc4634f08fcb) )
-	ROM_RELOAD     (                0x1900000, 0x080000)
-	ROM_RELOAD     (                0x1a00000, 0x080000)
-	ROM_RELOAD     (                0x1b00000, 0x080000)
-	ROM_RELOAD     (                0x1c00000, 0x080000)
-	ROM_RELOAD     (                0x1d00000, 0x080000)
-	ROM_RELOAD     (                0x1e00000, 0x080000)
-	ROM_RELOAD     (                0x1f00000, 0x080000)
-	ROM_LOAD32_WORD("epr-18609d.6", 0x1800002, 0x080000, CRC(cd426035) SHA1(94c85a656c86bc4880db6bff2ef795ec30f62f39) )
-	ROM_RELOAD     (                0x1900002, 0x080000)
-	ROM_RELOAD     (                0x1a00002, 0x080000)
-	ROM_RELOAD     (                0x1b00002, 0x080000)
-	ROM_RELOAD     (                0x1c00002, 0x080000)
-	ROM_RELOAD     (                0x1d00002, 0x080000)
-	ROM_RELOAD     (                0x1e00002, 0x080000)
-	ROM_RELOAD     (                0x1f00002, 0x080000)
+	ROM_LOAD32_WORD("mpr-18614.11",    0x0000000, 0x400000, CRC(0ebc899f) SHA1(49c80b11b207cba4ec10fbb7cc140f3a5b039e82) )
+	ROM_LOAD32_WORD("mpr-18615.12",    0x0000002, 0x400000, CRC(018abdb7) SHA1(59e5b6378404e10ace4f3675428d61d3ae9d1963) )
+	ROM_LOAD32_WORD("mpr-18612.9",     0x0800000, 0x400000, CRC(1f174cd1) SHA1(89b56dd2f350edd093dc06f4cc258652c26b1d45) )
+	ROM_LOAD32_WORD("mpr-18613.10",    0x0800002, 0x400000, CRC(f057cdf2) SHA1(e16d5de2a00670aba4fbe0dc88ccf317de9842be) )
+	ROM_LOAD32_WORD("epr-18610d.7",    0x1000000, 0x080000, CRC(a1871703) SHA1(8d7b362a8fd9d63f5cea2f3fab97e5fe3fa30d87) )
+	ROM_LOAD32_WORD("epr-18611d.8",    0x1000002, 0x080000, CRC(39a75fee) SHA1(c962805f03e2503dd1671ba3e906c6e306a92e48) )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1100000, 0x100000 ) // rgn,srcoffset,offset,length.
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1200000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1300000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1400000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1500000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1600000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1000000, 0x1700000, 0x100000 )
+	ROM_LOAD32_WORD("epr-18608d.5",    0x1800000, 0x080000, CRC(5bc11881) SHA1(97ce5faf9719cb02dd3a15d47245cc4634f08fcb) )
+	ROM_LOAD32_WORD("epr-18609d.6",    0x1800002, 0x080000, CRC(cd426035) SHA1(94c85a656c86bc4880db6bff2ef795ec30f62f39) )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1900000, 0x100000 ) // rgn,srcoffset,offset,length.
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1a00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1b00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1c00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1d00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1e00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x1800000, 0x1f00000, 0x100000 )
 
 	ROM_REGION( 0x800000, REGION_USER5, 0 ) // Coprocessor Data ROM
 	ROM_LOAD32_WORD("mpr-18622.29", 0x000000, 0x200000, CRC(c74d99e3) SHA1(9914be9925b86af6af670745b5eba3a9e4f24af9) )
@@ -3360,40 +3398,33 @@ ROM_START( daytona )
 	ROM_LOAD32_WORD("epr16723a.13", 0x000002, 0x020000, CRC(8af8b32d) SHA1(2039ec1f8da524176fcf85473c10a8b6e49e139a) )
 
 	ROM_REGION32_LE( 0x2000000, REGION_USER1, 0 ) // Data
-	ROM_LOAD32_WORD("mpr16528.10",  0x000000, 0x200000, CRC(9ce591f6) SHA1(e22fc8a70b533f7a6191f5952c581fb8f9627906) )
-	ROM_LOAD32_WORD("mpr16529.11",  0x000002, 0x200000, CRC(f7095eaf) SHA1(da3c922f950dd730ea348eae12aa1cb69cee9a58) )
-	ROM_LOAD32_WORD("mpr16808.8",   0x400000, 0x200000, CRC(44f1f5a0) SHA1(343866a6e2187a8ebc17f6727080f9f2f9ac9200) )
-	ROM_LOAD32_WORD("mpr16809.9",   0x400002, 0x200000, CRC(37a2dd12) SHA1(8192d8698d6bd52ee11cc28917aff5840c447627) )
-	ROM_LOAD32_WORD("epr16724a.6",  0x800000, 0x080000, CRC(469f10fd) SHA1(7fad3b8d03960e5e1f7a6cb36509238977e00fcc) )
-	ROM_RELOAD     (                0x900000, 0x080000 )
-	ROM_RELOAD     (                0xa00000, 0x080000 )
-	ROM_RELOAD     (                0xb00000, 0x080000 )
-	ROM_RELOAD     (                0xc00000, 0x080000 )
-	ROM_RELOAD     (                0xd00000, 0x080000 )
-	ROM_RELOAD     (                0xe00000, 0x080000 )
-	ROM_RELOAD     (                0xf00000, 0x080000 )
-	ROM_LOAD32_WORD("epr-16725a.7", 0x800002, 0x080000, CRC(ba0df8db) SHA1(d0c5581c56500b5266cab8e8151db24fcbdea0d7) )
-	ROM_RELOAD     (                0x900002, 0x080000 )
-	ROM_RELOAD     (                0xa00002, 0x080000 )
-	ROM_RELOAD     (                0xb00002, 0x080000 )
-	ROM_RELOAD     (                0xc00002, 0x080000 )
-	ROM_RELOAD     (                0xd00002, 0x080000 )
-	ROM_RELOAD     (                0xe00002, 0x080000 )
-	ROM_RELOAD     (                0xf00002, 0x080000 )
+	ROM_LOAD32_WORD("mpr-16528.10",   0x000000, 0x200000, CRC(9ce591f6) SHA1(e22fc8a70b533f7a6191f5952c581fb8f9627906) )
+	ROM_LOAD32_WORD("mpr-16529.11",   0x000002, 0x200000, CRC(f7095eaf) SHA1(da3c922f950dd730ea348eae12aa1cb69cee9a58) )
+	ROM_LOAD32_WORD("mpr-16808.8",    0x400000, 0x200000, CRC(44f1f5a0) SHA1(343866a6e2187a8ebc17f6727080f9f2f9ac9200) )
+	ROM_LOAD32_WORD("mpr-16809.9",    0x400002, 0x200000, CRC(37a2dd12) SHA1(8192d8698d6bd52ee11cc28917aff5840c447627) )
+	ROM_LOAD32_WORD("epr-16724a.6",   0x800000, 0x080000, CRC(469f10fd) SHA1(7fad3b8d03960e5e1f7a6cb36509238977e00fcc) )
+	ROM_LOAD32_WORD("epr-16725a.7",   0x800002, 0x080000, CRC(ba0df8db) SHA1(d0c5581c56500b5266cab8e8151db24fcbdea0d7) )
+	ROM_COPY( REGION_USER1, 0x800000, 0x900000, 0x100000 ) // rgn,srcoffset,offset,length.
+	ROM_COPY( REGION_USER1, 0x800000, 0xa00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xb00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xc00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xd00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xe00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xf00000, 0x100000 )
 
-	ROM_REGION( 0x400000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
-	ROM_LOAD32_WORD("mpr-16537.28", 0x000000, 0x100000, CRC(44ce6834) SHA1(61b7ee8f9667683bb723bb930945e550ba84daa4) )
-	ROM_LOAD32_WORD("mpr-16536.29", 0x000002, 0x100000, CRC(adea6e68) SHA1(fd9065ea1a19791e813ec163525c072a2e985e61) )
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
+	ROM_LOAD32_WORD("mpr-16537.ic28", 0x000000, 0x200000, CRC(36b7c35a) SHA1(b32fd1d3fc8983fb5f2a7b236b665a8c9b52769f) )
+	ROM_LOAD32_WORD("mpr-16536.ic29", 0x000002, 0x200000, CRC(6d6afed9) SHA1(2018468d7d849854b3d0cfbcd217317e2fc93555) )
 
 	ROM_REGION( 0x1000000, REGION_USER2, 0 ) // Models
-	ROM_LOAD32_WORD("mpr-16523.16", 0x000000, 0x200000, CRC(2f484d42) SHA1(0b83a3fc92b7d913a14cfb01d688c63555c17c41) )
-	ROM_LOAD32_WORD("mpr-16518.20", 0x000002, 0x200000, CRC(df683bf7) SHA1(16afe5029591f3536b5b75d9cf50a34d0ea72c3d) )
-	ROM_LOAD32_WORD("mpr-16524.17", 0x400000, 0x100000, CRC(fd5ce5e7) SHA1(b33098977b6fc980e3f21096f96745199a2155a9) )
-	ROM_LOAD32_WORD("mpr-16519.21", 0x400002, 0x100000, CRC(5348d519) SHA1(b0fa271e6d350ac5112a258bb9c0fa569e05c739) )
-	ROM_LOAD32_WORD("mpr-16525.18", 0x600000, 0x100000, CRC(04d56b09) SHA1(62d28ba02cdcc5de89b558ea32ac92aca95d1ff8) )
-	ROM_LOAD32_WORD("mpr-16520.22", 0x600002, 0x100000, CRC(937f390b) SHA1(e8fe943a2824101d0a37dada5103daa1009a531d) )
-	ROM_LOAD32_WORD("mpr-16772.19", 0x800000, 0x200000, CRC(770ed912) SHA1(1789f35dd403f73f8be18495a0fe4ad1e6841417) )
-	ROM_LOAD32_WORD("mpr-16771.23", 0x800002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
+	ROM_LOAD32_WORD("mpr-16523.ic16", 0x000000, 0x200000, CRC(2f484d42) SHA1(0b83a3fc92b7d913a14cfb01d688c63555c17c41) )
+	ROM_LOAD32_WORD("mpr-16518.ic20", 0x000002, 0x200000, CRC(df683bf7) SHA1(16afe5029591f3536b5b75d9cf50a34d0ea72c3d) )
+	ROM_LOAD32_WORD("mpr-16524.ic17", 0x400000, 0x200000, CRC(34658bd7) SHA1(71b47626ffe5b26d1140afe1b830a9a2be86c88f) )
+	ROM_LOAD32_WORD("mpr-16519.ic21", 0x400002, 0x200000, CRC(facd1c81) SHA1(dac8c281a5e9a6c4b60197e6676f3727264ee420) )
+	ROM_LOAD32_WORD("mpr-16525.ic18", 0x800000, 0x200000, CRC(fb517521) SHA1(33f5f37ea2e09fc73eed5388b46fdf1fa9e285e6) )
+	ROM_LOAD32_WORD("mpr-16520.ic22", 0x800002, 0x200000, CRC(d66bd9bd) SHA1(660171674484375a27595630e5e2d2ad76a06d1a) )
+	ROM_LOAD32_WORD("mpr-16772.ic19", 0xc00000, 0x200000, CRC(770ed912) SHA1(1789f35dd403f73f8be18495a0fe4ad1e6841417) )
+	ROM_LOAD32_WORD("mpr-16771.ic23", 0xc00002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
 
 	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
 	ROM_LOAD32_WORD("mpr-16521.24", 0x000000, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
@@ -3402,7 +3433,70 @@ ROM_START( daytona )
 	ROM_LOAD32_WORD("mpr-16770.27", 0x400002, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
 
 	ROM_REGION( 0x20000, REGION_CPU4, 0) // Communication program
-        ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
+	ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
+
+	ROM_REGION( 0x80000, REGION_CPU2, 0 ) // Sound program
+	ROM_LOAD16_WORD_SWAP("epr-16720.7", 0x000000, 0x020000, CRC(8e73cffd) SHA1(9933ccc0757e8c86e0adb938d1c89210b26841ea) )
+	ROM_LOAD16_WORD_SWAP("epr-16721.8", 0x020000, 0x020000, CRC(1bb3b7b7) SHA1(ee2fd1480e535fc37e9932e6fe4e31344559fc87) )
+
+	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) // Samples
+	ROM_LOAD("mpr-16491.32", 0x000000, 0x200000, CRC(89920903) SHA1(06d1d55470ae99f8de0f8c88c694f34c4eb13668) )
+	ROM_LOAD("mpr-16492.33", 0x200000, 0x200000, CRC(459e701b) SHA1(2054f69cecad677eb00c6a3051f5b5d90885e19b) )
+
+	ROM_REGION( 0x400000, REGION_SOUND2, 0 ) // Samples
+	ROM_LOAD("mpr-16493.4", 0x000000, 0x200000, CRC(9990db15) SHA1(ea9a8b45a07dccaae62be7cf095532ce7596a70c) )
+	ROM_LOAD("mpr-16494.5", 0x200000, 0x200000, CRC(600e1d6c) SHA1(d4e246fc57a16ff562bbcbccf6a739b706f58696) )
+
+	MODEL2_CPU_BOARD /* Model 2 CPU board extra roms */
+
+	ROM_REGION( 0x10000, REGION_USER7, 0 ) // Unknown ROM
+	ROM_LOAD("14869c.25", 0x000000, 0x010000, CRC(24b68e64) SHA1(c19d044d4c2fe551474492aa51922587394dd371) )
+ROM_END
+
+/* alt revision with Saturn Adverts */
+
+ROM_START( daytonas )
+	ROM_REGION( 0x200000, REGION_CPU1, 0 ) // i960 program
+	ROM_LOAD32_WORD("epr17965.ic12", 0x000000, 0x020000, CRC(f022b3da) SHA1(3c337d12f4e12141b412a7289df46f44c66964b2) )
+	ROM_LOAD32_WORD("epr17966.ic13", 0x000002, 0x020000, CRC(f9e4ece5) SHA1(2df03455a00ae7066c30bace5c2b81581529e6f4) )
+
+	ROM_REGION32_LE( 0x2000000, REGION_USER1, 0 ) // Data
+	ROM_LOAD32_WORD("mpr-16528.10",   0x000000, 0x200000, CRC(9ce591f6) SHA1(e22fc8a70b533f7a6191f5952c581fb8f9627906) )
+	ROM_LOAD32_WORD("mpr-16529.11",   0x000002, 0x200000, CRC(f7095eaf) SHA1(da3c922f950dd730ea348eae12aa1cb69cee9a58) )
+	ROM_LOAD32_WORD("mpr-16808.8",    0x400000, 0x200000, CRC(44f1f5a0) SHA1(343866a6e2187a8ebc17f6727080f9f2f9ac9200) )
+	ROM_LOAD32_WORD("mpr-16809.9",    0x400002, 0x200000, CRC(37a2dd12) SHA1(8192d8698d6bd52ee11cc28917aff5840c447627) )
+	ROM_LOAD32_WORD("epr17967.ic6",   0x800000, 0x080000, CRC(a94d8690) SHA1(a716646be6be0b87a550cb88b40e62a5c203ffdf) )
+	ROM_LOAD32_WORD("epr17968.ic7",   0x800002, 0x080000, CRC(9d5a92c6) SHA1(9eb43314f3dc6acbbe0aa991d7a5fa44afe9cdd0) )
+	ROM_COPY( REGION_USER1, 0x800000, 0x900000, 0x100000 ) // rgn,srcoffset,offset,length.
+	ROM_COPY( REGION_USER1, 0x800000, 0xa00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xb00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xc00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xd00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xe00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xf00000, 0x100000 )
+
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
+	ROM_LOAD32_WORD("mpr-16537.ic28", 0x000000, 0x200000, CRC(36b7c35a) SHA1(b32fd1d3fc8983fb5f2a7b236b665a8c9b52769f) )
+	ROM_LOAD32_WORD("mpr-16536.ic29", 0x000002, 0x200000, CRC(6d6afed9) SHA1(2018468d7d849854b3d0cfbcd217317e2fc93555) )
+
+	ROM_REGION( 0x1000000, REGION_USER2, 0 ) // Models
+	ROM_LOAD32_WORD("mpr-16523.ic16", 0x000000, 0x200000, CRC(2f484d42) SHA1(0b83a3fc92b7d913a14cfb01d688c63555c17c41) )
+	ROM_LOAD32_WORD("mpr-16518.ic20", 0x000002, 0x200000, CRC(df683bf7) SHA1(16afe5029591f3536b5b75d9cf50a34d0ea72c3d) )
+	ROM_LOAD32_WORD("mpr-16524.ic17", 0x400000, 0x200000, CRC(34658bd7) SHA1(71b47626ffe5b26d1140afe1b830a9a2be86c88f) )
+	ROM_LOAD32_WORD("mpr-16519.ic21", 0x400002, 0x200000, CRC(facd1c81) SHA1(dac8c281a5e9a6c4b60197e6676f3727264ee420) )
+	ROM_LOAD32_WORD("mpr-16525.ic18", 0x800000, 0x200000, CRC(fb517521) SHA1(33f5f37ea2e09fc73eed5388b46fdf1fa9e285e6) )
+	ROM_LOAD32_WORD("mpr-16520.ic22", 0x800002, 0x200000, CRC(d66bd9bd) SHA1(660171674484375a27595630e5e2d2ad76a06d1a) )
+	ROM_LOAD32_WORD("mpr-16772.ic19", 0xc00000, 0x200000, CRC(770ed912) SHA1(1789f35dd403f73f8be18495a0fe4ad1e6841417) )
+	ROM_LOAD32_WORD("mpr-16771.ic23", 0xc00002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
+
+	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
+	ROM_LOAD32_WORD("mpr-16521.24", 0x000000, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
+	ROM_LOAD32_WORD("mpr-16522.25", 0x000002, 0x200000, CRC(55d39a57) SHA1(abf7b0fc0f111f90da42463d600db9fa32e95efe) )
+	ROM_LOAD32_WORD("mpr-16769.26", 0x400000, 0x200000, CRC(e57429e9) SHA1(8c712ab09e61ef510741a55f29b3c4e497471372) )
+	ROM_LOAD32_WORD("mpr-16770.27", 0x400002, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
+
+	ROM_REGION( 0x20000, REGION_CPU4, 0) // Communication program
+	ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
 
 	ROM_REGION( 0x80000, REGION_CPU2, 0 ) // Sound program
 	ROM_LOAD16_WORD_SWAP("epr-16720.7", 0x000000, 0x020000, CRC(8e73cffd) SHA1(9933ccc0757e8c86e0adb938d1c89210b26841ea) )
@@ -3428,40 +3522,33 @@ ROM_START( daytonat )
 	ROM_LOAD32_WORD( "turbo2.13", 0x000002, 0x080000, CRC(f7d4e866) SHA1(c8c43904257f718665f9f7a89838eba14bde9465) )
 
 	ROM_REGION32_LE( 0x2000000, REGION_USER1, 0 ) // Data
-	ROM_LOAD32_WORD("mpr-16528.10", 0x000000, 0x200000, CRC(9ce591f6) SHA1(e22fc8a70b533f7a6191f5952c581fb8f9627906) )
-	ROM_LOAD32_WORD("mpr-16529.11", 0x000002, 0x200000, CRC(f7095eaf) SHA1(da3c922f950dd730ea348eae12aa1cb69cee9a58) )
-	ROM_LOAD32_WORD("mpr-16808.8",  0x400000, 0x200000, CRC(44f1f5a0) SHA1(343866a6e2187a8ebc17f6727080f9f2f9ac9200) )
-	ROM_LOAD32_WORD("mpr-16809.9",  0x400002, 0x200000, CRC(37a2dd12) SHA1(8192d8698d6bd52ee11cc28917aff5840c447627) )
-	ROM_LOAD32_WORD("epr-16724a.6", 0x800000, 0x080000, CRC(469f10fd) SHA1(7fad3b8d03960e5e1f7a6cb36509238977e00fcc) )
-	ROM_RELOAD     (                0x900000, 0x080000 )
-	ROM_RELOAD     (                0xa00000, 0x080000 )
-	ROM_RELOAD     (                0xb00000, 0x080000 )
-	ROM_RELOAD     (                0xc00000, 0x080000 )
-	ROM_RELOAD     (                0xd00000, 0x080000 )
-	ROM_RELOAD     (                0xe00000, 0x080000 )
-	ROM_RELOAD     (                0xf00000, 0x080000 )
-	ROM_LOAD32_WORD("epr-16725a.7", 0x800002, 0x080000, CRC(ba0df8db) SHA1(d0c5581c56500b5266cab8e8151db24fcbdea0d7) )
-	ROM_RELOAD     (                0x900002, 0x080000 )
-	ROM_RELOAD     (                0xa00002, 0x080000 )
-	ROM_RELOAD     (                0xb00002, 0x080000 )
-	ROM_RELOAD     (                0xc00002, 0x080000 )
-	ROM_RELOAD     (                0xd00002, 0x080000 )
-	ROM_RELOAD     (                0xe00002, 0x080000 )
-	ROM_RELOAD     (                0xf00002, 0x080000 )
+	ROM_LOAD32_WORD("mpr-16528.10",   0x000000, 0x200000, CRC(9ce591f6) SHA1(e22fc8a70b533f7a6191f5952c581fb8f9627906) )
+	ROM_LOAD32_WORD("mpr-16529.11",   0x000002, 0x200000, CRC(f7095eaf) SHA1(da3c922f950dd730ea348eae12aa1cb69cee9a58) )
+	ROM_LOAD32_WORD("mpr-16808.8",    0x400000, 0x200000, CRC(44f1f5a0) SHA1(343866a6e2187a8ebc17f6727080f9f2f9ac9200) )
+	ROM_LOAD32_WORD("mpr-16809.9",    0x400002, 0x200000, CRC(37a2dd12) SHA1(8192d8698d6bd52ee11cc28917aff5840c447627) )
+	ROM_LOAD32_WORD("epr-16724a.6",   0x800000, 0x080000, CRC(469f10fd) SHA1(7fad3b8d03960e5e1f7a6cb36509238977e00fcc) )
+	ROM_LOAD32_WORD("epr-16725a.7",   0x800002, 0x080000, CRC(ba0df8db) SHA1(d0c5581c56500b5266cab8e8151db24fcbdea0d7) )
+	ROM_COPY( REGION_USER1, 0x800000, 0x900000, 0x100000 ) // rgn,srcoffset,offset,length.
+	ROM_COPY( REGION_USER1, 0x800000, 0xa00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xb00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xc00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xd00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xe00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xf00000, 0x100000 )
 
-	ROM_REGION( 0x400000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
-	ROM_LOAD32_WORD("mpr-16537.28", 0x000000, 0x100000, CRC(44ce6834) SHA1(61b7ee8f9667683bb723bb930945e550ba84daa4) )
-	ROM_LOAD32_WORD("mpr-16536.29", 0x000002, 0x100000, CRC(adea6e68) SHA1(fd9065ea1a19791e813ec163525c072a2e985e61) )
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
+	ROM_LOAD32_WORD("mpr-16537.ic28", 0x000000, 0x200000, CRC(36b7c35a) SHA1(b32fd1d3fc8983fb5f2a7b236b665a8c9b52769f) )
+	ROM_LOAD32_WORD("mpr-16536.ic29", 0x000002, 0x200000, CRC(6d6afed9) SHA1(2018468d7d849854b3d0cfbcd217317e2fc93555) )
 
 	ROM_REGION( 0x1000000, REGION_USER2, 0 ) // Models
-	ROM_LOAD32_WORD("mpr-16523.16", 0x000000, 0x200000, CRC(2f484d42) SHA1(0b83a3fc92b7d913a14cfb01d688c63555c17c41) )
-	ROM_LOAD32_WORD("mpr-16518.20", 0x000002, 0x200000, CRC(df683bf7) SHA1(16afe5029591f3536b5b75d9cf50a34d0ea72c3d) )
-	ROM_LOAD32_WORD("mpr-16524.17", 0x400000, 0x100000, CRC(fd5ce5e7) SHA1(b33098977b6fc980e3f21096f96745199a2155a9) )
-	ROM_LOAD32_WORD("mpr-16519.21", 0x400002, 0x100000, CRC(5348d519) SHA1(b0fa271e6d350ac5112a258bb9c0fa569e05c739) )
-	ROM_LOAD32_WORD("mpr-16525.18", 0x600000, 0x100000, CRC(04d56b09) SHA1(62d28ba02cdcc5de89b558ea32ac92aca95d1ff8) )
-	ROM_LOAD32_WORD("mpr-16520.22", 0x600002, 0x100000, CRC(937f390b) SHA1(e8fe943a2824101d0a37dada5103daa1009a531d) )
-	ROM_LOAD32_WORD("mpr-16772.19", 0x800000, 0x200000, CRC(770ed912) SHA1(1789f35dd403f73f8be18495a0fe4ad1e6841417) )
-	ROM_LOAD32_WORD("mpr-16771.23", 0x800002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
+	ROM_LOAD32_WORD("mpr-16523.ic16", 0x000000, 0x200000, CRC(2f484d42) SHA1(0b83a3fc92b7d913a14cfb01d688c63555c17c41) )
+	ROM_LOAD32_WORD("mpr-16518.ic20", 0x000002, 0x200000, CRC(df683bf7) SHA1(16afe5029591f3536b5b75d9cf50a34d0ea72c3d) )
+	ROM_LOAD32_WORD("mpr-16524.ic17", 0x400000, 0x200000, CRC(34658bd7) SHA1(71b47626ffe5b26d1140afe1b830a9a2be86c88f) )
+	ROM_LOAD32_WORD("mpr-16519.ic21", 0x400002, 0x200000, CRC(facd1c81) SHA1(dac8c281a5e9a6c4b60197e6676f3727264ee420) )
+	ROM_LOAD32_WORD("mpr-16525.ic18", 0x800000, 0x200000, CRC(fb517521) SHA1(33f5f37ea2e09fc73eed5388b46fdf1fa9e285e6) )
+	ROM_LOAD32_WORD("mpr-16520.ic22", 0x800002, 0x200000, CRC(d66bd9bd) SHA1(660171674484375a27595630e5e2d2ad76a06d1a) )
+	ROM_LOAD32_WORD("mpr-16772.ic19", 0xc00000, 0x200000, CRC(770ed912) SHA1(1789f35dd403f73f8be18495a0fe4ad1e6841417) )
+	ROM_LOAD32_WORD("mpr-16771.ic23", 0xc00002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
 
 	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
 	ROM_LOAD32_WORD("mpr-16521.24", 0x000000, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
@@ -3470,7 +3557,7 @@ ROM_START( daytonat )
 	ROM_LOAD32_WORD("mpr-16770.27", 0x400002, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
 
 	ROM_REGION( 0x20000, REGION_CPU4, 0) // Communication program
-        ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
+	ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
 
 	ROM_REGION( 0x80000, REGION_CPU2, 0 ) // Sound program
 	ROM_LOAD16_WORD_SWAP("epr-16720.7", 0x000000, 0x020000, CRC(8e73cffd) SHA1(9933ccc0757e8c86e0adb938d1c89210b26841ea) )
@@ -3497,40 +3584,33 @@ ROM_START( daytonam )
 	ROM_LOAD32_WORD( "maxx.14", 0x040000, 0x020000, CRC(2debfce0) SHA1(b0f578ae68d49a3eebaf9b453a1ad774c8620476) )
 
 	ROM_REGION32_LE( 0x2000000, REGION_USER1, 0 ) // Data
-	ROM_LOAD32_WORD("mpr-16528.10", 0x000000, 0x200000, CRC(9ce591f6) SHA1(e22fc8a70b533f7a6191f5952c581fb8f9627906) )
-	ROM_LOAD32_WORD("mpr-16529.11", 0x000002, 0x200000, CRC(f7095eaf) SHA1(da3c922f950dd730ea348eae12aa1cb69cee9a58) )
-	ROM_LOAD32_WORD("mpr-16808.8",  0x400000, 0x200000, CRC(44f1f5a0) SHA1(343866a6e2187a8ebc17f6727080f9f2f9ac9200) )
-	ROM_LOAD32_WORD("mpr-16809.9",  0x400002, 0x200000, CRC(37a2dd12) SHA1(8192d8698d6bd52ee11cc28917aff5840c447627) )
-	ROM_LOAD32_WORD("epr-16724a.6", 0x800000, 0x080000, CRC(469f10fd) SHA1(7fad3b8d03960e5e1f7a6cb36509238977e00fcc) )
-	ROM_RELOAD     (                0x900000, 0x080000 )
-	ROM_RELOAD     (                0xa00000, 0x080000 )
-	ROM_RELOAD     (                0xb00000, 0x080000 )
-	ROM_RELOAD     (                0xc00000, 0x080000 )
-	ROM_RELOAD     (                0xd00000, 0x080000 )
-	ROM_RELOAD     (                0xe00000, 0x080000 )
-	ROM_RELOAD     (                0xf00000, 0x080000 )
-	ROM_LOAD32_WORD("epr-16725a.7", 0x800002, 0x080000, CRC(ba0df8db) SHA1(d0c5581c56500b5266cab8e8151db24fcbdea0d7) )
-	ROM_RELOAD     (                0x900002, 0x080000 )
-	ROM_RELOAD     (                0xa00002, 0x080000 )
-	ROM_RELOAD     (                0xb00002, 0x080000 )
-	ROM_RELOAD     (                0xc00002, 0x080000 )
-	ROM_RELOAD     (                0xd00002, 0x080000 )
-	ROM_RELOAD     (                0xe00002, 0x080000 )
-	ROM_RELOAD     (                0xf00002, 0x080000 )
+	ROM_LOAD32_WORD("mpr-16528.10",   0x000000, 0x200000, CRC(9ce591f6) SHA1(e22fc8a70b533f7a6191f5952c581fb8f9627906) )
+	ROM_LOAD32_WORD("mpr-16529.11",   0x000002, 0x200000, CRC(f7095eaf) SHA1(da3c922f950dd730ea348eae12aa1cb69cee9a58) )
+	ROM_LOAD32_WORD("mpr-16808.8",    0x400000, 0x200000, CRC(44f1f5a0) SHA1(343866a6e2187a8ebc17f6727080f9f2f9ac9200) )
+	ROM_LOAD32_WORD("mpr-16809.9",    0x400002, 0x200000, CRC(37a2dd12) SHA1(8192d8698d6bd52ee11cc28917aff5840c447627) )
+	ROM_LOAD32_WORD("epr-16724a.6",   0x800000, 0x080000, CRC(469f10fd) SHA1(7fad3b8d03960e5e1f7a6cb36509238977e00fcc) )
+	ROM_LOAD32_WORD("epr-16725a.7",   0x800002, 0x080000, CRC(ba0df8db) SHA1(d0c5581c56500b5266cab8e8151db24fcbdea0d7) )
+	ROM_COPY( REGION_USER1, 0x800000, 0x900000, 0x100000 ) // rgn,srcoffset,offset,length.
+	ROM_COPY( REGION_USER1, 0x800000, 0xa00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xb00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xc00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xd00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xe00000, 0x100000 )
+	ROM_COPY( REGION_USER1, 0x800000, 0xf00000, 0x100000 )
 
-	ROM_REGION( 0x400000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
-	ROM_LOAD32_WORD("mpr-16537.28", 0x000000, 0x100000, CRC(44ce6834) SHA1(61b7ee8f9667683bb723bb930945e550ba84daa4) )
-	ROM_LOAD32_WORD("mpr-16536.29", 0x000002, 0x100000, CRC(adea6e68) SHA1(fd9065ea1a19791e813ec163525c072a2e985e61) )
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
+	ROM_LOAD32_WORD("mpr-16537.ic28", 0x000000, 0x200000, CRC(36b7c35a) SHA1(b32fd1d3fc8983fb5f2a7b236b665a8c9b52769f) )
+	ROM_LOAD32_WORD("mpr-16536.ic29", 0x000002, 0x200000, CRC(6d6afed9) SHA1(2018468d7d849854b3d0cfbcd217317e2fc93555) )
 
 	ROM_REGION( 0x1000000, REGION_USER2, 0 ) // Models
-	ROM_LOAD32_WORD("mpr-16523.16", 0x000000, 0x200000, CRC(2f484d42) SHA1(0b83a3fc92b7d913a14cfb01d688c63555c17c41) )
-	ROM_LOAD32_WORD("mpr-16518.20", 0x000002, 0x200000, CRC(df683bf7) SHA1(16afe5029591f3536b5b75d9cf50a34d0ea72c3d) )
-	ROM_LOAD32_WORD("mpr-16524.17", 0x400000, 0x100000, CRC(fd5ce5e7) SHA1(b33098977b6fc980e3f21096f96745199a2155a9) )
-	ROM_LOAD32_WORD("mpr-16519.21", 0x400002, 0x100000, CRC(5348d519) SHA1(b0fa271e6d350ac5112a258bb9c0fa569e05c739) )
-	ROM_LOAD32_WORD("mpr-16525.18", 0x600000, 0x100000, CRC(04d56b09) SHA1(62d28ba02cdcc5de89b558ea32ac92aca95d1ff8) )
-	ROM_LOAD32_WORD("mpr-16520.22", 0x600002, 0x100000, CRC(937f390b) SHA1(e8fe943a2824101d0a37dada5103daa1009a531d) )
-	ROM_LOAD32_WORD("mpr-16772.19", 0x800000, 0x200000, CRC(770ed912) SHA1(1789f35dd403f73f8be18495a0fe4ad1e6841417) )
-	ROM_LOAD32_WORD("mpr-16771.23", 0x800002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
+	ROM_LOAD32_WORD("mpr-16523.ic16", 0x000000, 0x200000, CRC(2f484d42) SHA1(0b83a3fc92b7d913a14cfb01d688c63555c17c41) )
+	ROM_LOAD32_WORD("mpr-16518.ic20", 0x000002, 0x200000, CRC(df683bf7) SHA1(16afe5029591f3536b5b75d9cf50a34d0ea72c3d) )
+	ROM_LOAD32_WORD("mpr-16524.ic17", 0x400000, 0x200000, CRC(34658bd7) SHA1(71b47626ffe5b26d1140afe1b830a9a2be86c88f) )
+	ROM_LOAD32_WORD("mpr-16519.ic21", 0x400002, 0x200000, CRC(facd1c81) SHA1(dac8c281a5e9a6c4b60197e6676f3727264ee420) )
+	ROM_LOAD32_WORD("mpr-16525.ic18", 0x800000, 0x200000, CRC(fb517521) SHA1(33f5f37ea2e09fc73eed5388b46fdf1fa9e285e6) )
+	ROM_LOAD32_WORD("mpr-16520.ic22", 0x800002, 0x200000, CRC(d66bd9bd) SHA1(660171674484375a27595630e5e2d2ad76a06d1a) )
+	ROM_LOAD32_WORD("mpr-16772.ic19", 0xc00000, 0x200000, CRC(770ed912) SHA1(1789f35dd403f73f8be18495a0fe4ad1e6841417) )
+	ROM_LOAD32_WORD("mpr-16771.ic23", 0xc00002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
 
 	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
 	ROM_LOAD32_WORD("mpr-16521.24", 0x000000, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
@@ -3539,7 +3619,7 @@ ROM_START( daytonam )
 	ROM_LOAD32_WORD("mpr-16770.27", 0x400002, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
 
 	ROM_REGION( 0x20000, REGION_CPU4, 0) // Communication program
-        ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
+	ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
 
 	ROM_REGION( 0x80000, REGION_CPU2, 0 ) // Sound program
 	ROM_LOAD16_WORD_SWAP("epr-16720.7", 0x000000, 0x020000, CRC(8e73cffd) SHA1(9933ccc0757e8c86e0adb938d1c89210b26841ea) )
@@ -3574,7 +3654,7 @@ ROM_START( vcop )
 	ROM_LOAD32_WORD( "epr-17168a.006", 0x800000, 0x080000, CRC(59091a37) SHA1(14591c7015aaf126755be584aa94c04e6de222fa) )
 	ROM_LOAD32_WORD( "epr-17169a.007", 0x800002, 0x080000, CRC(0495808d) SHA1(5b86a9a68c2b52f942aa8d858ee7a491f546a921) )
 
-	ROM_REGION( 0x400000, REGION_CPU3, ROMREGION_ERASE00 ) // TGP program
+	ROM_REGION( 0x800000, REGION_CPU3, ROMREGION_ERASE00 ) // TGP program
 
 	ROM_REGION( 0x1000000, REGION_USER2, 0 ) // Models
 	ROM_LOAD32_WORD( "mpr-17159.016", 0x000000, 0x200000, CRC(e218727d) SHA1(1458d01d49936a0b8d497b62ff9ea940ca753b37) )
@@ -3617,7 +3697,7 @@ ROM_START( desert )
 	ROM_LOAD32_WORD("epr-16978.6",  0x800000, 0x080000, CRC(38b3e574) SHA1(a1133df608b0fbb9c53bbeb29138650c87845d2c) )
 	ROM_LOAD32_WORD("epr-16979.7",  0x800002, 0x080000, CRC(c314eb8b) SHA1(0c851dedd5c42b026195faed7d028924698a8b27) )
 
-	ROM_REGION( 0x400000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
+	ROM_REGION( 0x800000, REGION_CPU3, 0 ) // TGP program? (COPRO socket)
 	ROM_LOAD32_WORD("epr-16981.28", 0x000000, 0x080000, CRC(ae847571) SHA1(32d0f9e685667ae9fddacea0b9f4ad6fb3a6fdad) )
 	ROM_LOAD32_WORD("epr-16980.29", 0x000002, 0x080000, CRC(5239b864) SHA1(e889556e0f1ea80de52afff563b0923f87cef7ab) )
 
@@ -3716,6 +3796,7 @@ static DRIVER_INIT( doa )
 
 // Model 2 (TGPs, Model 1 sound board)
 GAME( 1993, daytona,         0, model2o, daytona, daytona, ROT0, "Sega", "Daytona USA (Japan)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, daytonas,  daytona, model2o, daytona, daytona, ROT0, "Sega", "Daytona USA (With Saturn Adverts)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1993, daytonat,  daytona, model2o, daytona, 0, ROT0, "Sega", "Daytona USA (Japan, Turbo hack)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1993, daytonam,  daytona, model2o, daytona, daytonam, ROT0, "Sega", "Daytona USA (Japan, To The MAXX)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1994, desert,          0, model2o, desert, 0, ROT0, "Sega/Martin Marietta", "Desert Tank", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
@@ -3723,6 +3804,7 @@ GAME( 1994, vcop,            0, model2o, daytona, 0, ROT0, "Sega", "Virtua Cop",
 
 // Model 2A-CRX (TGPs, SCSP sound board)
 GAME( 1995, manxtt,          0, model2a, model2, 0, ROT0, "Sega", "Manx TT Superbike", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
+GAME( 1995, motoraid,        0, model2a, model2, 0, ROT0, "Sega", "Motoraid", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1995, srallyc,         0, model2a, model2, 0, ROT0, "Sega", "Sega Rally Championship", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1995, vf2,             0, model2a, model2, 0, ROT0, "Sega", "Virtua Fighter 2 (ver 2.1)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1995, vf2b,          vf2, model2a, model2, 0, ROT0, "Sega", "Virtua Fighter 2 (ver B)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )

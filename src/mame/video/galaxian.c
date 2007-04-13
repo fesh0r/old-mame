@@ -1077,7 +1077,7 @@ VIDEO_START( dambustr )
 	draw_bullets = dambustr_draw_bullets;
 
 	/* allocate the temporary bitmap for the background priority */
-	dambustr_tmpbitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
+	dambustr_tmpbitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
 
 	/* make a copy of the tilemap to emulate background priority */
 	dambustr_videoram2 = auto_malloc(0x0400);
@@ -1802,8 +1802,8 @@ void galaxian_init_stars(int colors_offset)
 
 	galaxian_stars_on = 0;
 	stars_blink_state = 0;
-	stars_blink_timer = timer_alloc(stars_blink_callback);
-	stars_scroll_timer = timer_alloc(stars_scroll_callback);
+	stars_blink_timer = mame_timer_alloc(stars_blink_callback);
+	stars_scroll_timer = mame_timer_alloc(stars_scroll_callback);
 	timer_adjusted = 0;
 	stars_colors_start = colors_offset;
 
@@ -2101,9 +2101,9 @@ static void start_stars_blink_timer(double ra, double rb, double c)
 {
 	/* calculate the period using the formula given in the 555 datasheet */
 
-	double period = 0.693 * (ra + 2.0 * rb) * c;
+	int period_in_ms = 693 * (ra + 2.0 * rb) * c;
 
-	timer_adjust(stars_blink_timer, TIME_IN_SEC(period), 0, TIME_IN_SEC(period));
+	mame_timer_adjust(stars_blink_timer, MAME_TIME_IN_MSEC(period_in_ms), 0, MAME_TIME_IN_MSEC(period_in_ms));
 }
 
 
@@ -2117,7 +2117,7 @@ static void stars_scroll_callback(int param)
 
 static void start_stars_scroll_timer()
 {
-	timer_adjust(stars_scroll_timer, TIME_IN_HZ(Machine->screen[0].refresh), 0, TIME_IN_HZ(Machine->screen[0].refresh));
+	mame_timer_adjust(stars_scroll_timer, video_screen_get_frame_period(0), 0, video_screen_get_frame_period(0));
 }
 
 
@@ -2287,7 +2287,7 @@ VIDEO_UPDATE( dambustr )
 	}
 
 	/* save the background for drawing it again later, if background has priority over characters */
-	copybitmap(dambustr_tmpbitmap, bitmap, 0, 0, 0, 0, &Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+	copybitmap(dambustr_tmpbitmap, bitmap, 0, 0, 0, 0, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
 
 	tilemap_draw(bitmap, 0, bg_tilemap, 0, 0);
 

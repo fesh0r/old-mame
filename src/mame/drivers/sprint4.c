@@ -5,6 +5,7 @@ Atari Sprint 4 driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "audio/sprint4.h"
 
 #define MASTER_CLOCK    12096000
 
@@ -25,22 +26,42 @@ extern int sprint4_collision[4];
 extern WRITE8_HANDLER( sprint4_video_ram_w );
 
 static int da_latch;
-static int steer_dir[4];
-static int steer_flag[4];
+
+static int steer_FF1[4];
+static int steer_FF2[4];
+
 static int gear[4];
+
+
+static UINT32 get_lever(void* param)
+{
+	int n = (int) param;
+
+	return 4 * gear[n] > da_latch;
+}
+
+
+static UINT32 get_wheel(void* param)
+{
+	int n = (int) param;
+
+	return 8 * steer_FF1[n] + 8 * steer_FF2[n] > da_latch;
+}
 
 
 static UINT32 get_collision(void *param)
 {
-	return sprint4_collision[(int) param];
+	int n = (int) param;
+
+	return sprint4_collision[n];
 }
 
 
-static void input_callback(int dummy)
+static void nmi_callback(int scanline)
 {
 	static UINT8 last_wheel[4];
 
-	/* handle steering wheels and gear shift levers */
+	/* MAME updates controls only once per frame but the game checks them on every NMI */
 
 	UINT8 wheel[4] =
 	{
@@ -49,15 +70,17 @@ static void input_callback(int dummy)
 		readinputportbytag("WHEEL3"),
 		readinputportbytag("WHEEL4")
 	};
-	UINT8 gear[4] =
+	UINT8 lever[4] =
 	{
-		readinputportbytag("GEAR1"),
-		readinputportbytag("GEAR2"),
-		readinputportbytag("GEAR3"),
-		readinputportbytag("GEAR4")
+		readinputportbytag("LEVER1"),
+		readinputportbytag("LEVER2"),
+		readinputportbytag("LEVER3"),
+		readinputportbytag("LEVER4")
 	};
 
 	int i;
+
+	/* emulation of steering wheels isn't very accurate */
 
 	for (i = 0; i < 4; i++)
 	{
@@ -65,33 +88,26 @@ static void input_callback(int dummy)
 
 		if (delta < 0)
 		{
-			steer_dir[i] = 0;
+			steer_FF2[i] = 0;
 		}
 		if (delta > 0)
 		{
-			steer_dir[i] = 1;
+			steer_FF2[i] = 1;
 		}
 
-		steer_flag[i] = last_wheel[i] & 1;
+		steer_FF1[i] = (wheel[i] >> 4) & 1;
 
-		switch (gear[i])
-		{
-		case 1: gear[i] = 1; break;
-		case 2: gear[i] = 2; break;
-		case 4: gear[i] = 3; break;
-		case 8: gear[i] = 4; break;
-		}
+		if (lever[i] & 1) { gear[i] = 1; }
+		if (lever[i] & 2) { gear[i] = 2; }
+		if (lever[i] & 4) { gear[i] = 3; }
+		if (lever[i] & 8) { gear[i] = 4; }
 
-		last_wheel[i] += delta;
+		last_wheel[i] = wheel[i];
 	}
-}
 
-
-static void nmi_callback(int scanline)
-{
 	scanline += 64;
 
-	if (scanline >= 262)
+	if (scanline >= VTOTAL)
 	{
 		scanline = 32;
 	}
@@ -105,15 +121,23 @@ static void nmi_callback(int scanline)
 		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 
-	timer_set(cpu_getscanlinetime(scanline), scanline, nmi_callback);
+	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, nmi_callback);
 }
 
 
 static MACHINE_RESET( sprint4 )
 {
-	timer_set(cpu_getscanlinetime(32), 32, nmi_callback);
+	mame_timer_set(video_screen_get_time_until_pos(0, 32, 0), 32, nmi_callback);
 
-	timer_pulse(TIME_IN_HZ(60), 0, input_callback);
+	memset(steer_FF1, 0, sizeof steer_FF1);
+	memset(steer_FF2, 0, sizeof steer_FF2);
+
+	gear[0] = 1;
+	gear[1] = 1;
+	gear[2] = 1;
+	gear[3] = 1;
+
+	da_latch = 0;
 }
 
 
@@ -125,23 +149,8 @@ static READ8_HANDLER( sprint4_wram_r )
 
 static READ8_HANDLER( sprint4_analog_r )
 {
-	int voltage;
-
-	int n = (offset >> 1) & 3;
-
-	if (offset & 1)
-	{
-		voltage = 4 * gear[n];
-	}
-	else
-	{
-		voltage = 8 * steer_flag[n] + 8 * steer_dir[n];
-	}
-
-	return (voltage > da_latch) ? 0x80 : 0;
+	return (readinputportbytag("ANALOG") << (~offset & 7)) & 0x80;
 }
-
-
 static READ8_HANDLER( sprint4_coin_r )
 {
 	return (readinputportbytag("COIN") << (~offset & 7)) & 0x80;
@@ -188,21 +197,41 @@ static WRITE8_HANDLER( sprint4_lockout_w )
 }
 
 
-static WRITE8_HANDLER( sprint4_screech_1_w ) { /* offset & 1 */ }
-static WRITE8_HANDLER( sprint4_screech_2_w ) { /* offset & 1 */ }
-static WRITE8_HANDLER( sprint4_screech_3_w ) { /* offset & 1 */ }
-static WRITE8_HANDLER( sprint4_screech_4_w ) { /* offset & 1 */ }
+static WRITE8_HANDLER( sprint4_screech_1_w )
+{
+	discrete_sound_w(SPRINT4_SCREECH_EN_1, offset & 1);
+}
+
+
+static WRITE8_HANDLER( sprint4_screech_2_w )
+{
+	discrete_sound_w(SPRINT4_SCREECH_EN_2, offset & 1);
+}
+
+
+static WRITE8_HANDLER( sprint4_screech_3_w )
+{
+	discrete_sound_w(SPRINT4_SCREECH_EN_3, offset & 1);
+}
+
+
+static WRITE8_HANDLER( sprint4_screech_4_w )
+{
+	discrete_sound_w(SPRINT4_SCREECH_EN_4, offset & 1);
+}
+
+
 
 
 static WRITE8_HANDLER( sprint4_bang_w )
 {
-	/* data & 15 */
+	discrete_sound_w(SPRINT4_BANG_DATA, data & 0x0f);
 }
 
 
 static WRITE8_HANDLER( sprint4_attract_w )
 {
-	/* data & 1 */
+	discrete_sound_w(SPRINT4_ATTRACT_EN, data & 1);
 }
 
 
@@ -213,24 +242,24 @@ static ADDRESS_MAP_START( sprint4_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0080, 0x00ff) AM_MIRROR(0x700) AM_READWRITE(sprint4_wram_r, sprint4_wram_w)
 	AM_RANGE(0x0800, 0x0bff) AM_MIRROR(0x400) AM_READWRITE(MRA8_RAM, sprint4_video_ram_w) AM_BASE(&videoram)
 
-	AM_RANGE(0x0000, 0x001f) AM_READ(sprint4_analog_r)
-	AM_RANGE(0x0020, 0x003f) AM_READ(sprint4_coin_r)
-	AM_RANGE(0x0040, 0x005f) AM_READ(sprint4_collision_r)
-	AM_RANGE(0x0060, 0x007f) AM_READ(sprint4_options_r)
+	AM_RANGE(0x0000, 0x0007) AM_MIRROR(0x718) AM_READ(sprint4_analog_r)
+	AM_RANGE(0x0020, 0x0027) AM_MIRROR(0x718) AM_READ(sprint4_coin_r)
+	AM_RANGE(0x0040, 0x0047) AM_MIRROR(0x718) AM_READ(sprint4_collision_r)
+	AM_RANGE(0x0060, 0x0063) AM_MIRROR(0x71c) AM_READ(sprint4_options_r)
+
 	AM_RANGE(0x1000, 0x17ff) AM_READ(input_port_0_r)
 	AM_RANGE(0x1800, 0x1fff) AM_READ(input_port_1_r)
 
-	AM_RANGE(0x0000, 0x001f) AM_WRITE(sprint4_attract_w)
-	AM_RANGE(0x0020, 0x003f) AM_WRITE(sprint4_collision_reset_w)
-	AM_RANGE(0x0040, 0x0041) AM_WRITE(sprint4_da_latch_w)
-	AM_RANGE(0x0042, 0x0043) AM_WRITE(sprint4_bang_w)
-	AM_RANGE(0x0044, 0x0045) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x0046, 0x0047) AM_WRITE(MWA8_NOP) /* SPARE */
-	AM_RANGE(0x0060, 0x0067) AM_WRITE(sprint4_lamp_w)
-	AM_RANGE(0x0068, 0x0069) AM_WRITE(sprint4_screech_1_w)
-	AM_RANGE(0x006a, 0x006b) AM_WRITE(sprint4_screech_2_w)
-	AM_RANGE(0x006c, 0x006d) AM_WRITE(sprint4_screech_3_w)
-	AM_RANGE(0x006e, 0x006f) AM_WRITE(sprint4_screech_4_w)
+	AM_RANGE(0x0000, 0x0000) AM_MIRROR(0x71f) AM_WRITE(sprint4_attract_w)
+	AM_RANGE(0x0020, 0x0027) AM_MIRROR(0x718) AM_WRITE(sprint4_collision_reset_w)
+	AM_RANGE(0x0040, 0x0041) AM_MIRROR(0x718) AM_WRITE(sprint4_da_latch_w)
+	AM_RANGE(0x0042, 0x0043) AM_MIRROR(0x718) AM_WRITE(sprint4_bang_w)
+	AM_RANGE(0x0044, 0x0045) AM_MIRROR(0x718) AM_WRITE(watchdog_reset_w)
+	AM_RANGE(0x0060, 0x0067) AM_MIRROR(0x710) AM_WRITE(sprint4_lamp_w)
+	AM_RANGE(0x0068, 0x0069) AM_MIRROR(0x710) AM_WRITE(sprint4_screech_1_w)
+	AM_RANGE(0x006a, 0x006b) AM_MIRROR(0x710) AM_WRITE(sprint4_screech_2_w)
+	AM_RANGE(0x006c, 0x006d) AM_MIRROR(0x710) AM_WRITE(sprint4_screech_3_w)
+	AM_RANGE(0x006e, 0x006f) AM_MIRROR(0x710) AM_WRITE(sprint4_screech_4_w)
 
 	AM_RANGE(0x2000, 0x27ff) AM_NOP /* diagnostic ROM */
 	AM_RANGE(0x2800, 0x3fff) AM_ROM
@@ -285,41 +314,63 @@ INPUT_PORTS_START( sprint4 )
 	PORT_DIPSETTING(    0xd0, "120 seconds" )
 	PORT_DIPSETTING(    0xe0, "150 seconds" )
 
+	PORT_START_TAG("ANALOG")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, 0)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, 1)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, 1)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, 2)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, 2)
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, 3)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, 3)
+
 	PORT_START_TAG("WHEEL1")
-	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(1) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(16) PORT_PLAYER(1)
 
 	PORT_START_TAG("WHEEL2")
-	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(1) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(16) PORT_PLAYER(2)
 
 	PORT_START_TAG("WHEEL3")
-	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(1) PORT_PLAYER(3)
+	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(16) PORT_PLAYER(3)
 
 	PORT_START_TAG("WHEEL4")
-	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(1) PORT_PLAYER(4)
+	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(16) PORT_PLAYER(4)
 
-	PORT_START_TAG("GEAR1")
+	PORT_START_TAG("LEVER1")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("Player 1 Gear 1") PORT_CODE(KEYCODE_Z) PORT_PLAYER(1)
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_NAME("Player 1 Gear 2") PORT_CODE(KEYCODE_X) PORT_PLAYER(1)
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_NAME("Player 1 Gear 3") PORT_CODE(KEYCODE_C) PORT_PLAYER(1)
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_BUTTON5 ) PORT_NAME("Player 1 Gear 4") PORT_CODE(KEYCODE_V) PORT_PLAYER(1)
 
-	PORT_START_TAG("GEAR2")
+	PORT_START_TAG("LEVER2")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("Player 2 Gear 1") PORT_CODE(KEYCODE_Q) PORT_PLAYER(2)
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_NAME("Player 2 Gear 2") PORT_CODE(KEYCODE_W) PORT_PLAYER(2)
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_NAME("Player 2 Gear 3") PORT_CODE(KEYCODE_E) PORT_PLAYER(2)
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_BUTTON5 ) PORT_NAME("Player 2 Gear 4") PORT_CODE(KEYCODE_R) PORT_PLAYER(2)
 
-	PORT_START_TAG("GEAR3")
+	PORT_START_TAG("LEVER3")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("Player 3 Gear 1") PORT_CODE(KEYCODE_Y) PORT_PLAYER(3)
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_NAME("Player 3 Gear 2") PORT_CODE(KEYCODE_U) PORT_PLAYER(3)
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_NAME("Player 3 Gear 3") PORT_CODE(KEYCODE_I) PORT_PLAYER(3)
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_BUTTON5 ) PORT_NAME("Player 3 Gear 4") PORT_CODE(KEYCODE_O) PORT_PLAYER(3)
 
-	PORT_START_TAG("GEAR4")
+	PORT_START_TAG("LEVER4")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("Player 4 Gear 1") PORT_PLAYER(3)
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_NAME("Player 4 Gear 2") PORT_PLAYER(3)
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_NAME("Player 4 Gear 3") PORT_PLAYER(3)
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_BUTTON5 ) PORT_NAME("Player 4 Gear 4") PORT_PLAYER(3)
+
+	PORT_START_TAG("MOTOR1")
+	PORT_ADJUSTER( 35, "Motor 1 RPM" )
+
+	PORT_START_TAG("MOTOR2")
+	PORT_ADJUSTER( 40, "Motor 2 RPM" )
+
+	PORT_START_TAG("MOTOR3")
+	PORT_ADJUSTER( 35, "Motor 3 RPM" )
+
+	PORT_START_TAG("MOTOR4")
+	PORT_ADJUSTER( 40, "Motor 4 RPM" )
 
 INPUT_PORTS_END
 
@@ -357,16 +408,13 @@ static MACHINE_DRIVER_START( sprint4 )
 	MDRV_CPU_ADD(M6502, PIXEL_CLOCK / 8)
 	MDRV_CPU_PROGRAM_MAP(sprint4_cpu_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE((double) PIXEL_CLOCK / HTOTAL / VTOTAL)
-	MDRV_SCREEN_VBLANK_TIME((double) HTOTAL * (VTOTAL - 224) / PIXEL_CLOCK)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 	MDRV_MACHINE_RESET(sprint4)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(HTOTAL, VTOTAL)
-	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 223)
+	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, 0, 256, VTOTAL, 0, 224)
 	MDRV_GFXDECODE(sprint4_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(6)
 	MDRV_COLORTABLE_LENGTH(10)
@@ -375,6 +423,14 @@ static MACHINE_DRIVER_START( sprint4 )
 	MDRV_VIDEO_START(sprint4)
 	MDRV_VIDEO_UPDATE(sprint4)
 	MDRV_VIDEO_EOF(sprint4)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+
+	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_CONFIG(sprint4_discrete_interface)
+	MDRV_SOUND_ROUTE(0, "left", 1.0)
+	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
 MACHINE_DRIVER_END
 
@@ -419,5 +475,5 @@ ROM_START( sprint4a )
 ROM_END
 
 
-GAME( 1977, sprint4,  0,       sprint4,  sprint4,  0, ROT180, "Atari", "Sprint 4 (set 1)", GAME_NO_SOUND ) /* large cars */
-GAME( 1977, sprint4a, sprint4, sprint4,  sprint4,  0, ROT180, "Atari", "Sprint 4 (set 2)", GAME_NO_SOUND ) /* small cars */
+GAME( 1977, sprint4,  0,       sprint4,  sprint4,  0, ROT180, "Atari", "Sprint 4 (set 1)", 0 ) /* large cars */
+GAME( 1977, sprint4a, sprint4, sprint4,  sprint4,  0, ROT180, "Atari", "Sprint 4 (set 2)", 0 ) /* small cars */

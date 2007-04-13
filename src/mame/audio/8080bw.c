@@ -2,6 +2,7 @@
  */
 #include "driver.h"
 #include "8080bw.h"
+#include "mw8080bw.h"
 #include "sound/samples.h"
 #include "sound/sn76477.h"
 #include "sound/discrete.h"
@@ -75,6 +76,8 @@ MACHINE_RESET( sstrangr )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x42, 0x42, 0, 0, invadpt2_sh_port_1_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x44, 0x44, 0, 0, invadpt2_sh_port_2_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -103,6 +106,8 @@ MACHINE_RESET( spcewars )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x03, 0x03, 0, 0, spcewars_sh_port3_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, invadpt2_sh_port_2_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -172,6 +177,8 @@ MACHINE_RESET( lrescue )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x03, 0x03, 0, 0, lrescue_sh_port3_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, lrescue_sh_port5_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -216,6 +223,8 @@ MACHINE_RESET( ballbomb )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x03, 0x03, 0, 0, ballbomb_sh_port3_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, ballbomb_sh_port5_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -301,6 +310,8 @@ MACHINE_RESET( indianbt )
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x03, 0x03, 0, 0, indianbt_sh_port3_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, indianbt_sh_port5_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, indianbt_sh_port7_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -341,29 +352,29 @@ static const discrete_op_amp_filt_info polaris_noh_op_amp_filt_info =
 	{560, RES_K(6.8), RES_K(1002), RES_M(2.2), RES_M(1), CAP_U(.001), CAP_U(.001), CAP_U(.01), 0, 12, 0};
 
 static const discrete_op_amp_osc_info polaris_sonar_vco_info =
-	{DISC_OP_AMP_OSCILLATOR_VCO_1 | DISC_OP_AMP_IS_NORTON, RES_M(1), RES_K(680), RES_K(680), RES_M(1), RES_M(1), RES_K(120), RES_M(1), 0, CAP_P(180), 12};
+	{DISC_OP_AMP_OSCILLATOR_VCO_1 | DISC_OP_AMP_IS_NORTON | DISC_OP_AMP_OSCILLATOR_OUT_CAP, RES_M(1), RES_K(680), RES_K(680), RES_M(1), RES_M(1), RES_K(120), RES_M(1), 0, CAP_P(180), 12};
 
 static const discrete_op_amp_tvca_info polaris_sonar_tvca_info =
-	{ RES_M(2.7), RES_K(680), 0, RES_K(680), RES_K(1), RES_K(120), RES_K(560), 0, 0, 0, 0, CAP_U(1), 0, 0, 12, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_TRG1, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0_INV, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE};
+	{ RES_M(2.7), RES_K(680), 0, RES_K(680), RES_K(1), RES_K(120), RES_K(560), 0, 0, 0, 0, CAP_U(1), 0, 0, 12, 12, 12, 12, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_TRG1, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0_INV, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE};
 
 static const discrete_op_amp_osc_info polaris_boat_mod_info =
-	{DISC_OP_AMP_OSCILLATOR_1 | DISC_OP_AMP_IS_NORTON, RES_M(1), RES_K(10), RES_K(100), RES_K(120), RES_M(1), 0, 0, 0, CAP_U(.22), 12};
+	{DISC_OP_AMP_OSCILLATOR_1 | DISC_OP_AMP_IS_NORTON | DISC_OP_AMP_OSCILLATOR_OUT_CAP, RES_M(1), RES_K(10), RES_K(100), RES_K(120), RES_M(1), 0, 0, 0, CAP_U(.22), 12};
 
 static const discrete_op_amp_osc_info polaris_boat_vco_info =
-	{DISC_OP_AMP_OSCILLATOR_VCO_1 | DISC_OP_AMP_IS_NORTON, RES_M(1), RES_K(680), RES_K(680), RES_M(1), RES_M(1), 0, 0, 0, CAP_P(180), 12};
+	{DISC_OP_AMP_OSCILLATOR_VCO_1 | DISC_OP_AMP_IS_NORTON | DISC_OP_AMP_OSCILLATOR_OUT_CAP, RES_M(1), RES_K(680), RES_K(680), RES_M(1), RES_M(1), 0, 0, 0, CAP_P(180), 12};
 
 static const discrete_op_amp_tvca_info polaris_shot_tvca_info =
-	{ RES_M(2.7), RES_K(680), RES_K(680), RES_K(680), RES_K(1), 0, RES_K(680), 0, 0, 0, 0, CAP_U(1), 0, 0, 12, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0_INV, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE};
+	{ RES_M(2.7), RES_K(680), RES_K(680), RES_K(680), RES_K(1), 0, RES_K(680), 0, 0, 0, 0, CAP_U(1), 0, 0, 12, 12, 12, 12, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0_INV, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE};
 
 static const discrete_op_amp_tvca_info polaris_shiphit_tvca_info =
-	{ RES_M(2.7), RES_K(680), RES_K(680), RES_K(680), RES_K(1), 0, RES_K(680), 0, 0, 0, 0, CAP_U(1), 0, 0, 12, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0_INV, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE};
+	{ RES_M(2.7), RES_K(680), RES_K(680), RES_K(680), RES_K(1), 0, RES_K(680), 0, 0, 0, 0, CAP_U(1), 0, 0, 12, 12, 12, 12, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0_INV, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE};
 
 static const discrete_op_amp_tvca_info polaris_exp_tvca_info =
-	{ RES_M(2.7), RES_K(680), 0, RES_K(680), RES_K(1), 0, RES_K(680), 0, 0, 0, 0, CAP_U(.33), 0, 0, 12, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE};
+	{ RES_M(2.7), RES_K(680), 0, RES_K(680), RES_K(1), 0, RES_K(680), 0, 0, 0, 0, CAP_U(.33), 0, 0, 12, 12, 12, 12, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE};
 
 // The schematic shows a .22uF cap but Guru's board has a 1uF
 static const discrete_op_amp_tvca_info polaris_hit_tvca_info =
-	{ RES_M(2.7), RES_K(1360), RES_K(1360), RES_K(680), RES_K(1), 0, RES_K(680), 0, 0, 0, 0, CAP_U(1), 0, 0, 12, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0, DISC_OP_AMP_TRIGGER_FUNCTION_TRG1, DISC_OP_AMP_TRIGGER_FUNCTION_TRG01_NAND, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE};
+	{ RES_M(2.7), RES_K(1360), RES_K(1360), RES_K(680), RES_K(1), 0, RES_K(680), 0, 0, 0, 0, CAP_U(1), 0, 0, 12, 12, 12, 12, DISC_OP_AMP_TRIGGER_FUNCTION_TRG0, DISC_OP_AMP_TRIGGER_FUNCTION_TRG1, DISC_OP_AMP_TRIGGER_FUNCTION_TRG01_NAND, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE, DISC_OP_AMP_TRIGGER_FUNCTION_NONE};
 
 // The schematic shows a 1uF cap but Guru's board has a 2.2uF
 static const discrete_integrate_info polaris_plane_integrate_info =
@@ -371,9 +382,9 @@ static const discrete_integrate_info polaris_plane_integrate_info =
 
 // A bit of a cheat.  The schematic show the cap as 47p, but that makes the frequency too high.
 // Guru's board has a .01 cap, which would make the freq sub-sonic using the other schematic values.
-// I will use 2000p until the proper value can be confirmed.
+// I will use 2000p until the proper values can be confirmed.
 static const discrete_op_amp_osc_info polaris_plane_vco_info =
-	{DISC_OP_AMP_OSCILLATOR_VCO_1 | DISC_OP_AMP_IS_NORTON, RES_M(1), RES_K(680), RES_K(680), RES_M(1), RES_M(1), RES_K(100), RES_K(10), RES_K(100), CAP_U(0.002), 12};
+	{DISC_OP_AMP_OSCILLATOR_VCO_1 | DISC_OP_AMP_IS_NORTON | DISC_OP_AMP_OSCILLATOR_OUT_CAP, RES_M(1), RES_K(680), RES_K(680), RES_M(1), RES_M(1), RES_K(100), RES_K(10), RES_K(100), CAP_U(0.002), 12};
 
 static const discrete_mixer_desc polaris_mixer_vr1_desc =
 	{DISC_MIXER_IS_RESISTOR,
@@ -672,6 +683,8 @@ MACHINE_RESET( polaris )
 	// It sounds better then the actual circuit used.
 	// Probably an unfinished feature.
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, watchdog_reset_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -924,6 +937,8 @@ MACHINE_RESET( schaser )
 	schaser_sh_port3_w(0, 0);
 	schaser_sh_port5_w(0, 0);
 	schaser_effect_555_time_remain = 0;
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -947,6 +962,8 @@ static WRITE8_HANDLER( rollingc_sh_port0_w )
 MACHINE_RESET( rollingc )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x00, 0x00, 0, 0, rollingc_sh_port0_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -1001,6 +1018,8 @@ static WRITE8_HANDLER( invrvnge_sh_port3_w )
 MACHINE_RESET( invrvnge )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x03, 0x03, 0, 0, invrvnge_sh_port3_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -1032,7 +1051,7 @@ static WRITE8_HANDLER( lupin3_sh_port5_w )
 	if (rising_bits & 0x02) sample_start(1, 2, 0);		/* deposit money, start intermission, end game */
 	if (rising_bits & 0x04) sample_start(2, 5, 0);		/* deposit money, start intermission, Slides down rope */
 	if (rising_bits & 0x08) sample_start(3, 0, 0);		/* start intermission, end game */
-	if (rising_bits & 0x10) sample_start(3, 9, 0);		/* Dog barking */
+	//if (rising_bits & 0x10) sample_start(3, 9, 0);        /* Dog barking */
 
 	c8080bw_flip_screen_w(data & 0x20);
 
@@ -1043,6 +1062,8 @@ MACHINE_RESET( lupin3 )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x03, 0x03, 0, 0, lupin3_sh_port3_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, lupin3_sh_port5_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -1079,6 +1100,8 @@ MACHINE_RESET( schasrcv )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x03, 0x03, 0, 0, schasrcv_sh_port3_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, schasrcv_sh_port5_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -1122,6 +1145,8 @@ MACHINE_RESET( yosakdon )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x03, 0x03, 0, 0, yosakdon_sh_port3_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, yosakdon_sh_port5_w);
+
+	machine_reset_mw8080bw(machine);
 }
 
 
@@ -1170,4 +1195,6 @@ MACHINE_RESET( shuttlei )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xfd, 0xfd, 0, 0, shuttlei_sh_portfd_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xfe, 0xfe, 0, 0, shuttlei_sh_portfe_w);
+
+	machine_reset_mw8080bw(machine);
 }

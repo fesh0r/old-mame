@@ -80,6 +80,7 @@
 #include "driver.h"
 #include "8080bw.h"
 #include "mw8080bw.h"
+#include "machine/mb14241.h"
 
 #include "invrvnge.lh"
 
@@ -95,38 +96,36 @@ static ADDRESS_MAP_START( c8080bw_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
-	AM_RANGE(0x03, 0x03) AM_READ(c8080bw_shift_data_r)
+	AM_RANGE(0x03, 0x03) AM_READ(mb14241_0_shift_result_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_0_3, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x00, 0x00) AM_WRITE(c8080bw_shift_amount_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(c8080bw_shift_data_w)
+	AM_RANGE(0x00, 0x00) AM_WRITE(mb14241_0_shift_count_w)
+	AM_RANGE(0x03, 0x03) AM_WRITE(mb14241_0_shift_data_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_2_4, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x02, 0x02) AM_WRITE(c8080bw_shift_amount_w)
-	AM_RANGE(0x04, 0x04) AM_WRITE(c8080bw_shift_data_w)
+	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_count_w)
+	AM_RANGE(0x04, 0x04) AM_WRITE(mb14241_0_shift_data_w)
 ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( 8080bw )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main",8080,2000000)        /* 2 MHz? */
+	MDRV_IMPORT_FROM(mw8080bw_root)
+	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(c8080bw_cpu_map,0)
 	MDRV_CPU_IO_MAP(c8080bw_readport,writeport_2_4)
-	MDRV_CPU_VBLANK_INT(c8080bw_interrupt,2)    /* two interrupts per frame */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 4*8, 32*8-1)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 	MDRV_VIDEO_START(generic_bitmapped)
 	MDRV_VIDEO_UPDATE(8080bw)
+
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
 	/* sound hardware */
 MACHINE_DRIVER_END
@@ -293,9 +292,9 @@ INPUT_PORTS_END
 static ADDRESS_MAP_START( invadpt2_io_map, ADDRESS_SPACE_IO, 8 )
     AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
     AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
-    AM_RANGE(0x02, 0x02) AM_READWRITE(input_port_2_r, c8080bw_shift_amount_w)
-    AM_RANGE(0x03, 0x03) AM_READWRITE(c8080bw_shift_data_r, invadpt2_sh_port_1_w)
-    AM_RANGE(0x04, 0x04) AM_WRITE(c8080bw_shift_data_w)
+    AM_RANGE(0x02, 0x02) AM_READWRITE(input_port_2_r, mb14241_0_shift_count_w)
+    AM_RANGE(0x03, 0x03) AM_READWRITE(mb14241_0_shift_result_r, invadpt2_sh_port_1_w)
+    AM_RANGE(0x04, 0x04) AM_WRITE(mb14241_0_shift_data_w)
     AM_RANGE(0x05, 0x05) AM_WRITE(invadpt2_sh_port_2_w)
     AM_RANGE(0x06, 0x06) AM_WRITE(watchdog_reset_w)
 ADDRESS_MAP_END
@@ -357,12 +356,11 @@ static MACHINE_DRIVER_START( invadpt2 )
     MDRV_CPU_IO_MAP(invadpt2_io_map,0)
 
     /* video hardware */
-    MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(invadpt2)
 
     /* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 MACHINE_DRIVER_END
 
@@ -422,11 +420,8 @@ static MACHINE_DRIVER_START( spcewars )
 	MDRV_CPU_MODIFY("main")
 	MDRV_MACHINE_RESET(spcewars)
 
-	/* video hardware */
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
-
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 	/* extra audio channel */
 	MDRV_SOUND_ADD(SPEAKER, 0)
@@ -490,7 +485,7 @@ static ADDRESS_MAP_START( cosmo_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(c8080bw_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4000, 0x57ff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x5c00, 0x5fff) AM_WRITE(cosmo_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x5c00, 0x5fff) AM_WRITE(MWA8_RAM) AM_BASE(&colorram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cosmo_readport, ADDRESS_SPACE_IO, 8 )
@@ -518,12 +513,11 @@ static MACHINE_DRIVER_START( cosmo )
 	MDRV_CPU_IO_MAP(cosmo_readport, cosmo_writeport)
 
     /* video hardware */
-    MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(cosmo)
 
     /* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 MACHINE_DRIVER_END
 
@@ -692,11 +686,8 @@ static MACHINE_DRIVER_START( invrvnge )
 	MDRV_CPU_MODIFY("main")
 	MDRV_MACHINE_RESET(invrvnge)
 
-	/* video hardware */
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
-
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 MACHINE_DRIVER_END
 
@@ -776,11 +767,8 @@ static MACHINE_DRIVER_START( sstrangr )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
 	MDRV_MACHINE_RESET(sstrangr)
 
-	/* video hardware */
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
-
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 MACHINE_DRIVER_END
 
@@ -865,10 +853,9 @@ static MACHINE_DRIVER_START( sstrngr2 )
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(invadpt2)
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 MACHINE_DRIVER_END
 
@@ -1087,7 +1074,6 @@ static MACHINE_DRIVER_START( lrescue )
 	MDRV_MACHINE_RESET(lrescue)
 
 	/* video hardware */
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(invadpt2)
 
@@ -1271,7 +1257,7 @@ static ADDRESS_MAP_START( rollingc_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 //  AM_RANGE(0x2000, 0x2002) AM_READ(MRA8_RAM)
 //  AM_RANGE(0x2003, 0x2003) AM_READ(hack)
 	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xa000, 0xbfff) AM_READ(schaser_colorram_r)
+	AM_RANGE(0xa000, 0xbfff) AM_MIRROR(0x00e0) AM_READ(MRA8_RAM)
 	AM_RANGE(0xe400, 0xffff) AM_READ(MRA8_RAM)
 ADDRESS_MAP_END
 
@@ -1279,7 +1265,7 @@ static ADDRESS_MAP_START( rollingc_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(c8080bw_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xa000, 0xbfff) AM_WRITE(schaser_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xa000, 0xbfff) AM_MIRROR(0x00e0) AM_WRITE(MWA8_RAM) AM_BASE(&colorram)
 	AM_RANGE(0xe400, 0xffff) AM_WRITE(MWA8_RAM)
 ADDRESS_MAP_END
 
@@ -1341,7 +1327,7 @@ static MACHINE_DRIVER_START( rollingc )
 	MDRV_PALETTE_INIT(invadpt2)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 MACHINE_DRIVER_END
 
@@ -1357,14 +1343,14 @@ static ADDRESS_MAP_START( schaser_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
 	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(schaser_colorram_r)
+	AM_RANGE(0xc000, 0xdfff) AM_MIRROR(0x00e0) AM_READ(MRA8_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( schaser_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(c8080bw_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(schaser_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xc000, 0xdfff) AM_MIRROR(0x00e0) AM_WRITE(MWA8_RAM) AM_BASE(&colorram)
 ADDRESS_MAP_END
 
 INPUT_PORTS_START( schaser )
@@ -1446,7 +1432,6 @@ static MACHINE_DRIVER_START( schaser )
 
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(invadpt2)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 31*8-1, 4*8, 32*8-1)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1522,10 +1507,9 @@ static MACHINE_DRIVER_START( schasrcv )
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(invadpt2)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 31*8-1, 4*8, 32*8-1)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 	MDRV_SOUND_ADD(SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
@@ -1550,9 +1534,9 @@ static READ8_HANDLER( sfl_input_r )
 static ADDRESS_MAP_START( sflush_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_RAM) //?
 	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xa000, 0xbfff) AM_READ(schaser_colorram_r)
+	AM_RANGE(0xa000, 0xbfff) AM_MIRROR(0x00e0) AM_READ(MRA8_RAM)
 	AM_RANGE(0x8008, 0x8008) AM_READ(input_port_2_r)
-	AM_RANGE(0x8009, 0x8009) AM_READ(c8080bw_shift_data_r)
+	AM_RANGE(0x8009, 0x8009) AM_READ(mb14241_0_shift_result_r)
 	AM_RANGE(0x800a, 0x800a) AM_READ(sfl_input_r)
 	AM_RANGE(0x800b, 0x800b) AM_READ(input_port_0_r)
 	AM_RANGE(0xd800, 0xffff) AM_READ(MRA8_ROM)
@@ -1562,12 +1546,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sflush_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x4000, 0x5fff) AM_WRITE(c8080bw_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x8018, 0x8018) AM_WRITE(c8080bw_shift_data_w)
-	AM_RANGE(0x8019, 0x8019) AM_WRITE(c8080bw_shift_amount_w)
+	AM_RANGE(0x8018, 0x8018) AM_WRITE(mb14241_0_shift_data_w)
+	AM_RANGE(0x8019, 0x8019) AM_WRITE(mb14241_0_shift_count_w)
 	AM_RANGE(0x801a, 0x801a) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0x801c, 0x801c) AM_WRITE(MWA8_NOP)
 	AM_RANGE(0x801d, 0x801d) AM_WRITE(MWA8_NOP)
-	AM_RANGE(0xa000, 0xbfff) AM_WRITE(schaser_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xa000, 0xbfff) AM_MIRROR(0x00e0) AM_WRITE(MWA8_RAM) AM_BASE(&colorram)
 	AM_RANGE(0xd800, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
@@ -1583,7 +1567,6 @@ static MACHINE_DRIVER_START( sflush )
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(sflush)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 31*8-1, 4*8, 30*8-1)
 
 MACHINE_DRIVER_END
 
@@ -1676,10 +1659,9 @@ static MACHINE_DRIVER_START( lupin3 )
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(invadpt2)
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 MACHINE_DRIVER_END
 
@@ -1770,13 +1752,12 @@ static MACHINE_DRIVER_START( polaris )
 	MDRV_WATCHDOG_VBLANK_INIT(255)
 
 	MDRV_CPU_IO_MAP(c8080bw_readport,writeport_0_3)
-	MDRV_CPU_VBLANK_INT(polaris_interrupt,2)
+	MDRV_CPU_VBLANK_INT(polaris_interrupt,1)
 	MDRV_MACHINE_RESET(polaris)
 
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(invadpt2)
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -2054,10 +2035,9 @@ static MACHINE_DRIVER_START( ballbomb )
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(invadpt2)
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 MACHINE_DRIVER_END
 
@@ -2131,11 +2111,8 @@ static MACHINE_DRIVER_START( yosakdon )
 	MDRV_CPU_IO_MAP(yosakdon_readport, yosakdon_writeport)
 	MDRV_MACHINE_RESET(yosakdon)
 
-	/* video hardware */
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
-
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 MACHINE_DRIVER_END
 
@@ -2219,9 +2196,9 @@ static READ8_HANDLER(indianbt_r)
 static ADDRESS_MAP_START( indianbt_port, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READ(indianbt_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_0_r)
-	AM_RANGE(0x02, 0x02) AM_READ(input_port_1_r) AM_WRITE(c8080bw_shift_amount_w)
-	AM_RANGE(0x03, 0x03) AM_READ(c8080bw_shift_data_r)
-	AM_RANGE(0x04, 0x04) AM_WRITE(c8080bw_shift_data_w)
+	AM_RANGE(0x02, 0x02) AM_READ(input_port_1_r) AM_WRITE(mb14241_0_shift_count_w)
+	AM_RANGE(0x03, 0x03) AM_READ(mb14241_0_shift_result_r)
+	AM_RANGE(0x04, 0x04) AM_WRITE(mb14241_0_shift_data_w)
 	AM_RANGE(0x06, 0x06) AM_WRITENOP /* sound ? */
 //   ports 3,5,7 (write) are for sound
 
@@ -2238,11 +2215,8 @@ static MACHINE_DRIVER_START( indianbt )
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(indianbt)
 
-	/* video hardware */
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
-
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG(indianbt_discrete_interface)
@@ -2336,12 +2310,12 @@ static MACHINE_DRIVER_START( shuttlei )
 	MDRV_MACHINE_RESET(shuttlei)
 
 	/* video hardware */
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 24*8-1)
+//  MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 24*8-1)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM(invaders_sound)
+	MDRV_IMPORT_FROM(invaders_audio)
 
 MACHINE_DRIVER_END
 
@@ -3108,10 +3082,6 @@ ROM_START( darthvdr )
 ROM_END
 
 
-
-
-MACHINE_DRIVER_EXTERN(invaders);  // Once removed, add back 'static' to driver in mw8080bw.c
-extern const char layout_invaders[];
 
 /* board #        rom       parent    machine   inp       init (overlay/color hardware setup) */
 
