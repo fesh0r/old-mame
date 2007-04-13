@@ -17,10 +17,7 @@
 #include "sound/wavwrite.h"
 #include "video/generic.h"
 #include "render.h"
-
-#ifdef WIN32
-#include "parallel.h"
-#endif
+#include "messopts.h"
 
 #ifdef MAME_DEBUG
 #include "debug/debugcpu.h"
@@ -150,6 +147,14 @@ static struct messtest_command new_command;
 
 static struct messtest_testcase current_testcase;
 
+static const options_entry win_mess_opts[] =
+{
+	{ NULL,							NULL,   OPTION_HEADER,		"WINDOWS MESS SPECIFIC OPTIONS" },
+	{ "newui;nu",                   "1",    OPTION_BOOLEAN,		"use the new MESS UI" },
+	{ "natural;nat",				"0",	OPTION_BOOLEAN,		"specifies whether to use a natural keyboard or not" },
+	{ NULL }
+};
+
 
 
 static char *assemble_software_path(const game_driver *gamedrv, const char *filename)
@@ -166,7 +171,7 @@ static char *assemble_software_path(const game_driver *gamedrv, const char *file
 
 static void dump_screenshot(int write_file)
 {
-	mame_file_error filerr;
+	file_error filerr;
 	mame_file *fp;
 	char buf[128];
 	int is_blank = 0;
@@ -193,7 +198,7 @@ static void dump_screenshot(int write_file)
 						break;
 				}
 
-				video_screen_save_snapshot(fp, scrnum);
+				video_screen_save_snapshot(Machine, fp, scrnum);
 				report_message(MSG_INFO, "Saved screenshot as %s", buf);
 			}
 			else
@@ -270,6 +275,8 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	clock_t begin_time;
 	double real_run_time;
 	char *fullpath = NULL;
+	const char *device_opt;
+	const char *fake_argv[2];
 
 	/* lookup driver */
 	for (driver_num = 0; drivers[driver_num]; driver_num++)
@@ -298,26 +305,37 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	dirtybuffer = NULL;
 
 	/* set up options */
-	memset(&options, 0, sizeof(options));
-	options.skip_disclaimer = 1;
-	options.skip_gameinfo = 1;
-	options.skip_warnings = 1;
-	options.disable_normal_ui = 1;
-	options.ram = current_testcase.ram;
-	options.samplerate = 44100;
-	options.mame_debug = 1;
-	options.brightness = 1.0;
-	options.contrast = 1.0;
-	options.gamma = 1.0;
+	mame_options_init(win_mess_opts);
+	options_set_bool(mame_options(), OPTION_SKIP_GAMEINFO, TRUE);
+	options_set_bool(mame_options(), OPTION_THROTTLE, FALSE);
+	options_set_bool(mame_options(), OPTION_SKIP_WARNINGS, TRUE);
+	if (current_testcase.ram != 0)
+	{
+		options_set_int(mame_options(), OPTION_RAMSIZE, current_testcase.ram);
+	}
+
+	/* ugh... hideous ugly fake arguments */
+	fake_argv[0] = "MESSTEST";
+	fake_argv[1] = drivers[driver_num]->name;
+	options_parse_command_line(mame_options(), ARRAY_LENGTH(fake_argv), (char **) fake_argv);
 
 	/* preload any needed images */
 	while(current_command->command_type == MESSTEST_COMMAND_IMAGE_PRELOAD)
 	{
+		/* get the path */
 		fullpath = assemble_software_path(drivers[driver_num], current_command->u.image_args.filename);
-		options.image_files[options.image_count].name = fullpath;
-		options.image_files[options.image_count].device_type = current_command->u.image_args.device_type;
-		options.image_files[options.image_count].device_index = -1;
-		options.image_count++;
+
+		/* get the option name */
+		device_opt = device_typename(current_command->u.image_args.device_type);
+
+		/* set the option */
+		options_set_string(mame_options(), device_opt, fullpath);
+
+		/* cleanup */
+		free(fullpath);
+		fullpath = NULL;
+
+		/* next command */
 		current_command++;
 	}
 
@@ -367,8 +385,8 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 		results->rc = rc;
 		results->runtime_hash = runtime_hash;
 	}
-	if (fullpath)
-		free(fullpath);
+
+	options_free(mame_options());
 	return rc;
 }
 
@@ -947,7 +965,7 @@ static const struct command_procmap_entry commands[] =
 	{ MESSTEST_COMMAND_END,				command_end }
 };
 
-int osd_update(mame_time emutime)
+void osd_update(int skip_redraw)
 {
 	int i;
 	double time_limit;
@@ -960,14 +978,14 @@ int osd_update(mame_time emutime)
 	if (!seen_first_update)
 	{
 		seen_first_update = TRUE;
-		goto done;
+		return;
 	}
 
 	/* if we have already aborted or completed, our work is done */
 	if ((state == STATE_ABORTED) || (state == STATE_DONE))
 	{
 		mame_schedule_exit(Machine);
-		goto done;
+		return;
 	}
 
 	/* have we hit the time limit? */
@@ -978,7 +996,7 @@ int osd_update(mame_time emutime)
 	{
 		state = STATE_ABORTED;
 		report_message(MSG_FAILURE, "Time limit of %.2f seconds exceeded", time_limit);
-		goto done;
+		return;
 	}
 
 	/* update the runtime hash */
@@ -1015,9 +1033,6 @@ int osd_update(mame_time emutime)
 
 		current_command++;
 	}
-
-done:
-	return FALSE;
 }
 
 

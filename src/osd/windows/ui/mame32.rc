@@ -291,8 +291,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,113,0,0
- PRODUCTVERSION 0,113,0,0
+ FILEVERSION 0,114,0,0
+ PRODUCTVERSION 0,114,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -318,7 +318,7 @@ BEGIN
             VALUE "CompanyName", "MAME Team"
             VALUE "FileDescription", "Multiple Arcade Machine Emulator for Win32"
 #endif
-            VALUE "FileVersion", "0, 113, 0, 0"
+            VALUE "FileVersion", "0, 114, 0, 0"
             VALUE "InternalName", "MAME32"
             VALUE "LegalCopyright", "Copyright 1997-2006 Nicola Salmoria and the MAME team"
 #ifdef MESS
@@ -328,7 +328,7 @@ BEGIN
             VALUE "OriginalFilename", "MAME32.exe\0"
             VALUE "ProductName", "MAME32"
 #endif
-            VALUE "ProductVersion", "0, 113, 0, 0"
+            VALUE "ProductVersion", "0, 114, 0, 0"
         END
     END
     BLOCK "VarFileInfo"
@@ -803,9 +803,6 @@ BEGIN
                     BS_AUTOCHECKBOX | WS_TABSTOP,10,52,96,10,0,HIDC_LOG
     CONTROL         "Sleep when possible",IDC_SLEEP,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,10,64,86,10,0,HIDC_SLEEP
-    CONTROL         "Use RDTSC timing system",IDC_OLD_TIMING,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,10,76,96,10,0,
-                    HIDC_OLD_TIMING
 #ifdef MESS
     CONTROL         "Skip system info",IDC_SKIP_GAME_INFO,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,10,88,96,10,0,

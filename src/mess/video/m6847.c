@@ -1746,16 +1746,6 @@ static void execute_dumpscanline(int ref, int params, const char **param)
  *
  *************************************/
 
-static subseconds_t double_to_subseconds(double d)
-{
-	mame_time t;
-	t = double_to_mame_time(d);
-	assert_always(t.seconds == 0, "double_to_subseconds(): period exceeds one second");
-	return t.subseconds;
-}
-
-
-
 static const UINT8 *find_char(const m6847_variant *v,
 	UINT8 byte, UINT8 attr, int *fg, int *bg)
 {
@@ -1964,7 +1954,7 @@ void m6847_init(const m6847_config *cfg)
 
 #ifdef MAME_DEBUG
 	/* setup debug commands */
-	if (options.mame_debug)
+	if (Machine->debug_mode)
 		debug_console_register_command("m6847_dumpscanline", CMDFLAG_NONE, 0, 0, 0, execute_dumpscanline);
 #endif /* MAME_DEBUG */
 }

@@ -140,23 +140,6 @@ int compute_log2(int val)
 
 
 
-int findextension(const char *extensions, const char *ext)
-{
-	/* special case to allow ext to be in the form '.EXT' */
-	if (*ext == '.')
-		ext++;
-
-	while(*extensions)
-	{
-		if (!mame_stricmp(extensions, ext))
-			return 1;
-		extensions += strlen(extensions) + 1;
-	}
-	return 0;
-}
-
-
-
 /*
    Compute CCITT CRC-16 using the correct bit order for floppy disks.
    CRC code courtesy of Tim Mann.
@@ -225,4 +208,158 @@ int hexdigit(char c)
 }
 
 
+
+/*-------------------------------------------------
+    is_delim - returns whether c is a comma or \0
+-------------------------------------------------*/
+
+static int is_delim(char c)
+{
+	return (c == '\0') || (c == ',');
+}
+
+
+
+/*-------------------------------------------------
+    internal_find_extension - find an extension in
+	an extension list
+-------------------------------------------------*/
+
+int internal_find_extension(const char *extension_list, const char *target_extension)
+{
+	/* this version allows target_extension to be delimited with a comma */
+	int pos = 0;
+	int i;
+
+	while(extension_list[pos] != '\0')
+	{
+		/* compare a file extension */
+		i = 0;
+		while(!is_delim(extension_list[pos + i])
+			&& !is_delim(target_extension[i])
+			&& (tolower(extension_list[pos + i]) == tolower(target_extension[i])))
+		{
+			i++;
+		}
+
+		/* check to see if it was found */
+		if (is_delim(extension_list[pos + i]) && is_delim(target_extension[i]))
+			return TRUE;
+
+		/* move to next position in the buffer */
+		pos += i;
+		while(!is_delim(extension_list[pos]))
+			pos++;
+		while(extension_list[pos] == ',')
+			pos++;
+	}
+
+	/* not found */
+	return FALSE;
+}
+
+
+
+/*-------------------------------------------------
+    find_extension - find an extension in an extension
+	list
+-------------------------------------------------*/
+
+int find_extension(const char *extension_list, const char *target_extension)
+{
+	/* the internal function allows something that we do not */
+	if (strchr(target_extension, ','))
+		return FALSE;
+
+	/* special case to allow ext to be in the form '.EXT' */
+	if (*target_extension == '.')
+		target_extension++;
+
+	/* do the actual work */
+	return internal_find_extension(extension_list, target_extension);
+}
+
+
+
+/*-------------------------------------------------
+    specify_extension - merge a comma-delimited
+	list of file extensions onto an existing list
+-------------------------------------------------*/
+
+void specify_extension(char *buffer, size_t buffer_len, const char *extension)
+{
+	int extension_pos = 0;
+	int len;
+	int found;
+
+	/* determine the length of the buffer */
+	len = strlen(buffer);
+
+	/* be aware that extension can be NULL */
+	if (extension != NULL)
+	{
+		while(extension[extension_pos] != '\0')
+		{
+			/* try to find the file extension */
+			found = internal_find_extension(buffer, &extension[extension_pos]);
+
+			/* append a delimiter if we have to */
+			if (!found && (len > 0))
+				len += snprintf(&buffer[len], buffer_len - len, ",");
+
+			/* move to the next extension, appending the extension if not found */
+			while(!is_delim(extension[extension_pos]))
+			{
+				if (!found)
+					len += snprintf(&buffer[len], buffer_len - len, "%c", extension[extension_pos]);
+				extension_pos++;
+			}
+			while(extension[extension_pos] == ',')
+				extension_pos++;
+		}
+	}
+}
+
+
+
+/*-------------------------------------------------
+    utils_validitychecks - unit tests
+-------------------------------------------------*/
+
+int utils_validitychecks(void)
+{
+	char buffer[256];
+	int error = FALSE;
+
+	/* test 1 */
+	buffer[0] = '\0';
+	specify_extension(buffer, ARRAY_LENGTH(buffer), "abc");
+	if (strcmp(buffer, "abc"))
+	{
+		printf("Invalid validity check result\n");
+		error = TRUE;
+	}
+
+	/* test 2 */
+	buffer[0] = '\0';
+	specify_extension(buffer, ARRAY_LENGTH(buffer), "abc,def,ghi");
+	specify_extension(buffer, ARRAY_LENGTH(buffer), "jkl,mno,ghi");
+	if (strcmp(buffer, "abc,def,ghi,jkl,mno"))
+	{
+		printf("Invalid validity check result\n");
+		error = TRUE;
+	}
+
+	/* test 3 */
+	buffer[0] = '\0';
+	specify_extension(buffer, ARRAY_LENGTH(buffer), "abc,def,ghi");
+	specify_extension(buffer, ARRAY_LENGTH(buffer), "abc,jkl,mno");
+	if (strcmp(buffer, "abc,def,ghi,jkl,mno"))
+	{
+		printf("Invalid validity check result\n");
+		error = TRUE;
+	}
+
+	return error;
+}
 

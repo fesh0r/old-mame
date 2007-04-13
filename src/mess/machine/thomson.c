@@ -13,7 +13,7 @@
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
 #include "machine/mc6846.h"
-#include "machine/mc6850.h"
+#include "machine/6850acia.h"
 #include "includes/6551.h"
 #include "sound/dac.h"
 #include "machine/thomson.h"
@@ -29,7 +29,7 @@
 
 #define VERBOSE       0
 #define VERBOSE_IRQ   0
-#define VERBOSE_KBD   0 /* TO8 / TO9 / TO9+ keyboard */
+#define VERBOSE_KBD   0  /* TO8 / TO9 / TO9+ keyboard */
 #define VERBOSE_BANK  0 
 #define VERBOSE_VIDEO 0  /* video & lightpen */
 #define VERBOSE_IO    0  /* serial & parallel I/O */
@@ -107,19 +107,19 @@ static void thom_irq_init ( void )
 
 static void thom_irq_0  ( int state ) { thom_set_irq  ( 0, state ); }
 static void thom_irq_1  ( int state ) { thom_set_irq  ( 1, state ); }
-static void thom_irq_2  ( int state ) { thom_set_irq  ( 2, state ); }
 static void thom_irq_3  ( int state ) { thom_set_irq  ( 3, state ); }
-static void thom_irq_4  ( int state ) { thom_set_irq  ( 4, state ); }
-static void thom_firq_0 ( int state ) { thom_set_firq ( 0, state ); }
 static void thom_firq_1 ( int state ) { thom_set_firq ( 1, state ); }
 static void thom_firq_2 ( int state ) { thom_set_firq ( 2, state ); }
-static void thom_firq_3 ( int state ) { thom_set_firq ( 3, state ); }
+#ifdef CHARDEV
+static void thom_irq_4  ( int state ) { thom_set_irq  ( 4, state ); }
+#endif
 
 /* 
    line 0 => 6846 interrupt
    line 1 => 6821 interrupt (shared for all 6821)
    line 2 => TO8 lightpen interrupt (from gate-array)
    line 3 => TO9 keyboard interrupt (from 6850 ACIA)
+   line 4 => MIDI interrupt (from 6850 ACIA)
 */
 
 
@@ -193,6 +193,18 @@ int thom_serial_load ( mess_image* image )
 
   return INIT_PASS;
 }
+
+/* ------------ 6850 defines ------------ */
+
+#define ACIA_6850_RDRF  0x01    /* Receive data register full */
+#define ACIA_6850_TDRE  0x02    /* Transmit data register empty */
+#define ACIA_6850_dcd   0x04    /* Data carrier detect, active low */
+#define ACIA_6850_cts   0x08    /* Clear to send, active low */
+#define ACIA_6850_FE    0x10    /* Framing error */
+#define ACIA_6850_OVRN  0x20    /* Receiver overrun */
+#define ACIA_6850_PE    0x40    /* Parity error */
+#define ACIA_6850_irq   0x80    /* Interrupt request, active low */
+
 
 
 /***************************** TO7 / T9000 *************************/
@@ -537,9 +549,20 @@ static void to7_rf57932_init( void )
 /* Features:
    - 6850 ACIA
    - 6821 PIA
+   - asymetric 1200/ 75 bauds (reversable)
 
    TODO!
  */
+
+static UINT8 to7_modem_rx;
+static UINT8 to7_modem_tx;
+
+static void to7_modem_cb( int state )
+{
+#if VERBOSE_IO
+  logerror ( "to7_modem_cb: called %i\n", state );
+#endif
+}
 
 static const pia6821_interface to7_pia_modem = {
   NULL, NULL, NULL, NULL, NULL, NULL,
@@ -548,14 +571,18 @@ static const pia6821_interface to7_pia_modem = {
 };
 
 static struct acia6850_interface to7_acia_modem = {
-  NULL, NULL, NULL, NULL
+  1200, 1200, /* 1200 bauds, might be divided by 16 */
+  &to7_modem_rx, &to7_modem_tx,
+  to7_modem_cb
 };
 
 static void to7_modem_reset( void )
 {
   LOG (( "to7_modem_reset called\n" ));
-  acia6850_reset();
+  to7_modem_rx = 0;
+  to7_modem_tx = 0;
   /* pia_reset() is called in MACHINE_RESET */
+  /* acia_6850 has no reset (?) */
 }
 
 
@@ -564,7 +591,9 @@ static void to7_modem_init( void )
   LOG (( "to7_modem_init: MODEM not implemented!\n" ));
   pia_config( THOM_PIA_MODEM, PIA_STANDARD_ORDERING, &to7_pia_modem );
   acia6850_config( 0, &to7_acia_modem );
-}
+  state_save_register_global( to7_modem_rx );
+  state_save_register_global( to7_modem_tx );
+ }
 
 
 /* ------------  dispatch MODEM / speech extension ------------ */
@@ -573,16 +602,25 @@ READ8_HANDLER ( to7_modem_mea8000_r )
 {
   if ( readinputport( THOM_INPUT_MCONFIG ) & 1 )
     return mea8000_r( offset );
-  else
-    return acia6850_0_r( offset );
+  else {
+    switch ( offset ) {
+    case 0: return acia6850_0_stat_r( 0 );
+    case 1: return acia6850_0_data_r( 0 );
+    default: return 0;
+    }
+  }
 }
 
 WRITE8_HANDLER ( to7_modem_mea8000_w )
 {
   if ( readinputport( THOM_INPUT_MCONFIG ) & 1 )
     mea8000_w( offset, data );
-  else
-    acia6850_0_w( offset, data );
+  else {
+    switch ( offset ) {
+    case 0: acia6850_0_ctrl_w( 0, data ); break;
+    case 1: acia6850_0_data_w( 0, data ); break;
+    }
+  }
 }
 
 

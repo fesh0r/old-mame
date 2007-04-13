@@ -10,6 +10,7 @@
 #define __OSDMESS_H__
 
 #include "osdcore.h"
+#include "mamecore.h"
 
 struct _mame_file;
 typedef struct _mess_image mess_image;
@@ -31,10 +32,10 @@ typedef struct _mess_image mess_image;
 
     Return value:
 
-        a mame_file_error describing any error that occurred while copying
+        a file_error describing any error that occurred while copying
         the file, or FILERR_NONE if no error occurred
 -----------------------------------------------------------------------------*/
-mame_file_error osd_copyfile(const char *destfile, const char *srcfile);
+file_error osd_copyfile(const char *destfile, const char *srcfile);
 
 
 /*-----------------------------------------------------------------------------
@@ -51,10 +52,10 @@ mame_file_error osd_copyfile(const char *destfile, const char *srcfile);
 
     Return value:
 
-        a mame_file_error describing any error that occurred while copying
+        a file_error describing any error that occurred while copying
         the file, or FILERR_NONE if no error occurred
 -----------------------------------------------------------------------------*/
-mame_file_error osd_get_temp_filename(char *buffer, size_t buffer_len, const char *basename);
+file_error osd_get_temp_filename(char *buffer, size_t buffer_len, const char *basename);
 
 
 /***************************************************************************
@@ -86,10 +87,10 @@ osd_directory_entry *osd_stat(const char *path);
 
     Return value:
 
-        a mame_file_error describing any error that occurred while creating
+        a file_error describing any error that occurred while creating
         the directory, or FILERR_NONE if no error occurred
 -----------------------------------------------------------------------------*/
-mame_file_error osd_mkdir(const char *dir);
+file_error osd_mkdir(const char *dir);
 
 
 /*-----------------------------------------------------------------------------
@@ -101,10 +102,10 @@ mame_file_error osd_mkdir(const char *dir);
 
     Return value:
 
-        a mame_file_error describing any error that occurred while deleting
+        a file_error describing any error that occurred while deleting
         the directory, or FILERR_NONE if no error occurred
 -----------------------------------------------------------------------------*/
-mame_file_error osd_rmdir(const char *dir);
+file_error osd_rmdir(const char *dir);
 
 
 /*-----------------------------------------------------------------------------
@@ -118,10 +119,10 @@ mame_file_error osd_rmdir(const char *dir);
 
     Return value:
 
-        a mame_file_error describing any error that occurred while deleting
+        a file_error describing any error that occurred while deleting
         the directory, or FILERR_NONE if no error occurred
 -----------------------------------------------------------------------------*/
-mame_file_error osd_getcurdir(char *buffer, size_t buffer_len);
+file_error osd_getcurdir(char *buffer, size_t buffer_len);
 
 
 /*-----------------------------------------------------------------------------
@@ -133,15 +134,27 @@ mame_file_error osd_getcurdir(char *buffer, size_t buffer_len);
 
     Return value:
 
-        a mame_file_error describing any error that occurred while deleting
+        a file_error describing any error that occurred while deleting
         the directory, or FILERR_NONE if no error occurred
 -----------------------------------------------------------------------------*/
-mame_file_error osd_setcurdir(const char *dir);
+file_error osd_setcurdir(const char *dir);
 
 
 /***************************************************************************
     PATH INTERFACES
 ***************************************************************************/
+
+/*-----------------------------------------------------------------------------
+    osd_get_emulator_directory: returns the path containing the emulator
+
+    Parameters:
+
+		dir - space to output directory
+		dir_size - size of path
+
+-----------------------------------------------------------------------------*/
+
+void osd_get_emulator_directory(char *dir, size_t dir_size);
 
 /*-----------------------------------------------------------------------------
     osd_is_path_separator: returns whether a character is a path separator
@@ -203,33 +216,6 @@ int osd_select_file(mess_image *img, char *filename);
 int osd_keyboard_disabled(void);
 
 
-
-/******************************************************************************
-
-  Parallel processing (for SMP)
-
-******************************************************************************/
-
-/* 
-  Called by core to distribute tasks across multiple processors.  When this is
-  called, there will be 1 to max_tasks invocations of task(); where task_count
-  specifies the number of calls, and task_num is a number from zero to
-  task_count-1 to specify which call was made.  This can be used to subdivide
-  tasks across mulitple processors.
-
-  If max_tasks<1, then it should be treated as if it was 1
-
-  A bogus implementation would look like this:
-
-	void osd_parallelize(void (*task)(void *param, int task_num, int
-		task_count), void *param, int max_tasks)
-	{
-		task(param, 0, 1);
-	}
-*/
-
-void osd_parallelize(void (*task)(void *param, int task_num, int task_count), void *param, int max_tasks);
-
 /******************************************************************************
 
   Device and file browsing
@@ -240,9 +226,6 @@ int osd_num_devices(void);
 const char *osd_get_device_name(int i);
 void osd_change_device(const char *vol);
 
-void osd_begin_final_unloading(void);
-
-/* used to notify osd code of the load status of an image */
-void osd_image_load_status_changed(mess_image *img, int is_final_unload);
+void osd_mess_options_init(void);
 
 #endif /* __OSDMESS_H__ */

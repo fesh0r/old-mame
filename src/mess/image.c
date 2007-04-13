@@ -20,6 +20,7 @@
 #include "tagpool.h"
 #include "hashfile.h"
 #include "mamecore.h"
+#include "messopts.h"
 
 
 
@@ -58,6 +59,9 @@ struct _mess_image
 	char *year;
 	char *playable;
 	char *extrainfo;
+
+	/* working directory; persists across mounts */
+	char *working_directory;
 
 	/* pointer */
 	void *ptr;
@@ -171,6 +175,7 @@ int image_init(void)
 static void image_exit(running_machine *machine)
 {
 	int i, j, indx;
+	mess_image *image;
 
 	/* unload all devices */
 	image_unload_all(FALSE);
@@ -184,11 +189,26 @@ static void image_exit(running_machine *machine)
 		{
 			for (j = 0; j < Machine->devices[i].count; j++)
 			{
+				/* identify the image */
+				image = &images[indx + j];
+
 				/* call the exit handler if appropriate */
 				if (Machine->devices[i].exit)
-					Machine->devices[i].exit(&images[indx + j]);
+					Machine->devices[i].exit(image);
 
+				/* free the tagpool */
 				tagpool_exit(&images[indx + j].tagpool);
+
+				/* free the working directory */
+				if (image->working_directory)
+				{
+					free(image->working_directory);
+					image->working_directory = NULL;
+				}
+
+				/* free the memory pool */
+				pool_free(image->mempool);
+				image->mempool = NULL;
 			}
 			indx += Machine->devices[i].count;
 		}
@@ -212,6 +232,7 @@ static image_error_t set_image_filename(mess_image *image, const char *filename,
 	char *alloc_filename = NULL;
 	char *new_name;
 	char *new_dir;
+	char *new_working_directory;
 	int pos;
 
 	/* create the directory string */
@@ -240,13 +261,24 @@ static image_error_t set_image_filename(mess_image *image, const char *filename,
 		goto done;
 	}
 
+	/* copy the working directory */
+	new_working_directory = mame_strdup(new_dir);
+	if (!new_working_directory)
+	{
+		err = IMAGE_ERROR_OUTOFMEMORY;
+		goto done;
+	}
+
 	/* set the new name and dir */
 	if (image->name)
 		image_freeptr(image, image->name);
 	if (image->dir)
 		image_freeptr(image, image->dir);
+	if (image->working_directory)
+		free(image->working_directory);
 	image->name = new_name;
 	image->dir = new_dir;
+	image->working_directory = new_working_directory;
 
 done:
 	if (alloc_filename)
@@ -393,7 +425,7 @@ done:
 static image_error_t load_image_by_path(mess_image *image, const char *software_path,
 	const game_driver *gamedrv, UINT32 open_flags, const char *path)
 {
-	mame_file_error filerr = FILERR_NOT_FOUND;
+	file_error filerr = FILERR_NOT_FOUND;
 	image_error_t err = IMAGE_ERROR_FILENOTFOUND;
 	char *full_path = NULL;
 	const char *file_extension;
@@ -530,9 +562,6 @@ static int image_load_internal(mess_image *image, const char *path,
 	image->err = set_image_filename(image, path, NULL);
 	if (image->err)
 		goto done;
-
-	/* tell the OSD layer that this is changing */
-	osd_image_load_status_changed(image, 0);
 
 	/* do we need to reset the CPU? */
 	if ((timer_get_time() > 0) && image->dev->reset_on_load)
@@ -701,7 +730,6 @@ static void image_unload_internal(mess_image *image, int is_final_unload)
 
 	image_clear(image);
 	image_clear_error(image);
-	osd_image_load_status_changed(image, is_final_unload);
 }
 
 
@@ -728,7 +756,7 @@ void image_unload_all(int ispreload)
 	mess_image *image;
 
 	if (!ispreload)
-		osd_begin_final_unloading();
+		mess_options_extract();
 
 	/* normalize ispreload */
 	ispreload = ispreload ? 1 : 0;
@@ -954,12 +982,20 @@ static int image_checkhash(mess_image *image)
   These provide information about the device; and about the mounted image
 ****************************************************************************/
 
+/*-------------------------------------------------
+    image_device
+-------------------------------------------------*/
+
 const struct IODevice *image_device(mess_image *img)
 {
 	return img->dev;
 }
 
 
+
+/*-------------------------------------------------
+    image_exists
+-------------------------------------------------*/
 
 int image_exists(mess_image *img)
 {
@@ -968,12 +1004,20 @@ int image_exists(mess_image *img)
 
 
 
+/*-------------------------------------------------
+    image_slotexists
+-------------------------------------------------*/
+
 int image_slotexists(mess_image *img)
 {
 	return image_index_in_device(img) < image_device(img)->count;
 }
 
 
+
+/*-------------------------------------------------
+    image_filename
+-------------------------------------------------*/
 
 const char *image_filename(mess_image *img)
 {
@@ -982,12 +1026,20 @@ const char *image_filename(mess_image *img)
 
 
 
+/*-------------------------------------------------
+    image_basename
+-------------------------------------------------*/
+
 const char *image_basename(mess_image *img)
 {
 	return osd_basename((char *) image_filename(img));
 }
 
 
+
+/*-------------------------------------------------
+    image_basename_noext
+-------------------------------------------------*/
 
 const char *image_basename_noext(mess_image *img)
 {
@@ -1010,6 +1062,10 @@ const char *image_basename_noext(mess_image *img)
 
 
 
+/*-------------------------------------------------
+    image_filetype
+-------------------------------------------------*/
+
 const char *image_filetype(mess_image *img)
 {
 	const char *s;
@@ -1021,12 +1077,20 @@ const char *image_filetype(mess_image *img)
 
 
 
+/*-------------------------------------------------
+    image_filedir
+-------------------------------------------------*/
+
 const char *image_filedir(mess_image *image)
 {
 	return image->dir;
 }
 
 
+
+/*-------------------------------------------------
+    image_typename_id
+-------------------------------------------------*/
 
 const char *image_typename_id(mess_image *image)
 {
@@ -1041,12 +1105,20 @@ const char *image_typename_id(mess_image *image)
 
 
 
+/*-------------------------------------------------
+    image_length
+-------------------------------------------------*/
+
 UINT64 image_length(mess_image *img)
 {
 	return img->length;
 }
 
 
+
+/*-------------------------------------------------
+    image_hash
+-------------------------------------------------*/
 
 const char *image_hash(mess_image *img)
 {
@@ -1055,6 +1127,10 @@ const char *image_hash(mess_image *img)
 }
 
 
+
+/*-------------------------------------------------
+    image_crc
+-------------------------------------------------*/
 
 UINT32 image_crc(mess_image *img)
 {
@@ -1070,12 +1146,20 @@ UINT32 image_crc(mess_image *img)
 
 
 
+/*-------------------------------------------------
+    image_is_writable
+-------------------------------------------------*/
+
 int image_is_writable(mess_image *img)
 {
 	return img->writeable;
 }
 
 
+
+/*-------------------------------------------------
+    image_has_been_created
+-------------------------------------------------*/
 
 int image_has_been_created(mess_image *img)
 {
@@ -1084,12 +1168,20 @@ int image_has_been_created(mess_image *img)
 
 
 
+/*-------------------------------------------------
+    image_make_readonly
+-------------------------------------------------*/
+
 void image_make_readonly(mess_image *img)
 {
 	img->writeable = 0;
 }
 
 
+
+/*-------------------------------------------------
+    image_fread
+-------------------------------------------------*/
 
 UINT32 image_fread(mess_image *image, void *buffer, UINT32 length)
 {
@@ -1107,6 +1199,10 @@ UINT32 image_fread(mess_image *image, void *buffer, UINT32 length)
 }
 
 
+
+/*-------------------------------------------------
+    image_fwrite
+-------------------------------------------------*/
 
 UINT32 image_fwrite(mess_image *image, const void *buffer, UINT32 length)
 {
@@ -1144,6 +1240,10 @@ UINT32 image_fwrite(mess_image *image, const void *buffer, UINT32 length)
 
 
 
+/*-------------------------------------------------
+    image_fseek
+-------------------------------------------------*/
+
 int image_fseek(mess_image *image, INT64 offset, int whence)
 {
 	switch(whence)
@@ -1165,12 +1265,20 @@ int image_fseek(mess_image *image, INT64 offset, int whence)
 
 
 
+/*-------------------------------------------------
+    image_ftell
+-------------------------------------------------*/
+
 UINT64 image_ftell(mess_image *image)
 {
 	return image->pos;
 }
 
 
+
+/*-------------------------------------------------
+    image_fgetc
+-------------------------------------------------*/
 
 int image_fgetc(mess_image *image)
 {
@@ -1182,12 +1290,20 @@ int image_fgetc(mess_image *image)
 
 
 
+/*-------------------------------------------------
+    image_feof
+-------------------------------------------------*/
+
 int image_feof(mess_image *image)
 {
 	return image->pos >= image->length;
 }
 
 
+
+/*-------------------------------------------------
+    image_ptr
+-------------------------------------------------*/
 
 void *image_ptr(mess_image *image)
 {
@@ -1220,6 +1336,125 @@ void *image_ptr(mess_image *image)
 		image->ptr = ptr;
 	}
 	return image->ptr;
+}
+
+
+
+/***************************************************************************
+    WORKING DIRECTORIES
+***************************************************************************/
+
+/*-------------------------------------------------
+    try_change_working_directory - tries to change
+	the working directory, but only if the directory
+	actually exists
+-------------------------------------------------*/
+
+static int try_change_working_directory(mess_image *image, const char *subdir)
+{
+	osd_directory *directory;
+	const osd_directory_entry *entry;
+	int success = FALSE;
+	int done = FALSE;
+	char *new_working_directory;
+
+	directory = osd_opendir(image->working_directory);
+	if (directory != NULL)
+	{
+		while(!done && (entry = osd_readdir(directory)) != NULL)
+		{
+			if (!mame_stricmp(subdir, entry->name))
+			{
+				done = TRUE;
+				success = entry->type == ENTTYPE_DIR;
+			}
+		}
+
+		osd_closedir(directory);
+	}
+
+	/* did we successfully identify the directory? */
+	if (success)
+	{
+		new_working_directory = malloc_or_die(strlen(image->working_directory)
+			+ strlen(PATH_SEPARATOR) + strlen(subdir) + strlen(PATH_SEPARATOR) + 1);
+		strcpy(new_working_directory, image->working_directory);
+
+		/* remove final path separator, if present */
+		if ((strlen(new_working_directory) >= strlen(PATH_SEPARATOR))
+			&& !strcmp(new_working_directory + strlen(new_working_directory) - strlen(PATH_SEPARATOR), PATH_SEPARATOR))
+		{
+			new_working_directory[strlen(new_working_directory) - strlen(PATH_SEPARATOR)] = '\0';
+		}
+
+		strcat(new_working_directory, PATH_SEPARATOR);
+		strcat(new_working_directory, subdir);
+		strcat(new_working_directory, PATH_SEPARATOR);
+
+		free(image->working_directory);
+		image->working_directory = new_working_directory;
+	}
+	return success;
+}
+
+
+
+/*-------------------------------------------------
+    setup_working_directory - sets up the working
+	directory according to a few defaults
+-------------------------------------------------*/
+
+static void setup_working_directory(mess_image *image)
+{
+	char mess_directory[1024];
+	const game_driver *gamedrv;
+
+	/* first set up the working directory to be the MESS directory */
+	osd_get_emulator_directory(mess_directory, ARRAY_LENGTH(mess_directory));
+	image->working_directory = mame_strdup(mess_directory);
+	
+	/* now try browsing down to "software" */
+	if (try_change_working_directory(image, "software"))
+	{
+		/* now down to a directory for this computer */
+		gamedrv = Machine->gamedrv;
+		while(gamedrv && !try_change_working_directory(image, gamedrv->name))
+		{
+			gamedrv = mess_next_compatible_driver(gamedrv);
+		}
+	}
+}
+
+
+
+/*-------------------------------------------------
+    image_working_directory - returns the working
+	directory to use for this image; this is
+	valid even if not mounted
+-------------------------------------------------*/
+
+const char *image_working_directory(mess_image *image)
+{
+	/* check to see if we've never initialized the working directory */
+	if (image->working_directory == NULL)
+		setup_working_directory(image);
+
+	return image->working_directory;
+}
+
+
+
+/*-------------------------------------------------
+    image_set_working_directory - sets the working
+	directory to use for this image
+-------------------------------------------------*/
+
+void image_set_working_directory(mess_image *image, const char *working_directory)
+{
+	char *new_working_directory = mame_strdup(working_directory);
+	if (image->working_directory)
+		free(image->working_directory);
+	image->working_directory = new_working_directory;
 }
 
 
@@ -1323,9 +1558,9 @@ const char *image_extrainfo(mess_image *img)
 	NVRAM file for an image
 -------------------------------------------------*/
 
-static mame_file_error open_battery_file(mess_image *image, UINT32 openflags, mame_file **file)
+static file_error open_battery_file(mess_image *image, UINT32 openflags, mame_file **file)
 {
-	mame_file_error filerr;
+	file_error filerr;
 	char *basename_noext;
 	char *fname;
 
@@ -1348,7 +1583,7 @@ static mame_file_error open_battery_file(mess_image *image, UINT32 openflags, ma
 
 void image_battery_load(mess_image *image, void *buffer, int length)
 {
-	mame_file_error filerr;
+	file_error filerr;
 	mame_file *file;
 	int bytes_read = 0;
 
@@ -1375,13 +1610,13 @@ void image_battery_load(mess_image *image, void *buffer, int length)
 
 void image_battery_save(mess_image *image, const void *buffer, int length)
 {
-	mame_file_error filerr;
+	file_error filerr;
 	mame_file *file;
 
 	assert_always(buffer && (length > 0), "Must specify sensical buffer/length");
 
 	/* try to open the battery file and write it out, if possible */
-	filerr = open_battery_file(image, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &file);
+	filerr = open_battery_file(image, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
 	if (filerr == FILERR_NONE)
 	{
 		mame_fwrite(file, buffer, length);

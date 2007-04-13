@@ -64,7 +64,6 @@ static void imgtool_library_add_class(imgtool_library *library, const imgtool_cl
 {
 	imgtool_module *module;
 	char *s1, *s2;
-	size_t len;
 
 	/* allocate the module and place it in the chain */
 	module = imgtool_library_malloc(library, sizeof(*module));
@@ -78,12 +77,8 @@ static void imgtool_library_add_class(imgtool_library *library, const imgtool_cl
 
 	/* extensions have a weird format */
 	s1 = imgtool_get_info_string(imgclass, IMGTOOLINFO_STR_FILE_EXTENSIONS);
-	len = strlen(s1);;
-	s2 = imgtool_library_malloc(library, len + 2);
+	s2 = imgtool_library_malloc(library, strlen(s1) + 1);
 	strcpy(s2, s1);
-	s2[len + 1] = '\0';
-	while((s1 = strchr(s2, ',')) != NULL)
-		*s1 = '\0';
 	module->extensions = s2;
 
 	module->imgclass					= *imgclass;

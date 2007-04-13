@@ -724,8 +724,15 @@ static void apple2_reset(running_machine *machine)
 	need_intcxrom = !strcmp(Machine->gamedrv->name, "apple2c")
 		|| !strcmp(Machine->gamedrv->name, "apple2c0")
 		|| !strcmp(Machine->gamedrv->name, "apple2c3")
-		|| !strcmp(Machine->gamedrv->name, "apple2cp");
+		|| !strcmp(Machine->gamedrv->name, "apple2cp")
+		|| !strncmp(Machine->gamedrv->name, "apple2g", 7);
 	apple2_setvar(need_intcxrom ? VAR_INTCXROM : 0, ~0);
+
+	// ROM 0 cannot boot unless language card bank 2 is write-enabled (but read ROM) on startup
+	if (!strncmp(Machine->gamedrv->name, "apple2g", 7))
+	{
+		apple2_setvar(VAR_LCWRITE|VAR_LCRAM2, VAR_LCWRITE | VAR_LCRAM | VAR_LCRAM2);
+	}
 
 	a2_speaker_state = 0;
 
@@ -756,7 +763,7 @@ void apple2_interrupt(void)
 
 	profiler_mark(PROFILER_A2INT);
 
-	scanline = cpu_getscanline();
+	scanline = video_screen_get_vpos(0);
 
 	if (scanline > 190)
 	{
@@ -882,7 +889,7 @@ READ8_HANDLER ( apple2_c01x_r )
 		case 0x06:			result |= (a2 & VAR_ALTZP)		? 0x80 : 0x00;	break;
 		case 0x07:			result |= (a2 & VAR_SLOTC3ROM)	? 0x80 : 0x00;	break;
 		case 0x08:			result |= (a2 & VAR_80STORE)	? 0x80 : 0x00;	break;
-		case 0x09:			result |= !cpu_getvblank()		? 0x80 : 0x00;	break;
+		case 0x09:			result |= !video_screen_get_vblank(0)		? 0x80 : 0x00;	break;
 		case 0x0A:			result |= (a2 & VAR_TEXT)		? 0x80 : 0x00;	break;
 		case 0x0B:			result |= (a2 & VAR_MIXED)		? 0x80 : 0x00;	break;
 		case 0x0C:			result |= (a2 & VAR_PAGE2)		? 0x80 : 0x00;	break;

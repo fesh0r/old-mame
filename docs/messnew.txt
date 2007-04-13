@@ -1,3 +1,101 @@
+0.114
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Sega Master System Store Display (not working) [Wilbert Pol]
+- Apple IIgs (ROM00) [R. Belmont]
+- Toshiba HX-10  [incog nito]
+
+
+
+System Driver Changes:
+----------------------
+- [APPLE2GS] Major fixes to the quality and accuracy of the ES5503 
+  sound emulation. [R. Belmont]
+
+- [APPLE2GS] First pass at proper raster timing.  FTA XMAS DEMO now runs,
+  no border f/x yet though.  [R. Belmont]
+
+- [APPLE2GS] Fixed scanline interrupts to work properly.  Fixed Cavern 
+  Cobra, FTA Modulae demo, probably more.  (bug #673)  [R. Belmont]
+
+- [APPLE2GS, SNES] Fixed some 65816 core bugs.  (bug #661) [R. Belmont]
+
+- [COCO] Fixed PIA misconfiguration.  (bug #1115) [tim lindner]
+
+- [COCO] Fixed Lightgun emulation. [tim lindner]
+
+- [COCO] Implemented MUX switching delay.  (bug #655) [tim lindner]
+
+- [FAMICOM/FAMITWIN] Fixed Disk System, marked working now.
+  (bug #1101) [R. Belmont]
+
+- [GAMEGEAR] Added SMS compatibility mode.  [Wilbert Pol]
+
+- [GENESIS/MEGADRIVE] New emulation engine from HazeMD, improves
+  compatibility and accuracy plus supports the 6-button pad and
+  the Super Street Fighter 2 mapper.  [R. Belmont, David Haywood]
+
+- [GENEVE] Fixed assertion failure on exit.  (bug #1136) [Nate Woods]
+
+- [MSX] Fixed MSX visible area.  [MJSTY]
+
+- [ODYSSEY2] Major update: banked carts, drawing, and hardware collision
+  detection now all work much better.  [telengard]
+
+- [SMS] Drivers have been split up to support specific hardware versions:
+  sms and smspal still exist; smsj21 has been renamed to smsj; sms1,
+  sms1pal, and sg1000m3 have been added. Support for the prototype bios has
+  also been added  [Wilbert Pol]
+
+- [THOMSON] Switch 6850 ACIA implementations to use the MAME version, and
+  added natural keyboard support. [Antoine Mine]
+
+- [TI99_4X] Fixed assertion failure.  (bug #1129) [Nate Woods]
+
+- [TI99_8] Fixed assertion failure on exit.  (bug #1137) [Nate Woods]
+
+
+
+User Interface Changes:
+-----------------------
+- [Windows GUI] Fixed hash entry loading.  (bug #1128) [Nate Woods]
+
+- [Windows GUI] Added missing screen and controller tabs.  (bug #1134) [Oliver
+  Stoeneberg]
+
+
+
+Imgtool Changes:
+----------------
+- Added the ability for modules to "warn" the core of inconsistencies.  These
+  warnings will cause failues in Imgtool test cases.  [Nate Woods]
+
+- [OS9] Fixed some bugs that could cause corruption on OS-9 disk images.  (bug
+  #1122 [tim lindner, Nate Woods]
+
+- [OS9] Put will now use free entries in the directory file before expanding
+  it.  (bug #1125) [tim lindner]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.114.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Moved per-image working directory handling into the MESS core.  [Nate Woods]
+
+- Fixed NVRAM folder creation for battery backup.  (bug #1120) [Nate Woods]
+
+- Fixed a bug that could cause multiple file extensions to be dropped for
+  devices on certain drivers in both MESS and Imgtool.  (bug #1095)  [Nate
+  Woods]
+
+- [Windows] Fixed deadlock.  (bug #1140) [Oliver Stoeneberg]
+
+
+
 0.113
 
 New System Drivers Supported (in no particular order):

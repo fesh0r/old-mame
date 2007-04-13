@@ -56,6 +56,7 @@ struct _internal_screen_info
 	render_texture *		texture[2];			/* 2x textures for the screen bitmap */
 	mame_bitmap *			bitmap[2];			/* 2x bitmaps for rendering */
 	UINT8					curbitmap;			/* current bitmap index */
+	UINT8					dispbitmap;			/* displaying bitmap index */
 	bitmap_format			format;				/* format of bitmap for this screen */
 	UINT8					changed;			/* has this bitmap changed? */
 	INT32					last_partial_scan;	/* scanline of last partial update */
@@ -86,6 +87,7 @@ struct _video_private
 	UINT8 					crosshair_animate;	/* animation frame index */
 	UINT8 					crosshair_visible;	/* crosshair visible mask */
 	UINT8 					crosshair_needed;	/* crosshair needed mask */
+	UINT32					(*crosshair_get_screen_mask)(int player);	/* crosshair get screen callback */
 };
 
 
@@ -1022,22 +1024,21 @@ static void finish_screen_updates(running_machine *machine)
 			/* only update if empty and not a vector game; otherwise assume the driver did it directly */
 			if ((machine->drv->video_attributes & (VIDEO_TYPE_VECTOR | VIDEO_SELF_RENDER)) == 0)
 			{
-				render_texture *texture = screen->texture[screen->curbitmap];
-				mame_bitmap *bitmap = screen->bitmap[screen->curbitmap];
-
 				/* if we're not skipping the frame and if the screen actually changed, then update the texture */
 				if (!global.skipping_this_frame && screen->changed)
 				{
+					mame_bitmap *bitmap = screen->bitmap[screen->curbitmap];
 					rectangle fixedvis = machine->screen[scrnum].visarea;
 					fixedvis.max_x++;
 					fixedvis.max_y++;
-					render_texture_set_bitmap(texture, bitmap, &fixedvis, machine->drv->screen[scrnum].palette_base, screen->format);
+					render_texture_set_bitmap(screen->texture[screen->curbitmap], bitmap, &fixedvis, machine->drv->screen[scrnum].palette_base, screen->format);
+					screen->dispbitmap = screen->curbitmap;
 					screen->curbitmap = 1 - screen->curbitmap;
 				}
 
 				/* create an empty container with a single quad */
 				render_container_empty(render_container_get_screen(scrnum));
-				render_screen_add_quad(scrnum, 0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(0xff,0xff,0xff,0xff), texture, PRIMFLAG_BLENDMODE(BLENDMODE_NONE) | PRIMFLAG_SCREENTEX(1));
+				render_screen_add_quad(scrnum, 0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(0xff,0xff,0xff,0xff), screen->texture[screen->dispbitmap], PRIMFLAG_BLENDMODE(BLENDMODE_NONE) | PRIMFLAG_SCREENTEX(1));
 			}
 
 			/* update our movie recording state */
@@ -1948,6 +1949,19 @@ void video_crosshair_toggle(void)
 
 
 /*-------------------------------------------------
+    video_crosshair_set_screenmask_callback -
+	install a callback to determine to which screen
+	crosshairs should be rendered
+-------------------------------------------------*/
+
+void video_crosshair_set_screenmask_callback(running_machine *machine, UINT32 (*get_screen_mask)(int player))
+{
+	video_private *viddata = machine->video_data;
+	viddata->crosshair_get_screen_mask = get_screen_mask;
+}
+
+
+/*-------------------------------------------------
     crosshair_render - render the crosshairs
 -------------------------------------------------*/
 
@@ -2011,12 +2025,25 @@ static void crosshair_render(video_private *viddata)
 	for (player = 0; player < MAX_PLAYERS; player++)
 		if (viddata->crosshair_visible & (1 << player))
 		{
-			/* add a quad assuming a 4:3 screen (this is not perfect) */
-			render_screen_add_quad(0,
-						x[player] - 0.03f, y[player] - 0.04f,
-						x[player] + 0.03f, y[player] + 0.04f,
-						MAKE_ARGB(0xc0, tscale, tscale, tscale),
-						viddata->crosshair_texture[player], PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+			int scrnum;
+			UINT32 scrmask = 1;
+
+			/* is there a custom callback to get the screen number? */
+			if (viddata->crosshair_get_screen_mask)
+				scrmask = viddata->crosshair_get_screen_mask(player);
+
+			for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
+			{
+				if (scrmask & (1 << scrnum))
+				{
+					/* add a quad assuming a 4:3 screen (this is not perfect) */
+					render_screen_add_quad(scrnum,
+								x[player] - 0.03f, y[player] - 0.04f,
+								x[player] + 0.03f, y[player] + 0.04f,
+								MAKE_ARGB(0xc0, tscale, tscale, tscale),
+								viddata->crosshair_texture[player], PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+				}
+			}
 		}
 }
 

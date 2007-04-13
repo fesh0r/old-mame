@@ -121,7 +121,7 @@ void ti99_ide_init(int in_tms9995_mode)
 
 int ti99_ide_load_memcard(void)
 {
-	mame_file_error filerr;
+	file_error filerr;
 	mame_file *file;
 
 	filerr = mame_fopen(SEARCHPATH_MEMCARD, "ide.nv", OPEN_FLAG_READ, &file);
@@ -139,7 +139,7 @@ int ti99_ide_load_memcard(void)
 
 int ti99_ide_save_memcard(void)
 {
-	mame_file_error filerr;
+	file_error filerr;
 	mame_file *file;
 
 	/*if (ti99_ide_get_dirty_flag())*/
@@ -373,6 +373,9 @@ void ti99_ide_harddisk_getinfo(const device_class *devclass, UINT32 state, union
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_PTR_IDEDRIVE_INTERFACE: info->p = (void *) &ti99_ide_interface; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_DEV_TAG:					strcpy(info->s = device_temp_str(), "99_ide"); break;
 
 		default: ide_harddisk_device_getinfo(devclass, state, info); break;
 	}

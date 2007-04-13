@@ -1,18 +1,47 @@
 /***************************************************************************
 
 	systems/apple2gs.c
-
 	Apple IIgs
+	Driver by Nathan Woods and R. Belmont
 	
     TODO:
-    - Fix spurrious interrupt problem
+    - Fix spurious interrupt problem
     - Fix 5.25" disks
     - Optimize video code
     - More RAM configurations
 
+    NOTES:
+
+    Video timing and the h/vcount registers:
+    						      VCounts
+    HCounts go like this:				      0xfa (start of frame, still in vblank)
+    0 0x40 0x41 0x58 (first visible pixel)        0x7f
+                 ____________________________________     0x100 (first visible scan line)
+                |                                    |
+                |                                    |
+                |                                    |
+                |                                    |
+                |                                    |
+    HBL region  |                                    |
+                |                                    |
+                |                                    |
+                |                                    |
+                |                                    |
+                |                                    |   0x1ba (first line of Vblank, c019 and heartbeat trigger here, only true VBL if in A2 classic modes) 
+                |                                    |
+                 ____________________________________    0x1c8 (actual start of vblank in IIgs modes)
+    
+    						     0x1ff (end of frame, in vblank)
+    
+    There are 64 HCounts total, and 704 pixels total, so HCounts do not map to the pixel clock.
+    VCounts do map directly to scanlines however, and count 262 of them.
+
+=================================================================
+
 ***************************************************************************/
 
 #include "driver.h"
+#include "state.h"
 #include "inputx.h"
 #include "video/generic.h"
 #include "includes/apple2.h"
@@ -75,6 +104,8 @@ static const unsigned char apple2gs_palette[] =
 	0xF0, 0xF0, 0xF0	/* White */
 };
 
+UINT8 apple2gs_docram[64*1024];
+
 MACHINE_DRIVER_EXTERN( apple2e );
 INPUT_PORTS_EXTERN( apple2ep );
 
@@ -109,21 +140,21 @@ static READ8_HANDLER( apple2gs_adc_read )
 static struct ES5503interface es5503_interface = 
 {
 	apple2gs_doc_irq,
-	apple2gs_adc_read
+	apple2gs_adc_read,
+	apple2gs_docram
 };
 
 static MACHINE_DRIVER_START( apple2gs )
 	MDRV_IMPORT_FROM( apple2e )
-	MDRV_CPU_REPLACE("main", G65816, 1021800)
+	MDRV_CPU_REPLACE("main", G65816, APPLE2GS_14M/5)
 
-	MDRV_CPU_VBLANK_INT(apple2gs_interrupt, 200/8)
-
-	MDRV_SCREEN_SIZE(640, 200)
-	MDRV_SCREEN_VISIBLE_AREA(0,639,0,199)
+	MDRV_SCREEN_SIZE(704, 262)	// 640+32+32 for the borders
+	MDRV_SCREEN_VISIBLE_AREA(0,703,0,230)
 	MDRV_PALETTE_LENGTH( 16+256 )
 	MDRV_GFXDECODE( apple2gs_gfxdecodeinfo )
 
 	MDRV_MACHINE_START( apple2gs )
+	MDRV_MACHINE_RESET( apple2gs )
 
 	MDRV_PALETTE_INIT( apple2gs )
 	MDRV_VIDEO_START( apple2gs )
@@ -134,7 +165,7 @@ static MACHINE_DRIVER_START( apple2gs )
 	MDRV_SOUND_REPLACE("A2DAC", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD(ES5503, 0)
+	MDRV_SOUND_ADD(ES5503, APPLE2GS_7M)
 	MDRV_SOUND_CONFIG(es5503_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -225,7 +256,10 @@ static void apple2gs_floppy525_getinfo(const device_class *devclass, UINT32 stat
 	}
 }
 
-
+static DRIVER_INIT(apple2gs)
+{
+	state_save_register_global_array(apple2gs_docram);
+}
 
 /* ----------------------------------------------------------------------- */
 
@@ -237,6 +271,6 @@ SYSTEM_CONFIG_START(apple2gs)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT       INIT      CONFIG		COMPANY            FULLNAME */
-COMP( 1989, apple2gs, 0,        apple2, apple2gs, apple2gs,   0,        apple2gs,	"Apple Computer", "Apple IIgs (ROM03)",			GAME_NOT_WORKING )
-COMP( 1987, apple2g1, apple2gs, 0,      apple2gs, apple2gs,   0,        apple2gs,	"Apple Computer", "Apple IIgs (ROM01)",			GAME_NOT_WORKING )
-COMP( 1986, apple2g0, apple2gs, 0,      apple2gs, apple2gs,   0,        apple2gs,	"Apple Computer", "Apple IIgs (ROM00)",			GAME_NOT_WORKING )
+COMP( 1989, apple2gs, 0,        apple2, apple2gs, apple2gs,   apple2gs, apple2gs,	"Apple Computer", "Apple IIgs (ROM03)", 0 )
+COMP( 1987, apple2g1, apple2gs, 0,      apple2gs, apple2gs,   apple2gs, apple2gs,	"Apple Computer", "Apple IIgs (ROM01)", 0 )
+COMP( 1986, apple2g0, apple2gs, 0,      apple2gs, apple2gs,   apple2gs, apple2gs,	"Apple Computer", "Apple IIgs (ROM00)", 0 )

@@ -84,7 +84,6 @@
 #define IDR_CONTEXT_SCREENSHOT          181
 #define IDI_HEADER_UP                   182
 #define IDI_HEADER_DOWN                 183
-#define IDD_PROP_DIRECT3D               184
 #define IDD_PROP_CONTROLLER             185
 #define IDD_PROP_SCREEN                 187
 #define IDI_SOUNDTAB                    666
@@ -265,7 +264,6 @@
 #define IDC_ENABLE_AUTOSAVE             1177
 #define IDC_SKIP_GAME_INFO              1178
 #define IDC_PROP_SOURCE                 1179
-#define IDC_OLD_TIMING                  1180
 #define IDC_PAUSEBRIGHT                 1181
 #define IDC_PAUSEBRIGHTDISP             1182
 #define IDC_HIGH_PRIORITY               1183

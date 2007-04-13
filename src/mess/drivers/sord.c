@@ -687,7 +687,7 @@ ROM_START(sordm5)
 	ROM_REGION(0x010000, REGION_CPU1, 0)
 	ROM_LOAD("sordint.rom",0x0000, 0x02000, CRC(78848d39) SHA1(ac042c4ae8272ad6abe09ae83492ef9a0026d0b2))
 	ROM_REGION(0x5000, REGION_USER1, 0)
-	ROM_CART_LOAD(0, "rom\0", 0x0000, 0x5000, ROM_NOMIRROR)
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x5000, ROM_NOMIRROR)
 ROM_END
 
 
@@ -700,7 +700,7 @@ ROM_START(srdm5fd5)
 ROM_END
 
 static FLOPPY_OPTIONS_START( sordm5 )
-	FLOPPY_OPTION( sordm5, "dsk\0",			"Sord M5 disk image",	basicdsk_identify_default,	basicdsk_construct_default,
+	FLOPPY_OPTION( sordm5, "dsk",			"Sord M5 disk image",	basicdsk_identify_default,	basicdsk_construct_default,
 		HEADS([1])
 		TRACKS([40])
 		SECTORS([18])

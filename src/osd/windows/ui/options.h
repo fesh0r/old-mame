@@ -13,14 +13,17 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
+#include "osdcomm.h"
+#include "osd_cpu.h"
+#include "bitmask.h"
+#include "../lib/util/options.h"
+#include "input.h" /* for input_seq definition */
+#include <video.h> /* for MAX_SCREENS Definition*/
+
 #ifdef MESS
 #include "ui/optionsms.h"
 #endif
 
-#include "osdcomm.h"
-#include "osd_cpu.h"
-#include "input.h" /* for input_seq definition */
-#include <video.h> /* for MAX_SCREENS Definition*/
 
 
 enum 
@@ -128,7 +131,7 @@ typedef struct
 	double gfx_gamma;
 	double gfx_brightness;
 	double gfx_contrast;
-	int    frames_to_display;
+	int seconds_to_display;
 	ScreenParams screen_params[MAX_SCREENS];
 
 	// d3d

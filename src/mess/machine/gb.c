@@ -77,6 +77,7 @@ static UINT16 MBCType;				   /* MBC type: 0 for none                        */
 static UINT8 CartType;				   /* Cart Type (battery, ram, timer etc)         */
 static UINT8 *ROMMap[MAX_ROMBANK];		   /* Addresses of ROM banks                      */
 static UINT16 ROMBank;				   /* Number of ROM bank currently used           */
+static UINT16 ROMBank00;			   /* Number of ROM bank currently used at 0000-3FFF */
 static UINT8 ROMMask;				   /* Mask for the ROM bank number                */
 static UINT16 ROMBanks;				   /* Total number of ROM banks                   */
 static UINT8 *RAMMap[MAX_RAMBANK];		   /* Addresses of RAM banks                      */
@@ -131,6 +132,10 @@ WRITE8_HANDLER( gb_rom_bank_select_mbc7 );
 WRITE8_HANDLER( gb_rom_bank_unknown_mbc7 );
 WRITE8_HANDLER( gb_ram_tama5 );
 WRITE8_HANDLER( gb_rom_bank_select_wisdom );
+WRITE8_HANDLER( gb_rom_bank_mmm01_0000_w );
+WRITE8_HANDLER( gb_rom_bank_mmm01_2000_w );
+WRITE8_HANDLER( gb_rom_bank_mmm01_4000_w );
+WRITE8_HANDLER( gb_rom_bank_mmm01_6000_w );
 
 #ifdef MAME_DEBUG
 /* #define V_GENERAL*/		/* Display general debug information */
@@ -157,7 +162,7 @@ static void gb_init(void) {
 	/* Initialize the memory banks */
 	MBC1Mode = 0;
 	MBC3RTCBank = 0;
-	ROMBank = 1;
+	ROMBank = ROMBank00 + 1;
 	RAMBank = 0;
 	memory_set_bankptr (1, ROMMap[ROMBank] ? ROMMap[ROMBank] : gb_dummy_rom_bank);
 	if ( MBCType != MBC_MEGADUCK ) {
@@ -174,6 +179,12 @@ static void gb_init(void) {
 			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MWA8_ROM );
 			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MWA8_ROM );
 			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_ROM );
+			break;
+		case MBC_MMM01:
+			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_rom_bank_mmm01_0000_w );
+			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_mmm01_2000_w);
+			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_rom_bank_mmm01_4000_w);
+			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, gb_rom_bank_mmm01_6000_w);
 			break;
 		case MBC_MBC1:
 			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable );	/* We don't emulate RAM enable yet */
@@ -242,7 +253,7 @@ MACHINE_RESET( gb )
 
         /* Enable BIOS rom */
         memory_set_bankptr(5, memory_region(REGION_CPU1) );
-        memory_set_bankptr(10, ROMMap[0] + 0x0100 );
+        memory_set_bankptr(10, ROMMap[ROMBank00] + 0x0100 );
 }
 
 MACHINE_RESET( sgb )
@@ -253,7 +264,8 @@ MACHINE_RESET( sgb )
 
 	gb_init_regs();
 
-	memory_set_bankptr(5, ROMMap[0] ? ROMMap[0] : gb_dummy_rom_bank );
+	memory_set_bankptr(5, ROMMap[ROMBank00] ? ROMMap[ROMBank00] : gb_dummy_rom_bank );
+	memory_set_bankptr(10, ROMMap[ROMBank00] ? ROMMap[ROMBank00] + 0x0100 : gb_dummy_rom_bank + 0x0100 );
 
 	if ( sgb_tile_data == NULL ) {
 		sgb_tile_data = auto_malloc( 0x2000 );
@@ -262,6 +274,8 @@ MACHINE_RESET( sgb )
 
 	/* Initialize the Sound Registers */
 	gb_sound_w(0x16,0xF0);	/* F0 for SGB */
+	gb_sound_w(0x15,0xF3);
+	gb_sound_w(0x14,0x77);
 
 	sgb_window_mask = 0;
 	memset( sgb_pal_map, 0, 20*18 );
@@ -286,9 +300,14 @@ MACHINE_RESET( gbpocket )
 
 	gb_init_regs();
 
+	/* Initialize the Sound registers */
+	gb_sound_w(0x16,0x80);
+	gb_sound_w(0x15,0xF3);
+	gb_sound_w(0x14,0x77);
+
 	/* Enable BIOS rom if we have one */
-	memory_set_bankptr(5, ROMMap[0] ? ROMMap[0] : gb_dummy_rom_bank );
-	memory_set_bankptr(10, ROMMap[0] ? ROMMap[0] + 0x0100 : gb_dummy_rom_bank + 0x0100);
+	memory_set_bankptr(5, ROMMap[ROMBank00] ? ROMMap[ROMBank00] : gb_dummy_rom_bank );
+	memory_set_bankptr(10, ROMMap[ROMBank00] ? ROMMap[ROMBank00] + 0x0100 : gb_dummy_rom_bank + 0x0100);
 }
 
 MACHINE_RESET( gbc )
@@ -308,7 +327,13 @@ MACHINE_RESET( gbc )
 
 	gb_init_regs();
 
-	memory_set_bankptr(5, ROMMap[0] ? ROMMap[0] : gb_dummy_rom_bank );
+	/* Initialize the Sound registers */
+	gb_sound_w(0x16, 0x80);
+	gb_sound_w(0x15, 0xF3);
+	gb_sound_w(0x14, 0x77);
+
+	memory_set_bankptr(5, ROMMap[ROMBank00] ? ROMMap[ROMBank00] : gb_dummy_rom_bank );
+	memory_set_bankptr(10, ROMMap[ROMBank00] ? ROMMap[ROMBank00] + 0x0100 : gb_dummy_rom_bank + 0x0100);
 
 	/* Allocate memory for internal ram */
 	for( ii = 0; ii < 8; ii++ ) {
@@ -432,8 +457,10 @@ WRITE8_HANDLER( gb_rom_bank_unknown_mbc7 ) {
 WRITE8_HANDLER( gb_rom_bank_select_wisdom ) {
 	logerror( "0x%04X: wisdom tree mapper write to address 0x%04X\n", activecpu_get_pc(), offset );
 	/* The address determines the bank to select */
-	ROMBank = ( offset + 1 ) & 0xFF;
-	memory_set_bankptr( 1, ROMMap[ ROMBank ] );
+	ROMBank = ( offset << 1 ) & 0x1FF;
+	memory_set_bankptr( 5, ROMMap[ ROMBank ] );
+	memory_set_bankptr( 10, ROMMap[ ROMBank ] + 0x0100 );
+	memory_set_bankptr( 1, ROMMap[ ROMBank + 1 ] );
 }
 
 WRITE8_HANDLER( gb_ram_bank_select_mbc1 )
@@ -579,6 +606,49 @@ WRITE8_HANDLER( gb_ram_tama5 ) {
 	}
 }
 
+/* This mmm01 implementation is mostly guess work, no clue how correct it all is */
+
+UINT8 mmm01_bank_offset;
+UINT8 mmm01_reg1;
+UINT8 mmm01_bank;
+UINT8 mmm01_bank_mask;
+
+WRITE8_HANDLER( gb_rom_bank_mmm01_0000_w ) {
+	logerror( "0x%04X: write 0x%02X to 0x%04X\n", activecpu_get_pc(), data, offset+0x000 );
+	if ( data & 0x40 ) {
+		mmm01_bank_offset = mmm01_reg1;
+		memory_set_bankptr( 5, ROMMap[ mmm01_bank_offset ] );
+		memory_set_bankptr( 10, ROMMap[ mmm01_bank_offset ] + 0x0100 );
+		memory_set_bankptr( 1, ROMMap[ mmm01_bank_offset + mmm01_bank ] );
+	}
+}
+
+WRITE8_HANDLER( gb_rom_bank_mmm01_2000_w ) {
+	logerror( "0x%04X: write 0x%02X to 0x%04X\n", activecpu_get_pc(), data, offset+0x2000 );
+
+	mmm01_reg1 = data & ROMMask;
+	mmm01_bank = mmm01_reg1 & mmm01_bank_mask;
+	if ( mmm01_bank == 0 ) {
+		mmm01_bank = 1;
+	}
+	memory_set_bankptr( 1, ROMMap[ mmm01_bank_offset + mmm01_bank ] );
+}
+
+WRITE8_HANDLER( gb_rom_bank_mmm01_4000_w ) {
+	logerror( "0x%04X: write 0x%02X to 0x%04X\n", activecpu_get_pc(), data, offset+0x4000 );
+}
+
+WRITE8_HANDLER( gb_rom_bank_mmm01_6000_w ) {
+	logerror( "0x%04X: write 0x%02X to 0x%04X\n", activecpu_get_pc(), data, offset+0x6000 );
+	/* Not sure if this is correct, Taito Variety Pack sets these values */
+	/* Momotarou Collection 2 writes 01 and 21 here */
+	switch( data ) {
+	case 0x30:	mmm01_bank_mask = 0x07;	break;
+	case 0x38:	mmm01_bank_mask = 0x03;	break;
+	default:	mmm01_bank_mask = 0xFF; break;
+	}
+}
+
 WRITE8_HANDLER ( gb_io_w )
 {
 	static UINT8 timer_shifts[4] = {10, 4, 6, 8};
@@ -633,7 +703,7 @@ WRITE8_HANDLER ( gb_io2_w )
 {
 	if ( offset == 0x10 ) {
 		/* disable BIOS ROM */
-		memory_set_bankptr(5, ROMMap[0]);
+		memory_set_bankptr(5, ROMMap[ROMBank00]);
 	} else {
 		gb_video_w( offset, data );
 	}
@@ -1237,6 +1307,7 @@ DEVICE_INIT(gb_cart)
 	for(I = 0; I < MAX_RAMBANK; I++) {
 		RAMMap[I] = gb_dummy_ram_bank;
 	}
+	ROMBank00 = 0;
 	ROMBanks = 0;
 	RAMBanks = 0;
 	MBCType = MBC_NONE;
@@ -1376,6 +1447,7 @@ DEVICE_LOAD(gb_cart)
 
 	int Checksum, I, J, filesize;
 	UINT16 reported_rom_banks;
+	UINT8	*gb_header;
 	int rambanks[8] = {0, 1, 1, 4, 16, 8, 0, 0};
 
 	filesize = image_length(image);
@@ -1403,8 +1475,33 @@ DEVICE_LOAD(gb_cart)
 		return INIT_FAIL;
 	}
 
+	gb_header = gb_cart;
+	ROMBank00 = 0;
+
+	/* Check for presence of MMM01 mapper */
+	if ( filesize >= 0x8000 ) {
+		static const UINT8 nintendo_logo[0x18] = {
+			0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B,
+			0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
+			0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E
+		};
+		int	bytes_matched = 0;
+		gb_header = gb_cart + filesize - 0x8000;
+		for ( I = 0; I < 0x18; I++ ) {
+			if ( gb_header[0x0104 + I] == nintendo_logo[I] ) {
+				bytes_matched++;
+			}
+		}
+		if ( bytes_matched == 0x18 && gb_header[0x0147] >= 0x0B && gb_header[0x0147] <= 0x0D ) {
+			ROMBank00 = ( filesize / 0x4000 ) - 2;
+			mmm01_bank_offset = ROMBank00;
+		} else {
+			gb_header = gb_cart;
+		}
+	}
+
 	/* Fill in our cart details */
-	switch( gb_cart[0x0147] ) {
+	switch( gb_header[0x0147] ) {
 	case 0x00:	MBCType = MBC_NONE;	CartType = 0;				break;
 	case 0x01:	MBCType = MBC_MBC1;	CartType = 0;				break;
 	case 0x02:	MBCType = MBC_MBC1;	CartType = RAM;				break;
@@ -1439,10 +1536,10 @@ DEVICE_LOAD(gb_cart)
 	}
 
 	/* Check whether we're dealing with a (possible) Wisdom Tree game here */
-	if ( gb_cart[0x0147] == 0x00 ) {
+	if ( gb_header[0x0147] == 0x00 ) {
 		int count = 0;
 		for( I = 0x0134; I <= 0x014C; I++ ) {
-			count += gb_cart[I];
+			count += gb_header[I];
 		}
 		if ( count == 0 ) {
 			MBCType = MBC_WISDOM;
@@ -1454,8 +1551,8 @@ DEVICE_LOAD(gb_cart)
 		return INIT_FAIL;
 	}
 	if ( MBCType == MBC_MMM01 ) {
-		image_seterror( image, IMAGE_ERROR_UNSUPPORTED, "Mapper MMM01 is not supported yet" );
-		return INIT_FAIL;
+//		image_seterror( image, IMAGE_ERROR_UNSUPPORTED, "Mapper MMM01 is not supported yet" );
+//		return INIT_FAIL;
 	}
 	if ( MBCType == MBC_MBC4 ) {
 		image_seterror( image, IMAGE_ERROR_UNSUPPORTED, "Mapper MBC4 is not supported yet" );
@@ -1470,7 +1567,7 @@ DEVICE_LOAD(gb_cart)
 #endif
 
 	ROMBanks = filesize / 0x4000;
-	switch( gb_cart[0x0148] ) {
+	switch( gb_header[0x0148] ) {
 	case 0x52:
 		reported_rom_banks = 72;
 		break;
@@ -1482,7 +1579,7 @@ DEVICE_LOAD(gb_cart)
 		break;
 	case 0x00: case 0x01: case 0x02: case 0x03:
 	case 0x04: case 0x05: case 0x06: case 0x07:
-		reported_rom_banks = 2 << gb_cart[0x0148];
+		reported_rom_banks = 2 << gb_header[0x0148];
 		break;
 	default:
 		logerror( "Warning loading cartridge: Unknown ROM size in header.\n" );
@@ -1493,11 +1590,11 @@ DEVICE_LOAD(gb_cart)
 		logerror( "Warning loading cartridge: Filesize and reported ROM banks don't match.\n" );
 	}
 
-        RAMBanks = rambanks[gb_cart[0x0149] & 7];
+        RAMBanks = rambanks[gb_header[0x0149] & 7];
 
 	/* Calculate and check checksum */
-        Checksum = ((UINT16) gb_cart[0x014E] << 8) + gb_cart[0x014F];
-        Checksum += gb_cart[0x014E] + gb_cart[0x014F];
+        Checksum = ((UINT16) gb_header[0x014E] << 8) + gb_header[0x014F];
+        Checksum += gb_header[0x014E] + gb_header[0x014F];
         for (I = 0; I < filesize; I++)
         {
                 Checksum -= gb_cart[I];
@@ -1540,27 +1637,27 @@ DEVICE_LOAD(gb_cart)
 		int ramsize[8] = { 0, 2, 8, 32, 128, 64, 0, 0 };
 
 
-		strncpy (S, (char *)&gb_cart[0x0134], 16);
+		strncpy (S, (char *)&gb_header[0x0134], 16);
 		S[16] = '\0';
 		logerror("Cart Information\n");
 		logerror("\tName:             %s\n", S);
-		logerror("\tType:             %s [0x%2X]\n", CartTypes[gb_cart[0x0147]], gb_cart[0x0147] );
-		logerror("\tGameBoy:          %s\n", (gb_cart[0x0143] == 0xc0) ? "No" : "Yes" );
-		logerror("\tSuper GB:         %s [0x%2X]\n", (gb_cart[0x0146] == 0x03) ? "Yes" : "No", gb_cart[0x0146] );
-		logerror("\tColor GB:         %s [0x%2X]\n", (gb_cart[0x0143] == 0x80 || gb_cart[0x0143] == 0xc0) ? "Yes" : "No", gb_cart[0x0143] );
-		logerror("\tROM Size:         %d 16kB Banks [0x%2X]\n", ROMBanks, gb_cart[0x0148]);
-		logerror("\tRAM Size:         %d kB [0x%2X]\n", ramsize[ gb_cart[0x0149] & 0x07 ], gb_cart[0x0149]);
-		logerror("\tLicense code:     0x%2X%2X\n", gb_cart[0x0145], gb_cart[0x0144] );
-		J = ((UINT16) gb_cart[0x014B] << 8) + gb_cart[0x014A];
+		logerror("\tType:             %s [0x%2X]\n", CartTypes[gb_header[0x0147]], gb_header[0x0147] );
+		logerror("\tGameBoy:          %s\n", (gb_header[0x0143] == 0xc0) ? "No" : "Yes" );
+		logerror("\tSuper GB:         %s [0x%2X]\n", (gb_header[0x0146] == 0x03) ? "Yes" : "No", gb_header[0x0146] );
+		logerror("\tColor GB:         %s [0x%2X]\n", (gb_header[0x0143] == 0x80 || gb_header[0x0143] == 0xc0) ? "Yes" : "No", gb_cart[0x0143] );
+		logerror("\tROM Size:         %d 16kB Banks [0x%2X]\n", ROMBanks, gb_header[0x0148]);
+		logerror("\tRAM Size:         %d kB [0x%2X]\n", ramsize[ gb_header[0x0149] & 0x07 ], gb_header[0x0149]);
+		logerror("\tLicense code:     0x%2X%2X\n", gb_header[0x0145], gb_header[0x0144] );
+		J = ((UINT16) gb_header[0x014B] << 8) + gb_header[0x014A];
 		for (I = 0, P = NULL; !P && Companies[I].Name; I++)
 			if (J == Companies[I].Code)
 				P = Companies[I].Name;
 		logerror("\tManufacturer ID:  0x%2X", J);
 		logerror(" [%s]\n", P ? P : "?");
-		logerror("\tVersion Number:   0x%2X\n", gb_cart[0x014C]);
-		logerror("\tComplement Check: 0x%2X\n", gb_cart[0x014D]);
-		logerror("\tChecksum:         0x%2X\n", ( ( gb_cart[0x014E] << 8 ) + gb_cart[0x014F] ) );
-		J = ((UINT16) gb_cart[0x0103] << 8) + gb_cart[0x0102];
+		logerror("\tVersion Number:   0x%2X\n", gb_header[0x014C]);
+		logerror("\tComplement Check: 0x%2X\n", gb_header[0x014D]);
+		logerror("\tChecksum:         0x%2X\n", ( ( gb_header[0x014E] << 8 ) + gb_header[0x014F] ) );
+		J = ((UINT16) gb_header[0x0103] << 8) + gb_header[0x0102];
 		logerror("\tStart Address:    0x%2X\n", J);
 	}
 

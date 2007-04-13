@@ -868,10 +868,9 @@ static void CreateCommandLine(int nGameIndex, char* pCmdLine)
 	/* Performance Options */
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%safs",                     pOpts->autoframeskip   ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -fs %d",						pOpts->frameskip );
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -ftr %d",					pOpts->frames_to_display);
+	sprintf(&pCmdLine[strlen(pCmdLine)], " -str %d",					pOpts->seconds_to_display);
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sthrottle",				pOpts->throttle   ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ssleep",					pOpts->sleep   ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%srdtsc",					pOpts->old_timing ? "" : "no");
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -priority %d",				pOpts->priority);
 	/* video */
 	sprintf(&pCmdLine[strlen(pCmdLine)], " -video %s",                  pOpts->videomode );
@@ -5598,7 +5597,7 @@ static void MamePlayBackGame()
 
 	if (CommonFileDialog(GetOpenFileName, filename, FILETYPE_INPUT_FILES))
 	{
-		mame_file_error fileerr;
+		file_error fileerr;
 		mame_file* pPlayBack;
 		char drive[_MAX_DRIVE];
 		char dir[_MAX_DIR];
@@ -5615,7 +5614,7 @@ static void MamePlayBackGame()
 		if (path[strlen(path)-1] == '\\')
 			path[strlen(path)-1] = 0; // take off trailing back slash
 
-		options_set_string(SEARCHPATH_INPUTLOG, path);
+		options_set_string(mame_options(), SEARCHPATH_INPUTLOG, path);
 		fileerr = mame_fopen(SEARCHPATH_INPUTLOG, fname, OPEN_FLAG_READ, &pPlayBack);
 		if (fileerr != FILERR_NONE)
 		{
@@ -5710,7 +5709,7 @@ static void MameLoadState()
 				MameMessageBox("'%s' is not a valid savestate file for game '%s'.", filename, selected_filename);
 				return;
 			}
-			options_set_string(OPTION_STATE_DIRECTORY, path);
+			options_set_string(mame_options(), OPTION_STATE_DIRECTORY, path);
 			state_fname = fname;
 		}
 #endif // MESS

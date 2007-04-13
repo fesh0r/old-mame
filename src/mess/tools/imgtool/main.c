@@ -873,7 +873,7 @@ error:
 
 static struct command cmds[] =
 {
-	{ "create",				cmd_create,				"<format> <imagename>", 2, 8, 0},
+	{ "create",				cmd_create,				"<format> <imagename> [--(createoption)=value]", 2, 8, 0},
 	{ "dir",				cmd_dir,				"<format> <imagename> [path]", 2, 3, 0 },
 	{ "get",				cmd_get,				"<format> <imagename> <filename> [newname] [--filter=filter] [--fork=fork]", 3, 4, 0 },
 	{ "put",				cmd_put,				"<format> <imagename> <filename>... <destname> [--(fileoption)==value] [--filter=filter] [--fork=fork]", 3, 0xffff, 0 },
@@ -943,7 +943,7 @@ int CLIB_DECL main(int argc, char *argv[])
 					goto cmderror;
 
 				/* initialize the imgtool core */
-				imgtool_init(TRUE);
+				imgtool_init(TRUE, NULL);
 
 				if (c->lastargrepeats && (argc > c->maxargs))
 				{
@@ -994,4 +994,9 @@ cmderror:
 done:
 	imgtool_exit();
 	return result;
+}
+
+void mess_options_init(void)
+{
+	/* dummy */
 }

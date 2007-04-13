@@ -14,6 +14,7 @@ MESSOBJ = $(OBJ)/mess
 MAME_AUDIO = $(MAMEOBJ)/audio
 MAME_MACHINE = $(MAMEOBJ)/machine
 MAME_VIDEO = $(MAMEOBJ)/video
+MAME_DRIVERS = $(MAMEOBJ)/drivers
 
 MESS_AUDIO = $(MESSOBJ)/audio
 MESS_DEVICES = $(MESSOBJ)/devices
@@ -195,6 +196,8 @@ CPUS += CDP1802
 #CPUS += TLCS90
 #CPUS += MB8843
 #CPUS += MB8844
+#CPUS += MB86233
+#CPUS += SSP1610
 CPUS += APEXC
 CPUS += CP1610
 CPUS += F8
@@ -494,7 +497,6 @@ $(MESSOBJ)/arcadia.a:  \
 	$(MESS_VIDEO)/arcadia.o	\
 
 $(MESSOBJ)/sega.a:						\
-	$(MESS_MACHINE)/genesis.o	\
 	$(MESS_DRIVERS)/genesis.o	\
 	$(MESS_DRIVERS)/saturn.o	\
 	$(MAME_MACHINE)/stvcd.o			\
@@ -503,7 +505,8 @@ $(MESSOBJ)/sega.a:						\
 	$(MAME_VIDEO)/stvvdp2.o		\
 	$(MESS_VIDEO)/smsvdp.o	\
 	$(MESS_MACHINE)/sms.o		\
-	$(MESS_DRIVERS)/sms.o
+	$(MESS_DRIVERS)/sms.o		\
+	$(MAME_DRIVERS)/megadriv.o
 
 $(MESSOBJ)/atari.a:						\
 	$(MAME_VIDEO)/tia.o			\
@@ -685,8 +688,9 @@ $(MESSOBJ)/ti85.a: \
 	$(MESS_MACHINE)/ti85.o		\
 
 $(MESSOBJ)/rca.a: \
+	$(MESS_DRIVERS)/vip.o  \
 	$(MESS_DRIVERS)/studio2.o  \
-	$(MESS_VIDEO)/studio2.o  
+	$(MESS_VIDEO)/cdp1861.o
 
 $(MESSOBJ)/fairch.a: \
 	$(MESS_VIDEO)/channelf.o \
@@ -1051,8 +1055,9 @@ $(MESSOBJ)/multitch.a:					\
 
 $(MESSOBJ)/telmac.a:					\
 	$(MESS_DRIVERS)/telmac.o	\
-	$(MESS_VIDEO)/cdp186x.o	\
+	$(MESS_VIDEO)/cdp1864.o	\
 	$(MESS_DRIVERS)/tmc600.o	\
+	$(MESS_DRIVERS)/tmc2000e.o	\
 	$(MAME_VIDEO)/cdp1869.o	\
 
 $(MESSOBJ)/exeltel.a:					\
@@ -1100,7 +1105,8 @@ $(MESSOBJ)/thomson.a:			\
 	$(MESS_DEVICES)/thomflop.o \
 	$(MESS_FORMATS)/thom_dsk.o \
 	$(MESS_FORMATS)/thom_cas.o \
-	$(MESS_AUDIO)/mea8000.o
+	$(MESS_AUDIO)/mea8000.o		\
+	$(MAME_MACHINE)/6850acia.o
 
 $(MESSOBJ)/tiger.a:				\
 	$(MESS_DRIVERS)/gamecom.o	\
@@ -1131,6 +1137,8 @@ MESS_EMUOBJ = $(OBJ)/mess
 # MESS specific core $(OBJ)s
 EMUOBJS +=							\
 	$(MESS_EMUOBJ)/mess.o				\
+	$(MESS_EMUOBJ)/messopts.o			\
+	$(MESS_EMUOBJ)/configms.o			\
 	$(MESS_EMUOBJ)/mesvalid.o			\
 	$(MESS_EMUOBJ)/image.o				\
 	$(MESS_EMUOBJ)/device.o			\

@@ -32,11 +32,6 @@ mame_bitmap *osd_override_snapshot(mame_bitmap *bitmap, rectangle *bounds)
 	return NULL;
 }
 
-const char *osd_get_fps_text(const performance_info *performance)
-{
-	return NULL;
-}
-
 void osd_set_mastervolume(int attenuation)
 {
 }
@@ -180,6 +175,10 @@ void osd_break_into_debugger(const char *message)
 {
 }
 
+void win_mess_options_init(void)
+{
+}
+
 //============================================================
 //	osd_alloc_executable
 //============================================================
@@ -221,4 +220,20 @@ int osd_is_bad_read_ptr(const void *ptr, size_t size)
 #else
 	return !ptr;
 #endif
+}
+
+
+void osd_get_emulator_directory(char *dir, size_t dir_size)
+{
+}
+
+
+
+void osd_mess_options_init(void)
+{
+}
+
+
+void osd_mess_config_init(running_machine *machine)
+{
 }

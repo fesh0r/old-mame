@@ -182,7 +182,7 @@ static chd_interface mess_hard_disk_interface =
 
 static chd_interface_file *mess_chd_open(const char *filename, const char *mode)
 {
-	mame_file_error filerr;
+	file_error filerr;
 	mess_image *image = decode_image_ref(filename);
 
 	/* used when experimenting with CHDs */
@@ -447,7 +447,7 @@ void harddisk_device_getinfo(const device_class *devclass, UINT32 state, union d
 		case DEVINFO_STR_FILE_EXTENSIONS:			strcpy(info->s = device_temp_str(), "chd,hd"); break;
 		case DEVINFO_STR_CREATE_OPTNAME+0:			strcpy(info->s = device_temp_str(), "chd"); break;
 		case DEVINFO_STR_CREATE_OPTDESC+0:			strcpy(info->s = device_temp_str(), "MAME/MESS CHD Hard drive"); break;
-		case DEVINFO_STR_CREATE_OPTEXTS+0:			strcpy(info->s = device_temp_str(), "chd\0hd\0"); break;
+		case DEVINFO_STR_CREATE_OPTEXTS+0:			strcpy(info->s = device_temp_str(), "chd,hd"); break;
 	}
 }
 

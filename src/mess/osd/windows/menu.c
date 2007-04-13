@@ -30,6 +30,7 @@
 #include "inptport.h"
 #include "devices/cassette.h"
 #include "windows/window.h"
+#include "uimess.h"
 
 #ifdef UNDER_CE
 #include "invokegx.h"
@@ -101,16 +102,10 @@ enum
 #endif
 
 //============================================================
-//	GLOBAL VARIABLES
-//============================================================
-
-int win_use_natural_keyboard;
-
-
-//============================================================
 //	LOCAL VARIABLES
 //============================================================
 
+static int win_use_natural_keyboard;
 static HICON device_icons[IO_COUNT];
 static int use_input_categories;
 static int joystick_menu_setup;
@@ -808,11 +803,13 @@ static int add_filter_entry(char *dest, size_t dest_len, const char *description
 static void build_generic_filter(const struct IODevice *dev, int is_save, char *filter, size_t filter_len)
 {
 	char *s;
+	const char *file_extensions;
 
 	s = filter;
 
 	// common image types
-	s += add_filter_entry(filter, filter_len, "Common image types", dev->file_extensions);
+	file_extensions = device_get_info_string(&dev->devclass, DEVINFO_STR_FILE_EXTENSIONS);
+	s += add_filter_entry(filter, filter_len, "Common image types", file_extensions);
 
 	// all files
 	s += sprintf(s, "All files (*.*)|*.*|");
@@ -836,7 +833,6 @@ static void change_device(HWND wnd, mess_image *img, int is_save)
 	char filter[2048];
 	char filename[MAX_PATH];
 	char buffer[512];
-	char *s;
 	const struct IODevice *dev = image_device(img);
 	const char *initial_dir;
 	BOOL result;
@@ -859,10 +855,8 @@ static void change_device(HWND wnd, mess_image *img, int is_save)
 	}
 
 	// use image directory, if it is there
-	if (image_exists(img))
-		initial_dir = image_filedir(img);
-	else
-		initial_dir = get_devicedirectory(dev->type);
+	get_devicedirectory(dev->type);
+	initial_dir = image_working_directory(img);
 
 	// add custom dialog elements, if appropriate
 	if (is_save && dev->createimage_optguide && dev->createimage_options[0].optspec)
@@ -882,14 +876,6 @@ static void change_device(HWND wnd, mess_image *img, int is_save)
 		dialog, filter, initial_dir, filename, sizeof(filename) / sizeof(filename[0]));
 	if (result)
 	{
-		// get the filename
-		s = osd_dirname(filename);
-		if (s)
-		{
-			set_devicedirectory(dev->type, s);
-			free(s);
-		}
-
 		// mount the image
 		if (is_save)
 			err = image_create(img, filename, create_format, create_args);
@@ -1199,14 +1185,10 @@ static void setup_joystick_menu(HMENU menu_bar)
 
 
 //============================================================
-//	is_throttled
 //	is_windowed
-//	set_throttle
 //============================================================
 
-static int is_throttled(void)	{ return video_config.throttle; }
 static int is_windowed(void)	{ return video_config.windowed; }
-static void set_throttle(int t)	{ video_config.throttle = t; }
 
 
 
@@ -1250,7 +1232,7 @@ static void prepare_menus(HWND wnd)
 		joystick_menu_setup = 1;
 	}
 
-	frameskip = winvideo_get_frameskip();
+	frameskip = video_get_frameskip();
 
 	orientation = render_target_get_orientation(window->target);
 
@@ -1274,7 +1256,7 @@ static void prepare_menus(HWND wnd)
 	set_command_state(menu_bar, ID_EDIT_PASTE,				inputx_can_post()							? MFS_ENABLED : MFS_GRAYED);
 
 	set_command_state(menu_bar, ID_OPTIONS_PAUSE,			winwindow_ui_is_paused()					? MFS_CHECKED : MFS_ENABLED);
-	set_command_state(menu_bar, ID_OPTIONS_THROTTLE,		is_throttled()								? MFS_CHECKED : MFS_ENABLED);
+	set_command_state(menu_bar, ID_OPTIONS_THROTTLE,		video_get_throttle()								? MFS_CHECKED : MFS_ENABLED);
 	set_command_state(menu_bar, ID_OPTIONS_CONFIGURATION,	has_config									? MFS_ENABLED : MFS_GRAYED);
 	set_command_state(menu_bar, ID_OPTIONS_DIPSWITCHES,		has_dipswitch								? MFS_ENABLED : MFS_GRAYED);
 	set_command_state(menu_bar, ID_OPTIONS_MISCINPUT,		has_misc									? MFS_ENABLED : MFS_GRAYED);
@@ -1659,7 +1641,7 @@ static int invoke_command(HWND wnd, UINT command)
 			break;
 
 		case ID_FILE_SAVESCREENSHOT:
-			video_save_active_screen_snapshots();
+			video_save_active_screen_snapshots(Machine);
 			break;
 
 		case ID_FILE_EXIT:
@@ -1711,7 +1693,7 @@ static int invoke_command(HWND wnd, UINT command)
 			break;
 
 		case ID_OPTIONS_THROTTLE:
-			set_throttle(!is_throttled());
+			video_set_throttle(!video_get_throttle());
 			break;
 
 #if HAS_PROFILER
@@ -1766,7 +1748,7 @@ static int invoke_command(HWND wnd, UINT command)
 #endif
 
 		case ID_FRAMESKIP_AUTO:
-			winvideo_set_frameskip(-1);
+			video_set_frameskip(-1);
 			break;
 
 		case ID_HELP_ABOUT:
@@ -1787,7 +1769,7 @@ static int invoke_command(HWND wnd, UINT command)
 			if ((command >= ID_FRAMESKIP_0) && (command < ID_FRAMESKIP_0 + FRAMESKIP_LEVELS))
 			{
 				// change frameskip
-				winvideo_set_frameskip(command - ID_FRAMESKIP_0);
+				video_set_frameskip(command - ID_FRAMESKIP_0);
 			}
 			else if ((command >= ID_DEVICE_0) && (command < ID_DEVICE_0 + (MAX_DEV_INSTANCES*IO_COUNT*DEVOPTION_MAX)))
 			{
@@ -1973,8 +1955,11 @@ int win_create_menu(HMENU *menus)
 {
 	HMENU menu_bar = NULL;
 	HMODULE module;
-	
-	if (options.disable_normal_ui)
+
+	// determine whether we are using the natural keyboard or not
+	win_use_natural_keyboard = options_get_bool(mame_options(), "natural");
+
+	if (mess_use_new_ui())
 	{
 		module = win_resource_module();
 		menu_bar = LoadMenu(module, MAKEINTRESOURCE(IDR_RUNTIME_MENU));

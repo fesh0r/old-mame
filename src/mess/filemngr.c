@@ -420,7 +420,7 @@ static void fs_generate_filelist(void)
 /* and mask to get bits */
 #define SEL_BITS_MASK			(~SEL_MASK)
 
-static int fileselect(int selected, const char *default_selection)
+static int fileselect(int selected, const char *default_selection, const char *working_directory)
 {
 	int sel, total, arrowize;
 	int visible;
@@ -431,19 +431,7 @@ static int fileselect(int selected, const char *default_selection)
 	if (fs_insession == 0)
 	{
 		fs_insession = 1;
-		if (default_selection)
-		{
-			char *dirname;
-			dirname = osd_dirname((char *) default_selection);
-			osd_setcurdir(dirname);
-			free(dirname);
-		}
-		else
-		{
-			osd_setcurdir(mess_path);
-			osd_setcurdir("software");
-			osd_setcurdir(Machine->gamedrv->name);
-		}
+		osd_setcurdir(working_directory);
 	}
 
 	/* generate menu? */
@@ -671,7 +659,7 @@ int filemanager(int selected)
 	if (sel & (2 << SEL_BITS))
 	{
 		image = image_from_device_and_index(devices[previous_sel & SEL_MASK], ids[previous_sel & SEL_MASK]);
-		sel = fileselect(selected & ~(2 << SEL_BITS), image_filename(image));
+		sel = fileselect(selected & ~(2 << SEL_BITS), image_filename(image), image_working_directory(image));
 		if (sel != 0 && sel != -1 && sel!=-2)
 			return sel | (2 << SEL_BITS);
 
@@ -751,7 +739,7 @@ int filemanager(int selected)
 		else
 		{
 			image = image_from_device_and_index(devices[sel], ids[sel]);
-			os_sel = osd_select_file(image, entered_filename);
+			os_sel = 0;
 		}
 
 		if (os_sel != 0)

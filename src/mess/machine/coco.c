@@ -101,9 +101,12 @@ easier to manage.
 
 /*common vars/calls */
 static UINT8 *coco_rom;
-static int dclg_state;
+static int dclg_state, dclg_output_h, dclg_output_v, dclg_timer;
 static UINT8 (*update_keyboard)(void);
 static mame_timer *update_keyboard_timer;
+static mame_timer *mux_sel1_timer;
+static mame_timer *mux_sel2_timer;
+static UINT8 mux_sel1, mux_sel2;
 
 static WRITE8_HANDLER ( d_pia1_pb_w );
 static WRITE8_HANDLER ( d_pia1_pa_w );
@@ -173,14 +176,17 @@ static UINT16 cart_bank_size;
 static int cart_autostart_enable;	 	/* Should the cart auto-start ?, set by dipswitch */
 static int cart_has_autostart;			/* Cart has autostart line, most do, but DOS does not */
 
+static int cart_crc(unsigned int *crc);		/* returns true if cart loaded & crc will be set, false otherwise */
 static int count_bank(void);
 static int is_Orch90(void);			/* Returns true if cart is orchestra 90 */
 static int is_megacart(void);			/* Returns true if cart contains megacart signature */
-static int is_doscart(void);			/* Returns true if cart contains 'DK' doscart signature */
+static int is_dosrom(void);			/* Returns true if cart contains 'DK' doscart signature */
+static int is_dragondos(void);		/* Returns true if DragonDos compatible cart inserted */
+static int is_deltados(void);			/* Returns true if DeltaDos compatible cart inserted */
+static int is_rsdos(void);			/* Returns true if RSDos compatible cart inserted */
 
 int cart_can_toggle(void);
 static void coco_cart_timerproc(int dummy);	// Note coco3 version in coc3 group above :)
-static mame_timer *cart_line_timer;
 static int cart_mem_offset;
 
 /* MegaCart CTRL reg, bit 1 selects 8K or 16K banking */
@@ -209,6 +215,7 @@ static void setup_memory_map(void);
 #define LOG_GIME		0
 #define LOG_MMU			0
 #define LOG_TIMER       0
+#define LOG_CART	1		/* Log cart type selections is_dosrom and friends */
 
 #define GIME_TYPE_1987	0
 
@@ -305,14 +312,14 @@ static const pia6821_interface coco3_pia_intf[] =
 {
 	/* PIA 0 */
 	{
-		/*inputs : A/B,CA/B1,CA/B2 */ 0, d_pia1_pb_r_coco2, 0, 0, 0, 0,
+		/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 		/*outputs: A/B,CA/B2	   */ d_pia0_pa_w, d_pia0_pb_w, d_pia0_ca2_w, d_pia0_cb2_w,
 		/*irqs	 : A/B			   */ coco3_pia0_irq_a, coco3_pia0_irq_b
 	},
 
 	/* PIA 1 */
 	{
-		/*inputs : A/B,CA/B1,CA/B2 */ d_pia1_pa_r, 0, 0, d_pia1_cb1_r, 0, 0,
+		/*inputs : A/B,CA/B1,CA/B2 */ d_pia1_pa_r, d_pia1_pb_r_coco2, 0, d_pia1_cb1_r, 0, 0,
 		/*outputs: A/B,CA/B2	   */ d_pia1_pa_w, d_pia1_pb_w, d_pia1_ca2_w, d_pia1_cb2_w,
 		/*irqs	 : A/B			   */ coco3_pia1_firq_a, coco3_pia1_firq_b
 	}
@@ -629,8 +636,13 @@ static int generic_rom_load(mess_image *image, UINT8 *dest, UINT16 destlength)
 	}
 
 	if (romsize > destlength)
-		romsize = destlength;
-
+	{
+		if(is_megacart())
+			romsize=0x4000;			/* Only 16K ever visible */
+		else
+			romsize = destlength;
+	}
+	
 	image_fread(image, dest, romsize);
 
 	cart_inserted = 1;
@@ -855,7 +867,7 @@ static void coco3_raise_interrupt(UINT8 mask, int state)
 			coco3_recalc_irq();
 
 			if (LOG_INT_COCO3)
-				logerror("CoCo3 Interrupt: Raising IRQ; scanline=%i\n", cpu_getscanline());
+				logerror("CoCo3 Interrupt: Raising IRQ; scanline=%i\n", video_screen_get_vpos(0));
 		}
 		if ((coco3_gimereg[0] & 0x10) && (coco3_gimereg[3] & mask))
 		{
@@ -863,7 +875,7 @@ static void coco3_raise_interrupt(UINT8 mask, int state)
 			coco3_recalc_firq();
 
 			if (LOG_INT_COCO3)
-				logerror("CoCo3 Interrupt: Raising FIRQ; scanline=%i\n", cpu_getscanline());
+				logerror("CoCo3 Interrupt: Raising FIRQ; scanline=%i\n", video_screen_get_vpos(0));
 		}
 	}
 }
@@ -1000,7 +1012,7 @@ static coco_input_device input_device(coco_input_port port)
 			/* "Diecom Light Gun Adaptor" */
 			switch(port)
 			{
-				case INPUTPORT_RIGHT_JOYSTICK:	result = INPUTDEVICE_HIRES_CC3MAX_INTERFACE; break;
+				case INPUTPORT_RIGHT_JOYSTICK:	result = INPUTDEVICE_DIECOM_LIGHTGUN; break;
 				case INPUTPORT_LEFT_JOYSTICK:	result = INPUTDEVICE_LEFT_JOYSTICK; break;
 				case INPUTPORT_SERIAL:			result = INPUTDEVICE_DIECOM_LIGHTGUN; break;
 				default:						result = INPUTDEVICE_NA; break;
@@ -1122,9 +1134,9 @@ static int get_soundmux_status(void)
 	int soundmux_status = 0;
 	if (pia_get_output_cb2(1))
 		soundmux_status |= SOUNDMUX_STATUS_ENABLE;
-	if (pia_get_output_ca2(0))
+	if (mux_sel1)
 		soundmux_status |= SOUNDMUX_STATUS_SEL1;
-	if (pia_get_output_cb2(0))
+	if (mux_sel2)
 		soundmux_status |= SOUNDMUX_STATUS_SEL2;
 	return soundmux_status;
 }
@@ -1227,16 +1239,27 @@ WRITE8_HANDLER ( dgnalpha_psg_porta_write )
 
 static WRITE8_HANDLER ( d_pia0_ca2_w )
 {
-	soundmux_update();
+	mame_timer_adjust(mux_sel1_timer, MAME_TIME_IN_USEC(16), data, time_never);
 }
 
-
+static void coco_update_sel1_timerproc(int data)
+{
+	mux_sel1 = data;
+	(*update_keyboard)();
+	soundmux_update();
+}
 
 static WRITE8_HANDLER ( d_pia0_cb2_w )
 {
-	soundmux_update();
+	mame_timer_adjust(mux_sel2_timer, MAME_TIME_IN_USEC(16), data, time_never);
 }
 
+static void coco_update_sel2_timerproc(int data)
+{
+	mux_sel2 = data;
+	(*update_keyboard)();
+	soundmux_update();
+}
 
 
 static mame_time get_relative_time(mame_time absolute_time)
@@ -1258,13 +1281,14 @@ static UINT8 coco_update_keyboard(void)
 	UINT8 porta = 0x7F;
 	int joyval;
 	static const int joy_rat_table[] = {15, 24, 42, 33 };
+	static const int dclg_table[] = {0, 14, 30, 49 };
+	mame_time dclg_time = time_zero;
 	UINT8 pia0_pb;
 	UINT8 dac = pia_get_output_a(1) & 0xFC;
 	int joystick_axis, joystick;
-	
 	pia0_pb = pia_get_output_b(0);
-	joystick_axis = pia_get_output_ca2(0);
-	joystick = pia_get_output_cb2(0);
+	joystick_axis = mux_sel1;
+	joystick = mux_sel2;
 
 	/* poll keyoard keys */
 	if ((input_port_0_r(0) | pia0_pb) != 0xff) porta &= ~0x01;
@@ -1302,57 +1326,37 @@ static UINT8 coco_update_keyboard(void)
 			break;
 
 		case INPUTDEVICE_DIECOM_LIGHTGUN:
+			if( (video_screen_get_vpos(0) == readinputportbytag_safe("dclg_y", 0)) )
 			{
-				int dclg_output;
-				static const int dclg_table[] = {0, 14, 30, 49 };
-				static int dclg_timer;
-				
-				dclg_output = 0;
-				
-				/* Diecom light gun interface */
-				if (joystick_axis)
-				{
-					if (dclg_state == 15)
-						dclg_output |= 0x01;
-					
-					if (dclg_state == 7)
-					{	
-						if (cpu_getscanline() == readinputportbytag_safe("dclg_y", 0))
-						{
-							dclg_output |= 0x02;
-							dclg_timer = readinputportbytag_safe("dclg_x", 0) << 1;
-						}
-					}
-				}
-				else
-				{
-					if ((dclg_state > 7) && (dclg_state < 16 ))
-					{
-						/* bit shift timer data on state 8 thru 15 */
-						if (((dclg_timer >> (dclg_state-8+1)) & 0x01) == 1)
-							dclg_output |= 0x01;
-						
-						/* Bit 9 of timer is only avaiable if state == 8*/
-						if (dclg_state == 8)
-						{
-							if (((dclg_timer >> 9) & 0x01) == 1)
-								dclg_output |= 0x02;
-						}
-					}
-				}
-		 
-				if (dac <= dclg_table[dclg_output])
-					porta |= 0x80;
+				/* If gun is pointing at the current scan line, set hit bit and cache horizontal timer value */
+				dclg_output_h |= 0x02;
+				dclg_timer = readinputportbytag_safe("dclg_x", 0) << 1;
 			}
+
+			if ( (dac >> 2) <= dclg_table[ (joystick_axis ? dclg_output_h : dclg_output_v) & 0x03 ])
+				porta |= 0x80;
+
+			if( (dclg_state == 7) )
+			{
+				/* While in state 7, prepare to chech next video frame for a hit */
+				dclg_time = video_screen_get_time_until_pos(0, readinputportbytag_safe("dclg_y", 0), 0);
+			}
+			
 			break;
 
 		default:
 			fatalerror("Invalid value returned by input_device");
 			break;
 	}
-
-	/* schedule hires joystick events, if necessary, if necessary */
+	
+	if( compare_mame_times(dclg_time, time_zero) )
 	{
+		/* schedule lightgun events */
+		mame_timer_reset(update_keyboard_timer, dclg_time );
+	}
+	else
+	{
+		/* schedule hires joystick events */
 		mame_time xtrans = get_relative_time(coco_hiresjoy_xtransitiontime);
 		mame_time ytrans = get_relative_time(coco_hiresjoy_ytransitiontime);
 
@@ -1497,10 +1501,6 @@ static WRITE8_HANDLER ( d_pia1_pa_w )
 	static int dclg_previous_bit;
 	
 	coco_sound_update();
-	(*update_keyboard)();
-
-	if (input_device(INPUTPORT_RIGHT_JOYSTICK) == INPUTDEVICE_HIRES_INTERFACE)
-		coco_hiresjoy_w(dac >= 0x80);
 
 	if (input_device(INPUTPORT_SERIAL) == INPUTDEVICE_DIECOM_LIGHTGUN)
 	{
@@ -1513,15 +1513,45 @@ static WRITE8_HANDLER ( d_pia1_pa_w )
 				/* Clock Diecom Light gun interface on a high to low transistion */
 				dclg_state++;
 				dclg_state &= 0x0f;
+				
+				/* Clear hit bit for every transistion */
+				dclg_output_h &= ~0x02;				
+
+				if( dclg_state > 7 )
+				{
+					/* Bit shift timer data on state 8 thru 15 */
+					if (((dclg_timer >> (dclg_state-8+1)) & 0x01) == 1)
+						dclg_output_v |= 0x01;
+					else
+						dclg_output_v &= ~0x01;
+						
+					/* Bit 9 of timer is only avaiable if state == 8*/
+					if (dclg_state == 8 && (((dclg_timer >> 9) & 0x01) == 1) )
+						dclg_output_v |= 0x02;
+					else
+						dclg_output_v &= ~0x02;
+				}
+				
+				/* During state 15, this bit is high. */
+				if( dclg_state == 15 )
+					dclg_output_h |= 0x01;
+				else
+					dclg_output_h &= ~0x01;
 			}
 		}
 
 		dclg_previous_bit = dclg_this_bit;
+
 	}
 	else
 	{
 		cassette_output(cassette_device_image(), ((int) dac - 0x80) / 128.0);
 	}
+
+	(*update_keyboard)();
+
+	if (input_device(INPUTPORT_RIGHT_JOYSTICK) == INPUTDEVICE_HIRES_INTERFACE)
+		coco_hiresjoy_w(dac >= 0x80);
 
 	/* Handle printer output, serial for CoCos, Paralell for Dragons */
 	
@@ -2666,40 +2696,66 @@ static int count_bank(void)
 	}
 }
 
-/* This function, and all calls of it, are hacks for bankswitched games */
-static int is_Orch90(void)
+/* Check for a loaded cart and get it's crc, if the cart is loaded, then */
+/* cart_crc will return true, and crc will be the crc of the loaded cart */
+/* if the cart is not loaded, then cart_crc will return false and crc will */
+/* be unchanged */
+int cart_crc(unsigned int *crc)
 {
-	unsigned int crc;
 	mess_image *img;
 
 	img = cartslot_image();
 	if (!image_exists(img))
 		return FALSE;
+	else
+	{
+		*crc = image_crc(img);
+		return TRUE;
+	}
+}
 
-	crc = image_crc(img);
-	return crc == 0x15FB39AF;
+/* This function, and all calls of it, are hacks for bankswitched games */
+static int is_Orch90(void)
+{
+	unsigned int crc;
+	int result;
+
+	result=cart_crc(&crc);
+	if(result)
+		result=(crc == 0x15FB39AF);
+
+	if (LOG_CART)
+		logerror("is_orch90:%d\n",result);
+		
+	return result;
 }
 
 /* Detect Megacart code, looks for Megacart magic number at offset 4 in file */
 static int is_megacart(void)
 {
 	UINT32		Magic;
-	int		ret;
+	int		result;
 	mess_image 	*img;
+	UINT64		pos;
 
 	img = cartslot_image();
 	
 	if (image_exists(img))					// Check that  cart is mounted
 	{
-		image_fseek(cartslot_image(), 4, SEEK_SET);	// Mega cart magic no at offset 4
-		image_fread(cartslot_image(), &Magic, sizeof(Magic));	// 4 bytes long
+		pos=image_ftell(img);				// get current pointer
+		image_fseek(img, 4, SEEK_SET);			// Mega cart magic no at offset 4
+		image_fread(img, &Magic, sizeof(Magic));	// 4 bytes long
+		image_fseek(img,pos,SEEK_SET);			// restore pointer
 	
-		ret = (Magic == 0x12210968);			// return true if magic no found
+		result = (Magic == 0x12210968);		// return true if magic no found
 	}
 	else
-		ret = 0;					// Return 0 if image not open
+		result = 0;					// Return 0 if image not open
+
+	if (LOG_CART)
+		logerror("is_megacart:%d\n",result);
 		
-	return ret;
+	return result;
 }
 
 /* Detect a dos rom, returns true if found. 				      */
@@ -2711,16 +2767,95 @@ static int is_megacart(void)
 static int is_dosrom(void)
 {
 	UINT8 *rombase;
-	
+	int result;
+
 	/* get rom base address, for CoCo 1/2 & Dragons this will be 0x4000 */
 	/* for the CoCo3 this will bx 0xc000 */
 	rombase=&coco_rom[cart_mem_offset];
 	
 	if((rombase[0]=='D') && (rombase[1]=='K'))
-		return 1;
+		result=TRUE;
 	else
-		return 0;
+		result=FALSE;
+
+	if (LOG_CART)
+		logerror("is_dosrom:%d\n",result);
+		
+	return result;
 } 
+
+/* Returns true if inserted cartrige rom is compatible with the DragonDos hardware */
+/* currently this will be Dragon Data DragonDos v 1.0, Eurohard DragonDos 4.0,     */
+/* Cumana dos, DosPlus (DragonDos version)                                         */
+static int is_dragondos(void)
+{
+	unsigned int crc;
+	int result;
+	
+	result=cart_crc(&crc);
+	if(result==TRUE) 
+		switch(crc)
+		{
+			case 0xb44536f6	: result=TRUE; break; 	// Dragondos 1.0
+			case 0x14F4C54A	: result=TRUE; break;	// DragonDos 4.0
+			case 0x32910D47	: result=TRUE; break;	// Cumana Dos
+			case 0x8C1D6C45	: result=TRUE; break;	// Superdos E6
+			default	: result=FALSE; break;
+		}
+	else
+		result=FALSE;
+
+	if (LOG_CART)
+		logerror("is_dragondos:%d\n",result);
+		
+	return result;
+}
+
+/* Return true if deltados rom inserted, currently only the original delta rom is */
+/* detected, should an image of DosPlus for delta become available this will be */
+/* added here */
+static int is_deltados(void)
+{
+	unsigned int crc;
+	int result;
+
+	result=cart_crc(&crc);
+	if((result) &&
+	   (crc == 0x149EB4DD))		// Original Deltados
+		result=TRUE;
+	else
+		result=FALSE;
+
+	if (LOG_CART)
+		logerror("is_deltados:%d\n",result);
+		
+	return result;
+}
+
+/* Return true if RSDos rom is inserted, currently detects Tandy RSDos 1.0, 1.2 */
+/* and SuperDos E7T (used by Tano Dragon 64) */
+static int is_rsdos(void)
+{
+	unsigned int crc;
+	int result;
+
+	result=cart_crc(&crc);
+	if(result)
+		switch (crc)
+		{
+			case 0xb4f9968e: result=TRUE; break;	// RSDos 1.0
+			case 0x0b9c5415: result=TRUE; break;	// RSDos 1.1
+			case 0x5d7779b7: result=TRUE; break;	// SuperDos E7T
+			default	: result=FALSE; break;
+		}
+	else
+		result=FALSE;
+		
+	if (LOG_CART)
+		logerror("is_rsdos:%d\n",result);
+
+	return result;
+}
 
 static void generic_setcartbank(int bank, UINT8 *cartpos)
 {
@@ -2775,11 +2910,11 @@ static void coco_dragon_reset(running_machine *machine)
 {
 	
 	/* reset megacart regs on hw reset */
-	if(is_megacart())
-	{
-		coco_cartridge_w(0x10,0);	// Zero bank
-		coco_cartridge_w(0x12,0);	// Zero control
-	}
+//	if(is_megacart())
+//	{
+//		coco_cartridge_w(0x10,0);	// Zero bank
+//		coco_cartridge_w(0x12,0);	// Zero control
+//	}
 
 	common_reset(machine);
 }
@@ -2815,6 +2950,10 @@ static void generic_init_machine(running_machine *machine, machine_init_interfac
 
 	/* this timer is used to schedule keyboard updating */
 	update_keyboard_timer = mame_timer_alloc(coco_update_keyboard_timerproc);
+	
+	/* these are the timers to delay the MUX switching */
+	mux_sel1_timer = mame_timer_alloc(coco_update_sel1_timerproc);
+	mux_sel2_timer = mame_timer_alloc(coco_update_sel2_timerproc);
 
 	/* setup ROM */
 	coco_rom = memory_region(REGION_CPU1);
@@ -2840,18 +2979,26 @@ static void generic_init_machine(running_machine *machine, machine_init_interfac
 	pia_config(2, PIA_STANDARD_ORDERING | PIA_8BIT, &init.piaintf[2]); /* Dragon Alpha 3rd pia */
 	pia_reset();
 
-	/* HACK for bankswitching carts */
+	/* Assume default cartslot type */
+	cartslottype = &cartridge_standard;
+
 	if( is_Orch90() )
-	{
-		cartslottype = &cartridge_Orch90;
-	}
-	else
-	{
-		if (is_megacart())
-			cartslottype = &cartridge_banks_mega;
-		else
-			cartslottype = (count_bank() > 0) ? &cartridge_banks : &cartridge_standard;
-	}
+		cartslottype = &cartridge_Orch90;		/* Orchestra 90 */
+		
+	else if (is_megacart())
+		cartslottype = &cartridge_banks_mega;		/* MegaCart */
+	
+	else if (count_bank() > 0)
+		cartslottype = &cartridge_banks;		/* Other bankswitched */
+
+	else if(is_dragondos())
+		cartslottype = &cartridge_fdc_dragon;		/* DragonDos compatible */
+	
+	else if(is_deltados())
+		cartslottype = &cartridge_fdc_dragon_delta;	/* DeltaDos compatible */
+			
+	else if(is_rsdos())
+		cartslottype = &cartridge_fdc_coco;		/* RSDos compatible */
 
 	coco_cartrige_init(cart_inserted ? cartslottype : init.cartinterface, init.cartcallback);
 
@@ -2863,6 +3010,9 @@ static void generic_init_machine(running_machine *machine, machine_init_interfac
 #endif
 
 	add_exit_callback(machine, coco_machine_stop);
+
+	state_save_register_global(mux_sel1);
+	state_save_register_global(mux_sel2);
 }
 
 /* Setup for hardware common to CoCo 1/2 & Dragon machines, calls genertic_init_machine, to process */
@@ -2887,6 +3037,8 @@ static void generic_coco12_dragon_init(running_machine *machine, machine_init_in
 	/* steal too much CPU time */
 	timer_pulse(1,0,coco_cart_timerproc); 	// 1Hz, seems to be fast enough.
 }
+
+/******* Machine Setups Dragons **********/
 
 MACHINE_START( dragon32 )
 {
@@ -2924,8 +3076,6 @@ MACHINE_START( dragon64 )
 		
 	return 0;
 }
-
-/******* Machine Setups Dragons **********/
 
 MACHINE_START( d64plus )
 {
@@ -3049,19 +3199,16 @@ static void coco3_machine_reset(running_machine *machine)
 
 	cart_has_autostart=0;
 	common_reset(machine);
-
-	/* If an auto-starting cart is inserted, start the cart_timer to toggle the */
-	/* cart line, this simulates the real toggling by Q, but slower so as not to */
-	/* steal too much CPU time */
-	if(cart_can_toggle())
-	{
-		timer_adjust(cart_line_timer,TIME_IN_MSEC(10),0,TIME_IN_MSEC(10));
-	}
 }
 
 static void coco3_state_postload(void)
 {
 	coco3_mmu_update(0, 8);
+}
+
+static UINT32 crosshairs_get_screen(int player)
+{
+	return readinputportbytag_safe("joystick_mode", 0x00) == 0x40 ? 0x03 : 0x00;
 }
 
 MACHINE_START( coco3 )
@@ -3099,12 +3246,14 @@ MACHINE_START( coco3 )
 	state_save_register_global(gime_firq);
 	state_save_register_func_postload(coco3_state_postload);
 
+	video_crosshair_set_screenmask_callback(Machine, crosshairs_get_screen);
+
 	add_reset_callback(machine, coco3_machine_reset);
 
 	/* If an auto-starting cart is inserted, start the cart_timer to toggle the */
 	/* cart line, this simulates the real toggling by Q, but slower so as not to */
 	/* steal too much CPU time */
-	timer_pulse(1,0,coco3_cart_timerproc); 	// 1Hz, seems to be fast enough.
+	timer_pulse(2,0,coco3_cart_timerproc); 	// 1Hz, seems to be fast enough.
 	
 	return 0;
 }

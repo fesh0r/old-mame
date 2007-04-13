@@ -273,6 +273,64 @@ At address 1A19:
 06 <- 05, 07 <- 02, followed by read 0C, if != 0F => OK, otherwise do something.
 
 
+MMM01 mapper
+============
+
+Used by: Momotarou Collection 2, Taito Pack
+
+Status: not supported yet.
+
+Momotarou Collection 2:
+
+When picking top option:
+3FFF <- 20
+5FFF <- 40
+7FFF <- 21
+1FFF <- 3A
+1FFF <- 7A
+
+When picking bottom option:
+3FFF <- 00
+5FFF <- 01
+7FFF <- 01
+1FFF <- 3A
+1FFF <- 7A
+
+Taito Pack (MMM01+RAM, 512KB, 64KB RAM):
+1st option (BUBBLE BOBBLE, blocks 0x10 - 0x17, MBC1+RAM, 128KB, 8KB RAM):
+  2000 <- 70  01110000  => starting block, 10000
+  6000 <- 30  00110000  => 8 blocks
+  4000 <- 70  01110000  => ???
+  0000 <- 40  01000000  => upper 3 bits determine lower 3 bits of starting block?
+
+2nd option (ELEVATOR ACTION, blocks 0x18 - 0x1B, MBC1, 64KB, 2KB RAM):
+  2000 <- 78  01111000  => starting block, 11000
+  6000 <- 38  00111000  => 4 blocks
+  4000 <- 70  01110000  => ???
+  0000 <- 40  01000000  => upper 3 bits determine lower 3 bits of starting block?
+
+3rd option (CHASE HQ, blocks 0x08 - 0x0F, MBC1+RAM, 128KB, 8KB RAM):
+  2000 <- 68  01101000  => starting block, 01000
+  6000 <- 30  00110000  => 8 blocks
+  4000 <- 70  01110000  => ???
+  0000 <- 40  01000000  => upper 3 bits determine lower 3 bits of starting block?
+
+4th option (SAGAIA, blocks 0x00 - 0x07, MBC1+RAM, 128KB, 8KB RAM):
+  2000 <- 60  01100000  => starting block, 00000
+  6000 <- 30  00110000  => 8 blocks
+  4000 <- 70  01110000  => ???
+  0000 <- 40  01000000  => upper 3 bits determine lower 3 bits of starting block?
+
+Known:
+The last 2 banks in a MMM01 dump are actually the starting banks for a MMM01 image.
+
+0000-1FFF => bit6 set => perform mapping
+
+Possible mapping registers:
+1FFF - Enable RAM ???
+3FFF - xxxbbbbb - Bit0-5 of the rom bank to select at 0x4000-0x7FFF ?
+
+
 HuC1 mapper
 ===========
 
@@ -289,11 +347,8 @@ Wisdom Tree mapper
 ==================
 
 The Wisdom Tree mapper is triggered by writes in the 0x0000-0x3FFF area. The
-address written to determines the bank to switch in. The banks to switch in,
-however, are number #1, #2, #3, etc. So, writing to address 0x000A switches
-in bank 0x0B, writing to address 0x0001 switches in bank 0x02.
-
-This behaviour still needs to be verified against a full dump.
+address written to determines the bank to switch in in the 0x000-0x7FFF address
+space. This mapper uses 32KB sized banks.
 
 
 ***************************************************************************/
@@ -337,7 +392,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(sgb_map, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
-	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK(5)					/* 16k fixed ROM bank */
+	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK(5)					/* 16k fixed ROM bank */
+	AM_RANGE(0x0100, 0x3fff) AM_ROMBANK(10)					/* ROM bank */
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)					/* 16k switched ROM bank */
 	AM_RANGE(0x8000, 0x9fff) AM_RAM AM_WRITE( gb_vram_w ) AM_BASE(&gb_vram)	/* 8k VRAM */
 	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(2)					/* 8k switched RAM bank (cartridge) */
@@ -354,7 +410,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(gbc_map, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
-	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK(5)					/* 16k fixed ROM bank */
+	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK(5)					/* 16k fixed ROM bank */
+	AM_RANGE(0x0100, 0x3fff) AM_ROMBANK(10)					/* ROM bank */
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)					/* 16k switched ROM bank */
 	AM_RANGE(0x8000, 0x9fff) AM_ROMBANK(4) AM_WRITE( gbc_vram_w )		/* 8k switched VRAM bank */
 	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(2)					/* 8k switched RAM bank (on cartridge) */
