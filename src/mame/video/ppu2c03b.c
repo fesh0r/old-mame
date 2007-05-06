@@ -250,8 +250,6 @@ void ppu2c03b_init( const ppu2c03b_interface *interface )
 			Machine->gfx[intf->gfx_layout_number[i]] = allocgfx( &ppu_charlayout );
 			decodegfx( Machine->gfx[intf->gfx_layout_number[i]], src, 0, Machine->gfx[intf->gfx_layout_number[i]]->total_elements );
 
-			assert_always( Machine->gfx[intf->gfx_layout_number[i]] != 0, "Invalid GFX\n" );
-
 			if ( Machine->remapped_colortable )
 				Machine->gfx[intf->gfx_layout_number[i]]->colortable = &Machine->remapped_colortable[intf->color_base[i]];
 
@@ -501,7 +499,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 						{
 							/* no, draw */
 							if ( ( x + j ) < VISIBLE_SCREEN_WIDTH )
-								plot_pixel( bitmap, x + j, scanline, paldata[ sd[7-j] ] );
+								*BITMAP_ADDR16(bitmap, scanline, x + j) = paldata[ sd[7-j] ];
 							drawn = 1;
 						}
 						/* indicate that a sprite was drawn at this location, even if it's not seen */
@@ -526,7 +524,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 						{
 							/* no, draw */
 							if ( ( x + j ) < VISIBLE_SCREEN_WIDTH )
-								plot_pixel( bitmap, x + j, scanline, paldata[ sd[j] ] );
+								*BITMAP_ADDR16(bitmap, scanline, x + j) = paldata[ sd[j] ];
 							drawn = 1;
 						}
 						/* indicate that a sprite was drawn at this location, even if it's not seen */
@@ -558,7 +556,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 							/* no, draw */
 							if ( ( x + j ) < VISIBLE_SCREEN_WIDTH )
 							{
-								plot_pixel( bitmap, x + j, scanline, paldata[ sd[7-j] ] );
+								*BITMAP_ADDR16(bitmap, scanline, x + j) = paldata[ sd[7-j] ];
 								line_priority[ x + j ] |= 0x01;
 							}
 							drawn = 1;
@@ -583,7 +581,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 							/* no, draw */
 							if ( ( x + j ) < VISIBLE_SCREEN_WIDTH )
 							{
-								plot_pixel( bitmap, x + j, scanline, paldata[ sd[j] ] );
+								*BITMAP_ADDR16(bitmap, scanline, x + j) = paldata[ sd[j] ];
 								line_priority[ x + j ] |= 0x01;
 							}
 							drawn = 1;
@@ -1212,7 +1210,7 @@ int ppu2c03b_get_pixel( int num, int x, int y )
 	if ( y >= VISIBLE_SCREEN_HEIGHT )
 		y = VISIBLE_SCREEN_HEIGHT - 1;
 
-	return read_pixel(chips[num].bitmap, x, y);
+	return *BITMAP_ADDR16(chips[num].bitmap, y, x);
 }
 
 int ppu2c03b_get_colorbase( int num )

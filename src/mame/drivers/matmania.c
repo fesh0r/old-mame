@@ -23,6 +23,7 @@ MAIN BOARD:
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/m6809/m6809.h"
+#include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 #include "sound/3812intf.h"
@@ -404,7 +405,7 @@ static MACHINE_DRIVER_START( maniach )
 	/* audio CPU */	/* 1.5 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(maniach_sound_readmem,maniach_sound_writemem)
 								/* IRQs are caused by the main CPU */
-	MDRV_CPU_ADD(M68705, 500000)	/* .5 MHz (don't know really how fast, but it doesn't need to even be this fast) */
+	MDRV_CPU_ADD(M68705, 1500000*2/M68705_CLOCK_DIVIDER)	/* (don't know really how fast, but it doesn't need to even be this fast) */
 	MDRV_CPU_PROGRAM_MAP(mcu_readmem,mcu_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -597,8 +598,8 @@ ROM_START( maniach )
 	ROM_REGION( 0x0600, REGION_PLDS, ROMREGION_DISPOSE )
 	ROM_LOAD( "pal10l8.51",   0x0000, 0x002c, CRC(424547af) SHA1(d5e57729906ae0caa8606c52284622e26509e025) )
 	ROM_LOAD( "pal10l8.56",   0x0100, 0x002c, CRC(5f6fdf22) SHA1(af6c285c4b23a15b9f1d9db2166681e1b518cc11) )
-	ROM_LOAD( "pal16r4a.117", 0x0200, 0x0104, NO_DUMP ) /* PAL is read protected */
-	ROM_LOAD( "pal16r4a.118", 0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16r4a.117", 0x0200, 0x0104, CRC(76640daa) SHA1(3a0be5925ae9a73ea4275d1d641ada2bdb506c31) )
+	ROM_LOAD( "pal16r4a.118", 0x0400, 0x0104, CRC(bca7cae2) SHA1(5fad37626a166371c8dd59e55f7f98064621ec1b) )
 ROM_END
 
 ROM_START( maniach2 )
@@ -657,8 +658,8 @@ ROM_START( maniach2 )
 	ROM_REGION( 0x0600, REGION_PLDS, ROMREGION_DISPOSE )
 	ROM_LOAD( "pal10l8.51",   0x0000, 0x002c, CRC(424547af) SHA1(d5e57729906ae0caa8606c52284622e26509e025) )
 	ROM_LOAD( "pal10l8.56",   0x0100, 0x002c, CRC(5f6fdf22) SHA1(af6c285c4b23a15b9f1d9db2166681e1b518cc11) )
-	ROM_LOAD( "pal16r4a.117", 0x0200, 0x0104, NO_DUMP ) /* PAL is read protected */
-	ROM_LOAD( "pal16r4a.118", 0x0400, 0x0104, NO_DUMP ) /* PAL is read protected */
+	ROM_LOAD( "pal16r4a.117", 0x0200, 0x0104, CRC(76640daa) SHA1(3a0be5925ae9a73ea4275d1d641ada2bdb506c31) )
+	ROM_LOAD( "pal16r4a.118", 0x0400, 0x0104, CRC(bca7cae2) SHA1(5fad37626a166371c8dd59e55f7f98064621ec1b) )
 ROM_END
 
 

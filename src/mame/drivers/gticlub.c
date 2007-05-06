@@ -77,6 +77,16 @@ static WRITE32_HANDLER( paletteram32_w )
 	palette_set_color(Machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
+static void voodoo_vblank_0(int param)
+{
+	cpunum_set_input_line(0, INPUT_LINE_IRQ0, ASSERT_LINE);
+}
+
+static void voodoo_vblank_1(int param)
+{
+	cpunum_set_input_line(0, INPUT_LINE_IRQ1, ASSERT_LINE);
+}
+
 VIDEO_START( hangplt )
 {
 	if (voodoo_start(0, 0, VOODOO_1, 2, 4, 4) ||
@@ -84,6 +94,9 @@ VIDEO_START( hangplt )
 	{
 		return 1;
 	}
+
+	voodoo_set_vblank_callback(0, voodoo_vblank_0);
+	voodoo_set_vblank_callback(1, voodoo_vblank_1);
 
 	return K001604_vh_start(0) | K001604_vh_start(1);
 }
@@ -156,17 +169,18 @@ static void eeprom_handler(mame_file *file, int read_or_write)
 	}
 }
 
-static UINT8 inputport2 = 0xff;
-
 static int adc1038_cycle;
 static int adc1038_clk;
 static int adc1038_adr;
 static int adc1038_data_in;
 static int adc1038_data_out;
 static int adc1038_adc_data;
+static int adc1038_sars = 1;
+static int adc1038_gticlub_hack = 0;
 
 static int adc1038_do_r(void)
 {
+	//printf("ADC DO\n");
 	return adc1038_data_out & 1;
 }
 
@@ -177,24 +191,31 @@ static void adc1038_di_w(int bit)
 
 static void adc1038_clk_w(int bit)
 {
-	if (adc1038_clk == 0 && bit == 0)
+	// GTI Club doesn't sync on SARS
+	if (adc1038_gticlub_hack)
 	{
-		adc1038_cycle = 0;
-
-		switch (adc1038_adr)
+		if (adc1038_clk == 0 && bit == 0)
 		{
-			case 0: adc1038_adc_data = readinputport(4); break;
-			case 1: adc1038_adc_data = readinputport(5); break;
-			case 2: adc1038_adc_data = readinputport(6); break;
-			case 3: adc1038_adc_data = readinputport(7); break;
-			case 4: adc1038_adc_data = 0x000; break;
-			case 5: adc1038_adc_data = 0x000; break;
-			case 6: adc1038_adc_data = 0x000; break;
-			case 7: adc1038_adc_data = 0x000; break;
+			adc1038_cycle = 0;
+
+			switch (adc1038_adr)
+			{
+				case 0: adc1038_adc_data = readinputport(4); break;
+				case 1: adc1038_adc_data = readinputport(5); break;
+				case 2: adc1038_adc_data = readinputport(6); break;
+				case 3: adc1038_adc_data = readinputport(7); break;
+				case 4: adc1038_adc_data = 0x000; break;
+				case 5: adc1038_adc_data = 0x000; break;
+				case 6: adc1038_adc_data = 0x000; break;
+				case 7: adc1038_adc_data = 0x000; break;
+			}
 		}
 	}
-	else if (bit == 1)
+
+	if (bit == 1)
 	{
+		//printf("ADC CLK, DI = %d, cycle = %d\n", adc1038_data_in, adc1038_cycle);
+
 		if (adc1038_cycle == 0)			// A2
 		{
 			adc1038_adr = 0;
@@ -209,7 +230,8 @@ static void adc1038_clk_w(int bit)
 			adc1038_adr |= (adc1038_data_in << 0);
 		}
 
-		adc1038_data_out = (adc1038_adc_data & (1 << (9 - adc1038_cycle))) ? 1 : 0;
+		adc1038_data_out = (adc1038_adc_data & 0x200) ? 1 : 0;
+		adc1038_adc_data <<= 1;
 
 		adc1038_cycle++;
 	}
@@ -217,7 +239,29 @@ static void adc1038_clk_w(int bit)
 	adc1038_clk = bit;
 }
 
-//UINT32 eeprom_bit = 0;
+static int adc1038_sars_r(void)
+{
+	adc1038_cycle = 0;
+
+	switch (adc1038_adr)
+	{
+		case 0: adc1038_adc_data = readinputport(4); break;
+		case 1: adc1038_adc_data = readinputport(5); break;
+		case 2: adc1038_adc_data = readinputport(6); break;
+		case 3: adc1038_adc_data = readinputport(7); break;
+		case 4: adc1038_adc_data = 0x000; break;
+		case 5: adc1038_adc_data = 0x000; break;
+		case 6: adc1038_adc_data = 0x000; break;
+		case 7: adc1038_adc_data = 0x000; break;
+	}
+
+	adc1038_data_out = (adc1038_adc_data & 0x200) ? 1 : 0;
+	adc1038_adc_data <<= 1;
+
+	adc1038_sars ^= 1;
+	return adc1038_sars;
+}
+
 static READ32_HANDLER( sysreg_r )
 {
 	UINT32 r = 0;
@@ -233,14 +277,13 @@ static READ32_HANDLER( sysreg_r )
 		}
 		if (!(mem_mask & 0x0000ff00))
 		{
-			//r |= readinputport(2) << 8;
-			inputport2 ^= 0x80;
-			r |= inputport2 << 8;
+			r |= (adc1038_sars_r() << 7) << 8;
 		}
 		if (!(mem_mask & 0x000000ff))
 		{
 			r |= readinputport(3) << 0;
 		}
+		return r;
 	}
 	else if (offset == 1)
 	{
@@ -482,7 +525,7 @@ static ADDRESS_MAP_START( hangplt_sharc0_map, ADDRESS_SPACE_DATA, 32 )
 	AM_RANGE(0x1400000, 0x14fffff) AM_RAM
 	AM_RANGE(0x2400000, 0x27fffff) AM_READWRITE(nwk_voodoo_0_r, voodoo_0_w)
 	AM_RANGE(0x3400000, 0x34000ff) AM_READWRITE(cgboard_0_comm_sharc_r, cgboard_0_comm_sharc_w)
-	AM_RANGE(0x3401000, 0x3401fff) AM_WRITE(nwk_fifo_0_w)
+	AM_RANGE(0x3401000, 0x34fffff) AM_WRITE(nwk_fifo_0_w)
 	AM_RANGE(0x3500000, 0x3507fff) AM_READWRITE(K033906_0_r, K033906_0_w)
 	AM_RANGE(0x3600000, 0x37fffff) AM_ROMBANK(5)
 ADDRESS_MAP_END
@@ -493,7 +536,7 @@ static ADDRESS_MAP_START( hangplt_sharc1_map, ADDRESS_SPACE_DATA, 32 )
 	AM_RANGE(0x1400000, 0x14fffff) AM_RAM
 	AM_RANGE(0x2400000, 0x27fffff) AM_READWRITE(nwk_voodoo_1_r, voodoo_1_w)
 	AM_RANGE(0x3400000, 0x34000ff) AM_READWRITE(cgboard_1_comm_sharc_r, cgboard_1_comm_sharc_w)
-	AM_RANGE(0x3401000, 0x3401fff) AM_WRITE(nwk_fifo_1_w)
+	AM_RANGE(0x3401000, 0x34fffff) AM_WRITE(nwk_fifo_1_w)
 	AM_RANGE(0x3500000, 0x3507fff) AM_READWRITE(K033906_1_r, K033906_1_w)
 	AM_RANGE(0x3600000, 0x37fffff) AM_ROMBANK(6)
 ADDRESS_MAP_END
@@ -508,31 +551,22 @@ static NVRAM_HANDLER(gticlub)
 
 INPUT_PORTS_START( gticlub )
 	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )		// View switch
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) 		// Shift Down
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 )		// Shift Up
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON4 )		// AT/MT switch
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
+	PORT_BIT( 0x0b, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
+	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_DIPNAME( 0x03, 0x03, "Network ID" )
@@ -596,10 +630,10 @@ INPUT_PORTS_START( slrasslt )
 	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 
 	PORT_START
-	PORT_BIT( 0x3ff, 0x000, IPT_AD_STICK_X ) PORT_MINMAX(0x000,0x3ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
+	PORT_BIT( 0x3ff, 0x000, IPT_AD_STICK_Y ) PORT_MINMAX(0x000,0x3ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
 	PORT_START
-	PORT_BIT( 0x3ff, 0x000, IPT_AD_STICK_Y ) PORT_MINMAX(0x000,0x3ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
+	PORT_BIT( 0x3ff, 0x000, IPT_AD_STICK_X ) PORT_MINMAX(0x000,0x3ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5) PORT_REVERSE
 
 INPUT_PORTS_END
 
@@ -652,21 +686,14 @@ INPUT_PORTS_START( hangplt )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x07, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
+	PORT_BIT( 0x8f, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)		// Push limit switch
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)		// Pull limit switch
 
 	PORT_START
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -676,24 +703,18 @@ INPUT_PORTS_START( hangplt )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_DIPNAME( 0x08, 0x08, "DIP3" )
-	PORT_DIPSETTING( 0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING( 0x08, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, "DIP2" )
-	PORT_DIPSETTING( 0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING( 0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, "Test Mode" )
-	PORT_DIPSETTING( 0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING( 0x02, DEF_STR( On ) )
-	PORT_DIPNAME( 0x01, 0x01, "Machine Init" )
-	PORT_DIPSETTING( 0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING( 0x01, DEF_STR( On ) )
-
-	PORT_START /* mask default type                     sens delta min max */
-	PORT_BIT( 0xff, 0x80, IPT_PADDLE ) PORT_MINMAX(0x38,0xc8) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
-
-	PORT_START
-	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_MINMAX(0,0x68) PORT_SENSITIVITY(35) PORT_KEYDELTA(5) PORT_CODE_INC(KEYCODE_LCONTROL)
+	PORT_DIPNAME( 0x08, 0x08, "DIP4" )
+	PORT_DIPSETTING( 0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, "DIP3" )
+	PORT_DIPSETTING( 0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x00, "Disable Test Mode" )
+	PORT_DIPSETTING( 0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x01, 0x00, "Disable Machine Init" )
+	PORT_DIPSETTING( 0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 
 INPUT_PORTS_END
 
@@ -746,6 +767,7 @@ static MACHINE_DRIVER_START( gticlub )
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_INTERLEAVE(100)
 
 	MDRV_NVRAM_HANDLER(gticlub)
 	MDRV_MACHINE_RESET(gticlub)
@@ -774,29 +796,12 @@ static MACHINE_RESET( hangplt )
 	cpunum_set_input_line(3, INPUT_LINE_RESET, ASSERT_LINE);
 }
 
-static int vblank = 0;
-static INTERRUPT_GEN( hangplt_vblank )
-{
-	if (vblank == 0)
-	{
-		cpunum_set_input_line(0, INPUT_LINE_IRQ0, ASSERT_LINE);
-	}
-	else
-	{
-		cpunum_set_input_line(0, INPUT_LINE_IRQ1, ASSERT_LINE);
-	}
-
-	vblank++;
-	vblank &= 1;
-}
-
 static MACHINE_DRIVER_START( hangplt )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(PPC403, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_CONFIG(gticlub_ppc_cfg)
 	MDRV_CPU_PROGRAM_MAP(gticlub_map, 0)
-	MDRV_CPU_VBLANK_INT(hangplt_vblank, 2)
 
 	MDRV_CPU_ADD(M68000, 64000000/4)	/* 16MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
@@ -810,6 +815,7 @@ static MACHINE_DRIVER_START( hangplt )
 	MDRV_CPU_DATA_MAP(hangplt_sharc1_map, 0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_INTERLEAVE(100)
 
 	MDRV_NVRAM_HANDLER(gticlub)
 	MDRV_MACHINE_RESET(hangplt)
@@ -970,13 +976,13 @@ ROM_START( hangplt )
 	ROM_REGION(0x80000, REGION_CPU2, 0)	/* 68k program */
         ROM_LOAD16_WORD_SWAP( "685a07.13k",   0x000000, 0x080000, CRC(5b72fd80) SHA1(a150837fa0d66dc0c3832495a4c8ce4f9b92cd98) )
 
-	ROM_REGION(0x800000, REGION_SOUND1, 0)	/* other roms */
+	ROM_REGION(0x1000000, REGION_SOUND1, 0)	/* other roms */
         ROM_LOAD( "685a09.9s",    0x000000, 0x200000, CRC(653821cf) SHA1(625abb7769a52c9ac61cfddaa084b9c9539f3b15) )
         ROM_LOAD( "685a10.7s",    0x200000, 0x200000, CRC(71eb06e5) SHA1(3c5953e87df63fb7680d7a04267ff2208f49838f) )
 
     ROM_REGION(0x800000, REGION_USER5, 0)	/* texture roms */
-        ROM_LOAD32_WORD_SWAP( "685a13.4w",    0x000000, 0x400000, CRC(06329af4) SHA1(76cad9db604751ce48bb67bfd29e57bac0ee9a16) )
-        ROM_LOAD32_WORD_SWAP( "685a14.12w",   0x000002, 0x400000, CRC(87437739) SHA1(0d45637af40938a54d5efd29c125b0fafd55f9a4) )
+        ROM_LOAD32_WORD( "685a13.4w",    0x000002, 0x400000, CRC(06329af4) SHA1(76cad9db604751ce48bb67bfd29e57bac0ee9a16) )
+        ROM_LOAD32_WORD( "685a14.12w",   0x000000, 0x400000, CRC(87437739) SHA1(0d45637af40938a54d5efd29c125b0fafd55f9a4) )
 ROM_END
 
 static void sound_irq_callback(int irq)
@@ -996,9 +1002,16 @@ static DRIVER_INIT(gticlub)
 	init_konami_cgboard(1, CGBOARD_TYPE_GTICLUB);
 	sharc_dataram_0 = auto_malloc(0x100000);
 
-	K001005_preprocess_texture_data(memory_region(REGION_GFX1), memory_region_length(REGION_GFX1));
+	K001005_preprocess_texture_data(memory_region(REGION_GFX1), memory_region_length(REGION_GFX1), 1);
 
 	K056800_init(sound_irq_callback);
+
+	// we'll need this for now
+	if (mame_stricmp(Machine->gamedrv->name, "gticlub") == 0 ||
+		mame_stricmp(Machine->gamedrv->name, "gticlubj") == 0)
+	{
+		adc1038_gticlub_hack = 1;
+	}
 }
 
 static DRIVER_INIT(hangplt)
@@ -1014,10 +1027,18 @@ static DRIVER_INIT(hangplt)
 	K033906_init();
 }
 
+static DRIVER_INIT(slrasslt)
+{
+	init_gticlub(machine);
+
+	// enable self-modifying code checks
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_OPTIONS_CHECK_SELFMOD_CODE);
+}
+
 /*************************************************************************/
 
 GAME( 1996, gticlub,	0,		 gticlub, gticlub,  gticlub,  ROT0,	"Konami",	"GTI Club (ver AAA)", GAME_NOT_WORKING|GAME_NO_SOUND )
 GAME( 1996, gticlubj,	gticlub, gticlub, gticlub,  gticlub,  ROT0,	"Konami",	"GTI Club (ver JAA)", GAME_NOT_WORKING|GAME_NO_SOUND )
 GAME( 1996, thunderh,	0,		 gticlub, thunderh, gticlub,  ROT0,	"Konami",	"Operation Thunder Hurricane (ver UAA)", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAME( 1997, slrasslt,	0,		 gticlub, slrasslt, gticlub,  ROT0,	"Konami",	"Solar Assault (ver UAA)", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAMEL( 1997, hangplt,	0,		 hangplt, hangplt,  hangplt,  ROT0,	"Konami",	"Hang Pilot", GAME_NOT_WORKING|GAME_NO_SOUND, layout_dualhsxs )
+GAME( 1997, slrasslt,	0,		 gticlub, slrasslt, slrasslt, ROT0,	"Konami",	"Solar Assault (ver UAA)", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAMEL( 1997, hangplt,	0,		 hangplt, hangplt,  hangplt,  ROT0,	"Konami",	"Hang Pilot", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND, layout_dualhovu )

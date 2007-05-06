@@ -360,7 +360,8 @@ void drc_append_call_debugger(drc_core *drc)
 		link_info link;
 		_cmp_m32abs_imm(&Machine->debug_mode, 0);						// cmp  [Machine->debug_mode],0
 		_jcc_short_link(COND_E, &link);									// je   skip
-		drc_append_save_call_restore(drc, (genf *)mame_debug_hook, 0);	// save volatiles
+		_sub_r32_imm(REG_ESP, 12);										// align stack
+		drc_append_save_call_restore(drc, (genf *)mame_debug_hook, 12);	// save volatiles
 		_resolve_link(&link);
 	}
 #endif
@@ -440,8 +441,9 @@ void drc_append_standard_epilogue(drc_core *drc, INT32 cycles, INT32 pcdelta, in
 void drc_append_dispatcher(drc_core *drc)
 {
 #if LOG_DISPATCHES
+	_sub_r32_imm(REG_ESP, 8);										// align stack
 	_push_imm(drc);													// push drc
-	drc_append_save_call_restore(drc, (void *)log_dispatch, 4);		// call log_dispatch
+	drc_append_save_call_restore(drc, (void *)log_dispatch, 12);	// call log_dispatch
 #endif
 	if (drc->pc_in_memory)
 		_mov_r32_m32abs(REG_EDI, drc->pcptr);						// mov  edi,[pc]
@@ -563,7 +565,7 @@ void drc_append_restore_sse_rounding(drc_core *drc)
 
 void drc_dasm(FILE *f, const void *begin, const void *end)
 {
-	extern int i386_dasm_one(char *buffer, UINT32 eip, UINT8 *oprom, int addr_size, int op_size);
+	extern int i386_dasm_one(char *buffer, UINT32 eip, UINT8 *oprom, int mode);
 
 	char buffer[256];
 	const UINT8 *begin_ptr = (const UINT8 *) begin;
@@ -574,7 +576,7 @@ void drc_dasm(FILE *f, const void *begin, const void *end)
 	while(begin_ptr < end_ptr)
 	{
 #if defined(MAME_DEBUG) && HAS_I386
-		length = i386_dasm_one(buffer, pc, (UINT8 *) begin_ptr, 1, 1) & DASMFLAG_LENGTHMASK;
+		length = i386_dasm_one(buffer, pc, (UINT8 *) begin_ptr, 32) & DASMFLAG_LENGTHMASK;
 #else
 		sprintf(buffer, "%02X", *begin_ptr);
 		length = 1;
@@ -635,8 +637,9 @@ static void recompile_code(drc_core *drc)
 
 static void append_recompile(drc_core *drc)
 {
+	_sub_r32_imm(REG_ESP, 8);										// align stack
 	_push_imm(drc);													// push drc
-	drc_append_save_call_restore(drc, (genf *)recompile_code, 4);	// call recompile_code
+	drc_append_save_call_restore(drc, (genf *)recompile_code, 12);	// call recompile_code
 	drc_append_dispatcher(drc);										// dispatch
 }
 
@@ -647,8 +650,9 @@ static void append_recompile(drc_core *drc)
 
 static void append_flush(drc_core *drc)
 {
+	_sub_r32_imm(REG_ESP, 8);										// align stack
 	_push_imm(drc);													// push drc
-	drc_append_save_call_restore(drc, (genf *)drc_cache_reset, 4);	// call drc_cache_reset
+	drc_append_save_call_restore(drc, (genf *)drc_cache_reset, 12);	// call drc_cache_reset
 	drc_append_dispatcher(drc);										// dispatch
 }
 

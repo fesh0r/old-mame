@@ -133,8 +133,11 @@ WRITE32_HANDLER(K001006_1_w)
 /*****************************************************************************/
 /* Konami K001005 Custom 3D Pixel Renderer chip (KS10071) */
 
-static const int decode_x[8] = {  0, 16, 2, 18, 4, 20, 6, 22 };
-static const int decode_y[16] = {  0, 8, 32, 40, 1, 9, 33, 41, 64, 72, 96, 104, 65, 73, 97, 105 };
+static const int decode_x_gti[8] = {  0, 16, 2, 18, 4, 20, 6, 22 };
+static const int decode_y_gti[16] = {  0, 8, 32, 40, 1, 9, 33, 41, 64, 72, 96, 104, 65, 73, 97, 105 };
+
+static const int decode_x_zr107[8] = {  0, 16, 1, 17, 2, 18, 3, 19 };
+static const int decode_y_zr107[16] = {  0, 8, 32, 40, 4, 12, 36, 44, 64, 72, 96, 104, 68, 76, 100, 108 };
 
 typedef struct {
 	float x,y,z;
@@ -142,7 +145,7 @@ typedef struct {
 } VERTEX;
 
 UINT32 K001005_status = 0;
-mame_bitmap *K001005_bitmap;
+mame_bitmap *K001005_bitmap[2];
 mame_bitmap *K001005_zbuffer;
 rectangle K001005_cliprect;
 
@@ -161,12 +164,15 @@ static int K001005_3d_fifo_ptr = 0;
 
 static int tex_mirror_table[4][128];
 
-static int update_30fps;
+static int K001005_bitmap_page = 0;
+
+void K001005_swap_buffers(void);
 
 int K001005_init(void)
 {
 	int i;
-	K001005_bitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
+	K001005_bitmap[0] = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
+	K001005_bitmap[1] = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
 
 	K001005_zbuffer = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED32);
 
@@ -191,11 +197,25 @@ int K001005_init(void)
 }
 
 // rearranges the texture data to a more practical order
-void K001005_preprocess_texture_data(UINT8 *rom, int length)
+void K001005_preprocess_texture_data(UINT8 *rom, int length, int gticlub)
 {
 	int index;
 	int i, x, y;
 	UINT8 temp[0x40000];
+
+	const int *decode_x;
+	const int *decode_y;
+
+	if (gticlub)
+	{
+		decode_x = decode_x_gti;
+		decode_y = decode_y_gti;
+	}
+	else
+	{
+		decode_x = decode_x_zr107;
+		decode_y = decode_y_zr107;
+	}
 
 	for (index=0; index < length; index += 0x40000)
 	{
@@ -362,9 +382,12 @@ WRITE32_HANDLER( K001005_w )
 			K001005_fifo_write_ptr = 0;
 			K001005_fifo_read_ptr = 0;
 
-			render_polygons();
-			K001005_3d_fifo_ptr = 0;
-
+			if (data == 2 && K001005_3d_fifo_ptr > 0)
+			{
+				K001005_swap_buffers();
+				render_polygons();
+				K001005_3d_fifo_ptr = 0;
+			}
 			break;
 
 		case 0x11d:
@@ -422,7 +445,7 @@ static void draw_triangle(VERTEX v1, VERTEX v2, VERTEX v3, UINT32 color)
 			int x1, x2;
 			INT64 z;
 			const struct poly_scanline *scan = &scans->scanline[y - scans->sy];
-			UINT32 *fb = BITMAP_ADDR32(K001005_bitmap, y, 0);
+			UINT32 *fb = BITMAP_ADDR32(K001005_bitmap[K001005_bitmap_page], y, 0);
 			UINT32 *zb = BITMAP_ADDR32(K001005_zbuffer, y, 0);
 
 			x1 = scan->sx;
@@ -527,7 +550,7 @@ static void draw_triangle_tex(VERTEX v1, VERTEX v2, VERTEX v3, UINT32 color)
 			int x1, x2;
 			INT64 u, v, z, w;
 			const struct poly_scanline *scan = &scans->scanline[y - scans->sy];
-			UINT32 *fb = BITMAP_ADDR32(K001005_bitmap, y, 0);
+			UINT32 *fb = BITMAP_ADDR32(K001005_bitmap[K001005_bitmap_page], y, 0);
 			UINT32 *zb = BITMAP_ADDR32(K001005_zbuffer, y, 0);
 
 			x1 = scan->sx;
@@ -967,7 +990,7 @@ void K001005_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 	for (j=cliprect->min_y; j <= cliprect->max_y; j++)
 	{
 		UINT32 *bmp = BITMAP_ADDR32(bitmap, j, 0);
-		UINT32 *src = BITMAP_ADDR32(K001005_bitmap, j, 0);
+		UINT32 *src = BITMAP_ADDR32(K001005_bitmap[K001005_bitmap_page^1], j, 0);
 
 		for (i=cliprect->min_x; i <= cliprect->max_x; i++)
 		{
@@ -981,9 +1004,11 @@ void K001005_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 
 void K001005_swap_buffers(void)
 {
+	K001005_bitmap_page ^= 1;
+
 	//if (K001005_status == 2)
 	{
-		fillbitmap(K001005_bitmap, Machine->remapped_colortable[0], &K001005_cliprect);
+		fillbitmap(K001005_bitmap[K001005_bitmap_page], Machine->remapped_colortable[0], &K001005_cliprect);
 		fillbitmap(K001005_zbuffer, 0xffffffff, &K001005_cliprect);
 	}
 }
@@ -995,10 +1020,6 @@ VIDEO_START( gticlub )
 	if (K001005_init() != 0)
 		return 1;
 
-	if (mame_stricmp(machine->gamedrv->name, "gticlub") == 0 ||
-		mame_stricmp(machine->gamedrv->name, "thunderh") == 0)
-		update_30fps = 1;
-
 	return K001604_vh_start(0);
 }
 
@@ -1006,19 +1027,12 @@ static int tick = 0;
 static int debug_tex_page = 0;
 static int debug_tex_palette = 0;
 
-static int frame = 0;
-
 VIDEO_UPDATE( gticlub )
 {
 	K001604_tile_update(0);
 	K001604_draw_back_layer(0, bitmap, cliprect);
 
 	K001005_draw(bitmap, cliprect);
-	if (!update_30fps || K001005_status == 2)
-	{
-		K001005_swap_buffers();
-	}
-	frame++;
 
 	K001604_draw_front_layer(0, bitmap, cliprect);
 
@@ -1063,7 +1077,7 @@ VIDEO_UPDATE( gticlub )
             for (x=0; x < 512; x++)
             {
                 UINT8 pixel = rom[index + (y*512) + x];
-                plot_pixel(bitmap, x, y, K001006_palette[tp][(pal * 256) + pixel]);
+                *BITMAP_ADDR32(bitmap, y, x) = K001006_palette[tp][(pal * 256) + pixel];
             }
         }
 

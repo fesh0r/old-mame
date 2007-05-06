@@ -29,6 +29,7 @@
 #include "driver.h"
 
 // MAMEOS headers
+#include "winmain.h"
 #include "window.h"
 #include "video.h"
 #include "input.h"
@@ -309,6 +310,9 @@ static void winwindow_exit(running_machine *machine)
 	// kill the window thread ready event
 	if (window_thread_ready_event)
 		CloseHandle(window_thread_ready_event);
+
+	// if we hid the cursor during the emulation, show it
+	while (ShowCursor(TRUE) < 0) ;
 }
 
 

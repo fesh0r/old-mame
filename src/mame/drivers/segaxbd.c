@@ -111,7 +111,7 @@ static void update_main_irqs(void)
 	if (irq != 0)
 	{
 		cpunum_set_input_line(0, irq, ASSERT_LINE);
-		cpu_boost_interleave(0, TIME_IN_USEC(100));
+		cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(100));
 	}
 	else
 		cpunum_set_input_line(0, 7, CLEAR_LINE);
@@ -204,7 +204,7 @@ static READ8_HANDLER( sound_data_r )
 static void xboard_reset(void)
 {
 	cpunum_set_input_line(1, INPUT_LINE_RESET, PULSE_LINE);
-	cpu_boost_interleave(0, TIME_IN_USEC(100));
+	cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(100));
 }
 
 
@@ -439,7 +439,7 @@ static UINT16 *loffire_sync;
 static WRITE16_HANDLER( loffire_sync0_w )
 {
 	COMBINE_DATA(&loffire_sync[offset]);
-	cpu_boost_interleave(0, TIME_IN_USEC(10));
+	cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(10));
 }
 
 
@@ -1114,7 +1114,6 @@ static MACHINE_DRIVER_START( xboard )
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, SOUND_CLOCK/4)
-	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 
@@ -1126,11 +1125,12 @@ static MACHINE_DRIVER_START( xboard )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(342,262)	/* to be verified */
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(8192*3)
+
+	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK/8, 400, 0, 321, 262, 0, 224)
 
 	MDRV_VIDEO_START(xboard)
 	MDRV_VIDEO_UPDATE(xboard)

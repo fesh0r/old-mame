@@ -83,7 +83,7 @@ ifdef MSVC_BUILD
 
 # replace the various compilers with vconv.exe prefixes
 CC = @$(OBJ)/vconv.exe gcc -I.
-LD = @$(OBJ)/vconv.exe ld
+LD = @$(OBJ)/vconv.exe ld /profile
 AR = @$(OBJ)/vconv.exe ar
 RC = @$(OBJ)/vconv.exe windres
 
@@ -197,14 +197,12 @@ $(LIBOCORE): $(OSDCOREOBJS)
 #-------------------------------------------------
 
 OSDOBJS = \
-	$(WINOBJ)/config.o \
 	$(WINOBJ)/d3d8intf.o \
 	$(WINOBJ)/d3d9intf.o \
 	$(WINOBJ)/drawd3d.o \
 	$(WINOBJ)/drawdd.o \
 	$(WINOBJ)/drawgdi.o \
 	$(WINOBJ)/drawnone.o \
-	$(WINOBJ)/fronthlp.o \
 	$(WINOBJ)/input.o \
 	$(WINOBJ)/output.o \
 	$(WINOBJ)/sound.o \

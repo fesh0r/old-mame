@@ -235,7 +235,8 @@ UINT32 arm7_disasm( char *pBuf, UINT32 pc, UINT32 opcode )
 	{
 		/* multiply or swap or half word data transfer */
 
-		if(opcode&0x60) {	//bits = 6-5 != 00
+		if(opcode&0x60)
+		{	//bits = 6-5 != 00
 		/* half word data transfer */
 			pBuf += sprintf(pBuf, "%s%s",(opcode&0x00100000)?"LDR":"STR",pConditionCode);	//Bit 20 = 1 for Load, 0 for Store
 
@@ -673,7 +674,7 @@ UINT32 thumb_disasm( char *pBuf, UINT32 pc, UINT16 opcode )
 							rn = ( opcode & THUMB_ADDSUB_RNIMM ) >> THUMB_ADDSUB_RNIMM_SHIFT;
 							rs = ( opcode & THUMB_ADDSUB_RS ) >> THUMB_ADDSUB_RS_SHIFT;
 							rd = ( opcode & THUMB_ADDSUB_RD ) >> THUMB_ADDSUB_RD_SHIFT;
-							pBuf += sprintf( pBuf, "(case1 0x1)SUB R%d, R%d, R%d", rd, rs, rn );
+							pBuf += sprintf( pBuf, "SUB R%d, R%d, R%d", rd, rs, rn );
 							break;
 						case 0x2: /* ADD Rd, Rs, #imm */
 							imm = ( opcode & THUMB_ADDSUB_RNIMM ) >> THUMB_ADDSUB_RNIMM_SHIFT;
@@ -685,7 +686,7 @@ UINT32 thumb_disasm( char *pBuf, UINT32 pc, UINT16 opcode )
 							imm = ( opcode & THUMB_ADDSUB_RNIMM ) >> THUMB_ADDSUB_RNIMM_SHIFT;
 							rs = ( opcode & THUMB_ADDSUB_RS ) >> THUMB_ADDSUB_RS_SHIFT;
 							rd = ( opcode & THUMB_ADDSUB_RD ) >> THUMB_ADDSUB_RD_SHIFT;
-							pBuf += sprintf( pBuf, "(case1 0x3)SUB R%d, R%d, #%d", rd, rs, imm );
+							pBuf += sprintf( pBuf, "SUB R%d, R%d, #%d", rd, rs, imm );
 							break;
 						default:
 							sprintf( pBuf, "INVALID %04x", opcode);
@@ -734,20 +735,40 @@ UINT32 thumb_disasm( char *pBuf, UINT32 pc, UINT16 opcode )
 					case 0x0:
 						switch( ( opcode & THUMB_ALUOP_TYPE ) >> THUMB_ALUOP_TYPE_SHIFT )
 						{
+							case 0x0: /* AND Rd, Rs */
+								rs = ( opcode & THUMB_ADDSUB_RS ) >> THUMB_ADDSUB_RS_SHIFT;
+								rd = ( opcode & THUMB_ADDSUB_RD ) >> THUMB_ADDSUB_RD_SHIFT;
+								pBuf += sprintf( pBuf, "AND R%d, R%d", rd, rs );
+								break;
 							case 0x1: /* EOR Rd, Rs */
 								rs = ( opcode & THUMB_ADDSUB_RS ) >> THUMB_ADDSUB_RS_SHIFT;
 								rd = ( opcode & THUMB_ADDSUB_RD ) >> THUMB_ADDSUB_RD_SHIFT;
 								pBuf += sprintf( pBuf, "EOR R%d, R%d", rd, rs );
+								break;
+							case 0x2: /* LSL Rd, Rs */
+								rs = ( opcode & THUMB_ADDSUB_RS ) >> THUMB_ADDSUB_RS_SHIFT;
+								rd = ( opcode & THUMB_ADDSUB_RD ) >> THUMB_ADDSUB_RD_SHIFT;
+								pBuf += sprintf( pBuf, "LSL R%d, R%d", rd, rs );
 								break;
 							case 0x3: /* LSR Rd, Rs */
 								rs = ( opcode & THUMB_ADDSUB_RS ) >> THUMB_ADDSUB_RS_SHIFT;
 								rd = ( opcode & THUMB_ADDSUB_RD ) >> THUMB_ADDSUB_RD_SHIFT;
 								pBuf += sprintf( pBuf, "LSR R%d, R%d", rd, rs );
 								break;
+							case 0x4: /* ASR Rd, Rs */
+								rs = ( opcode & THUMB_ADDSUB_RS ) >> THUMB_ADDSUB_RS_SHIFT;
+								rd = ( opcode & THUMB_ADDSUB_RD ) >> THUMB_ADDSUB_RD_SHIFT;
+								pBuf += sprintf( pBuf, "ASR R%d, R%d", rd, rs );
+								break;
 							case 0x5: /* ADC Rd, Rs */
 								rs = ( opcode & THUMB_ADDSUB_RS ) >> THUMB_ADDSUB_RS_SHIFT;
 								rd = ( opcode & THUMB_ADDSUB_RD ) >> THUMB_ADDSUB_RD_SHIFT;
 								pBuf += sprintf( pBuf, "ADC R%d, R%d", rd, rs );
+								break;
+							case 0x6: /* SBC Rd, Rs */
+								rs = ( opcode & THUMB_ADDSUB_RS ) >> THUMB_ADDSUB_RS_SHIFT;
+								rd = ( opcode & THUMB_ADDSUB_RD ) >> THUMB_ADDSUB_RD_SHIFT;
+								pBuf += sprintf( pBuf, "SBC R%d, R%d", rd, rs );
 								break;
 							case 0x7: /* ROR Rd, Rs */
 								rs = ( opcode & THUMB_ADDSUB_RS ) >> THUMB_ADDSUB_RS_SHIFT;
@@ -808,10 +829,25 @@ UINT32 thumb_disasm( char *pBuf, UINT32 pc, UINT16 opcode )
 							case 0x1: /* CMP */
 								switch( ( opcode & THUMB_HIREG_H ) >> THUMB_HIREG_H_SHIFT )
 								{
+									case 0x0: /* CMP Rd, Rs */
+										rs = ( opcode & THUMB_HIREG_RS ) >> THUMB_HIREG_RS_SHIFT;
+										rd = opcode & THUMB_HIREG_RD;
+										pBuf += sprintf( pBuf, "CMP R%d, R%d", rd, rs );
+										break;
 									case 0x1: /* CMP Rd, HRs */
 										rs = ( opcode & THUMB_HIREG_RS ) >> THUMB_HIREG_RS_SHIFT;
 										rd = opcode & THUMB_HIREG_RD;
 										pBuf += sprintf( pBuf, "CMP R%d, R%d", rd, rs + 8 );
+										break;
+									case 0x2: /* CMP Hd, Rs */
+										rs = ( opcode & THUMB_HIREG_RS ) >> THUMB_HIREG_RS_SHIFT;
+										rd = opcode & THUMB_HIREG_RD;
+										pBuf += sprintf( pBuf, "CMP R%d, R%d", rd + 8, rs );
+										break;
+									case 0x3: /* CMP Hd, Hs */
+										rs = ( opcode & THUMB_HIREG_RS ) >> THUMB_HIREG_RS_SHIFT;
+										rd = opcode & THUMB_HIREG_RD;
+										pBuf += sprintf( pBuf, "CMP R%d, R%d", rd + 8, rs + 8 );
 										break;
 									default:
 										sprintf( pBuf, "INVALID %04x", opcode);
@@ -830,6 +866,11 @@ UINT32 thumb_disasm( char *pBuf, UINT32 pc, UINT16 opcode )
 										rs = ( opcode & THUMB_HIREG_RS ) >> THUMB_HIREG_RS_SHIFT;
 										rd = opcode & THUMB_HIREG_RD;
 										pBuf += sprintf( pBuf, "MOV R%d, R%d", rd + 8, rs );
+										break;
+									case 0x3:
+										rs = ( opcode & THUMB_HIREG_RS ) >> THUMB_HIREG_RS_SHIFT;
+										rd = opcode & THUMB_HIREG_RD;
+										pBuf += sprintf( pBuf, "MOV R%d, R%d", rd + 8, rs + 8 );
 										break;
 									default:
 										sprintf( pBuf, "INVALID %04x", opcode);
@@ -1140,10 +1181,10 @@ UINT32 thumb_disasm( char *pBuf, UINT32 pc, UINT16 opcode )
 						pBuf += sprintf( pBuf, "BLE %08x (%02x)", pc + 4 + (offs << 1), offs << 1);
 						break;
 					case COND_AL:
-						pBuf += sprintf( pBuf, "BAL %08x (%02x)", pc + 4 + (offs << 1), offs << 1);
+						pBuf += sprintf( pBuf, "INVALID");
 						break;
 					case COND_NV:
-						pBuf += sprintf( pBuf, "BNV %08x (%02x)", pc + 4 + (offs << 1), offs << 1);
+						pBuf += sprintf( pBuf, "SWI %02x\n", opcode & 0xff);
 						break;
 				}
 				break;

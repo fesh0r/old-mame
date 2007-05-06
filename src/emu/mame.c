@@ -235,9 +235,9 @@ const char *memory_region_names[REGION_MAX] =
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-extern int mame_validitychecks(int game);
+extern int mame_validitychecks(const game_driver *driver);
 
-static running_machine *create_machine(int game);
+static running_machine *create_machine(const game_driver *driver);
 static void reset_machine(running_machine *machine);
 static void destroy_machine(running_machine *machine);
 static void init_machine(running_machine *machine);
@@ -260,7 +260,7 @@ static void logfile_callback(running_machine *machine, const char *buffer);
     run_game - run the given game in a session
 -------------------------------------------------*/
 
-int run_game(int game)
+int run_game(const game_driver *driver)
 {
 	running_machine *machine;
 	int error = MAMERR_NONE;
@@ -269,7 +269,7 @@ int run_game(int game)
 	callback_item *cb;
 
 	/* create the machine structure and driver */
-	machine = create_machine(game);
+	machine = create_machine(driver);
 	reset_machine(machine);
 	mame = machine->mame_data;
 
@@ -280,7 +280,7 @@ int run_game(int game)
 	mame->current_phase = MAME_PHASE_PREINIT;
 
 	/* perform validity checks before anything else */
-	if (mame_validitychecks(game) != 0)
+	if (mame_validitychecks(driver) != 0)
 		return MAMERR_FAILED_VALIDITY;
 
 	/* loop across multiple hard resets */
@@ -489,7 +489,7 @@ void mame_schedule_exit(running_machine *machine)
 
 	/* if we're autosaving on exit, schedule a save as well */
 	if (options_get_bool(mame_options(), OPTION_AUTOSAVE) && (machine->gamedrv->flags & GAME_SUPPORTS_SAVE))
-		mame_schedule_save(machine, machine->gamedrv->name);
+		mame_schedule_save(machine, "auto");
 }
 
 
@@ -533,7 +533,7 @@ void mame_schedule_save(running_machine *machine, const char *filename)
 	/* free any existing request and allocate a copy of the requested name */
 	if (mame->saveload_pending_file != NULL)
 		free(mame->saveload_pending_file);
-	mame->saveload_pending_file = mame_strdup(filename);
+	mame->saveload_pending_file = assemble_4_strings(machine->basename, PATH_SEPARATOR, filename, ".sta");
 
 	/* note the start time and set a timer for the next timeslice to actually schedule it */
 	mame->saveload_schedule_callback = handle_save;
@@ -556,7 +556,7 @@ void mame_schedule_load(running_machine *machine, const char *filename)
 	/* free any existing request and allocate a copy of the requested name */
 	if (mame->saveload_pending_file != NULL)
 		free(mame->saveload_pending_file);
-	mame->saveload_pending_file = mame_strdup(filename);
+	mame->saveload_pending_file = assemble_4_strings(machine->basename, PATH_SEPARATOR, filename, ".sta");
 
 	/* note the start time and set a timer for the next timeslice to actually schedule it */
 	mame->saveload_schedule_callback = handle_load;
@@ -867,6 +867,33 @@ void mame_printf_info(const char *format, ...)
 
 
 /*-------------------------------------------------
+    mame_printf_verbose - output verbose text to
+    the appropriate callback
+-------------------------------------------------*/
+
+void mame_printf_verbose(const char *format, ...)
+{
+	va_list argptr;
+
+	/* if we're not verbose, skip it */
+	if (!options_get_bool(mame_options(), OPTION_VERBOSE))
+		return;
+
+	/* by default, we go to stdout */
+	if (output_cb[OUTPUT_CHANNEL_VERBOSE] == NULL)
+	{
+		output_cb[OUTPUT_CHANNEL_VERBOSE] = mame_file_output_callback;
+		output_cb_param[OUTPUT_CHANNEL_VERBOSE] = stdout;
+	}
+
+	/* do the output */
+	va_start(argptr, format);
+	(*output_cb[OUTPUT_CHANNEL_VERBOSE])(output_cb_param[OUTPUT_CHANNEL_VERBOSE], format, argptr);
+	va_end(argptr);
+}
+
+
+/*-------------------------------------------------
     mame_printf_debug - output debug text to the
     appropriate callback
 -------------------------------------------------*/
@@ -1102,7 +1129,7 @@ UINT32 mame_rand(running_machine *machine)
     object and initialize it based on options
 -------------------------------------------------*/
 
-static running_machine *create_machine(int game)
+static running_machine *create_machine(const game_driver *driver)
 {
 	running_machine *machine;
 
@@ -1119,7 +1146,7 @@ static running_machine *create_machine(int game)
 	memset(machine->mame_data, 0, sizeof(*machine->mame_data));
 
 	/* initialize the driver-related variables in the machine */
-	machine->gamedrv = drivers[game];
+	machine->gamedrv = driver;
 	machine->drv = malloc(sizeof(*machine->drv));
 	if (machine->drv == NULL)
 		goto error;
@@ -1171,7 +1198,7 @@ static void reset_machine(running_machine *machine)
 	machine->shadow_table = NULL;
 
 	/* audio-related information */
-	machine->sample_rate = options_get_int_range(mame_options(), OPTION_SAMPLERATE, 1000, 1000000);
+	machine->sample_rate = options_get_int(mame_options(), OPTION_SAMPLERATE);
 
 	/* input-related information */
 	machine->input_ports = NULL;
@@ -1392,21 +1419,11 @@ static void saveload_init(running_machine *machine)
 
 	/* if we're coming in with a savegame request, process it now */
 	if (savegame != NULL && savegame[0] != 0)
-	{
-		char name[20];
-
-		if (strlen(savegame) == 1)
-		{
-			sprintf(name, "%s-%c", machine->gamedrv->name, savegame[0]);
-			mame_schedule_load(machine, name);
-		}
-		else
-			mame_schedule_load(machine, savegame);
-	}
+		mame_schedule_load(machine, savegame);
 
 	/* if we're in autosave mode, schedule a load */
 	else if (options_get_bool(mame_options(), OPTION_AUTOSAVE) && (machine->gamedrv->flags & GAME_SUPPORTS_SAVE))
-		mame_schedule_load(machine, machine->gamedrv->name);
+		mame_schedule_load(machine, "auto");
 }
 
 

@@ -28,7 +28,14 @@ static int cdp1869_prd;
 static int cdp1869_pcb;
 static UINT8 cidelsa_pcb[0x800];  // 2048x1 bit PCB ram
 
-static int cidelsa_in_ef(void)
+static int cdp1802_mode = CDP1802_MODE_RESET;
+
+static UINT8 cidelsa_mode_r(void)
+{
+	return cdp1802_mode;
+}
+
+static UINT8 cidelsa_ef_r(void)
 {
 	/*
         EF1     CDP1869 _PRD
@@ -42,9 +49,12 @@ static int cidelsa_in_ef(void)
 
 static CDP1802_CONFIG cidelsa_cdp1802_config =
 {
+	cidelsa_mode_r,
+	cidelsa_ef_r,
 	NULL,
 	NULL,
-	cidelsa_in_ef
+	NULL,
+	NULL
 };
 
 READ8_HANDLER ( cidelsa_input_port_0_r )
@@ -475,6 +485,7 @@ static INTERRUPT_GEN( draco_interrupt )
 
 static MACHINE_START( destryer )
 {
+	state_save_register_global(cdp1802_mode);
 	state_save_register_global_array(cidelsa_pcb);
 	state_save_register_global(cdp1869_prd);
 	state_save_register_global(cdp1869_pcb);
@@ -484,6 +495,7 @@ static MACHINE_START( destryer )
 
 static MACHINE_START( draco )
 {
+	state_save_register_global(cdp1802_mode);
 	state_save_register_global_array(cidelsa_pcb);
 	state_save_register_global(cdp1869_prd);
 	state_save_register_global(cdp1869_pcb);
@@ -659,9 +671,16 @@ static const CDP1869_interface destryer_CDP1869_interface =
 	cidelsa_get_color_bits
 };
 
+static void set_cpu_mode(int dummy)
+{
+	cdp1802_mode = CDP1802_MODE_RUN;
+}
+
 DRIVER_INIT( cidelsa )
 {
 	cdp1869_configure(&destryer_CDP1869_interface);
+
+	timer_set(0.2, 0, set_cpu_mode);
 }
 
 static const CDP1869_interface draco_CDP1869_interface =
@@ -679,6 +698,8 @@ DRIVER_INIT( draco )
 	memory_configure_bank(1, 0, 2, &ROM[0x000], 0x400);
 
 	cdp1869_configure(&draco_CDP1869_interface);
+
+	timer_set(0.2, 0, set_cpu_mode);
 }
 
 /* ROMs */
@@ -727,7 +748,7 @@ ROM_END
 
 /* Game Drivers */
 
-GAME( 1980, destryer, 0, 		destryer, destryer, cidelsa, ROT90, "Cidelsa", "Destroyer (Cidelsa) (set 1)", GAME_IMPERFECT_SOUND )
-GAME( 1980, destryea, destryer, destryea, destryer, cidelsa, ROT90, "Cidelsa", "Destroyer (Cidelsa) (set 2)", GAME_IMPERFECT_SOUND )
-GAME( 1981, altair,   0, 		altair,   altair,   cidelsa, ROT90, "Cidelsa", "Altair", GAME_IMPERFECT_SOUND )
-GAME( 1981, draco,    0, 		draco,    draco,    draco, 	 ROT90, "Cidelsa", "Draco", GAME_IMPERFECT_COLORS | GAME_NO_SOUND )
+GAME( 1980, destryer, 0, 		destryer, destryer, cidelsa, ROT90, "Cidelsa", "Destroyer (Cidelsa) (set 1)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1980, destryea, destryer, destryea, destryer, cidelsa, ROT90, "Cidelsa", "Destroyer (Cidelsa) (set 2)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1981, altair,   0, 		altair,   altair,   cidelsa, ROT90, "Cidelsa", "Altair", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1981, draco,    0, 		draco,    draco,    draco, 	 ROT90, "Cidelsa", "Draco", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

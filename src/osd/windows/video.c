@@ -248,7 +248,7 @@ static void init_monitors(void)
 			char *utf8_device = utf8_from_tstring(monitor->info.szDevice);
 			if (utf8_device != NULL)
 			{
-				verbose_printf("Video: Monitor %p = \"%s\" %s\n", monitor->handle, utf8_device, (monitor == primary_monitor) ? "(primary)" : "");
+				mame_printf_verbose("Video: Monitor %p = \"%s\" %s\n", monitor->handle, utf8_device, (monitor == primary_monitor) ? "(primary)" : "");
 				free(utf8_device);
 			}
 		}
@@ -390,7 +390,7 @@ static void extract_video_config(void)
 	video_config.windowed      = options_get_bool(mame_options(), WINOPTION_WINDOW);
 	video_config.prescale      = options_get_int(mame_options(), WINOPTION_PRESCALE);
 	video_config.keepaspect    = options_get_bool(mame_options(), WINOPTION_KEEPASPECT);
-	video_config.numscreens    = options_get_int_range(mame_options(), WINOPTION_NUMSCREENS, 1, MAX_WINDOWS);
+	video_config.numscreens    = options_get_int(mame_options(), WINOPTION_NUMSCREENS);
 #ifdef MAME_DEBUG
 	// if we are in debug mode, never go full screen
 	if (options_get_bool(mame_options(), OPTION_DEBUG))
@@ -443,11 +443,11 @@ static void extract_video_config(void)
 	// per-window options: sanity check values
 
 	// d3d options: sanity check values
-	options_get_int_range(mame_options(), WINOPTION_D3DVERSION, 8, 9);
+	options_get_int(mame_options(), WINOPTION_D3DVERSION);
 
-	options_get_float_range(mame_options(), WINOPTION_FULLSCREENBRIGHTNESS, 0.1f, 2.0f);
-	options_get_float_range(mame_options(), WINOPTION_FULLLSCREENCONTRAST, 0.1f, 2.0f);
-	options_get_float_range(mame_options(), WINOPTION_FULLSCREENGAMMA, 0.1f, 3.0f);
+	options_get_float(mame_options(), WINOPTION_FULLSCREENBRIGHTNESS);
+	options_get_float(mame_options(), WINOPTION_FULLLSCREENCONTRAST);
+	options_get_float(mame_options(), WINOPTION_FULLSCREENGAMMA);
 }
 
 

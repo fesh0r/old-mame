@@ -36,6 +36,9 @@
 #define MAMERR_DEVICE			4		/* device initialization error (MESS-specific) */
 #define MAMERR_NO_SUCH_GAME		5		/* game was specified but doesn't exist */
 #define MAMERR_INVALID_CONFIG	6		/* some sort of error in configuration */
+#define MAMERR_IDENT_NONROMS	7		/* identified all non-ROM files */
+#define MAMERR_IDENT_PARTIAL	8		/* identified some files but not all */
+#define MAMERR_IDENT_NONE		9		/* identified no files */
 
 
 /* program phases */
@@ -82,6 +85,7 @@ enum _output_channel
     OUTPUT_CHANNEL_WARNING,
     OUTPUT_CHANNEL_INFO,
     OUTPUT_CHANNEL_DEBUG,
+    OUTPUT_CHANNEL_VERBOSE,
     OUTPUT_CHANNEL_LOG,
     OUTPUT_CHANNEL_COUNT
 };
@@ -239,8 +243,8 @@ extern char build_version[];
 
 /* ----- core system management ----- */
 
-/* execute a given game by index in the drivers[] array */
-int run_game(int game);
+/* execute as configured by the OPTION_GAMENAME option */
+int run_game(const game_driver *driver);
 
 /* return the current phase */
 int mame_get_phase(running_machine *machine);
@@ -319,6 +323,7 @@ void mame_null_output_callback(void *param, const char *format, va_list argptr);
 void mame_printf_error(const char *format, ...) ATTR_PRINTF(1,2);
 void mame_printf_warning(const char *format, ...) ATTR_PRINTF(1,2);
 void mame_printf_info(const char *format, ...) ATTR_PRINTF(1,2);
+void mame_printf_verbose(const char *format, ...) ATTR_PRINTF(1,2);
 void mame_printf_debug(const char *format, ...) ATTR_PRINTF(1,2);
 
 /* discourage the use of printf directly */
@@ -351,7 +356,6 @@ void mame_get_base_datetime(running_machine *machine, mame_system_time *systime)
 
 /* retrieve the current system time */
 void mame_get_current_datetime(running_machine *machine, mame_system_time *systime);
-
 
 
 

@@ -328,7 +328,7 @@ struct _game_driver
 	if (cpu)															\
 	{																	\
 		cpu->timed_interrupt = func;									\
-		cpu->timed_interrupt_period = (rate);							\
+		cpu->timed_interrupt_period = HZ_TO_SUBSECONDS(rate);			\
 	}																	\
 
 
@@ -593,9 +593,9 @@ screen_config *driver_add_screen(machine_config *machine, const char *tag, int p
 screen_config *driver_find_screen(machine_config *machine, const char *tag);
 void driver_remove_screen(machine_config *machine, const char *tag);
 
-int driver_get_index(const char *name);
+const game_driver *driver_get_name(const char *name);
 const game_driver *driver_get_clone(const game_driver *driver);
-void driver_get_approx_matches(const char *name, int matches, int *indexes);
+void driver_get_approx_matches(const char *name, int matches, const game_driver **list);
 int driver_get_count(void);
 
 

@@ -191,21 +191,17 @@ static WRITE8_HANDLER( mw8080bw_reversable_shift_count_w)
  *
  *************************************/
 
-static UINT8 *mw8080bw_ram;
-
-
-UINT8 mw8080bw_ram_r(offs_t offset)
-{
-	return mw8080bw_ram[offset];
-}
+UINT8 *mw8080bw_ram;
+size_t mw8080bw_ram_size;
 
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM AM_WRITENOP
-	AM_RANGE(0x2000, 0x3fff) AM_MIRROR(0x4000) AM_RAM AM_BASE(&mw8080bw_ram)
+	AM_RANGE(0x2000, 0x3fff) AM_MIRROR(0x4000) AM_RAM AM_BASE(&mw8080bw_ram) AM_SIZE(&mw8080bw_ram_size)
 	AM_RANGE(0x4000, 0x5fff) AM_ROM AM_WRITENOP
 ADDRESS_MAP_END
+
 
 
 /*************************************
@@ -3105,7 +3101,7 @@ ROM_END
 /* 645 */ GAME( 1980, spcenctr, 0,      spcenctr, spcenctr, 0, ROT0,   "Midway", "Space Encounters", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
 /* 652 */ GAMEL(1979, phantom2, 0,      phantom2, phantom2, 0, ROT0,   "Midway", "Phantom II", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_hoa0a0ff )
 /* 730 */ GAME( 1978, bowler,   0,      bowler,   bowler,   0, ROT90,  "Midway", "Bowling Alley", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
-/* 739 */ GAMEL(1978, invaders, 0,      invaders, invaders, 0, ROT270, "Midway", "Space Invaders", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_invaders )
+/* 739 */ GAMEL(1978, invaders, 0,      invaders, invaders, 0, ROT270, "Midway", "Space Invaders", GAME_SUPPORTS_SAVE , layout_invaders )
 /* 742 */ GAME( 1978, blueshrk, 0,      blueshrk, blueshrk, 0, ROT0,   "Midway", "Blue Shark", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
 /* 749 4 Player Bowling Alley (cocktail, dump does not exist) */
 /* 851 */ GAMEL(1980, invad2ct, 0,      invad2ct, invad2ct, 0, ROT90,  "Midway", "Space Invaders II (Midway, cocktail)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE, layout_invad2ct )

@@ -264,7 +264,7 @@ WRITE8_HANDLER( ojankoc_videoram_w )
 		px = x + (i ^ xx);
 		py = y;
 
-		plot_pixel(ojankoc_tmpbitmap, px, py, Machine->pens[color]);
+		*BITMAP_ADDR16(ojankoc_tmpbitmap, py, px) = Machine->pens[color];
 
 		color1 >>= 1;
 		color2 >>= 1;
@@ -327,8 +327,8 @@ VIDEO_UPDATE( ojankoc )
 {
 	int offs;
 
-	if (get_vh_global_attribute_changed() || ojankoc_screen_refresh) {
-
+	if (ojankoc_screen_refresh)
+	{
 		/* redraw bitmap */
 		for (offs = 0; offs < 0x8000; offs++) {
 			ojankohs_videoram_w(offs, ojankohs_videoram[offs]);

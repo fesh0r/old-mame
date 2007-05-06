@@ -235,7 +235,7 @@ MACHINE_DRIVER_START( williams_adpcm_sound )
 	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
+	MDRV_SOUND_ADD(OKIM6295, 8000000/8)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -275,6 +275,10 @@ void williams_cvsd_init(int pianum)
 
 	/* reset the IRQ state */
 	pia_set_input_ca1(williams_pianum, 1);
+
+	/* register for save states */
+	state_save_register_global(williams_sound_int_state);
+	state_save_register_global(audio_talkback);
 }
 
 

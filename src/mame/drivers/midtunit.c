@@ -27,6 +27,10 @@
 #include "midtunit.h"
 
 
+#define CPU_CLOCK		(50000000)
+#define PIXEL_CLOCK		(8000000/2)
+
+
 
 /*************************************
  *
@@ -576,15 +580,16 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct tms34010_config tms_config =
+static tms34010_config tms_config =
 {
-	0,								/* halt on reset */
+	FALSE,							/* halt on reset */
+	0,								/* the screen operated on */
+	PIXEL_CLOCK,					/* pixel clock */
+	2,								/* pixels per clock */
+	midtunit_scanline_update,		/* scanline updater */
 	NULL,							/* generate interrupt */
 	midtunit_to_shiftreg,			/* write to shiftreg function */
-	midtunit_from_shiftreg,			/* read from shiftreg function */
-	NULL,							/* display address changed */
-	NULL,							/* display interrupt callback */
-	0								/* the screen operated on */
+	midtunit_from_shiftreg			/* read from shiftreg function */
 };
 
 
@@ -595,37 +600,26 @@ static struct tms34010_config tms_config =
  *
  *************************************/
 
-/*
-    all games use identical visible areas and VBLANK timing
-    based on these video params:
-
-              VERTICAL                   HORIZONTAL
-    mk:       0014-0112 / 0120 (254)     002D-00F5 / 00FC (400)
-    mk2:      0014-0112 / 0120 (254)     002D-00F5 / 00FC (400)
-    jdredd:   0014-0112 / 0120 (254)     0032-00FA / 00FC (400)
-    nbajam:   0014-0112 / 0120 (254)     0032-00FA / 00FC (400)
-*/
-
 static MACHINE_DRIVER_START( tunit_core )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", TMS34010, 50000000/TMS34010_CLOCK_DIVIDER)
+	MDRV_CPU_ADD_TAG("main", TMS34010, CPU_CLOCK/TMS34010_CLOCK_DIVIDER)
 	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(MKLA5_FPS)
 	MDRV_MACHINE_RESET(midtunit)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(400, 288)
-	MDRV_SCREEN_VISIBLE_AREA(0, 399, 20, 273)
 	MDRV_PALETTE_LENGTH(32768)
 
+	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 505, 0, 399, 289, 0, 253)
+
 	MDRV_VIDEO_START(midtunit)
-	MDRV_VIDEO_UPDATE(midtunit)
+	MDRV_VIDEO_UPDATE(tms340x0)
 MACHINE_DRIVER_END
 
 
@@ -1283,22 +1277,22 @@ ROM_END
  *
  *************************************/
 
-GAME( 1992, mk,       0,       tunit_adpcm, mk,       mktunit,  ROT0, "Midway",   "Mortal Kombat (rev 5.0 T-Unit 03/19/93)", 0 )
-GAME( 1992, mkr4,     mk,      tunit_adpcm, mk,       mktunit,  ROT0, "Midway",   "Mortal Kombat (rev 4.0 T-Unit 02/11/93)", 0 )
+GAME( 1992, mk,       0,       tunit_adpcm, mk,       mktunit,  ROT0, "Midway",   "Mortal Kombat (rev 5.0 T-Unit 03/19/93)", GAME_SUPPORTS_SAVE )
+GAME( 1992, mkr4,     mk,      tunit_adpcm, mk,       mktunit,  ROT0, "Midway",   "Mortal Kombat (rev 4.0 T-Unit 02/11/93)", GAME_SUPPORTS_SAVE )
 
-GAME( 1993, mk2,      0,       tunit_dcs,   mk2,      mk2,      ROT0, "Midway",   "Mortal Kombat II (rev L3.1)", 0 )
-GAME( 1993, mk2r32,   mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "Midway",   "Mortal Kombat II (rev L3.2 (European))", 0 )
-GAME( 1993, mk2r21,   mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "Midway",   "Mortal Kombat II (rev L2.1)", 0 )
-GAME( 1993, mk2r14,   mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "Midway",   "Mortal Kombat II (rev L1.4)", 0 )
-GAME( 1993, mk2r42,   mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "hack",     "Mortal Kombat II (rev L4.2, hack)", 0 )
-GAME( 1993, mk2r91,   mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "hack",     "Mortal Kombat II (rev L9.1, hack)", 0 )
-GAME( 1993, mk2chal,  mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "hack",     "Mortal Kombat II Challenger (hack)", 0 )
+GAME( 1993, mk2,      0,       tunit_dcs,   mk2,      mk2,      ROT0, "Midway",   "Mortal Kombat II (rev L3.1)", GAME_SUPPORTS_SAVE )
+GAME( 1993, mk2r32,   mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "Midway",   "Mortal Kombat II (rev L3.2 (European))", GAME_SUPPORTS_SAVE )
+GAME( 1993, mk2r21,   mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "Midway",   "Mortal Kombat II (rev L2.1)", GAME_SUPPORTS_SAVE )
+GAME( 1993, mk2r14,   mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "Midway",   "Mortal Kombat II (rev L1.4)", GAME_SUPPORTS_SAVE )
+GAME( 1993, mk2r42,   mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "hack",     "Mortal Kombat II (rev L4.2, hack)", GAME_SUPPORTS_SAVE )
+GAME( 1993, mk2r91,   mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "hack",     "Mortal Kombat II (rev L9.1, hack)", GAME_SUPPORTS_SAVE )
+GAME( 1993, mk2chal,  mk2,     tunit_dcs,   mk2,      mk2,      ROT0, "hack",     "Mortal Kombat II Challenger (hack)", GAME_SUPPORTS_SAVE )
 
-GAME( 1993, jdreddp,  0,       tunit_adpcm, jdreddp,  jdreddp,  ROT0, "Midway",   "Judge Dredd (rev LA1, prototype)", 0 )
+GAME( 1993, jdreddp,  0,       tunit_adpcm, jdreddp,  jdreddp,  ROT0, "Midway",   "Judge Dredd (rev LA1, prototype)", GAME_SUPPORTS_SAVE )
 
-GAME( 1993, nbajam,   0,       tunit_adpcm, nbajam,   nbajam,   ROT0, "Midway",   "NBA Jam (rev 3.01 04/07/93)", 0 )
-GAME( 1993, nbajamr2, nbajam,  tunit_adpcm, nbajam,   nbajam,   ROT0, "Midway",   "NBA Jam (rev 2.00 02/10/93)", 0 )
-GAME( 1994, nbajamte, nbajam,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 4.0 03/23/94)", 0 )
-GAME( 1994, nbajamt1, nbajam,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 1.0 01/17/94)", 0 )
-GAME( 1994, nbajamt2, nbajam,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 2.0 01/28/94)", 0 )
-GAME( 1994, nbajamt3, nbajam,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 3.0 03/04/94)", 0 )
+GAME( 1993, nbajam,   0,       tunit_adpcm, nbajam,   nbajam,   ROT0, "Midway",   "NBA Jam (rev 3.01 04/07/93)", GAME_SUPPORTS_SAVE )
+GAME( 1993, nbajamr2, nbajam,  tunit_adpcm, nbajam,   nbajam,   ROT0, "Midway",   "NBA Jam (rev 2.00 02/10/93)", GAME_SUPPORTS_SAVE )
+GAME( 1994, nbajamte, nbajam,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 4.0 03/23/94)", GAME_SUPPORTS_SAVE )
+GAME( 1994, nbajamt1, nbajam,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 1.0 01/17/94)", GAME_SUPPORTS_SAVE )
+GAME( 1994, nbajamt2, nbajam,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 2.0 01/28/94)", GAME_SUPPORTS_SAVE )
+GAME( 1994, nbajamt3, nbajam,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 3.0 03/04/94)", GAME_SUPPORTS_SAVE )

@@ -5,14 +5,40 @@
 
     (there are also Seibu and Taito logos/copyrights in the ROMs)
 
- driver by Tomasz Slanina dox@space.pl
+ driver by Tomasz Slanina
 
  The hardware similar to Knuckle Joe.
+
+Oscillators:
+. OSC1 - 14.318180 Mhz
+. OSC2 - 18.432000 Mhz
+. OSC3 - 12.000000 Mhz
+
+Measured freq:
+
+Z80:
+. Pin  6 - 6001135.77 Hz  OSC3/2
+. Pin 16 - 56.747 Hz  56 Hz
+
+T5182:
+. Pin 18 - 3577599.xx Hz  OSC1/4
+
+YM2151:
+. Pin 24 - 3577600.55 OSC1/4
 
 ***************************************************************************/
 #include "driver.h"
 #include "audio/seibu.h"	// for seibu_sound_decrypt on the MAIN cpu (not sound)
 #include "audio/t5182.h"
+
+#define XTAL1  14318180
+#define XTAL2  18432000
+#define XTAL3  12000000
+
+#define CPU_CLOCK   (XTAL3/2)
+#define T5182_CLOCK (XTAL1/4)
+#define YM_CLOCK    (XTAL1/4)
+
 
 WRITE8_HANDLER( mustache_videoram_w );
 WRITE8_HANDLER( mustache_scroll_w );
@@ -157,32 +183,45 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ -1 } /* end of array */
 };
 
-
-INTERRUPT_GEN( mustache_interrupt)
+static void clear_irq_cb(int param)
 {
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(0, 0, CLEAR_LINE);
 }
 
+static void assert_irq(void)
+{
+	cpunum_set_input_line(0, 0, ASSERT_LINE);
+	mame_timer_set(MAME_TIME_IN_CYCLES(14288, 0), 0, clear_irq_cb);
+       /* Timing here is an educated GUESS, Z80 /INT must stay high so the irq
+          fires no less than TWICE per frame, else game doesn't work right.
+      6000000 / 56.747 = 105732.4616 cycles per frame, we'll call it A
+      screen size is 256x256, though less is visible.
+          lets assume we have 256 lines L and 40 'lines' (really line-times)
+          of vblank V:
+      So (A/(L+V))*V = the number of cycles spent in vblank.
+      (105732.4616 / (256+40)) * 40 = 14288.17049 z80 clocks in vblank
+       */
+}
 
 static MACHINE_DRIVER_START( mustache )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 18432000/4) /* maybe 12000000/3 - two xtals (18.432 and 12.xxx) near cpu*/
+	MDRV_CPU_ADD(Z80, CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
-	MDRV_CPU_VBLANK_INT(mustache_interrupt,2)
+	MDRV_CPU_VBLANK_INT(assert_irq,1)
 
-	MDRV_CPU_ADD_TAG(CPUTAG_T5182,Z80,14318180/4)	/* 3.579545 MHz */
+	MDRV_CPU_ADD_TAG(CPUTAG_T5182,Z80, T5182_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(t5182_map, 0)
 	MDRV_CPU_IO_MAP(t5182_io, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_REFRESH_RATE(56.747)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 2*8, 31*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 0, 31*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(8*16+16*8)
 
@@ -193,7 +232,7 @@ static MACHINE_DRIVER_START( mustache )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, 14318180/4)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD(YM2151, YM_CLOCK)
 	MDRV_SOUND_CONFIG(t5182_ym2151_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 1.0)
 	MDRV_SOUND_ROUTE(1, "mono", 1.0)

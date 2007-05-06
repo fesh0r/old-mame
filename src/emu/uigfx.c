@@ -693,10 +693,10 @@ static void gfxset_update_bitmap(ui_gfx_state *state, int xcells, int ycells, gf
 	if (state->bitmap == NULL || state->texture == NULL || state->bitmap->bpp != 32 || state->bitmap->width != cellxpix * xcells || state->bitmap->height != cellypix * ycells)
 	{
 		/* free the old stuff */
-		if (state->bitmap != NULL)
-			bitmap_free(state->bitmap);
 		if (state->texture != NULL)
 			render_texture_free(state->texture);
+		if (state->bitmap != NULL)
+			bitmap_free(state->bitmap);
 
 		/* allocate new stuff */
 		state->bitmap = bitmap_alloc(cellxpix * xcells, cellypix * ycells, BITMAP_FORMAT_ARGB32);
@@ -777,7 +777,7 @@ static void gfxset_draw_item(const gfx_element *gfx, int index, mame_bitmap *bit
 	/* select either the raw palette or the colortable */
 	if (Machine->game_colortable != NULL)
 		colortable = &Machine->game_colortable[(gfx->colortable - Machine->remapped_colortable) + color * gfx->color_granularity];
-	else if (palette != NULL)
+	else if (palette != NULL && gfx->colortable != NULL)
 		palette += (gfx->colortable - Machine->remapped_colortable) + color * gfx->color_granularity;
 	else
 	{
@@ -1057,10 +1057,10 @@ static void tilemap_update_bitmap(ui_gfx_state *state, int width, int height)
 	if (state->bitmap == NULL || state->texture == NULL || state->bitmap->format != screen_format || state->bitmap->width != width || state->bitmap->height != height)
 	{
 		/* free the old stuff */
-		if (state->bitmap != NULL)
-			bitmap_free(state->bitmap);
 		if (state->texture != NULL)
 			render_texture_free(state->texture);
+		if (state->bitmap != NULL)
+			bitmap_free(state->bitmap);
 
 		/* allocate new stuff */
 		state->bitmap = bitmap_alloc(width, height, screen_format);

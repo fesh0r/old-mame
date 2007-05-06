@@ -35,6 +35,13 @@ enum
 	SOUND_DMADAC,
 	SOUND_DISCRETE,
 	SOUND_AY8910,
+	SOUND_AY8912,
+	SOUND_AY8913,
+	SOUND_AY8930,
+	SOUND_YM2149,
+	SOUND_YM3439,
+	SOUND_YMZ284,
+	SOUND_YMZ294,
 	SOUND_YM2203,
 	SOUND_YM2151,
 	SOUND_YM2608,
@@ -48,7 +55,12 @@ enum
 	SOUND_YMZ280B,
 	SOUND_Y8950,
 	SOUND_SN76477,
+	SOUND_SN76489,
+	SOUND_SN76489A,
+	SOUND_SN76494,
 	SOUND_SN76496,
+	SOUND_GAMEGEAR,
+	SOUND_SMSIII,
 	SOUND_POKEY,
 	SOUND_NES,
 	SOUND_ASTROCADE,
@@ -127,6 +139,8 @@ enum
 {
 	/* --- the following bits of info are returned as 64-bit signed integers --- */
 	SNDINFO_INT_FIRST = 0x00000,
+
+	SNDINFO_INT_ALIAS = SNDINFO_INT_FIRST,				/* R/O: alias to sound type for (type,index) identification */
 
 	SNDINFO_INT_CORE_SPECIFIC = 0x08000,				/* R/W: core-specific values start here */
 

@@ -179,7 +179,7 @@ static void nbmj8991_vramflip(void)
 static void update_pixel(int x, int y)
 {
 	UINT8 color = nbmj8991_videoram[(y * Machine->screen[0].width) + x];
-	plot_pixel(nbmj8991_tmpbitmap, x, y, Machine->pens[color]);
+	*BITMAP_ADDR16(nbmj8991_tmpbitmap, y, x) = Machine->pens[color];
 }
 
 static void blitter_timer_callback(int param)
@@ -307,7 +307,7 @@ VIDEO_UPDATE( nbmj8991_type1 )
 {
 	int x, y;
 
-	if (get_vh_global_attribute_changed() || nbmj8991_screen_refresh)
+	if (nbmj8991_screen_refresh)
 	{
 		nbmj8991_screen_refresh = 0;
 
@@ -348,7 +348,7 @@ VIDEO_UPDATE( nbmj8991_type2 )
 {
 	int x, y;
 
-	if (get_vh_global_attribute_changed() || nbmj8991_screen_refresh)
+	if (nbmj8991_screen_refresh)
 	{
 		nbmj8991_screen_refresh = 0;
 

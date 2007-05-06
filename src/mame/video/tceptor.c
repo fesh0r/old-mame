@@ -294,8 +294,6 @@ static int decode_bg(int region)
 
 	/* decode the graphics */
 	Machine->gfx[gfx_index] = allocgfx(&bg_layout);
-	if (!Machine->gfx[gfx_index])
-		return 1;
 	decodegfx(Machine->gfx[gfx_index], memory_region(region), 0, Machine->gfx[gfx_index]->total_elements);
 
 	/* set the color information */
@@ -309,8 +307,6 @@ static int decode_sprite(int gfx_index, const gfx_layout *layout, const void *da
 {
 	/* decode the graphics */
 	Machine->gfx[gfx_index] = allocgfx(layout);
-	if (!Machine->gfx[gfx_index])
-		return 1;
 	decodegfx(Machine->gfx[gfx_index], data, 0, Machine->gfx[gfx_index]->total_elements);
 
 	/* set the color information */
@@ -588,12 +584,10 @@ static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int spr
 
 		for (x = cliprect->min_x; x <= cliprect->max_x; x++)
 			for (y = cliprect->min_y; y <= cliprect->max_y; y++)
-				if (read_pixel(bitmap, x, y) == SPR_MASK_COLOR)
+				if (*BITMAP_ADDR16(bitmap, y, x) == SPR_MASK_COLOR)
 				{
-					int color = read_pixel(temp_bitmap, x, y);
-
 					// restore pixel
-					plot_pixel(bitmap, x, y, color);
+					*BITMAP_ADDR16(bitmap, y, x) = *BITMAP_ADDR16(temp_bitmap, y, x);
 				}
 	}
 }

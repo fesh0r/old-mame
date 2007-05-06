@@ -12,7 +12,6 @@
 
 
 /* compile-time options */
-#define FAST_DMA			0		/* DMAs complete immediately; reduces number of CPU switches */
 #define LOG_DMA				0		/* DMAs are logged if the 'L' key is pressed */
 
 
@@ -44,7 +43,6 @@ enum
 /* graphics-related variables */
        UINT8	midtunit_gfx_rom_large;
 static UINT16	midtunit_control;
-static UINT8	midtunit_using_34020;
 
 /* palette-related variables */
 static pen_t *	pen_map;
@@ -108,7 +106,13 @@ VIDEO_START( midtunit )
 	memset(dma_register, 0, sizeof(dma_register));
 	memset(&dma_state, 0, sizeof(dma_state));
 
-	midtunit_using_34020 = 0;
+	/* register for state saving */
+	state_save_register_global(midtunit_control);
+	state_save_register_global_array(gfxbank_offset);
+	state_save_register_global_pointer(local_videoram, 0x100000/sizeof(local_videoram[0]));
+	state_save_register_global(videobank_select);
+	state_save_register_global_array(dma_register);
+
 	return 0;
 }
 
@@ -125,7 +129,6 @@ VIDEO_START( midxunit )
 {
 	int result = video_start_midtunit(machine);
 	midtunit_gfx_rom_large = 1;
-	midtunit_using_34020 = 1;
 	videobank_select = 1;
 	return result;
 }
@@ -602,23 +605,10 @@ DECLARE_BLITTER_SET(dma_draw_noskip_noscale,   dma_state.bpp, EXTRACTGEN,   SKIP
  *
  *************************************/
 
-static int temp_irq_callback(int irqline)
-{
-	cpunum_set_info_int(0, CPUINFO_INT_INPUT_STATE + 0, CLEAR_LINE);
-	return 0;
-}
-
-
 static void dma_callback(int is_in_34010_context)
 {
 	dma_register[DMA_COMMAND] &= ~0x8000; /* tell the cpu we're done */
-	if (is_in_34010_context)
-	{
-		cpunum_set_irq_callback(0, temp_irq_callback);
-		cpunum_set_info_int(0, CPUINFO_INT_INPUT_STATE + 0, ASSERT_LINE);
-	}
-	else
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(0, 0, ASSERT_LINE);
 }
 
 
@@ -631,6 +621,11 @@ static void dma_callback(int is_in_34010_context)
 
 READ16_HANDLER( midtunit_dma_r )
 {
+	/* rmpgwt sometimes reads register 0, expecting it to return the */
+	/* current DMA status; thus we map register 0 to register 1 */
+	/* openice does it as well */
+	if (offset == 0)
+		offset = 1;
 	return dma_register[offset];
 }
 
@@ -703,11 +698,9 @@ WRITE16_HANDLER( midtunit_dma_w )
 
 	/* high bit triggers action */
 	command = dma_register[DMA_COMMAND];
+	cpunum_set_input_line(0, 0, CLEAR_LINE);
 	if (!(command & 0x8000))
-	{
-		cpunum_set_info_int(0, CPUINFO_INT_INPUT_STATE + 0, CLEAR_LINE);
 		return;
-	}
 
 	profiler_mark(PROFILER_USER1);
 
@@ -733,8 +726,8 @@ WRITE16_HANDLER( midtunit_dma_w )
 	/* clip the clippers */
 	dma_state.topclip = dma_register[DMA_TOPCLIP] & 0x1ff;
 	dma_state.botclip = dma_register[DMA_BOTCLIP] & 0x1ff;
-	dma_state.leftclip = dma_register[DMA_LEFTCLIP] & 0x1ff;
-	dma_state.rightclip = dma_register[DMA_RIGHTCLIP] & 0x1ff;
+	dma_state.leftclip = dma_register[DMA_LEFTCLIP] & 0x3ff;
+	dma_state.rightclip = dma_register[DMA_RIGHTCLIP] & 0x3ff;
 
 	/* determine the offset */
 	gfxoffset = dma_register[DMA_OFFSETLO] | (dma_register[DMA_OFFSETHI] << 16);
@@ -815,26 +808,7 @@ WRITE16_HANDLER( midtunit_dma_w )
 
 	/* signal we're done */
 skipdma:
-
-	/* special case for Open Ice: use a timer for command 0x8000, which is */
-	/* used to initiate the DMA. What they do is start the DMA, *then* set */
-	/* up the memory for it, which means that there must be some non-zero  */
-	/* delay that gives them enough time to build up the DMA command list  */
-	if (FAST_DMA)
-	{
-		if (command != 0x8000)
-			dma_callback(1);
-		else
-		{
-			cpunum_set_info_int(0, CPUINFO_INT_INPUT_STATE + 0, CLEAR_LINE);
-			mame_timer_set(MAME_TIME_IN_NSEC(41 * pixels), 0, dma_callback);
-		}
-	}
-	else
-	{
-		cpunum_set_info_int(0, CPUINFO_INT_INPUT_STATE + 0, CLEAR_LINE);
-		mame_timer_set(MAME_TIME_IN_NSEC(41 * pixels), 0, dma_callback);
-	}
+	mame_timer_set(MAME_TIME_IN_NSEC(41 * pixels), 0, dma_callback);
 
 	profiler_mark(PROFILER_END);
 }
@@ -847,42 +821,26 @@ skipdma:
  *
  *************************************/
 
-VIDEO_UPDATE( midtunit )
+void midtunit_scanline_update(running_machine *machine, int screen, mame_bitmap *bitmap, int scanline, const tms34010_display_params *params)
 {
-	int v, width, xoffs, dpytap;
-	UINT32 offset;
+	UINT16 *src = &local_videoram[(params->rowaddr << 9) & 0x3fe00];
+	UINT16 *dest = BITMAP_ADDR16(bitmap, scanline, 0);
+	int coladdr = params->coladdr << 1;
+	int x;
 
-#if LOG_DMA
-	if (code_pressed(KEYCODE_L))
-		logerror("---\n");
-#endif
+	/* copy the non-blanked portions of this scanline */
+	for (x = params->heblnk; x < params->hsblnk; x++)
+		dest[x] = pen_map[src[coladdr++ & 0x1ff]];
+}
 
-	/* get the current scroll offset */
-	cpuintrf_push_context(0);
-	dpytap = tms34010_io_register_r(REG_DPYTAP, 0) & 0x3fff;
-	cpuintrf_pop_context();
+void midxunit_scanline_update(running_machine *machine, int screen, mame_bitmap *bitmap, int scanline, const tms34010_display_params *params)
+{
+	UINT32 fulladdr = ((params->rowaddr << 16) | params->coladdr) >> 3;
+	UINT16 *src = &local_videoram[fulladdr & 0x3fe00];
+	UINT16 *dest = BITMAP_ADDR16(bitmap, scanline, 0);
+	int x;
 
-	/* determine the base of the videoram */
-	if (midtunit_using_34020)
-		offset = (tms34020_get_DPYSTRT(0) >> 3) & 0x3ffff;
-	else
-		offset = ((~tms34010_get_DPYSTRT(0) & 0x1ff0) << 5) & 0x3ffff;
-	offset += dpytap * 2;
-
-	/* determine how many pixels to copy */
-	xoffs = cliprect->min_x;
-	width = cliprect->max_x - xoffs + 1;
-
-	/* adjust the offset */
-	offset += xoffs;
-	offset += 512 * (cliprect->min_y - machine->screen[0].visarea.min_y);
-	offset &= 0x3ffff;
-
-	/* loop over rows */
-	for (v = cliprect->min_y; v <= cliprect->max_y; v++)
-	{
-		draw_scanline16(bitmap, xoffs, v, width, &local_videoram[offset], pen_map, -1);
-		offset = (offset + 512) & 0x3ffff;
-	}
-	return 0;
+	/* copy the non-blanked portions of this scanline */
+	for (x = params->heblnk; x < params->hsblnk; x++)
+		dest[x] = pen_map[src[fulladdr++ & 0x1ff]];
 }

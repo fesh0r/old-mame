@@ -336,8 +336,6 @@ void ppu2c0x_init( const ppu2c0x_interface *interface )
 			Machine->gfx[intf->gfx_layout_number[i]] = allocgfx( &ppu_charlayout );
 			decodegfx( Machine->gfx[intf->gfx_layout_number[i]], src, 0, Machine->gfx[intf->gfx_layout_number[i]]->total_elements );
 
-			assert_always( Machine->gfx[intf->gfx_layout_number[i]] != 0, "Invalid GFX\n" );
-
 			if ( Machine->remapped_colortable )
 				Machine->gfx[intf->gfx_layout_number[i]]->colortable = &Machine->remapped_colortable[intf->color_base[i]];
 
@@ -633,7 +631,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 						{
 							/* no, draw */
 							if ( ( spriteXPos + pixel ) < VISIBLE_SCREEN_WIDTH )
-								plot_pixel( bitmap, spriteXPos + pixel, scanline, paldata[pixelData] );
+								*BITMAP_ADDR16(bitmap, scanline, spriteXPos + pixel) = paldata[pixelData];
 							drawn = 1;
 						}
 						/* indicate that a sprite was drawn at this location, even if it's not seen */
@@ -666,7 +664,7 @@ static void draw_sprites( const int num, UINT8 *line_priority )
 							/* no, draw */
 							if ( ( spriteXPos + pixel ) < VISIBLE_SCREEN_WIDTH )
 							{
-								plot_pixel( bitmap, spriteXPos + pixel, scanline, paldata[ pixelData ] );
+								*BITMAP_ADDR16(bitmap, scanline, spriteXPos + pixel) = paldata[pixelData];
 								line_priority[ spriteXPos + pixel ] |= 0x01;
 							}
 							drawn = 1;
@@ -1396,7 +1394,7 @@ int ppu2c0x_get_pixel( int num, int x, int y )
 	if ( y >= VISIBLE_SCREEN_HEIGHT )
 		y = VISIBLE_SCREEN_HEIGHT - 1;
 
-	return read_pixel(chips[num].bitmap, x, y);
+	return *BITMAP_ADDR16(chips[num].bitmap, y, x);
 }
 
 int ppu2c0x_get_colorbase( int num )

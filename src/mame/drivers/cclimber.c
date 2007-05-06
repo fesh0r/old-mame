@@ -131,6 +131,12 @@ TODO:
 #include "includes/cclimber.h"
 
 
+static WRITE8_HANDLER( cannonb_flip_screen_w )
+{
+	flip_screen_set(data);
+}
+
+
 static WRITE8_HANDLER( flip_screen_x_w )
 {
 	flip_screen_x_set(data);
@@ -241,8 +247,7 @@ static ADDRESS_MAP_START( cannonb_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9800, 0x9bff) AM_WRITE(MWA8_RAM)  /* not used, but initialized */
 	AM_RANGE(0x9c00, 0x9fff) AM_WRITE(cclimber_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(interrupt_enable_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(flip_screen_x_w)
-	AM_RANGE(0xa002, 0xa002) AM_WRITE(flip_screen_y_w)
+	AM_RANGE(0xa001, 0xa001) AM_WRITE(cannonb_flip_screen_w)
 	AM_RANGE(0xa004, 0xa004) AM_WRITE(cclimber_sample_trigger_w)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(cclimber_sample_rate_w)
 	AM_RANGE(0xb000, 0xb000) AM_WRITE(cclimber_sample_volume_w)
@@ -457,27 +462,27 @@ INPUT_PORTS_START( cannonb )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
 
 	PORT_START_TAG("DSW")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x01, 0x00, "Unknown 1" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x00, "Player title" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Bonus_Life ) ) //there is cocktail mode around here
-	PORT_DIPSETTING(    0x00, "7000" )//on
-	PORT_DIPSETTING(    0x04, "10000" )//cocktail off
-	PORT_DIPSETTING(    0x08, "15000" )//on
-	PORT_DIPSETTING(    0x0c, "20000" )//cocktail off
-	PORT_DIPNAME( 0x70, 0x00, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(    0x70, DEF_STR( 5C_1C ) )
-	PORT_DIPSETTING(    0x50, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x60, DEF_STR( 1C_4C ) )
-	PORT_DIPNAME( 0x80, 0x00, "Unknown 1" )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x18, 0x00, DEF_STR( Lives ) )
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPSETTING(    0x08, "4" )
+	PORT_DIPSETTING(    0x10, "5" )
+	PORT_DIPSETTING(    0x18, "6" )
+	PORT_DIPNAME( 0x20, 0x00, "Unknown 2" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x00, "Unknown 3" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x00, "Unknown 4" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
@@ -913,7 +918,7 @@ static MACHINE_DRIVER_START( swimmer )
 	/* audio CPU */	/* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(swimmer_sound_readmem,swimmer_sound_writemem)
 	MDRV_CPU_IO_MAP(0,swimmer_sound_writeport)
-	MDRV_CPU_PERIODIC_INT(nmi_line_pulse,TIME_IN_HZ(4000000/16384)) /* IRQs are triggered by the main CPU */
+	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, (double)4000000/16384) /* IRQs are triggered by the main CPU */
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)

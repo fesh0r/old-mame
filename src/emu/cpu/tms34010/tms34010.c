@@ -13,6 +13,7 @@
 #include "tms34010.h"
 #include "34010ops.h"
 #include "osd_cpu.h"
+#include "driver.h"
 
 
 /***************************************************************************
@@ -48,64 +49,34 @@ typedef struct
 
 typedef struct tms34010_regs
 {
-	UINT32 op;
+	UINT16 op;
 	UINT32 pc;
-	UINT32 st;					/* Only here so we can display it in the debug window */
-	UINT32 flat_aregs[16];		/* This is a "flat" variant of the registers */
-	UINT32 flat_bregs[15];		/* This is a "flat" variant of the registers */
-	UINT32 nflag;
-	UINT32 cflag;
-	UINT32 notzflag;  /* So we can just do an assignment to set it */
-	UINT32 vflag;
-	UINT32 pflag;
-	UINT32 ieflag;
-	UINT32 fe0flag;
-	UINT32 fe1flag;
-	UINT32 fw[2];
-	UINT32 fw_inc[2];  /* Same as fw[], except when fw = 0, fw_inc = 32 */
-	UINT32 reset_deferred;
-	void (*f0_write)(offs_t offset,UINT32 data);
-	void (*f1_write)(offs_t offset,UINT32 data);
+	UINT32 st;
 	void (*pixel_write)(offs_t offset,UINT32 data);
-	UINT32 (*f0_read)(offs_t offset);
-	UINT32 (*f1_read)(offs_t offset);
 	UINT32 (*pixel_read)(offs_t offset);
-	UINT32 transparency;
-	UINT32 window_checking;
 	 INT32 (*raster_op)(INT32 newpix, INT32 oldpix);
 	UINT32 convsp;
 	UINT32 convdp;
 	UINT32 convmp;
-	UINT32 pixelshift;
 	UINT16 *shiftreg;
 	INT32 gfxcycles;
-	UINT8  is_34020;
-	UINT8  ext_irq_lines;
+	UINT8 pixelshift;
+	UINT8 is_34020;
+	UINT8 reset_deferred;
 	int (*irq_callback)(int irqline);
-	INT32 last_update_vcount;
-	const struct tms34010_config *config;
+	const tms34010_config *config;
+	mame_timer *scantimer;
+
+	/* A registers 0-15 map to regs[0]-regs[15] */
+	/* B registers 0-15 map to regs[30]-regs[15] */
+	union
+	{
+		INT32 reg;
+		XY xy;
+	} regs[31];
 
 	/* for the 34010, we only copy 32 of these into the new state */
 	UINT16 IOregs[64];
-
-	/*************************
-      note: in order to speed things up, we don't copy any data from here
-      forward on a state transition
-    *************************/
-	union						/* The register files are interleaved, so */
-	{							/* that the SP occupies the same location in both */
-		INT32 Bregs[241];   	/* Only every 16th entry is actually used */
-		XY BregsXY[241];
-		struct
-		{
-			INT32 unused[225];
-			union
-			{
-				INT32 Aregs[16];
-				XY AregsXY[16];
-			} a;
-		} a;
-	} regs;
 } tms34010_regs;
 
 #define TMS34010_STATE_SIZE		(offsetof(tms34010_regs, IOregs) + 32 * sizeof(UINT16))
@@ -123,22 +94,17 @@ static int	tms34010_ICount;
 /* internal state */
 static tms34010_regs 	state;
 static UINT8			external_host_access;
-static void *			dpyint_timer[MAX_CPU];		  /* Display interrupt timer */
-static void *			vsblnk_timer[MAX_CPU];		  /* VBLANK start timer */
+static UINT8			screen_to_cpu[MAX_SCREENS];
+static UINT8			executing_cpu = 0xff;
 
 /* default configuration */
-static struct tms34010_config default_config =
+static tms34010_config default_config =
 {
-	0,					/* don't halt on reset */
-	NULL,				/* no interrupt callback */
-	NULL,				/* no shiftreg functions */
-	NULL				/* no shiftreg functions */
+	0
 };
 
 static void check_interrupt(void);
-static void vsblnk_callback(int cpunum);
-static void dpyint_callback(int cpunum);
-static void tms34010_state_presave(void);
+static void scanline_callback(int cpunum);
 static void tms34010_state_postload(void);
 
 
@@ -147,53 +113,53 @@ static void tms34010_state_postload(void);
 ***************************************************************************/
 
 extern void (*tms34010_wfield_functions[32])(offs_t offset,UINT32 data);
-extern UINT32 (*tms34010_rfield_functions_z[32])(offs_t offset);
-extern UINT32 (*tms34010_rfield_functions_s[32])(offs_t offset);
+extern UINT32 (*tms34010_rfield_functions[64])(offs_t offset);
+
 
 /***************************************************************************
     MACROS
 ***************************************************************************/
 
-/* context finder */
-INLINE tms34010_regs *FINDCONTEXT(int cpu)
-{
-	tms34010_regs *context = cpunum_get_context_ptr(cpu);
-	if (!context)
-		context = &state;
-	return context;
-}
+/* status register definitions */
+#define STBIT_N			(1 << 31)
+#define STBIT_C			(1 << 30)
+#define STBIT_Z			(1 << 29)
+#define STBIT_V			(1 << 28)
+#define STBIT_P			(1 << 25)
+#define STBIT_IE		(1 << 21)
+#define STBIT_FE1		(1 << 11)
+#define STBITS_F1		(0x1f << 6)
+#define STBIT_FE0		(1 << 5)
+#define STBITS_F0		(0x1f << 0)
 
 /* register definitions and shortcuts */
 #define PC				(state.pc)
 #define ST				(state.st)
-#define N_FLAG			(state.nflag)
-#define NOTZ_FLAG		(state.notzflag)
-#define C_FLAG			(state.cflag)
-#define V_FLAG			(state.vflag)
-#define P_FLAG			(state.pflag)
-#define IE_FLAG			(state.ieflag)
-#define FE0_FLAG		(state.fe0flag)
-#define FE1_FLAG		(state.fe1flag)
+#define N_FLAG			(state.st & STBIT_N)
+#define Z_FLAG			(state.st & STBIT_Z)
+#define C_FLAG			(state.st & STBIT_C)
+#define V_FLAG			(state.st & STBIT_V)
+#define P_FLAG			(state.st & STBIT_P)
+#define IE_FLAG			(state.st & STBIT_IE)
+#define FE0_FLAG		(state.st & STBIT_FE0)
+#define FE1_FLAG		(state.st & STBIT_FE1)
 
 /* register file access */
-#define AREG(i)			(state.regs.a.a.Aregs[i])
-#define AREG_XY(i)		(state.regs.a.a.AregsXY[i])
-#define AREG_X(i)		(state.regs.a.a.AregsXY[i].x)
-#define AREG_Y(i)		(state.regs.a.a.AregsXY[i].y)
-#define BREG(i)			(state.regs.Bregs[i])
-#define BREG_XY(i)		(state.regs.BregsXY[i])
-#define BREG_X(i)		(state.regs.BregsXY[i].x)
-#define BREG_Y(i)		(state.regs.BregsXY[i].y)
+#define AREG(i)			(state.regs[i].reg)
+#define AREG_XY(i)		(state.regs[i].xy)
+#define AREG_X(i)		(state.regs[i].xy.x)
+#define AREG_Y(i)		(state.regs[i].xy.y)
+#define BREG(i)			(state.regs[30 - (i)].reg)
+#define BREG_XY(i)		(state.regs[30 - (i)].xy)
+#define BREG_X(i)		(state.regs[30 - (i)].xy.x)
+#define BREG_Y(i)		(state.regs[30 - (i)].xy.y)
 #define SP				AREG(15)
-#define FW(i)			(state.fw[i])
-#define FW_INC(i)		(state.fw_inc[i])
-#define BINDEX(i)		((i) << 4)
+#define FW(i)			((state.st >> (i ? 6 : 0)) & 0x1f)
+#define FWEX(i)			((state.st >> (i ? 6 : 0)) & 0x3f)
 
 /* opcode decode helpers */
-#define ASRCREG			((state.op >> 5) & 0x0f)
-#define ADSTREG			(state.op & 0x0f)
-#define BSRCREG			((state.op & 0x1e0) >> 1)
-#define BDSTREG			((state.op & 0x0f) << 4)
+#define SRCREG			((state.op >> 5) & 0x0f)
+#define DSTREG			(state.op & 0x0f)
 #define SKIP_WORD		(PC += (2 << 3))
 #define SKIP_LONG		(PC += (4 << 3))
 #define PARAM_K			((state.op >> 5) & 0x1f)
@@ -201,108 +167,68 @@ INLINE tms34010_regs *FINDCONTEXT(int cpu)
 #define PARAM_REL8		((INT8)state.op)
 
 /* memory I/O */
-#define WFIELD0(a,b)	state.f0_write(a,b)
-#define WFIELD1(a,b)	state.f1_write(a,b)
-#define RFIELD0(a)		state.f0_read(a)
-#define RFIELD1(a)		state.f1_read(a)
+#define WFIELD0(a,b)	(*tms34010_wfield_functions[FW(0)])(a,b)
+#define WFIELD1(a,b)	(*tms34010_wfield_functions[FW(1)])(a,b)
+#define RFIELD0(a)		(*tms34010_rfield_functions[FWEX(0)])(a)
+#define RFIELD1(a)		(*tms34010_rfield_functions[FWEX(1)])(a)
 #define WPIXEL(a,b)		state.pixel_write(a,b)
 #define RPIXEL(a)		state.pixel_read(a)
 
 /* Implied Operands */
-#define SADDR			BREG(BINDEX(0))
-#define SADDR_X			BREG_X(BINDEX(0))
-#define SADDR_Y			BREG_Y(BINDEX(0))
-#define SADDR_XY		BREG_XY(BINDEX(0))
-#define SPTCH			BREG(BINDEX(1))
-#define DADDR			BREG(BINDEX(2))
-#define DADDR_X			BREG_X(BINDEX(2))
-#define DADDR_Y			BREG_Y(BINDEX(2))
-#define DADDR_XY		BREG_XY(BINDEX(2))
-#define DPTCH			BREG(BINDEX(3))
-#define OFFSET			BREG(BINDEX(4))
-#define WSTART_X		BREG_X(BINDEX(5))
-#define WSTART_Y		BREG_Y(BINDEX(5))
-#define WEND_X			BREG_X(BINDEX(6))
-#define WEND_Y			BREG_Y(BINDEX(6))
-#define DYDX_X			BREG_X(BINDEX(7))
-#define DYDX_Y			BREG_Y(BINDEX(7))
-#define COLOR0			BREG(BINDEX(8))
-#define COLOR1			BREG(BINDEX(9))
-#define COUNT			BREG(BINDEX(10))
-#define INC1_X			BREG_X(BINDEX(11))
-#define INC1_Y			BREG_Y(BINDEX(11))
-#define INC2_X			BREG_X(BINDEX(12))
-#define INC2_Y			BREG_Y(BINDEX(12))
-#define PATTRN			BREG(BINDEX(13))
-#define TEMP			BREG(BINDEX(14))
+#define SADDR			BREG(0)
+#define SADDR_X			BREG_X(0)
+#define SADDR_Y			BREG_Y(0)
+#define SADDR_XY		BREG_XY(0)
+#define SPTCH			BREG(1)
+#define DADDR			BREG(2)
+#define DADDR_X			BREG_X(2)
+#define DADDR_Y			BREG_Y(2)
+#define DADDR_XY		BREG_XY(2)
+#define DPTCH			BREG(3)
+#define OFFSET			BREG(4)
+#define WSTART_X		BREG_X(5)
+#define WSTART_Y		BREG_Y(5)
+#define WEND_X			BREG_X(6)
+#define WEND_Y			BREG_Y(6)
+#define DYDX_X			BREG_X(7)
+#define DYDX_Y			BREG_Y(7)
+#define COLOR0			BREG(8)
+#define COLOR1			BREG(9)
+#define COUNT			BREG(10)
+#define INC1_X			BREG_X(11)
+#define INC1_Y			BREG_Y(11)
+#define INC2_X			BREG_X(12)
+#define INC2_Y			BREG_Y(12)
+#define PATTRN			BREG(13)
+#define TEMP			BREG(14)
+
+/* I/O registers */
+#define WINDOW_CHECKING	((IOREG(REG_CONTROL) >> 6) & 0x03)
+
 
 
 /***************************************************************************
     INLINE SHORTCUTS
 ***************************************************************************/
 
-/* set the field widths - shortcut */
-INLINE void SET_FW(void)
-{
-	FW_INC(0) = FW(0) ? FW(0) : 0x20;
-	FW_INC(1) = FW(1) ? FW(1) : 0x20;
-
-	state.f0_write = tms34010_wfield_functions[FW(0)];
-	state.f1_write = tms34010_wfield_functions[FW(1)];
-
-	if (FE0_FLAG)
-		state.f0_read  = tms34010_rfield_functions_s[FW(0)];	/* Sign extend */
-	else
-		state.f0_read  = tms34010_rfield_functions_z[FW(0)];	/* Zero extend */
-
-	if (FE1_FLAG)
-		state.f1_read  = tms34010_rfield_functions_s[FW(1)];	/* Sign extend */
-	else
-		state.f1_read  = tms34010_rfield_functions_z[FW(1)];	/* Zero extend */
-}
-
-/* Intialize Status to 0x0010 */
-INLINE void RESET_ST(void)
-{
-	N_FLAG = C_FLAG = V_FLAG = P_FLAG = IE_FLAG = FE0_FLAG = FE1_FLAG = 0;
-	NOTZ_FLAG = 1;
-	FW(0) = 0x10;
-	FW(1) = 0;
-	SET_FW();
-}
-
 /* Combine indiviual flags into the Status Register */
 INLINE UINT32 GET_ST(void)
 {
-	return (     N_FLAG ? 0x80000000 : 0) |
-		   (     C_FLAG ? 0x40000000 : 0) |
-		   (  NOTZ_FLAG ? 0 : 0x20000000) |
-		   (     V_FLAG ? 0x10000000 : 0) |
-		   (     P_FLAG ? 0x02000000 : 0) |
-		   (    IE_FLAG ? 0x00200000 : 0) |
-		   (   FE1_FLAG ? 0x00000800 : 0) |
-		   (FW(1) << 6)                   |
-		   (   FE0_FLAG ? 0x00000020 : 0) |
-		   FW(0);
+	return state.st;
 }
 
 /* Break up Status Register into indiviual flags */
 INLINE void SET_ST(UINT32 st)
 {
-	N_FLAG    =    st & 0x80000000;
-	C_FLAG    =    st & 0x40000000;
-	NOTZ_FLAG =  !(st & 0x20000000);
-	V_FLAG    =    st & 0x10000000;
-	P_FLAG    =    st & 0x02000000;
-	IE_FLAG   =    st & 0x00200000;
-	FE1_FLAG  =    st & 0x00000800;
-	FW(1)     =   (st >> 6) & 0x1f;
-	FE0_FLAG  =    st & 0x00000020;
-	FW(0)     =    st & 0x1f;
-	SET_FW();
-
+	state.st = st;
 	/* interrupts might have been enabled, check it */
 	check_interrupt();
+}
+
+/* Intialize Status to 0x0010 */
+INLINE void RESET_ST(void)
+{
+	SET_ST(0x00000010);
 }
 
 /* shortcuts for reading opcodes */
@@ -404,7 +330,7 @@ static UINT32 read_pixel_shiftreg(offs_t offset)
 	if (state.config->to_shiftreg)
 		state.config->to_shiftreg(offset, &state.shiftreg[0]);
 	else
-		logerror("To ShiftReg function not set. PC = %08X\n", PC);
+		fatalerror("To ShiftReg function not set. PC = %08X\n", PC);
 	return state.shiftreg[0];
 }
 
@@ -522,7 +448,7 @@ static void write_pixel_shiftreg(offs_t offset,UINT32 data)
 	if (state.config->from_shiftreg)
 		state.config->from_shiftreg(offset, &state.shiftreg[0]);
 	else
-		logerror("From ShiftReg function not set. PC = %08X\n", PC);
+		fatalerror("From ShiftReg function not set. PC = %08X\n", PC);
 }
 
 
@@ -576,28 +502,25 @@ static INT32 raster_op_21(INT32 newpix, INT32 oldpix) { return (oldpix > newpix)
 
 /***************************************************************************
     Internal interrupt check
-*#################################################################################################*/
+****************************************************************************/
 
-/* Generate pending interrupts. Do NOT inline this function on DJGPP,
-   it causes a slowdown */
+/* Generate pending interrupts. */
 static void check_interrupt(void)
 {
 	int vector = 0;
 	int irqline = -1;
 	int irq;
 
-	/* early out if no interrupts pending */
-	irq = IOREG(REG_INTPEND);
-	if (!irq)
+	/* if we're not actively executing, skip it */
+	if (executing_cpu != 0xff && executing_cpu != cpu_getactivecpu())
 		return;
 
 	/* check for NMI first */
-	if (irq & TMS34010_NMI)
+	if (IOREG(REG_HSTCTLH) & 0x0100)
 	{
 		LOG(("TMS34010#%d takes NMI\n", cpu_getactivecpu()));
 
 		/* ack the NMI */
-		IOREG(REG_INTPEND) &= ~TMS34010_NMI;
 		IOREG(REG_HSTCTLH) &= ~0x0100;
 
 		/* handle NMI mode bit */
@@ -611,11 +534,12 @@ static void check_interrupt(void)
 		RESET_ST();
 		PC = RLONG(0xfffffee0);
 		change_pc(TOBYTE(PC));
+		COUNT_CYCLES(16);
 		return;
 	}
 
 	/* early out if everything else is disabled */
-	irq &= IOREG(REG_INTENB);
+	irq = IOREG(REG_INTPEND) & IOREG(REG_INTENB);
 	if (!IE_FLAG || !irq)
 		return;
 
@@ -664,6 +588,7 @@ static void check_interrupt(void)
 		RESET_ST();
 		PC = RLONG(vector);
 		change_pc(TOBYTE(PC));
+		COUNT_CYCLES(16);
 
 		/* call the callback for externals */
 		if (irqline >= 0)
@@ -679,19 +604,20 @@ static void check_interrupt(void)
 
 static void tms34010_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
-	const struct tms34010_config *config = _config ? _config : &default_config;
-	int i;
+	const tms34010_config *config = _config ? _config : &default_config;
 
-	external_host_access = 0;
-
-	for (i = 0; i < MAX_CPU; i++)
-	{
-		dpyint_timer[i] = mame_timer_alloc(dpyint_callback);
-		vsblnk_timer[i] = mame_timer_alloc(vsblnk_callback);
-	}
+	external_host_access = FALSE;
 
 	state.config = config;
 	state.irq_callback = irqcallback;
+
+	/* if we have a scanline callback, make us the owner of this screen */
+	if (config->scanline_callback != NULL)
+		screen_to_cpu[config->scrnum] = index;
+
+	/* allocate a scanline timer and set it to go off at the start */
+	state.scantimer = mame_timer_alloc(scanline_callback);
+	mame_timer_adjust(state.scantimer, time_zero, index, time_zero);
 
 	/* allocate the shiftreg */
 	state.shiftreg = auto_malloc(SHIFTREG_SIZE);
@@ -699,36 +625,22 @@ static void tms34010_init(int index, int clock, const void *_config, int (*irqca
 	state_save_register_item("tms34010", index, state.op);
 	state_save_register_item("tms34010", index, state.pc);
 	state_save_register_item("tms34010", index, state.st);
-	state_save_register_item_array("tms34010", index, state.flat_aregs);
-	state_save_register_item_array("tms34010", index, state.flat_bregs);
-	state_save_register_item("tms34010", index, state.nflag);
-	state_save_register_item("tms34010", index, state.cflag);
-	state_save_register_item("tms34010", index, state.notzflag);
-	state_save_register_item("tms34010", index, state.vflag);
-	state_save_register_item("tms34010", index, state.pflag);
-	state_save_register_item("tms34010", index, state.ieflag);
-	state_save_register_item("tms34010", index, state.fe0flag);
-	state_save_register_item("tms34010", index, state.fe1flag);
-	state_save_register_item_array("tms34010", index, state.fw);
-	state_save_register_item_array("tms34010", index, state.fw_inc);
 	state_save_register_item("tms34010", index, state.reset_deferred);
-	state_save_register_item_array("tms34010", index, state.shiftreg);
+	state_save_register_item_pointer("tms34010", index, state.shiftreg, SHIFTREG_SIZE);
 	state_save_register_item_array("tms34010", index, state.IOregs);
-	state_save_register_item("tms34010", index, state.transparency);
-	state_save_register_item("tms34010", index, state.window_checking);
 	state_save_register_item("tms34010", index, state.convsp);
 	state_save_register_item("tms34010", index, state.convdp);
 	state_save_register_item("tms34010", index, state.convmp);
 	state_save_register_item("tms34010", index, state.pixelshift);
 	state_save_register_item("tms34010", index, state.gfxcycles);
-	state_save_register_item("tms34010", index, state.last_update_vcount);
-	state_save_register_func_presave(tms34010_state_presave);
+	state_save_register_item_pointer("tms34010", index, (&state.regs[0].reg), ARRAY_LENGTH(state.regs));
 	state_save_register_func_postload(tms34010_state_postload);
 }
 
 static void tms34010_reset(void)
 {
-	const struct tms34010_config *config;
+	const tms34010_config *config;
+	mame_timer *save_scantimer;
 	int (*save_irqcallback)(int);
 	UINT16 *shiftreg;
 
@@ -736,10 +648,12 @@ static void tms34010_reset(void)
 	config = state.config;
 	shiftreg = state.shiftreg;
 	save_irqcallback = state.irq_callback;
+	save_scantimer = state.scantimer;
 	memset(&state, 0, sizeof(state));
 	state.shiftreg = shiftreg;
 	state.config = config;
 	state.irq_callback = save_irqcallback;
+	state.scantimer = save_scantimer;
 
 	/* fetch the initial PC and reset the state */
 	PC = RLONG(0xffffffe0) & 0xfffffff0;
@@ -767,12 +681,6 @@ static void tms34020_reset(void)
 
 static void tms34010_exit(void)
 {
-	int i;
-
-	/* clear out the timers */
-	for (i = 0; i < MAX_CPU; i++)
-		dpyint_timer[i] = vsblnk_timer[i] = NULL;
-
 	state.shiftreg = NULL;
 }
 
@@ -785,29 +693,13 @@ static void tms34010_exit(void)
 static void tms34010_get_context(void *dst)
 {
 	if (dst)
-	{
-		int i;
-
-		for (i = 0; i < 16; i++)
-			state.flat_aregs[i] = AREG(i);
-		for (i = 0; i < 15; i++)
-			state.flat_bregs[i] = BREG(BINDEX(i));
 		memcpy(dst, &state, TMS34010_STATE_SIZE);
-	}
 }
 
 static void tms34020_get_context(void *dst)
 {
 	if (dst)
-	{
-		int i;
-
-		for (i = 0; i < 16; i++)
-			state.flat_aregs[i] = AREG(i);
-		for (i = 0; i < 15; i++)
-			state.flat_bregs[i] = BREG(BINDEX(i));
 		memcpy(dst, &state, TMS34020_STATE_SIZE);
-	}
 }
 
 
@@ -819,33 +711,15 @@ static void tms34020_get_context(void *dst)
 static void tms34010_set_context(void *src)
 {
 	if (src)
-	{
-		int i;
-
 		memcpy(&state, src, TMS34010_STATE_SIZE);
-		for (i = 0; i < 16; i++)
-			AREG(i) = state.flat_aregs[i];
-		for (i = 0; i < 15; i++)
-			BREG(BINDEX(i)) = state.flat_bregs[i];
-	}
 	change_pc(TOBYTE(PC));
-	check_interrupt();
 }
 
 static void tms34020_set_context(void *src)
 {
 	if (src)
-	{
-		int i;
-
 		memcpy(&state, src, TMS34020_STATE_SIZE);
-		for (i = 0; i < 16; i++)
-			AREG(i) = state.flat_aregs[i];
-		for (i = 0; i < 15; i++)
-			BREG(BINDEX(i)) = state.flat_bregs[i];
-	}
 	change_pc(TOBYTE(PC));
-	check_interrupt();
 }
 
 
@@ -863,38 +737,25 @@ static void set_irq_line(int irqline, int linestate)
 	{
 		case 0:
 			if (linestate != CLEAR_LINE)
-			{
-				state.ext_irq_lines |= 1;
 				IOREG(REG_INTPEND) |= TMS34010_INT1;
-			}
 			else
-			{
-				state.ext_irq_lines &= ~1;
 				IOREG(REG_INTPEND) &= ~TMS34010_INT1;
-			}
 			break;
 
 		case 1:
 			if (linestate != CLEAR_LINE)
-			{
-				state.ext_irq_lines |= 2;
 				IOREG(REG_INTPEND) |= TMS34010_INT2;
-			}
 			else
-			{
-				state.ext_irq_lines &= ~2;
 				IOREG(REG_INTPEND) &= ~TMS34010_INT2;
-			}
 			break;
 	}
-	check_interrupt();
 }
 
 
 
 /***************************************************************************
     Generate internal interrupt
-*#################################################################################################*/
+***************************************************************************/
 
 static void internal_interrupt_callback(int param)
 {
@@ -905,7 +766,6 @@ static void internal_interrupt_callback(int param)
 	cpuintrf_push_context(cpunum);
 	IOREG(REG_INTPEND) |= type;
 	LOG(("TMS34010#%d set internal interrupt $%04x\n", cpu_getactivecpu(), type));
-	check_interrupt();
 	cpuintrf_pop_context();
 
 	/* generate triggers so that spin loops can key off them */
@@ -916,7 +776,7 @@ static void internal_interrupt_callback(int param)
 
 /***************************************************************************
     Execute
-*#################################################################################################*/
+***************************************************************************/
 
 static int tms34010_execute(int cycles)
 {
@@ -934,8 +794,13 @@ static int tms34010_execute(int cycles)
 	/* execute starting now */
 	tms34010_ICount = cycles;
 	change_pc(TOBYTE(PC));
+
+	/* check interrupts first */
+	executing_cpu = cpu_getactivecpu();
+	check_interrupt();
 	do
 	{
+
 		#ifdef	MAME_DEBUG
 		if (Machine->debug_mode) { state.st = GET_ST(); mame_debug_hook(); }
 		#endif
@@ -943,6 +808,7 @@ static int tms34010_execute(int cycles)
 		(*opcode_table[state.op >> 4])();
 
 	} while (tms34010_ICount > 0);
+	executing_cpu = 0xff;
 
 	return cycles - tms34010_ICount;
 }
@@ -989,7 +855,7 @@ static void set_pixel_function(void)
 		case 0x10: i2 = 4; break;
 	}
 
-	if (state.transparency)
+	if (IOREG(REG_CONTROL) & 0x20)
 		i1 = state.raster_op ? 3 : 2;
 	else
 		i1 = state.raster_op ? 1 : 0;
@@ -1028,80 +894,220 @@ static void set_raster_op(void)
     VIDEO TIMING HELPERS
 ***************************************************************************/
 
-static void update_display_address(int vcount)
+static void scanline_callback(int param)
 {
-	UINT32 dpyadr = IOREG(REG_DPYADR) & 0xfffc;
-	UINT32 dpytap = IOREG(REG_DPYTAP) & 0x3fff;
-	INT32 dudate = IOREG(REG_DPYCTL) & 0x03fc;
-	int org = IOREG(REG_DPYCTL) & 0x0400;
-	int scans = (IOREG(REG_DPYSTRT) & 3) + 1;
+	const screen_state *screen;
+	int vsblnk, veblnk, vtotal;
+	int vcount = param >> 8;
+	int cpunum = param & 0xff;
+	int enabled;
+	int master;
 
-	/* anytime during VBLANK is effectively the start of the next frame */
-	if (vcount >= SMART_IOREG(VSBLNK) || vcount <= SMART_IOREG(VEBLNK))
-		state.last_update_vcount = vcount = SMART_IOREG(VEBLNK);
+	/* set the CPU context */
+	cpuintrf_push_context(cpunum);
+	screen = &Machine->screen[state.config->scrnum];
 
-	/* otherwise, compute the updated address */
+	/* fetch the core timing parameters */
+	enabled = SMART_IOREG(DPYCTL) & 0x8000;
+	master = (state.is_34020 || (SMART_IOREG(DPYCTL) & 0x2000));
+	vsblnk = SMART_IOREG(VSBLNK);
+	veblnk = SMART_IOREG(VEBLNK);
+	vtotal = SMART_IOREG(VTOTAL);
+	if (!master)
+	{
+		vtotal = MIN(screen->height - 1, vtotal);
+		vcount = video_screen_get_vpos(state.config->scrnum);
+	}
+
+	/* update the VCOUNT */
+	SMART_IOREG(VCOUNT) = vcount;
+
+	/* if we match the display interrupt scanline, signal an interrupt */
+	if (enabled && vcount == SMART_IOREG(DPYINT))
+	{
+		/* generate the display interrupt signal */
+		internal_interrupt_callback(cpunum | (TMS34010_DI << 8));
+	}
+
+	/* at the start of VBLANK, load the starting display address */
+	if (vcount == vsblnk)
+	{
+		/* 34010 loads DPYADR with DPYSTRT, and inverts if the origin is 0 */
+		if (!state.is_34020)
+		{
+			IOREG(REG_DPYADR) = IOREG(REG_DPYSTRT);
+			LOG(("Start of VBLANK, DPYADR = %04X\n", IOREG(REG_DPYADR)));
+		}
+
+		/* 34020 loads DPYNXx with DPYSTx */
+		else
+		{
+			IOREG(REG020_DPYNXL) = IOREG(REG020_DPYSTL) & 0xffe0;
+			IOREG(REG020_DPYNXH) = IOREG(REG020_DPYSTH);
+		}
+	}
+
+	/* at the end of the screen, update the display parameters */
+	if (vcount == vtotal)
+	{
+		/* only do this if we have an incoming pixel clock */
+		/* also, only do it if the HEBLNK/HSBLNK values are stable */
+		if (master && state.config->scanline_callback != NULL)
+		{
+			int htotal = SMART_IOREG(HTOTAL);
+			if (htotal > 0 && vtotal > 0)
+			{
+				subseconds_t refresh = HZ_TO_SUBSECONDS(state.config->pixclock) * (htotal + 1) * (vtotal + 1);
+				int width = (htotal + 1) * state.config->pixperclock;
+				int height = vtotal + 1;
+				rectangle visarea;
+
+				/* extract the visible area */
+				visarea.min_x = SMART_IOREG(HEBLNK) * state.config->pixperclock;
+				visarea.max_x = SMART_IOREG(HSBLNK) * state.config->pixperclock - 1;
+				visarea.min_y = veblnk;
+				visarea.max_y = vsblnk - 1;
+
+				/* if everything looks good, set the info */
+				if (visarea.min_x < visarea.max_x && visarea.max_x <= width && visarea.min_y < visarea.max_y && visarea.max_y <= height)
+				{
+					/* because many games play with the HEBLNK/HSBLNK for effects, we don't change
+                       if they are the only thing that has changed */
+					if (width != screen->width || height != screen->height || visarea.min_y != screen->visarea.min_y || visarea.max_y != screen->visarea.max_y)
+						video_screen_configure(state.config->scrnum, width, height, &visarea, refresh);
+				}
+
+				LOG(("Configuring screen: HTOTAL=%3d BLANK=%3d-%3d VTOTAL=%3d BLANK=%3d-%3d refresh=%f\n",
+						htotal, SMART_IOREG(HEBLNK), SMART_IOREG(HSBLNK), vtotal, veblnk, vsblnk, SUBSECONDS_TO_HZ(refresh)));
+
+				/* interlaced timing not supported */
+				if ((SMART_IOREG(DPYCTL) & 0x4000) == 0)
+					fatalerror("Interlaced video configured on the TMS34010 (unsupported)");
+			}
+		}
+	}
+
+	/* force a partial update within the visible area */
+	if (vcount >= screen->visarea.min_y && vcount <= screen->visarea.max_y && state.config->scanline_callback != NULL)
+		video_screen_update_partial(state.config->scrnum, vcount);
+
+	/* if we are in the visible area, increment DPYADR by DUDATE */
+	if (vcount >= veblnk && vcount < vsblnk)
+	{
+		/* 34010 increments by the DUDATE field in DPYCTL */
+		if (!state.is_34020)
+		{
+			UINT16 dpyadr = IOREG(REG_DPYADR);
+			if ((dpyadr & 3) == 0)
+				dpyadr = ((dpyadr & 0xfffc) - (IOREG(REG_DPYCTL) & 0x03fc)) | (IOREG(REG_DPYSTRT) & 0x0003);
+			else
+				dpyadr = (dpyadr & 0xfffc) | ((dpyadr - 1) & 3);
+			IOREG(REG_DPYADR) = dpyadr;
+		}
+
+		/* 34020 updates based on the DINC register, including zoom */
+		else
+		{
+			UINT32 dpynx = IOREG(REG020_DPYNXL) | (IOREG(REG020_DPYNXH) << 16);
+			UINT32 dinc = IOREG(REG020_DINCL) | (IOREG(REG020_DINCH) << 16);
+			dpynx = (dpynx & 0xffffffe0) | ((dpynx + dinc) & 0x1f);
+			if ((dpynx & 0x1f) == 0)
+				dpynx += dinc & 0xffffffe0;
+			IOREG(REG020_DPYNXL) = dpynx;
+			IOREG(REG020_DPYNXH) = dpynx >> 16;
+		}
+	}
+
+	/* adjust for the next callback */
+	vcount++;
+	if (vcount > vtotal)
+		vcount = 0;
+
+	/* note that we add !master (0 or 1) as a subseconds value; this makes no practical difference */
+	/* but helps ensure that masters are updated first before slaves */
+	mame_timer_adjust(state.scantimer, add_subseconds_to_mame_time(video_screen_get_time_until_pos(state.config->scrnum, vcount, 0), !master), cpunum | (vcount << 8), time_zero);
+
+	/* restore the context */
+	cpuintrf_pop_context();
+}
+
+
+void tms34010_get_display_params(int cpunum, tms34010_display_params *params)
+{
+	cpuintrf_push_context(cpunum);
+
+	params->enabled = ((SMART_IOREG(DPYCTL) & 0x8000) != 0);
+	params->vcount = SMART_IOREG(VCOUNT);
+	params->veblnk = SMART_IOREG(VEBLNK);
+	params->vsblnk = SMART_IOREG(VSBLNK);
+	params->heblnk = SMART_IOREG(HEBLNK) * state.config->pixperclock;
+	params->hsblnk = SMART_IOREG(HSBLNK) * state.config->pixperclock;
+
+	/* 34010 gets its address from DPYADR and DPYTAP */
+	if (!state.is_34020)
+	{
+		UINT16 dpyadr = IOREG(REG_DPYADR);
+		if (!(IOREG(REG_DPYCTL) & 0x0400))
+			dpyadr ^= 0xfffc;
+		params->rowaddr = dpyadr >> 4;
+		params->coladdr = ((dpyadr & 0x007c) << 4) | (IOREG(REG_DPYTAP) & 0x3fff);
+		params->yoffset = (IOREG(REG_DPYSTRT) - IOREG(REG_DPYADR)) & 3;
+	}
+
+	/* 34020 gets its address from DPYNX */
 	else
 	{
-		int rows = vcount - state.last_update_vcount;
-		if (rows < 0) rows += SMART_IOREG(VCOUNT);
-		dpyadr -= rows * dudate / scans;
-		IOREG(REG_DPYADR) = dpyadr | (IOREG(REG_DPYADR) & 0x0003);
-		state.last_update_vcount = vcount;
+		params->rowaddr = IOREG(REG020_DPYNXH);
+		params->coladdr = IOREG(REG020_DPYNXL) & 0xffe0;
+		params->yoffset = 0;
+		if ((IOREG(REG020_DINCL) & 0x1f) != 0)
+			params->yoffset = (IOREG(REG020_DPYNXL) & 0x1f) / (IOREG(REG020_DINCL) & 0x1f);
 	}
 
-	/* now compute the actual address */
-	if (org == 0) dpyadr ^= 0xfffc;
-	dpyadr <<= 8;
-	dpyadr |= dpytap << 4;
+	cpuintrf_pop_context();
+}
 
-	/* callback */
-	if (state.config->display_addr_changed)
+
+VIDEO_UPDATE( tms340x0 )
+{
+	pen_t blackpen = get_black_pen(machine);
+	tms34010_display_params params;
+	int x;
+
+	/* get the display parameters for the screen */
+	tms34010_get_display_params(screen_to_cpu[screen], &params);
+
+	/* if the display is enabled, call the scanline callback */
+	if (params.enabled)
 	{
-		if (org != 0) dudate = -dudate;
-		(*state.config->display_addr_changed)(dpyadr & 0x00ffffff, (dudate << 8) / scans, vcount);
+		/* call through to the callback */
+		LOG(("  Update: scan=%3d ROW=%04X COL=%04X\n", cliprect->min_y, params.rowaddr, params.coladdr));
+		(*state.config->scanline_callback)(machine, screen, bitmap, cliprect->min_y, &params);
 	}
+
+	/* otherwise, just blank the current scanline */
+	else
+		params.heblnk = params.hsblnk = cliprect->max_x + 1;
+
+	/* blank out the blank regions */
+	if (bitmap->bpp == 16)
+	{
+		UINT16 *dest = BITMAP_ADDR16(bitmap, cliprect->min_y, 0);
+		for (x = cliprect->min_x; x < params.heblnk; x++)
+			dest[x] = blackpen;
+		for (x = params.hsblnk; x <= cliprect->max_y; x++)
+			dest[x] = blackpen;
+	}
+	else if (bitmap->bpp == 32)
+	{
+		UINT32 *dest = BITMAP_ADDR32(bitmap, cliprect->min_y, 0);
+		for (x = cliprect->min_x; x < params.heblnk; x++)
+			dest[x] = blackpen;
+		for (x = params.hsblnk; x <= cliprect->max_y; x++)
+			dest[x] = blackpen;
+	}
+	return 0;
 }
-
-
-static void vsblnk_callback(int cpunum)
-{
-	/* set the CPU's context and update the display state */
-	cpuintrf_push_context(cpunum);
-	IOREG(REG_DPYADR) = IOREG(REG_DPYSTRT);
-	update_display_address(SMART_IOREG(VSBLNK));
-
-	cpuintrf_pop_context();
-}
-
-
-static void dpyint_callback(int cpunum)
-{
-	/* set the CPU's context and queue an interrupt */
-	cpuintrf_push_context(cpunum);
-	mame_timer_set(time_zero, cpunum | (TMS34010_DI << 8), internal_interrupt_callback);
-
-	/* allow a callback so we can update before they are likely to do nasty things */
-	if (state.config->display_int_callback)
-		(*state.config->display_int_callback)(IOREG(REG_DPYINT));
-
-	cpuintrf_pop_context();
-}
-
-
-static void update_timers(void)
-{
-	int cpunum = cpu_getactivecpu();
-	int dpyint = IOREG(REG_DPYINT);
-	int vsblnk = SMART_IOREG(VSBLNK);
-
-	/* set new timers */
-	mame_time interval = video_screen_get_frame_period(state.config->scrnum);
-
-	mame_timer_adjust(dpyint_timer[cpunum], video_screen_get_time_until_pos(state.config->scrnum, dpyint, 0), cpunum, interval);
-	mame_timer_adjust(vsblnk_timer[cpunum], video_screen_get_time_until_pos(state.config->scrnum, vsblnk, 0), cpunum, interval);
-}
-
 
 
 /***************************************************************************
@@ -1132,24 +1138,7 @@ WRITE16_HANDLER( tms34010_io_register_w )
 
 	switch (offset)
 	{
-		case REG_DPYINT:
-			if (data != oldreg || !dpyint_timer[cpunum])
-				update_timers();
-			break;
-
-		case REG_VSBLNK:
-			if (data != oldreg || !vsblnk_timer[cpunum])
-				update_timers();
-			break;
-
-		case REG_VEBLNK:
-			if (data != oldreg)
-				update_timers();
-			break;
-
 		case REG_CONTROL:
-			state.transparency = data & 0x20;
-			state.window_checking = (data >> 6) & 0x03;
 			set_raster_op();
 			set_pixel_function();
 			break;
@@ -1174,26 +1163,6 @@ WRITE16_HANDLER( tms34010_io_register_w )
 
 		case REG_DPYCTL:
 			set_pixel_function();
-			if ((oldreg ^ data) & 0x03fc)
-				update_display_address(video_screen_get_vpos(state.config->scrnum));
-			break;
-
-		case REG_DPYADR:
-			if (data != oldreg)
-			{
-				state.last_update_vcount = video_screen_get_vpos(state.config->scrnum);
-				update_display_address(state.last_update_vcount);
-			}
-			break;
-
-		case REG_DPYSTRT:
-			if (data != oldreg)
-				update_display_address(video_screen_get_vpos(state.config->scrnum));
-			break;
-
-		case REG_DPYTAP:
-			if ((oldreg ^ data) & 0x3fff)
-				update_display_address(video_screen_get_vpos(state.config->scrnum));
 			break;
 
 		case REG_HSTCTLH:
@@ -1204,7 +1173,7 @@ WRITE16_HANDLER( tms34010_io_register_w )
 
 			/* NMI issued? */
 			if (data & 0x0100)
-				mame_timer_set(time_zero, cpunum | (TMS34010_NMI << 8), internal_interrupt_callback);
+				mame_timer_set(time_zero, cpunum, internal_interrupt_callback);
 			break;
 
 		case REG_HSTCTLL:
@@ -1253,8 +1222,7 @@ WRITE16_HANDLER( tms34010_io_register_w )
 			break;
 
 		case REG_INTENB:
-			if (IOREG(REG_INTENB) & IOREG(REG_INTPEND))
-				check_interrupt();
+			check_interrupt();
 			break;
 
 		case REG_INTPEND:
@@ -1265,7 +1233,6 @@ WRITE16_HANDLER( tms34010_io_register_w )
 				IOREG(REG_INTPEND) &= ~TMS34010_WV;
 			if (!(data & TMS34010_DI))
 				IOREG(REG_INTPEND) &= ~TMS34010_DI;
-			check_interrupt();
 			break;
 	}
 
@@ -1311,27 +1278,10 @@ WRITE16_HANDLER( tms34020_io_register_w )
 
 	switch (offset)
 	{
-		case REG020_DPYINT:
-			if (data != oldreg || !dpyint_timer[cpunum])
-				update_timers();
-			break;
-
-		case REG020_VSBLNK:
-			if (data != oldreg || !vsblnk_timer[cpunum])
-				update_timers();
-			break;
-
-		case REG020_VEBLNK:
-			if (data != oldreg)
-				update_timers();
-			break;
-
 		case REG020_CONTROL:
 		case REG020_CONTROL2:
 			IOREG(REG020_CONTROL) = data;
 			IOREG(REG020_CONTROL2) = data;
-			state.transparency = data & 0x20;
-			state.window_checking = (data >> 6) & 0x03;
 			set_raster_op();
 			set_pixel_function();
 			break;
@@ -1357,8 +1307,6 @@ WRITE16_HANDLER( tms34020_io_register_w )
 
 		case REG020_DPYCTL:
 			set_pixel_function();
-			if ((oldreg ^ data) & 0x03fc)
-				update_display_address(video_screen_get_vpos(state.config->scrnum));
 			break;
 
 		case REG020_HSTCTLH:
@@ -1369,7 +1317,7 @@ WRITE16_HANDLER( tms34020_io_register_w )
 
 			/* NMI issued? */
 			if (data & 0x0100)
-				mame_timer_set(time_zero, cpunum | (TMS34010_NMI << 8), internal_interrupt_callback);
+				mame_timer_set(time_zero, cpunum, internal_interrupt_callback);
 			break;
 
 		case REG020_HSTCTLL:
@@ -1410,8 +1358,7 @@ WRITE16_HANDLER( tms34020_io_register_w )
 			break;
 
 		case REG020_INTENB:
-			if (IOREG(REG020_INTENB) & IOREG(REG020_INTPEND))
-				check_interrupt();
+			check_interrupt();
 			break;
 
 		case REG020_INTPEND:
@@ -1422,7 +1369,6 @@ WRITE16_HANDLER( tms34020_io_register_w )
 				IOREG(REG020_INTPEND) &= ~TMS34010_WV;
 			if (!(data & TMS34010_DI))
 				IOREG(REG020_INTPEND) &= ~TMS34010_DI;
-			check_interrupt();
 			break;
 
 		case REG020_CONVSP:
@@ -1465,15 +1411,6 @@ WRITE16_HANDLER( tms34020_io_register_w )
 		case REG020_DPYADR:
 		case REG020_DPYTAP:
 			break;
-
-		case REG020_DPYSTL:
-		case REG020_DPYSTH:
-			if (data != oldreg)
-			{
-				state.last_update_vcount = video_screen_get_vpos(state.config->scrnum);
-				update_display_address(state.last_update_vcount);
-			}
-			break;
 	}
 }
 
@@ -1493,13 +1430,10 @@ READ16_HANDLER( tms34010_io_register_r )
 
 	switch (offset)
 	{
-		case REG_VCOUNT:
-			return video_screen_get_vpos(state.config->scrnum);
-
 		case REG_HCOUNT:
 			/* scale the horizontal position from screen width to HTOTAL */
 			result = video_screen_get_hpos(state.config->scrnum);
-			total = IOREG(REG_HTOTAL);
+			total = IOREG(REG_HTOTAL) + 1;
 			result = result * total / Machine->screen[state.config->scrnum].width;
 
 			/* offset by the HBLANK end */
@@ -1510,10 +1444,6 @@ READ16_HANDLER( tms34010_io_register_r )
 				result -= total;
 			return result;
 
-		case REG_DPYADR:
-			update_display_address(video_screen_get_vpos(state.config->scrnum));
-			break;
-
 		case REG_REFCNT:
 			return (activecpu_gettotalcycles() / 16) & 0xfffc;
 
@@ -1523,8 +1453,8 @@ READ16_HANDLER( tms34010_io_register_r )
 			/* Cool Pool loops in mainline code on the appearance of the DI, even though they */
 			/* have an IRQ handler. For this reason, we return it signalled a bit early in order */
 			/* to make it past these loops. */
-			if (dpyint_timer[cpunum] &&
-			    compare_mame_times(mame_timer_timeleft(dpyint_timer[cpunum]), double_to_mame_time(3 * TIME_IN_HZ(40000000/TMS34010_CLOCK_DIVIDER))) == -1)
+			if (SMART_IOREG(VCOUNT) + 1 == SMART_IOREG(DPYINT) &&
+				compare_mame_times(mame_timer_timeleft(state.scantimer), MAME_TIME_IN_HZ(40000000/TMS34010_CLOCK_DIVIDER/3)) < 0)
 				result |= TMS34010_DI;
 			return result;
 	}
@@ -1543,13 +1473,10 @@ READ16_HANDLER( tms34020_io_register_r )
 
 	switch (offset)
 	{
-		case REG020_VCOUNT:
-			return video_screen_get_vpos(state.config->scrnum);
-
 		case REG020_HCOUNT:
 			/* scale the horizontal position from screen width to HTOTAL */
 			result = video_screen_get_hpos(state.config->scrnum);
-			total = IOREG(REG020_HTOTAL);
+			total = IOREG(REG020_HTOTAL) + 1;
 			result = result * total / Machine->screen[state.config->scrnum].width;
 
 			/* offset by the HBLANK end */
@@ -1559,10 +1486,6 @@ READ16_HANDLER( tms34020_io_register_r )
 			if (result > total)
 				result -= total;
 			return result;
-
-		case REG020_DPYADR:
-			update_display_address(video_screen_get_vpos(state.config->scrnum));
-			break;
 
 		case REG020_REFADR:
 		{
@@ -1627,26 +1550,9 @@ int tms34020_get_DPYSTRT(int cpu)
     SAVE STATE
 ***************************************************************************/
 
-static void tms34010_state_presave(void)
-{
-	int i;
-	for (i = 0; i < 16; i++)
-		state.flat_aregs[i] = AREG(i);
-	for (i = 0; i < 15; i++)
-		state.flat_bregs[i] = BREG(BINDEX(i));
-}
-
 static void tms34010_state_postload(void)
 {
-	int i;
-	for (i = 0; i < 16; i++)
-		AREG(i) = state.flat_aregs[i];
-	for (i = 0; i < 15; i++)
-		BREG(BINDEX(i)) = state.flat_bregs[i];
-
 	change_pc(TOBYTE(PC));
-	SET_FW();
-	tms34010_io_register_w(REG_DPYINT,IOREG(REG_DPYINT),0);
 	set_raster_op();
 	set_pixel_function();
 }
@@ -1693,10 +1599,10 @@ void tms34010_host_w(int cpunum, int reg, int data)
 
 		/* control register */
 		case TMS34010_HOST_CONTROL:
-			external_host_access = 1;
+			external_host_access = TRUE;
 			tms34010_io_register_w(REG_HSTCTLH, data & 0xff00, 0);
 			tms34010_io_register_w(REG_HSTCTLL, data & 0x00ff, 0);
-			external_host_access = 0;
+			external_host_access = FALSE;
 			break;
 
 		/* error case */
@@ -1805,21 +1711,21 @@ static void tms34010_set_info(UINT32 _state, cpuinfo *info)
 		case CPUINFO_INT_REGISTER + TMS34010_A12:		AREG(12) = info->i;						break;
 		case CPUINFO_INT_REGISTER + TMS34010_A13:		AREG(13) = info->i;						break;
 		case CPUINFO_INT_REGISTER + TMS34010_A14:		AREG(14) = info->i;						break;
-		case CPUINFO_INT_REGISTER + TMS34010_B0:		BREG(BINDEX(0)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B1:		BREG(BINDEX(1)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B2:		BREG(BINDEX(2)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B3:		BREG(BINDEX(3)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B4:		BREG(BINDEX(4)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B5:		BREG(BINDEX(5)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B6:		BREG(BINDEX(6)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B7:		BREG(BINDEX(7)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B8:		BREG(BINDEX(8)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B9:		BREG(BINDEX(9)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B10:		BREG(BINDEX(10)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B11:		BREG(BINDEX(11)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B12:		BREG(BINDEX(12)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B13:		BREG(BINDEX(13)) = info->i;				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B14:		BREG(BINDEX(14)) = info->i;				break;
+		case CPUINFO_INT_REGISTER + TMS34010_B0:		BREG(0) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B1:		BREG(1) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B2:		BREG(2) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B3:		BREG(3) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B4:		BREG(4) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B5:		BREG(5) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B6:		BREG(6) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B7:		BREG(7) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B8:		BREG(8) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B9:		BREG(9) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B10:		BREG(10) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B11:		BREG(11) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B12:		BREG(12) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B13:		BREG(13) = info->i;						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B14:		BREG(14) = info->i;						break;
 	}
 }
 
@@ -1854,8 +1760,8 @@ void tms34010_get_info(UINT32 _state, cpuinfo *info)
 		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO: 		info->i = 0;					break;
 		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_IO: 		info->i = 0;					break;
 
-		case CPUINFO_INT_INPUT_STATE + 0:				info->i = (state.ext_irq_lines & 1) ? ASSERT_LINE : CLEAR_LINE; break;
-		case CPUINFO_INT_INPUT_STATE + 1:				info->i = (state.ext_irq_lines & 2) ? ASSERT_LINE : CLEAR_LINE; break;
+		case CPUINFO_INT_INPUT_STATE + 0:				info->i = (IOREG(REG_INTPEND) & TMS34010_INT1) ? ASSERT_LINE : CLEAR_LINE; break;
+		case CPUINFO_INT_INPUT_STATE + 1:				info->i = (IOREG(REG_INTPEND) & TMS34010_INT2) ? ASSERT_LINE : CLEAR_LINE; break;
 
 		case CPUINFO_INT_PREVIOUSPC:					/* not implemented */					break;
 
@@ -1879,21 +1785,21 @@ void tms34010_get_info(UINT32 _state, cpuinfo *info)
 		case CPUINFO_INT_REGISTER + TMS34010_A12:		info->i = AREG(12);						break;
 		case CPUINFO_INT_REGISTER + TMS34010_A13:		info->i = AREG(13);						break;
 		case CPUINFO_INT_REGISTER + TMS34010_A14:		info->i = AREG(14);						break;
-		case CPUINFO_INT_REGISTER + TMS34010_B0:		info->i = BREG(BINDEX(0));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B1:		info->i = BREG(BINDEX(1));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B2:		info->i = BREG(BINDEX(2));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B3:		info->i = BREG(BINDEX(3));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B4:		info->i = BREG(BINDEX(4));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B5:		info->i = BREG(BINDEX(5));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B6:		info->i = BREG(BINDEX(6));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B7:		info->i = BREG(BINDEX(7));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B8:		info->i = BREG(BINDEX(8));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B9:		info->i = BREG(BINDEX(9));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B10:		info->i = BREG(BINDEX(10));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B11:		info->i = BREG(BINDEX(11));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B12:		info->i = BREG(BINDEX(12));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B13:		info->i = BREG(BINDEX(13));				break;
-		case CPUINFO_INT_REGISTER + TMS34010_B14:		info->i = BREG(BINDEX(14));				break;
+		case CPUINFO_INT_REGISTER + TMS34010_B0:		info->i = BREG(0);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B1:		info->i = BREG(1);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B2:		info->i = BREG(2);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B3:		info->i = BREG(3);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B4:		info->i = BREG(4);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B5:		info->i = BREG(5);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B6:		info->i = BREG(6);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B7:		info->i = BREG(7);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B8:		info->i = BREG(8);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B9:		info->i = BREG(9);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B10:		info->i = BREG(10);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B11:		info->i = BREG(11);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B12:		info->i = BREG(12);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B13:		info->i = BREG(13);						break;
+		case CPUINFO_INT_REGISTER + TMS34010_B14:		info->i = BREG(14);						break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_SET_INFO:						info->setinfo = tms34010_set_info;		break;
@@ -1917,27 +1823,13 @@ void tms34010_get_info(UINT32 _state, cpuinfo *info)
 		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) Alex Pasadyn/Zsolt Vasvari 1998\nParts based on code by Aaron Giles"); break;
 
 		case CPUINFO_STR_FLAGS:
-			sprintf(info->s, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c",
+			sprintf(info->s, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c",
 				state.st & 0x80000000 ? 'N':'.',
 				state.st & 0x40000000 ? 'C':'.',
 				state.st & 0x20000000 ? 'Z':'.',
 				state.st & 0x10000000 ? 'V':'.',
-				state.st & 0x08000000 ? '?':'.',
-				state.st & 0x04000000 ? '?':'.',
 				state.st & 0x02000000 ? 'P':'.',
-				state.st & 0x01000000 ? '?':'.',
-				state.st & 0x00800000 ? '?':'.',
-				state.st & 0x00400000 ? '?':'.',
 				state.st & 0x00200000 ? 'I':'.',
-				state.st & 0x00100000 ? '?':'.',
-				state.st & 0x00080000 ? '?':'.',
-				state.st & 0x00040000 ? '?':'.',
-				state.st & 0x00020000 ? '?':'.',
-				state.st & 0x00010000 ? '?':'.',
-				state.st & 0x00008000 ? '?':'.',
-				state.st & 0x00004000 ? '?':'.',
-				state.st & 0x00002000 ? '?':'.',
-				state.st & 0x00001000 ? '?':'.',
 				state.st & 0x00000800 ? 'E':'.',
 				state.st & 0x00000400 ? 'F':'.',
 				state.st & 0x00000200 ? 'F':'.',
@@ -1953,38 +1845,38 @@ void tms34010_get_info(UINT32 _state, cpuinfo *info)
 			break;
 
 		case CPUINFO_STR_REGISTER + TMS34010_PC:		sprintf(info->s, "PC :%08X", state.pc); break;
-		case CPUINFO_STR_REGISTER + TMS34010_SP:		sprintf(info->s, "SP :%08X", state.regs.a.a.Aregs[15]); break;
+		case CPUINFO_STR_REGISTER + TMS34010_SP:		sprintf(info->s, "SP :%08X", AREG(15)); break;
 		case CPUINFO_STR_REGISTER + TMS34010_ST:		sprintf(info->s, "ST :%08X", state.st); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A0:		sprintf(info->s, "A0 :%08X", state.regs.a.a.Aregs[ 0]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A1:		sprintf(info->s, "A1 :%08X", state.regs.a.a.Aregs[ 1]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A2:		sprintf(info->s, "A2 :%08X", state.regs.a.a.Aregs[ 2]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A3:		sprintf(info->s, "A3 :%08X", state.regs.a.a.Aregs[ 3]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A4:		sprintf(info->s, "A4 :%08X", state.regs.a.a.Aregs[ 4]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A5:		sprintf(info->s, "A5 :%08X", state.regs.a.a.Aregs[ 5]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A6:		sprintf(info->s, "A6 :%08X", state.regs.a.a.Aregs[ 6]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A7:		sprintf(info->s, "A7 :%08X", state.regs.a.a.Aregs[ 7]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A8:		sprintf(info->s, "A8 :%08X", state.regs.a.a.Aregs[ 8]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A9:		sprintf(info->s, "A9 :%08X", state.regs.a.a.Aregs[ 9]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A10:		sprintf(info->s,"A10:%08X", state.regs.a.a.Aregs[10]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A11:		sprintf(info->s,"A11:%08X", state.regs.a.a.Aregs[11]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A12:		sprintf(info->s,"A12:%08X", state.regs.a.a.Aregs[12]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A13:		sprintf(info->s,"A13:%08X", state.regs.a.a.Aregs[13]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_A14:		sprintf(info->s,"A14:%08X", state.regs.a.a.Aregs[14]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B0:		sprintf(info->s, "B0 :%08X", state.regs.Bregs[BINDEX( 0)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B1:		sprintf(info->s, "B1 :%08X", state.regs.Bregs[BINDEX( 1)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B2:		sprintf(info->s, "B2 :%08X", state.regs.Bregs[BINDEX( 2)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B3:		sprintf(info->s, "B3 :%08X", state.regs.Bregs[BINDEX( 3)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B4:		sprintf(info->s, "B4 :%08X", state.regs.Bregs[BINDEX( 4)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B5:		sprintf(info->s, "B5 :%08X", state.regs.Bregs[BINDEX( 5)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B6:		sprintf(info->s, "B6 :%08X", state.regs.Bregs[BINDEX( 6)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B7:		sprintf(info->s, "B7 :%08X", state.regs.Bregs[BINDEX( 7)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B8:		sprintf(info->s, "B8 :%08X", state.regs.Bregs[BINDEX( 8)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B9:		sprintf(info->s, "B9 :%08X", state.regs.Bregs[BINDEX( 9)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B10:		sprintf(info->s,"B10:%08X", state.regs.Bregs[BINDEX(10)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B11:		sprintf(info->s,"B11:%08X", state.regs.Bregs[BINDEX(11)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B12:		sprintf(info->s,"B12:%08X", state.regs.Bregs[BINDEX(12)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B13:		sprintf(info->s,"B13:%08X", state.regs.Bregs[BINDEX(13)]); break;
-		case CPUINFO_STR_REGISTER + TMS34010_B14:		sprintf(info->s,"B14:%08X", state.regs.Bregs[BINDEX(14)]); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A0:		sprintf(info->s, "A0 :%08X", AREG( 0)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A1:		sprintf(info->s, "A1 :%08X", AREG( 1)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A2:		sprintf(info->s, "A2 :%08X", AREG( 2)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A3:		sprintf(info->s, "A3 :%08X", AREG( 3)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A4:		sprintf(info->s, "A4 :%08X", AREG( 4)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A5:		sprintf(info->s, "A5 :%08X", AREG( 5)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A6:		sprintf(info->s, "A6 :%08X", AREG( 6)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A7:		sprintf(info->s, "A7 :%08X", AREG( 7)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A8:		sprintf(info->s, "A8 :%08X", AREG( 8)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A9:		sprintf(info->s, "A9 :%08X", AREG( 9)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A10:		sprintf(info->s,"A10:%08X", AREG(10)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A11:		sprintf(info->s,"A11:%08X", AREG(11)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A12:		sprintf(info->s,"A12:%08X", AREG(12)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A13:		sprintf(info->s,"A13:%08X", AREG(13)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_A14:		sprintf(info->s,"A14:%08X", AREG(14)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B0:		sprintf(info->s, "B0 :%08X", BREG( 0)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B1:		sprintf(info->s, "B1 :%08X", BREG( 1)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B2:		sprintf(info->s, "B2 :%08X", BREG( 2)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B3:		sprintf(info->s, "B3 :%08X", BREG( 3)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B4:		sprintf(info->s, "B4 :%08X", BREG( 4)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B5:		sprintf(info->s, "B5 :%08X", BREG( 5)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B6:		sprintf(info->s, "B6 :%08X", BREG( 6)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B7:		sprintf(info->s, "B7 :%08X", BREG( 7)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B8:		sprintf(info->s, "B8 :%08X", BREG( 8)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B9:		sprintf(info->s, "B9 :%08X", BREG( 9)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B10:		sprintf(info->s,"B10:%08X", BREG(10)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B11:		sprintf(info->s,"B11:%08X", BREG(11)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B12:		sprintf(info->s,"B12:%08X", BREG(12)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B13:		sprintf(info->s,"B13:%08X", BREG(13)); break;
+		case CPUINFO_STR_REGISTER + TMS34010_B14:		sprintf(info->s,"B14:%08X", BREG(14)); break;
 	}
 }
 

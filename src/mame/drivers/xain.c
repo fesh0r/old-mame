@@ -143,6 +143,7 @@ TODO:
 
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
+#include "cpu/m6805/m6805.h"
 #include "sound/2203intf.h"
 
 static unsigned char *xain_sharedram;
@@ -173,7 +174,7 @@ static WRITE8_HANDLER( xain_sharedram_w )
 	/* so let's resync every time they are changed to avoid deadlocks */
 	if ((offset == 0x003d || offset == 0x003e)
 			&& xain_sharedram[offset] != data)
-		cpu_boost_interleave(0, TIME_IN_USEC(20));
+		cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(20));
 	xain_sharedram[offset] = data;
 }
 
@@ -482,7 +483,7 @@ static MACHINE_DRIVER_START( xsleena )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-//  MDRV_CPU_ADD(M68705, 300000)    /* Confirmed 3MHz */
+//  MDRV_CPU_ADD(M68705, 3000000/M68705_CLOCK_DIVIDER)    /* Confirmed 3MHz */
 //  MDRV_CPU_PROGRAM_MAP(mcu_readmem,mcu_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(57)

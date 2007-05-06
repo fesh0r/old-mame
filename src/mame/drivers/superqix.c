@@ -107,6 +107,7 @@ DSW2 stored @ $f237
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
 #include "sound/samples.h"
 
@@ -344,7 +345,7 @@ logerror("Z80 sends command %02x\n",data);
 	from_z80 = data;
 	from_mcu_pending = 0;
 	cpunum_set_input_line(1, 0, HOLD_LINE);
-	cpu_boost_interleave(0, TIME_IN_USEC(200));
+	cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(200));
 }
 
 static void delayed_mcu_z80_w(int data)
@@ -965,7 +966,7 @@ static MACHINE_DRIVER_START( hotsmash )
 	MDRV_CPU_IO_MAP(hotsmash_port_map,0)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
 
-	MDRV_CPU_ADD(M68705, 4000000/2) /* ???? */
+	MDRV_CPU_ADD(M68705, 4000000/M68705_CLOCK_DIVIDER) /* ???? */
 	MDRV_CPU_PROGRAM_MAP(m68705_map,0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)

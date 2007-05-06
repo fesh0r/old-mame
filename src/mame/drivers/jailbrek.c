@@ -235,7 +235,7 @@ static MACHINE_DRIVER_START( jailbrek )
 	MDRV_CPU_ADD(M6809, 3000000)        /* 3 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(jailbrek_map, 0)
 	MDRV_CPU_VBLANK_INT(jb_interrupt,1)
-	MDRV_CPU_PERIODIC_INT(jb_interrupt_nmi,TIME_IN_HZ(500)) /* ? */
+	MDRV_CPU_PERIODIC_INT(jb_interrupt_nmi, 500) /* ? */
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
@@ -413,6 +413,8 @@ static MACHINE_START( jailbrek )
 {
     state_save_register_global(irq_enable);
     state_save_register_global(nmi_enable);
+
+	return 0;
 }
 
 GAME( 1986, jailbrek, 0,        jailbrek, jailbrek, jailbrek, ROT0, "Konami", "Jail Break", GAME_SUPPORTS_SAVE )

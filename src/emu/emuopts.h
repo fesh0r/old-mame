@@ -101,6 +101,7 @@
 #define OPTION_CTRLR				"ctrlr"
 
 /* core debugging options */
+#define OPTION_VERBOSE				"verbose"
 #define OPTION_LOG					"log"
 #define OPTION_DEBUG				"debug"
 #define OPTION_DEBUGSCRIPT			"debugscript"
@@ -124,6 +125,7 @@ extern const options_entry mame_core_options[];
 ***************************************************************************/
 
 void mame_options_init(const options_entry *entries);
+void mame_options_exit(void);
 core_options *mame_options(void);
 
 #endif	/* __EMUOPTS_H__ */

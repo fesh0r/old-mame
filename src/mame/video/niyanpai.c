@@ -184,7 +184,7 @@ static void niyanpai_vramflip(int vram)
 static void update_pixel(int vram, int x, int y)
 {
 	UINT16 color = niyanpai_videoram[vram][(y * Machine->screen[0].width) + x];
-	plot_pixel(niyanpai_tmpbitmap[vram], x, y, Machine->pens[color]);
+	*BITMAP_ADDR16(niyanpai_tmpbitmap[vram], y, x) = Machine->pens[color];
 }
 
 static void blitter_timer_callback(int param)
@@ -404,7 +404,7 @@ VIDEO_UPDATE( niyanpai )
 	int x, y;
 	int scrollx[3], scrolly[3];
 
-	if (get_vh_global_attribute_changed() || niyanpai_screen_refresh)
+	if (niyanpai_screen_refresh)
 	{
 		niyanpai_screen_refresh = 0;
 

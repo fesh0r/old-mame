@@ -28,7 +28,9 @@
 
 /*----------- defined in drivers/mw8080bw.c -----------*/
 
-UINT8 mw8080bw_ram_r(offs_t offset);
+extern UINT8 *mw8080bw_ram;
+extern size_t mw8080bw_ram_size;
+
 MACHINE_DRIVER_EXTERN( mw8080bw_root );
 MACHINE_DRIVER_EXTERN( invaders );
 extern const char layout_invaders[];
@@ -140,6 +142,7 @@ WRITE8_HANDLER( bowler_audio_4_w );
 WRITE8_HANDLER( bowler_audio_5_w );
 WRITE8_HANDLER( bowler_audio_6_w );
 
+MACHINE_DRIVER_EXTERN( invaders_samples_audio );
 MACHINE_DRIVER_EXTERN( invaders_audio );
 WRITE8_HANDLER( invaders_audio_1_w );
 WRITE8_HANDLER( invaders_audio_2_w );

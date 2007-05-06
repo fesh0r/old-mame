@@ -219,7 +219,7 @@ static void nbmj9195_vramflip(int vram)
 static void update_pixel(int vram, int x, int y)
 {
 	UINT16 color = nbmj9195_videoram[vram][(y * Machine->screen[0].width) + x];
-	plot_pixel(nbmj9195_tmpbitmap[vram], x, y, Machine->pens[color]);
+	*BITMAP_ADDR16(nbmj9195_tmpbitmap[vram], y, x) = Machine->pens[color];
 }
 
 static void blitter_timer_callback(int param)
@@ -463,7 +463,7 @@ VIDEO_UPDATE( nbmj9195 )
 	int x, y;
 	int scrolly[2];
 
-	if (get_vh_global_attribute_changed() || nbmj9195_screen_refresh)
+	if (nbmj9195_screen_refresh)
 	{
 		nbmj9195_screen_refresh = 0;
 
