@@ -153,7 +153,7 @@ static void kc85_draw_8_pixels(mame_bitmap *bitmap,int x,int y, unsigned char co
 		
 		pen = pens[(gfx_byte>>7) & 0x01];
 
-        plot_pixel(bitmap, px, y,pen);
+        *BITMAP_ADDR16(bitmap, y, px) = pen;
 		px++;
 	    gfx_byte = gfx_byte<<1;
 	}

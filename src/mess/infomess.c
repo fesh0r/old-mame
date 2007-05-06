@@ -13,55 +13,6 @@
 #include "info.h"
 #include "hash.h"
 
-static int strwildcmp(const char *sp1, const char *sp2)
-{
-	char s1[9], s2[9];
-	int i, l1, l2;
-	char *p;
-
-	strncpy(s1, sp1, 8); s1[8] = 0; if (s1[0] == 0) strcpy(s1, "*");
-
-	strncpy(s2, sp2, 8); s2[8] = 0; if (s2[0] == 0) strcpy(s2, "*");
-
-	p = strchr(s1, '*');
-	if (p)
-	{
-		for (i = p - s1; i < 8; i++) s1[i] = '?';
-		s1[8] = 0;
-	}
-
-	p = strchr(s2, '*');
-	if (p)
-	{
-		for (i = p - s2; i < 8; i++) s2[i] = '?';
-		s2[8] = 0;
-	}
-
-	l1 = strlen(s1);
-	if (l1 < 8)
-	{
-		for (i = l1 + 1; i < 8; i++) s1[i] = ' ';
-		s1[8] = 0;
-	}
-
-	l2 = strlen(s2);
-	if (l2 < 8)
-	{
-		for (i = l2 + 1; i < 8; i++) s2[i] = ' ';
-		s2[8] = 0;
-	}
-
-	for (i = 0; i < 8; i++)
-	{
-		if (s1[i] == '?' && s2[i] != '?') s1[i] = s2[i];
-		if (s2[i] == '?' && s1[i] != '?') s2[i] = s1[i];
-	}
-
-	return mame_stricmp(s1, s2);
-}
-
-
-
 /*************************************
  *
  *  Code used by print_mame_xml()
@@ -164,79 +115,19 @@ void print_game_ramoptions(FILE* out, const game_driver* game)
 {
 	int i, count;
 	UINT32 ram;
-
+	UINT32 default_ram;
+	
 	count = ram_option_count(game);
+	default_ram = ram_default(game);
 
 	for (i = 0; i < count; i++)
 	{
 		ram = ram_option(game, i);
-		fprintf(out, "\t\t<ramoption>%u</ramoption>\n", ram);
+		if (ram == default_ram)
+			fprintf(out, "\t\t<ramoption default=\"1\">%u</ramoption>\n", ram);
+		else
+			fprintf(out, "\t\t<ramoption>%u</ramoption>\n", ram);
 	}
-}
-
-
-
-/*************************************
- *
- *  Implementation of -listdevices
- *
- *************************************/
-
-int frontend_listdevices(FILE *output)
-{
-	int i, dev, id;
-	const struct IODevice *devices;
-	const char *src;
-	const char *driver_name;
-	const char *name;
-	const char *shortname;
-	char paren_shortname[16];
-	const char *gamename = "*";
-
-	i = 0;
-
-	fprintf(output, " SYSTEM      DEVICE NAME (brief)   IMAGE FILE EXTENSIONS SUPPORTED    \n");
-	fprintf(output, "----------  --------------------  ------------------------------------\n");
-
-	while (drivers[i])
-	{
-		if (!strwildcmp(gamename, drivers[i]->name))
-		{
-			begin_resource_tracking();
-			devices = devices_allocate(drivers[i]);
-
-			driver_name = drivers[i]->name;
-
-			for (dev = 0; devices[dev].type < IO_COUNT; dev++)
-			{
-				src = devices[dev].file_extensions;
-
-				for (id = 0; id < devices[dev].count; id++)
-				{
-					name = device_instancename(&devices[dev].devclass, id);
-					shortname = device_briefinstancename(&devices[dev].devclass, id);
-
-					sprintf(paren_shortname, "(%s)", shortname);
-
-					fprintf(output, "%-13s%-12s%-8s   ", driver_name, name, paren_shortname);
-					driver_name = " ";
-
-					if (id == 0)
-					{
-						while (src && *src)
-						{
-							fprintf(output, ".%-5s", src);
-							src += strlen(src) + 1;
-						}
-					}
-					fprintf(output, "\n");
-				}
-			}
-			end_resource_tracking();
-		}
-		i++;
-	}
-	return 0;
 }
 
 

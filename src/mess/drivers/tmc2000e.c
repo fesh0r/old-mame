@@ -7,6 +7,7 @@
 #include "video/generic.h"
 #include "video/cdp1864.h"
 #include "sound/beep.h"
+#include "rescap.h"
 
 /* Read/Write Handlers */
 
@@ -19,7 +20,7 @@ static WRITE8_HANDLER( vismac_w )
 {
 }
 
-static  READ8_HANDLER( floppy_r )
+static READ8_HANDLER( floppy_r )
 {
 	return 0;
 }
@@ -28,12 +29,12 @@ static WRITE8_HANDLER( floppy_w )
 {
 }
 
-static  READ8_HANDLER( ascii_keyboard_r )
+static READ8_HANDLER( ascii_keyboard_r )
 {
 	return 0;
 }
 
-static  READ8_HANDLER( io_r )
+static READ8_HANDLER( io_r )
 {
 	return 0;
 }
@@ -62,8 +63,8 @@ static ADDRESS_MAP_START( tmc2000e_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tmc2000e_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x01, 0x01) AM_WRITE(cdp1864_tone_divisor_latch_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE(cdp1864_step_background_color_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(cdp1864_tone_latch_w)
+	AM_RANGE(0x02, 0x02) AM_WRITE(cdp1864_step_bgcolor_w)
 	AM_RANGE(0x03, 0x03) AM_READWRITE(ascii_keyboard_r, keyboard_latch_w)
 	AM_RANGE(0x04, 0x04) AM_READWRITE(io_r, io_w)
 	AM_RANGE(0x05, 0x05) AM_READWRITE(vismac_r, vismac_w)
@@ -87,31 +88,28 @@ INPUT_PORTS_START( tmc2000e )
 	PORT_DIPSETTING(    0x20, "VISMAC" )
 	PORT_DIPSETTING(    0x30, "UART" )
 	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START_TAG("RUN")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Run/Reset") PORT_CODE(KEYCODE_R) PORT_TOGGLE
 INPUT_PORTS_END
 
 /* CDP1802 Interface */
 
-static void tmc2000e_video_dma(int cycles)
+static UINT8 tmc2000e_mode_r(void)
 {
+	if (readinputportbytag("RUN") & 0x01)
+	{
+		return CDP1802_MODE_RUN;
+	}
+	else
+	{
+		return CDP1802_MODE_RESET;
+	}
 }
 
-static void tmc2000e_out_q(int level)
+static UINT8 tmc2000e_ef_r(void)
 {
-	// CDP1864 sound generator on/off
-	cdp1864_audio_output_w(level);
-
-	// set Q led status
-	// leds: Wait, Q, Power
-	set_led_status(1, level);
-
-	// tape output
-
-	// floppy control (FDC-6)
-}
-
-static UINT8 tmc2000e_in_ef(void)
-{
-	UINT8 flags = 0xff;
+	UINT8 flags = 0x0f;
 
 	/*
 		EF1		CDP1864
@@ -126,47 +124,73 @@ static UINT8 tmc2000e_in_ef(void)
 	return flags;
 }
 
+static void tmc2000e_q_w(int level)
+{
+	// CDP1864 sound generator on/off
+	cdp1864_audio_output_enable(level);
+
+	// set Q led status
+	// leds: Wait, Q, Power
+	set_led_status(1, level);
+
+	// tape output
+
+	// floppy control (FDC-6)
+}
+
 static CDP1802_CONFIG tmc2000e_config =
 {
-	NULL, /*tmc2000e_video_dma*/	/* dma_r */
-	NULL,							/* dma_w */
-	tmc2000e_out_q,					/* q */
-	tmc2000e_in_ef					/* ef */
+	tmc2000e_mode_r,
+	tmc2000e_ef_r,
+	NULL,
+	tmc2000e_q_w,
+	NULL,
+	cdp1864_dma_w
 };
 
 /* Machine Initialization */
 
+static MACHINE_START( tmc2000e )
+{
+	state_save_register_global(keylatch);
+
+	return 0;
+}
+
 static MACHINE_RESET( tmc2000e )
 {
+	machine_reset_cdp1864(machine);
+
+	cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+
 	// reset program counter to 0xc000
 }
 
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( tmc2000e )
+
 	// basic system hardware
+
 	MDRV_CPU_ADD(CDP1802, CDP1864_CLK_FREQ)	// 1.75 MHz
 	MDRV_CPU_PROGRAM_MAP(tmc2000e_map, 0)
 	MDRV_CPU_IO_MAP(tmc2000e_io_map, 0)
 	MDRV_CPU_CONFIG(tmc2000e_config)
 
+	MDRV_MACHINE_START(tmc2000e)
 	MDRV_MACHINE_RESET(tmc2000e)
 
-	MDRV_SCREEN_REFRESH_RATE(CDP1864_FPS)	// 50.08 Hz
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(360, 312)
-	MDRV_SCREEN_VISIBLE_AREA(0, 360-1, 20, 308-1)
-	MDRV_PALETTE_LENGTH(8)
 
-	MDRV_PALETTE_INIT(tmc2000)
-	MDRV_VIDEO_START(generic_bitmapped)
+	MDRV_SCREEN_ADD("main", 0)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_RAW_PARAMS(CDP1864_CLK_FREQ, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
+
+	MDRV_VIDEO_START(cdp1864)
 	MDRV_VIDEO_UPDATE(cdp1864)
 
 	// sound hardware
+
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
@@ -236,16 +260,35 @@ SYSTEM_CONFIG_END
 
 /* Driver Initialization */
 
+static int tmc2000e_colorram_r(UINT16 addr)
+{
+	return colorram[addr]; // 0x04 = R, 0x02 = B, 0x01 = G
+}
+
+static const CDP1864_interface tmc2000e_CDP1864_interface =
+{
+	RES_K(2.2),	// unverified
+	RES_K(1),	// unverified
+	RES_K(5.1),	// unverified
+	RES_K(4.7),	// unverified
+	tmc2000e_colorram_r
+};
+
 static void setup_beep(int dummy)
 {
-	beep_set_volume(0, 0);
-	beep_set_state(0, 1);
+	beep_set_state(0, 0);
+	beep_set_frequency( 0, 0 );
 }
 
-static DRIVER_INIT( telmac )
+static DRIVER_INIT( tmc2000e )
 {
+	// enable power led
+	set_led_status(2, 1);
+
 	timer_set(0.0, 0, setup_beep);
+
+	cdp1864_configure(&tmc2000e_CDP1864_interface);
 }
 
-//    YEAR  NAME 	  PARENT   COMPAT   MACHINE   INPUT     INIT	CONFIG    COMPANY 	     FULLNAME
-COMP( 1980, tmc2000e, 0,       0,	    tmc2000e, tmc2000e, telmac, tmc2000e, "Telercas Oy", "Telmac 2000E", GAME_NOT_WORKING )
+//    YEAR  NAME 	  PARENT   COMPAT   MACHINE   INPUT     INIT		CONFIG    COMPANY 	     FULLNAME
+COMP( 1980, tmc2000e, 0,       0,	    tmc2000e, tmc2000e, tmc2000e,	tmc2000e, "Telercas Oy", "Telmac 2000E", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )

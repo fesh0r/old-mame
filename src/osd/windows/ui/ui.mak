@@ -43,10 +43,10 @@ WINUIOBJS += \
 	$(WINUIOBJ)/help.o \
 	$(WINUIOBJ)/history.o \
 	$(WINUIOBJ)/dialogs.o \
-	$(WINUIOBJ)/optcore.o	\
-	$(WINUIOBJ)/inifile.o	\
 	$(WINUIOBJ)/dirwatch.o	\
 	$(WINUIOBJ)/datafile.o	\
+	$(WINUIOBJ)/m32opts.o \
+	$(WINUIOBJ)/win32ui.o \
 
 ifdef MESS
 WINUIOBJS += \
@@ -59,8 +59,6 @@ WINUIOBJS += \
 	$(MESS_WINUIOBJ)/devview.o
 else
 WINUIOBJS += \
-	$(WINUIOBJ)/win32ui.o \
-	$(WINUIOBJ)/options.o \
  	$(WINUIOBJ)/layout.o \
 	$(WINUIOBJ)/m32main.o \
 	$(WINUIOBJ)/mame32.res

@@ -253,7 +253,7 @@ static void vc4000_draw_digit(mame_bitmap *bitmap, int x, int y, int d, int line
     i=line;
     for (j=0; j<sizeof(led[0]); j++) {
 	if (digit_to_segment[d]&(1<<(led[i][j]-'a')) ) {
-	    plot_pixel(bitmap, x+j, y+i, Machine->pens[((vc4000_video.reg.d.background>>4)&7)^7]);
+	    *BITMAP_ADDR16(bitmap, y+i, x+j) = Machine->pens[((vc4000_video.reg.d.background>>4)&7)^7];
 	}
     }
 }

@@ -25,7 +25,7 @@
 #include "ui/bitmask.h"
 #include "ui/mame32.h"
 #include "ui/resourcems.h"
-#include "ui/options.h"
+#include "ui/m32opts.h"
 #include "softwarepicker.h"
 
 
@@ -211,7 +211,7 @@ void SoftwarePicker_SetDriver(HWND hwndPicker, const game_driver *pDriver)
 		{
 			while(pDriver && !pPickerInfo->pHashFile)
 			{
-				pPickerInfo->pHashFile = hashfile_open(pDriver->name, TRUE, pPickerInfo->pfnErrorProc);
+				pPickerInfo->pHashFile = hashfile_open_options(Mame32Global(), pDriver->name, TRUE, pPickerInfo->pfnErrorProc);
 				pDriver = mess_next_compatible_driver(pDriver);
 			}
 		}
@@ -367,7 +367,7 @@ static void SoftwarePicker_RealizeHash(HWND hwndPicker, int nIndex)
 
 	// Determine which hash functions we need to use for this file, and which hashes
 	// have already been calculated
-	if (pPickerInfo->pHashFile)
+	if ((pPickerInfo->pHashFile != NULL) && (pFileInfo->devclass.get_info != NULL))
 	{
 		type = (iodevice_t) (int) device_get_info_int(&pFileInfo->devclass, DEVINFO_INT_TYPE);
 		if (type < IO_COUNT)

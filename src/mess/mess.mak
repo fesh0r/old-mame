@@ -148,6 +148,7 @@ CPUS += R5000
 #CPUS += QED5271
 #CPUS += RM7000
 CPUS += SH2
+#CPUS += SH4
 #CPUS += DSP32C
 #CPUS += PIC16C54
 #CPUS += PIC16C55
@@ -194,6 +195,8 @@ CPUS += CDP1802
 #CPUS += COP420
 #CPUS += COP410
 #CPUS += TLCS90
+#CPUS += MB8841
+#CPUS += MB8842
 #CPUS += MB8843
 #CPUS += MB8844
 #CPUS += MB86233
@@ -217,6 +220,7 @@ CPUS += M68008
 CPUS += TMS99010
 CPUS += TX0
 CPUS += COP411
+CPUS += MINX
 
 
 
@@ -405,6 +409,7 @@ DRVLIBS = \
 	$(MESSOBJ)/vc4000.a \
 	$(MESSOBJ)/veb.a \
 	$(MESSOBJ)/vtech.a \
+	$(MESSOBJ)/3do.a \
 	$(MESSOBJ)/shared.a \
 
 
@@ -447,6 +452,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/smartmed.o	\
 	$(MESS_VIDEO)/m6847.o		\
 	$(MESS_VIDEO)/m6845.o		\
+	$(MESS_VIDEO)/cdp1864.o		\
 	$(MESS_MACHINE)/msm8251.o  \
 	$(MESS_MACHINE)/tc8521.o   \
 	$(MESS_VIDEO)/crtc6845.o \
@@ -547,6 +553,8 @@ $(MESSOBJ)/nintendo.a:					\
 	$(MESS_DRIVERS)/n64.o		\
 	$(MAME_MACHINE)/n64.o			\
 	$(MAME_VIDEO)/n64.o			\
+	$(MESS_MACHINE)/pokemini.o	\
+	$(MESS_DRIVERS)/pokemini.o	\
 
 $(MESSOBJ)/amiga.a: \
 	$(MAME_VIDEO)/amiga.o			\
@@ -927,6 +935,9 @@ $(MESSOBJ)/sharp.a:    \
 	$(MESS_MACHINE)/pc1251.o	\
 	$(MESS_VIDEO)/pocketc.o	\
 	$(MESS_MACHINE)/mz700.o		\
+	$(MESS_DRIVERS)/x68k.o	\
+	$(MESS_VIDEO)/x68k.o	\
+	$(MESS_MACHINE)/hd63450.o   \
 
 $(MESSOBJ)/hp48.a:     \
 	$(MESS_MACHINE)/hp48.o     \
@@ -1054,8 +1065,8 @@ $(MESSOBJ)/multitch.a:					\
 	$(MESS_DRIVERS)/mpf1.o		\
 
 $(MESSOBJ)/telmac.a:					\
-	$(MESS_DRIVERS)/telmac.o	\
-	$(MESS_VIDEO)/cdp1864.o	\
+	$(MESS_DRIVERS)/tmc1800.o	\
+	$(MESS_VIDEO)/osm200.o	\
 	$(MESS_DRIVERS)/tmc600.o	\
 	$(MESS_DRIVERS)/tmc2000e.o	\
 	$(MAME_VIDEO)/cdp1869.o	\
@@ -1113,6 +1124,9 @@ $(MESSOBJ)/tiger.a:				\
 	$(MESS_MACHINE)/gamecom.o	\
 	$(MESS_VIDEO)/gamecom.o
 
+$(MESSOBJ)/3do.a:			\
+	$(MESS_DRIVERS)/3do.o
+
 #-------------------------------------------------
 # layout dependencies
 #-------------------------------------------------
@@ -1157,6 +1171,7 @@ EMUOBJS +=							\
 	$(MESS_EMUOBJ)/opresolv.o			\
 	$(MESS_EMUOBJ)/muitext.o			\
 	$(MESS_EMUOBJ)/infomess.o			\
+	$(MESS_EMUOBJ)/climess.o			\
 
 $(LIBEMU): $(EMUOBJS)
 

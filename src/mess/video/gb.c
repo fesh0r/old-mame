@@ -7,6 +7,7 @@
   Original code                               Carsten Sorensen   1998
   Mess modifications, bug fixes and speedups  Hans de Goede      1998
   Bug fixes, SGB and GBC code                 Anthony Kruize     2002
+  Improvements to match real hardware         Wilbert Pol        2006,2007
 
 ***************************************************************************/
 
@@ -74,18 +75,29 @@ struct gb_lcd_struct {
 
 	/* Things used to render current line */
 	int	current_line;		/* Current line */
-	int	sprCount;		/* Number of sprites on current line */
-	int	sprite[10];		/* References to sprites to draw on current line */
+	int	sprCount;			/* Number of sprites on current line */
+	int	sprite[10];			/* References to sprites to draw on current line */
 	int	previous_line;		/* Previous line we've drawn in */
-	int	start_x;		/* Pixel to start drawing from (inclusive) */
-	int	end_x;			/* Pixel to end drawing (exclusive) */
+	int	start_x;			/* Pixel to start drawing from (inclusive) */
+	int	end_x;				/* Pixel to end drawing (exclusive) */
+	int lcd_int_state;		/* Keep track of LCD_INT state */
 	struct layer_struct	layer[2];
 	mame_timer	*lcd_timer;
+	mame_timer	*vblank_delay_timer;
 } gb_lcd;
 
 void (*update_scanline)(void);
+
+/* Prototypes */
 static void gb_lcd_timer_proc( int dummy );
+static void gb_vblank_delay_proc( int dummy );
 static void gb_lcd_switch_on( void );
+static void gb_lcd_int_check( void );
+
+INLINE void gb_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
+{
+	*BITMAP_ADDR16(bitmap, y, x) = (UINT16)color;
+}
 
 /*
   Select which sprites should be drawn for the current scanline and return the
@@ -173,7 +185,7 @@ INLINE void gb_update_sprites (void)
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if (colour && !bg_zbuf[xindex])
-						plot_pixel(bitmap, xindex, yindex, Machine->pens[spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->pens[spal[colour]]);
 					data >>= 1;
 				}
 				break;
@@ -182,7 +194,7 @@ INLINE void gb_update_sprites (void)
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if (colour)
-						plot_pixel(bitmap, xindex, yindex, Machine->pens[spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->pens[spal[colour]]);
 					data >>= 1;
 				}
 				break;
@@ -191,7 +203,7 @@ INLINE void gb_update_sprites (void)
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if (colour && !bg_zbuf[xindex])
-						plot_pixel(bitmap, xindex, yindex, Machine->pens[spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->pens[spal[colour]]);
 					data <<= 1;
 				}
 				break;
@@ -200,7 +212,7 @@ INLINE void gb_update_sprites (void)
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if (colour)
-						plot_pixel(bitmap, xindex, yindex, Machine->pens[spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->pens[spal[colour]]);
 					data <<= 1;
 				}
 				break;
@@ -269,7 +281,7 @@ void gb_update_scanline (void) {
 				r.min_y = r.max_y = gb_lcd.current_line;
 				r.min_x = gb_lcd.start_x;
 				r.max_x = gb_lcd.end_x - 1;
-				fillbitmap( bitmap, Machine->pens[0], &r );
+				fillbitmap( bitmap, Machine->pens[ gb_bpal[0] ], &r );
 			}
 			while ( l < 2 ) {
 				UINT8	xindex, *map, *tiles;
@@ -297,7 +309,7 @@ void gb_update_scanline (void) {
 				while ( i > 0 ) {
 					while ( ( gb_lcd.layer[l].xshift < 8 ) && i ) {
 						register int colour = ( ( data & 0x8000 ) ? 2 : 0 ) | ( ( data & 0x0080 ) ? 1 : 0 );
-						plot_pixel( bitmap, xindex, gb_lcd.current_line, Machine->pens[ gb_bpal[ colour ] ] );
+						gb_plot_pixel( bitmap, xindex, gb_lcd.current_line, Machine->pens[ gb_bpal[ colour ] ] );
 						bg_zbuf[ xindex ] = colour;
 						xindex++;
 						data <<= 1;
@@ -395,7 +407,7 @@ INLINE void sgb_update_sprites (void)
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if ((xindex >= SGB_XOFFSET && xindex <= SGB_XOFFSET + 160) && colour && !bg_zbuf[xindex - SGB_XOFFSET])
-						plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
 					data >>= 1;
 				}
 				break;
@@ -404,7 +416,7 @@ INLINE void sgb_update_sprites (void)
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if ((xindex >= SGB_XOFFSET && xindex <= SGB_XOFFSET + 160) && colour)
-						plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
 					data >>= 1;
 				}
 				break;
@@ -413,7 +425,7 @@ INLINE void sgb_update_sprites (void)
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if ((xindex >= SGB_XOFFSET && xindex <= SGB_XOFFSET + 160) && colour && !bg_zbuf[xindex - SGB_XOFFSET])
-						plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
 					data <<= 1;
 				}
 				break;
@@ -422,7 +434,7 @@ INLINE void sgb_update_sprites (void)
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if ((xindex >= SGB_XOFFSET && xindex <= SGB_XOFFSET + 160) && colour)
-						plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
 					data <<= 1;
 				}
 				break;
@@ -486,7 +498,7 @@ void sgb_refresh_border(void) {
 				 */
 				if( !((yidx >= SGB_YOFFSET && yidx < SGB_YOFFSET + 144) &&
 					(xindex >= SGB_XOFFSET && xindex < SGB_XOFFSET + 160)) ) {
-					plot_pixel(bitmap, xindex, yidx, Machine->remapped_colortable[pal + colour]);
+					gb_plot_pixel(bitmap, xindex, yidx, Machine->remapped_colortable[pal + colour]);
 				}
 				xindex++;
 			}
@@ -618,7 +630,7 @@ void sgb_update_scanline (void) {
 				while( i > 0 ) {
 					while( ( gb_lcd.layer[l].xshift < 8 ) && i ) {
 						register int colour = ( ( data & 0x8000 ) ? 2 : 0 ) | ( ( data & 0x0080 ) ? 1 : 0 );
-						plot_pixel( bitmap, xindex + SGB_XOFFSET, gb_lcd.current_line + SGB_YOFFSET, Machine->remapped_colortable[ sgb_pal + gb_bpal[colour]] );
+						gb_plot_pixel( bitmap, xindex + SGB_XOFFSET, gb_lcd.current_line + SGB_YOFFSET, Machine->remapped_colortable[ sgb_pal + gb_bpal[colour]] );
 						bg_zbuf[xindex] = colour;
 						xindex++;
 						data <<= 1;
@@ -716,7 +728,7 @@ INLINE void cgb_update_sprites (void) {
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if (colour && !bg_zbuf[xindex])
-						plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
 					data >>= 1;
 				}
 				break;
@@ -727,7 +739,7 @@ INLINE void cgb_update_sprites (void) {
 					if((bg_zbuf[xindex] & 0x80) && (bg_zbuf[xindex] & 0x7f) && (LCDCONT & 0x1))
 						colour = 0;
 					if (colour)
-						plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
 					data >>= 1;
 				}
 				break;
@@ -736,7 +748,7 @@ INLINE void cgb_update_sprites (void) {
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if (colour && !bg_zbuf[xindex])
-						plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
 					data <<= 1;
 				}
 				break;
@@ -747,7 +759,7 @@ INLINE void cgb_update_sprites (void) {
 					if((bg_zbuf[xindex] & 0x80) && (bg_zbuf[xindex] & 0x7f) && (LCDCONT & 0x1))
 						colour = 0;
 					if (colour)
-						plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
 					data <<= 1;
 				}
 				break;
@@ -870,7 +882,7 @@ void cgb_update_scanline (void) {
 							colour = ( ( data & 0x8000 ) ? 2 : 0 ) | ( ( data & 0x0080 ) ? 1 : 0 );
 							data <<= 1;
 						}
-						plot_pixel( bitmap, xindex, gb_lcd.current_line, Machine->remapped_colortable[ ( ( gbcmap[ gb_lcd.layer[l].xindex ] & 0x07 ) * 4 ) + colour ] );
+						gb_plot_pixel( bitmap, xindex, gb_lcd.current_line, Machine->remapped_colortable[ ( ( gbcmap[ gb_lcd.layer[l].xindex ] & 0x07 ) * 4 ) + colour ] );
 						bg_zbuf[ xindex ] = colour + ( gbcmap[ gb_lcd.layer[l].xindex ] & 0x80 );
 						xindex++;
 						gb_lcd.layer[l].xshift++;
@@ -949,6 +961,9 @@ void gb_video_init( void ) {
 
 	gb_lcd.lcd_timer = mame_timer_alloc( gb_lcd_timer_proc );
 	mame_timer_adjust( gb_lcd.lcd_timer, MAME_TIME_IN_CYCLES(456,0), 0, time_never );
+
+	gb_lcd.vblank_delay_timer = mame_timer_alloc( gb_vblank_delay_proc );
+	mame_timer_adjust( gb_lcd.vblank_delay_timer, time_never, 0, time_never );
 }
 
 void sgb_video_init( void ) {
@@ -1032,16 +1047,51 @@ void gb_increment_scanline( void ) {
 		CURLINE = gb_lcd.current_line;
 		if ( CURLINE == CMPLINE ) {
 			LCDSTAT |= 0x04;
-			/* Generate lcd interrupt if requested */
-			if ( LCDSTAT & 0x40 )
-				cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
 		} else {
 			LCDSTAT &= 0xFB;
 		}
+		/* Generate lcd interrupt if requested */
+		gb_lcd_int_check();
 	}
 	if ( gb_lcd.current_line == 0 ) {
 		gb_lcd.window_lines_drawn = 0;
 	}
+}
+
+static void gb_vblank_delay_proc( int dummy ) {
+	/* Trigger VBlank interrupt */
+	cpunum_set_input_line(0, VBL_INT, HOLD_LINE);
+}
+
+/* Check whether an LCD_INT interrupt should be triggered */
+static void gb_lcd_int_check( void ) {
+	int	lcd_int_state = 0;
+
+	/* Check if stat 0 should trigger an interrupt */
+	if ( LCDSTAT & 0x08 && ( LCDSTAT & 0x03 ) == 0x00 ) {
+		lcd_int_state = 1;
+	}
+
+	/* Check if stat 2 should trigger an interrupt */
+	if ( LCDSTAT & 0x20 && ( LCDSTAT & 0x03 ) == 0x02 ) {
+		lcd_int_state = 1;
+	}
+
+	/* Check if stat 1 should trigger an interrupt */
+	if ( LCDSTAT & 0x10 && ( LCDSTAT & 0x03 ) == 0x01 ) {
+		lcd_int_state = 1;
+	}
+
+	/* Check if LY==LYC should trigger an interrupt */
+	if ( LCDSTAT & 0x40 && LCDSTAT & 0x04 ) {
+		lcd_int_state = 1;
+	}
+
+	if ( gb_lcd.lcd_int_state == 0 && lcd_int_state == 1 ) {
+		cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
+	}
+
+	gb_lcd.lcd_int_state = lcd_int_state;
 }
 
 static void gb_lcd_timer_proc( int mode ) {
@@ -1058,16 +1108,14 @@ static void gb_lcd_timer_proc( int mode ) {
 			/* Set Mode 0 lcdstate */
 			LCDSTAT &= 0xFC;
 			/* Generate lcd interrupt if requested */
-			if( LCDSTAT & 0x08 ) {
-				cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
-			}
+			gb_lcd_int_check();
 			/* Check for HBLANK DMA */
 			if( gbc_hdma_enabled )
 				gbc_hdma(0x10);
 			if ( CURLINE == 143 ) {
-				mame_timer_adjust( gb_lcd.lcd_timer, MAME_TIME_IN_CYCLES(204,0), 1, time_never );
+				mame_timer_adjust( gb_lcd.lcd_timer, MAME_TIME_IN_CYCLES(204 - 10 * gb_lcd.sprCount,0), 1, time_never );
 			} else {
-				mame_timer_adjust( gb_lcd.lcd_timer, MAME_TIME_IN_CYCLES(204,0), 2, time_never );
+				mame_timer_adjust( gb_lcd.lcd_timer, MAME_TIME_IN_CYCLES(204 - 10 * gb_lcd.sprCount,0), 2, time_never );
 			}
 			break;
 		case 2:		/* Switch to mode 2 */
@@ -1076,9 +1124,7 @@ static void gb_lcd_timer_proc( int mode ) {
 			/* Set Mode 2 lcdstate */
 			LCDSTAT = (LCDSTAT & 0xFC) | 0x02;
 			/* Generate lcd interrupt if requested */
-			if (LCDSTAT & 0x20) {
-				cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
-			}
+			gb_lcd_int_check();
 			/* Mode 2 last for approximately 80 clock cycles */
 			mame_timer_adjust( gb_lcd.lcd_timer, MAME_TIME_IN_CYCLES(80,0), 3, time_never );
 			break;
@@ -1086,21 +1132,20 @@ static void gb_lcd_timer_proc( int mode ) {
 			gb_select_sprites();
 			/* Set Mode 3 lcdstate */
 			LCDSTAT = (LCDSTAT & 0xFC) | 0x03;
+			gb_lcd_int_check();
 			/* Mode 3 lasts for approximately 172+#sprites*10 clock cycles */
-			mame_timer_adjust( gb_lcd.lcd_timer, MAME_TIME_IN_CYCLES(172,0), 0, time_never );
+			mame_timer_adjust( gb_lcd.lcd_timer, MAME_TIME_IN_CYCLES(172 + 10 * gb_lcd.sprCount,0), 0, time_never );
 			gb_lcd.start_x = 0;
 			break;
 		case 1:		/* Switch to or stay in mode 1 */
 			gb_increment_scanline();
 			if ( CURLINE == 144 ) {
-				/* Trigger VBlank interrupt */
-				cpunum_set_input_line(0, VBL_INT, HOLD_LINE);
+				/* Trigger VBlank interrupt generation */
+				mame_timer_adjust( gb_lcd.vblank_delay_timer, MAME_TIME_IN_CYCLES(1,0), 0, time_never );
 				/* Set VBlank lcdstate */
 				LCDSTAT = (LCDSTAT & 0xFC) | 0x01;
 				/* Trigger LCD interrupt if requested */
-				if( LCDSTAT & 0x10 ) {
-					cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
-				}
+				gb_lcd_int_check();
 			}
 			if ( gb_lcd.current_line == 153 ) {
 				mame_timer_adjust( gb_lcd.lcd_timer, MAME_TIME_IN_CYCLES(24,0), 4, time_never );
@@ -1126,13 +1171,12 @@ static void gb_lcd_switch_on( void ) {
 	gb_lcd.current_line = 0;
 	gb_lcd.previous_line = 153;
 	gb_lcd.window_lines_drawn = 0;
+	gb_lcd.lcd_int_state = 0;
 	/* Check for LY=LYC coincidence */
 	if ( CURLINE == CMPLINE ) {
 		LCDSTAT |= 0x04;
 		/* Generate lcd interrupt if requested */
-		if ( LCDSTAT & 0x40 ) {
-			cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
-		}
+		gb_lcd_int_check();
 	}
 	mame_timer_adjust( gb_lcd.lcd_timer, MAME_TIME_IN_CYCLES(80,0), 3, time_never );
 }
@@ -1192,6 +1236,15 @@ WRITE8_HANDLER ( gb_video_w ) {
 		break;
 	case 0x04:						/* LY - LCD Y-coordinate */
 		return;
+	case 0x05:						/* LYC */
+		if ( CURLINE == data ) {
+			LCDSTAT |= 0x04;
+		} else {
+			LCDSTAT &= 0xFB;
+		}
+		/* Generate lcd interrupt if requested */
+		gb_lcd_int_check();
+		break;
 	case 0x06:						/* DMA - DMA Transfer and Start Address */
 		{
 			UINT8 *P = gb_oam;
@@ -1224,7 +1277,6 @@ WRITE8_HANDLER ( gb_video_w ) {
 	case 0x02:						/* SCY - Scroll Y */
 	case 0x03:						/* SCX - Scroll X */
 		update_scanline();
-	case 0x05:						/* LYC - LCD Y-compare */
 	case 0x0A:						/* WY - Window Y position */
 	case 0x0B:						/* WX - Window X position */
 		break;

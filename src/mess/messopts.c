@@ -21,7 +21,7 @@
 
 static int added_device_options;
 
-static const options_entry mess_opts[] =
+const options_entry mess_core_options[] =
 {
 	{ NULL,							NULL,   OPTION_HEADER,		"MESS SPECIFIC OPTIONS" },
     { "ramsize;ram",				NULL,	0,					"size of RAM (if supported by driver)" },
@@ -37,11 +37,11 @@ static const options_entry mess_opts[] =
 ***************************************************************************/
 
 /*-------------------------------------------------
-    enumerate_devices - runs a specified proc
+    mess_enumerate_devices - runs a specified proc
 	for all devices on a driver
 -------------------------------------------------*/
 
-static void enumerate_devices(core_options *opts, const game_driver *gamedrv,
+static void mess_enumerate_devices(core_options *opts, const game_driver *gamedrv,
 	void (*proc)(core_options *opts, const game_driver *gamedrv, const device_class *devclass, int device_index, int global_index))
 {
 	struct SystemConfigurationParamBlock cfg;
@@ -117,6 +117,18 @@ static void add_device_options_for_device(core_options *opts, const game_driver 
 
 
 /*-------------------------------------------------
+    mess_add_device_options - add all of the device
+	options for a specified device
+-------------------------------------------------*/
+
+void mess_add_device_options(core_options *opts, const game_driver *driver)
+{
+	mess_enumerate_devices(opts, driver, add_device_options_for_device);
+}
+
+
+
+/*-------------------------------------------------
     mess_driver_name_callback - called when we
 	parse the driver name, so we can add options
 	specific to that driver
@@ -124,16 +136,15 @@ static void add_device_options_for_device(core_options *opts, const game_driver 
 
 static void mess_driver_name_callback(core_options *opts, const char *arg)
 {
-	int drvnum;
+	const game_driver *driver;
 
 	/* only add these options if we have not yet added them */
 	if (!added_device_options)
 	{
-		drvnum = driver_get_index(arg);
-		if (drvnum >= 0)
+		driver = driver_get_name(arg);
+		if (driver != NULL)
 		{
-			/* add all of the device options for this driver */
-			enumerate_devices(opts, drivers[drvnum], add_device_options_for_device);
+			mess_add_device_options(opts, driver);
 		}
 		added_device_options = TRUE;
 	}
@@ -149,7 +160,7 @@ static void mess_driver_name_callback(core_options *opts, const char *arg)
 void mess_options_init(void)
 {
 	/* add MESS-specific options */
-	options_add_entries(mame_options(), mess_opts);
+	options_add_entries(mame_options(), mess_core_options);
 
 	/* add OSD-MESS specific options (hack!) */
 	osd_mess_options_init();
@@ -241,7 +252,7 @@ done:
 
 void mess_options_extract(void)
 {
-	enumerate_devices(mame_options(), Machine->gamedrv, extract_device_options_for_device);
+	mess_enumerate_devices(mame_options(), Machine->gamedrv, extract_device_options_for_device);
 
 	if (options_get_bool(mame_options(), OPTION_WRITECONFIG))
 	{

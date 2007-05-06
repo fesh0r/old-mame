@@ -2,13 +2,13 @@
 #define PROPERTIESMS_H
 
 #include "ui/properties.h"
+#include "ui/datamap.h"
 
-void MessOptionsToProp(int nGame, HWND hWnd, options_type *o);
-BOOL MessPropertiesCommand(int nGame, HWND hWnd, WORD wNotifyCode, WORD wID, BOOL *changed);
-void MessPropToOptions(int nGame, HWND hWnd, options_type *o);
-void MessSetPropEnabledControls(HWND hWnd, options_type *o);
+BOOL MessPropertiesCommand(HWND hWnd, WORD wNotifyCode, WORD wID, BOOL *changed);
 
 INT_PTR CALLBACK GameMessOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam);
 BOOL PropSheetFilter_Config(const machine_config *drv, const game_driver *gamedrv);
+
+void MessBuildDataMap(datamap *properties_datamap);
 
 #endif /* PROPERTIESMS_H */

@@ -1,3 +1,61 @@
+0.115
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Mac 128k, Mac 512k (not working) [R. Belmont]
+- Telmac 2000 (not working) [Curt Coder]
+- X68000 [Barry Rodewald]
+- Pokemon mini (not working) [Wilbert Pol]
+- 3DO (not working) [Wilbert Pol]
+
+
+
+System Driver Changes:
+----------------------
+- [AMSTRAD] Fixed sprite order.  [Barry Rodewald]
+
+- [MAC512/MACPLUS] Fixed video timing, booting from SCSI harddisk works 
+  once again. [R. Belmont]
+
+- [SATURN] Preliminary CDROM, backup, & input support.  Fixed sound.  Still
+  marked NOT_WORKING as only a few games do anything. [R. Belmont]
+
+- [STUDIO2/VIP] System is now working and playable. (bug #1098) [Curt Coder]
+
+- [VTECH1] Fixed snapshot loading on big-endian systems and added correct
+  interrupt emulation. [Dirk Best]
+
+
+
+User Interface Changes:
+-----------------------
+(none)
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.115.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Added support for noting default RAM options in -listxml.  (bug #1147) [Nate
+  Woods]
+
+- [Windows] Factored out handling of standard file dialogs, to centralize
+  handling of UTF-8 conversions and compatibility with old versions of
+  Windows. [Nate Woods]
+
+- Fixed border colors for systems that use the MC6847 video chip and a
+  custom palette. [Dirk Best]
+
+
+
 0.114
 
 New System Drivers Supported (in no particular order):
@@ -5092,9 +5150,9 @@ Other Changes:
   *"Engine" is separate from the "shell"; which gives the potential for front ends for 
    those who don't like command lines. [Nate Woods]
 
-- Disk write support for AMSTRAD CPC [Oscar MartÌn Gonz·lez]
+- Disk write support for AMSTRAD CPC [Oscar Mart√≠n Gonz√°lez]
 
-- Wave timer fix [Oscar MartÌn Gonz·lez]
+- Wave timer fix [Oscar Mart√≠n Gonz√°lez]
 
 - m6510t/m7501/m8502 CPU cores added [Peter Trauner]
 

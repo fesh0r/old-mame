@@ -1960,6 +1960,19 @@ void video_crosshair_toggle(void)
 
 
 /*-------------------------------------------------
+    video_crosshair_set_screenmask_callback -
+	install a callback to determine to which screen
+	crosshairs should be rendered
+-------------------------------------------------*/
+
+void video_crosshair_set_screenmask_callback(running_machine *machine, UINT32 (*get_screen_mask)(int player))
+{
+	video_private *viddata = machine->video_data;
+	viddata->crosshair_get_screen_mask = get_screen_mask;
+}
+
+
+/*-------------------------------------------------
     get_crosshair_screen_mask - returns a bitmask
     indicating on which screens the crosshair for
     a player's should be displayed
@@ -1967,6 +1980,11 @@ void video_crosshair_toggle(void)
 
 static UINT32 get_crosshair_screen_mask(video_private *viddata, int player)
 {
+#ifdef MESS
+	if (viddata->crosshair_visible && viddata->crosshair_get_screen_mask)
+		return viddata->crosshair_get_screen_mask(player);
+#endif /* MESS */
+
 	return (viddata->crosshair_visible & (1 << player)) ? 1 : 0;
 }
 

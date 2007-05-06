@@ -207,6 +207,7 @@ int smsvdp_video_init( const smsvdp_configuration *config ) {
 	memset(CRAM, 0, MAX_CRAM_SIZE);
 	reg[0x01] |= 0x20;
 	reg[0x02] = 0x0E;			/* power up default */
+	reg[0x0a] = 0xff;
 
 	CRAMMask = ( IS_GAMEGEAR_VDP && ! ggSmsMode ) ? ( GG_CRAM_SIZE - 1 ) : ( SMS_CRAM_SIZE - 1 );
 
@@ -1015,11 +1016,10 @@ void sms_refresh_line( mame_bitmap *bitmap, int pixelOffsetX, int pixelPlotY, in
 				rgb_t	c2 = Machine->pens[line2[x]];
 				rgb_t	c3 = Machine->pens[line3[x]];
 				rgb_t	c4 = Machine->pens[line4[x]];
-				plot_pixel( bitmap, pixelOffsetX + x, pixelPlotY,
+				*BITMAP_ADDR32( bitmap, pixelPlotY, pixelOffsetX + x) =
 					MAKE_RGB( ( RGB_RED(c1)/6 + RGB_RED(c2)/3 + RGB_RED(c3)/3 + RGB_RED(c4)/6 ),
 						( RGB_GREEN(c1)/6 + RGB_GREEN(c2)/3 + RGB_GREEN(c3)/3 + RGB_GREEN(c4)/6 ),
-						( RGB_BLUE(c1)/6 + RGB_BLUE(c2)/3 + RGB_BLUE(c3)/3 + RGB_BLUE(c4)/6 ) )
-				);
+						( RGB_BLUE(c1)/6 + RGB_BLUE(c2)/3 + RGB_BLUE(c3)/3 + RGB_BLUE(c4)/6 ) );
 			}
 			return;
 		}
@@ -1027,7 +1027,7 @@ void sms_refresh_line( mame_bitmap *bitmap, int pixelOffsetX, int pixelPlotY, in
 	}
 
 	for( x = 0; x < 256; x++ ) {
-		plot_pixel( bitmap, pixelOffsetX + x, pixelPlotY + line, Machine->pens[blitLineBuffer[x]] );
+		*BITMAP_ADDR32( bitmap, pixelPlotY + line, pixelOffsetX + x) = Machine->pens[blitLineBuffer[x]];
 	}
 }
 
@@ -1070,8 +1070,8 @@ VIDEO_UPDATE(sms) {
 	if (prevBitMapSaved) {
 	for (y = 0; y < Machine->screen[0].height; y++) {
 		for (x = 0; x < Machine->screen[0].width; x++) {
-			plot_pixel(bitmap, x, y, (read_pixel(tmpbitmap, x, y) + read_pixel(prevBitMap, x, y)) >> 2);
-			logerror("%x %x %x\n", read_pixel(tmpbitmap, x, y), read_pixel(prevBitMap, x, y), (read_pixel(tmpbitmap, x, y) + read_pixel(prevBitMap, x, y)) >> 2);
+			*BITMAP_ADDR32(bitmap, y, x) = (*BITMAP_ADDR32(tmpbitmap, y, x) + *BITMAP_ADDR32(prevBitMap, y, x)) >> 2;
+			logerror("%x %x %x\n", *BITMAP_ADDR32(tmpbitmap, y, x), *BITMAP_ADDR32(prevBitMap, y, x), (*BITMAP_ADDR32(tmpbitmap, y, x) + *BITMAP_ADDR32(prevBitMap, y, x)) >> 2);
 		}
 	}
 	} else {

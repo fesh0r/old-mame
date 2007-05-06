@@ -97,6 +97,9 @@ const game_driver *test_drivers[] =
 
 /****************CONSOLES****************************************************/
 
+	/* 3DO */
+	DRIVER( 3do )		/* 3DO consoles								*/
+
 	/* ATARI */
 	DRIVER( a2600 ) 	/* Atari 2600										*/
 	DRIVER( a5200 ) 	/* Atari 5200										*/
@@ -104,7 +107,6 @@ const game_driver *test_drivers[] =
 	DRIVER( a7800 ) 	/* Atari 7800 NTSC									*/
 	DRIVER( a7800p ) 	/* Atari 7800 PAL									*/
 	DRIVER( lynx )		/* Atari Lynx Handheld								*/
-	DRIVER( lynxa )		/* Atari Lynx Handheld alternate rom save			*/
 	DRIVER( lynx2 )		/* Atari Lynx II Handheld redesigned, no additions	*/
 	DRIVER( jaguar )	/* Atari Jaguar										*/
 
@@ -120,6 +122,7 @@ const game_driver *test_drivers[] =
 	DRIVER( snes )		/* Nintendo Super Nintendo NTSC						*/
 	DRIVER( snespal )	/* Nintendo Super Nintendo PAL						*/
 	DRIVER( n64 )		/* Nintendo N64										*/
+	DRIVER( pokemini )	/* Nintendo Pokemon Mini						*/
 
 	DRIVER( megaduck )	/* Megaduck											*/
 
@@ -151,6 +154,7 @@ const game_driver *test_drivers[] =
 	/* RCA */
 	DRIVER( vip )		/* 1977 Cosmac VIP									*/
 	DRIVER( studio2 )	/* 1977 Studio II									*/
+TESTDRIVER( m9016tc )	/* 1978 Mustang 9016 Telespiel Computer				*/
 
 	/* FAIRCHILD */
 	DRIVER( channelf )	/* Fairchild Channel F VES - 1976					*/
@@ -270,9 +274,12 @@ TESTDRIVER( las3000 )   /* ??? 1983 Laser 3000								*/
  * Macintosh SE			 March				 1987
  * Macintosh II 		 March				 1987
  */
+ 	DRIVER( mac128k )	/* 1984 Apple Macintosh */
+	DRIVER( mac512k )	/* 1985 Apple Macintosh 512k */
 	DRIVER( mac512ke )  /* 1986 Apple Macintosh 512ke						*/
 	DRIVER( macplus )	/* 1986 Apple Macintosh Plus						*/
 	DRIVER( macse )	    /* 1987 Apple Macintosh SE   						*/
+	DRIVER( macclasc )	/* 1990 Apple Macintosh Classic */
 
 	/* ATARI */
 /*
@@ -465,6 +472,8 @@ TESTDRIVER( trs80pc3 )	/* Tandy TRS80 PC-3									*/
 	DRIVER( mz700j )	/* 1982 Sharp MZ700 Japan							*/
 TESTDRIVER( mz800  )	/* 1982 Sharp MZ800 								*/
 
+	DRIVER( x68000 )    /* Sharp X68000 (1987)   */
+
 	/* SILICON GRAPHICS */
 	DRIVER( ip204415 )	/* IP20 Indigo2 */
 	DRIVER( ip225015 )
@@ -497,7 +506,10 @@ TESTDRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
 	/* TEXAS INSTRUMENTS CALCULATORS */
 	DRIVER( ti81 )		/* 1990 TI-81 (Z80 2 MHz)							*/
 	DRIVER( ti85 )		/* 1992 TI-85 (Z80 6 MHz)							*/
+	DRIVER( ti82 )		/* 1993 TI-82 (Z80 6 MHz)							*/
+	DRIVER( ti83 )		/* 1996 TI-83 (Z80 6 MHz)							*/
 	DRIVER( ti86 )		/* 1997 TI-86 (Z80 6 MHz)							*/
+	DRIVER( ti83p )		/* 1999 TI-83 Plus (Z80 6 MHz)						*/
 
 	/* NEC */
 	DRIVER( pc88srl )	/* PC-8801mkIISR(Low res display, VSYNC 15KHz)		*/
@@ -768,9 +780,9 @@ TESTDRIVER( svi328c ) 	/* SVI-328 + 80 column card (Swedish)						*/
 	DRIVER(mpf1)		/* 1979 Multitech Micro Professor 1					*/
 	DRIVER(mpf1b)		/* 1979 Multitech Micro Professor 1B				*/
 
-	/* Telmac */
+	/* Telercas Oy */
 TESTDRIVER(tmc1800)		/* 1977 Telmac 1800									*/
-TESTDRIVER(tmc2000)		/* 1980 Telmac 2000									*/
+	DRIVER(tmc2000)		/* 1980 Telmac 2000									*/
 TESTDRIVER(tmc2000e)	/* 1980 Telmac 2000E								*/
 TESTDRIVER(tmc600s1)	/* 1982 Telmac TMC-600 (Series I)					*/
 	DRIVER(tmc600s2)	/* 1982 Telmac TMC-600 (Series II)					*/

@@ -64,6 +64,8 @@
 #define LOG_MEMORY		0
 #endif
 
+static void mac_scanline_tick(int ref);
+static mame_timer *mac_scanline_timer;
 static int scan_keyboard(void);
 static void inquiry_timeout_func(int unused);
 static void keyboard_receive(int val);
@@ -92,7 +94,8 @@ typedef enum
 	MODEL_MAC_128K512K,
 	MODEL_MAC_512KE,
 	MODEL_MAC_PLUS,
-	MODEL_MAC_SE
+	MODEL_MAC_SE,
+	MODEL_MAC_CLASSIC
 } mac_model_t;
 
 static UINT32 mac_overlay = 0;
@@ -1190,7 +1193,7 @@ static READ8_HANDLER(mac_via_in_b)
 	int val = 0;
 
 	/* video beam in display (! VBLANK && ! HBLANK basically) */
-	if (video_screen_get_vblank(0))
+	if (video_screen_get_vpos(0) >= MAC_V_VIS)
 		val |= 0x40;
 
 	if (has_adb())
@@ -1320,6 +1323,9 @@ MACHINE_RESET(mac)
 
 	if (mac_model == MODEL_MAC_SE)
 		timer_set(0.0, 0, set_memory_overlay);
+
+	mac_scanline_timer = timer_alloc(mac_scanline_tick);
+	mame_timer_adjust(mac_scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, double_to_mame_time(TIME_NEVER));
 }
 
 
@@ -1342,7 +1348,7 @@ static void mac_driver_init(mac_model_t model)
 	mac_install_memory(0x600000, 0x6fffff, mess_ram_size, mess_ram, FALSE, 2);
 
 	/* set up ROM at 0x400000-0x43ffff (-0x5fffff for mac 128k/512k/512ke) */
-	mac_install_memory(0x400000, (model == MODEL_MAC_PLUS) ? 0x43ffff : 0x5fffff,
+	mac_install_memory(0x400000, (model >= MODEL_MAC_PLUS) ? 0x43ffff : 0x5fffff,
 		memory_region_length(REGION_USER1), memory_region(REGION_USER1), TRUE, 3);
 
 	set_memory_overlay(1);
@@ -1377,8 +1383,9 @@ DRIVER_INIT(mac512ke)
 
 static SCSIConfigTable dev_table =
 {
-	1,                                      /* 1 SCSI device */
-	{ { SCSI_ID_6, 0, SCSI_DEVICE_HARDDISK } } /* SCSI ID 6, using CHD 0, and it's a harddisk */
+	2,                                      /* 2 SCSI devices */
+	{ { SCSI_ID_5, 1, SCSI_DEVICE_HARDDISK },  /* SCSI ID 5, using CHD 1, and it's a harddisk */
+	 { SCSI_ID_6, 0, SCSI_DEVICE_HARDDISK } } /* SCSI ID 6, using CHD 0, and it's a harddisk */
 };
 
 static struct NCR5380interface macplus_5380intf =
@@ -1401,6 +1408,12 @@ DRIVER_INIT(macse)
 	ncr5380_init(&macplus_5380intf);
 }
 
+DRIVER_INIT(macclassic)
+{
+	mac_driver_init(MODEL_MAC_CLASSIC);
+
+	ncr5380_init(&macplus_5380intf);
+}
 
 static void mac_vblank_irq(void)
 {
@@ -1440,19 +1453,25 @@ static void mac_vblank_irq(void)
 
 
 
-INTERRUPT_GEN( mac_interrupt )
+static void mac_scanline_tick(int ref)
 {
 	int scanline;
+
+	cpuintrf_push_context(0);
 
 	mac_sh_updatebuffer();
 
 	scanline = video_screen_get_vpos(0);
-	if (scanline == 342)
+	if (scanline == MAC_V_VIS)
 		mac_vblank_irq();
 
 	/* check for mouse changes at 10 irqs per frame */
 	if (!(scanline % 10))
 		mouse_callback();
+
+	mame_timer_adjust(mac_scanline_timer, video_screen_get_time_until_pos(0, (scanline+1) % MAC_V_TOTAL, 0), 0, double_to_mame_time(TIME_NEVER));
+
+	cpuintrf_pop_context();
 }
 
 

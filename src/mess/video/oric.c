@@ -221,7 +221,7 @@ static void oric_vh_render_6pixels(mame_bitmap *bitmap,int x,int y, int fg, int 
 		int col;
 
 		col = pens[(data>>5) & 0x01];
-		plot_pixel(bitmap,px, y, col);
+		*BITMAP_ADDR16(bitmap, y, px) = col;
 		px++;
 		data = data<<1;
 	}

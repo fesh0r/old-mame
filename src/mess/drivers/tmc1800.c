@@ -14,8 +14,7 @@
 	RAM:		2 KB (4 KB)
 	ROM:		512 B
 
-	Video:		CDP1861		1.76 MHz			(OSM-200)
-	Resolution:	32x64
+	Video:		OSM-200 (1 KB videoram, 10.2 MHz xtal)
 
 	Designer:	Osmo Kainulainen
 	Keyboard:	OS-70 A (QWERTY, hexadecimal keypad)
@@ -27,7 +26,7 @@
 
 	CPU:		CDP1802A	? MHz
 
-	Enhanced Telmac 1800 with built-in CRT board.
+	Enhanced Telmac 1800 with built-in CRT board (OSM-200).
 
 
 	Telmac 2000
@@ -86,41 +85,17 @@
 
 */
 
-/*
-
-	2003-05-20	Project started
-	2003-05-21  Telmac TMC-600 (Sarja II) acquired, unit broken
-	2003-06-22	Preliminary driver, missing ROMs among other things
-	2003-07-28	Added some TMC-1800 info
-	2003-07-31	Added some computer info
-	2004-01-04	Reformatted inputs and added memory map for tmc600
-	2004-01-06	Fixed some code
-	2004-01-19	Dumped ROMs, hooked up display and keyboard
-	2004-01-27	Scanned in Telmac 2000 manual
-	2004-01-28	Scanned in Telmac 2000E manual
-	2004-01-29	Added Telmac 2000 code
-	2004-02-03	Modified cdp1802.c to use regular ports instead of out_n/in_n callback functions
-	2004-02-04	Figured out the keyboard except for one key, the port update fixed reading, still a bit too quick to repeat
-	2004-02-19	Examined the connection between 1802 and 1869 on the pcb with a multimeter, added vismac_w
-	2004-02-22	Separated video code to vidhrdw/cdp186x.c
-	2004-03-21	Cleaned up
-	2004-04-11	More cleanup
-	2004-04-29	Fixed CDP1802 core -> gfx anomalies now gone, fixed scrolling, bkg color & dblsize
-	2004-08-12	Added colorram and cursor blink approximation, cdp1869 tone output
-	2004-08-13	Added printer output, quickload, more devices
-
-*/
-
 #include "driver.h"
 #include "inputx.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "video/generic.h"
 #include "video/cdp1864.h"
-#include "devices/printer.h"
-#include "devices/basicdsk.h"
 #include "devices/cassette.h"
-#include "devices/snapquik.h"
 #include "sound/beep.h"
+#include "rescap.h"
+
+extern VIDEO_START( osm200 );
+extern VIDEO_UPDATE( osm200 );
 
 /* Read/Write Handlers */
 
@@ -135,7 +110,7 @@ static WRITE8_HANDLER( tmc2000_bankswitch_w )
 {
 	memory_set_bank(1, data & 0x01);
 
-	cdp1864_tone_divisor_latch_w(0, data);
+	cdp1864_tone_latch_w(0, data);
 }
 
 /* Memory Maps */
@@ -155,13 +130,13 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tmc2000_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_RAM
-	AM_RANGE(0x8000, 0x87ff) AM_ROMBANK(1)
+	AM_RANGE(0x8000, 0x87ff) AM_RAMBANK(1)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tmc2000_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x01, 0x01) AM_READWRITE(cdp1864_audio_enable_r, cdp1864_step_background_color_w)
+	AM_RANGE(0x01, 0x01) AM_READWRITE(cdp1864_dispon_r, cdp1864_step_bgcolor_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keyboard_latch_w)
-	AM_RANGE(0x04, 0x04) AM_READWRITE(cdp1864_audio_disable_r, tmc2000_bankswitch_w)
+	AM_RANGE(0x04, 0x04) AM_READWRITE(cdp1864_dispoff_r, tmc2000_bankswitch_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -186,65 +161,30 @@ INPUT_PORTS_START( tmc1800 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_D) PORT_CHAR('D')
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_E) PORT_CHAR('E')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('F')
+
+	PORT_START_TAG("RUN")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Run/Reset") PORT_CODE(KEYCODE_R) PORT_TOGGLE
 INPUT_PORTS_END
 
 /* CDP1802 Interfaces */
 
 // Telmac 1800
 
-#if 0
-static void tmc1800_video_dma(int cycles)
+static UINT8 tmc1800_mode_r(void)
 {
-}
-#endif
-
-static void tmc1800_out_q(int level)
-{
-}
-
-static UINT8 tmc1800_in_ef(void)
-{
-	UINT8 flags = 0;
-
-	/*
-		EF1		?
-		EF2		?
-		EF3		keyboard
-		EF4		?
-	*/
-
-	// keyboard
-	if (~readinputport(keylatch / 8) & (1 << (keylatch % 8))) flags |= EF3;
-
-	return flags;
+	if (readinputportbytag("RUN") & 0x01)
+	{
+		return CDP1802_MODE_RUN;
+	}
+	else
+	{
+		return CDP1802_MODE_RESET;
+	}
 }
 
-static CDP1802_CONFIG tmc1800_config =
+static UINT8 tmc1800_ef_r(void)
 {
-	NULL,/*tmc1800_video_dma*/		/* dma_r */
-	NULL,							/* dma_w */
-	tmc1800_out_q,					/* q */
-	tmc1800_in_ef					/* ef */
-};
-
-// Telmac 2000
-
-static void tmc2000_video_dma(int cycles)
-{
-}
-
-static void tmc2000_out_q(int level)
-{
-	// CDP1864 sound generator on/off
-	cdp1864_audio_output_w(level);
-
-	// set Q led status
-	set_led_status(1, level);
-}
-
-static int tmc2000_in_ef(void)
-{
-	int flags = 0;
+	UINT8 flags = 0x0f;
 
 	/*
 		EF1		?
@@ -254,23 +194,81 @@ static int tmc2000_in_ef(void)
 	*/
 
 	// keyboard
-	if (~readinputport(keylatch / 8) & (1 << (keylatch % 8))) flags |= EF2;
+	if (~readinputport(keylatch / 8) & (1 << (keylatch % 8))) flags -= EF2;
 
 	return flags;
 }
 
+static void tmc1800_q_w(int level)
+{
+}
+
+static CDP1802_CONFIG tmc1800_config =
+{
+	tmc1800_mode_r,
+	tmc1800_ef_r,
+	NULL,
+	tmc1800_q_w,
+	NULL,
+	NULL
+};
+
+// Telmac 2000
+
+static UINT8 tmc2000_ef_r(void)
+{
+	int flags = 0x0f;
+
+	/*
+		EF1		?
+		EF2		keyboard
+		EF3		?
+		EF4		?
+	*/
+
+	// keyboard
+	if (~readinputport(keylatch / 8) & (1 << (keylatch % 8))) flags -= EF2;
+
+	return flags;
+}
+
+static void tmc2000_q_w(int level)
+{
+	// turn CDP1864 sound generator on/off
+	cdp1864_audio_output_enable(level);
+
+	// set Q led status
+	set_led_status(1, level);
+}
+
 static CDP1802_CONFIG tmc2000_config =
 {
-	NULL,/*tmc1800_video_dma*/		/* dma_r */
-	NULL,							/* dma_w */
-	tmc1800_out_q,					/* q */
-	tmc1800_in_ef					/* ef */
+	tmc1800_mode_r,
+	tmc2000_ef_r,
+	NULL,
+	tmc2000_q_w,
+	NULL,
+	cdp1864_dma_w
 };
 
 /* Machine Initialization */
 
+static MACHINE_START( tmc1800 )
+{
+	state_save_register_global(keylatch);
+
+	return 0;
+}
+
+static MACHINE_RESET( tmc1800 )
+{
+	cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+}
+
 static MACHINE_START( tmc2000 )
 {
+	state_save_register_global(keylatch);
+
 	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + 0x8000, 0);
 	memory_configure_bank(1, 1, 1, &colorram, 0);
 
@@ -279,7 +277,12 @@ static MACHINE_START( tmc2000 )
 
 static MACHINE_RESET( tmc2000 )
 {
+	machine_reset_cdp1864(machine);
+
+	cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+
 	// set program counter to 0x8000
+	memory_set_bank(1, 0);
 }
 
 /* Machine Drivers */
@@ -293,16 +296,19 @@ static MACHINE_DRIVER_START( tmc1800 )
 	MDRV_CPU_IO_MAP(tmc1800_io_map, 0)
 	MDRV_CPU_CONFIG(tmc1800_config)
 
-	MDRV_SCREEN_REFRESH_RATE(CDP1864_FPS)	//
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_SCREEN_SIZE(360, 262)
-	MDRV_SCREEN_VISIBLE_AREA(0, 360-1, 80, 208-1)
-	MDRV_PALETTE_LENGTH(2)
+	MDRV_MACHINE_START(tmc1800)
+	MDRV_MACHINE_RESET(tmc1800)
 
 	// video hardware
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 199)
+
+	MDRV_PALETTE_LENGTH(2)
+	MDRV_PALETTE_INIT(black_and_white)
+	MDRV_VIDEO_START(osm200)
+	MDRV_VIDEO_UPDATE(osm200)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( tmc2000 )
@@ -317,19 +323,14 @@ static MACHINE_DRIVER_START( tmc2000 )
 	MDRV_MACHINE_START(tmc2000)
 	MDRV_MACHINE_RESET(tmc2000)
 
-	MDRV_SCREEN_REFRESH_RATE(CDP1864_FPS)	// 50.08 Hz
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	// video hardware
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", 0)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(360, 312)
-	MDRV_SCREEN_VISIBLE_AREA(0, 360-1, 20, 308-1)
-	MDRV_PALETTE_LENGTH(8)
+	MDRV_SCREEN_RAW_PARAMS(CDP1864_CLK_FREQ, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
 
-	MDRV_PALETTE_INIT(tmc2000)
-	MDRV_VIDEO_START(generic_bitmapped)
+	MDRV_PALETTE_LENGTH(8)
+	MDRV_VIDEO_START(cdp1864)
 	MDRV_VIDEO_UPDATE(cdp1864)
 
 	// sound hardware
@@ -344,7 +345,11 @@ MACHINE_DRIVER_END
 
 ROM_START( tmc1800 )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "monitor",	0x8000, 0x0200, NO_DUMP )
+	ROM_LOAD( "82s141.ic2", 0x8000, 0x0200, NO_DUMP ) // MMI 6341-1
+
+	ROM_REGION( 0x400, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "82s147.5d",	0x0000, 0x0200, NO_DUMP ) // MMI 6349
+	ROM_LOAD( "82s147.5c",	0x0200, 0x0200, NO_DUMP ) // MMI 6349
 ROM_END
 
 SYSTEM_BIOS_START( tmc2000 )
@@ -354,7 +359,7 @@ SYSTEM_BIOS_END
 
 ROM_START( tmc2000 )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROMX_LOAD( "200.m5",	0x8000, 0x0200, CRC(7f8e7ce4) SHA1(3302628f9a57ce456347f37c9a970be6390465e7), ROM_BIOS(1) )
+	ROMX_LOAD( "200.m5",    0x8000, 0x0200, BAD_DUMP CRC(53BDDF1A) SHA1(3691741A6921A2E2333B697E80D4936BE41DCDA8), ROM_BIOS(1) ) // typed in from the manual
 	ROMX_LOAD( "tool2000",	0x8000, 0x0800, NO_DUMP, ROM_BIOS(2) )
 ROM_END
 
@@ -396,19 +401,43 @@ SYSTEM_CONFIG_START( tmc2000 )
 	CONFIG_DEVICE(tmc2000_cassette_getinfo)
 SYSTEM_CONFIG_END
 
-static void setup_beep(int dummy)
+/* Driver Initialization */
+
+static int tmc2000_colorram_r(UINT16 addr)
 {
-	beep_set_volume(0, 0);
-	beep_set_state(0, 1);
+	UINT8 data = colorram[addr]; // 0x04 = ~B, 0x02 = ~R, 0x01 = ~G
+
+	return ~(((data & 0x04) >> 1) + ((data & 0x02) << 1) + (data & 0x01)) & 0x07;
 }
 
-static DRIVER_INIT( telmac )
+static const CDP1864_interface tmc2000_CDP1864_interface =
+{
+	RES_K(2.2),	// unverified
+	RES_K(1),	// unverified
+	RES_K(5.1),	// unverified
+	RES_K(4.7),	// unverified
+	tmc2000_colorram_r
+};
+
+static void setup_beep(int dummy)
+{
+	beep_set_state(0, 0);
+	beep_set_frequency( 0, 0 );
+}
+
+static DRIVER_INIT( tmc1800 )
 {
 	timer_set(0.0, 0, setup_beep);
 }
 
+static DRIVER_INIT( tmc2000 )
+{
+	timer_set(0.0, 0, setup_beep);
+	cdp1864_configure(&tmc2000_CDP1864_interface);
+}
+
 /* System Drivers */
 
-//    YEAR  NAME 	  PARENT   COMPAT   MACHINE   INPUT     INIT	CONFIG    COMPANY 	     FULLNAME
-COMP( 1977, tmc1800,  0,       0,	    tmc1800,  tmc1800,  telmac, tmc1800,  "Telercas Oy", "Telmac 1800", GAME_NOT_WORKING )
-COMPB( 1980, tmc2000,  0,       tmc2000, 0, 		tmc2000,  tmc1800,  telmac, tmc2000,  "Telercas Oy", "Telmac 2000",	GAME_NOT_WORKING )
+//	   YEAR  NAME 	  PARENT   BIOS		COMPAT	MACHINE		INPUT		INIT		CONFIG		COMPANY			FULLNAME
+COMP(  1977, tmc1800, 0,				0,		tmc1800,	tmc1800,	tmc1800,	tmc1800,	"Telercas Oy",	"Telmac 1800", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMPB( 1980, tmc2000, 0,       tmc2000, 0,		tmc2000,	tmc1800,	tmc2000,	tmc2000,	"Telercas Oy",	"Telmac 2000", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )

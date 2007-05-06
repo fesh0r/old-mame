@@ -34,10 +34,12 @@
 #include "resource.h"
 
 #include "bitmask.h"
-#include "options.h"
+#include "m32opts.h"
 #include "m32util.h"
 #include "audit32.h"
 #include "Properties.h"
+#include "emuopts.h"
+#include "winmain.h"
 
 /***************************************************************************
     function prototypes
@@ -173,6 +175,10 @@ int Mame32VerifyRomSet(int game)
 	int audit_records;
 	int res;
 
+	mame_options_init(mame_win_options);
+	options_set_string(mame_options(), OPTION_ROMPATH, GetRomDirs());
+	options_set_string(mame_options(), OPTION_SAMPLEPATH, GetSampleDirs());
+
 	// perform the audit
 	audit_records = audit_images(game, AUDIT_VALIDATE_FAST, &audit);
 	res = ProcessAuditResults(game, audit, audit_records);
@@ -180,6 +186,7 @@ int Mame32VerifyRomSet(int game)
 		free(audit);
 
 	SetRomAuditResults(game, res);
+	mame_options_exit();
 	return res;
 }
 
@@ -190,6 +197,10 @@ int Mame32VerifySampleSet(int game)
 	int audit_records;
 	int res;
 
+	mame_options_init(mame_win_options);
+	options_set_string(mame_options(), OPTION_ROMPATH, GetRomDirs());
+	options_set_string(mame_options(), OPTION_SAMPLEPATH, GetSampleDirs());
+
 	// perform the audit
 	audit_records = audit_samples(game, &audit);
 	res = ProcessAuditResults(game, audit, audit_records);
@@ -197,6 +208,7 @@ int Mame32VerifySampleSet(int game)
 		free(audit);
 
 	SetSampleAuditResults(game, res);
+	mame_options_exit();
 	return res;
 }
 

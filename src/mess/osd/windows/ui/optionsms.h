@@ -2,6 +2,7 @@
 #define OPTIONSMS_H
 
 #include "device.h"
+#include "options.h"
 
 enum
 {
@@ -16,32 +17,8 @@ enum
 	MESS_COLUMN_MAX
 };
 
-struct mess_specific_options
-{
-	BOOL   use_new_ui;
-	UINT32 ram_size;
-	char   *software[64];
-};
-
-struct mess_specific_game_variables
-{
-	char *extra_software_paths;
-};
-
-struct mess_specific_settings
-{
-	int      mess_column_width[MESS_COLUMN_MAX];
-	int      mess_column_order[MESS_COLUMN_MAX];
-	int      mess_column_shown[MESS_COLUMN_MAX];
-
-	int      mess_sort_column;
-	BOOL     mess_sort_reverse;
-
-	char*    softwaredirs;
-	char*    hashdir;
-
-	char*    software_tab;
-};
+void MessSetupSettings(core_options *settings);
+void MessSetupGameOptions(core_options *opts, int driver_index);
 
 void SetMessColumnWidths(int widths[]);
 void GetMessColumnWidths(int widths[]);
@@ -61,20 +38,17 @@ BOOL GetMessSortReverse(void);
 const char* GetSoftwareDirs(void);
 void  SetSoftwareDirs(const char* paths);
 
-void SetCrcDir(const char *dir);
-const char *GetCrcDir(void);
+void SetHashDirs(const char *dir);
+const char *GetHashDirs(void);
 
-void SetSelectedSoftware(int driver_index, int device_inst_index, const char *software);
-const char *GetSelectedSoftware(int driver_index, int device_inst_index);
+void SetSelectedSoftware(int driver_index, const device_class *devclass, int device_inst, const char *software);
+const char *GetSelectedSoftware(int driver_index, const device_class *devclass, int device_inst);
 
 void SetExtraSoftwarePaths(int driver_index, const char *extra_paths);
 const char *GetExtraSoftwarePaths(int driver_index);
 
 void SetCurrentSoftwareTab(const char *shortname);
 const char *GetCurrentSoftwareTab(void);
-
-BOOL LoadDeviceOption(DWORD nSettingsFile, char *key, const char *value_str);
-void SaveDeviceOption(DWORD nSettingsFile, void (*emit_callback)(void *param_, const char *key, const char *value_str, const char *comment), void *param);
 
 #endif /* OPTIONSMS_H */
 

@@ -14,9 +14,11 @@
 #define WIN32UI_H
 
 #define WIN32_LEAN_AND_MEAN
+#include <commctrl.h>
 #include <commdlg.h>
 #include <driver.h>
 #include "screenshot.h"
+#include "pool.h"
 
 enum
 {
@@ -42,17 +44,26 @@ typedef struct
 	const char *icon_name;
 } ICONDATA;
 
+extern char last_directory[MAX_PATH];
+
 typedef BOOL (WINAPI *common_file_dialog_proc)(LPOPENFILENAME lpofn);
 BOOL CommonFileDialog(common_file_dialog_proc cfd,char *filename, int filetype);
 
 HWND GetMainWindow(void);
 HWND GetTreeView(void);
+HIMAGELIST GetLargeImageList(void);
+HIMAGELIST GetSmallImageList(void);
 int GetNumOptionFolders(void);
 void SetNumOptionFolders(int count);
 void GetRealColumnOrder(int order[]);
 HICON LoadIconFromFile(const char *iconname);
 void UpdateScreenShot(void);
 void ResizePickerControls(HWND hWnd);
+void MamePlayGame(void);
+int FindIconIndex(int nIconResource);
+int FindIconIndexByName(const char *icon_name);
+int GetSelectedPick(void);
+memory_pool *GetMame32MemoryPool(void);
 
 void UpdateListView(void);
 

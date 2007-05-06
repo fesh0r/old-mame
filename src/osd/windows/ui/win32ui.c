@@ -23,7 +23,6 @@
   Nov/Dec 1998 - Mike Haaland
 
 ***************************************************************************/
-#define MULTISESSION 0
 
 #ifdef _MSC_VER
 #ifndef NONAMELESSUNION
@@ -70,16 +69,22 @@
 #include "DirWatch.h"
 #include "help.h"
 #include "history.h"
-#include "options.h"
+#include "m32opts.h"
 #include "dialogs.h"
 #include "state.h"
+#include "winmain.h"
+#include "winutil.h"
 #include "windows/input.h"
-#include "windows/config.h"
 #include "windows/window.h"
 
 #include "DirectDraw.h"
 #include "DirectInput.h"
 #include "DIJoystick.h"     /* For DIJoystick avalibility. */
+
+#ifdef MESS
+#include "ui/mess32ui.h"
+#include "messopts.h"
+#endif // MESS
 
 #ifdef _MSC_VER
 #define snprintf _snprintf
@@ -272,7 +277,6 @@ static int              GamePicker_Compare(HWND hwndPicker, int index1, int inde
 static void             DisableSelection(void);
 static void             EnableSelection(int nGame);
 
-static int              GetSelectedPick(void);
 static HICON			GetSelectedPickItemIcon(void);
 static void             SetRandomPickItem(void);
 static void				PickColor(COLORREF *cDefault);
@@ -291,7 +295,6 @@ static void             MamePlayBackGame(void);
 static void             MamePlayRecordWave(void);
 static void             MamePlayRecordMNG(void);
 static void				MameLoadState(void);
-static void             MamePlayGame(void);
 static void             MamePlayGameWithOptions(int nGame);
 static INT_PTR CALLBACK LoadProgressDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam);
 static int UpdateLoadProgress(const char* name, const rom_load_data *romdata);
@@ -300,7 +303,7 @@ static BOOL FolderCheck(void);
 
 static void             ToggleScreenShot(void);
 static void             AdjustMetrics(void);
-static void             EnablePlayOptions(int nIndex, options_type *o);
+static void             EnablePlayOptions(int nIndex, core_options *o);
 
 /* Icon routines */
 static DWORD            GetShellLargeIconSize(void);
@@ -351,18 +354,6 @@ void CalculateBestScreenShotRect(HWND hWnd, RECT *pRect, BOOL restrict_height);
 
 BOOL MouseHasBeenMoved(void);
 void SwitchFullScreenMode(void);
-
-// Game Window Communication Functions
-#if MULTISESSION
-BOOL SendMessageToEmulationWindow(UINT Msg, WPARAM wParam, LPARAM lParam);
-BOOL SendIconToEmulationWindow(int nGameIndex);
-HWND GetGameWindow(void);
-#else
-void SendMessageToProcess(LPPROCESS_INFORMATION lpProcessInformation,
-						  UINT Msg, WPARAM wParam, LPARAM lParam);
-void SendIconToProcess(LPPROCESS_INFORMATION lpProcessInformation, int nGameIndex);
-HWND GetGameWindow(LPPROCESS_INFORMATION lpProcessInformation);
-#endif
 
 static BOOL CALLBACK EnumWindowCallBack(HWND hwnd, LPARAM lParam);
 /***************************************************************************
@@ -484,6 +475,9 @@ static BOOL in_emulation;
 
 /* idle work at startup */
 static BOOL idle_work;
+
+/* memory pool in use */
+static memory_pool *mame32_pool;
 
 static int  game_index;
 static int  progBarStep;
@@ -673,11 +667,8 @@ static ResizeItem main_resize_items[] =
 
 static Resize main_resize = { {0, 0, 0, 0}, main_resize_items };
 
-/* our dialog/configured options */
-static options_type playing_game_options;
-
 /* last directory for common file dialogs */
-static char last_directory[MAX_PATH];
+char last_directory[MAX_PATH];
 
 /* system-wide window message sent out with an ATOM of the current game name
    each time it changes */
@@ -782,199 +773,29 @@ extern game_driver driver_neogeo;
     External functions
  ***************************************************************************/
 
-static void CreateCommandLine(int nGameIndex, char* pCmdLine)
+static void CopyOptions(core_options *pDestOpts, core_options *pSourceOpts)
 {
-	char pModule[_MAX_PATH];
-	options_type* pOpts;
-	LPTREEFOLDER folder;
-	int screens_counter = 0;
+	options_enumerator *enumerator;
+	const char *option_name;
+	const char *option_value;
 
-	// this command line can grow too long for win9x, so we try to not send
-	// some default values
-
-	GetModuleFileName(GetModuleHandle(NULL), pModule, _MAX_PATH);
-
-	folder = GetFolderByName(FOLDER_SOURCE, GetDriverFilename(nGameIndex) );
-	if( folder )
+	enumerator = options_enumerator_begin(pSourceOpts);
+	if (enumerator != NULL)
 	{
-		pOpts = GetGameOptions(nGameIndex, folder->m_nFolderId);
+		while((option_name = options_enumerator_next(enumerator)) != NULL)
+		{
+			option_value = options_get_string(pSourceOpts, option_name);
+			if (option_value != NULL)
+			{
+				dprintf("CopyOptions(): Copying %s = \"%s\"\n", option_name, option_value);
+				options_set_string(pDestOpts, option_name, option_value);
+			}
+		}
+		options_enumerator_free(enumerator);
 	}
-	else
-	{
-		pOpts = GetGameOptions(nGameIndex, NO_FOLDER);
-	}
-
-	sprintf(pCmdLine, "%s %s", pModule, drivers[nGameIndex]->name);
-
-#ifdef MESS
-	MessCreateCommandLine(pCmdLine, pOpts, drivers[nGameIndex]);
-#endif
-
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -rp \"%s\"",            GetRomDirs());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -sp \"%s\"",         GetSampleDirs());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -inipath \"%s\"",			GetIniDir());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -cfg_directory \"%s\"",      GetCfgDir());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -nvram_directory \"%s\"",    GetNvramDir());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -memcard_directory \"%s\"",  GetMemcardDir());
-
-	if (override_playback_directory != NULL)
-	{
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -input_directory \"%s\"",override_playback_directory);
-	}
-	else
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -input_directory \"%s\"",GetInpDir());
-
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -state_directory \"%s\"",    GetStateDir());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -artpath \"%s\"",	GetArtDir());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -snapshot_directory \"%s\"", GetImgDir());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -diff_directory \"%s\"",     GetDiffDir());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -ctrlr_directory \"%s\"",    GetCtrlrDir());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -comment_directory \"%s\"",  GetCommentDir());
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -cheat_file \"%s\"",         GetCheatFileName());
-
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sskip_gameinfo", pOpts->skip_gameinfo ? "" : "no");
-	/* Core Misc Options*/
-	if (DriverHasOptionalBIOS(nGameIndex))
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -bios %s",pOpts->bios);
-	if (pOpts->cheat)
-        sprintf(&pCmdLine[strlen(pCmdLine)], " -%sc",                   pOpts->cheat ? "" : "no" );
-	/* save states and input recording */
-	if (g_pSaveStateName != NULL)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -state \"%s\"",          g_pSaveStateName);
-	if (pOpts->autosave)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -autosave");
-	if (pOpts->mt_render)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -mt");
-	if (g_pPlayBkName != NULL)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -pb \"%s\"",             g_pPlayBkName);
-	if (g_pRecordName != NULL)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -rec \"%s\"",            g_pRecordName);
-	if (g_pRecordMNGName != NULL)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -mngwrite \"%s\"",       g_pRecordMNGName);
-	if (g_pRecordWaveName != NULL)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -wavwrite \"%s\"",       g_pRecordWaveName);
-	/* debugging options */
-#ifdef _DEBUG
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sd",               pOpts->mame_debug   ? "" : "no");
-#endif
-	if (pOpts->errorlog)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -%slog",                     pOpts->errorlog   ? "" : "no");
-	//Unsupported options in UI
-/*
-	{ "oslog",                    "0",        OPTION_BOOLEAN,    "output error.log data to the system debugger" },
-	{ "verbose;v",                "0",    OPTION_BOOLEAN,    "display additional diagnostic information" },
-	{ "validate;valid",           NULL,   OPTION_COMMAND,    "perform driver validation on all game drivers" },
-*/
-	/* Performance Options */
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%safs",                     pOpts->autoframeskip   ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -fs %d",						pOpts->frameskip );
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -str %d",					pOpts->seconds_to_display);
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sthrottle",				pOpts->throttle   ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ssleep",					pOpts->sleep   ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -priority %d",				pOpts->priority);
-	/* video */
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -video %s",                  pOpts->videomode );
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -numscreens %d",             pOpts->numscreens);
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sw",                      pOpts->window_mode? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%smax",                    pOpts->maximize? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ska",                     pOpts->keepaspect ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -prescale %d",               pOpts->prescale);
-	if( pOpts->effect )
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -effect \"%s\"",         pOpts->effect);
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -pause_brightness %f",       pOpts->f_pause_bright); 
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%swaitvsync",              pOpts->wait_vsync ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ssyncrefresh",            pOpts->syncrefresh ? "" : "no");
-	/* Video Rotation Options*/
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%srotate", pOpts->rotate ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sror",pOpts->ror ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%srol",pOpts->rol ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sautoror",pOpts->auto_ror ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sautorol",pOpts->auto_rol ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sflipx",pOpts->flipx ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sflipy",pOpts->flipy ? "" : "no");
-	/*Direct Draw Video Options*/
-	if( strcmp( pOpts->videomode, "ddraw" ) == 0 )
-	{
-		if (pOpts->ddraw_stretch)
-			sprintf(&pCmdLine[strlen(pCmdLine)], " -%shws",  pOpts->ddraw_stretch ? "" : "no");
-	}
-	/*Direct 3D Video Options*/
-	if( strcmp( pOpts->videomode, "d3d" ) == 0 )
-	{
-		if (pOpts->d3d_filter)
-			sprintf(&pCmdLine[strlen(pCmdLine)], " -%sfilter",pOpts->d3d_filter ? "" : "no");
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -d3dversion %d",         pOpts->d3d_version);
-	}
-	/* Per window options */
-	for( screens_counter = 0; screens_counter < min(pOpts->numscreens, MAX_SCREENS); screens_counter++ )
-	{
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -screen%d %s", screens_counter, pOpts->screen_params[screens_counter].screen);
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -aspect%d %s", screens_counter, pOpts->screen_params[screens_counter].aspect);
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -resolution%d %s", screens_counter, pOpts->screen_params[screens_counter].resolution);
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -view%d %s", screens_counter ,pOpts->screen_params[screens_counter].view);
-	}
-	/* Full screen Options */
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%stb",					    pOpts->use_triplebuf ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sswitchres",              pOpts->switchres ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -fsb %f",					pOpts->gfx_brightness);
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -fsc %f",                    pOpts->gfx_contrast);
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -fsg %f",                    pOpts->gfx_gamma);
-	/* Game screen options*/
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -brightness %f",pOpts->f_bright_correct);
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -contrast %f",pOpts->f_contrast_correct);
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -gamma %f",pOpts->f_gamma_correct);
-	/* Vector rendering Options*/
-	if (DriverIsVector(nGameIndex))
-	{
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -%saa",                      pOpts->antialias ? "" : "no");
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -beam %f",                   pOpts->f_beam);
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -flicker %f",                pOpts->f_flicker);
-	}
-	/* Artwork options*/
-	if (pOpts->artwork_crop)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sartcrop",            pOpts->artwork_crop ? "" : "no");
-	if (pOpts->backdrops)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sbackdrop",            pOpts->backdrops ? "" : "no");
-	if (pOpts->overlays)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -%soverlay",             pOpts->overlays ? "" : "no");
-	if (pOpts->bezels)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -%sbezel",               pOpts->bezels ? "" : "no");
-	/* Core Sound options*/
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ssound",                   pOpts->enable_sound ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -sr %d",                     pOpts->samplerate);
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ssamples",                 pOpts->use_samples ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -vol %d",                    pOpts->attenuation);
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -audio_latency %i",          pOpts->audio_latency);
-	/* input options*/
-	if (strlen(pOpts->ctrlr) > 0)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -ctrlr \"%s\"",              pOpts->ctrlr);
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%smouse",					pOpts->use_mouse ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sjoy",					pOpts->use_joystick ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sgun",					(!pOpts->window_mode && pOpts->lightgun) ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sdual",				pOpts->dual_lightgun ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%sreload",				pOpts->offscreen_reload ? "" : "no");
-	sprintf(&pCmdLine[strlen(pCmdLine)], " -%ssteady",					pOpts->steadykey ? "" : "no");
-	if (pOpts->use_joystick){
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -jdz %f",                pOpts->f_jdz);
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -jsat %f",                pOpts->f_jsat);
-	}
-	if (strlen(pOpts->digital) > 0)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -digital \"%s\"",            pOpts->digital);
-	if (strlen(pOpts->paddle) > 0)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -paddle \"%s\"",             pOpts->paddle);
-	if (strlen(pOpts->adstick) > 0)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -adstick \"%s\"",            pOpts->adstick);
-	if (strlen(pOpts->pedal) > 0)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -pedal \"%s\"",              pOpts->pedal);
-	if (strlen(pOpts->dial) > 0)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -dial \"%s\"",               pOpts->dial);
-	if (strlen(pOpts->trackball) > 0)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -trackball \"%s\"",          pOpts->trackball);
-	if (strlen(pOpts->lightgun_device) > 0)
-		sprintf(&pCmdLine[strlen(pCmdLine)], " -lightgun_device \"%s\"",    pOpts->lightgun_device);
-	dprintf("Launching MAME32:");
-	dprintf("%s\n",pCmdLine);
 }
+
+
 
 static BOOL WaitWithMessageLoop(HANDLE hEvent)
 {
@@ -1004,188 +825,52 @@ static BOOL WaitWithMessageLoop(HANDLE hEvent)
 
 static DWORD RunMAME(int nGameIndex)
 {
-	time_t start, end;
-	double elapsedtime;
-
-#if MULTISESSION
-	int argc = 0;
-	const char *argv[100];
-	char pModule[_MAX_PATH];
-	extern int DECL_SPEC main_(int, char**);
-	int exit_code;
-	int UIPriority = GetThreadPriority(GetCurrentThread());
-
-	GetModuleFileName(GetModuleHandle(NULL), pModule, _MAX_PATH);
-	argv[argc++] = pModule;
-	argv[argc++] = drivers[nGameIndex]->name;
-
-	if (override_playback_directory != NULL)
-	{
-		argv[argc++] = "-input_directory";
-		argv[argc++] = override_playback_directory;
-	}
-	if (g_pPlayBkName != NULL)
-	{
-		argv[argc++] = "-pb";
-		argv[argc++] = g_pPlayBkName;
-	}
-	if (g_pRecordName != NULL)
-	{
-		argv[argc++] = "-rec";
-		argv[argc++] = g_pRecordName;
-	}
-	if (g_pRecordWaveName != NULL)
-	{
-		argv[argc++] = "-wavwrite";
-		argv[argc++] = g_pRecordWaveName;
-	}
-	if (g_pRecordMNGName != NULL)
-	{
-		argv[argc++] = "-mngwrite";
-		argv[argc++] = g_pRecordMNGName;
-	}
-	if (g_pSaveStateName != NULL)
-	{
-		argv[argc++] = "-state";
-		argv[argc++] = g_pSaveStateName;
-	}
-
-	ShowWindow(hMain, SW_HIDE);
-
-	time(&start);
-	SetTimer(hMain, GAMEWND_TIMER, 1000/*1s*/, NULL);
-	exit_code = main_(argc, (char **)argv);
-	time(&end);
-	/*This is to make sure this timer is killed, if the Game Window was not found
-	Should not happen, but you never know... */
-	KillTimer(hMain,GAMEWND_TIMER);
-	//Restore UI Thread Priority
-	SetThreadPriority(GetCurrentThread(),UIPriority);
-	elapsedtime = end - start;
-	if (exit_code == 0)
-	{
-		// Check the exitcode before incrementing Playtime
-		IncrementPlayTime(nGameIndex, elapsedtime);
-		ListView_RedrawItems(hwndList, GetSelectedPick(), GetSelectedPick());
-	}
-
-	if (GetHideMouseOnStartup())
-	{
-		ShowCursor(FALSE);
-	}
-	else
-	{
-		// recover windows cursor and our main window
-		while (1)
-		{
-			if (ShowCursor(TRUE) >= 0)
-				break;
-		}
-	}
-	ShowWindow(hMain, SW_SHOW);
-
-	return 0;
-
-#else
-
-	DWORD               dwExitCode = 0;
-	STARTUPINFO         si;
-	PROCESS_INFORMATION pi;
-	char pCmdLine[2048];
-	HWND hGameWnd = NULL;
-	long lGameWndStyle = 0;
-	int UIPriority = GetThreadPriority(GetCurrentThread());	//Save the Priority
-	BOOL bPickerIdling[sizeof(s_nPickers) / sizeof(s_nPickers[0])];
+	DWORD dwExitCode = 0;
+	core_options *pOpts;
+	LPTREEFOLDER folder;
 	int i;
 
-#ifdef MESS
-	SaveGameOptions(nGameIndex);
-#endif
+	// set up MAME options
+	mame_options_init(mame_win_options);
 
-	CreateCommandLine(nGameIndex, pCmdLine );
-
-	ZeroMemory(&si, sizeof(si));
-	ZeroMemory(&pi, sizeof(pi));
-	si.cb = sizeof(si);
-
-	if (!CreateProcess(NULL,
-						pCmdLine,
-						NULL,		  /* Process handle not inheritable. */
-						NULL,		  /* Thread handle not inheritable. */
-						TRUE,		  /* Handle inheritance.  */
-						0,			  /* Creation flags. */
-						NULL,		  /* Use parent's environment block.  */
-						NULL,		  /* Use parent's starting directory.  */
-						&si,		  /* STARTUPINFO */
-						&pi))		  /* PROCESS_INFORMATION */
-	{
-		dprintf("CreateProcess failed.");
-		dwExitCode = GetLastError();
-	}
+	// retrieve the options we're going to pass
+	folder = GetFolderByName(FOLDER_SOURCE, GetDriverFilename(nGameIndex));
+	if (folder)
+		pOpts = GetGameOptions(nGameIndex, folder->m_nFolderId);
 	else
-	{
-
-		ShowWindow(hMain, SW_HIDE);
-		SendIconToProcess(&pi, nGameIndex);
-		if( ! GetGameCaption() )
-		{
-			hGameWnd = GetGameWindow(&pi);
-			if( hGameWnd )
-			{
-				lGameWndStyle = GetWindowLong(hGameWnd, GWL_STYLE);
-				lGameWndStyle = lGameWndStyle & (WS_BORDER ^ 0xffffffff);
-				SetWindowLong(hGameWnd, GWL_STYLE, lGameWndStyle);
-				SetWindowPos(hGameWnd,0,0,0,0,0,SWP_DRAWFRAME | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER);
-			}
-		}
-		time(&start);
-
-		// Save idling info
-		for (i = 0; i < sizeof(s_nPickers) / sizeof(s_nPickers[0]); i++)
-		{
-			HWND hwndPicker = GetDlgItem(hMain, s_nPickers[i]);
-			bPickerIdling[i] = Picker_IsIdling(hwndPicker);
-			if (bPickerIdling[i])
-				Picker_ClearIdle(hwndPicker);
-		}
-
-		// Wait until child process exits.
-		WaitWithMessageLoop(pi.hProcess);
-
-		GetExitCodeProcess(pi.hProcess, &dwExitCode);
-
-		time(&end);
-		elapsedtime = end - start;
-		if( dwExitCode == 0 )
-		{
-			// Check the exitcode before incrementing Playtime
-			IncrementPlayTime(nGameIndex, elapsedtime);
-			ListView_RedrawItems(hwndList, GetSelectedPick(), GetSelectedPick());
-		}
-
-		ShowWindow(hMain, SW_SHOW);
-		//Restore UI Thread Priority
-		SetThreadPriority(GetCurrentThread(),UIPriority);
-		// Close process and thread handles.
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-
-		// Restore idling, if necessary
-		for (i = 0; i < sizeof(s_nPickers) / sizeof(s_nPickers[0]); i++)
-		{
-			HWND hwndPicker = GetDlgItem(hMain, s_nPickers[i]);
-			if (bPickerIdling[i])
-				Picker_ResetIdle(hwndPicker);
-		}
+		pOpts = GetGameOptions(nGameIndex, NO_FOLDER);
 
 #ifdef MESS
-		LoadGameOptions(nGameIndex);
-		MessReadMountedSoftware(nGameIndex);
-#endif
-	}
+	// add MESS specific device options
+	mess_add_device_options(mame_options(), drivers[nGameIndex]);
+#endif // MESS
+
+	// load MAME options
+	CopyOptions(mame_options(), Mame32Global());
+	CopyOptions(mame_options(), pOpts);
+
+	// prepare MAME32 to run the game
+	ShowWindow(hMain, SW_HIDE);
+	for (i = 0; i < ARRAY_LENGTH(s_nPickers); i++)
+		Picker_ClearIdle(GetDlgItem(hMain, s_nPickers[i]));
+
+	// run the emulation
+	run_game(drivers[nGameIndex]);
+
+	// the emulation is complete; continue
+	for (i = 0; i < ARRAY_LENGTH(s_nPickers); i++)
+		Picker_ResetIdle(GetDlgItem(hMain, s_nPickers[i]));
+	ShowWindow(hMain, SW_SHOW);
+	SetForegroundWindow(hMain);
+
+	// close out MAME options
+	mame_options_exit();
+
+	// NPW 16-Apr-2007 - God I hate this hack
+	if (GetGameUsesDefaults(nGameIndex))
+		ResetGameOptions(nGameIndex);
 
 	return dwExitCode;
-#endif
 }
 
 int Mame32Main(HINSTANCE    hInstance,
@@ -1222,6 +907,21 @@ HWND GetMainWindow(void)
 HWND GetTreeView(void)
 {
 	return hTreeView;
+}
+
+HIMAGELIST GetLargeImageList(void)
+{
+	return hLarge;
+}
+
+HIMAGELIST GetSmallImageList(void)
+{
+	return hSmall;
+}
+
+memory_pool *GetMame32MemoryPool(void)
+{
+	return mame32_pool;
 }
 
 void GetRealColumnOrder(int order[])
@@ -1509,7 +1209,7 @@ void UpdateScreenShot(void)
 	if (have_selection)
 	{
 #ifdef MESS
-		if (!s_szSelectedItem[0] || !LoadScreenShotEx(Picker_GetSelectedItem(hwndList), s_szSelectedItem,
+		if (!g_szSelectedItem[0] || !LoadScreenShotEx(Picker_GetSelectedItem(hwndList), g_szSelectedItem,
 			TabView_GetCurrentTab(hTabCtrl)))
 #endif
 		{
@@ -1852,6 +1552,24 @@ void SetMainTitle(void)
 	SetWindowText(hMain,buffer);
 }
 
+static void winui_output_error(void *param, const char *format, va_list argptr)
+{
+	char buffer[1024];
+
+	// if we are in fullscreen mode, go to windowed mode
+	if ((video_config.windowed == 0) && (win_window_list != NULL))
+		winwindow_toggle_full_screen();
+
+	vsnprintf(buffer, ARRAY_LENGTH(buffer), format, argptr);
+	win_message_box_utf8(win_window_list ? win_window_list->hwnd : NULL, buffer, APPNAME, MB_OK);
+}
+
+static void memory_error(const char *message)
+{
+	win_message_box_utf8(hMain, message, APPNAME, MB_OK);
+	exit(-1);
+}
+
 static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	extern int mame_validitychecks(int game);
@@ -1864,40 +1582,35 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	extern const char *mameinfo_filename;
 	LONG common_control_version = GetCommonControlVersion();
 	int validity_failed = 0;
-	int argc = 0;
-	char *args[4];
-	char **argv = args;
-	char pModule[_MAX_PATH];
-	char name[_MAX_PATH];
+
+	dprintf("about to init options\n");
+	if (!OptionsInit())
+		return FALSE;
+	dprintf("options loaded\n");
 
 	srand((unsigned)time(NULL));
 
-	init_resource_tracking();
-	begin_resource_tracking();
+	// output errors to message boxes
+	mame_set_output_channel(OUTPUT_CHANNEL_ERROR, winui_output_error, NULL, NULL, NULL);
 
-	strcpy( name, drivers[0]->name );
-	GetModuleFileName(GetModuleHandle(NULL), pModule, _MAX_PATH);
-	argv[argc++] = pModule;
-	argv[argc++] = name;
-	cli_frontend_init(argc, argv );
+	// create the memory pool
+	mame32_pool = pool_create(memory_error);
 
-	/* custom per-game icons */
-	icon_index = auto_malloc(sizeof(int) * driver_get_count());
-	if (!icon_index)
-		return FALSE;
-	ZeroMemory(icon_index,sizeof(int) * driver_get_count());
+	// custom per-game icons
+	icon_index = pool_malloc(mame32_pool, sizeof(int) * driver_get_count());
+	memset(icon_index, '\0', sizeof(int) * driver_get_count());
 
-	/* sorted list of drivers by name */
-	sorted_drivers = (driver_data_type *) auto_malloc(sizeof(driver_data_type) * driver_get_count());
-	if (!sorted_drivers)
-		return FALSE;
-	for (i=0;i<driver_get_count();i++)
+	// sorted list of drivers by name
+	sorted_drivers = (driver_data_type *) pool_malloc(mame32_pool, sizeof(driver_data_type) * driver_get_count());
+	memset(sorted_drivers, '\0', sizeof(driver_data_type) * driver_get_count());
+	for (i = 0; i < driver_get_count(); i++)
 	{
 		sorted_drivers[i].name = drivers[i]->name;
 		sorted_drivers[i].index = i;
 	}
-	qsort(sorted_drivers,driver_get_count(),sizeof(driver_data_type),DriverDataCompareFunc );
+	qsort(sorted_drivers, driver_get_count(), sizeof(driver_data_type), DriverDataCompareFunc);
 
+	// set up window class
 	wndclass.style		   = CS_HREDRAW | CS_VREDRAW;
 	wndclass.lpfnWndProc   = MameWindowProc;
 	wndclass.cbClsExtra    = 0;
@@ -1912,7 +1625,6 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	RegisterClass(&wndclass);
 
 #ifdef MESS
-	uistring_init(NULL);
 	DevView_RegisterClass();
 #endif //MESS
 
@@ -1936,11 +1648,6 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 		if (IDNO == MessageBox(0, buf, MAME32NAME " Outdated comctl32.dll Warning", MB_YESNO | MB_ICONWARNING))
 			return FALSE;
     }
-
-	dprintf("about to init options");
-	if (!OptionsInit())
-		return FALSE;
-	dprintf("options loaded");
 
 	g_mame32_message = RegisterWindowMessage("MAME32");
 	g_bDoBroadcast = GetBroadcast();
@@ -2285,19 +1992,13 @@ static void Win32UI_exit()
 
 	HelpExit();
 
-	end_resource_tracking();
+	pool_free(mame32_pool);
+	mame32_pool = NULL;
 }
 
 static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lParam)
 {
 	MINMAXINFO	*mminfo;
-#if MULTISESSION
-	int nGame;
-	HWND hGameWnd;
-	long lGameWndStyle;
-#endif // MULTISESSION
-
-
 	int 		i;
 	TCHAR szClass[128];
 
@@ -2374,24 +2075,6 @@ static long WINAPI MameWindowProc(HWND hWnd, UINT message, UINT wParam, LONG lPa
 			TabView_CalculateNextTab(hTabCtrl);
 			UpdateScreenShot();
 			TabView_UpdateSelection(hTabCtrl);
-			break;
-		case GAMEWND_TIMER:
-#if MULTISESSION
-			nGame = Picker_GetSelectedItem(hwndList);
-			if( ! GetGameCaption() )
-			{
-				hGameWnd = GetGameWindow();
-				if( hGameWnd )
-				{
-					lGameWndStyle = GetWindowLong(hGameWnd, GWL_STYLE);
-					lGameWndStyle = lGameWndStyle & (WS_BORDER ^ 0xffffffff);
-					SetWindowLong(hGameWnd, GWL_STYLE, lGameWndStyle);
-					SetWindowPos(hGameWnd,0,0,0,0,0,SWP_DRAWFRAME | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER);
-				}
-			}
-			if( SendIconToEmulationWindow(nGame)== TRUE);
-				KillTimer(hMain, GAMEWND_TIMER);
-#endif // MULTISESSION
 			break;
 		default:
 			break;
@@ -3862,7 +3545,7 @@ static void PollGUIJoystick()
 			si.dwFlags = STARTF_FORCEONFEEDBACK;
 			si.cb = sizeof(si);
 			
-			CreateProcess(NULL, GetExecCommand(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+			CreateProcess(NULL, (char *) GetExecCommand(), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
 
 			// We will not wait for the process to finish cause it might be a background task
 			// The process won't get closed when MAME32 closes either.
@@ -5349,7 +5032,7 @@ static int GamePicker_Compare(HWND hwndPicker, int index1, int index2, int sort_
 	return value;
 }
 
-static int GetSelectedPick()
+int GetSelectedPick()
 {
 	/* returns index of listview selected item */
 	/* This will return -1 if not found */
@@ -5614,8 +5297,7 @@ static void MamePlayBackGame()
 		if (path[strlen(path)-1] == '\\')
 			path[strlen(path)-1] = 0; // take off trailing back slash
 
-		options_set_string(mame_options(), SEARCHPATH_INPUTLOG, path);
-		fileerr = mame_fopen(SEARCHPATH_INPUTLOG, fname, OPEN_FLAG_READ, &pPlayBack);
+		fileerr = mame_fopen_options(Mame32Global(), SEARCHPATH_INPUTLOG, fname, OPEN_FLAG_READ, &pPlayBack);
 		if (fileerr != FILERR_NONE)
 		{
 			MameMessageBox("Could not open '%s' as a valid input file.", filename);
@@ -5709,12 +5391,11 @@ static void MameLoadState()
 				MameMessageBox("'%s' is not a valid savestate file for game '%s'.", filename, selected_filename);
 				return;
 			}
-			options_set_string(mame_options(), OPTION_STATE_DIRECTORY, path);
 			state_fname = fname;
 		}
 #endif // MESS
 
-		mame_fopen(SEARCHPATH_STATE, state_fname, OPEN_FLAG_READ, &pSaveState);
+		mame_fopen_options(Mame32Global(), SEARCHPATH_STATE, state_fname, OPEN_FLAG_READ, &pSaveState);
 		if (pSaveState == NULL)
 		{
 			MameMessageBox("Could not open '%s' as a valid savestate file.", filename);
@@ -5779,7 +5460,7 @@ static void MamePlayRecordGame()
 	}
 }
 
-static void MamePlayGame(void)
+void MamePlayGame(void)
 {
 	int nGame;
 
@@ -5825,43 +5506,14 @@ static void MamePlayRecordMNG()
 	}	
 }
 
-static void MameGetErrorText(DWORD dwExitCode, LPTSTR pszBuffer, UINT nBufferLen)
-{
-	switch(dwExitCode)
-	{
-		case 1:
-			_sntprintf(pszBuffer, nBufferLen, TEXT("Initialization error"));
-			break;
-
-		case 0xC0000005:
-			_sntprintf(pszBuffer, nBufferLen, TEXT("Access violation"));
-			break;
-
-		default:
-			if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, dwExitCode,
-				0, pszBuffer, nBufferLen, NULL) == 0)
-			{
-				_sntprintf(pszBuffer, nBufferLen, TEXT("Error 0x%08X"), dwExitCode);
-			}
-			break;
-	}
-}
-
 static void MamePlayGameWithOptions(int nGame)
 {
 	DWORD dwExitCode;
-	TCHAR szBuffer[256];
-	TCHAR szError[256];
 
 #ifdef MESS
 	if (!MessApproveImageList(hMain, nGame))
 		return;
 #endif
-
-	memcpy(&playing_game_options, GetGameOptions(nGame, -1), sizeof(options_type));
-
-	/* Deal with options that can be disabled. */
-	EnablePlayOptions(nGame, &playing_game_options);
 
 	if (g_pJoyGUI != NULL)
 		KillTimer(hMain, JOYGUI_TIMER);
@@ -5881,13 +5533,6 @@ static void MamePlayGameWithOptions(int nGame)
 	else
 	{
 		ShowWindow(hMain, SW_SHOW);
-
-		// attempt to display a nice error message
-		MameGetErrorText(dwExitCode, szError, sizeof(szError) / sizeof(szError[0]));
-		_sntprintf(szBuffer, sizeof(szBuffer) / sizeof(szBuffer[0]),
-			TEXT(MAME32NAME " encountered a fatal error: %s"),
-			szError);
-		MessageBox(hMain, szBuffer, MAME32NAME, MB_OK);
 	}
 
 	in_emulation = FALSE;
@@ -5992,18 +5637,27 @@ static void AdjustMetrics(void)
 
 
 /* Adjust options - tune them to the currently selected game */
-static void EnablePlayOptions(int nIndex, options_type *o)
+static void EnablePlayOptions(int nIndex, core_options *o)
 {
-	if (!DIJoystick.Available())
-		o->use_joystick = FALSE;
 }
 
-static int FindIconIndex(int nIconResource)
+int FindIconIndex(int nIconResource)
 {
 	int i;
 	for(i = 0; g_iconData[i].icon_name; i++)
 	{
 		if (g_iconData[i].resource == nIconResource)
+			return i;
+	}
+	return -1;
+}
+
+int FindIconIndexByName(const char *icon_name)
+{
+	int i;
+	for (i = 0; g_iconData[i].icon_name; i++)
+	{
+		if (!strcmp(g_iconData[i].icon_name, icon_name))
 			return i;
 	}
 	return -1;
@@ -7147,181 +6801,5 @@ BOOL MouseHasBeenMoved(void)
 	
 	return (p.x != mouse_x || p.y != mouse_y);       
 }
-
-/*
-	The following two functions enable us to send Messages to the Game Window
-*/
-#if MULTISESSION
-
-BOOL SendIconToEmulationWindow(int nGameIndex)
-{
-	HICON hIcon; 
-	int nParentIndex = -1;
-	hIcon = LoadIconFromFile(drivers[nGameIndex]->name); 
-	if( hIcon == NULL ) 
-	{ 
-		//Check if clone, if so try parent icon first 
-		if( DriverIsClone(nGameIndex) ) 
-		{ 
-			nParentIndex = GetParentIndex(drivers[nGameIndex]);
-			if( nParentIndex >= 0)
-				hIcon = LoadIconFromFile(drivers[nParentIndex]->name); 
-			if( hIcon == NULL) 
-			{ 
-				hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_MAME32_ICON)); 
-			} 
-		} 
-		else 
-		{ 
-			hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_MAME32_ICON)); 
-		} 
-	} 
-	if( SendMessageToEmulationWindow( WM_SETICON, ICON_SMALL, (LPARAM)hIcon ) == FALSE)
-		return FALSE;
-	if( SendMessageToEmulationWindow( WM_SETICON, ICON_BIG, (LPARAM)hIcon ) == FALSE)
-		return FALSE;
-	return TRUE;
-}
-
-BOOL SendMessageToEmulationWindow(UINT Msg, WPARAM wParam, LPARAM lParam)
-{
-	FINDWINDOWHANDLE fwhs;
-	fwhs.ProcessInfo = NULL;
-	fwhs.hwndFound  = NULL;
-
-	EnumWindows(EnumWindowCallBack, (LPARAM)&fwhs);
-	if( fwhs.hwndFound )
-	{
-		SendMessage(fwhs.hwndFound, Msg, wParam, lParam);
-		//Fix for loosing Focus, we reset the Focus on our own Main window
-		SendMessage(fwhs.hwndFound, WM_KILLFOCUS,(WPARAM) hMain, (LPARAM) NULL);
-		return TRUE;
-	}
-	return FALSE;
-}
-
-
-static BOOL CALLBACK EnumWindowCallBack(HWND hwnd, LPARAM lParam) 
-{ 
-	FINDWINDOWHANDLE * pfwhs = (FINDWINDOWHANDLE * )lParam; 
-	DWORD ProcessId, ProcessIdGUI; 
-	char buffer[MAX_PATH]; 
-
-	GetWindowThreadProcessId(hwnd, &ProcessId);
-	GetWindowThreadProcessId(hMain, &ProcessIdGUI);
-
-	// cmk--I'm not sure I believe this note is necessary
-	// note: In order to make sure we have the MainFrame, verify that the title 
-	// has Zero-Length. Under Windows 98, sometimes the Client Window ( which doesn't 
-	// have a title ) is enumerated before the MainFrame 
-
-	GetWindowText(hwnd, buffer, sizeof(buffer));
-	if (ProcessId  == ProcessIdGUI &&
-		 strncmp(buffer,MAMENAME,strlen(MAMENAME)) == 0 &&
-		 hwnd != hMain) 
-	{ 
-		pfwhs->hwndFound = hwnd; 
-		return FALSE; 
-	} 
-	else 
-	{ 
-		// Keep enumerating 
-		return TRUE; 
-	} 
-}
-
-HWND GetGameWindow(void)
-{
-	FINDWINDOWHANDLE fwhs;
-	fwhs.ProcessInfo = NULL;
-	fwhs.hwndFound  = NULL;
-
-	EnumWindows(EnumWindowCallBack, (LPARAM)&fwhs);
-	return fwhs.hwndFound;
-}
-
-
-#else
-
-void SendIconToProcess(LPPROCESS_INFORMATION pi, int nGameIndex)
-{
-	HICON hIcon; 
-	int nParentIndex = -1;
-	hIcon = LoadIconFromFile(drivers[nGameIndex]->name); 
-	if( hIcon == NULL ) 
-	{ 
-		//Check if clone, if so try parent icon first 
-		if( DriverIsClone(nGameIndex) ) 
-		{ 
-			nParentIndex = GetParentIndex(drivers[nGameIndex]);
-			if( nParentIndex >= 0)
-				hIcon = LoadIconFromFile(drivers[nParentIndex]->name); 
-			if( hIcon == NULL) 
-			{ 
-				hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_MAME32_ICON)); 
-			} 
-		} 
-		else 
-		{ 
-			hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_MAME32_ICON)); 
-		} 
-	} 
-	WaitForInputIdle( pi->hProcess, INFINITE ); 
-	SendMessageToProcess( pi, WM_SETICON, ICON_SMALL, (LPARAM)hIcon ); 
-	SendMessageToProcess( pi, WM_SETICON, ICON_BIG, (LPARAM)hIcon ); 
-}
-
-void SendMessageToProcess(LPPROCESS_INFORMATION lpProcessInformation, 
-                                      UINT Msg, WPARAM wParam, LPARAM lParam)
-{
-	FINDWINDOWHANDLE fwhs;
-	fwhs.ProcessInfo = lpProcessInformation;
-	fwhs.hwndFound  = NULL;
-
-	EnumWindows(EnumWindowCallBack, (LPARAM)&fwhs);
-
-	SendMessage(fwhs.hwndFound, Msg, wParam, lParam);
-	//Fix for loosing Focus, we reset the Focus on our own Main window
-	SendMessage(fwhs.hwndFound, WM_KILLFOCUS,(WPARAM) hMain, (LPARAM) NULL);
-}
-
-static BOOL CALLBACK EnumWindowCallBack(HWND hwnd, LPARAM lParam) 
-{ 
-	FINDWINDOWHANDLE * pfwhs = (FINDWINDOWHANDLE * )lParam; 
-	DWORD ProcessId; 
-	char buffer[MAX_PATH]; 
-
-	GetWindowThreadProcessId(hwnd, &ProcessId);
-
-	// cmk--I'm not sure I believe this note is necessary
-	// note: In order to make sure we have the MainFrame, verify that the title 
-	// has Zero-Length. Under Windows 98, sometimes the Client Window ( which doesn't 
-	// have a title ) is enumerated before the MainFrame 
-
-	GetWindowText(hwnd, buffer, sizeof(buffer));
-	if (ProcessId  == pfwhs->ProcessInfo->dwProcessId &&
-		 strncmp(buffer,MAMENAME,strlen(MAMENAME)) == 0) 
-	{ 
-		pfwhs->hwndFound = hwnd; 
-		return FALSE; 
-	} 
-	else 
-	{ 
-		// Keep enumerating 
-		return TRUE; 
-	} 
-}
-
-HWND GetGameWindow(LPPROCESS_INFORMATION lpProcessInformation)
-{
-	FINDWINDOWHANDLE fwhs;
-	fwhs.ProcessInfo = lpProcessInformation;
-	fwhs.hwndFound  = NULL;
-
-	EnumWindows(EnumWindowCallBack, (LPARAM)&fwhs);
-	return fwhs.hwndFound;
-}
-
-#endif
 
 /* End of source file */

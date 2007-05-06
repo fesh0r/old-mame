@@ -13,17 +13,11 @@
 #include "osd_cpu.h"
 #include "driver.h"
 #include "datafile.h"
+#include "m32opts.h"
 
 /****************************************************************************
  *      token parsing constants
  ****************************************************************************/
-#ifndef TRUE
-#define TRUE 1
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
 
 #define CR      0x0d    /* '\n' and '\r' meanings are swapped in some */
 #define LF      0x0a    /*     compilers (e.g., Mac compilers) */
@@ -330,7 +324,7 @@ static UINT8 ParseOpen(const char *pszFilename)
 {
         /* Open file up in binary mode */
 
-        mame_fopen(NULL, pszFilename, OPEN_FLAG_READ, &fp);
+        mame_fopen_options(Mame32Global(), NULL, pszFilename, OPEN_FLAG_READ, &fp);
 
         /* If this is NULL, return FALSE. We can't open it */
 
@@ -595,7 +589,7 @@ int load_driver_history (const game_driver *drv, char *buffer, int bufsize)
         *buffer = 0;
 
 
-        if(!history_filename)
+        if (!history_filename || !*history_filename)
                 history_filename = "history.dat";
 
         /* try to open history datafile */
@@ -627,7 +621,7 @@ int load_driver_history (const game_driver *drv, char *buffer, int bufsize)
                 ParseClose ();
         }
 
-        if(!mameinfo_filename)
+        if (!mameinfo_filename || !*mameinfo_filename)
                 mameinfo_filename = "mameinfo.dat";
 
         /* try to open mameinfo datafile */

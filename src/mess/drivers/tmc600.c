@@ -246,16 +246,26 @@ INPUT_PORTS_START( tmc600 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL ) //
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SPECIAL ) // keyboard
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SPECIAL ) //
+
+	PORT_START_TAG("RUN")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Run/Stop") PORT_CODE(KEYCODE_F10) PORT_TOGGLE
 INPUT_PORTS_END
 
 /* CDP1802 Interface */
 
-static void tmc600_q(int level)
+static UINT8 tmc600_mode_r(void)
 {
-	//logerror("q level: %u\n", level);
+	if (readinputportbytag("RUN") & 0x01)
+	{
+		return CDP1802_MODE_RESET;
+	}
+	else
+	{
+		return CDP1802_MODE_RUN;
+	}
 }
 
-static UINT8 tmc600_ef(void)
+static UINT8 tmc600_ef_r(void)
 {
 	int flags = 0x0f;
 
@@ -273,18 +283,42 @@ static UINT8 tmc600_ef(void)
 	return flags;
 }
 
+static void tmc600_q_w(int level)
+{
+}
+
 static CDP1802_CONFIG tmc600_cdp1802_config =
 {
+	tmc600_mode_r,
+	tmc600_ef_r,
 	NULL,
+	tmc600_q_w,
 	NULL,
-	tmc600_q,
-	tmc600_ef,
 	NULL
 };
 
 static INTERRUPT_GEN( vismac_blink_int )
 {
 	vismac_blink = !vismac_blink;
+}
+
+/* Machine Initialization */
+
+static MACHINE_START( tmc600 )
+{
+	state_save_register_global(vismac_reg_latch);
+	state_save_register_global(vismac_color_latch);
+	state_save_register_global(vismac_bkg_latch);
+	state_save_register_global(vismac_blink);
+	state_save_register_global_array(vismac_colorram);
+	state_save_register_global(keylatch);
+
+	return 0;
+}
+
+static MACHINE_RESET( tmc600 )
+{
+	cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
 }
 
 /* Machine Drivers */
@@ -297,7 +331,10 @@ static MACHINE_DRIVER_START( tmc600 )
 	MDRV_CPU_PROGRAM_MAP(tmc600_map, 0)
 	MDRV_CPU_IO_MAP(tmc600_io_map, 0)
 	MDRV_CPU_CONFIG(tmc600_cdp1802_config)
-	MDRV_CPU_PERIODIC_INT(vismac_blink_int, TIME_IN_HZ(2))
+	MDRV_CPU_PERIODIC_INT(vismac_blink_int, 2)
+
+	MDRV_MACHINE_START(tmc600)
+	MDRV_MACHINE_RESET(tmc600)
 
 	// video hardware
 
@@ -453,4 +490,4 @@ static DRIVER_INIT( tmc600 )
 
 //    YEAR  NAME 	  PARENT    COMPAT   MACHINE   INPUT     INIT	 CONFIG    COMPANY 	      FULLNAME
 COMP( 1982, tmc600s1, 0,		0,	     tmc600,   tmc600,   tmc600, tmc600,   "Telercas Oy", "Telmac TMC-600 (Sarja I)",  GAME_NOT_WORKING )
-COMP( 1982, tmc600s2, 0,		0,	     tmc600,   tmc600,   tmc600, tmc600,   "Telercas Oy", "Telmac TMC-600 (Sarja II)", GAME_IMPERFECT_SOUND )
+COMP( 1982, tmc600s2, 0,		0,	     tmc600,   tmc600,   tmc600, tmc600,   "Telercas Oy", "Telmac TMC-600 (Sarja II)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

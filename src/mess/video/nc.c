@@ -108,7 +108,7 @@ VIDEO_UPDATE( nc )
 			px = x;
 			for (b=0; b<8; b++)
 			{
-				plot_pixel(bitmap, px, y, pens[(byte>>7) & 0x01]);
+				*BITMAP_ADDR16(bitmap, y, px) = pens[(byte>>7) & 0x01];
 				byte = byte<<1;
 				px++;
 			}
