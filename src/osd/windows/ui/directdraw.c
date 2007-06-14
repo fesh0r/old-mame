@@ -35,6 +35,7 @@
 
 #endif
 #include <ddraw.h>
+#include <tchar.h>
 
 #include "M32Util.h"
 #include "screenshot.h"
@@ -47,14 +48,14 @@
  ***************************************************************************/
 
 static BOOL WINAPI DDEnumInfo(GUID FAR *lpGUID,
-							  LPSTR 	lpDriverDescription,
-							  LPSTR 	lpDriverName,		 
+							  LPTSTR 	lpDriverDescription,
+							  LPTSTR 	lpDriverName,		 
 							  LPVOID	lpContext,
 							  HMONITOR	hm);
 
 static BOOL WINAPI DDEnumOldInfo(GUID FAR *lpGUID,
-								 LPSTR	   lpDriverDescription,
-								 LPSTR	   lpDriverName,		
+								 LPTSTR	   lpDriverDescription,
+								 LPTSTR	   lpDriverName,		
 								 LPVOID    lpContext);
 
 static void CalculateDisplayModes(void);
@@ -71,7 +72,7 @@ static HRESULT CALLBACK EnumDisplayModesCallback2(DDSURFACEDESC2* pddsd, LPVOID 
 
 typedef struct
 {
-   char* name;
+   TCHAR* name;
    GUID* lpguid;
 } display_type;
 
@@ -154,7 +155,7 @@ BOOL DirectDraw_Initialize(void)
 
 	/* Turn off error dialog for this call */
 	error_mode = SetErrorMode(0);
-	g_hDLL = LoadLibrary("ddraw.dll");
+	g_hDLL = LoadLibrary(TEXT("ddraw.dll"));
 	SetErrorMode(error_mode);
 
 	if (g_hDLL == NULL)
@@ -316,7 +317,7 @@ BOOL DirectDraw_HasRefresh(void)
 	return g_bRefresh;
 }
 
-const char* DirectDraw_GetDisplayName(int num_display)
+LPCTSTR DirectDraw_GetDisplayName(int num_display)
 {
 	return g_Displays[num_display].name;
 }
@@ -326,13 +327,13 @@ const char* DirectDraw_GetDisplayName(int num_display)
 /****************************************************************************/
 
 static BOOL WINAPI DDEnumInfo(GUID FAR *lpGUID,
-							  LPSTR 	lpDriverDescription,
-							  LPSTR 	lpDriverName,		 
+							  LPTSTR 	lpDriverDescription,
+							  LPTSTR 	lpDriverName,		 
 							  LPVOID	lpContext,
 							  HMONITOR	hm)
 {
-	g_Displays[g_nNumDisplays].name = malloc(strlen(lpDriverDescription) + 1);
-	strcpy(g_Displays[g_nNumDisplays].name, lpDriverDescription);
+	g_Displays[g_nNumDisplays].name = malloc((_tcslen(lpDriverDescription) + 1) * sizeof(TCHAR));
+	_tcscpy(g_Displays[g_nNumDisplays].name, lpDriverDescription);
 	
 	if (lpGUID == NULL)
 		g_Displays[g_nNumDisplays].lpguid = NULL;
@@ -350,8 +351,8 @@ static BOOL WINAPI DDEnumInfo(GUID FAR *lpGUID,
 }
 
 static BOOL WINAPI DDEnumOldInfo(GUID FAR *lpGUID,
-								 LPSTR	   lpDriverDescription,
-								 LPSTR	   lpDriverName,		
+								 LPTSTR	   lpDriverDescription,
+								 LPTSTR	   lpDriverName,		
 								 LPVOID    lpContext)
 {
 	return DDEnumInfo(lpGUID, lpDriverDescription, lpDriverName, lpContext, NULL);

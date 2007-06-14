@@ -373,7 +373,6 @@ static const TMS9928a_interface tms9118_interface =
 static MACHINE_START(ti99_8_60hz)
 {
 	TMS9928A_configure(&tms9118_interface);
-	return 0;
 }
 
 static const TMS9928a_interface tms9129_interface =
@@ -387,7 +386,6 @@ static const TMS9928a_interface tms9129_interface =
 static MACHINE_START(ti99_8_50hz)
 {
 	TMS9928A_configure(&tms9129_interface);
-	return 0;
 }
 
 static struct tms9995reset_param ti99_8_processor_config =
@@ -492,7 +490,7 @@ ROM_START(ti99_8)
 
 	/*TMS5220 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
-	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, BAD_DUMP CRC(58b155f7)) /* system speech ROM */
+	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, BAD_DUMP CRC(58b155f7) SHA1(382292295c00dff348d7e17c5ce4da12a1d87763)) /* system speech ROM */
 
 ROM_END
 

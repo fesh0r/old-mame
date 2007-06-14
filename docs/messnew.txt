@@ -1,3 +1,113 @@
+0.116
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Atari 2600 PAL [Wilbert Pol]
+- Sega SG-1000 [Curt Coder]
+- Sega SG-1000 Mark II [Curt Coder]
+- Sega SC-3000 [Curt Coder]
+- Sega SC-3000/Super Control Station SF-7000 [Curt Coder]
+- Texas Instruments TI-82 (not working) [Curt Coder]
+- Texas Instruments TI-83 (not working) [Curt Coder]
+- Texas Instruments TI-83 Plus (not working) [Curt Coder]
+- VTech CreatiVision [Curt Coder]
+- Samsung Gam*Boy II [Wilbert Pol]
+
+
+
+System Driver Changes:
+----------------------
+- [A2600] Updated delay when writing to the playfield registers
+  (bug #389, partially fixes bug #1152).  [Wilbert Pol]
+
+- [A2600] Updated how RESPx/NUSIZx combinations are handled
+  (partially fixes bug #1152).  [Wilbert Pol]
+
+- [A2600] Added support for handling hardware oddity with writes
+  to HMMx when the HMOVE timer is about to expire (bug #391).
+  [Wilbert Pol]
+
+- [A2600] Changed start up bank for 16KB cartridges (partially
+  fixed bug #1170).  [Wilbert Pol]
+
+- [A2600] Recoded tia to support MDRV_SCREEN_RAW_PARAMS and
+  adjusted screen sizes (partially fixes bug #1170).  [Wilbert Pol]
+
+- [A2600] Updated playfield reflect bit to only have effect when
+  set before pixel 80.  (bug #1174) [Wilbert Pol]
+
+- [A2600] Paddles no longer auto-center.  Set default keys for
+  player 4. (bug #1176 and bug #1167)  Adjusted Driving Controller
+  sensitivity, and fixed player two Booster Grip. [Christopher Stone]
+
+- [A2600] Fixed delay behavior when resetting BL/M0/M1 position during
+  HMOVE period.  [Wilbert Pol]
+
+- [A2600] Corrected HMOVE behavior when initiated outside hblank.
+  [Wilbert Pol]
+
+- [A2600] Improved positioning of all graphics when position counters
+  are reset in the extended HBlank period during a HMOVE. (bug #1184)
+  [Wilbert Pol]
+
+- [A2600] HMOVE triggered on the last possible CPU cycle also triggers
+  a delay of the end of HBlank. (bug #1222) [Wilbert Pol]
+
+- [A2600] Rewrote player graphics drawing and handling. [Wilbert Pol]
+
+- [A2600] Added SuperCharger support. [Wilbert Pol]
+
+- [AMIGA] Updated the Amiga driver to output the power and drive LED status
+  to the artwork system. [Dirk Best]
+
+- [COCO/DRAGON] Cartridge slot rearchitecture.  [Nate Woods]
+
+- [FUNVISION] Driver is now working and fully playable. [Curt Coder]
+
+- [VIP] Fixed the RUN/RESET switch to work like the original. [Curt Coder]
+
+- [ABC80] Fixed the keyboard, although scanning is very slow. [Curt Coder]
+
+
+
+User Interface Changes:
+-----------------------
+- Fixed bug mounting files in the old UI.  (bug #1149) [Oliver Stoeneberg]
+
+- [Windows GUI] Fixed a couple of static text fields.  (bug #1073) [Oliver
+  Stoeneberg]
+
+- [Windows GUI] Fixed a crash when adding a system-specific software
+  directory.  (bug #1196) [Oliver Stoeneberg]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.116.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- WD17xx cleanups.  [Nate Woods]
+
+- Fixed a memory leak.  (bug #1019) [Oliver Stoeneberg]
+
+- Massive update to entire sysinfo.dat file. [Fabio Priuli]
+
+- Added many SHA1 hashes. [Fabio Priuli]
+
+- Added some missing TESTDRIVERs to messdriv.c that were only specified in the
+  driver source files.  [Oliver Stoeneberg]
+
+- [Windows] UNICODE=1 fixes.  [Oliver Stoeneberg]
+
+
+
 0.115
 
 New System Drivers Supported (in no particular order):

@@ -30,7 +30,7 @@
 
 #include "tabview.h"
 #include "m32util.h"
-
+#include "strconv.h"
 
 
 struct TabViewInfo
@@ -130,8 +130,8 @@ static int TabView_GetTabFromTabIndex(HWND hwndTabView, int tab_index)
 int TabView_GetCurrentTab(HWND hwndTabView)
 {
 	struct TabViewInfo *pTabViewInfo;
-	LPCTSTR pszTab = NULL;
-	LPCTSTR pszThatTab;
+	LPCSTR pszTab = NULL;
+	LPCSTR pszThatTab;
 	int i, nTab = -1;
 
 	pTabViewInfo = GetTabViewInfo(hwndTabView);
@@ -146,7 +146,7 @@ int TabView_GetCurrentTab(HWND hwndTabView)
 			for (i = 0; i < pTabViewInfo->nTabCount; i++)
 			{
 				pszThatTab = pTabViewInfo->pCallbacks->pfnGetTabShortName(i);
-				if (pszThatTab && !_tcsicmp(pszTab, pszThatTab))
+				if (pszThatTab && !mame_stricmp(pszTab, pszThatTab))
 				{
 					nTab = i;
 					break;
@@ -156,7 +156,7 @@ int TabView_GetCurrentTab(HWND hwndTabView)
 		if (nTab < 0)
 		{
 			nTab = 0;
-			_stscanf(pszTab, TEXT("%d"), &nTab);
+			sscanf(pszTab, "%d", &nTab);
 		}
 	}
 	else
@@ -171,8 +171,8 @@ int TabView_GetCurrentTab(HWND hwndTabView)
 void TabView_SetCurrentTab(HWND hwndTabView, int nTab)
 {
 	struct TabViewInfo *pTabViewInfo;
-	LPCTSTR pszName;
-	TCHAR szBuffer[16];
+	LPCSTR pszName;
+	char szBuffer[16];
 
 	pTabViewInfo = GetTabViewInfo(hwndTabView);
 
@@ -182,8 +182,8 @@ void TabView_SetCurrentTab(HWND hwndTabView, int nTab)
 	}
 	else
 	{
-		_sntprintf(szBuffer, sizeof(szBuffer) / sizeof(szBuffer[0]),
-			TEXT("%d"), nTab);
+		snprintf(szBuffer, sizeof(szBuffer) / sizeof(szBuffer[0]),
+			"%d", nTab);
 		pszName = szBuffer;
 	}
 
@@ -279,6 +279,7 @@ void TabView_Reset(HWND hwndTabView)
 	struct TabViewInfo *pTabViewInfo;
 	TC_ITEM tci;
 	int i;
+	TCHAR* t_text;
 
 	pTabViewInfo = GetTabViewInfo(hwndTabView);
 
@@ -292,8 +293,12 @@ void TabView_Reset(HWND hwndTabView)
 	{
 		if (!pTabViewInfo->pCallbacks->pfnGetShowTab || pTabViewInfo->pCallbacks->pfnGetShowTab(i))
 		{
-			tci.pszText = (TCHAR *) pTabViewInfo->pCallbacks->pfnGetTabLongName(i);
+			t_text = tstring_from_utf8(pTabViewInfo->pCallbacks->pfnGetTabLongName(i));
+			if( !t_text )
+				return;
+			tci.pszText = t_text;
 			TabCtrl_InsertItem(hwndTabView, i, &tci);
+			free(t_text);
 		}
 	}
 	TabView_UpdateSelection(hwndTabView);

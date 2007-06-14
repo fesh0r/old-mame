@@ -88,7 +88,7 @@ READ8_HANDLER (trs80_wd179x_r)
 {
 	if (readinputport(0) & 0x80)
 	{
-		return wd179x_status_r(offset);
+		return wd17xx_status_r(offset);
 	}
 	else
 	{
@@ -114,10 +114,10 @@ static ADDRESS_MAP_START( mem_model1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x37e0, 0x37e3) AM_READWRITE(trs80_irq_status_r, trs80_motor_w)
 	AM_RANGE(0x37e4, 0x37e7) AM_NOP
 	AM_RANGE(0x37e8, 0x37eb) AM_READWRITE(trs80_printer_r, trs80_printer_w)
-	AM_RANGE(0x37ec, 0x37ec) AM_READWRITE(trs80_wd179x_r, wd179x_command_w)
-	AM_RANGE(0x37ed, 0x37ed) AM_READWRITE(wd179x_track_r, wd179x_track_w)
-	AM_RANGE(0x37ee, 0x37ee) AM_READWRITE(wd179x_sector_r, wd179x_sector_w)
-	AM_RANGE(0x37ef, 0x37ef) AM_READWRITE(wd179x_data_r, wd179x_data_w)
+	AM_RANGE(0x37ec, 0x37ec) AM_READWRITE(trs80_wd179x_r, wd17xx_command_w)
+	AM_RANGE(0x37ed, 0x37ed) AM_READWRITE(wd17xx_track_r, wd17xx_track_w)
+	AM_RANGE(0x37ee, 0x37ee) AM_READWRITE(wd17xx_sector_r, wd17xx_sector_w)
+	AM_RANGE(0x37ef, 0x37ef) AM_READWRITE(wd17xx_data_r, wd17xx_data_w)
 	AM_RANGE(0x37f0, 0x37ff) AM_NOP
 	AM_RANGE(0x3800, 0x38ff) AM_READ(trs80_keyboard_r)
 	AM_RANGE(0x3900, 0x3bff) AM_NOP
@@ -140,10 +140,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( io_model3, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xe0, 0xe3) AM_READWRITE(trs80_irq_status_r, trs80_irq_mask_w)
 	AM_RANGE(0xe4, 0xe4)	AM_WRITE(trs80_motor_w)
-	AM_RANGE(0xf0, 0xf0) AM_READWRITE(trs80_wd179x_r, wd179x_command_w)
-	AM_RANGE(0xf1, 0xf1) AM_READWRITE(wd179x_track_r, wd179x_track_w)
-	AM_RANGE(0xf2, 0xf2) AM_READWRITE(wd179x_sector_r, wd179x_sector_w)
-	AM_RANGE(0xf3, 0xf3) AM_READWRITE(wd179x_data_r, wd179x_data_w)
+	AM_RANGE(0xf0, 0xf0) AM_READWRITE(trs80_wd179x_r, wd17xx_command_w)
+	AM_RANGE(0xf1, 0xf1) AM_READWRITE(wd17xx_track_r, wd17xx_track_w)
+	AM_RANGE(0xf2, 0xf2) AM_READWRITE(wd17xx_sector_r, wd17xx_sector_w)
+	AM_RANGE(0xf3, 0xf3) AM_READWRITE(wd17xx_data_r, wd17xx_data_w)
 	AM_RANGE(0xff, 0xff) AM_READWRITE(trs80_port_ff_r, trs80_port_ff_w)
 ADDRESS_MAP_END
 
@@ -325,7 +325,7 @@ static unsigned short trs80_colortable[] =
 /* Initialise the palette */
 static PALETTE_INIT( trs80 )
 {
-	palette_set_colors(machine, 0, trs80_palette, sizeof(trs80_palette)/3);
+	palette_set_colors_rgb(machine, 0, trs80_palette, sizeof(trs80_palette)/3);
 	memcpy(colortable,trs80_colortable,sizeof(trs80_colortable));
 }
 
@@ -450,7 +450,7 @@ ROM_END
 
 ROM_START(trs80m3)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("trs80m3.rom", 0x0000, 0x3800, CRC(bddbf843))
+	ROM_LOAD("trs80m3.rom", 0x0000, 0x3800, CRC(bddbf843) SHA1(04a1f062cf73c3931c038434e3f299482b6bf613))
 
 	ROM_REGION(0x00c00, REGION_GFX1,0)
 	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, CRC(0033f2b9) SHA1(0d2cd4197d54e2e872b515bbfdaa98efe502eda7))

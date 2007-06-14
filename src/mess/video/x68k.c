@@ -782,7 +782,7 @@ PALETTE_INIT( x68000 )
 		g = (pal & 0x7c00) >> 7;
 		r = (pal & 0x03e0) >> 2;
 		b = (pal & 0x001f) << 3;
-		palette_set_color(machine,pal+512,r,g,b);
+		palette_set_color_rgb(machine,pal+512,r,g,b);
 	}
 }
 
@@ -818,35 +818,35 @@ static gfx_decode x68k_gfxdecodeinfo[] =
 };
 */
 
-static void x68k_get_bg0_tile(int index)
+static TILE_GET_INFO(x68k_get_bg0_tile)
 {
-	int code = x68k_spriteram[0x3000+index] & 0x00ff;
-	int colour = (x68k_spriteram[0x3000+index] & 0x0f00) >> 8;
-	int flags = (x68k_spriteram[0x3000+index] & 0xc000) >> 14;
+	int code = x68k_spriteram[0x3000+tile_index] & 0x00ff;
+	int colour = (x68k_spriteram[0x3000+tile_index] & 0x0f00) >> 8;
+	int flags = (x68k_spriteram[0x3000+tile_index] & 0xc000) >> 14;
 	SET_TILE_INFO(0,code,colour,flags)
 }
 
-static void x68k_get_bg1_tile(int index)
+static TILE_GET_INFO(x68k_get_bg1_tile)
 {
-	int code = x68k_spriteram[0x2000+index] & 0x00ff;
-	int colour = (x68k_spriteram[0x2000+index] & 0x0f00) >> 8;
-	int flags = (x68k_spriteram[0x2000+index] & 0xc000) >> 14;
+	int code = x68k_spriteram[0x2000+tile_index] & 0x00ff;
+	int colour = (x68k_spriteram[0x2000+tile_index] & 0x0f00) >> 8;
+	int flags = (x68k_spriteram[0x2000+tile_index] & 0xc000) >> 14;
 	SET_TILE_INFO(0,code,colour,flags)
 }
 
-static void x68k_get_bg0_tile_16(int index)
+static TILE_GET_INFO(x68k_get_bg0_tile_16)
 {
-	int code = x68k_spriteram[0x3000+index] & 0x00ff;
-	int colour = (x68k_spriteram[0x3000+index] & 0x0f00) >> 8;
-	int flags = (x68k_spriteram[0x3000+index] & 0xc000) >> 14;
+	int code = x68k_spriteram[0x3000+tile_index] & 0x00ff;
+	int colour = (x68k_spriteram[0x3000+tile_index] & 0x0f00) >> 8;
+	int flags = (x68k_spriteram[0x3000+tile_index] & 0xc000) >> 14;
 	SET_TILE_INFO(1,code,colour,flags)
 }
 
-static void x68k_get_bg1_tile_16(int index)
+static TILE_GET_INFO(x68k_get_bg1_tile_16)
 {
-	int code = x68k_spriteram[0x2000+index] & 0x00ff;
-	int colour = (x68k_spriteram[0x2000+index] & 0x0f00) >> 8;
-	int flags = (x68k_spriteram[0x2000+index] & 0xc000) >> 14;
+	int code = x68k_spriteram[0x2000+tile_index] & 0x00ff;
+	int colour = (x68k_spriteram[0x2000+tile_index] & 0x0f00) >> 8;
+	int flags = (x68k_spriteram[0x2000+tile_index] & 0xc000) >> 14;
 	SET_TILE_INFO(1,code,colour,flags)
 }
 
@@ -892,8 +892,6 @@ VIDEO_START( x68000 )
 	tilemap_set_transparent_pen(x68k_bg1_16,0);
 
 //	timer_adjust(scanline_timer,TIME_NOW,0,TIME_IN_HZ(55.45)/568);
-
-	return 0;
 }
 
 VIDEO_UPDATE( x68000 )

@@ -22,6 +22,7 @@
 #include <shlwapi.h>
 #include <assert.h>
 #include <stdio.h>
+#include <tchar.h>
 
 #include "unzip.h"
 #include "bitmask.h"
@@ -29,6 +30,8 @@
 #include "sound/samples.h"
 #include "MAME32.h"
 #include "M32Util.h"
+#include "winutf8.h"
+#include "strconv.h"
 
 
 /***************************************************************************
@@ -90,7 +93,7 @@ void __cdecl ErrorMsg(const char* fmt, ...)
 
 	vsprintf(buf, fmt, va);
 
-	MessageBox(GetActiveWindow(), buf, MAME32NAME, MB_OK | MB_ICONERROR);
+	win_message_box_utf8(GetActiveWindow(), buf, MAME32NAME, MB_OK | MB_ICONERROR);
 
 	strcpy(buf2, MAME32NAME ": ");
 	strcat(buf2,buf);
@@ -112,14 +115,14 @@ void __cdecl ErrorMsg(const char* fmt, ...)
 
 void __cdecl dprintf(const char* fmt, ...)
 {
-	char	buf[5000];
+	char 	buf[5000];
 	va_list va;
 
 	va_start(va, fmt);
 
 	_vsnprintf(buf,sizeof(buf),fmt,va);
 
-	OutputDebugString(buf);
+	win_output_debug_string_utf8(buf);
 
 	va_end(va);
 }
@@ -144,7 +147,7 @@ UINT GetDepth(HWND hWnd)
  */
 LONG GetCommonControlVersion()
 {
-	HMODULE hModule = GetModuleHandle("comctl32");
+	HMODULE hModule = GetModuleHandle(TEXT("comctl32"));
 
 	if (hModule)
 	{
@@ -196,43 +199,53 @@ LONG GetCommonControlVersion()
 void DisplayTextFile(HWND hWnd, const char *cName)
 {
 	HINSTANCE hErr;
-	const char	  *msg = 0;
-
-	hErr = ShellExecute(hWnd, NULL, cName, NULL, NULL, SW_SHOWNORMAL);
-	if ((int)hErr > 32)
+	LPCTSTR	  msg = 0;
+	LPTSTR    tName;
+	
+	tName = tstring_from_utf8(cName);
+	if( !tName )
 		return;
+
+	hErr = ShellExecute(hWnd, NULL, tName, NULL, NULL, SW_SHOWNORMAL);
+	if ((int)hErr > 32) 
+	{
+		free(tName);
+		return;
+	}
 
 	switch((int)hErr)
 	{
 	case 0:
-		msg = "The operating system is out of memory or resources.";
+		msg = TEXT("The operating system is out of memory or resources.");
 		break;
 
 	case ERROR_FILE_NOT_FOUND:
-		msg = "The specified file was not found."; 
+		msg = TEXT("The specified file was not found."); 
 		break;
 
 	case SE_ERR_NOASSOC :
-		msg = "There is no application associated with the given filename extension.";
+		msg = TEXT("There is no application associated with the given filename extension.");
 		break;
 
 	case SE_ERR_OOM :
-		msg = "There was not enough memory to complete the operation.";
+		msg = TEXT("There was not enough memory to complete the operation.");
 		break;
 
 	case SE_ERR_PNF :
-		msg = "The specified path was not found.";
+		msg = TEXT("The specified path was not found.");
 		break;
 
 	case SE_ERR_SHARE :
-		msg = "A sharing violation occurred.";
+		msg = TEXT("A sharing violation occurred.");
 		break;
 
 	default:
-		msg = "Unknown error.";
+		msg = TEXT("Unknown error.");
 	}
  
-	MessageBox(NULL, msg, cName, MB_OK); 
+	MessageBox(NULL, msg, tName, MB_OK);
+	
+	free(tName);
 }
 
 char* MyStrStrI(const char* pFirst, const char* pSrch)
@@ -284,17 +297,17 @@ char * ConvertToWindowsNewlines(const char *source)
  */
 const char * GetDriverFilename(int nIndex)
 {
-    static char tmp[40];
-    char *ptmp;
+	static char tmp[40];
+	char *ptmp;
 
 	const char *s = drivers[nIndex]->source_file;
 
-    tmp[0] = '\0';
+	tmp[0] = '\0';
 
 	ptmp = strrchr(s, '\\');
 	if (ptmp == NULL)
 		ptmp = strrchr(s, '/');
-    if (ptmp == NULL)
+	if (ptmp == NULL)
 		return s;
 
 	ptmp++;
@@ -504,4 +517,118 @@ BOOL SafeIsAppThemed(void)
 	}
 	return bResult;
 
+}
+
+
+
+//============================================================
+//  win_extract_icon_utf8
+//============================================================
+
+HICON win_extract_icon_utf8(HINSTANCE inst, const char* exefilename, UINT iconindex)
+{
+	HICON icon = 0;
+	TCHAR* t_exefilename = tstring_from_utf8(exefilename);
+	if( !t_exefilename )
+		return icon;
+	
+	icon = ExtractIcon(inst, t_exefilename, iconindex);
+	
+	free(t_exefilename);
+	
+	return icon;
+}
+
+
+
+//============================================================
+//  win_tstring_strdup
+//============================================================
+
+TCHAR* win_tstring_strdup(LPCTSTR str)
+{
+	TCHAR *cpy = NULL;
+	if (str != NULL)
+	{
+		cpy = malloc((_tcslen(str) + 1) * sizeof(TCHAR));
+		if (cpy != NULL)
+			_tcscpy(cpy, str);
+	}
+	return cpy;
+}
+
+//============================================================
+//  win_create_file_utf8
+//============================================================
+
+HANDLE win_create_file_utf8(const char* filename, DWORD desiredmode, DWORD sharemode, 
+					   		LPSECURITY_ATTRIBUTES securityattributes, DWORD creationdisposition,
+					   		DWORD flagsandattributes, HANDLE templatehandle)
+{
+	HANDLE result = 0;
+	TCHAR* t_filename = tstring_from_utf8(filename);
+	if( !t_filename )
+		return result;
+	
+	result = CreateFile(t_filename, desiredmode, sharemode, securityattributes, creationdisposition,
+						flagsandattributes, templatehandle);
+
+	free(t_filename);
+						
+	return result;
+}
+
+//============================================================
+//  win_get_current_directory_utf8
+//============================================================
+
+DWORD win_get_current_directory_utf8(DWORD bufferlength, char* buffer)
+{
+	DWORD result = 0;
+	TCHAR* t_buffer = NULL;
+	char* utf8_buffer = NULL;
+	
+	if( bufferlength > 0 ) {
+		t_buffer = malloc((bufferlength * sizeof(TCHAR)) + 1);
+		if( !t_buffer )
+			return result;
+	}
+	
+	result = GetCurrentDirectory(bufferlength, t_buffer);
+	
+	if( bufferlength > 0 ) {
+		utf8_buffer = utf8_from_tstring(t_buffer);
+		if( !utf8_buffer ) {
+			free(t_buffer);
+			return result;
+		}
+	}
+		
+	strncpy(buffer, utf8_buffer, bufferlength);
+	
+	if( utf8_buffer )
+		free(utf8_buffer);
+	
+	if( t_buffer )
+		free(t_buffer);
+	
+	return result;
+}
+
+//============================================================
+//  win_find_first_file_utf8
+//============================================================
+
+HANDLE win_find_first_file_utf8(const char* filename, LPWIN32_FIND_DATA findfiledata)
+{
+	HANDLE result = 0;
+	TCHAR* t_filename = tstring_from_utf8(filename);
+	if( !t_filename )
+		return result;
+	
+	result = FindFirstFile(t_filename, findfiledata);
+	
+	free(t_filename);
+	
+	return result;
 }

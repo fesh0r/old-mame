@@ -33,6 +33,7 @@
 #include "uitext.h"
 #include "strconv.h"
 #include "mess32ui.h"
+#include "winutf8.h"
 
 #define LOG_SOFTWARE	0
 
@@ -40,22 +41,22 @@ static int requested_device_type(char *tchar);
 
 static void SoftwarePicker_OnHeaderContextMenu(POINT pt, int nColumn);
 
-static LPCTSTR SoftwareTabView_GetTabShortName(int tab);
-static LPCTSTR SoftwareTabView_GetTabLongName(int tab);
+static LPCSTR SoftwareTabView_GetTabShortName(int tab);
+static LPCSTR SoftwareTabView_GetTabLongName(int tab);
 static void SoftwareTabView_OnSelectionChanged(void);
 static void SoftwareTabView_OnMoveSize(void);
 static void SetupSoftwareTabView(void);
 
-static const char *mess_column_names[] =
+static LPCTSTR mess_column_names[] =
 {
-    "Software",
-	"Goodname",
-    "Manufacturer",
-    "Year",
-    "Playable",
-	"CRC",
-	"SHA-1",
-	"MD5"
+    TEXT("Software"),
+	TEXT("Goodname"),
+    TEXT("Manufacturer"),
+    TEXT("Year"),
+    TEXT("Playable"),
+	TEXT("CRC"),
+	TEXT("SHA-1"),
+	TEXT("MD5")
 };
 
 static int *mess_icon_index;
@@ -77,7 +78,7 @@ static LPCTSTR DevView_GetSelectedSoftware(HWND hwndDevView, int nDriverIndex, c
 static void MessTestsBegin(void);
 #endif /* MAME_DEBUG */
 
-TCHAR g_szSelectedItem[MAX_PATH];
+char g_szSelectedItem[MAX_PATH];
 
 static int s_nGame;
 static BOOL s_bIgnoreSoftwarePickerNotifies;
@@ -296,11 +297,11 @@ static void MessHashErrorProc(const char *message)
 
 
 
-static BOOL AddSoftwarePickerDirs(HWND hwndPicker, LPCTSTR pszDirectories, LPCTSTR pszSubDir)
+static BOOL AddSoftwarePickerDirs(HWND hwndPicker, LPCSTR pszDirectories, LPCSTR pszSubDir)
 {
-	LPCTSTR s;
-	LPTSTR pszNewString;
-	TCHAR cSeparator = ';';
+	LPCSTR s;
+	LPSTR pszNewString;
+	char cSeparator = ';';
 	int nLength;
 
 	do
@@ -312,15 +313,14 @@ static BOOL AddSoftwarePickerDirs(HWND hwndPicker, LPCTSTR pszDirectories, LPCTS
 		nLength = s - pszDirectories;
 		if (nLength > 0)
 		{
-			pszNewString = (LPTSTR) alloca((nLength + 1 + (pszSubDir ? _tcslen(pszSubDir) + 1 : 0))
-				* sizeof(TCHAR));
-			memcpy(pszNewString, pszDirectories, nLength * sizeof(TCHAR));
+			pszNewString = (LPSTR) alloca((nLength + 1 + (pszSubDir ? strlen(pszSubDir) + 1 : 0)));
+			memcpy(pszNewString, pszDirectories, nLength);
 			pszNewString[nLength] = '\0';
 
 			if (pszSubDir)
 			{
 				pszNewString[nLength++] = '\\';
-				_tcscpy(&pszNewString[nLength], pszSubDir);
+				strcpy(&pszNewString[nLength], pszSubDir);
 			}
 
 			if (!SoftwarePicker_AddDirectory(hwndPicker, pszNewString))
@@ -378,8 +378,7 @@ BOOL MessApproveImageList(HWND hParent, int nGame)
 	const struct IODevice *pDevice;
 	const game_driver *pDriver;
 	char szMessage[256];
-	LPCTSTR pszMessage;
-	LPCTSTR pszSoftware;
+	LPCSTR pszSoftware;
 	BOOL bResult = FALSE;
 
 	begin_resource_tracking();
@@ -415,9 +414,7 @@ BOOL MessApproveImageList(HWND hParent, int nGame)
 done:
 	if (!bResult)
 	{
-		pszMessage = tstring_from_utf8(szMessage);
-		MessageBox(hParent, pszMessage, MAME32NAME, MB_OK);
-		free((void *) pszMessage);
+		win_message_box_utf8(hParent, szMessage, MAME32NAME, MB_OK);
 	}
 
 	end_resource_tracking();
@@ -430,7 +427,7 @@ done:
 static void InternalSetSelectedSoftware(int nGame, const device_class *devclass, int device_inst, const char *pszSoftware)
 {
 	if (!pszSoftware)
-		pszSoftware = TEXT("");
+		pszSoftware = "";
 
 	// only call SetSelectedSoftware() if this value is different
 	if (strcmp(GetSelectedSoftware(nGame, devclass, device_inst), pszSoftware))
@@ -444,7 +441,7 @@ static void InternalSetSelectedSoftware(int nGame, const device_class *devclass,
 
 
 // Places the specified image in the specified slot; nID = -1 means don't matter
-static void MessSpecifyImage(int nGame, const device_class *devclass, int nID, LPCTSTR pszFilename)
+static void MessSpecifyImage(int nGame, const device_class *devclass, int nID, LPCSTR pszFilename)
 {
 	const struct IODevice *devices;
 	const struct IODevice *dev;
@@ -471,7 +468,7 @@ static void MessSpecifyImage(int nGame, const device_class *devclass, int nID, L
 		for (i = 0; i < dev->count; i++)
 		{
 			s = GetSelectedSoftware(nGame, &dev->devclass, i);
-			if (s && !_tcsicmp(s, pszFilename))
+			if (s && !mame_stricmp(s, pszFilename))
 			{
 				nID = i;
 				break;
@@ -485,7 +482,7 @@ static void MessSpecifyImage(int nGame, const device_class *devclass, int nID, L
 		for (i = 0; i < dev->count; i++)
 		{
 			s = GetSelectedSoftware(nGame, &dev->devclass, i);
-			if (!s || !*s || !_tcsicmp(s, pszFilename))
+			if (!s || !*s || !mame_stricmp(s, pszFilename))
 			{
 				nID = i;
 				break;
@@ -503,7 +500,7 @@ static void MessSpecifyImage(int nGame, const device_class *devclass, int nID, L
 
 
 
-static void MessRemoveImage(int nGame, device_class devclass, LPCTSTR pszFilename)
+static void MessRemoveImage(int nGame, device_class devclass, LPCSTR pszFilename)
 {
 	int i, nPos;
 	const struct IODevice *devices;
@@ -526,7 +523,7 @@ static void MessRemoveImage(int nGame, device_class devclass, LPCTSTR pszFilenam
 		{
 			for (i = 0; i < dev->count; i++)
 			{
-				if (!_tcsicmp(pszFilename, GetSelectedSoftware(nGame, &dev->devclass, i)))
+				if (!mame_stricmp(pszFilename, GetSelectedSoftware(nGame, &dev->devclass, i)))
 				{
 					MessSpecifyImage(nGame, &devclass, i, NULL);
 					break;
@@ -559,7 +556,7 @@ static void MessRefreshPicker(int nGame)
 	const game_driver *pDriver;
 	const struct IODevice *pDeviceList;
 	const struct IODevice *pDevice;
-	LPCTSTR pszSoftware;
+	LPCSTR pszSoftware;
 
 	begin_resource_tracking();
 
@@ -651,7 +648,7 @@ typedef struct
     const char *ext;
 } mess_image_type;
 
-static BOOL CommonFileImageDialog(char *the_last_directory, common_file_dialog_proc cfd, char *filename, mess_image_type *imagetypes)
+static BOOL CommonFileImageDialog(LPTSTR the_last_directory, common_file_dialog_proc cfd, LPTSTR filename, mess_image_type *imagetypes)
 {
     BOOL success;
     OPENFILENAME of;
@@ -659,13 +656,16 @@ static BOOL CommonFileImageDialog(char *the_last_directory, common_file_dialog_p
     LPSTR s;
 	const char *typname;
     int i;
+    TCHAR* t_filter;
+    TCHAR* t_buffer;
 
 	s = szFilter;
     *filename = 0;
 
     // Common image types
     strcpy(s, "Common image types");
-    s += strlen(s) + 1;
+    s += strlen(s);
+    *(s++) = '|';
     for (i = 0; imagetypes[i].ext; i++)
 	{
 		assert(!IsBadStringPtr(imagetypes[i].ext, ~0));
@@ -675,13 +675,15 @@ static BOOL CommonFileImageDialog(char *the_last_directory, common_file_dialog_p
         s += strlen(s);
         *(s++) = ';';
     }
-    *(s++) = '\0';
+    *(s++) = '|';
 
     // All files
     strcpy(s, "All files (*.*)");
-    s += strlen(s) + 1;
+    s += strlen(s);
+    *(s++) = '|';
     strcpy(s, "*.*");
-    s += strlen(s) + 1;
+    s += strlen(s);
+    *(s++) = '|';
 
     // The others
     for (i = 0; imagetypes[i].ext; i++)
@@ -692,27 +694,37 @@ static BOOL CommonFileImageDialog(char *the_last_directory, common_file_dialog_p
 			typname = lookupdevice(imagetypes[i].dev->type)->dlgname;
 
         strcpy(s, typname);
-        //strcpy(s, imagetypes[i].ext);
         s += strlen(s);
         strcpy(s, " (*.");
-        //strcpy(s, " files (*.");
         s += strlen(s);
         strcpy(s, imagetypes[i].ext);
         s += strlen(s);
         *(s++) = ')';
-        *(s++) = '\0';
+        *(s++) = '|';
         *(s++) = '*';
         *(s++) = '.';
         strcpy(s, imagetypes[i].ext);
         s += strlen(s);
-        *(s++) = '\0';
+        *(s++) = '|';
     }
-    *(s++) = '\0';
+    *(s++) = '|';
+    
+    t_buffer = tstring_from_utf8(szFilter);
+    if( !t_buffer )
+	    return FALSE;
+
+	// convert a pipe-char delimited string into a NUL delimited string
+	t_filter = (LPTSTR) alloca((_tcslen(t_buffer) + 2) * sizeof(*t_filter));
+	for (i = 0; t_buffer[i] != '\0'; i++)
+		t_filter[i] = (t_buffer[i] != '|') ? t_buffer[i] : '\0';
+	t_filter[i++] = '\0';
+	t_filter[i++] = '\0';
+	free(t_buffer);
 
     of.lStructSize = sizeof(of);
     of.hwndOwner = GetMainWindow();
     of.hInstance = NULL;
-    of.lpstrFilter = szFilter;
+    of.lpstrFilter = t_filter;
     of.lpstrCustomFilter = NULL;
     of.nMaxCustFilter = 0;
     of.nFilterIndex = 1;
@@ -725,7 +737,7 @@ static BOOL CommonFileImageDialog(char *the_last_directory, common_file_dialog_p
     of.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
     of.nFileOffset = 0;
     of.nFileExtension = 0;
-    of.lpstrDefExt = "rom";
+    of.lpstrDefExt = TEXT("rom");
     of.lCustData = 0;
     of.lpfnHook = NULL;
     of.lpTemplateName = NULL;
@@ -735,6 +747,8 @@ static BOOL CommonFileImageDialog(char *the_last_directory, common_file_dialog_p
     {
         //GetDirectory(filename,last_directory,sizeof(last_directory));
     }
+    
+    free(t_filter);
 
     return success;
 }
@@ -791,10 +805,11 @@ static void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL
 
 static void MessSetupDevice(common_file_dialog_proc cfd, int iDevice)
 {
-	char filename[MAX_PATH];
+	TCHAR filename[MAX_PATH];
 	mess_image_type imagetypes[64];
 	int nGame;
 	HWND hwndList;
+	char* utf8_filename;
 
 	begin_resource_tracking();
 
@@ -804,8 +819,12 @@ static void MessSetupDevice(common_file_dialog_proc cfd, int iDevice)
 
 	if (CommonFileImageDialog(last_directory, cfd, filename, imagetypes))
 	{
+		utf8_filename = utf8_from_tstring(filename);
+		if( !utf8_filename )
+			return;
 		// TODO - this should go against InternalSetSelectedSoftware()
-		SoftwarePicker_AddFile(GetDlgItem(GetMainWindow(), IDC_SWLIST), filename);
+		SoftwarePicker_AddFile(GetDlgItem(GetMainWindow(), IDC_SWLIST), utf8_filename);
+		free(utf8_filename);
 	}
 	end_resource_tracking();
 }
@@ -865,8 +884,12 @@ static BOOL DevView_GetCreateFileName(HWND hwndDevView, const struct IODevice *d
 static void DevView_SetSelectedSoftware(HWND hwndDevView, int nGame,
 	const struct IODevice *dev, int nID, LPCTSTR pszFilename)
 {
-	MessSpecifyImage(nGame, &dev->devclass, nID, pszFilename);
+	char* utf8_filename = utf8_from_tstring(pszFilename);
+	if( !utf8_filename )
+		return;
+	MessSpecifyImage(nGame, &dev->devclass, nID, utf8_filename);
 	MessRefreshPicker(nGame);
+	free(utf8_filename);
 }
 
 
@@ -874,7 +897,19 @@ static void DevView_SetSelectedSoftware(HWND hwndDevView, int nGame,
 static LPCTSTR DevView_GetSelectedSoftware(HWND hwndDevView, int nDriverIndex,
 	const struct IODevice *dev, int nID, LPTSTR pszBuffer, UINT nBufferLength)
 {
-	return GetSelectedSoftware(nDriverIndex, &dev->devclass, nID);
+	LPCTSTR t_buffer = NULL;
+	TCHAR* t_s;
+	LPCSTR s = GetSelectedSoftware(nDriverIndex, &dev->devclass, nID);
+	
+	t_s = tstring_from_utf8(s);
+	if( !t_s )
+		return t_buffer;
+	
+	_sntprintf(pszBuffer, nBufferLength, TEXT("%s"), t_s);
+	free(t_s);	
+	t_buffer = pszBuffer;
+	
+	return t_buffer;
 }
 
 
@@ -933,7 +968,7 @@ static void SoftwarePicker_LeavingItem(HWND hwndSoftwarePicker, int nItem)
 {
 	int nGame;
 	device_class devclass;
-	LPCTSTR pszFullName;
+	LPCSTR pszFullName;
 	HWND hwndList;
 
 	if (!s_bIgnoreSoftwarePickerNotifies)
@@ -951,9 +986,9 @@ static void SoftwarePicker_LeavingItem(HWND hwndSoftwarePicker, int nItem)
 
 static void SoftwarePicker_EnteringItem(HWND hwndSoftwarePicker, int nItem)
 {
-	LPCTSTR pszFullName;
-	LPCTSTR pszName;
-	LPTSTR s;
+	LPCSTR pszFullName;
+	LPCSTR pszName;
+	LPSTR s;
 	int nGame;
 	device_class devclass;
 	HWND hwndList;
@@ -966,7 +1001,7 @@ static void SoftwarePicker_EnteringItem(HWND hwndSoftwarePicker, int nItem)
 
 		// Get the fullname and partialname for this file
 		pszFullName = SoftwarePicker_LookupFilename(hwndSoftwarePicker, nItem);
-		s = strrchr(pszFullName, '\\');
+		s = strchr(pszFullName, '\\');
 		pszName = s ? s + 1 : pszFullName;
 
 		// Do the dirty work
@@ -1027,11 +1062,15 @@ static void MySetColumnInfo(int *order, int *shown)
 
 static INT_PTR CALLBACK MyColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
+	INT_PTR result = 0;
 	int nColumnCount = Picker_GetColumnCount(MyColumnDialogProc_hwndPicker);
 	LPCTSTR *ppszColumnNames = Picker_GetColumnNames(MyColumnDialogProc_hwndPicker);
-	return InternalColumnDialogProc(hDlg, Msg, wParam, lParam, nColumnCount,
+	
+	result = InternalColumnDialogProc(hDlg, Msg, wParam, lParam, nColumnCount,
 		MyColumnDialogProc_shown, MyColumnDialogProc_order, ppszColumnNames,
 		MyGetRealColumnOrder, MyGetColumnInfo, MySetColumnInfo);
+		
+	return result;
 }
 
 
@@ -1126,24 +1165,24 @@ BOOL MessCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 // Software Tab View 
 // ------------------------------------------------------------------------
 
-static LPCTSTR s_tabs[] =
+static LPCSTR s_tabs[] =
 {
-	TEXT("picker\0Picker"),
-	TEXT("devview\0Device View")
+	"picker\0Picker",
+	"devview\0Device View"
 };
 
 
 
-static LPCTSTR SoftwareTabView_GetTabShortName(int tab)
+static LPCSTR SoftwareTabView_GetTabShortName(int tab)
 {
 	return s_tabs[tab];
 }
 
 
 
-static LPCTSTR SoftwareTabView_GetTabLongName(int tab)
+static LPCSTR SoftwareTabView_GetTabLongName(int tab)
 {
-	return s_tabs[tab] + _tcslen(s_tabs[tab]) + 1;
+	return s_tabs[tab] + strlen(s_tabs[tab]) + 1;
 }
 
 
@@ -1298,7 +1337,7 @@ static void CALLBACK MessTestsTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, 
 		KillTimer(NULL, s_nTestingTimer);
 		s_nTestingTimer = 0;
 
-		MessageBox(GetMainWindow(), "Tests successfully completed!", MAME32NAME, MB_OK);
+		MessageBox(GetMainWindow(), TEXT("Tests successfully completed!"), TEXT(MAME32NAME), MB_OK);
 	}
 	else
 	{

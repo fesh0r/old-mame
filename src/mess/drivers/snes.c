@@ -173,7 +173,7 @@ static PALETTE_INIT( snes )
 		r = (i & 0x1F) << 3;
 		g = ((i >> 5) & 0x1F) << 3;
 		b = ((i >> 10) & 0x1F) << 3;
-		palette_set_color(machine,  i, r, g, b );
+		palette_set_color_rgb(machine,  i, r, g, b );
 	}
 
 	/* The colortable can be black */
@@ -256,7 +256,7 @@ static void snes_machine_stop(running_machine *machine)
 static MACHINE_START( snes_mess )
 {
 	add_exit_callback(machine, snes_machine_stop);
-	return machine_start_snes(machine);
+	machine_start_snes(machine);
 }
 
 static int device_load_snes_cart(mess_image *image)

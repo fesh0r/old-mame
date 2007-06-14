@@ -85,7 +85,7 @@ DRIVER_INIT( at386 )
 
 DRIVER_INIT( at586 )
 {
-	init_at386(machine);
+	driver_init_at386(machine);
 	intel82439tx_init();
 }
 
@@ -159,7 +159,6 @@ static int at_irq_callback(int irqline)
 MACHINE_START( at )
 {
 	cpunum_set_irq_callback(0, at_irq_callback);
-	return 0;
 }
 
 

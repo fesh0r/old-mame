@@ -1173,7 +1173,7 @@ WRITE16_HANDLER( x68k_vid_w )
 	{
 		COMBINE_DATA(sys.video.gfx_pal+offset);
 		val = sys.video.gfx_pal[offset];
-		palette_set_color(Machine,offset,(val & 0x07c0) >> 3,(val & 0xf800) >> 8,(val & 0x003e) << 2);
+		palette_set_color_rgb(Machine,offset,(val & 0x07c0) >> 3,(val & 0xf800) >> 8,(val & 0x003e) << 2);
 		return;
 	}
 
@@ -1181,7 +1181,7 @@ WRITE16_HANDLER( x68k_vid_w )
 	{
 		COMBINE_DATA(sys.video.text_pal+offset);
 		val = sys.video.text_pal[offset];
-		palette_set_color(Machine,offset,(val & 0x07c0) >> 3,(val & 0xf800) >> 8,(val & 0x003e) << 2);
+		palette_set_color_rgb(Machine,offset,(val & 0x07c0) >> 3,(val & 0xf800) >> 8,(val & 0x003e) << 2);
 		return;
 	}
 
@@ -1830,8 +1830,6 @@ MACHINE_START( x68000 )
 	// start mouse timer
 	timer_adjust(mouse_timer,TIME_NOW,0,TIME_IN_MSEC(2));  // a guess for now
 	sys.mouse.inputtype = 0;
-
-	return 0;
 }
 
 DRIVER_INIT( x68000 )
@@ -1918,12 +1916,12 @@ SYSTEM_CONFIG_END
 
 ROM_START( x68000 )
 	ROM_REGION16_BE(0x1000000, REGION_CPU1, 0)  // 16MB address space
-	ROM_LOAD( "cgrom.dat",  0xf00000, 0xc0000, CRC(9f3195f1) )
-	ROM_LOAD( "iplrom.dat", 0xfe0000, 0x20000, CRC(72bdf532) )
+	ROM_LOAD( "cgrom.dat",  0xf00000, 0xc0000, CRC(9f3195f1) SHA1(8d72c5b4d63bb14c5dbdac495244d659aa1498b6) )
+	ROM_LOAD( "iplrom.dat", 0xfe0000, 0x20000, CRC(72bdf532) SHA1(0ed038ed2133b9f78c6e37256807424e0d927560) )
 	ROM_REGION(0x8000, REGION_USER1,0)  // For Background/Sprite decoding
 	ROM_FILL(0x0000,0x8000,0x00)
 	ROM_REGION(0x20000, REGION_USER2, 0)  
-	ROM_LOAD16_WORD_SWAP( "iplrom.dat", 0x0000, 0x10000, CRC(72bdf532) )
+	ROM_LOAD16_WORD_SWAP( "iplrom.dat", 0x0000, 0x10000, CRC(72bdf532) SHA1(0ed038ed2133b9f78c6e37256807424e0d927560) )
 	ROM_CONTINUE (0x0000, 0x10000)
 ROM_END
 

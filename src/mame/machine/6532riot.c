@@ -2,8 +2,12 @@
 
   RIOT 6532 emulation
 
-TODO:
-- irq callback for timer overflow
+The timer seems to follow these rules:
+- When the timer flag changes from 0 to 1 the timer continues to count
+  down at a 1 cycle rate.
+- When the timer is being read or written the timer flag is reset.
+- When the timer flag is set and the timer contents are 0, the counting
+  stops.
 
 ***************************************************************************/
 
@@ -29,11 +33,25 @@ struct R6532
 	int pa7_direction;	/* 0 = high-to-low, 1 = low-to-high */
 	int pa7_flag;
 	UINT8 pa7_last;
+
+	int timer_irq_enable;
+	int timer_irq;
+	mame_timer	*timer;
 };
 
 
 static struct R6532* r6532[2];
 
+
+static void r6532_timer_callback(int n)
+{
+	if ( r6532[n]->timer_irq_enable )
+	{
+		r6532[n]->timer_irq = 1;
+		if (r6532[n]->intf.irq_func != NULL)
+			(*r6532[n]->intf.irq_func)(ASSERT_LINE);
+	}
+}
 
 static UINT8 r6532_combineA(int n, UINT8 val)
 {
@@ -122,8 +140,9 @@ static void r6532_write(int n, offs_t offset, UINT8 data)
 				r6532[n]->shift = 10;
 				break;
 			}
-
 			r6532[n]->target = activecpu_gettotalcycles() + (data << r6532[n]->shift);
+			r6532[n]->timer_irq_enable = (offset & 8);
+			timer_adjust( r6532[n]->timer, TIME_IN_CYCLES( 0, ( data << r6532[n]->shift ) ) + 1, n, 0 );
 		}
 		else
 		{
@@ -154,10 +173,9 @@ static void r6532_write(int n, offs_t offset, UINT8 data)
 }
 
 
-static UINT8 r6532_read_timer(int n, int enable)
+static UINT8 r6532_read_timer(int n)
 {
 	int count = ( r6532[n]->target ? r6532[n]->target : 5 ) - activecpu_gettotalcycles();
-
 	if (count >= 0)
 	{
 		return count >> r6532[n]->shift;
@@ -167,9 +185,17 @@ static UINT8 r6532_read_timer(int n, int enable)
 		if (count != -1)
 		{
 			r6532[n]->cleared = 1;
+			if (r6532[n]->intf.irq_func != NULL && r6532[n]->timer_irq)
+			{
+				(*r6532[n]->intf.irq_func)(CLEAR_LINE);
+			}
 		}
 
-		return count & 0xFF;
+		/* Timer flag is cleared, so adjust the target */
+		count = ( count > -256 ) ? count & 0xFF : 0;
+		r6532[n]->target = activecpu_gettotalcycles() + ( count << r6532[n]->shift );
+		timer_adjust( r6532[n]->timer, TIME_IN_CYCLES( 0, ( count << r6532[n]->shift ) ) + 1, n, 0 );
+		return count;
 	}
 }
 
@@ -202,17 +228,25 @@ static UINT8 r6532_read_irq_flags(int n)
 	int count = r6532[n]->target - activecpu_gettotalcycles();
 	int res = 0;
 
-	if (count < 0 && !r6532[n]->cleared)
-		res |= 0x80;
+	if ( !r6532[n]->cleared )
+	{
+		if ( count < 0 )
+			res |= 0x80;
+		if ( count < -1 )
+		{
+			r6532[n]->cleared = 1;
+			if ( r6532[n]->intf.irq_func != NULL )
+				(*r6532[n]->intf.irq_func)(CLEAR_LINE);
+		}
+	}
 
 	if (r6532[n]->pa7_flag)
 	{
 		res |= 0x40;
 		r6532[n]->pa7_flag = 0;
 
-		if (r6532[n]->intf.irq_func != NULL)
+		if (r6532[n]->intf.irq_func != NULL && count != -1)
 		{
-			/* TODO: shouldn't clear line if timer irq pending */
 			(*r6532[n]->intf.irq_func)(CLEAR_LINE);
 		}
 	}
@@ -240,14 +274,11 @@ static UINT8 r6532_read(int n, offs_t offset)
 		val = r6532[n]->DDRB;
 		break;
 	case 4:
-		val = r6532_read_timer(n, 0);
+	case 6:
+		r6532[n]->timer_irq_enable = offset & 8;
+		val = r6532_read_timer(n);
 		break;
 	case 5:
-		val = r6532_read_irq_flags(n);
-		break;
-	case 6:
-		val = r6532_read_timer(n, 1);
-		break;
 	case 7:
 		val = r6532_read_irq_flags(n);
 		break;
@@ -274,21 +305,25 @@ void r6532_init(int n, const struct R6532interface* intf)
 	r6532[n] = auto_malloc(sizeof(struct R6532));
 
 	r6532[n]->intf = *intf;
+	r6532[n]->timer = timer_alloc(r6532_timer_callback);
 
 	r6532[n]->DRA = 0;
 	r6532[n]->DRB = 0;
 	r6532[n]->DDRA = 0;
 	r6532[n]->DDRB = 0;
 
-	r6532[n]->shift = 0;
+	r6532[n]->shift = 10;
 	r6532[n]->cleared = 0;
 
-	r6532[n]->target = 0;
+	r6532[n]->target = 0xff*1024;
 
 	r6532[n]->pa7_enable = 0;
 	r6532[n]->pa7_direction = 0;
 	r6532[n]->pa7_flag = 0;
 	r6532[n]->pa7_last = 0;
+
+	r6532[n]->timer_irq_enable = 0;
+	r6532[n]->timer_irq = 0;
 
 	if (r6532[n]->intf.irq_func != NULL)
 		(*r6532[n]->intf.irq_func)(CLEAR_LINE);

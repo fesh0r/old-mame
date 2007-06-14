@@ -49,8 +49,8 @@ ADDRESS_MAP_END
 /* Is the palette black on white or white on black??? */
 static PALETTE_INIT( concept )
 {
-	palette_set_color(machine, 0, 0xff, 0xff, 0xff);
-	palette_set_color(machine, 1, 0x00, 0x00, 0x00);
+	palette_set_color_rgb(machine, 0, 0xff, 0xff, 0xff);
+	palette_set_color_rgb(machine, 1, 0x00, 0x00, 0x00);
 }
 
 /* concept machine */
@@ -63,7 +63,7 @@ static MACHINE_DRIVER_START( concept )
 	MDRV_SCREEN_REFRESH_RATE(60)			/* 50 or 60, jumper-selectable */
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
-	MDRV_MACHINE_RESET(concept)
+	MDRV_MACHINE_START(concept)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)

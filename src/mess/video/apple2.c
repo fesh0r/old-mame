@@ -84,41 +84,48 @@ static void apple2_draw_tilemap(mame_bitmap *bitmap, const rectangle *cliprect,
   text
 ***************************************************************************/
 
-static void apple2_generaltext_gettileinfo(int gfxset, int videobase, int memory_offset)
+static void apple2_generaltext_gettileinfo(int videobase, int memory_offset, int *code, int *color)
 {
-	int character;
 	int current_fgcolor = fgcolor;
 	int current_bgcolor = bgcolor;
 	int i;
-	
-	character = a2_videoram[videobase + memory_offset];
+
+	*code = a2_videoram[videobase + memory_offset];
 
 	if (effective_a2() & VAR_ALTCHARSET)
 	{
-		character |= alt_charset_value;
+		*code |= alt_charset_value;
 	}
-	else if (flash && (character >= 0x40) && (character <= 0x7f))
+	else if (flash && (*code >= 0x40) && (*code <= 0x7f))
 	{
 		i = current_fgcolor;
 		current_fgcolor = current_bgcolor;
 		current_bgcolor = i;
 	}
 
+	*color = (current_fgcolor * 16) + current_bgcolor;
+}
+
+static TILE_GET_INFO(apple2_text_gettileinfo)
+{
+	int code, color;
+	apple2_generaltext_gettileinfo(text_videobase, tile_index, &code, &color);
 	SET_TILE_INFO(
-		gfxset,										/* gfx */
-		character,									/* character */
-		(current_fgcolor * 16) + current_bgcolor,	/* color */
-		0);											/* flags */
+		0,				/* gfx */
+		code,			/* character */
+		color,			/* color */
+		0);				/* flags */
 }
 
-static void apple2_text_gettileinfo(int memory_offset)
+static TILE_GET_INFO(apple2_dbltext_gettileinfo)
 {
-	apple2_generaltext_gettileinfo(0, text_videobase, memory_offset);
-}
-
-static void apple2_dbltext_gettileinfo(int memory_offset)
-{
-	apple2_generaltext_gettileinfo(1, dbltext_videobase, memory_offset);
+	int code, color;
+	apple2_generaltext_gettileinfo(dbltext_videobase, tile_index, &code, &color);
+	SET_TILE_INFO(
+		1,				/* gfx */
+		code,			/* character */
+		color,			/* color */
+		0);				/* flags */
 }
 
 static UINT32 apple2_text_getmemoryoffset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows)
@@ -174,18 +181,18 @@ int apple2_get_bgcolor(void)
   low resolution graphics
 ***************************************************************************/
 
-static void apple2_lores_gettileinfo(int memory_offset)
+static TILE_GET_INFO(apple2_lores_gettileinfo)
 {
-	static pen_t pal_data[2];
+	static pen_t pal_data[2];	/* HACK */
 	int ch;
 
-	tile_info.tile_number = 0;
-	tile_info.pen_data = lores_tiledata;
-	tile_info.pal_data = pal_data;
-	tile_info.pen_usage = 0;
-	tile_info.flags = 0;
+	tileinfo->tile_number = 0;
+	tileinfo->pen_data = lores_tiledata;
+	tileinfo->pal_data = pal_data;
+	tileinfo->pen_usage = 0;
+	tileinfo->flags = 0;
 
-	ch = a2_videoram[lores_videobase + memory_offset];
+	ch = a2_videoram[lores_videobase + tile_index];
 	pal_data[0] = (ch >> 0) & 0x0f;
 	pal_data[1] = (ch >> 4) & 0x0f;
 }
@@ -319,7 +326,7 @@ static void apple2_hires_draw(mame_bitmap *bitmap, const rectangle *cliprect, in
   video core
 ***************************************************************************/
 
-int apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo)
+void apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo)
 {
 	int i, j;
 	UINT16 c;
@@ -413,38 +420,33 @@ int apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_softs
 	memset(&old_a2, 0, sizeof(old_a2));
 	text_videobase = lores_videobase = 0;
 	a2_videomask = ~ignored_softswitches;
-	return 0;
 }
 
 
 
 VIDEO_START( apple2 )
 {
-	if (apple2_video_start(mess_ram, mess_ram_size, VAR_80COL | VAR_ALTCHARSET | VAR_DHIRES, 4))
-		return 1;
+	apple2_video_start(mess_ram, mess_ram_size, VAR_80COL | VAR_ALTCHARSET | VAR_DHIRES, 4);
 
 	/* hack to fix the colors on apple2/apple2p */
 	fgcolor = 0;
 	bgcolor = 15;
-	return 0;
 }
 
 
 VIDEO_START( apple2p )
 {
-	if (apple2_video_start(mess_ram, mess_ram_size, VAR_80COL | VAR_ALTCHARSET | VAR_DHIRES, 8))
-		return 1;
+	apple2_video_start(mess_ram, mess_ram_size, VAR_80COL | VAR_ALTCHARSET | VAR_DHIRES, 8);
 
 	/* hack to fix the colors on apple2/apple2p */
 	fgcolor = 0;
 	bgcolor = 15;
-	return 0;
 }
 
 
 VIDEO_START( apple2e )
 {
-	return apple2_video_start(mess_ram, mess_ram_size, 0, 8);
+	apple2_video_start(mess_ram, mess_ram_size, 0, 8);
 }
 
 

@@ -189,25 +189,25 @@ static PALETTE_INIT( sms ) {
 		int r = i & 0x03;
 		int g = ( i & 0x0C ) >> 2;
 		int b = ( i & 0x30 ) >> 4;
-		palette_set_color(machine, i, r << 6, g << 6, b << 6 );
+		palette_set_color_rgb(machine, i, r << 6, g << 6, b << 6 );
 	}
 	/* TMS9918 palette */
-	palette_set_color(machine, 64+ 0,   0,   0,   0 );
-	palette_set_color(machine, 64+ 1,   0,   0,   0 );
-	palette_set_color(machine, 64+ 2,  33, 200,  66 );
-	palette_set_color(machine, 64+ 3,  94, 220, 120 );
-	palette_set_color(machine, 64+ 4,  84,  85, 237 );
-	palette_set_color(machine, 64+ 5, 125, 118, 252 );
-	palette_set_color(machine, 64+ 6, 212,  82,  77 );
-	palette_set_color(machine, 64+ 7,  66, 235, 245 );
-	palette_set_color(machine, 64+ 8, 252,  85,  84 );
-	palette_set_color(machine, 64+ 9, 255, 121, 120 );
-	palette_set_color(machine, 64+10, 212, 193,  84 );
-	palette_set_color(machine, 64+11, 230, 206, 128 );
-	palette_set_color(machine, 64+12,  33, 176,  59 );
-	palette_set_color(machine, 64+13, 201,  91, 186 );
-	palette_set_color(machine, 64+14, 204, 204, 204 );
-	palette_set_color(machine, 64+15, 255, 255, 255 );
+	palette_set_color_rgb(machine, 64+ 0,   0,   0,   0 );
+	palette_set_color_rgb(machine, 64+ 1,   0,   0,   0 );
+	palette_set_color_rgb(machine, 64+ 2,  33, 200,  66 );
+	palette_set_color_rgb(machine, 64+ 3,  94, 220, 120 );
+	palette_set_color_rgb(machine, 64+ 4,  84,  85, 237 );
+	palette_set_color_rgb(machine, 64+ 5, 125, 118, 252 );
+	palette_set_color_rgb(machine, 64+ 6, 212,  82,  77 );
+	palette_set_color_rgb(machine, 64+ 7,  66, 235, 245 );
+	palette_set_color_rgb(machine, 64+ 8, 252,  85,  84 );
+	palette_set_color_rgb(machine, 64+ 9, 255, 121, 120 );
+	palette_set_color_rgb(machine, 64+10, 212, 193,  84 );
+	palette_set_color_rgb(machine, 64+11, 230, 206, 128 );
+	palette_set_color_rgb(machine, 64+12,  33, 176,  59 );
+	palette_set_color_rgb(machine, 64+13, 201,  91, 186 );
+	palette_set_color_rgb(machine, 64+14, 204, 204, 204 );
+	palette_set_color_rgb(machine, 64+15, 255, 255, 255 );
 }
 
 static PALETTE_INIT( gamegear ) {
@@ -216,7 +216,7 @@ static PALETTE_INIT( gamegear ) {
 		int r = i & 0x000F;
 		int g = ( i & 0x00F0 ) >> 4;
 		int b = ( i & 0x0F00 ) >> 8;
-		palette_set_color(machine, i, r << 4, g << 4, b << 4 );
+		palette_set_color_rgb(machine, i, r << 4, g << 4, b << 4 );
 	}
 }
 
@@ -226,19 +226,19 @@ const smsvdp_configuration config_315_5378 = { MODEL_315_5378, sms_int_callback 
 const smsvdp_configuration config_store = { MODEL_315_5124, sms_store_int_callback };
 
 VIDEO_START(sega_315_5124) {
-	return smsvdp_video_init( &config_315_5124 );
+	smsvdp_video_init( &config_315_5124 );
 }
 
 VIDEO_START(sega_315_5246) {
-	return smsvdp_video_init( &config_315_5246 );
+	smsvdp_video_init( &config_315_5246 );
 }
 
 VIDEO_START(sega_315_5378) {
-	return smsvdp_video_init( &config_315_5378 );
+	smsvdp_video_init( &config_315_5378 );
 }
 
 VIDEO_START(sega_store_315_5124) {
-	return smsvdp_video_init( &config_store );
+	smsvdp_video_init( &config_store );
 }
 
 static MACHINE_DRIVER_START(sms1ntsc)
@@ -330,6 +330,13 @@ static MACHINE_DRIVER_START(smsfm)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START(sms2fm)
+	MDRV_IMPORT_FROM(sms2ntsc)
+
+	MDRV_SOUND_ADD(YM2413, MASTER_CLOCK_NTSC/15)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+MACHINE_DRIVER_END
+
 static MACHINE_DRIVER_START(gamegear)
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, MASTER_CLOCK_NTSC/15)
@@ -373,6 +380,10 @@ SYSTEM_BIOS_END
 
 SYSTEM_BIOS_START( smsj )
         SYSTEM_BIOS_ADD( 0, "jbios21", "Japanese BIOS v2.1 (1987)" )
+SYSTEM_BIOS_END
+
+SYSTEM_BIOS_START( sms2kr )
+	SYSTEM_BIOS_ADD( 0, "akbioskr", "Samsung Gam*Boy II with Alex Kidd in Miracle World (1990)" )
 SYSTEM_BIOS_END
 
 SYSTEM_BIOS_START( sms1pal )
@@ -442,6 +453,13 @@ ROM_START(smsj)
 	ROM_FILL(0x0000,0x4000,0xFF)
 	ROM_REGION(0x4000, REGION_USER1, 0)
 	ROMX_LOAD("jbios21.rom", 0x0000, 0x2000, CRC(48D44A13) SHA1(a8c1b39a2e41137835eda6a5de6d46dd9fadbaf2), ROM_BIOS(1))
+ROM_END
+
+ROM_START(sms2kr)
+	ROM_REGION(0x4000, REGION_CPU1, 0)
+	ROM_FILL(0x0000,0x4000,0xFF)
+	ROM_REGION(0x20000, REGION_USER1, 0)
+	ROMX_LOAD("akbioskr.rom", 0x000, 0x20000, CRC(9c5bad91) SHA1(2feafd8f1c40fdf1bd5668f8c5c02e5560945b17), ROM_BIOS(1))
 ROM_END
 
 SYSTEM_BIOS_START( gamegear )
@@ -543,6 +561,10 @@ SYSTEM_CONFIG_END
    - Sega Master System (I) (smsj)
      - without built-in game v2.1 - 1987
 
+  KR
+   - Sega Master System II (sms2kr)
+     - built-in Alex Kidd in Miracle World (Korean)
+
   EU
    - Sega Master System I (sms1pal)
      - without built-in game v1.3 - 1986
@@ -564,13 +586,14 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*		YEAR	NAME		PARENT		COMPATIBLE	MACHINE		INPUT	INIT	CONFIG		COMPANY			FULLNAME */
-CONSB(	1986,      sms,   0,    sms2, 0, sms2ntsc, sms, 0,    sms, "Sega", "Sega Master System II", FLAG_BIOS_FULL )
+CONSB(	1990,      sms,   0,    sms2, 0, sms2ntsc, sms, 0,    sms, "Sega", "Sega Master System II", FLAG_BIOS_FULL )
 CONSB(  1986,     sms1, sms,    sms1, 0, sms1ntsc, sms, 0,    sms, "Sega", "Sega Master System I", FLAG_BIOS_FULL )
 
 CONSB(	1986,  sms1pal, sms, sms1pal, 0,  sms1pal, sms, 0,    sms, "Sega", "Sega Master System I (PAL)" , FLAG_BIOS_FULL )
 CONSB(  1990,   smspal, sms, sms2pal, 0,  sms2pal, sms, 0,    sms, "Sega", "Sega Master System II (PAL)", FLAG_BIOS_FULL )
 CONS(   1984, sg1000m3, sms,          0,    smsfm, sms, 0, sg1000, "Sega", "Sega SG-1000 Mark III" , FLAG_REGION_JAPAN | FLAG_FM )
 CONSB(	1987,     smsj, sms,    smsj, 0,    smsfm, sms, 0,    sms, "Sega", "Sega Master System (Japan)" , FLAG_REGION_JAPAN | FLAG_BIOS_2000 | FLAG_FM )
+CONSB(  1990,   sms2kr, sms,  sms2kr, 0,   sms2fm, sms, 0,    sms, "Samsung", "Samsung Gam*Boy II (Korea)", FLAG_REGION_JAPAN | FLAG_BIOS_FULL | FLAG_FM )
 
 CONSB(  1986, smssdisp, sms, sms2, 0, smssdisp, sms, 0, smssdisp, "Sega", "Sega Master System Store Display", GAME_NOT_WORKING )
 

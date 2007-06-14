@@ -668,7 +668,6 @@ static const TMS9928a_interface tms9918_interface =
 MACHINE_START( ti99_4_60hz )
 {
 	TMS9928A_configure(&tms9918_interface);
-	return 0;
 }
 
 static const TMS9928a_interface tms9929_interface =
@@ -682,7 +681,6 @@ static const TMS9928a_interface tms9929_interface =
 MACHINE_START( ti99_4_50hz )
 {
 	TMS9928A_configure(&tms9929_interface);
-	return 0;
 }
 
 static const TMS9928a_interface tms9918a_interface =
@@ -696,7 +694,6 @@ static const TMS9928a_interface tms9918a_interface =
 MACHINE_START( ti99_4a_60hz )
 {
 	TMS9928A_configure(&tms9918a_interface);
-	return 0;
 }
 
 static const TMS9928a_interface tms9929a_interface =
@@ -710,7 +707,6 @@ static const TMS9928a_interface tms9929a_interface =
 MACHINE_START( ti99_4a_50hz )
 {
 	TMS9928A_configure(&tms9929a_interface);
-	return 0;
 }
 
 /*
@@ -919,7 +915,7 @@ void machine_stop_ti99(void)
 */
 VIDEO_START( ti99_4ev )
 {
-	return v9938_init(Machine, MODEL_V9938, 0x20000, tms9901_set_int2);	/* v38 with 128 kb of video RAM */
+	v9938_init(Machine, MODEL_V9938, 0x20000, tms9901_set_int2);	/* v38 with 128 kb of video RAM */
 }
 
 /*

@@ -80,7 +80,7 @@ CPUS += V20
 #CPUS += V33
 #CPUS += V60
 #CPUS += V70
-#CPUS += I8035
+CPUS += I8035
 CPUS += I8039
 CPUS += I8048
 #CPUS += N7751
@@ -313,7 +313,7 @@ SOUNDS += BEEP
 SOUNDS += WAVE
 SOUNDS += SID6581
 SOUNDS += SID8580
-#SOUNDS += SP0256
+SOUNDS += SP0256
 
 
 
@@ -411,7 +411,7 @@ DRVLIBS = \
 	$(MESSOBJ)/vtech.a \
 	$(MESSOBJ)/3do.a \
 	$(MESSOBJ)/shared.a \
-
+#	$(MESSOBJ)/exeltel.a \
 
 
 #-------------------------------------------------
@@ -475,7 +475,8 @@ $(MESSOBJ)/shared.a: \
 	$(MAME_MACHINE)/6526cia.o	\
 	$(MESS_FORMATS)/coco_cas.o	\
 	$(MESS_FORMATS)/coco_dsk.o	\
-	$(MESS_MACHINE)/mm58274c.o
+	$(MESS_MACHINE)/mm58274c.o \
+	$(MESS_MACHINE)/z80dart.o
 
 
 
@@ -495,7 +496,6 @@ $(MESSOBJ)/coleco.a:   \
 	$(MESS_MACHINE)/adam.o		\
 	$(MESS_DRIVERS)/adam.o		\
 	$(MESS_FORMATS)/adam_dsk.o	\
-	$(MESS_DRIVERS)/fnvision.o	\
 	
 $(MESSOBJ)/arcadia.a:  \
 	$(MESS_DRIVERS)/arcadia.o	\
@@ -512,7 +512,8 @@ $(MESSOBJ)/sega.a:						\
 	$(MESS_VIDEO)/smsvdp.o	\
 	$(MESS_MACHINE)/sms.o		\
 	$(MESS_DRIVERS)/sms.o		\
-	$(MAME_DRIVERS)/megadriv.o
+	$(MAME_DRIVERS)/megadriv.o  \
+	$(MESS_DRIVERS)/sg1000.o
 
 $(MESSOBJ)/atari.a:						\
 	$(MAME_VIDEO)/tia.o			\
@@ -529,6 +530,7 @@ $(MESSOBJ)/atari.a:						\
 	$(MESS_DRIVERS)/jaguar.o	\
 	$(MAME_AUDIO)/jaguar.o			\
 	$(MAME_VIDEO)/jaguar.o			\
+	$(MESS_FORMATS)/a26_cas.o	\
 #	$(MESS_DRIVERS)/atarist.o
 
 $(MESSOBJ)/gce.a:	                     \
@@ -600,7 +602,6 @@ $(MESSOBJ)/cbm.a: \
 
 $(MESSOBJ)/coco.a:   \
 	$(MESS_MACHINE)/6883sam.o	\
-	$(MESS_MACHINE)/cococart.o	\
 	$(MESS_MACHINE)/ds1315.o	\
 	$(MESS_MACHINE)/m6242b.o	\
 	$(MESS_MACHINE)/coco.o		\
@@ -609,6 +610,10 @@ $(MESSOBJ)/coco.a:   \
 	$(MESS_VIDEO)/coco3.o		\
 	$(MESS_FORMATS)/cocopak.o	\
 	$(MESS_DEVICES)/coco_vhd.o	\
+	$(MESS_DEVICES)/cococart.o	\
+	$(MESS_DEVICES)/coco_fdc.o	\
+	$(MESS_DEVICES)/coco_pak.o	\
+	$(MESS_DEVICES)/orch90.o	\
 
 $(MESSOBJ)/mc10.a:	\
 	$(MESS_MACHINE)/mc10.o		\
@@ -868,6 +873,7 @@ $(MESSOBJ)/vtech.a :   \
 	$(MESS_DRIVERS)/vtech2.o	\
 	$(MESS_FORMATS)/vt_cas.o	\
 	$(MESS_FORMATS)/vt_dsk.o	\
+	$(MESS_DRIVERS)/crvision.o	\
 
 $(MESSOBJ)/jupiter.a : \
 	$(MESS_DRIVERS)/jupiter.o	\
@@ -1082,6 +1088,7 @@ $(MESSOBJ)/tx0.a:				\
 
 $(MESSOBJ)/luxor.a:					\
 	$(MESS_DRIVERS)/abc80.o	\
+	$(MESS_DRIVERS)/abc80x.o	\
 
 $(MESSOBJ)/sgi.a:						\
 	$(MESS_MACHINE)/sgi.o		\

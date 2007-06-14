@@ -31,6 +31,7 @@
 #include "devices/cassette.h"
 #include "windows/window.h"
 #include "uimess.h"
+#include "winutf8.h"
 
 #ifdef UNDER_CE
 #include "invokegx.h"
@@ -870,19 +871,12 @@ static void change_device(HWND wnd, mess_image *img, int is_save)
 		// error?
 		if (err)
 		{
-			TCHAR *t_buffer;
-			TCHAR *t_appname;
-
 			snprintf(buffer, sizeof(buffer) / sizeof(buffer[0]),
 				"Error when %s the image: %s",
 				is_save ? "creating" : "loading",
 				image_error(img));
 
-			t_buffer = tstring_from_utf8(buffer);
-			t_appname = tstring_from_utf8(APPNAME);
-			MessageBox(wnd, t_buffer, t_appname, MB_OK);
-			free(t_buffer);
-			free(t_appname);
+			win_message_box_utf8(wnd, buffer, APPNAME, MB_OK);
 		}
 	}
 
@@ -1533,14 +1527,14 @@ static void help_display(HWND wnd, const char *chapter)
 	typedef HWND (WINAPI *htmlhelpproc)(HWND hwndCaller, LPCTSTR pszFile, UINT uCommand, DWORD_PTR dwData);
 	static htmlhelpproc htmlhelp;
 	static DWORD htmlhelp_cookie;
-	LPCTSTR htmlhelp_funcname;
+	LPCSTR htmlhelp_funcname;
 
 	if (htmlhelp == NULL)
 	{
 #ifdef UNICODE
-		htmlhelp_funcname = TEXT("HtmlHelpW");
+		htmlhelp_funcname = "HtmlHelpW";
 #else
-		htmlhelp_funcname = TEXT("HtmlHelpA");
+		htmlhelp_funcname = "HtmlHelpA";
 #endif
 		htmlhelp = (htmlhelpproc) GetProcAddress(LoadLibrary(TEXT("hhctrl.ocx")), htmlhelp_funcname);
 		if (!htmlhelp)
@@ -1947,7 +1941,7 @@ HMODULE win_resource_module(void)
 #else // !_MSC_VER
 	static HMODULE module;
 	if (!module)
-		module = LoadLibrary(EMULATORDLL);
+		module = LoadLibrary(TEXT(EMULATORDLL));
 	return module;
 #endif // _MSC_VER
 }

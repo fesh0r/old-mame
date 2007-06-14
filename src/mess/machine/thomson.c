@@ -516,7 +516,7 @@ static void to7_io_reset( void )
 static void to7_io_init( void )
 {
   LOG (( "to7_io_init: CC 90-323 serial / parallel extension\n" ));
-  pia_config( THOM_PIA_IO,  PIA_ALTERNATE_ORDERING, &to7_io );
+  pia_config( THOM_PIA_IO, &to7_io );
   centronics_config( 0, &to7_centronics );
   serial_connection_init( &to7_io_line );
   serial_connection_set_in_callback( &to7_io_line, to7_io_in_callback );
@@ -589,7 +589,7 @@ static void to7_modem_reset( void )
 static void to7_modem_init( void )
 {
   LOG (( "to7_modem_init: MODEM not implemented!\n" ));
-  pia_config( THOM_PIA_MODEM, PIA_STANDARD_ORDERING, &to7_pia_modem );
+  pia_config( THOM_PIA_MODEM, &to7_pia_modem );
   acia6850_config( 0, &to7_acia_modem );
   state_save_register_global( to7_modem_rx );
   state_save_register_global( to7_modem_tx );
@@ -766,7 +766,7 @@ static void to7_game_update_cb ( int dummy )
 static void to7_game_init ( void )
 {
   LOG (( "to7_game_init called\n" ));
-  pia_config( THOM_PIA_GAME, PIA_ALTERNATE_ORDERING, &to7_game );
+  pia_config( THOM_PIA_GAME, &to7_game );
   to7_game_timer = mame_timer_alloc( to7_game_update_cb );
   timer_adjust( to7_game_timer, TO7_GAME_POLL_PERIOD, 0, TO7_GAME_POLL_PERIOD );
   state_save_register_global( to7_game_sound );
@@ -1047,7 +1047,7 @@ MACHINE_START ( to7 )
 
   /* subsystems */
   thom_irq_init();
-  pia_config( THOM_PIA_SYS, PIA_ALTERNATE_ORDERING, &to7_sys );
+  pia_config( THOM_PIA_SYS, &to7_sys );
   mc6846_config( &to7_timer );
   to7_game_init();
   to7_floppy_init( mem + 0x24000 );
@@ -1075,8 +1075,6 @@ MACHINE_START ( to7 )
   state_save_register_global( to7_lightpen_step );
   state_save_register_global_pointer( (thom_vram), 0x2000 * 2 );
   state_save_register_global_pointer( (mem + 0x10000), 0x4000 * 4 );
- 
-  return 0;
 }
 
 
@@ -1239,7 +1237,7 @@ MACHINE_START ( to770 )
 
   /* subsystems */
   thom_irq_init();
-  pia_config( THOM_PIA_SYS, PIA_ALTERNATE_ORDERING, &to770_sys );
+  pia_config( THOM_PIA_SYS, &to770_sys );
   mc6846_config( &to770_timer );
   to7_game_init();
   to7_floppy_init( mem + 0x3c000 );
@@ -1266,8 +1264,6 @@ MACHINE_START ( to770 )
   state_save_register_global_pointer( thom_vram, 0x2000 * 2 );
   state_save_register_global_pointer( (mem + 0x10000), 0x4000 * 4 );
   state_save_register_global_pointer( (mem + 0x20000), 0x4000 * 6 );
-
-  return 0;
 }
 
 
@@ -1523,7 +1519,7 @@ MACHINE_START ( mo5 )
 
   /* subsystems */
   thom_irq_init();
-  pia_config( THOM_PIA_SYS, PIA_ALTERNATE_ORDERING, &mo5_sys );
+  pia_config( THOM_PIA_SYS, &mo5_sys );
   to7_game_init();
   to7_floppy_init( mem + 0x34000 );
   to7_io_init();
@@ -1550,8 +1546,6 @@ MACHINE_START ( mo5 )
   state_save_register_global( mo5_reg_cart );
   state_save_register_global_pointer( thom_vram, 0x2000 * 2 );
   state_save_register_global_pointer( (mem + 0x10000), 0x4000 * 8 );
-
-  return 0;
 }
 
 
@@ -2335,7 +2329,7 @@ MACHINE_START ( to9 )
 
   /* subsystems */
   thom_irq_init();
-  pia_config( THOM_PIA_SYS, PIA_ALTERNATE_ORDERING, &to9_sys );
+  pia_config( THOM_PIA_SYS, &to9_sys );
   centronics_config( 0, &to9_centronics );
   mc6846_config( &to9_timer );
   to7_game_init();
@@ -2364,8 +2358,6 @@ MACHINE_START ( to9 )
   state_save_register_global_pointer( thom_vram, 0x2000 * 2 );
   state_save_register_global_pointer( (mem + 0x10000), 0x4000 * 4 );
   state_save_register_global_pointer( (mem + 0x40000), 0x4000 * 10 );
-
-  return 0;
 }
 
 
@@ -3057,7 +3049,7 @@ MACHINE_START ( to8 )
 
   /* subsystems */
   thom_irq_init();
-  pia_config( THOM_PIA_SYS, PIA_ALTERNATE_ORDERING, &to8_sys );
+  pia_config( THOM_PIA_SYS, &to8_sys );
   centronics_config( 0, &to9_centronics );
   mc6846_config( &to8_timer );
   to7_game_init();
@@ -3100,8 +3092,6 @@ MACHINE_START ( to8 )
   state_save_register_global( to8_cart_vpage );
   state_save_register_global_pointer( (mem + 0x10000), 0x4000 * 4 );
   state_save_register_global_pointer( (mem + 0x30000), 0x4000 * 32 );
-
-  return 0;
 }
 
 
@@ -3201,7 +3191,7 @@ MACHINE_START ( to9p )
 
   /* subsystems */
   thom_irq_init();
-  pia_config( THOM_PIA_SYS, PIA_ALTERNATE_ORDERING, &to9p_sys );
+  pia_config( THOM_PIA_SYS, &to9p_sys );
   centronics_config( 0, &to9_centronics );
   mc6846_config( &to9p_timer );
   to7_game_init();
@@ -3244,8 +3234,6 @@ MACHINE_START ( to9p )
   state_save_register_global( to8_cart_vpage );
   state_save_register_global_pointer( (mem + 0x10000), 0x4000 * 4 );
   state_save_register_global_pointer( (mem + 0x30000), 0x4000 * 32 );
-
-  return 0;
 }
 
 
@@ -3416,7 +3404,7 @@ static void mo6_game_update_cb ( int dummy )
 static void mo6_game_init ( void )
 {
   LOG (( "mo6_game_init called\n" ));
-  pia_config( THOM_PIA_GAME, PIA_ALTERNATE_ORDERING, &mo6_game );
+  pia_config( THOM_PIA_GAME, &mo6_game );
   to7_game_timer = mame_timer_alloc( mo6_game_update_cb );
   timer_adjust( to7_game_timer, TO7_GAME_POLL_PERIOD, 0, TO7_GAME_POLL_PERIOD );
   state_save_register_global( to7_game_sound );
@@ -3686,7 +3674,7 @@ MACHINE_START ( mo6 )
 
   /* subsystems */
   thom_irq_init();
-  pia_config( THOM_PIA_SYS, PIA_ALTERNATE_ORDERING, &mo6_sys );
+  pia_config( THOM_PIA_SYS, &mo6_sys );
   centronics_config( 0, &to9_centronics );
   mo6_game_init();
   to7_floppy_init( mem + 0x50000 );
@@ -3730,8 +3718,6 @@ MACHINE_START ( mo6 )
   state_save_register_global( mo5_reg_cart );
   state_save_register_global_pointer( (mem + 0x10000), 0x10000 );
   state_save_register_global_pointer( thom_vram, 0x4000 * 8 );
-
-  return 0;
 }
 
 
@@ -3848,7 +3834,7 @@ static const pia6821_interface mo5nr_game = {
 static void mo5nr_game_init ( void )
 {
   LOG (( "mo5nr_game_init called\n" ));
-  pia_config( THOM_PIA_GAME, PIA_ALTERNATE_ORDERING, &mo5nr_game );
+  pia_config( THOM_PIA_GAME, &mo5nr_game );
   to7_game_timer = mame_timer_alloc( mo6_game_update_cb );
   timer_adjust( to7_game_timer, TO7_GAME_POLL_PERIOD, 0, TO7_GAME_POLL_PERIOD );
   state_save_register_global( to7_game_sound );
@@ -3913,7 +3899,7 @@ MACHINE_START ( mo5nr )
 
   /* subsystems */
   thom_irq_init();
-  pia_config( THOM_PIA_SYS, PIA_ALTERNATE_ORDERING, &mo5nr_sys );
+  pia_config( THOM_PIA_SYS, &mo5nr_sys );
   centronics_config( 0, &to9_centronics );
   mo5nr_game_init();
   to7_floppy_init( mem + 0x50000 );
@@ -3957,6 +3943,4 @@ MACHINE_START ( mo5nr )
   state_save_register_global( mo5_reg_cart );
   state_save_register_global_pointer( (mem + 0x10000), 0x10000 );
   state_save_register_global_pointer( thom_vram, 0x4000 * 8 );
-
-  return 0;
 }

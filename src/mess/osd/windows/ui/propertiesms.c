@@ -32,12 +32,12 @@
 #include "messopts.h"
 #include "strconv.h"
 
-static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCSTR lpItem);
+static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCTSTR lpItem);
 static BOOL SoftwareDirectories_OnDelete(HWND hDlg);
 static BOOL SoftwareDirectories_OnBeginLabelEdit(HWND hDlg, NMHDR* pNMHDR);
 static BOOL SoftwareDirectories_OnEndLabelEdit(HWND hDlg, NMHDR* pNMHDR);
 
-extern BOOL BrowseForDirectory(HWND hwnd, const char* pStartDir, char* pResult);
+extern BOOL BrowseForDirectory(HWND hwnd, LPCTSTR pStartDir, TCHAR* pResult);
 BOOL g_bModifiedSoftwarePaths = FALSE;
 
 
@@ -58,20 +58,20 @@ static void AppendList(HWND hList, LPCTSTR lpItem, int nItem)
     LV_ITEM Item;
 	memset(&Item, 0, sizeof(LV_ITEM));
 	Item.mask = LVIF_TEXT;
-	Item.pszText = (LPSTR) lpItem;
+	Item.pszText = (LPTSTR) lpItem;
 	Item.iItem = nItem;
 	ListView_InsertItem(hList, &Item);
 }
 
 
 
-static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCSTR lpItem)
+static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCTSTR lpItem)
 {
     int nItem;
-    char inbuf[MAX_PATH];
-    char outbuf[MAX_PATH];
+    TCHAR inbuf[MAX_PATH];
+    TCHAR outbuf[MAX_PATH];
     HWND hList;
-	LPSTR lpIn;
+	LPTSTR lpIn;
 
 	g_bModifiedSoftwarePaths = TRUE;
 
@@ -89,7 +89,7 @@ static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCSTR l
 
 	if (!lpItem) {
 		if (bBrowse) {
-			ListView_GetItemText(hList, nItem, 0, inbuf, sizeof(inbuf) / sizeof(inbuf[0]));
+			ListView_GetItemText(hList, nItem, 0, inbuf, ARRAY_LENGTH(inbuf));
 			lpIn = inbuf;
 		}
 		else {
@@ -158,7 +158,7 @@ static BOOL SoftwareDirectories_OnBeginLabelEdit(HWND hDlg, NMHDR* pNMHDR)
 	if (pItem->iItem == ListView_GetItemCount(hList) - 1)
 	{
 		HWND hEdit = (HWND) (int) SendMessage(hList, LVM_GETEDITCONTROL, 0, 0);
-		Edit_SetText(hEdit, "");
+		Edit_SetText(hEdit, TEXT(""));
 	}
 
 	return bResult;
@@ -174,23 +174,23 @@ static BOOL SoftwareDirectories_OnEndLabelEdit(HWND hDlg, NMHDR* pNMHDR)
 
     if (pItem->pszText != NULL)
     {
-        struct stat file_stat;
+        struct _stat file_stat;
 
         /* Don't allow empty entries. */
-        if (!strcmp(pItem->pszText, ""))
+        if (!_tcscmp(pItem->pszText, TEXT("")))
         {
             return FALSE;
         }
 
         /* Check validity of edited directory. */
-        if (stat(pItem->pszText, &file_stat) == 0
+        if (_tstat(pItem->pszText, &file_stat) == 0
         &&  (file_stat.st_mode & S_IFDIR))
         {
             bResult = TRUE;
         }
         else
         {
-            if (MessageBox(NULL, "Directory does not exist, continue anyway?", MAME32NAME, MB_OKCANCEL) == IDOK)
+            if (MessageBox(NULL, TEXT("Directory does not exist, continue anyway?"), TEXT(MAME32NAME), MB_OKCANCEL) == IDOK)
                 bResult = TRUE;
         }
     }
@@ -293,7 +293,7 @@ static void DirListReadControl(datamap *map, HWND dialog, HWND control, core_opt
 	{
 		// append a semicolon, if we're past the first entry
 		if (i > 0)
-			pos += _sntprintf(&buffer[pos], ARRAY_LENGTH(buffer) - pos, ";");
+			pos += _sntprintf(&buffer[pos], ARRAY_LENGTH(buffer) - pos, TEXT(";"));
 
 		// retrieve the next entry
 		memset(&lvi, '\0', sizeof(lvi));
@@ -370,7 +370,7 @@ static void DirListPopulateControl(datamap *map, HWND dialog, HWND control, core
 	}
 
 	// finish up
-	AppendList(control, DIRLIST_NEWENTRYTEXT, current_item);
+	AppendList(control, TEXT(DIRLIST_NEWENTRYTEXT), current_item);
 	ListView_SetItemState(control, 0, LVIS_SELECTED, LVIS_SELECTED);
 	free(t_dir_list);
 }
@@ -384,6 +384,7 @@ static void RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 	UINT32 ram, current_ram;
 	char buffer[64];
 	const char *this_ram_string;
+	TCHAR* t_ramstring;
 
 	// identify the driver
 	driver_index = PropertiesCurrentGame(dialog);
@@ -415,9 +416,15 @@ static void RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 			ram = ram_option(gamedrv, i);
 			this_ram_string = ram_string(buffer, ram);
 
+			t_ramstring = tstring_from_utf8(this_ram_string);
+			if( !t_ramstring )
+				return;
+
 			// add this option to the combo box
-			ComboBox_InsertString(control, i, this_ram_string);
+			ComboBox_InsertString(control, i, win_tstring_strdup(t_ramstring));
 			ComboBox_SetItemData(control, i, ram);
+			
+			free(t_ramstring);
 
 			// is this the current option?  record the index if so
 			if (ram == current_ram)
