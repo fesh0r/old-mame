@@ -23,7 +23,7 @@ PALETTE_INIT( kchamp )
 		green = color_prom[machine->drv->total_colors+i];
 		blue = color_prom[2*machine->drv->total_colors+i];
 
-		palette_set_color(machine,i,pal4bit(red),pal4bit(green),pal4bit(blue));
+		palette_set_color_rgb(machine,i,pal4bit(red),pal4bit(green),pal4bit(blue));
 
 		*(colortable++) = i;
 	}
@@ -31,20 +31,14 @@ PALETTE_INIT( kchamp )
 
 WRITE8_HANDLER( kchamp_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( kchamp_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( kchamp_flipscreen_w )
@@ -52,7 +46,7 @@ WRITE8_HANDLER( kchamp_flipscreen_w )
 	flip_screen_set(data & 0x01);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] + ((colorram[tile_index] & 7) << 8);
 	int color = (colorram[tile_index] >> 3) & 0x1f;
@@ -64,8 +58,6 @@ VIDEO_START( kchamp )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 /*

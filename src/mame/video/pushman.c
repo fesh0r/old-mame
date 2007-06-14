@@ -16,9 +16,9 @@ static UINT32 background_scan_rows(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 
 	return ((col & 0x7)) + ((7-(row & 0x7)) << 3) + ((col & 0x78) <<3) + ((0x38-(row&0x38))<<7);
 }
 
-static void get_back_tile_info( int tile_index )
+static TILE_GET_INFO( get_back_tile_info )
 {
-	unsigned char *bgMap = memory_region(REGION_GFX4);
+	UINT8 *bgMap = memory_region(REGION_GFX4);
 	int tile;
 
 	tile=bgMap[tile_index<<1]+(bgMap[(tile_index<<1)+1]<<8);
@@ -29,7 +29,7 @@ static void get_back_tile_info( int tile_index )
 			(tile&0x2000)?TILE_FLIPX:0)
 }
 
-static void get_text_tile_info( int tile_index )
+static TILE_GET_INFO( get_text_tile_info )
 {
 	int tile = videoram16[tile_index];
 	SET_TILE_INFO(
@@ -53,8 +53,6 @@ VIDEO_START( pushman )
 	tx_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,   TILEMAP_TRANSPARENT, 8, 8, 32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,3);
-
-	return 0;
 }
 
 
@@ -72,11 +70,8 @@ WRITE16_HANDLER( pushman_scroll_w )
 
 WRITE16_HANDLER( pushman_videoram_w )
 {
-	int oldword = videoram16[offset];
-
 	COMBINE_DATA(&videoram16[offset]);
-	if (oldword != videoram16[offset])
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 

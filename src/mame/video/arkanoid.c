@@ -16,11 +16,8 @@ static tilemap *bg_tilemap;
 
 WRITE8_HANDLER( arkanoid_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
 }
 
 WRITE8_HANDLER( arkanoid_d008_w )
@@ -66,7 +63,7 @@ WRITE8_HANDLER( arkanoid_d008_w )
 	/* bit 7 is unknown */
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int offs = tile_index * 2;
 	int code = videoram[offs + 1] + ((videoram[offs] & 0x07) << 8) + 2048 * gfxbank;
@@ -82,8 +79,6 @@ VIDEO_START( arkanoid )
 
 	state_save_register_global(gfxbank);
 	state_save_register_global(palettebank);
-
-	return 0;
 }
 
 static void arkanoid_draw_sprites( mame_bitmap *bitmap )

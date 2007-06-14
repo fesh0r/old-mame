@@ -63,7 +63,7 @@ static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 	}
 }
 
-static void get_mugsmash_tile_info1(int tile_index)
+static TILE_GET_INFO( get_mugsmash_tile_info1 )
 {
 
 	/* fF-- cccc  nnnn nnnn */
@@ -85,14 +85,11 @@ static void get_mugsmash_tile_info1(int tile_index)
 
 WRITE16_HANDLER( mugsmash_videoram1_w )
 {
-	if (mugsmash_videoram1[offset] != data)
-	{
-		mugsmash_videoram1[offset] = data;
-		tilemap_mark_tile_dirty(mugsmash_tilemap1,offset/2);
-	}
+	mugsmash_videoram1[offset] = data;
+	tilemap_mark_tile_dirty(mugsmash_tilemap1,offset/2);
 }
 
-static void get_mugsmash_tile_info2(int tile_index)
+static TILE_GET_INFO( get_mugsmash_tile_info2 )
 {
 
 	/* fF-- cccc  nnnn nnnn */
@@ -114,11 +111,8 @@ static void get_mugsmash_tile_info2(int tile_index)
 
 WRITE16_HANDLER( mugsmash_videoram2_w )
 {
-	if (mugsmash_videoram2[offset] != data)
-	{
-		mugsmash_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(mugsmash_tilemap2,offset/2);
-	}
+	mugsmash_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(mugsmash_tilemap2,offset/2);
 }
 
 WRITE16_HANDLER (mugsmash_reg_w)
@@ -150,8 +144,6 @@ VIDEO_START( mugsmash )
 	tilemap_set_transparent_pen(mugsmash_tilemap1,0);
 
 	mugsmash_tilemap2 = tilemap_create(get_mugsmash_tile_info2,tilemap_scan_rows,TILEMAP_OPAQUE, 16, 16,32,32);
-
-	return 0;
 }
 
 VIDEO_UPDATE( mugsmash )

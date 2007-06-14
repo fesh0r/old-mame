@@ -6,7 +6,7 @@
 
 #include "driver.h"
 
-unsigned char *tecmo_txvideoram,*tecmo_fgvideoram,*tecmo_bgvideoram;
+UINT8 *tecmo_txvideoram,*tecmo_fgvideoram,*tecmo_bgvideoram;
 
 int tecmo_video_type = 0;
 /*
@@ -23,9 +23,9 @@ static tilemap *tx_tilemap,*fg_tilemap,*bg_tilemap;
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
-	unsigned char attr = tecmo_bgvideoram[tile_index+0x200];
+	UINT8 attr = tecmo_bgvideoram[tile_index+0x200];
 	SET_TILE_INFO(
 			3,
 			tecmo_bgvideoram[tile_index] + ((attr & 0x07) << 8),
@@ -33,9 +33,9 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
-	unsigned char attr = tecmo_fgvideoram[tile_index+0x200];
+	UINT8 attr = tecmo_fgvideoram[tile_index+0x200];
 	SET_TILE_INFO(
 			2,
 			tecmo_fgvideoram[tile_index] + ((attr & 0x07) << 8),
@@ -43,9 +43,9 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void gemini_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( gemini_get_bg_tile_info )
 {
-	unsigned char attr = tecmo_bgvideoram[tile_index+0x200];
+	UINT8 attr = tecmo_bgvideoram[tile_index+0x200];
 	SET_TILE_INFO(
 			3,
 			tecmo_bgvideoram[tile_index] + ((attr & 0x70) << 4),
@@ -53,9 +53,9 @@ static void gemini_get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void gemini_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( gemini_get_fg_tile_info )
 {
-	unsigned char attr = tecmo_fgvideoram[tile_index+0x200];
+	UINT8 attr = tecmo_fgvideoram[tile_index+0x200];
 	SET_TILE_INFO(
 			2,
 			tecmo_fgvideoram[tile_index] + ((attr & 0x70) << 4),
@@ -63,9 +63,9 @@ static void gemini_get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
-	unsigned char attr = tecmo_txvideoram[tile_index+0x400];
+	UINT8 attr = tecmo_txvideoram[tile_index+0x400];
 	SET_TILE_INFO(
 			0,
 			tecmo_txvideoram[tile_index] + ((attr & 0x03) << 8),
@@ -101,8 +101,6 @@ VIDEO_START( tecmo )
 
 	tilemap_set_scrolldx(bg_tilemap,-48,256+48);
 	tilemap_set_scrolldx(fg_tilemap,-48,256+48);
-
-	return 0;
 }
 
 
@@ -115,29 +113,20 @@ VIDEO_START( tecmo )
 
 WRITE8_HANDLER( tecmo_txvideoram_w )
 {
-	if (tecmo_txvideoram[offset] != data)
-	{
-		tecmo_txvideoram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
-	}
+	tecmo_txvideoram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
 }
 
 WRITE8_HANDLER( tecmo_fgvideoram_w )
 {
-	if (tecmo_fgvideoram[offset] != data)
-	{
-		tecmo_fgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset & 0x1ff);
-	}
+	tecmo_fgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset & 0x1ff);
 }
 
 WRITE8_HANDLER( tecmo_bgvideoram_w )
 {
-	if (tecmo_bgvideoram[offset] != data)
-	{
-		tecmo_bgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset & 0x1ff);
-	}
+	tecmo_bgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset & 0x1ff);
 }
 
 WRITE8_HANDLER( tecmo_fgscroll_w )

@@ -598,19 +598,19 @@ static const gfx_layout charlayout =
 static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 2 },
-	{ -1 }					 /* end of array */
+	{ -1 }
 };
 
-static unsigned short colortable_source[] =
+static UINT16 colortable_source[] =
 {
 	 1, 0,
 	 0, 1
 };
 static PALETTE_INIT( lazercmd )
 {
-	palette_set_color(machine,0,0x00,0x00,0x00); 	/* black */
-	palette_set_color(machine,1,0xb0,0xb0,0xb0); 	/* white */
-	palette_set_color(machine,2,0xff,0xff,0xff);	/* bright white */
+	palette_set_color(machine,0,MAKE_RGB(0x00,0x00,0x00)); 	/* black */
+	palette_set_color(machine,1,MAKE_RGB(0xb0,0xb0,0xb0)); 	/* white */
+	palette_set_color(machine,2,MAKE_RGB(0xff,0xff,0xff));	/* bright white */
 	memcpy(colortable,colortable_source,sizeof(colortable_source));
 }
 

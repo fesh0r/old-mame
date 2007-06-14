@@ -29,14 +29,11 @@ extern size_t tx1_objectram_size;
 
 WRITE8_HANDLER( tx1_vram_w )
 {
-        if (tx1_vram[offset]!=data)
-        {
-        	tilemap_mark_tile_dirty(tx1_tilemap,offset/2);
-        }
 	tx1_vram[offset] = data;
+	tilemap_mark_tile_dirty(tx1_tilemap,offset/2);
 }
 
-static void get_tx1_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx1_tile_info )
 {
 	int bit15, upper, lower, tileno;
 
@@ -53,7 +50,6 @@ VIDEO_START( tx1 )
 {
 	tx1_tilemap = tilemap_create(get_tx1_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,128,64);
 	tilemap_set_transparent_pen(tx1_tilemap,0xff);
-	return 0;
 }
 
 VIDEO_UPDATE( tx1 )
@@ -120,7 +116,7 @@ PALETTE_INIT( buggyboy )
 		bit4 = (color_prom[i+0x300]) & 1;
                 b = 0x06 * bit4 + 0x0d * bit0 + 0x1e * bit1 + 0x41 * bit2 + 0x8a * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 
@@ -167,24 +163,18 @@ PALETTE_INIT( buggyboy )
 
 WRITE8_HANDLER( buggyb1_vram_w )
 {
-        if (buggyb1_vram[offset]!=data)
-        {
-        	tilemap_mark_tile_dirty(buggyb1_tilemap,offset/2);
-        }
 	buggyb1_vram[offset] = data;
+	tilemap_mark_tile_dirty(buggyb1_tilemap,offset/2);
 }
 
 WRITE8_HANDLER( buggyboy_vram_w )
 {
-        if (buggyboy_vram[offset]!=data)
-        {
-        	tilemap_mark_tile_dirty(buggyboy_tilemap,offset/2);
-        }
 	buggyboy_vram[offset] = data;
+	tilemap_mark_tile_dirty(buggyboy_tilemap,offset/2);
 }
 
 
-static void get_buggyb1_tile_info(int tile_index)
+static TILE_GET_INFO( get_buggyb1_tile_info )
 {
 	int color, bit15, upper, lower, tileno;
 
@@ -198,7 +188,7 @@ static void get_buggyb1_tile_info(int tile_index)
 	SET_TILE_INFO(0,tileno,color,0);
 }
 
-static void get_buggyboy_tile_info(int tile_index)
+static TILE_GET_INFO( get_buggyboy_tile_info )
 {
   	int color, bit15, upper, lower, tileno;
 
@@ -356,7 +346,6 @@ VIDEO_START( buggyb1 )
 {
 	buggyb1_tilemap = tilemap_create(get_buggyb1_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,64,64);
         tilemap_set_transparent_pen(buggyb1_tilemap, 0);
-	return 0;
 }
 
 
@@ -364,7 +353,6 @@ VIDEO_START( buggyboy )
 {
 	buggyboy_tilemap = tilemap_create(get_buggyboy_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,128,64);
         tilemap_set_transparent_pen(buggyboy_tilemap, 0);
-	return 0;
 }
 
 

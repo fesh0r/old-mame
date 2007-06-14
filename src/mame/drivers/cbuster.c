@@ -327,7 +327,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &tilelayout,     0, 0x500 },	/* Tiles 16x16 */
 	{ REGION_GFX2, 0, &tilelayout,     0, 0x500 },	/* Tiles 16x16 */
 	{ REGION_GFX3, 0, &spritelayout, 0x100, 80 },	/* Sprites 16x16 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /******************************************************************************/
@@ -544,8 +544,8 @@ ROM_END
 
 static DRIVER_INIT( twocrude )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
-	unsigned char *PTR;
+	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *PTR;
 	int i,j;
 
 	/* Main cpu decrypt */

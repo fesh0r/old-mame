@@ -13,23 +13,17 @@ static tilemap *foreground, *background;
 
 WRITE8_HANDLER( portrait_bgvideo_write )
 {
-	if (portrait_bgvideoram[offset] != data)
-	{
-		tilemap_mark_tile_dirty(background,offset/2);
-		portrait_bgvideoram[offset] = data;
-	}
+	tilemap_mark_tile_dirty(background,offset/2);
+	portrait_bgvideoram[offset] = data;
 }
 
 WRITE8_HANDLER( portrait_fgvideo_write )
 {
-	if (portrait_fgvideoram[offset] != data)
-	{
-		tilemap_mark_tile_dirty(foreground,offset/2);
-		portrait_fgvideoram[offset] = data;
-	}
+	tilemap_mark_tile_dirty(foreground,offset/2);
+	portrait_fgvideoram[offset] = data;
 }
 
-static void get_tile_info( const UINT8 *source, int tile_index )
+INLINE void get_tile_info( running_machine *machine, tile_data *tileinfo, int tile_index, const UINT8 *source )
 {
 	int attr    = source[tile_index*2+0];
 	int tilenum = source[tile_index*2+1];
@@ -55,14 +49,14 @@ static void get_tile_info( const UINT8 *source, int tile_index )
 	SET_TILE_INFO( 0, tilenum, color, flags )
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
-	get_tile_info( portrait_bgvideoram, tile_index );
+	get_tile_info( machine, tileinfo, tile_index, portrait_bgvideoram );
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
-	get_tile_info( portrait_fgvideoram, tile_index );
+	get_tile_info( machine, tileinfo, tile_index, portrait_fgvideoram );
 }
 
 VIDEO_START( portrait )
@@ -71,7 +65,6 @@ VIDEO_START( portrait )
 	foreground = tilemap_create( get_fg_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 16, 16, 32, 32 );
 
 		tilemap_set_transparent_pen( foreground, 0 );
-		return 0;
 }
 
 /* probably not right */
@@ -91,7 +84,7 @@ PALETTE_INIT( portrait )
 		bit2 = (color_prom[i] >> 4) & 0x01;
 		b = 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 

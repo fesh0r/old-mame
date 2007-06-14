@@ -54,7 +54,7 @@ UINT16 *fuuki16_vregs,  *fuuki16_priority, *fuuki16_unknown;
 \
 static tilemap *tilemap_##_N_; \
 \
-static void get_tile_info_##_N_(int tile_index) \
+static TILE_GET_INFO( get_tile_info_##_N_ ) \
 { \
 	UINT16 code = fuuki16_vram_##_N_[ 2 * tile_index + 0 ]; \
 	UINT16 attr = fuuki16_vram_##_N_[ 2 * tile_index + 1 ]; \
@@ -63,9 +63,8 @@ static void get_tile_info_##_N_(int tile_index) \
 \
 WRITE16_HANDLER( fuuki16_vram_##_N_##_w ) \
 { \
-	UINT16 old_data	=	fuuki16_vram_##_N_[offset]; \
-	UINT16 new_data	=	COMBINE_DATA(&fuuki16_vram_##_N_[offset]); \
-	if (old_data != new_data)	tilemap_mark_tile_dirty(tilemap_##_N_,offset/2); \
+	COMBINE_DATA(&fuuki16_vram_##_N_[offset]); \
+	tilemap_mark_tile_dirty(tilemap_##_N_,offset/2); \
 }
 
 LAYER( 0 )
@@ -90,7 +89,7 @@ PALETTE_INIT( fuuki16 )
 	/* The game does not initialise the palette at startup. It should
        be totally black */
 	for (pen = 0; pen < machine->drv->total_colors; pen++)
-		palette_set_color(machine,pen,0,0,0);
+		palette_set_color(machine,pen,MAKE_RGB(0,0,0));
 }
 
 VIDEO_START( fuuki16 )
@@ -113,8 +112,6 @@ VIDEO_START( fuuki16 )
 	tilemap_set_transparent_pen(tilemap_3,0x0f);	// 4 bits
 
 	machine->gfx[2]->color_granularity=16; /* 256 colour tiles with palette selectable on 16 colour boundaries */
-
-	return 0;
 }
 
 

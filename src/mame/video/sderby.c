@@ -11,7 +11,7 @@ extern UINT16 *sderby_fg_videoram;
 
 /* BG Layer */
 
-static void get_sderby_tile_info(int tile_index)
+static TILE_GET_INFO( get_sderby_tile_info )
 {
 	int tileno,colour;
 
@@ -23,15 +23,13 @@ static void get_sderby_tile_info(int tile_index)
 
 WRITE16_HANDLER( sderby_videoram_w )
 {
-	int oldword = sderby_videoram[offset];
 	COMBINE_DATA(&sderby_videoram[offset]);
-	if (oldword != sderby_videoram[offset])
-		tilemap_mark_tile_dirty(sderby_tilemap,offset/2);
+	tilemap_mark_tile_dirty(sderby_tilemap,offset/2);
 }
 
 /* MD Layer */
 
-static void get_sderby_md_tile_info(int tile_index)
+static TILE_GET_INFO( get_sderby_md_tile_info )
 {
 	int tileno,colour;
 
@@ -43,15 +41,13 @@ static void get_sderby_md_tile_info(int tile_index)
 
 WRITE16_HANDLER( sderby_md_videoram_w )
 {
-	int oldword = sderby_md_videoram[offset];
 	COMBINE_DATA(&sderby_md_videoram[offset]);
-	if (oldword != sderby_md_videoram[offset])
-		tilemap_mark_tile_dirty(sderby_md_tilemap,offset/2);
+	tilemap_mark_tile_dirty(sderby_md_tilemap,offset/2);
 }
 
 /* FG Layer */
 
-static void get_sderby_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_sderby_fg_tile_info )
 {
 	int tileno,colour;
 
@@ -63,10 +59,8 @@ static void get_sderby_fg_tile_info(int tile_index)
 
 WRITE16_HANDLER( sderby_fg_videoram_w )
 {
-	int oldword = sderby_fg_videoram[offset];
 	COMBINE_DATA(&sderby_fg_videoram[offset]);
-	if (oldword != sderby_fg_videoram[offset])
-		tilemap_mark_tile_dirty(sderby_fg_tilemap,offset/2);
+	tilemap_mark_tile_dirty(sderby_fg_tilemap,offset/2);
 }
 
 
@@ -108,9 +102,6 @@ VIDEO_START( sderby )
 
 	sderby_fg_tilemap = tilemap_create(get_sderby_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,64,32);
 	tilemap_set_transparent_pen(sderby_fg_tilemap,0);
-
-
-	return 0;
 }
 
 VIDEO_UPDATE( sderby )

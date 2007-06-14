@@ -110,11 +110,8 @@ static UINT8 collh, cxh, cyrh, cyqh;
 
 static WRITE8_HANDLER( tx_tileram_w )
 {
-	if (tx_tileram[offset] != data)
-	{
-		tx_tileram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap, offset);
-	}
+	tx_tileram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap, offset);
 }
 
 static ADDRESS_MAP_START( marinedt_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -439,12 +436,12 @@ bit0=0;
 //      *(palette++) = 0x92 * bit0 + 0x46 * bit1 + 0x27 * bit2;
 		b = 0x27 * bit0 + 0x46 * bit1 + 0x92 * bit2;
 
-		palette_set_color(machine, i, r, g, b);
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
 	}
 }
 
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int code = tx_tileram[tile_index];
 	int color = 0;
@@ -464,8 +461,6 @@ VIDEO_START( marinedt )
 	tile = auto_bitmap_alloc(32 * 8, 32 * 8, machine->screen[0].format);
 	obj1 = auto_bitmap_alloc(32,32,machine->screen[0].format);
 	obj2 = auto_bitmap_alloc(32,32,machine->screen[0].format);
-
-	return 0;
 }
 
 

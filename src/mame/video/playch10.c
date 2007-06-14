@@ -57,7 +57,7 @@ PALETTE_INIT( playch10 )
 
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -86,7 +86,7 @@ static const ppu2c0x_interface ppu_interface =
 	{ ppu_irq }				/* irq */
 };
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int offs = tile_index * 2;
 	int code = videoram[offs] + ((videoram[offs + 1] & 0x07) << 8);
@@ -101,8 +101,6 @@ VIDEO_START( playch10 )
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
 
 	ppu2c0x_init( &ppu_interface );
-
-	return 0;
 }
 
 /***************************************************************************

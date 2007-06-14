@@ -64,7 +64,7 @@ PALETTE_INIT( wilytowr )
 		bit3 = (color_prom[i + 2*256] >> 3) & 0x01;
 		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 	color_prom += 3*256;
@@ -88,35 +88,26 @@ PALETTE_INIT( wilytowr )
 		bit1 = (color_prom[i] >> 7) & 0x01;
 		b = 0x4f * bit0 + 0xa8 * bit1;
 
-		palette_set_color(machine,i+256,r,g,b);
+		palette_set_color(machine,i+256,MAKE_RGB(r,g,b));
 	}
 }
 
 static WRITE8_HANDLER( wilytowr_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 static WRITE8_HANDLER( wilytowr_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 static WRITE8_HANDLER( wilytowr_videoram2_w )
 {
-	if (wilytowr_videoram2[offset] != data)
-	{
-		wilytowr_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	wilytowr_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 static WRITE8_HANDLER( wilytwr_palbank_w )
@@ -144,7 +135,7 @@ WRITE8_HANDLER( fghtbskt_flipscreen_w )
 }
 
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] | ((attr & 0x30) << 4);
@@ -153,7 +144,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = wilytowr_videoram2[tile_index];
 
@@ -172,8 +163,6 @@ VIDEO_START( wilytowr )
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 
 	fg_flag = 0;
-
-	return 0;
 }
 
 static void wilytowr_draw_sprites( mame_bitmap *bitmap )
@@ -504,7 +493,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &charlayout,   256, 1 },
 	{ REGION_GFX2, 0, &tilelayout,     0, 32 },
 	{ REGION_GFX3, 0, &spritelayout,   0, 32 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode fghtbskt_gfxdecodeinfo[] =
@@ -512,7 +501,7 @@ static const gfx_decode fghtbskt_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &charlayout,   16, 1 },
 	{ REGION_GFX2, 0, &tilelayout,    0, 32 },
 	{ REGION_GFX3, 0, &spritelayout,  0, 32 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -607,7 +596,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( wilytowr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "wt4e.bin",     0x0000, 0x2000, CRC(a38e4b8a) SHA1(e296ba1764d3e8e2a5cc43bdde7f30a522b437ff) )
 	ROM_LOAD( "wt4h.bin",     0x2000, 0x2000, CRC(c1405ceb) SHA1(c11dd4cd180bc9576e8042e1f56074620ea00f53) )
 	ROM_LOAD( "wt4j.bin",     0x4000, 0x2000, CRC(379fb1c3) SHA1(677e4077f6d2140e4fb5c3d86bc7081d3b6cc028) )
@@ -648,7 +637,7 @@ ROM_START( wilytowr )
 ROM_END
 
 ROM_START( atomboy )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "wt_a-4e.bin",  0x0000, 0x2000, CRC(f7978185) SHA1(6a108d1e9b1a81cedf865aba3998748dcf1d55ef) )
 	ROM_LOAD( "wt_a-4h.bin",  0x2000, 0x2000, CRC(0ca9950b) SHA1(d6583fcdf17d16a8884932695caa9c5587a20795) )
 	ROM_LOAD( "wt_a-4j.bin",  0x4000, 0x2000, CRC(1badbc65) SHA1(e0768f2cd7bbe8908fd68ff6d54dbef84cc7de4c) )
@@ -689,7 +678,7 @@ ROM_START( atomboy )
 ROM_END
 
 ROM_START( fghtbskt )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for main CPU */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "fb14.0f",      0x0000, 0x2000, CRC(82032853) SHA1(e103ace4cac6df3a429b785f9789b302ae8cdade) )
 	ROM_LOAD( "fb13.2f",      0x2000, 0x2000, CRC(5306df0f) SHA1(11be226e7167703bb08e48510a113b2d43b211a4) )
 	ROM_LOAD( "fb12.3f",      0x4000, 0x2000, CRC(ee9210d4) SHA1(c63d036314d635f65a2b5bb192ceb312a587db6e) )

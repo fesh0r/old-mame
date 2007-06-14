@@ -44,7 +44,7 @@ PALETTE_INIT( cm )
 		bit3 = (color_prom[2*machine->drv->total_colors] >> 0) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -52,23 +52,17 @@ PALETTE_INIT( cm )
 
 static WRITE8_HANDLER( cm_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 static WRITE8_HANDLER( cm_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] + ((attr & 0x0f) << 8);
@@ -106,8 +100,6 @@ VIDEO_START(cm)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 64, 32);
-
-	return 0;
 }
 
 VIDEO_UPDATE(cm)

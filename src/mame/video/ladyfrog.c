@@ -26,7 +26,7 @@ READ8_HANDLER(ladyfrog_spriteram_r)
 	return ladyfrog_spriteram[offset];
 }
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int pal,tile;
 	pal=videoram[tile_index*2+1]&0x0f;
@@ -140,8 +140,6 @@ VIDEO_START( ladyfrog )
   paletteram_2 = auto_malloc(0x200);
   tilemap_set_scroll_cols(bg_tilemap,32);
   tilemap_set_scrolldy( bg_tilemap,   15, 15 );
-  return 0;
-
 }
 
 

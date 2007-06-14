@@ -16,7 +16,7 @@ static tilemap *fg_tilemap, *bg_tilemap;
 
 ***************************************************************************/
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = (news_fgram[tile_index*2] << 8) | news_fgram[tile_index*2+1];
 	SET_TILE_INFO(
@@ -26,7 +26,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = (news_bgram[tile_index*2] << 8) | news_bgram[tile_index*2+1];
 	int color = (code & 0xf000) >> 12;
@@ -56,8 +56,6 @@ VIDEO_START( news )
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32, 32);
-
-	return 0;
 }
 
 

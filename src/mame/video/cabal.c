@@ -11,7 +11,7 @@
 static tilemap *background_layer,*text_layer;
 
 
-static void get_back_tile_info(int tile_index)
+static TILE_GET_INFO( get_back_tile_info )
 {
 	int tile = videoram16[tile_index];
 	int color = (tile>>12)&0xf;
@@ -25,7 +25,7 @@ static void get_back_tile_info(int tile_index)
 			0)
 }
 
-static void get_text_tile_info(int tile_index)
+static TILE_GET_INFO( get_text_tile_info )
 {
 	int tile = colorram16[tile_index];
 	int color = (tile>>10);
@@ -47,8 +47,6 @@ VIDEO_START( cabal )
 
 	tilemap_set_transparent_pen(text_layer,3);
 	tilemap_set_transparent_pen(background_layer,15);
-
-	return 0;
 }
 
 
@@ -68,18 +66,14 @@ WRITE16_HANDLER( cabal_flipscreen_w )
 
 WRITE16_HANDLER( cabal_background_videoram16_w )
 {
-	int oldword = videoram16[offset];
 	COMBINE_DATA(&videoram16[offset]);
-	if (oldword != videoram16[offset])
-		tilemap_mark_tile_dirty(background_layer,offset);
+	tilemap_mark_tile_dirty(background_layer,offset);
 }
 
 WRITE16_HANDLER( cabal_text_videoram16_w )
 {
-	int oldword = colorram16[offset];
 	COMBINE_DATA(&colorram16[offset]);
-	if (oldword != colorram16[offset])
-		tilemap_mark_tile_dirty(text_layer,offset);
+	tilemap_mark_tile_dirty(text_layer,offset);
 }
 
 

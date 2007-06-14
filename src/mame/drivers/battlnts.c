@@ -34,7 +34,7 @@ WRITE8_HANDLER( battlnts_sh_irqtrigger_w )
 
 static WRITE8_HANDLER( battlnts_bankswitch_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 	int bankaddress;
 
 	/* bits 6 & 7 = bank number */
@@ -323,7 +323,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,		0, 1 }, /* colors  0-15 */
 	{ REGION_GFX2, 0, &spritelayout, 4*16, 1 }, /* colors 64-79 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /***************************************************************************

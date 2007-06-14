@@ -39,38 +39,26 @@ static mame_bitmap *sprites_bitmap;
 
 WRITE8_HANDLER( airbustr_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( airbustr_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( airbustr_videoram2_w )
 {
-	if (airbustr_videoram2[offset] != data)
-	{
-		airbustr_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	airbustr_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( airbustr_colorram2_w )
 {
-	if (airbustr_colorram2[offset] != data)
-	{
-		airbustr_colorram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	airbustr_colorram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 /*  Scroll Registers
@@ -106,7 +94,7 @@ WRITE8_HANDLER( airbustr_scrollregs_w )
 	tilemap_set_scrollx(fg_tilemap, 0, ((highbits << 8) & 0x100) + fg_scrollx);
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = airbustr_colorram2[tile_index];
 	int code = airbustr_videoram2[tile_index] + ((attr & 0x0f) << 8);
@@ -115,7 +103,7 @@ static void get_fg_tile_info(int tile_index)
 	SET_TILE_INFO(0, code, color, 0)
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] + ((attr & 0x0f) << 8);
@@ -139,8 +127,6 @@ VIDEO_START( airbustr )
 	tilemap_set_scrolldy(bg_tilemap, 0x100, 0x1ff);
 	tilemap_set_scrolldx(fg_tilemap, 0x094, 0x06a);
 	tilemap_set_scrolldy(fg_tilemap, 0x100, 0x1ff);
-
-	return 0;
 }
 
 /*      Sprites

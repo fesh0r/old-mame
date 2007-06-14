@@ -30,12 +30,12 @@ PALETTE_INIT( xyonix )
 		bit1 = (color_prom[i] >> 4) & 0x01;
 		b = 0x4f * bit0 + 0xa8 * bit1;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 
 
-static void get_xyonix_tile_info(int tile_index)
+static TILE_GET_INFO( get_xyonix_tile_info )
 {
 	int tileno;
 	int attr = xyonix_vidram[tile_index+0x1000+1];
@@ -54,8 +54,6 @@ WRITE8_HANDLER( xyonix_vidram_w )
 VIDEO_START(xyonix)
 {
 	xyonix_tilemap = tilemap_create(get_xyonix_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 4, 8,80,32);
-
-	return 0;
 }
 
 VIDEO_UPDATE(xyonix)

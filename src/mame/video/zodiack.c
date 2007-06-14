@@ -18,20 +18,14 @@ static tilemap *bg_tilemap, *fg_tilemap;
 
 WRITE8_HANDLER( zodiack_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( zodiack_videoram2_w )
 {
-	if (zodiack_videoram2[offset] != data)
-	{
-		zodiack_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	zodiack_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( zodiack_attributes_w )
@@ -95,14 +89,14 @@ PALETTE_INIT( zodiack )
 
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
 
 	/* white for bullets */
 
-	palette_set_color(machine,machine->drv->total_colors-1,0xff,0xff,0xff);
+	palette_set_color(machine,machine->drv->total_colors-1,MAKE_RGB(0xff,0xff,0xff));
 
 	for (i = 0;i < TOTAL_COLORS(0);i+=2)
 	{
@@ -120,7 +114,7 @@ PALETTE_INIT( zodiack )
 	COLOR(2, 1) = 48;
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = zodiack_videoram2[tile_index];
 	int color = (zodiack_attributesram[2 * (tile_index % 32) + 1] >> 4) & 0x07;
@@ -128,7 +122,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(0, code, color, 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = videoram[tile_index];
 	int color = zodiack_attributesram[2 * (tile_index % 32) + 1] & 0x07;
@@ -148,8 +142,6 @@ VIDEO_START( zodiack )
 	tilemap_set_scroll_cols(fg_tilemap, 32);
 
 	flip_screen = 0;
-
-	return 0;
 }
 
 static void zodiack_draw_bullets( mame_bitmap *bitmap )

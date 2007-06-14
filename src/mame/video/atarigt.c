@@ -77,7 +77,7 @@ static UINT8 rshift, gshift, bshift;
  *
  *************************************/
 
-static void get_alpha_tile_info(int tile_index)
+static TILE_GET_INFO( get_alpha_tile_info )
 {
 	UINT16 data = atarigen_alpha32[tile_index / 2] >> (16 * (~tile_index & 1));
 	int code = data & 0xfff;
@@ -86,7 +86,7 @@ static void get_alpha_tile_info(int tile_index)
 }
 
 
-static void get_playfield_tile_info(int tile_index)
+static TILE_GET_INFO( get_playfield_tile_info )
 {
 	UINT16 data = atarigen_playfield32[tile_index / 2] >> (16 * (~tile_index & 1));
 	int code = (playfield_tile_bank << 12) | (data & 0xfff);
@@ -141,8 +141,7 @@ VIDEO_START( atarigt )
 	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, atarigt_playfield_scan, TILEMAP_OPAQUE, 8,8, 128,64);
 
 	/* initialize the motion objects */
-	if (!atarirle_init(0, &adjusted_modesc))
-		return 1;
+	atarirle_init(0, &adjusted_modesc);
 
 	/* initialize the alphanumerics */
 	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 64,32);
@@ -170,7 +169,6 @@ VIDEO_START( atarigt )
 	playfield_yscroll = 0;
 	tram_checksum = 0;
 	memset(atarigt_colorram, 0, 0x80000);
-	return 0;
 }
 
 

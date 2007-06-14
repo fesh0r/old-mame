@@ -46,7 +46,7 @@ static tilemap *bg_tilemap[2];
       0  | xxxx---- -------- | color
 */
 
-static void get_tile_info_splash_tilemap0(int tile_index)
+static TILE_GET_INFO( get_tile_info_splash_tilemap0 )
 {
 	int data = splash_videoram[tile_index];
 	int attr = data >> 8;
@@ -59,7 +59,7 @@ static void get_tile_info_splash_tilemap0(int tile_index)
 			0)
 }
 
-static void get_tile_info_splash_tilemap1(int tile_index)
+static TILE_GET_INFO( get_tile_info_splash_tilemap1 )
 {
 	int data = splash_videoram[(0x1000/2) + tile_index];
 	int attr = data >> 8;
@@ -85,11 +85,8 @@ READ16_HANDLER( splash_vram_r )
 
 WRITE16_HANDLER( splash_vram_w )
 {
-	int oldword = splash_videoram[offset];
 	COMBINE_DATA(&splash_videoram[offset]);
-
-	if (oldword != splash_videoram[offset])
-		tilemap_mark_tile_dirty(bg_tilemap[offset >> 11],((offset << 1) & 0x0fff) >> 1);
+	tilemap_mark_tile_dirty(bg_tilemap[offset >> 11],((offset << 1) & 0x0fff) >> 1);
 }
 
 static void splash_draw_bitmap(mame_bitmap *bitmap,const rectangle *cliprect)
@@ -187,8 +184,6 @@ VIDEO_START( splash )
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
 
 	tilemap_set_scrollx(bg_tilemap[0], 0, 4);
-
-	return 0;
 }
 
 /***************************************************************************

@@ -102,18 +102,14 @@ VIDEO_UPDATE( stadhero )
 
 WRITE16_HANDLER( stadhero_pf1_data_w )
 {
-	UINT16 oldword=stadhero_pf1_data[offset];
 	COMBINE_DATA(&stadhero_pf1_data[offset]);
-	if (oldword!=stadhero_pf1_data[offset])
-		tilemap_mark_tile_dirty(pf1_tilemap,offset);
+	tilemap_mark_tile_dirty(pf1_tilemap,offset);
 }
 
 WRITE16_HANDLER( stadhero_pf2_data_w )
 {
-	UINT16 oldword=stadhero_pf2_data[offset];
 	COMBINE_DATA(&stadhero_pf2_data[offset]);
-	if (oldword!=stadhero_pf2_data[offset])
-		tilemap_mark_tile_dirty(pf2_tilemap,offset);
+	tilemap_mark_tile_dirty(pf2_tilemap,offset);
 }
 
 WRITE16_HANDLER( stadhero_pf2_control_0_w )
@@ -134,7 +130,7 @@ static UINT32 stadhero_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_row
 	return (col & 0xf) + ((row & 0xf) << 4) + ((row & 0x30) << 4) + ((col & 0x30) << 6);
 }
 
-static void get_pf2_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf2_tile_info )
 {
 	int tile,color;
 
@@ -149,7 +145,7 @@ static void get_pf2_tile_info(int tile_index)
 			0)
 }
 
-static void get_pf1_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf1_tile_info )
 {
 	int tile=stadhero_pf1_data[tile_index];
 	int color=tile >> 12;
@@ -168,8 +164,6 @@ VIDEO_START( stadhero )
 	pf2_tilemap =     tilemap_create(get_pf2_tile_info,stadhero_scan,TILEMAP_OPAQUE,     16,16,64,64);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
-
-	return 0;
 }
 
 /******************************************************************************/

@@ -47,7 +47,7 @@ static SPAN span[1024];
 
 /*****************************************************************************/
 
-#if LSB_FIRST
+#ifdef LSB_FIRST
 	#define BYTE_ADDR_XOR		3
 	#define WORD_ADDR_XOR		1
 #else
@@ -218,7 +218,7 @@ static UINT16 primitive_delta_z;
 
 static int fb_format;
 static int fb_size;
-static int fb_width;
+int fb_width;
 static UINT32 fb_address;
 
 static UINT32 zb_address;
@@ -307,7 +307,6 @@ VIDEO_START(n64)
 	blender2a_g[0] = blender2a_g[1] = &pixel_color.r;
 	blender2a_b[0] = blender2a_b[1] = &pixel_color.r;
 	blender2b_a[0] = blender2b_a[1] = &pixel_color.r;
-	return 0;
 }
 
 VIDEO_UPDATE(n64)

@@ -173,7 +173,7 @@ static void inufuku_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 
 ******************************************************************************/
 
-static void get_inufuku_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_inufuku_bg_tile_info )
 {
 	SET_TILE_INFO(
 			0,
@@ -182,7 +182,7 @@ static void get_inufuku_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_inufuku_text_tile_info(int tile_index)
+static TILE_GET_INFO( get_inufuku_text_tile_info )
 {
 	SET_TILE_INFO(
 			1,
@@ -198,10 +198,8 @@ READ16_HANDLER( inufuku_bg_videoram_r )
 
 WRITE16_HANDLER( inufuku_bg_videoram_w )
 {
-	int oldword = inufuku_bg_videoram[offset];
 	COMBINE_DATA(&inufuku_bg_videoram[offset]);
-	if (oldword != inufuku_bg_videoram[offset])
-		tilemap_mark_tile_dirty(inufuku_bg_tilemap, offset);
+	tilemap_mark_tile_dirty(inufuku_bg_tilemap, offset);
 }
 
 READ16_HANDLER( inufuku_text_videoram_r )
@@ -211,10 +209,8 @@ READ16_HANDLER( inufuku_text_videoram_r )
 
 WRITE16_HANDLER( inufuku_text_videoram_w )
 {
-	int oldword = inufuku_text_videoram[offset];
 	COMBINE_DATA(&inufuku_text_videoram[offset]);
-	if (oldword != inufuku_text_videoram[offset])
-		tilemap_mark_tile_dirty(inufuku_text_tilemap, offset);
+	tilemap_mark_tile_dirty(inufuku_text_tilemap, offset);
 }
 
 
@@ -231,8 +227,6 @@ VIDEO_START( inufuku )
 
 	tilemap_set_transparent_pen(inufuku_bg_tilemap, 255);
 	tilemap_set_transparent_pen(inufuku_text_tilemap, 255);
-
-	return 0;
 }
 
 

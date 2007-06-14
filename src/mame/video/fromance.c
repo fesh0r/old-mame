@@ -40,7 +40,7 @@ static void crtc_interrupt_gen(int param);
  *
  *************************************/
 
-INLINE void get_fromance_tile_info(int tile_index,int layer)
+INLINE void get_fromance_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int layer)
 {
 	int tile = ((local_videoram[layer][0x0000 + tile_index] & 0x80) << 9) |
 				(local_videoram[layer][0x1000 + tile_index] << 8) |
@@ -50,10 +50,10 @@ INLINE void get_fromance_tile_info(int tile_index,int layer)
 	SET_TILE_INFO(layer, tile, color, 0);
 }
 
-static void get_fromance_bg_tile_info(int tile_index) { get_fromance_tile_info(tile_index, 0); }
-static void get_fromance_fg_tile_info(int tile_index) { get_fromance_tile_info(tile_index, 1); }
+static TILE_GET_INFO( get_fromance_bg_tile_info ) { get_fromance_tile_info(machine,tileinfo,tile_index, 0); }
+static TILE_GET_INFO( get_fromance_fg_tile_info ) { get_fromance_tile_info(machine,tileinfo,tile_index, 1); }
 
-INLINE void get_nekkyoku_tile_info(int tile_index,int layer)
+INLINE void get_nekkyoku_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int layer)
 {
 	int tile = (local_videoram[layer][0x0000 + tile_index] << 8) |
 				local_videoram[layer][0x1000 + tile_index];
@@ -62,8 +62,8 @@ INLINE void get_nekkyoku_tile_info(int tile_index,int layer)
 	SET_TILE_INFO(layer, tile, color, 0);
 }
 
-static void get_nekkyoku_bg_tile_info(int tile_index) { get_nekkyoku_tile_info(tile_index, 0); }
-static void get_nekkyoku_fg_tile_info(int tile_index) { get_nekkyoku_tile_info(tile_index, 1); }
+static TILE_GET_INFO( get_nekkyoku_bg_tile_info ) { get_nekkyoku_tile_info(machine, tileinfo, tile_index, 0); }
+static TILE_GET_INFO( get_nekkyoku_fg_tile_info ) { get_nekkyoku_tile_info(machine, tileinfo, tile_index, 1); }
 
 
 
@@ -110,8 +110,6 @@ VIDEO_START( fromance )
 	state_save_register_global(crtc_register);
 	state_save_register_global_array(crtc_data);
 	state_save_register_global_pointer(local_paletteram, 0x800 * 2);
-
-	return 0;
 }
 
 VIDEO_START( nekkyoku )
@@ -123,6 +121,9 @@ VIDEO_START( nekkyoku )
 	/* allocate local videoram */
 	local_videoram[0] = auto_malloc(0x1000 * 3);
 	local_videoram[1] = auto_malloc(0x1000 * 3);
+
+	/* allocate local palette RAM */
+	local_paletteram = auto_malloc(0x800 * 2);
 
 	/* configure tilemaps */
 	tilemap_set_transparent_pen(fg_tilemap,15);
@@ -138,22 +139,22 @@ VIDEO_START( nekkyoku )
 	state_save_register_global_pointer(local_videoram[0], 0x1000 * 3);
 	state_save_register_global_pointer(local_videoram[1], 0x1000 * 3);
 	state_save_register_global(selected_paletteram);
+	state_save_register_global_array(scrollx);
+	state_save_register_global_array(scrolly);
 	state_save_register_global(gfxreg);
 	state_save_register_global(flipscreen);
 	state_save_register_global(flipscreen_old);
+	state_save_register_global(scrollx_ofs);
 	state_save_register_global(scrolly_ofs);
 	state_save_register_global(crtc_register);
 	state_save_register_global_array(crtc_data);
-
-	return 0;
+	state_save_register_global_pointer(local_paletteram, 0x800 * 2);
 }
 
 VIDEO_START( pipedrm )
 {
 	video_start_fromance(machine);
 	scrolly_ofs = 0x00;
-
-	return 0;
 }
 
 VIDEO_START( hatris )
@@ -161,8 +162,6 @@ VIDEO_START( hatris )
 	video_start_fromance(machine);
 	scrollx_ofs = 0xB9;
 	scrolly_ofs = 0x00;
-
-	return 0;
 }
 
 /*************************************
@@ -212,7 +211,7 @@ WRITE8_HANDLER( fromance_paletteram_w )
 
 	/* compute R,G,B */
 	palword = (local_paletteram[offset | 1] << 8) | local_paletteram[offset & ~1];
-	palette_set_color(Machine, offset / 2, pal5bit(palword >> 10), pal5bit(palword >> 5), pal5bit(palword >> 0));
+	palette_set_color_rgb(Machine, offset / 2, pal5bit(palword >> 10), pal5bit(palword >> 5), pal5bit(palword >> 0));
 }
 
 

@@ -365,11 +365,11 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &char16x16layout,   0x1000, 512  }, /* bg tiles */
 	{ REGION_GFX1, 0, &char8x8layout,   0x1000, 512  }, /* bg tiles */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
-static void get_vmetal_texttilemap_tile_info(int tile_index)
+static TILE_GET_INFO( get_vmetal_texttilemap_tile_info )
 {
 	UINT32 tile;
 	UINT16 color, data = vmetal_texttileram[tile_index];
@@ -382,14 +382,14 @@ static void get_vmetal_texttilemap_tile_info(int tile_index)
 }
 
 
-static void get_vmetal_mid1tilemap_tile_info(int tile_index)
+static TILE_GET_INFO( get_vmetal_mid1tilemap_tile_info )
 {
 	UINT16 tile, color, data = vmetal_mid1tileram[tile_index];
 	get_vmetal_tlookup(data, &tile, &color);
 	if (data & 0x8000) tile = 0;
 	SET_TILE_INFO(0, tile, color^0xf, TILE_FLIPYX(0x0));
 }
-static void get_vmetal_mid2tilemap_tile_info(int tile_index)
+static TILE_GET_INFO( get_vmetal_mid2tilemap_tile_info )
 {
 	UINT16 tile, color, data = vmetal_mid2tileram[tile_index];
 	get_vmetal_tlookup(data, &tile, &color);
@@ -405,8 +405,6 @@ VIDEO_START(varia)
 	tilemap_set_transparent_pen(vmetal_texttilemap,0);
 	tilemap_set_transparent_pen(vmetal_mid1tilemap,0);
 	tilemap_set_transparent_pen(vmetal_mid2tilemap,0);
-
-	return 0;
 }
 
 VIDEO_UPDATE(varia)

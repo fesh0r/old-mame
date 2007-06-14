@@ -21,7 +21,7 @@ static void gijoe_sprite_callback(int *code, int *color, int *priority_mask)
 	*color = sprite_colorbase | (c & 0x001f);
 }
 
-static void gijoe_tile_callback(int layer, int *code, int *color)
+static void gijoe_tile_callback(int layer, int *code, int *color, int *flags)
 {
 	int tile = *code;
 
@@ -42,17 +42,14 @@ VIDEO_START( gijoe )
 	int i;
 
 	K053251_vh_start();
-
-	if (K056832_vh_start(REGION_GFX1, K056832_BPP_4, 1, NULL, gijoe_tile_callback, 0)) return 1;
+	K056832_vh_start(REGION_GFX1, K056832_BPP_4, 1, NULL, gijoe_tile_callback, 0);
 
 	K056832_linemap_enable(1);
 
-	if (K053247_vh_start(REGION_GFX2, -37, 20, NORMAL_PLANE_ORDER, gijoe_sprite_callback)) return 1;
+	K053247_vh_start(REGION_GFX2, -37, 20, NORMAL_PLANE_ORDER, gijoe_sprite_callback);
 
 	for (i=0; i<4; i++) AVAC_occupancy[i] = 0;
 	AVAC_vrc = 0xffff;
-
-	return 0;
 }
 
 /* useful function to sort the four tile layers by priority order */

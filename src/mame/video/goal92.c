@@ -29,29 +29,23 @@ WRITE16_HANDLER( goal92_fg_bank_w )
 
 WRITE16_HANDLER( goal92_text_w )
 {
-	int oldword = goal92_textram[offset];
 	COMBINE_DATA(&goal92_textram[offset]);
-	if (oldword != goal92_textram[offset])
-		tilemap_mark_tile_dirty(text_layer,offset);
+	tilemap_mark_tile_dirty(text_layer,offset);
 }
 
 WRITE16_HANDLER( goal92_background_w )
 {
-	int oldword = goal92_back_data[offset];
 	COMBINE_DATA(&goal92_back_data[offset]);
-	if (oldword != goal92_back_data[offset])
-		tilemap_mark_tile_dirty(background_layer,offset);
+	tilemap_mark_tile_dirty(background_layer,offset);
 }
 
 WRITE16_HANDLER( goal92_foreground_w )
 {
-	int oldword = goal92_fore_data[offset];
 	COMBINE_DATA(&goal92_fore_data[offset]);
-	if (oldword != goal92_fore_data[offset])
-		tilemap_mark_tile_dirty(foreground_layer,offset);
+	tilemap_mark_tile_dirty(foreground_layer,offset);
 }
 
-static void get_text_tile_info(int tile_index)
+static TILE_GET_INFO( get_text_tile_info )
 {
 	int tile = goal92_textram[tile_index];
 	int color=(tile>>12)&0xf;
@@ -63,7 +57,7 @@ static void get_text_tile_info(int tile_index)
 	SET_TILE_INFO(1,tile,color,0)
 }
 
-static void get_back_tile_info(int tile_index)
+static TILE_GET_INFO( get_back_tile_info )
 {
 	int tile=goal92_back_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -73,7 +67,7 @@ static void get_back_tile_info(int tile_index)
 	SET_TILE_INFO(2,tile,color,0)
 }
 
-static void get_fore_tile_info(int tile_index)
+static TILE_GET_INFO( get_fore_tile_info )
 {
 	int tile=goal92_fore_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -150,8 +144,6 @@ VIDEO_START( goal92 )
 	tilemap_set_transparent_pen(background_layer,15);
 	tilemap_set_transparent_pen(foreground_layer,15);
 	tilemap_set_transparent_pen(text_layer,15);
-
-	return 0;
 }
 
 VIDEO_UPDATE( goal92 )

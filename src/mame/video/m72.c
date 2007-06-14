@@ -65,7 +65,7 @@ INTERRUPT_GEN( m72_interrupt )
 
 ***************************************************************************/
 
-INLINE void m72_get_tile_info(int tile_index,unsigned char *vram,int gfxnum)
+INLINE void m72_get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT8 *vram,int gfxnum)
 {
 	int code,attr,color,pri;
 
@@ -87,7 +87,7 @@ INLINE void m72_get_tile_info(int tile_index,unsigned char *vram,int gfxnum)
 			TILE_FLIPYX((attr & 0xc0) >> 6) | TILE_SPLIT(pri))
 }
 
-INLINE void rtype2_get_tile_info(int tile_index,unsigned char *vram,int gfxnum)
+INLINE void rtype2_get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT8 *vram,int gfxnum)
 {
 	int code,attr,color,pri;
 
@@ -112,29 +112,29 @@ INLINE void rtype2_get_tile_info(int tile_index,unsigned char *vram,int gfxnum)
 }
 
 
-static void m72_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( m72_get_bg_tile_info )
 {
-	m72_get_tile_info(tile_index,m72_videoram2,2);
+	m72_get_tile_info(machine,tileinfo,tile_index,m72_videoram2,2);
 }
 
-static void m72_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( m72_get_fg_tile_info )
 {
-	m72_get_tile_info(tile_index,m72_videoram1,1);
+	m72_get_tile_info(machine,tileinfo,tile_index,m72_videoram1,1);
 }
 
-static void hharry_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( hharry_get_bg_tile_info )
 {
-	m72_get_tile_info(tile_index,m72_videoram2,1);
+	m72_get_tile_info(machine,tileinfo,tile_index,m72_videoram2,1);
 }
 
-static void rtype2_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( rtype2_get_bg_tile_info )
 {
-	rtype2_get_tile_info(tile_index,m72_videoram2,1);
+	rtype2_get_tile_info(machine,tileinfo,tile_index,m72_videoram2,1);
 }
 
-static void rtype2_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( rtype2_get_fg_tile_info )
 {
-	rtype2_get_tile_info(tile_index,m72_videoram1,1);
+	rtype2_get_tile_info(machine,tileinfo,tile_index,m72_videoram1,1);
 }
 
 
@@ -184,8 +184,6 @@ VIDEO_START( m72 )
 	bgadjust = 0;
 
 	register_savestate();
-
-	return 0;
 }
 
 VIDEO_START( rtype2 )
@@ -209,17 +207,13 @@ VIDEO_START( rtype2 )
 	bgadjust = 0;
 
 	register_savestate();
-
-	return 0;
 }
 
 VIDEO_START( poundfor )
 {
-	int res = video_start_rtype2(machine);
+	video_start_rtype2(machine);
 
 	xadjust = -6;
-
-	return res;
 }
 
 
@@ -248,8 +242,6 @@ VIDEO_START( majtitle )
 	bgadjust = 0;
 
 	register_savestate();
-
-	return 0;
 }
 
 VIDEO_START( hharry )
@@ -273,8 +265,6 @@ VIDEO_START( hharry )
 	bgadjust = -2;
 
 	register_savestate();
-
-	return 0;
 }
 
 
@@ -308,7 +298,7 @@ READ8_HANDLER( m72_palette2_r )
 
 INLINE void changecolor(int color,int r,int g,int b)
 {
-	palette_set_color(Machine,color,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(Machine,color,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 WRITE8_HANDLER( m72_palette1_w )
@@ -355,20 +345,14 @@ READ8_HANDLER( m72_videoram2_r )
 
 WRITE8_HANDLER( m72_videoram1_w )
 {
-	if (m72_videoram1[offset] != data)
-	{
-		m72_videoram1[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset/4);
-	}
+	m72_videoram1[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset/4);
 }
 
 WRITE8_HANDLER( m72_videoram2_w )
 {
-	if (m72_videoram2[offset] != data)
-	{
-		m72_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset/4);
-	}
+	m72_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset/4);
 }
 
 WRITE8_HANDLER( m72_irq_line_w )

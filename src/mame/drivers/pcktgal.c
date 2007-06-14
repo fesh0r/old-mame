@@ -217,14 +217,14 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &charlayout,   256, 16 }, /* chars */
 	{ REGION_GFX2, 0x00000, &spritelayout,   0,  8 }, /* sprites */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode bootleg_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &bootleg_charlayout,   256, 16 }, /* chars */
 	{ REGION_GFX2, 0x00000, &bootleg_spritelayout,   0,  8 }, /* sprites */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /***************************************************************************/
@@ -465,8 +465,8 @@ static DRIVER_INIT( graphics )
 
 static DRIVER_INIT( pcktgal )
 {
-	init_deco222(machine);
-	init_graphics(machine);
+	driver_init_deco222(machine);
+	driver_init_graphics(machine);
 }
 
 /***************************************************************************/

@@ -7,8 +7,8 @@
 /*
 *   variables
 */
-unsigned char *msisaac_videoram;
-unsigned char *msisaac_videoram2;
+UINT8 *msisaac_videoram;
+UINT8 *msisaac_videoram2;
 
 static int textbank1, bg2_textbank;
 
@@ -21,7 +21,7 @@ static tilemap *background, *background2, *foreground;
 
 ***************************************************************************/
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int tile_number = videoram[tile_index];
 	SET_TILE_INFO(	0,
@@ -30,7 +30,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_bg2_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg2_tile_info )
 {
 	int tile_number = msisaac_videoram2[tile_index];
 
@@ -43,7 +43,7 @@ static void get_bg2_tile_info(int tile_index)
 			0)
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tile_number = msisaac_videoram[tile_index];
 	SET_TILE_INFO(	1,
@@ -66,8 +66,6 @@ VIDEO_START( msisaac )
 
 	tilemap_set_transparent_pen(background2,0);
 	tilemap_set_transparent_pen(foreground,0);
-
-	return 0;
 }
 
 
@@ -134,29 +132,20 @@ WRITE8_HANDLER( msisaac_bg2_textbank_w )
 
 WRITE8_HANDLER( msisaac_bg_videoram_w )
 {
-	if( msisaac_videoram[offset]!=data )
-	{
-		msisaac_videoram[offset]=data;
-		tilemap_mark_tile_dirty(background,offset);
-	}
+	msisaac_videoram[offset]=data;
+	tilemap_mark_tile_dirty(background,offset);
 }
 
 WRITE8_HANDLER( msisaac_bg2_videoram_w )
 {
-	if( msisaac_videoram2[offset]!=data )
-	{
-		msisaac_videoram2[offset]=data;
-		tilemap_mark_tile_dirty(background2,offset);
-	}
+	msisaac_videoram2[offset]=data;
+	tilemap_mark_tile_dirty(background2,offset);
 }
 
 WRITE8_HANDLER( msisaac_fg_videoram_w )
 {
-	if( videoram[offset]!=data )
-	{
-		videoram[offset]=data;
-		tilemap_mark_tile_dirty(foreground,offset);
-	}
+	videoram[offset]=data;
+	tilemap_mark_tile_dirty(foreground,offset);
 }
 
 
@@ -167,8 +156,8 @@ WRITE8_HANDLER( msisaac_fg_videoram_w )
 ***************************************************************************/
 static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
-	const unsigned char *source = spriteram+32*4-4;
-	const unsigned char *finish = spriteram; /* ? */
+	const UINT8 *source = spriteram+32*4-4;
+	const UINT8 *finish = spriteram; /* ? */
 
 	while( source>=finish )
 	{

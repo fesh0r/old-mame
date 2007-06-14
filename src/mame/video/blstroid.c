@@ -26,7 +26,7 @@ UINT16 *blstroid_priorityram;
  *
  *************************************/
 
-static void get_playfield_tile_info(int tile_index)
+static TILE_GET_INFO( get_playfield_tile_info )
 {
 	UINT16 data = atarigen_playfield[tile_index];
 	int code = data & 0x1fff;
@@ -85,9 +85,7 @@ VIDEO_START( blstroid )
 	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 16,8, 64,64);
 
 	/* initialize the motion objects */
-	if (!atarimo_init(0, &modesc))
-		return 1;
-	return 0;
+	atarimo_init(0, &modesc);
 }
 
 

@@ -8,7 +8,7 @@
 /*
 ** variables
 */
-unsigned char *tsamurai_videoram;
+UINT8 *tsamurai_videoram;
 static int bgcolor;
 static int textbank1, textbank2;
 
@@ -21,9 +21,9 @@ static tilemap *background, *foreground;
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
-	unsigned char attributes = tsamurai_videoram[2*tile_index+1];
+	UINT8 attributes = tsamurai_videoram[2*tile_index+1];
 	int tile_number = tsamurai_videoram[2*tile_index];
 	tile_number += (( attributes & 0xc0 ) >> 6 ) * 256;	 /* legacy */
 	tile_number += (( attributes & 0x20 ) >> 5 ) * 1024; /* Mission 660 add-on*/
@@ -34,7 +34,7 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int tile_number = videoram[tile_index];
 	if (textbank1 & 0x01) tile_number += 256; /* legacy */
@@ -60,8 +60,6 @@ VIDEO_START( tsamurai )
 
 	tilemap_set_transparent_pen(background,0);
 	tilemap_set_transparent_pen(foreground,0);
-
-	return 0;
 }
 
 
@@ -106,20 +104,14 @@ WRITE8_HANDLER( tsamurai_textbank2_w )
 
 WRITE8_HANDLER( tsamurai_bg_videoram_w )
 {
-	if( tsamurai_videoram[offset]!=data )
-	{
-		tsamurai_videoram[offset]=data;
-		offset = offset/2;
-		tilemap_mark_tile_dirty(background,offset);
-	}
+	tsamurai_videoram[offset]=data;
+	offset = offset/2;
+	tilemap_mark_tile_dirty(background,offset);
 }
 WRITE8_HANDLER( tsamurai_fg_videoram_w )
 {
-	if( videoram[offset]!=data )
-	{
-		videoram[offset]=data;
-		tilemap_mark_tile_dirty(foreground,offset);
-	}
+	videoram[offset]=data;
+	tilemap_mark_tile_dirty(foreground,offset);
 }
 WRITE8_HANDLER( tsamurai_fg_colorram_w )
 {
@@ -146,8 +138,8 @@ WRITE8_HANDLER( tsamurai_fg_colorram_w )
 static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	gfx_element *gfx = Machine->gfx[2];
-	const unsigned char *source = spriteram+32*4-4;
-	const unsigned char *finish = spriteram; /* ? */
+	const UINT8 *source = spriteram+32*4-4;
+	const UINT8 *finish = spriteram; /* ? */
 	static int flicker;
 	flicker = 1-flicker;
 
@@ -249,7 +241,7 @@ WRITE8_HANDLER( vsgongf_color_w )
 }
 
 
-static void get_vsgongf_tile_info(int tile_index)
+static TILE_GET_INFO( get_vsgongf_tile_info )
 {
 	int tile_number = videoram[tile_index];
 	int color = vsgongf_color&0x1f;
@@ -264,7 +256,6 @@ static void get_vsgongf_tile_info(int tile_index)
 VIDEO_START( vsgongf )
 {
 	foreground = tilemap_create(get_vsgongf_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
-	return 0;
 }
 
 VIDEO_UPDATE( vsgongf )

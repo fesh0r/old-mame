@@ -59,7 +59,7 @@ static UINT32 spr_buffered_tilebank[2];
 \
 static tilemap *tilemap_##_N_; \
 \
-static void get_tile_info_##_N_(int tile_index) \
+static TILE_GET_INFO( get_tile_info_##_N_ ) \
 { \
 	UINT16 code = (fuuki32_vram_##_N_[tile_index]&0xffff0000)>>16; \
 	UINT16 attr = (fuuki32_vram_##_N_[tile_index]&0x0000ffff); \
@@ -68,18 +68,15 @@ static void get_tile_info_##_N_(int tile_index) \
 \
 WRITE32_HANDLER( fuuki32_vram_##_N_##_w ) \
 { \
-	if (fuuki32_vram_##_N_[offset] != data) \
-	{ \
-		COMBINE_DATA(&fuuki32_vram_##_N_[offset]); \
-		tilemap_mark_tile_dirty(tilemap_##_N_,offset); \
-	} \
+	COMBINE_DATA(&fuuki32_vram_##_N_[offset]); \
+	tilemap_mark_tile_dirty(tilemap_##_N_,offset); \
 }
 
 #define LAYER_4BPP( _N_ ) \
 \
 static tilemap *tilemap_##_N_; \
 \
-static void get_tile_info_##_N_(int tile_index) \
+static TILE_GET_INFO( get_tile_info_##_N_ ) \
 { \
 	UINT16 code = (fuuki32_vram_##_N_[tile_index]&0xffff0000)>>16; \
 	UINT16 attr = (fuuki32_vram_##_N_[tile_index]&0x0000ffff); \
@@ -88,11 +85,8 @@ static void get_tile_info_##_N_(int tile_index) \
 \
 WRITE32_HANDLER( fuuki32_vram_##_N_##_w ) \
 { \
-	if (fuuki32_vram_##_N_[offset] != data) \
-	{ \
-		COMBINE_DATA(&fuuki32_vram_##_N_[offset]); \
-		tilemap_mark_tile_dirty(tilemap_##_N_,offset); \
-	} \
+	COMBINE_DATA(&fuuki32_vram_##_N_[offset]); \
+	tilemap_mark_tile_dirty(tilemap_##_N_,offset); \
 }
 
 
@@ -134,8 +128,6 @@ VIDEO_START( fuuki32 )
 
 	//machine->gfx[1]->color_granularity=16; /* 256 colour tiles with palette selectable on 16 colour boundaries */
 	//machine->gfx[2]->color_granularity=16;
-
-	return 0;
 }
 
 

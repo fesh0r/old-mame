@@ -225,6 +225,7 @@ Interrupts:
 #include "qix.h"
 #include "cpu/m6805/m6805.h"
 #include "machine/6821pia.h"
+#include "video/crtc6845.h"
 #include "sound/sn76496.h"
 #include "sound/discrete.h"
 
@@ -289,7 +290,8 @@ static ADDRESS_MAP_START( video_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9400, 0x9400) AM_MIRROR(0x03fc) AM_READWRITE(qix_addresslatch_r, qix_addresslatch_w)
 	AM_RANGE(0x9402, 0x9403) AM_MIRROR(0x03fc) AM_WRITE(MWA8_RAM) AM_BASE(&qix_videoaddress)
 	AM_RANGE(0x9800, 0x9800) AM_MIRROR(0x03ff) AM_READ(qix_scanline_r)
-	AM_RANGE(0x9c00, 0x9c01) AM_MIRROR(0x03fe) AM_READWRITE(qix_videocontrol_r, qix_videocontrol_w)
+	AM_RANGE(0x9c00, 0x9c00) AM_MIRROR(0x03fe) AM_WRITE(crtc6845_0_address_w)
+	AM_RANGE(0x9c01, 0x9c01) AM_MIRROR(0x03fe) AM_READWRITE(crtc6845_0_register_r, crtc6845_0_register_w)
 	AM_RANGE(0xa000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -306,7 +308,8 @@ static ADDRESS_MAP_START( zoo_video_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9400, 0x9400) AM_MIRROR(0x03fc) AM_READWRITE(qix_addresslatch_r, qix_addresslatch_w)
 	AM_RANGE(0x9402, 0x9403) AM_MIRROR(0x03fc) AM_WRITE(MWA8_RAM) AM_BASE(&qix_videoaddress)
 	AM_RANGE(0x9800, 0x9800) AM_MIRROR(0x03ff) AM_READ(qix_scanline_r)
-	AM_RANGE(0x9c00, 0x9c01) AM_MIRROR(0x03fe) AM_READWRITE(qix_videocontrol_r, qix_videocontrol_w)
+	AM_RANGE(0x9c00, 0x9c00) AM_MIRROR(0x03fe) AM_WRITE(crtc6845_0_address_w)
+	AM_RANGE(0x9c01, 0x9c01) AM_MIRROR(0x03fe) AM_READWRITE(crtc6845_0_register_r, crtc6845_0_register_w)
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(1)
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -618,6 +621,10 @@ static MACHINE_DRIVER_START( qix )
 	MDRV_CPU_ADD_TAG("sound", M6802, SOUND_CLOCK_OSC/2/4)	/* 0.92 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
+	/* high interleave needed to ensure correct text in service mode */
+	/* Zookeeper settings and high score table seem especially sensitive to this */
+	MDRV_INTERLEAVE(1000)
+
 	MDRV_MACHINE_START(qix)
 	MDRV_MACHINE_RESET(qix)
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -625,13 +632,12 @@ static MACHINE_DRIVER_START( qix )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_PALETTE_LENGTH(1024)
+	MDRV_VIDEO_START(qix)
+	MDRV_VIDEO_UPDATE(crtc6845)
 
 	MDRV_SCREEN_ADD("main", 0)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_RAW_PARAMS(QIX_CHARACTER_CLOCK*8, 0x29*8, 0, 0x20*8, 0x20*8+0x11, 0, 0x20*8)
-
-	MDRV_VIDEO_START(qix)
-	MDRV_VIDEO_UPDATE(qix)
+	MDRV_SCREEN_RAW_PARAMS(QIX_CHARACTER_CLOCK*8, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
@@ -654,13 +660,6 @@ static MACHINE_DRIVER_START( mcu )
 	MDRV_MACHINE_START(qixmcu)
 MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START( elecyoyo )
-
-	/* basic machine hardware */
-	MDRV_IMPORT_FROM(mcu)
-
-	MDRV_INTERLEAVE(100)	// fixes hang in attract mode
-MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( zookeep )
 
@@ -685,9 +684,6 @@ static MACHINE_DRIVER_START( slither )
 	MDRV_CPU_REMOVE("sound")
 
 	MDRV_MACHINE_START(slither)
-
-	/* video hardware */
-	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 255)
 
 	/* sound hardware */
 	MDRV_SPEAKER_REMOVE("left")
@@ -1120,13 +1116,6 @@ ROM_END
  *
  *************************************/
 
-static DRIVER_INIT( kram )
-{
-	/* we need to override one PIA handler to prevent controls from getting disabled */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x9400, 0x97ff, 0, 0, zookeep_pia_0_w);
-}
-
-
 static DRIVER_INIT( kram3 )
 {
 	const UINT8 *patch;
@@ -1189,16 +1178,10 @@ static DRIVER_INIT( kram3 )
 
 		i += 4;
 	}
-
-	init_kram(machine);
 }
 
 static DRIVER_INIT( zookeep )
 {
-	/* we need to override two PIA handlers to prevent controls from getting disabled */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1400, 0x17ff, 0, 0, zookeep_pia_0_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1c00, 0x1fff, 0, 0, zookeep_pia_2_w);
-
 	/* configure the banking */
 	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU2) + 0xa000, 0);
 	memory_configure_bank(1, 1, 1, memory_region(REGION_CPU2) + 0x10000, 0);
@@ -1226,10 +1209,10 @@ GAME( 1981, qixa,     qix,      qix,      qix,      0,        ROT270, "Taito Ame
 GAME( 1981, qixb,     qix,      qix,      qix,      0,        ROT270, "Taito America Corporation", "Qix (set 3)", GAME_SUPPORTS_SAVE )
 GAME( 1981, qix2,     qix,      qix,      qix,      0,        ROT270, "Taito America Corporation", "Qix II (Tournament)", GAME_SUPPORTS_SAVE )
 GAME( 1981, sdungeon, 0,        mcu,      sdungeon, 0,        ROT270, "Taito America Corporation", "Space Dungeon", GAME_SUPPORTS_SAVE )
-GAME( 1982, elecyoyo, 0,        elecyoyo, elecyoyo, 0,        ROT270, "Taito America Corporation", "The Electric Yo-Yo (set 1)", GAME_SUPPORTS_SAVE )
-GAME( 1982, elecyoy2, elecyoyo, elecyoyo, elecyoyo, 0,        ROT270, "Taito America Corporation", "The Electric Yo-Yo (set 2)", GAME_SUPPORTS_SAVE )
-GAME( 1982, kram,     0,        mcu,      kram,     kram,     ROT0,   "Taito America Corporation", "Kram (set 1)", GAME_SUPPORTS_SAVE )
-GAME( 1982, kram2,    kram,     mcu,      kram,     kram,     ROT0,   "Taito America Corporation", "Kram (set 2)", GAME_SUPPORTS_SAVE )
+GAME( 1982, elecyoyo, 0,        mcu,      elecyoyo, 0,        ROT270, "Taito America Corporation", "The Electric Yo-Yo (set 1)", GAME_SUPPORTS_SAVE )
+GAME( 1982, elecyoy2, elecyoyo, mcu,      elecyoyo, 0,        ROT270, "Taito America Corporation", "The Electric Yo-Yo (set 2)", GAME_SUPPORTS_SAVE )
+GAME( 1982, kram,     0,        mcu,      kram,     0,        ROT0,   "Taito America Corporation", "Kram (set 1)", GAME_SUPPORTS_SAVE )
+GAME( 1982, kram2,    kram,     mcu,      kram,     0,        ROT0,   "Taito America Corporation", "Kram (set 2)", GAME_SUPPORTS_SAVE )
 GAME( 1982, kram3,    kram,     qix,      kram,     kram3,    ROT0,   "Taito America Corporation", "Kram (encrypted)", GAME_SUPPORTS_SAVE )
 GAME( 1982, zookeep,  0,        zookeep,  zookeep,  zookeep,  ROT0,   "Taito America Corporation", "Zoo Keeper (set 1)", GAME_SUPPORTS_SAVE )
 GAME( 1982, zookeep2, zookeep,  zookeep,  zookeep,  zookeep,  ROT0,   "Taito America Corporation", "Zoo Keeper (set 2)", GAME_SUPPORTS_SAVE )

@@ -24,7 +24,7 @@ static WRITE8_HANDLER( cowrace_colorram_w )
 	tilemap_mark_tile_dirty(tmap, offset);
 }
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT16 code = videoram[ tile_index ] + (colorram[ tile_index ] << 8) ;
 	SET_TILE_INFO(1, code & 0x1ff, 0, TILE_FLIPYX( 0 ));
@@ -36,7 +36,6 @@ VIDEO_START( cowrace )
 							TILEMAP_TRANSPARENT, 8,8, 0x20,0x20	);
 
 	tilemap_set_transparent_pen(tmap, 0);
-	return 0;
 }
 
 VIDEO_UPDATE( cowrace )
@@ -143,7 +142,7 @@ static const gfx_decode gfxdecodeinfo_cowrace[] =
 {
 	{ REGION_GFX1, 0x000000, &layout8x8x4, 0, 0x1 },
 	{ REGION_GFX2, 0x000000, &layout8x8x2, 0, 0x1 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 INPUT_PORTS_START( cowrace )

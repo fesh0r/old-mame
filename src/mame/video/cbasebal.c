@@ -15,7 +15,7 @@ static int flipscreen;
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	UINT8 attr = cbasebal_scrollram[2*tile_index+1];
 	SET_TILE_INFO(
@@ -25,7 +25,7 @@ static void get_bg_tile_info(int tile_index)
 			(attr & 0x08) ? TILE_FLIPX : 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	UINT8 attr = cbasebal_textram[tile_index+0x800];
 	SET_TILE_INFO(
@@ -52,7 +52,6 @@ VIDEO_START( cbasebal )
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,3);
-	return 0;
 }
 
 

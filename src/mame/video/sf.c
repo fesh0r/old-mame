@@ -14,9 +14,9 @@ static tilemap *bg_tilemap, *fg_tilemap, *tx_tilemap;
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
-	unsigned char *base = memory_region(REGION_GFX5) + 2*tile_index;
+	UINT8 *base = memory_region(REGION_GFX5) + 2*tile_index;
 	int attr = base[0x10000];
 	int color = base[0];
 	int code = (base[0x10000+1]<<8) | base[1];
@@ -27,9 +27,9 @@ static void get_bg_tile_info(int tile_index)
 			TILE_FLIPYX(attr & 3))
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
-	unsigned char *base = memory_region(REGION_GFX5) + 0x20000 + 2*tile_index;
+	UINT8 *base = memory_region(REGION_GFX5) + 0x20000 + 2*tile_index;
 	int attr = base[0x10000];
 	int color = base[0];
 	int code = (base[0x10000+1]<<8) | base[1];
@@ -40,7 +40,7 @@ static void get_fg_tile_info(int tile_index)
 			TILE_FLIPYX(attr & 3))
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int code = sf_videoram[tile_index];
 	SET_TILE_INFO(
@@ -66,8 +66,6 @@ VIDEO_START( sf )
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 	tilemap_set_transparent_pen(tx_tilemap,3);
-
-	return 0;
 }
 
 
@@ -80,10 +78,8 @@ VIDEO_START( sf )
 
 WRITE16_HANDLER( sf_videoram_w )
 {
-	int oldword = sf_videoram[offset];
 	COMBINE_DATA(&sf_videoram[offset]);
-	if (oldword != sf_videoram[offset])
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 WRITE16_HANDLER( sf_bg_scroll_w )

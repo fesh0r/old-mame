@@ -262,7 +262,7 @@ static const raster_info predef_raster_table[] =
  *
  *************************************/
 
-int voodoo_start(int which, int scrnum, int type, int fbmem_in_mb, int tmem0_in_mb, int tmem1_in_mb)
+void voodoo_start(int which, int scrnum, int type, int fbmem_in_mb, int tmem0_in_mb, int tmem1_in_mb)
 {
 	void *fbmem, *tmumem[2];
 	voodoo_state *v;
@@ -394,7 +394,6 @@ int voodoo_start(int which, int scrnum, int type, int fbmem_in_mb, int tmem0_in_
 
 	/* do a soft reset to reset everything else */
 	soft_reset(v);
-	return 0;
 }
 
 
@@ -1620,7 +1619,7 @@ static UINT32 cmdfifo_execute(voodoo_state *v, cmdfifo_info *f)
 	UINT32 *src = &fifobase[readptr / 4];
 	UINT32 command = *src++;
 	int count, inc, code, i;
-	setup_vertex svert;
+	setup_vertex svert = {0};
 	offs_t target;
 	int cycles = 0;
 

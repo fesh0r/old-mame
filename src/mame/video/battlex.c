@@ -28,14 +28,14 @@ PALETTE_INIT( battlex )
 			}
 #endif
 
-			palette_set_color(machine, i + 16 * col,r,g,b);
+			palette_set_color(machine, i + 16 * col,MAKE_RGB(r,g,b));
 		}
 	}
 }
 
 WRITE8_HANDLER( battlex_palette_w )
 {
-	palette_set_color(Machine,16*8 + offset,pal1bit(data >> 2),pal1bit(data >> 0),pal1bit(data >> 1));
+	palette_set_color_rgb(Machine,16*8 + offset,pal1bit(data >> 2),pal1bit(data >> 0),pal1bit(data >> 1));
 }
 
 WRITE8_HANDLER( battlex_scroll_x_lsb_w )
@@ -50,11 +50,8 @@ WRITE8_HANDLER( battlex_scroll_x_msb_w )
 
 WRITE8_HANDLER( battlex_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
 }
 
 WRITE8_HANDLER( battlex_flipscreen_w )
@@ -70,7 +67,7 @@ WRITE8_HANDLER( battlex_flipscreen_w )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tile = videoram[tile_index*2] | (((videoram[tile_index*2+1] & 0x01)) << 8);
 	int color = (videoram[tile_index*2+1] & 0x0e) >> 1;
@@ -82,8 +79,6 @@ VIDEO_START( battlex )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 64, 32);
-
-	return 0;
 }
 
 static void battlex_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect )

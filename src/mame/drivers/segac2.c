@@ -127,12 +127,11 @@ static UINT8		bloxeed_sound;		/* use kludge for bloxeed sound? */
 
 static MACHINE_START( segac2 )
 {
-	if (machine_start_genesis(machine))
-		return 1;
 	state_save_register_global_array(misc_io_data);
 	state_save_register_global(prot_write_buf);
 	state_save_register_global(prot_read_buf);
-	return 0;
+
+	machine_start_genesis(machine);
 }
 
 
@@ -277,7 +276,7 @@ static WRITE16_HANDLER( palette_w )
 	b = ((newword >> 7) & 0x1e) | ((newword >> 14) & 0x01);
 
 	/* set the color */
-	palette_set_color(Machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
+	palette_set_color_rgb(Machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
 }
 
 

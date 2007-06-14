@@ -67,7 +67,7 @@ static void silkroad_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect
 }
 
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 
 	int code = ((silkroad_vidram[tile_index] & 0xffff0000) >> 16 );
@@ -88,11 +88,10 @@ static void get_fg_tile_info(int tile_index)
 WRITE32_HANDLER( silkroad_fgram_w )
 {
 	COMBINE_DATA(&silkroad_vidram[offset]);
-
 	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
-static void get_fg2_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg2_tile_info )
 {
 	int code = ((silkroad_vidram2[tile_index] & 0xffff0000) >> 16 );
 	int color = ((silkroad_vidram2[tile_index] & 0x000001f));
@@ -113,7 +112,7 @@ WRITE32_HANDLER( silkroad_fgram2_w )
 	tilemap_mark_tile_dirty(fg2_tilemap,offset);
 }
 
-static void get_fg3_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg3_tile_info )
 {
 	int code = ((silkroad_vidram3[tile_index] & 0xffff0000) >> 16 );
 	int color = ((silkroad_vidram3[tile_index] & 0x000001f));
@@ -146,8 +145,6 @@ VIDEO_START(silkroad)
 
 	fg3_tilemap = tilemap_create(get_fg3_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,64, 64);
 		tilemap_set_transparent_pen(fg3_tilemap,0);
-
-	return 0;
 }
 
 static int enable1=1,enable2=1,enable3=1;

@@ -1,7 +1,7 @@
 #include "driver.h"
 #include "video/konamiic.h"
 
-unsigned char *labyrunr_videoram1,*labyrunr_videoram2,*labyrunr_scrollram;
+UINT8 *labyrunr_videoram1,*labyrunr_videoram2,*labyrunr_scrollram;
 static tilemap *layer0, *layer1;
 static rectangle clip0, clip1;
 
@@ -35,7 +35,7 @@ PALETTE_INIT( labyrunr )
 
 ***************************************************************************/
 
-static void get_tile_info0(int tile_index)
+static TILE_GET_INFO( get_tile_info0 )
 {
 	int attr = labyrunr_videoram1[tile_index];
 	int code = labyrunr_videoram1[tile_index + 0x400];
@@ -60,7 +60,7 @@ static void get_tile_info0(int tile_index)
 			0)
 }
 
-static void get_tile_info1(int tile_index)
+static TILE_GET_INFO( get_tile_info1 )
 {
 	int attr = labyrunr_videoram2[tile_index];
 	int code = labyrunr_videoram2[tile_index + 0x400];
@@ -108,8 +108,6 @@ VIDEO_START( labyrunr )
 	clip1.min_x = 0;
 
 	tilemap_set_scroll_cols(layer0,32);
-
-	return 0;
 }
 
 
@@ -122,20 +120,14 @@ VIDEO_START( labyrunr )
 
 WRITE8_HANDLER( labyrunr_vram1_w )
 {
-	if (labyrunr_videoram1[offset] != data)
-	{
-		labyrunr_videoram1[offset] = data;
-		tilemap_mark_tile_dirty(layer0,offset & 0x3ff);
-	}
+	labyrunr_videoram1[offset] = data;
+	tilemap_mark_tile_dirty(layer0,offset & 0x3ff);
 }
 
 WRITE8_HANDLER( labyrunr_vram2_w )
 {
-	if (labyrunr_videoram2[offset] != data)
-	{
-		labyrunr_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(layer1,offset & 0x3ff);
-	}
+	labyrunr_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(layer1,offset & 0x3ff);
 }
 
 

@@ -10,11 +10,11 @@
 
 /* Globals */
 size_t pang_videoram_size;
-unsigned char *pang_videoram;
-unsigned char *pang_colorram;
+UINT8 *pang_videoram;
+UINT8 *pang_colorram;
 
 /* Private */
-static unsigned char *pang_objram;           /* Sprite RAM */
+static UINT8 *pang_objram;           /* Sprite RAM */
 
 static tilemap *bg_tilemap;
 static int flipscreen;
@@ -27,9 +27,9 @@ static int flipscreen;
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
-	unsigned char attr = pang_colorram[tile_index];
+	UINT8 attr = pang_colorram[tile_index];
 	int code = pang_videoram[2*tile_index] + (pang_videoram[2*tile_index+1] << 8);
 	SET_TILE_INFO(
 			0,
@@ -67,8 +67,6 @@ VIDEO_START( pang )
     */
 	paletteram = auto_malloc(2*machine->drv->total_colors);
 	memset(paletteram, 0, 2*machine->drv->total_colors);
-
-	return 0;
 }
 
 
@@ -100,11 +98,8 @@ WRITE8_HANDLER( mstworld_video_bank_w )
 
 WRITE8_HANDLER( mgakuen_videoram_w )
 {
-	if (pang_videoram[offset] != data)
-	{
-		pang_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset/2);
-	}
+	pang_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset/2);
 }
 
 READ8_HANDLER( mgakuen_videoram_r )
@@ -140,11 +135,8 @@ READ8_HANDLER( pang_videoram_r )
 
 WRITE8_HANDLER( pang_colorram_w )
 {
-	if (pang_colorram[offset] != data)
-	{
-		pang_colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	pang_colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 READ8_HANDLER( pang_colorram_r )

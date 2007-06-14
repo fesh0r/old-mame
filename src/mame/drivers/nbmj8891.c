@@ -97,15 +97,11 @@ static DRIVER_INIT( gionbana )
 	}
 
 	nb1413m3_type = NB1413M3_GIONBANA;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( mgion )
 {
 	nb1413m3_type = NB1413M3_MGION;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( omotesnd )
@@ -126,7 +122,7 @@ static DRIVER_INIT( omotesnd )
 #endif
 
 #if 1
-	unsigned char *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(REGION_CPU1);
 
 	// Protection ROM check skip
 	ROM[0x0106] = 0x00;
@@ -141,30 +137,22 @@ static DRIVER_INIT( omotesnd )
 //  ROM[0x026a] = 0x00;
 #endif
 
-	init_nb1413m3(machine);
-
 	nb1413m3_type = NB1413M3_OMOTESND;
 }
 
 static DRIVER_INIT( abunai )
 {
 	nb1413m3_type = NB1413M3_ABUNAI;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( hanamomo )
 {
 	nb1413m3_type = NB1413M3_HANAMOMO;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( msjiken )
 {
 	nb1413m3_type = NB1413M3_MSJIKEN;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( telmahjn )
@@ -183,8 +171,6 @@ static DRIVER_INIT( telmahjn )
 	}
 
 	nb1413m3_type = NB1413M3_TELMAHJN;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( mgmen89 )
@@ -203,14 +189,12 @@ static DRIVER_INIT( mgmen89 )
 	}
 
 	nb1413m3_type = NB1413M3_MGMEN89;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( mjfocus )
 {
 	UINT8 *prot = memory_region(REGION_USER1);
-	unsigned char *ram = memory_region(REGION_CPU1) + 0xf800;
+	UINT8 *ram = memory_region(REGION_CPU1) + 0xf800;
 	int i;
 
 	/* need to clear RAM otherwise it doesn't boot... */
@@ -227,14 +211,12 @@ static DRIVER_INIT( mjfocus )
 	}
 
 	nb1413m3_type = NB1413M3_MJFOCUS;	// mjfocus & peepshow
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( mjfocusm )
 {
 #if 1
-	unsigned char *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(REGION_CPU1);
 
 	// Protection ROM check skip
 	ROM[0x014e] = 0x00;
@@ -242,27 +224,21 @@ static DRIVER_INIT( mjfocusm )
 	ROM[0x0150] = 0x00;
 #endif
 	nb1413m3_type = NB1413M3_MJFOCUSM;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( scandal )
 {
-	unsigned char *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(REGION_CPU1);
 	int i;
 
 	for (i = 0xf800; i < 0x10000; i++) ROM[i] = 0x00;
 
 	nb1413m3_type = NB1413M3_SCANDAL;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( scandalm )
 {
 	nb1413m3_type = NB1413M3_SCANDALM;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( mjnanpas )
@@ -286,64 +262,46 @@ static DRIVER_INIT( mjnanpas )
 #endif
 
 	nb1413m3_type = NB1413M3_MJNANPAS;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( bananadr )
 {
 	nb1413m3_type = NB1413M3_BANANADR;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( club90s )
 {
 	nb1413m3_type = NB1413M3_CLUB90S;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( lovehous )
 {
 	nb1413m3_type = NB1413M3_LOVEHOUS;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( mladyhtr )
 {
 	nb1413m3_type = NB1413M3_MLADYHTR;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( chinmoku )
 {
 	nb1413m3_type = NB1413M3_CHINMOKU;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( maiko )
 {
 	nb1413m3_type = NB1413M3_MAIKO;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( mmaiko )
 {
 	nb1413m3_type = NB1413M3_MMAIKO;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( hanaoji )
 {
 	nb1413m3_type = NB1413M3_HANAOJI;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( pairsnb )
@@ -362,8 +320,6 @@ static DRIVER_INIT( pairsnb )
 	}
 
 	nb1413m3_type = NB1413M3_PAIRSNB;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( pairsten )
@@ -382,22 +338,16 @@ static DRIVER_INIT( pairsten )
 	}
 
 	nb1413m3_type = NB1413M3_PAIRSTEN;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( mmcamera )
 {
 	nb1413m3_type = NB1413M3_MMCAMERA;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( taiwanmb )
 {
 	nb1413m3_type = NB1413M3_TAIWANMB;
-
-	init_nb1413m3(machine);
 }
 
 

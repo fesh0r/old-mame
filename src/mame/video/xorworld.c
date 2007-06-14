@@ -44,7 +44,7 @@ PALETTE_INIT( xorworld )
 		bit2 = (color_prom[2*machine->drv->total_colors] >> 2) & 0x01;
 		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
 		b = 0x0e*bit0 + 0x1e * bit1 + 0x44*bit2 + 0x8f*bit3;
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -66,7 +66,7 @@ WRITE16_HANDLER( xorworld_videoram16_w )
       0  | xxxx---- -------- | color
 */
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int data = videoram16[tile_index];
 	int code = data & 0x0fff;
@@ -78,8 +78,6 @@ VIDEO_START( xorworld )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 /*

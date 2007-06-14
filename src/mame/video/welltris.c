@@ -8,7 +8,7 @@ extern UINT16 *welltris_pixelram;
 extern UINT16 *welltris_charvideoram;
 
 static tilemap *char_tilemap;
-static unsigned char gfxbank[8];
+static UINT8 gfxbank[8];
 static UINT16 charpalettebank;
 static UINT16 spritepalettebank;
 static UINT16 pixelpalettebank;
@@ -196,7 +196,7 @@ WRITE16_HANDLER( welltris_scrollreg_w )
 	}
 }
 
-static void get_welltris_tile_info(int tile_index)
+static TILE_GET_INFO( get_welltris_tile_info )
 {
 	UINT16 code = welltris_charvideoram[tile_index];
 	int bank = (code & 0x1000) >> 12;
@@ -210,10 +210,8 @@ static void get_welltris_tile_info(int tile_index)
 
 WRITE16_HANDLER( welltris_charvideoram_w )
 {
-	int oldword = welltris_charvideoram[offset];
 	COMBINE_DATA(&welltris_charvideoram[offset]);
-	if (oldword != welltris_charvideoram[offset])
-		tilemap_mark_tile_dirty(char_tilemap, offset);
+	tilemap_mark_tile_dirty(char_tilemap, offset);
 }
 
 VIDEO_START( welltris )
@@ -221,8 +219,6 @@ VIDEO_START( welltris )
 	char_tilemap = tilemap_create(get_welltris_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(char_tilemap, 15);
-
-	return 0;
 }
 
 static void welltris_drawbackground(mame_bitmap *bitmap, const rectangle *cliprect)

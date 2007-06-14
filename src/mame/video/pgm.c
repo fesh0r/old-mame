@@ -247,14 +247,11 @@ static void pgm_drawsprites(int priority, mame_bitmap* bitmap)
 
 WRITE16_HANDLER( pgm_tx_videoram_w )
 {
-	if (pgm_tx_videoram[offset] != data)
-	{
-		pgm_tx_videoram[offset] = data;
-		tilemap_mark_tile_dirty(pgm_tx_tilemap,offset/2);
-	}
+	pgm_tx_videoram[offset] = data;
+	tilemap_mark_tile_dirty(pgm_tx_tilemap,offset/2);
 }
 
-static void get_pgm_tx_tilemap_tile_info(int tile_index)
+static TILE_GET_INFO( get_pgm_tx_tilemap_tile_info )
 {
 
 /* 0x904000 - 0x90ffff is the Text Overlay Ram (pgm_tx_videoram)
@@ -275,7 +272,7 @@ static void get_pgm_tx_tilemap_tile_info(int tile_index)
 
 	tileno = pgm_tx_videoram[tile_index *2] & 0xffff;
 	colour = (pgm_tx_videoram[tile_index*2+1] & 0x3e) >> 1;
-	flipyx = (pgm_tx_videoram[tile_index*2+1] & 0xc0) >> 6;;
+	flipyx = (pgm_tx_videoram[tile_index*2+1] & 0xc0) >> 6;
 
 	if (tileno > 0xbfff) { tileno -= 0xc000 ; tileno += 0x20000; } /* not sure about this */
 
@@ -286,14 +283,11 @@ static void get_pgm_tx_tilemap_tile_info(int tile_index)
 
 WRITE16_HANDLER( pgm_bg_videoram_w )
 {
-	if (pgm_bg_videoram[offset] != data)
-	{
-		pgm_bg_videoram[offset] = data;
-		tilemap_mark_tile_dirty(pgm_bg_tilemap,offset/2);
-	}
+	pgm_bg_videoram[offset] = data;
+	tilemap_mark_tile_dirty(pgm_bg_tilemap,offset/2);
 }
 
-static void get_pgm_bg_tilemap_tile_info(int tile_index)
+static TILE_GET_INFO( get_pgm_bg_tilemap_tile_info )
 {
 	/* pretty much the same as tx layer */
 
@@ -302,7 +296,7 @@ static void get_pgm_bg_tilemap_tile_info(int tile_index)
 	tileno = pgm_bg_videoram[tile_index *2] & 0xffff;
 	if (tileno > 0x7ff) tileno+=0x1000; /* Tiles 0x800+ come from the GAME Roms */
 	colour = (pgm_bg_videoram[tile_index*2+1] & 0x3e) >> 1;
-	flipyx = (pgm_bg_videoram[tile_index*2+1] & 0xc0) >> 6;;
+	flipyx = (pgm_bg_videoram[tile_index*2+1] & 0xc0) >> 6;
 
 	SET_TILE_INFO(1,tileno,colour,TILE_FLIPYX(flipyx))
 }
@@ -325,9 +319,6 @@ VIDEO_START( pgm )
 	/* we render each sprite to a bitmap then copy the bitmap to screen bitmap with zooming */
 	/* easier this way because of the funky sprite format */
 	sprite_temp_render = auto_malloc(0x400*0x200*2);
-
-
-	return 0;
 }
 
 VIDEO_UPDATE( pgm )

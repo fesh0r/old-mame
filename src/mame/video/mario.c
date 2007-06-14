@@ -59,7 +59,7 @@ PALETTE_INIT( mario )
 		bit1 = (*color_prom >> 1) & 1;
 		b = 255 - (0x55 * bit0 + 0xaa * bit1);
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -87,11 +87,8 @@ PALETTE_INIT( mario )
 
 WRITE8_HANDLER( mario_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( mario_gfxbank_w )
@@ -117,7 +114,7 @@ WRITE8_HANDLER( mario_scroll_w )
 	tilemap_set_scrolly(bg_tilemap, 0, data + 17);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] + 256 * gfx_bank;
 	int color = (videoram[tile_index] >> 5) + 8 * palette_bank;
@@ -132,8 +129,6 @@ VIDEO_START( mario )
 
 	state_save_register_global(gfx_bank);
 	state_save_register_global(palette_bank);
-
-	return 0;
 }
 
 static void mario_draw_sprites( mame_bitmap *bitmap )

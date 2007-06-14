@@ -356,7 +356,7 @@ PALETTE_INIT( galaga )
 		bit2 = ((*color_prom) >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -382,7 +382,7 @@ PALETTE_INIT( galaga )
 		bits = (i >> 4) & 0x03;
 		b = map[bits];
 
-		palette_set_color(machine,i + 32,r,g,b);
+		palette_set_color(machine,i + 32,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -410,7 +410,7 @@ static UINT32 tilemap_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows
 }
 
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	/* the hardware has two character sets, one normal and one x-flipped. When
        screen is flipped, character y flip is done by the hardware inverting the
@@ -449,8 +449,6 @@ VIDEO_START( galaga )
 	state_save_register_global(stars_scrollx);
 	state_save_register_global(stars_scrolly);
 	state_save_register_global(galaga_gfxbank);
-
-	return 0;
 }
 
 
@@ -468,11 +466,8 @@ READ8_HANDLER( galaga_videoram_r )
 
 WRITE8_HANDLER( galaga_videoram_w )
 {
-	if (galaga_videoram[offset] != data)
-	{
-		galaga_videoram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
-	}
+	galaga_videoram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
 }
 
 WRITE8_HANDLER( galaga_starcontrol_w )

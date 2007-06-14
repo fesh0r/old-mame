@@ -23,7 +23,7 @@ static int quizdna_flipscreen = -1;
 static int quizdna_video_enable;
 
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = quizdna_bg_ram[tile_index*2] + quizdna_bg_ram[tile_index*2+1]*0x100 ;
 	int col = quizdna_bg_ram[tile_index*2+0x1000] & 0x7f;
@@ -34,7 +34,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, col, 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code,col,x,y;
 	UINT8 *FG = memory_region(REGION_USER1);
@@ -63,8 +63,6 @@ VIDEO_START( quizdna )
 	quizdna_fg_tilemap = tilemap_create( get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,8,32,32 );
 
 	tilemap_set_transparent_pen( quizdna_fg_tilemap,0 );
-
-	return 0;
 }
 
 WRITE8_HANDLER( quizdna_bg_ram_w )
@@ -134,7 +132,7 @@ WRITE8_HANDLER( paletteram_xBGR_RRRR_GGGG_BBBB_w )
 	g = ((d0 >> 3) & 0x1e) | ((d1 >> 5) & 1);
 	b = ((d0 << 1) & 0x1e) | ((d1 >> 6) & 1);
 
-	palette_set_color(Machine,offs/2,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(Machine,offs/2,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 static void quizdna_drawsprites(mame_bitmap *bitmap, const rectangle *cliprect)

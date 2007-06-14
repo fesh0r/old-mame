@@ -46,7 +46,7 @@ PALETTE_INIT( retofinv )
 		bit3 = (color_prom[i + 2*machine->drv->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 	color_prom += 3*machine->drv->total_colors;
@@ -89,7 +89,7 @@ static UINT32 tilemap_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows
 		return (row << 5) + col;
 }
 
-static void bg_get_tile_info(int tile_index)
+static TILE_GET_INFO( bg_get_tile_info )
 {
 	SET_TILE_INFO(
 			1,
@@ -98,7 +98,7 @@ static void bg_get_tile_info(int tile_index)
 			0)
 }
 
-static void fg_get_tile_info(int tile_index)
+static TILE_GET_INFO( fg_get_tile_info )
 {
 	/* not sure about the transparency thing, but it makes sense */
 	SET_TILE_INFO(
@@ -126,8 +126,6 @@ VIDEO_START( retofinv )
 	spriteram = retofinv_sharedram + 0x0780;
 	spriteram_2 = retofinv_sharedram + 0x0f80;
 	spriteram_3 = retofinv_sharedram + 0x1780;
-
-	return 0;
 }
 
 

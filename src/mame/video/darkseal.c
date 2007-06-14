@@ -105,7 +105,7 @@ static UINT32 darkseal_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_row
 	return (col & 0x1f) + ((row & 0x1f) << 5) + ((col & 0x20) << 5) + ((row & 0x20) << 6);
 }
 
-INLINE void get_bg_tile_info(int tile_index,int gfx_bank,UINT16 *gfx_base)
+INLINE void get_bg_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int gfx_bank,UINT16 *gfx_base)
 {
 	int tile,color;
 
@@ -120,10 +120,10 @@ INLINE void get_bg_tile_info(int tile_index,int gfx_bank,UINT16 *gfx_base)
 			0)
 }
 
-static void get_bg_tile_info2(int tile_index) { get_bg_tile_info(tile_index,1,darkseal_pf2_data); }
-static void get_bg_tile_info3(int tile_index) { get_bg_tile_info(tile_index,2,darkseal_pf3_data); }
+static TILE_GET_INFO( get_bg_tile_info2 ) { get_bg_tile_info(machine,tileinfo,tile_index,1,darkseal_pf2_data); }
+static TILE_GET_INFO( get_bg_tile_info3 ) { get_bg_tile_info(machine,tileinfo,tile_index,2,darkseal_pf3_data); }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int tile=darkseal_pf1_data[tile_index];
 	int color=tile >> 12;
@@ -146,7 +146,7 @@ static void update_24bitcol(int offset)
 	g = (paletteram16[offset] >> 8) & 0xff;
 	b = (paletteram16_2[offset] >> 0) & 0xff;
 
-	palette_set_color(Machine,offset,r,g,b);
+	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
 }
 
 WRITE16_HANDLER( darkseal_palette_24bit_rg_w )
@@ -232,26 +232,20 @@ static void darkseal_drawsprites(mame_bitmap *bitmap, const rectangle *cliprect)
 
 WRITE16_HANDLER( darkseal_pf1_data_w )
 {
-	UINT16 oldword=darkseal_pf1_data[offset];
 	COMBINE_DATA(&darkseal_pf1_data[offset]);
-	if (oldword!=darkseal_pf1_data[offset])
-		tilemap_mark_tile_dirty(pf1_tilemap,offset);
+	tilemap_mark_tile_dirty(pf1_tilemap,offset);
 }
 
 WRITE16_HANDLER( darkseal_pf2_data_w )
 {
-	UINT16 oldword=darkseal_pf2_data[offset];
 	COMBINE_DATA(&darkseal_pf2_data[offset]);
-	if (oldword!=darkseal_pf2_data[offset])
-		tilemap_mark_tile_dirty(pf2_tilemap,offset);
+	tilemap_mark_tile_dirty(pf2_tilemap,offset);
 }
 
 WRITE16_HANDLER( darkseal_pf3_data_w )
 {
-	UINT16 oldword=darkseal_pf3_data[offset];
 	COMBINE_DATA(&darkseal_pf3_data[offset]);
-	if (oldword!=darkseal_pf3_data[offset])
-		tilemap_mark_tile_dirty(pf3_tilemap,offset);
+	tilemap_mark_tile_dirty(pf3_tilemap,offset);
 }
 
 WRITE16_HANDLER( darkseal_pf3b_data_w ) /* Mirror */
@@ -279,8 +273,6 @@ VIDEO_START( darkseal )
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf2_tilemap,0);
-
-	return 0;
 }
 
 /******************************************************************************/

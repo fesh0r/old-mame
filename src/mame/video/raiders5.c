@@ -34,7 +34,7 @@ static tilemap *foreground_tilemap;
  *
  *************************************/
 
-static void get_background_tile_info(int tile_index)
+static TILE_GET_INFO( get_background_tile_info )
 {
 	UINT8 bank = ((raiders5_background_colorram[tile_index] >> 1) & 0x01) + 3;  /* ? */
 
@@ -47,7 +47,7 @@ static void get_background_tile_info(int tile_index)
 }
 
 
-static void get_foreground_tile_info(int tile_index)
+static TILE_GET_INFO( get_foreground_tile_info )
 {
 	UINT16 code = raiders5_foreground_videoram[tile_index];
 
@@ -72,8 +72,6 @@ VIDEO_START( raiders5 )
 	tilemap_set_scrolldx(background_tilemap, 7, 0);
 
 	tilemap_set_transparent_pen(foreground_tilemap, 0);
-
-	return 0;
 }
 
 
@@ -106,23 +104,15 @@ WRITE8_HANDLER( raiders5_flip_screen_w )
 
 WRITE8_HANDLER( raiders5_foreground_videoram_w )
 {
-	if (raiders5_foreground_videoram[offset] != data)
-	{
-		raiders5_foreground_videoram[offset] = data;
-
-		tilemap_mark_tile_dirty(foreground_tilemap, offset);
-	}
+	raiders5_foreground_videoram[offset] = data;
+	tilemap_mark_tile_dirty(foreground_tilemap, offset);
 }
 
 
 WRITE8_HANDLER( raiders5_foreground_colorram_w )
 {
-	if (raiders5_foreground_colorram[offset] != data)
-	{
-		raiders5_foreground_colorram[offset] = data;
-
-		tilemap_mark_tile_dirty(foreground_tilemap, offset);
-	}
+	raiders5_foreground_colorram[offset] = data;
+	tilemap_mark_tile_dirty(foreground_tilemap, offset);
 }
 
 
@@ -131,12 +121,8 @@ WRITE8_HANDLER( raiders5_background_videoram_w )
 	offs_t y = (offset + ((raiders5_scroll_y & 0xf8) << 2)) & 0x3e0;
 	offs_t x = (offset + (raiders5_scroll_x >> 3)) & 0x1f;
 
-	if (raiders5_background_videoram[y | x] != data)
-	{
-		raiders5_background_videoram[y | x] = data;
-
-		tilemap_mark_tile_dirty(background_tilemap, y | x);
-	}
+	raiders5_background_videoram[y | x] = data;
+	tilemap_mark_tile_dirty(background_tilemap, y | x);
 }
 
 
@@ -154,12 +140,8 @@ WRITE8_HANDLER( raiders5_background_colorram_w )
 	offs_t y = (offset + ((raiders5_scroll_y & 0xf8) << 2)) & 0x3e0;
 	offs_t x = (offset + (raiders5_scroll_x >> 3)) & 0x1f;
 
-	if (raiders5_background_colorram[y | x] != data)
-	{
-		raiders5_background_colorram[y | x] = data;
-
-		tilemap_mark_tile_dirty(background_tilemap, y | x);
-	}
+	raiders5_background_colorram[y | x] = data;
+	tilemap_mark_tile_dirty(background_tilemap, y | x);
 }
 
 

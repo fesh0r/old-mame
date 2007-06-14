@@ -41,7 +41,7 @@ int glass_current_bit = 0;
       1  | xxxxxxxx -------- | not used
 */
 
-static void get_tile_info_glass_screen0(int tile_index)
+static TILE_GET_INFO( get_tile_info_glass_screen0 )
 {
 	int data = glass_videoram[tile_index << 1];
 	int data2 = glass_videoram[(tile_index << 1) + 1];
@@ -51,7 +51,7 @@ static void get_tile_info_glass_screen0(int tile_index)
 }
 
 
-static void get_tile_info_glass_screen1(int tile_index)
+static TILE_GET_INFO( get_tile_info_glass_screen1 )
 {
 	int data = glass_videoram[(0x1000/2) + (tile_index << 1)];
 	int data2 = glass_videoram[(0x1000/2) + (tile_index << 1) + 1];
@@ -91,7 +91,7 @@ WRITE16_HANDLER( glass_blitter_w )
 		/* fill the screen bitmap with the current picture */
 		{
 			int i, j;
-			unsigned char *gfx = (unsigned char *)memory_region(REGION_GFX3);
+			UINT8 *gfx = (UINT8 *)memory_region(REGION_GFX3);
 
 			gfx = gfx + (current_command & 0x07)*0x10000 + (current_command & 0x08)*0x10000 + 0x140;
 
@@ -118,11 +118,8 @@ WRITE16_HANDLER( glass_blitter_w )
 
 WRITE16_HANDLER( glass_vram_w )
 {
-	int oldword = glass_videoram[offset];
 	COMBINE_DATA(&glass_videoram[offset]);
-
-	if (oldword != glass_videoram[offset])
-		tilemap_mark_tile_dirty(pant[offset >> 11],((offset << 1) & 0x0fff) >> 2);
+	tilemap_mark_tile_dirty(pant[offset >> 11],((offset << 1) & 0x0fff) >> 2);
 }
 
 
@@ -140,8 +137,6 @@ VIDEO_START( glass )
 
 	tilemap_set_transparent_pen(pant[0],0);
 	tilemap_set_transparent_pen(pant[1],0);
-
-	return 0;
 }
 
 

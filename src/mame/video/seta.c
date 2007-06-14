@@ -303,7 +303,7 @@ WRITE16_HANDLER( seta_vregs_w )
 
 				if (new_bank != seta_samples_bank)
 				{
-					unsigned char *rom = memory_region(REGION_SOUND1);
+					UINT8 *rom = memory_region(REGION_SOUND1);
 					int samples_len = memory_region_length(REGION_SOUND1);
 					int addr;
 
@@ -371,7 +371,7 @@ Offset + 0x4:
 
 ***************************************************************************/
 
-INLINE void twineagl_tile_info( int tile_index, UINT16 *vram )
+INLINE void twineagl_tile_info( running_machine *machine, tile_data *tileinfo, int tile_index, UINT16 *vram )
 {
 	UINT16 code =	vram[ tile_index ];
 	UINT16 attr =	vram[ tile_index + 0x800 ];
@@ -380,47 +380,39 @@ INLINE void twineagl_tile_info( int tile_index, UINT16 *vram )
 	SET_TILE_INFO( 1, (code & 0x3fff), attr & 0x1f, TILE_FLIPXY((code & 0xc000) >> 14) )
 }
 
-static void twineagl_get_tile_info_0( int tile_index ) { twineagl_tile_info( tile_index, seta_vram_0 + 0x0000 ); }
-static void twineagl_get_tile_info_1( int tile_index ) { twineagl_tile_info( tile_index, seta_vram_0 + 0x1000 ); }
+static TILE_GET_INFO( twineagl_get_tile_info_0 ) { twineagl_tile_info( machine, tileinfo, tile_index, seta_vram_0 + 0x0000 ); }
+static TILE_GET_INFO( twineagl_get_tile_info_1 ) { twineagl_tile_info( machine, tileinfo, tile_index, seta_vram_0 + 0x1000 ); }
 
 
-INLINE void get_tile_info( int tile_index, int layer, UINT16 *vram )
+INLINE void get_tile_info( running_machine *machine, tile_data *tileinfo, int tile_index, int layer, UINT16 *vram )
 {
 	UINT16 code =	vram[ tile_index ];
 	UINT16 attr =	vram[ tile_index + 0x800 ];
 	SET_TILE_INFO( 1 + layer, seta_tiles_offset + (code & 0x3fff), attr & 0x1f, TILE_FLIPXY((code & 0xc000) >> 14) )
 }
 
-static void get_tile_info_0( int tile_index ) { get_tile_info( tile_index, 0, seta_vram_0 + 0x0000 ); }
-static void get_tile_info_1( int tile_index ) { get_tile_info( tile_index, 0, seta_vram_0 + 0x1000 ); }
-static void get_tile_info_2( int tile_index ) { get_tile_info( tile_index, 1, seta_vram_2 + 0x0000 ); }
-static void get_tile_info_3( int tile_index ) { get_tile_info( tile_index, 1, seta_vram_2 + 0x1000 ); }
+static TILE_GET_INFO( get_tile_info_0 ) { get_tile_info( machine, tileinfo, tile_index, 0, seta_vram_0 + 0x0000 ); }
+static TILE_GET_INFO( get_tile_info_1 ) { get_tile_info( machine, tileinfo, tile_index, 0, seta_vram_0 + 0x1000 ); }
+static TILE_GET_INFO( get_tile_info_2 ) { get_tile_info( machine, tileinfo, tile_index, 1, seta_vram_2 + 0x0000 ); }
+static TILE_GET_INFO( get_tile_info_3 ) { get_tile_info( machine, tileinfo, tile_index, 1, seta_vram_2 + 0x1000 ); }
 
 
 WRITE16_HANDLER( seta_vram_0_w )
 {
-	UINT16 oldword = seta_vram_0[offset];
-	UINT16 newword = COMBINE_DATA(&seta_vram_0[offset]);
-	if (oldword != newword)
-	{
-		if (offset & 0x1000)
-			tilemap_mark_tile_dirty(tilemap_1, offset & 0x7ff);
-		else
-			tilemap_mark_tile_dirty(tilemap_0, offset & 0x7ff);
-	}
+	COMBINE_DATA(&seta_vram_0[offset]);
+	if (offset & 0x1000)
+		tilemap_mark_tile_dirty(tilemap_1, offset & 0x7ff);
+	else
+		tilemap_mark_tile_dirty(tilemap_0, offset & 0x7ff);
 }
 
 WRITE16_HANDLER( seta_vram_2_w )
 {
-	UINT16 oldword = seta_vram_2[offset];
-	UINT16 newword = COMBINE_DATA(&seta_vram_2[offset]);
-	if (oldword != newword)
-	{
-		if (offset & 0x1000)
-			tilemap_mark_tile_dirty(tilemap_3, offset & 0x7ff);
-		else
-			tilemap_mark_tile_dirty(tilemap_2, offset & 0x7ff);
-	}
+	COMBINE_DATA(&seta_vram_2[offset]);
+	if (offset & 0x1000)
+		tilemap_mark_tile_dirty(tilemap_3, offset & 0x7ff);
+	else
+		tilemap_mark_tile_dirty(tilemap_2, offset & 0x7ff);
 }
 
 WRITE16_HANDLER( twineagl_tilebank_w )
@@ -475,8 +467,6 @@ VIDEO_START( seta_2_layers )
 
 		find_offsets();
 		seta_samples_bank = -1;	// set the samples bank to an out of range value at start-up
-
-		return 0;
 }
 
 
@@ -505,8 +495,6 @@ VIDEO_START( seta_1_layer )
 
 		find_offsets();
 		seta_samples_bank = -1;	// set the samples bank to an out of range value at start-up
-
-		return 0;
 }
 
 VIDEO_START( twineagl_1_layer )
@@ -533,8 +521,6 @@ VIDEO_START( twineagl_1_layer )
 
 		find_offsets();
 		seta_samples_bank = -1;	// set the samples bank to an out of range value at start-up
-
-		return 0;
 }
 
 
@@ -547,15 +533,12 @@ VIDEO_START( seta_no_layers )
 	tilemap_3 = 0;
 	find_offsets();
 	seta_samples_bank = -1;	// set the samples bank to an out of range value at start-up
-	return 0;
 }
 
 VIDEO_START( oisipuzl_2_layers )
 {
-	if (video_start_seta_2_layers(machine))
-		return 1;
+	video_start_seta_2_layers(machine);
 	tilemaps_flip = 1;
-	return 0;
 }
 
 
@@ -640,8 +623,8 @@ PALETTE_INIT( usclssic )
 
 		data = (color_prom[x*2] <<8) | color_prom[x*2+1];
 
-		if (x>=0x100) palette_set_color(machine,x,pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
-		else palette_set_color(machine,x+0x300,pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
+		if (x>=0x100) palette_set_color_rgb(machine,x,pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
+		else palette_set_color_rgb(machine,x+0x300,pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
 	}
 
 	for( color = 0; color < 32; color++ )

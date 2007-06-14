@@ -30,14 +30,15 @@ static WRITE32_HANDLER( paletteram32_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 	data = paletteram32[offset];
-	palette_set_color(Machine, (offset * 2) + 0, pal5bit(data >> 26), pal5bit(data >> 21), pal5bit(data >> 16));
-	palette_set_color(Machine, (offset * 2) + 1, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(Machine, (offset * 2) + 0, pal5bit(data >> 26), pal5bit(data >> 21), pal5bit(data >> 16));
+	palette_set_color_rgb(Machine, (offset * 2) + 1, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 #define NUM_LAYERS	2
 
-static void game_tile_callback(int layer, int *code, int *color)
+static void game_tile_callback(int layer, int *code, int *color, int *flags)
 {
+	*color += layer * 0x40;
 }
 
 VIDEO_START( zr107 )
@@ -47,13 +48,8 @@ VIDEO_START( zr107 )
 	 	{{ 0, 0}, {0, 0}, {0, 0}, {0, 0}}
 	};
 
-	if (K056832_vh_start(REGION_GFX2, K056832_BPP_8, 1, scrolld, game_tile_callback, 0))
-		return 1;
-
-	if (K001005_init() != 0)
-		return 1;
-
-	return 0;
+	K056832_vh_start(REGION_GFX2, K056832_BPP_8, 1, scrolld, game_tile_callback, 0);
+	K001005_init();
 }
 
 VIDEO_UPDATE( zr107 )
@@ -491,12 +487,6 @@ static DRIVER_INIT(zr107)
 	adc083x_init(0, ADC0838, adc0838_callback);
 }
 
-static DRIVER_INIT(midnrun)
-{
-	init_zr107(machine);
-}
-
-
 /*****************************************************************************/
 
 ROM_START(midnrun)
@@ -553,5 +543,5 @@ ROM_END
 
 /*****************************************************************************/
 
-GAME( 1995, midnrun,	0, zr107, midnrun,	 midnrun,  ROT0, "Konami",	"Midnight Run", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
-GAME( 1996, windheat,	0, zr107, windheat,  zr107,    ROT0, "Konami",	"Winding Heat", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
+GAME( 1995, midnrun,  0, zr107, midnrun,   zr107,    ROT0, "Konami", "Midnight Run", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
+GAME( 1996, windheat, 0, zr107, windheat,  zr107,    ROT0, "Konami", "Winding Heat", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )

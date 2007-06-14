@@ -12,20 +12,14 @@ static tilemap *bg_tilemap;
 
 WRITE8_HANDLER( jack_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( jack_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( jack_paletteram_w )
@@ -45,7 +39,7 @@ WRITE8_HANDLER( jack_flipscreen_w )
 	flip_screen_set(offset);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] + ((colorram[tile_index] & 0x18) << 5);
 	int color = colorram[tile_index] & 0x07;
@@ -62,8 +56,6 @@ static UINT32 tilemap_scan_cols_flipy( UINT32 col, UINT32 row, UINT32 num_cols, 
 VIDEO_START( jack )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flipy, TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void jack_draw_sprites( mame_bitmap *bitmap )
@@ -130,11 +122,11 @@ PALETTE_INIT( joinem )
 		bit2 = (color_prom[i] >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 
-static void joinem_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( joinem_get_bg_tile_info )
 {
 	int code = videoram[tile_index] + ((colorram[tile_index] & 0x01) << 8);
 	int color = (colorram[tile_index] & 0x38) >> 3;
@@ -145,8 +137,6 @@ static void joinem_get_bg_tile_info(int tile_index)
 VIDEO_START( joinem )
 {
 	bg_tilemap = tilemap_create(joinem_get_bg_tile_info, tilemap_scan_cols_flipy, TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void joinem_draw_sprites( mame_bitmap *bitmap )

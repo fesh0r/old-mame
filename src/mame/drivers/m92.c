@@ -55,10 +55,6 @@ Glitch list!
         Almost certainly a core bug.
 
     Irem Skins:
-        - Priority bug: you can't see the arrow on the top right map.
-        - Gfx problems at the players information during attract mode in
-          Skins Game *only*, Major Title is fine (that part of attract mode
-          is different).
         - Eeprom load/save not yet implemented - when done, MT2EEP should
           be removed from the ROM definition.
 
@@ -206,7 +202,7 @@ static UINT16 sound_status;
 static UINT32 bankaddress;
 
 static int m92_irq_vectorbase;
-static unsigned char *m92_ram,*m92_snd_ram;
+static UINT8 *m92_ram,*m92_snd_ram;
 
 #define M92_IRQ_0 ((m92_irq_vectorbase+0)/4)  /* VBL interrupt*/
 #define M92_IRQ_1 ((m92_irq_vectorbase+4)/4)  /* Sprite buffer complete interrupt */
@@ -230,7 +226,7 @@ VIDEO_START( m92 );
 VIDEO_UPDATE( m92 );
 
 extern int m92_raster_irq_position,m92_raster_enable;
-extern unsigned char *m92_vram_data,*m92_spritecontrol;
+extern UINT8 *m92_vram_data,*m92_spritecontrol;
 
 extern int m92_sprite_buffer_busy,m92_game_kludge;
 
@@ -238,7 +234,7 @@ extern int m92_sprite_buffer_busy,m92_game_kludge;
 
 static void set_m92_bank(void)
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 	memory_set_bankptr(1,&RAM[bankaddress]);
 }
 
@@ -248,7 +244,6 @@ static MACHINE_START( m92 )
 	state_save_register_global(sound_status);
 	state_save_register_global(bankaddress);
 	state_save_register_func_postload(set_m92_bank);
-	return 0;
 }
 
 
@@ -256,14 +251,14 @@ static MACHINE_START( m92 )
 
 static READ8_HANDLER( m92_eeprom_r )
 {
-	unsigned char *RAM = memory_region(REGION_USER1);
+	UINT8 *RAM = memory_region(REGION_USER1);
 //  logerror("%05x: EEPROM RE %04x\n",activecpu_get_pc(),offset);
 	return RAM[offset/2];
 }
 
 static WRITE8_HANDLER( m92_eeprom_w )
 {
-	unsigned char *RAM = memory_region(REGION_USER1);
+	UINT8 *RAM = memory_region(REGION_USER1);
 //  logerror("%05x: EEPROM WR %04x\n",activecpu_get_pc(),offset);
 	RAM[offset/2]=data;
 }
@@ -1051,8 +1046,8 @@ static const gfx_layout charlayout =
 	RGN_FRAC(1,4),
 	4,	/* 4 bits per pixel */
 	{ RGN_FRAC(3,4), RGN_FRAC(2,4), RGN_FRAC(1,4), RGN_FRAC(0,4) },
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
@@ -1062,10 +1057,8 @@ static const gfx_layout spritelayout =
 	RGN_FRAC(1,4),
 	4,
 	{ RGN_FRAC(3,4), RGN_FRAC(2,4), RGN_FRAC(1,4), RGN_FRAC(0,4) },
-	{ 0, 1, 2, 3, 4, 5, 6, 7,
-		16*8+0, 16*8+1, 16*8+2, 16*8+3, 16*8+4, 16*8+5, 16*8+6, 16*8+7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8,
-			8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	{ STEP8(0,1), STEP8(16*8,1) },
+	{ STEP16(0,8) },
 	32*8
 };
 
@@ -1075,9 +1068,8 @@ static const gfx_layout spritelayout2 =
 	RGN_FRAC(1,4),
 	4,
 	{ RGN_FRAC(3,4), RGN_FRAC(2,4), RGN_FRAC(1,4), RGN_FRAC(0,4) },
-	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
-	{ 0*16, 1*16, 2*16, 3*16, 4*16, 5*16, 6*16, 7*16,
-			8*16, 9*16, 10*16, 11*16, 12*16, 13*16, 14*16, 15*16 },
+	{ STEP16(0,1) },
+	{ STEP16(0,16) },
 	32*8
 };
 
@@ -1085,14 +1077,14 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 128 },
 	{ REGION_GFX2, 0, &spritelayout, 0, 128 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode gfxdecodeinfo2[] =
 {
 	{ REGION_GFX1, 0, &charlayout,    0, 128 },
 	{ REGION_GFX2, 0, &spritelayout2, 0, 128 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /***************************************************************************/
@@ -1343,7 +1335,7 @@ ROM_START( skingame )
 	ROM_LOAD16_BYTE( "is-h1.5l",   0x100001, 0x40000, CRC(9ba8e1f2) SHA1(ae86697a97223d236e2e6dd33ddb8105b9f926cb) )
 	ROM_LOAD16_BYTE( "is-l1.5j",   0x100000, 0x40000, CRC(e4e00626) SHA1(e8c6c7ad6a367da4036915a155c8695ad90ae47b) )
 
-	ROM_REGION( 0x100000, REGION_CPU2, 0 )	/* 64k for the audio CPU */
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "mt2sh0",  0x000001, 0x10000, CRC(1ecbea43) SHA1(8d66ef419f75569f2c83a89c3985742b8a47914f) )
 	ROM_LOAD16_BYTE( "mt2sl0",  0x000000, 0x10000, CRC(8fd5b531) SHA1(92cae3f6dac7f89b559063de3be2f38587536b65) )
 
@@ -1380,7 +1372,7 @@ ROM_START( majtitl2 )
 	ROM_LOAD16_BYTE( "is-h1.5l",    0x100001, 0x40000, CRC(9ba8e1f2) SHA1(ae86697a97223d236e2e6dd33ddb8105b9f926cb) )
 	ROM_LOAD16_BYTE( "is-l1.5j",    0x100000, 0x40000, CRC(e4e00626) SHA1(e8c6c7ad6a367da4036915a155c8695ad90ae47b) )
 
-	ROM_REGION( 0x100000, REGION_CPU2, 0 )	/* 64k for the audio CPU */
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "mt2sh0",  0x000001, 0x10000, CRC(1ecbea43) SHA1(8d66ef419f75569f2c83a89c3985742b8a47914f) )
 	ROM_LOAD16_BYTE( "mt2sl0",  0x000000, 0x10000, CRC(8fd5b531) SHA1(92cae3f6dac7f89b559063de3be2f38587536b65) )
 
@@ -1417,7 +1409,7 @@ ROM_START( majtit2j )
 	ROM_LOAD16_BYTE( "is-h1.5l",    0x100001, 0x40000, CRC(9ba8e1f2) SHA1(ae86697a97223d236e2e6dd33ddb8105b9f926cb) )
 	ROM_LOAD16_BYTE( "is-l1.5j",    0x100000, 0x40000, CRC(e4e00626) SHA1(e8c6c7ad6a367da4036915a155c8695ad90ae47b) )
 
-	ROM_REGION( 0x100000, REGION_CPU2, 0 )	/* 64k for the audio CPU */
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "mt2sh0",  0x000001, 0x10000, CRC(1ecbea43) SHA1(8d66ef419f75569f2c83a89c3985742b8a47914f) )
 	ROM_LOAD16_BYTE( "mt2sl0",  0x000000, 0x10000, CRC(8fd5b531) SHA1(92cae3f6dac7f89b559063de3be2f38587536b65) )
 
@@ -1896,7 +1888,7 @@ ROM_START( lethalth )
 	ROM_LOAD16_BYTE( "lt_d-h1.rom", 0x040001, 0x020000, CRC(d7dd3d48) SHA1(b848feee55159e334f711e4f661d415ffc1e3513) )
 	ROM_LOAD16_BYTE( "lt_d-l1.rom", 0x040000, 0x020000, CRC(b94b3bd8) SHA1(7b89d9177d8b357b09317606cb2070c14c3449a5) )
 
-	ROM_REGION( 0x100000, REGION_CPU2, 0 )	/* 1MB for the audio CPU */
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "lt_d-sh0.rom",0x000001, 0x010000, CRC(af5b224f) SHA1(a07f2c6ca0e65af016d74b90342cfaab7535324e) )
 	ROM_LOAD16_BYTE( "lt_d-sl0.rom",0x000000, 0x010000, CRC(cb3faac3) SHA1(e1ee32fac7ee9e97fbf68904572e90aa9d0c9460) )
 
@@ -1923,7 +1915,7 @@ ROM_START( thndblst )
 	ROM_LOAD16_BYTE( "lt_d-h1.rom",  0x040001, 0x020000, CRC(d7dd3d48) SHA1(b848feee55159e334f711e4f661d415ffc1e3513) )
 	ROM_LOAD16_BYTE( "lt_d-l1.rom",  0x040000, 0x020000, CRC(b94b3bd8) SHA1(7b89d9177d8b357b09317606cb2070c14c3449a5) )
 
-	ROM_REGION( 0x100000, REGION_CPU2, 0 )	/* 1MB for the audio CPU */
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "lt_d-sh0.rom", 0x000001, 0x010000, CRC(af5b224f) SHA1(a07f2c6ca0e65af016d74b90342cfaab7535324e) )
 	ROM_LOAD16_BYTE( "lt_d-sl0.rom", 0x000000, 0x010000, CRC(cb3faac3) SHA1(e1ee32fac7ee9e97fbf68904572e90aa9d0c9460) )
 
@@ -1950,7 +1942,7 @@ ROM_START( nbbatman )
 	ROM_LOAD16_BYTE( "a1-h1-.33",  0x100001, 0x040000, CRC(3ce2aab5) SHA1(b39f17853bcab7ab290fdfaf9f3d8e8c2d91072a) )
 	ROM_LOAD16_BYTE( "a1-l1-.32",  0x100000, 0x040000, CRC(116d9bcc) SHA1(c2faf8d1c6b51ac1483757777fd55961b74501fb) )
 
-	ROM_REGION( 0x100000, REGION_CPU2, 0 )	/* 1MB for the audio CPU */
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "a1-sh0-.14", 0x000001, 0x010000, CRC(b7fae3e6) SHA1(ce41380d6c0f29f2facf9bf23dd4403648cd9eb4) )
 	ROM_LOAD16_BYTE( "a1-sl0-.17", 0x000000, 0x010000, CRC(b26d54fc) SHA1(136e1a83da08a0dc9046faf71f3f58d8d3095fde) )
 
@@ -1977,7 +1969,7 @@ ROM_START( leaguemn )
 	ROM_LOAD16_BYTE( "a1-h1-.33",  0x100001, 0x040000, CRC(3ce2aab5) SHA1(b39f17853bcab7ab290fdfaf9f3d8e8c2d91072a) )
 	ROM_LOAD16_BYTE( "a1-l1-.32",  0x100000, 0x040000, CRC(116d9bcc) SHA1(c2faf8d1c6b51ac1483757777fd55961b74501fb) )
 
-	ROM_REGION( 0x100000, REGION_CPU2, 0 )	/* 1MB for the audio CPU */
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "a1-sh0-.14", 0x000001, 0x010000, CRC(b7fae3e6) SHA1(ce41380d6c0f29f2facf9bf23dd4403648cd9eb4) )
 	ROM_LOAD16_BYTE( "a1-sl0-.17", 0x000000, 0x010000, CRC(b26d54fc) SHA1(136e1a83da08a0dc9046faf71f3f58d8d3095fde) )
 
@@ -2004,7 +1996,7 @@ ROM_START( ssoldier )
 	ROM_LOAD16_BYTE( "f3-h1-a.bin", 0x080001, 0x020000, CRC(e3d9f619) SHA1(7f450413d1fae7250d2fcbe0ff4ee13d52fa15e8) )
 	ROM_LOAD16_BYTE( "f3-l1-a.bin", 0x080000, 0x020000, CRC(8cb5c396) SHA1(af130632b4ffb846cf355064391130d8c7ba73ad) )
 
-	ROM_REGION( 0x100000, REGION_CPU2, 0 ) /* 1MB for the audio CPU */
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "f3_sh0.sh0", 0x000001, 0x010000, CRC(90b55e5e) SHA1(cf77ccb68a10a29289bc42db348f480e21c3a558) )
 	ROM_LOAD16_BYTE( "f3_sl0.sl0", 0x000000, 0x010000, CRC(77c16d57) SHA1(68c7f026b718b700f1f9162f53cdc859b65944b9) )
 
@@ -2035,7 +2027,7 @@ ROM_START( psoldier )
 	ROM_LOAD16_BYTE( "f3_h1-.bin",  0x080001, 0x040000, CRC(c8d1947c) SHA1(832a448f117224941799aeece2ec0b25065be3e2) )
 	ROM_LOAD16_BYTE( "f3_l1-.bin",  0x080000, 0x040000, CRC(7b9492fc) SHA1(335166d096dec3773ec69b05dad6763505818dd6) )
 
-	ROM_REGION( 0x100000, REGION_CPU2, 0 )	/* 1MB for the audio CPU */
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "f3_sh0.sh0", 0x000001, 0x010000, CRC(90b55e5e) SHA1(cf77ccb68a10a29289bc42db348f480e21c3a558) )
 	ROM_LOAD16_BYTE( "f3_sl0.sl0", 0x000000, 0x010000, CRC(77c16d57) SHA1(68c7f026b718b700f1f9162f53cdc859b65944b9) )
 
@@ -2145,10 +2137,9 @@ ROM_START( geostorm )
 ROM_END
 
 
-
 static void m92_startup(int hasbanks)
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 	if (hasbanks)
 	{
@@ -2170,7 +2161,7 @@ static void m92_startup(int hasbanks)
 	m92_sprite_buffer_busy=0x80;
 }
 
-static void init_m92(const unsigned char *decryption_table, int hasbanks)
+static void init_m92(const UINT8 *decryption_table, int hasbanks)
 {
 	m92_startup(hasbanks);
 	setvector_callback(VECTOR_INIT);
@@ -2252,7 +2243,7 @@ static DRIVER_INIT( lethalth )
 
 static DRIVER_INIT( nbbatman )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 	init_m92(leagueman_decryption_table, 1);
 
@@ -2261,10 +2252,10 @@ static DRIVER_INIT( nbbatman )
 
 static DRIVER_INIT( ssoldier )
 {
- init_m92(psoldier_decryption_table, 1);
- m92_irq_vectorbase=0x20;
- /* main CPU expects an answer even before writing the first command */
- sound_status = 0x80;
+	init_m92(psoldier_decryption_table, 1);
+	m92_irq_vectorbase=0x20;
+	/* main CPU expects an answer even before writing the first command */
+	sound_status = 0x80;
 }
 
 static DRIVER_INIT( psoldier )
@@ -2282,7 +2273,7 @@ static DRIVER_INIT( dsccr94j )
 
 static DRIVER_INIT( gunforc2 )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 	init_m92(lethalth_decryption_table, 1);
 	memcpy(RAM+0x80000,RAM+0x100000,0x20000);
 }
@@ -2300,10 +2291,10 @@ GAME( 1992, uccops,   0,        raster,    uccops,   uccops,   ROT0,   "Irem",  
 GAME( 1992, uccopsj,  uccops,   raster,    uccops,   uccops,   ROT0,   "Irem",         "Undercover Cops (Japan)", 0 )
 GAME( 1992, mysticri, 0,        nonraster, mysticri, mysticri, ROT0,   "Irem",         "Mystic Riders (World)", 0 )
 GAME( 1992, gunhohki, mysticri, nonraster, mysticri, mysticri, ROT0,   "Irem",         "Gun Hohki (Japan)", 0 )
-GAME( 1992, majtitl2, 0,        raster,    majtitl2, majtitl2, ROT0,   "Irem",         "Major Title 2 (World)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1992, majtit2j, majtitl2, raster,    majtitl2, majtitl2, ROT0,   "Irem",         "Major Title 2 (Japan)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1992, skingame, majtitl2, raster,    majtitl2, majtitl2, ROT0,   "Irem America", "The Irem Skins Game (US set 1)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1992, skingam2, majtitl2, raster,    majtitl2, majtitl2, ROT0,   "Irem America", "The Irem Skins Game (US set 2)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, majtitl2, 0,        raster,    majtitl2, majtitl2, ROT0,   "Irem",         "Major Title 2 (World)", 0 )
+GAME( 1992, majtit2j, majtitl2, raster,    majtitl2, majtitl2, ROT0,   "Irem",         "Major Title 2 (Japan)", 0 )
+GAME( 1992, skingame, majtitl2, raster,    majtitl2, majtitl2, ROT0,   "Irem America", "The Irem Skins Game (US set 1)", 0 )
+GAME( 1992, skingam2, majtitl2, raster,    majtitl2, majtitl2, ROT0,   "Irem America", "The Irem Skins Game (US set 2)", 0 )
 GAME( 1992, hook,     0,        nonraster, hook,     hook,     ROT0,   "Irem",         "Hook (World)", 0 )
 GAME( 1992, hooku,    hook,     nonraster, hook,     hook,     ROT0,   "Irem America", "Hook (US)", 0 )
 GAME( 1992, hookj,    hook,     nonraster, hook,     hook,     ROT0,   "Irem",         "Hook (Japan)", 0 )

@@ -60,14 +60,14 @@ PALETTE_INIT( kingofb )
 		bit3 = (color_prom[2*256] >> 3) & 0x01;
 		b = 0x10 * bit0 + 0x21 * bit1 + 0x45 * bit2 + 0x89 * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
 
 	/* the foreground chars directly map to primary colors */
 	for (i = 0;i < 8;i++)
-		palette_set_color(machine,i+256,pal1bit(i >> 2),pal1bit(i >> 1),pal1bit(i >> 0));
+		palette_set_color_rgb(machine,i+256,pal1bit(i >> 2),pal1bit(i >> 1),pal1bit(i >> 0));
 
 	for (i = 0;i < TOTAL_COLORS(0)/2;i++)
 	{
@@ -109,14 +109,14 @@ PALETTE_INIT( ringking )
 		bit3 = (color_prom[256] >> 3) & 0x01;
 		b = 0x10 * bit0 + 0x21 * bit1 + 0x45 * bit2 + 0x89 * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
 
 	/* the foreground chars directly map to primary colors */
 	for (i = 0;i < 8;i++)
-		palette_set_color(machine,i+256,pal1bit(i >> 2),pal1bit(i >> 1),pal1bit(i >> 0));
+		palette_set_color_rgb(machine,i+256,pal1bit(i >> 2),pal1bit(i >> 1),pal1bit(i >> 0));
 
 	for (i = 0;i < TOTAL_COLORS(0)/2;i++)
 	{
@@ -127,38 +127,26 @@ PALETTE_INIT( ringking )
 
 WRITE8_HANDLER( kingofb_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( kingofb_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( kingofb_videoram2_w )
 {
-	if (kingofb_videoram2[offset] != data)
-	{
-		kingofb_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	kingofb_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( kingofb_colorram2_w )
 {
-	if (kingofb_colorram2[offset] != data)
-	{
-		kingofb_colorram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	kingofb_colorram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( kingofb_f800_w )
@@ -178,7 +166,7 @@ WRITE8_HANDLER( kingofb_f800_w )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int bank = ((attr & 0x04) >> 2) + 2;
@@ -188,7 +176,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(bank, code, color, 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = kingofb_colorram2[tile_index];
 	int bank = (attr & 0x02) >> 1;
@@ -207,8 +195,6 @@ VIDEO_START( kingofb )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 static void kingofb_draw_sprites( mame_bitmap *bitmap )
@@ -252,7 +238,7 @@ VIDEO_UPDATE( kingofb )
 
 /* Ring King */
 
-static void ringking_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( ringking_get_bg_tile_info )
 {
 	int code = (tile_index / 16) ? videoram[tile_index] : 0;
 	int color = ((colorram[tile_index] & 0x70) >> 4) + 8 * palette_bank;
@@ -269,8 +255,6 @@ VIDEO_START( ringking )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 static void ringking_draw_sprites( mame_bitmap *bitmap )

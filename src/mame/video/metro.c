@@ -75,7 +75,7 @@ static UINT16 *metro_tiletable_old;
 static UINT8 *dirtyindex;
 
 
-static void metro_K053936_get_tile_info(int tile_index)
+static TILE_GET_INFO( metro_K053936_get_tile_info )
 {
 	int code = metro_K053936_ram[tile_index];
 
@@ -86,7 +86,7 @@ static void metro_K053936_get_tile_info(int tile_index)
 			0)
 }
 
-static void metro_K053936_gstrik2_get_tile_info(int tile_index)
+static TILE_GET_INFO( metro_K053936_gstrik2_get_tile_info )
 {
 	int code = metro_K053936_ram[tile_index];
 
@@ -99,10 +99,8 @@ static void metro_K053936_gstrik2_get_tile_info(int tile_index)
 
 WRITE16_HANDLER( metro_K053936_w )
 {
-	UINT16 oldword = metro_K053936_ram[offset];
 	COMBINE_DATA(&metro_K053936_ram[offset]);
-	if (oldword != metro_K053936_ram[offset])
-		tilemap_mark_tile_dirty(metro_K053936_tilemap,offset);
+	tilemap_mark_tile_dirty(metro_K053936_tilemap,offset);
 }
 
 UINT32 tilemap_scan_gstrik2( UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows )
@@ -131,7 +129,7 @@ WRITE16_HANDLER( metro_paletteram_w )
 {
 	data = COMBINE_DATA(&paletteram16[offset]);
 	/* We need the ^0xff because we had to invert the pens in the gfx */
-	palette_set_color(Machine,offset^0xff,pal5bit(data >> 6),pal5bit(data >> 11),pal5bit(data >> 1));
+	palette_set_color_rgb(Machine,offset^0xff,pal5bit(data >> 6),pal5bit(data >> 11),pal5bit(data >> 1));
 }
 
 
@@ -182,7 +180,7 @@ static UINT8 *empty_tiles;
 
 
 /* 8x8x4 tiles only */
-INLINE void get_tile_info(int tile_index,int layer,UINT16 *vram)
+INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int layer,UINT16 *vram)
 {
 	UINT16 code;
 	int      table_index;
@@ -203,11 +201,11 @@ INLINE void get_tile_info(int tile_index,int layer,UINT16 *vram)
 	if (code & 0x8000) /* Special: draw a tile of a single color (i.e. not from the gfx ROMs) */
 	{
 		int _code = code & 0x000f;
-		tile_info.tile_number = _code;
-		tile_info.pen_data = empty_tiles + _code*16*16;
-		tile_info.pal_data = &Machine->remapped_colortable[(((code & 0x0ff0) ^ 0x0f0) + 0x1000)];
-		tile_info.pen_usage = 0;
-		tile_info.flags = 0;
+		tileinfo->tile_number = _code;
+		tileinfo->pen_data = empty_tiles + _code*16*16;
+		tileinfo->pal_data = &Machine->remapped_colortable[(((code & 0x0ff0) ^ 0x0f0) + 0x1000)];
+		tileinfo->pen_usage = 0;
+		tileinfo->flags = 0;
 	}
 	else
 		SET_TILE_INFO(
@@ -220,7 +218,7 @@ INLINE void get_tile_info(int tile_index,int layer,UINT16 *vram)
 
 /* 8x8x4 or 8x8x8 tiles. It's the tile's color that decides: if its low 4
    bits are high ($f,$1f,$2f etc) the tile is 8bpp, otherwise it's 4bpp */
-INLINE void get_tile_info_8bit(int tile_index,int layer,UINT16 *vram)
+INLINE void get_tile_info_8bit(running_machine *machine,tile_data *tileinfo,int tile_index,int layer,UINT16 *vram)
 {
 	UINT16 code;
 	int      table_index;
@@ -241,11 +239,11 @@ INLINE void get_tile_info_8bit(int tile_index,int layer,UINT16 *vram)
 	if (code & 0x8000) /* Special: draw a tile of a single color (i.e. not from the gfx ROMs) */
 	{
 		int _code = code & 0x000f;
-		tile_info.tile_number = _code;
-		tile_info.pen_data = empty_tiles + _code*16*16;
-		tile_info.pal_data = &Machine->remapped_colortable[(((code & 0x0ff0) ^ 0x0f0) + 0x1000)];
-		tile_info.pen_usage = 0;
-		tile_info.flags = 0;
+		tileinfo->tile_number = _code;
+		tileinfo->pen_data = empty_tiles + _code*16*16;
+		tileinfo->pal_data = &Machine->remapped_colortable[(((code & 0x0ff0) ^ 0x0f0) + 0x1000)];
+		tileinfo->pen_usage = 0;
+		tileinfo->flags = 0;
 	}
 	else if ((tile & 0x00f00000)==0x00f00000)	/* draw tile as 8bpp */
 		SET_TILE_INFO(
@@ -263,7 +261,7 @@ INLINE void get_tile_info_8bit(int tile_index,int layer,UINT16 *vram)
 
 /* 16x16x4 or 16x16x8 tiles. It's the tile's color that decides: if its low 4
    bits are high ($f,$1f,$2f etc) the tile is 8bpp, otherwise it's 4bpp */
-INLINE void get_tile_info_16x16_8bit(int tile_index,int layer,UINT16 *vram)
+INLINE void get_tile_info_16x16_8bit(running_machine *machine,tile_data *tileinfo,int tile_index,int layer,UINT16 *vram)
 {
 	UINT16 code;
 	int      table_index;
@@ -284,11 +282,11 @@ INLINE void get_tile_info_16x16_8bit(int tile_index,int layer,UINT16 *vram)
 	if (code & 0x8000) /* Special: draw a tile of a single color (i.e. not from the gfx ROMs) */
 	{
 		int _code = code & 0x000f;
-		tile_info.tile_number = _code;
-		tile_info.pen_data = empty_tiles + _code*16*16;
-		tile_info.pal_data = &Machine->remapped_colortable[(((code & 0x0ff0) ^ 0x0f0) + 0x1000)];
-		tile_info.pen_usage = 0;
-		tile_info.flags = 0;
+		tileinfo->tile_number = _code;
+		tileinfo->pen_data = empty_tiles + _code*16*16;
+		tileinfo->pal_data = &Machine->remapped_colortable[(((code & 0x0ff0) ^ 0x0f0) + 0x1000)];
+		tileinfo->pen_usage = 0;
+		tileinfo->flags = 0;
 	}
 	else if ((tile & 0x00f00000)==0x00f00000)	/* draw tile as 8bpp */
 		SET_TILE_INFO(
@@ -307,9 +305,7 @@ INLINE void get_tile_info_16x16_8bit(int tile_index,int layer,UINT16 *vram)
 
 INLINE void metro_vram_w(offs_t offset,UINT16 data,UINT16 mem_mask,int layer,UINT16 *vram)
 {
-	UINT16 olddata = vram[offset];
-	UINT16 newdata = COMBINE_DATA(&vram[offset]);
-	if ( newdata != olddata )
+	COMBINE_DATA(&vram[offset]);
 	{
 		/* Account for the window */
 		int col		=	(offset % BIG_NX) - ((metro_window[layer * 2 + 1] / 8) % BIG_NX);
@@ -328,17 +324,17 @@ INLINE void metro_vram_w(offs_t offset,UINT16 data,UINT16 mem_mask,int layer,UIN
 
 
 
-static void get_tile_info_0(int tile_index) { get_tile_info(tile_index,0,metro_vram_0); }
-static void get_tile_info_1(int tile_index) { get_tile_info(tile_index,1,metro_vram_1); }
-static void get_tile_info_2(int tile_index) { get_tile_info(tile_index,2,metro_vram_2); }
+static TILE_GET_INFO( get_tile_info_0 ) { get_tile_info(machine,tileinfo,tile_index,0,metro_vram_0); }
+static TILE_GET_INFO( get_tile_info_1 ) { get_tile_info(machine,tileinfo,tile_index,1,metro_vram_1); }
+static TILE_GET_INFO( get_tile_info_2 ) { get_tile_info(machine,tileinfo,tile_index,2,metro_vram_2); }
 
-static void get_tile_info_0_8bit(int tile_index) { get_tile_info_8bit(tile_index,0,metro_vram_0); }
-static void get_tile_info_1_8bit(int tile_index) { get_tile_info_8bit(tile_index,1,metro_vram_1); }
-static void get_tile_info_2_8bit(int tile_index) { get_tile_info_8bit(tile_index,2,metro_vram_2); }
+static TILE_GET_INFO( get_tile_info_0_8bit ) { get_tile_info_8bit(machine,tileinfo,tile_index,0,metro_vram_0); }
+static TILE_GET_INFO( get_tile_info_1_8bit ) { get_tile_info_8bit(machine,tileinfo,tile_index,1,metro_vram_1); }
+static TILE_GET_INFO( get_tile_info_2_8bit ) { get_tile_info_8bit(machine,tileinfo,tile_index,2,metro_vram_2); }
 
-static void get_tile_info_0_16x16_8bit(int tile_index) { get_tile_info_16x16_8bit(tile_index,0,metro_vram_0); }
-static void get_tile_info_1_16x16_8bit(int tile_index) { get_tile_info_16x16_8bit(tile_index,1,metro_vram_1); }
-static void get_tile_info_2_16x16_8bit(int tile_index) { get_tile_info_16x16_8bit(tile_index,2,metro_vram_2); }
+static TILE_GET_INFO( get_tile_info_0_16x16_8bit ) { get_tile_info_16x16_8bit(machine,tileinfo,tile_index,0,metro_vram_0); }
+static TILE_GET_INFO( get_tile_info_1_16x16_8bit ) { get_tile_info_16x16_8bit(machine,tileinfo,tile_index,1,metro_vram_1); }
+static TILE_GET_INFO( get_tile_info_2_16x16_8bit ) { get_tile_info_16x16_8bit(machine,tileinfo,tile_index,2,metro_vram_2); }
 
 WRITE16_HANDLER( metro_vram_0_w ) { metro_vram_w(offset,data,mem_mask,0,metro_vram_0); }
 WRITE16_HANDLER( metro_vram_1_w ) { metro_vram_w(offset,data,mem_mask,1,metro_vram_1); }
@@ -412,8 +408,6 @@ VIDEO_START( metro_14100 )
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
 	tilemap_set_transparent_pen(bg_tilemap[2],0);
-
-	return 0;
 }
 
 VIDEO_START( metro_14220 )
@@ -441,8 +435,6 @@ VIDEO_START( metro_14220 )
 	tilemap_set_scrolldx(bg_tilemap[0], -2, 2);
 	tilemap_set_scrolldx(bg_tilemap[1], -2, 2);
 	tilemap_set_scrolldx(bg_tilemap[2], -2, 2);
-
-	return 0;
 }
 
 VIDEO_START( metro_14300 )
@@ -469,14 +461,11 @@ VIDEO_START( metro_14300 )
 	tilemap_set_transparent_pen(tilemap_16x16[0],0);
 	tilemap_set_transparent_pen(tilemap_16x16[1],0);
 	tilemap_set_transparent_pen(tilemap_16x16[2],0);
-
-	return 0;
 }
 
 VIDEO_START( blzntrnd )
 {
-	if (video_start_metro_14220(machine))
-		return 1;
+	video_start_metro_14220(machine);
 
 	has_zoom = 1;
 
@@ -489,14 +478,11 @@ VIDEO_START( blzntrnd )
 	tilemap_set_scrolldx(bg_tilemap[0], 8, -8);
 	tilemap_set_scrolldx(bg_tilemap[1], 8, -8);
 	tilemap_set_scrolldx(bg_tilemap[2], 8, -8);
-
-	return 0;
 }
 
 VIDEO_START( gstrik2 )
 {
-	if (video_start_metro_14220(machine))
-		return 1;
+	video_start_metro_14220(machine);
 
 	has_zoom = 1;
 
@@ -509,8 +495,6 @@ VIDEO_START( gstrik2 )
 	tilemap_set_scrolldx(bg_tilemap[0], 8, -8);
 	tilemap_set_scrolldx(bg_tilemap[1], 0, 0);
 	tilemap_set_scrolldx(bg_tilemap[2], 8, -8);
-
-	return 0;
 }
 
 /***************************************************************************
@@ -579,8 +563,8 @@ void metro_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	const int region		=	REGION_GFX1;
 
-	unsigned char *base_gfx	=	memory_region(region);
-	unsigned char *gfx_max	=	base_gfx + memory_region_length(region);
+	UINT8 *base_gfx	=	memory_region(region);
+	UINT8 *gfx_max	=	base_gfx + memory_region_length(region);
 
 	int max_x				=	Machine->screen[0].width;
 	int max_y				=	Machine->screen[0].height;
@@ -613,7 +597,7 @@ void metro_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 		for (j=0; j<sprites; j++)
 		{
 			int x,y, attr,code,color,flipx,flipy, zoom, curr_pri,width,height;
-			unsigned char *gfxdata;
+			UINT8 *gfxdata;
 
 			/* Exponential zoom table extracted from daitoride */
 			static const int zoomtable[0x40] =

@@ -71,7 +71,7 @@ static void lasso_set_color(int i, int data)
 	bit1 = (data >> 7) & 0x01;
 	b = 0x4f * bit0 + 0xa8 * bit1;
 
-	palette_set_color( Machine,i,r,g,b );
+	palette_set_color( Machine,i,MAKE_RGB(r,g,b) );
 }
 
 PALETTE_INIT( lasso )
@@ -104,7 +104,7 @@ PALETTE_INIT( wwjgtin )
 
 ***************************************************************************/
 
-static void lasso_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( lasso_get_bg_tile_info )
 {
 	int code  = lasso_videoram[tile_index];
 	int color = lasso_colorram[tile_index];
@@ -114,7 +114,7 @@ static void lasso_get_bg_tile_info(int tile_index)
 				  0)
 }
 
-static void wwjgtin_get_track_tile_info(int tile_index)
+static TILE_GET_INFO( wwjgtin_get_track_tile_info )
 {
 	UINT8 *ROM = memory_region(REGION_USER1);
 	int code  = ROM[tile_index];
@@ -125,7 +125,7 @@ static void wwjgtin_get_track_tile_info(int tile_index)
 				  0)
 }
 
-static void pinbo_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( pinbo_get_bg_tile_info )
 {
 	int code  = lasso_videoram[tile_index];
 	int color = lasso_colorram[tile_index];
@@ -149,8 +149,6 @@ VIDEO_START( lasso )
 
 	/* register for saving */
 	state_save_register_global(gfxbank);
-
-	return 0;
 }
 
 VIDEO_START( wwjgtin )
@@ -164,8 +162,6 @@ VIDEO_START( wwjgtin )
 	/* register for saving */
 	state_save_register_global(gfxbank);
 	state_save_register_global(wwjgtin_track_enable);
-
-	return 0;
 }
 
 VIDEO_START( pinbo )
@@ -175,8 +171,6 @@ VIDEO_START( pinbo )
 
 	/* register for saving */
 	state_save_register_global(gfxbank);
-
-	return 0;
 }
 
 
@@ -188,20 +182,14 @@ VIDEO_START( pinbo )
 
 WRITE8_HANDLER( lasso_videoram_w )
 {
-	if (lasso_videoram[offset] != data)
-	{
-		lasso_videoram[offset] = data;
-		tilemap_mark_tile_dirty( bg_tilemap, offset );
-	}
+	lasso_videoram[offset] = data;
+	tilemap_mark_tile_dirty( bg_tilemap, offset );
 }
 
 WRITE8_HANDLER( lasso_colorram_w )
 {
-	if (lasso_colorram[offset] != data)
-	{
-		lasso_colorram[offset] = data;
-		tilemap_mark_tile_dirty( bg_tilemap, offset );
-	}
+	lasso_colorram[offset] = data;
+	tilemap_mark_tile_dirty( bg_tilemap, offset );
 }
 
 

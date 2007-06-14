@@ -6,11 +6,8 @@ static tilemap *bg_tilemap;
 
 WRITE8_HANDLER( pokechmp_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
 }
 
 WRITE8_HANDLER( pokechmp_flipscreen_w )
@@ -22,7 +19,7 @@ WRITE8_HANDLER( pokechmp_flipscreen_w )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index*2+1] + ((videoram[tile_index*2] & 0x3f) << 8);
 	int color = videoram[tile_index*2] >> 6;
@@ -34,8 +31,6 @@ VIDEO_START( pokechmp )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void pokechmp_draw_sprites( mame_bitmap *bitmap )

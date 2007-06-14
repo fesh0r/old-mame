@@ -55,7 +55,7 @@ WRITE16_HANDLER( namcos2_gfx_ctrl_w )
 	COMBINE_DATA(&namcos2_gfx_ctrl);
 } /* namcos2_gfx_ctrl_w */
 
-static void get_tile_info_roz(int tile_index)
+static TILE_GET_INFO( get_tile_info_roz )
 {
 	int tile = namcos2_68k_roz_ram[tile_index];
 	SET_TILE_INFO(3,tile,0/*color*/,0)
@@ -204,16 +204,12 @@ READ16_HANDLER( namcos2_68k_roz_ram_r )
 
 WRITE16_HANDLER( namcos2_68k_roz_ram_w )
 {
-	UINT16 oldword = namcos2_68k_roz_ram[offset];
 	COMBINE_DATA(&namcos2_68k_roz_ram[offset]);
-	if (oldword != namcos2_68k_roz_ram[offset])
-	{
-		tilemap_mark_tile_dirty(tilemap_roz,offset);
+	tilemap_mark_tile_dirty(tilemap_roz,offset);
 //      if( code_pressed(KEYCODE_Q) )
 //      {
 //          DEBUGGER_BREAK;
 //      }
-	}
 }
 
 /**************************************************************************/
@@ -286,7 +282,7 @@ UpdatePalette( void )
 			int r = namcos2_68k_palette_ram[offset | 0x0000] & 0x00ff;
 			int g = namcos2_68k_palette_ram[offset | 0x0800] & 0x00ff;
 			int b = namcos2_68k_palette_ram[offset | 0x1000] & 0x00ff;
-			palette_set_color(Machine,pen++,r,g,b);
+			palette_set_color(Machine,pen++,MAKE_RGB(r,g,b));
 			offset++;
 		}
 	}
@@ -325,16 +321,10 @@ READ16_HANDLER( namcos2_sprite_ram_r )
 
 VIDEO_START( namcos2 )
 {
-	if( namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB)==0 )
-	{
-		tilemap_roz = tilemap_create(get_tile_info_roz,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,256,256);
-		{
-			tilemap_set_transparent_pen(tilemap_roz,0xff);
-			DrawSpriteInit();
-			return 0;
-		}
-	}
-	return -1;
+	namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB);
+	tilemap_roz = tilemap_create(get_tile_info_roz,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,256,256);
+	tilemap_set_transparent_pen(tilemap_roz,0xff);
+	DrawSpriteInit();
 }
 
 static void
@@ -383,13 +373,9 @@ VIDEO_UPDATE( namcos2_default )
 
 VIDEO_START( finallap )
 {
-	if( namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB)==0 )
-	{
-		DrawSpriteInit();
-		namco_road_init(3);
-		return 0;
-	}
-	return -1;
+	namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB);
+	DrawSpriteInit();
+	namco_road_init(3);
 }
 
 VIDEO_UPDATE( finallap )
@@ -417,20 +403,16 @@ VIDEO_UPDATE( finallap )
 
 VIDEO_START( luckywld )
 {
-	if( namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB)==0 )
+	namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB);
+	namco_obj_init( 0, 0x0, NULL );
+	if( namcos2_gametype==NAMCOS2_LUCKY_AND_WILD )
 	{
-		namco_obj_init( 0, 0x0, NULL );
-		if( namcos2_gametype==NAMCOS2_LUCKY_AND_WILD )
-		{
-			namco_roz_init( 1, REGION_GFX5 );
-		}
-		if( namcos2_gametype!=NAMCOS2_STEEL_GUNNER_2 )
-		{
-			namco_road_init(3);
-		}
-		return 0;
+		namco_roz_init( 1, REGION_GFX5 );
 	}
-	return -1;
+	if( namcos2_gametype!=NAMCOS2_STEEL_GUNNER_2 )
+	{
+		namco_road_init(3);
+	}
 } /* luckywld */
 
 VIDEO_UPDATE( luckywld )
@@ -462,12 +444,8 @@ VIDEO_UPDATE( luckywld )
 
 VIDEO_START( sgunner )
 {
-	if( namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB)==0 )
-	{
-		namco_obj_init( 0, 0x0, NULL );
-		return 0;
-	}
-	return -1;
+	namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB);
+	namco_obj_init( 0, 0x0, NULL );
 }
 
 VIDEO_UPDATE( sgunner )
@@ -492,12 +470,8 @@ VIDEO_UPDATE( sgunner )
 
 VIDEO_START( metlhawk )
 {
-	if( namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB)==0 )
-	{
-		namco_roz_init( 1, REGION_GFX5 );
-		return 0;
-	}
-	return -1;
+	namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB);
+	namco_roz_init( 1, REGION_GFX5 );
 }
 
 VIDEO_UPDATE( metlhawk )

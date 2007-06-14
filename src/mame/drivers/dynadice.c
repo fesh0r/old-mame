@@ -39,12 +39,9 @@ static int ay_data;
 
 WRITE8_HANDLER( dynadice_videoram_w )
 {
-	if( videoram[offset] != data )
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-		tilemap_mark_all_tiles_dirty(top_tilemap);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
+	tilemap_mark_all_tiles_dirty(top_tilemap);
 }
 
 static WRITE8_HANDLER( sound_data_w )
@@ -170,7 +167,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ -1 }
 };
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int code=videoram[tile_index];
 	SET_TILE_INFO(1, code, 0, 0)
@@ -182,7 +179,6 @@ VIDEO_START( dynadice )
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
 	top_tilemap = tilemap_create(get_tile_info,tilemap_scan_cols,TILEMAP_OPAQUE,8,8,2,32);
 	tilemap_set_scrollx(bg_tilemap, 0, -16 );
-	return 0;
 }
 
 VIDEO_UPDATE( dynadice )
@@ -198,7 +194,7 @@ PALETTE_INIT( dynadice )
 {
 	int i;
 	for(i=0;i<8;i++)
-		palette_set_color(machine,i,pal1bit(i >> 1),pal1bit(i >> 2),pal1bit(i >> 0));
+		palette_set_color_rgb(machine,i,pal1bit(i >> 1),pal1bit(i >> 2),pal1bit(i >> 0));
 }
 
 static MACHINE_DRIVER_START( dynadice )

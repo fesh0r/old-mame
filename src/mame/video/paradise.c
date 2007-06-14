@@ -53,9 +53,9 @@ WRITE8_HANDLER( paradise_palette_w )
 {
 	paletteram[offset] = data;
 	offset %= 0x800;
-	palette_set_color(Machine,offset,	paletteram[offset + 0x800 * 0],
-										paletteram[offset + 0x800 * 1],
-										paletteram[offset + 0x800 * 2]	);
+	palette_set_color_rgb(Machine,offset,	paletteram[offset + 0x800 * 0],
+											paletteram[offset + 0x800 * 1],
+											paletteram[offset + 0x800 * 2]	);
 }
 
 /***************************************************************************
@@ -74,11 +74,8 @@ static tilemap *tilemap_0,*tilemap_1,*tilemap_2;
 /* Background */
 WRITE8_HANDLER( paradise_vram_0_w )
 {
-	if (paradise_vram_0[offset] != data)
-	{
-		paradise_vram_0[offset] = data;
-		tilemap_mark_tile_dirty(tilemap_0, offset % 0x400);
-	}
+	paradise_vram_0[offset] = data;
+	tilemap_mark_tile_dirty(tilemap_0, offset % 0x400);
 }
 
 /* 16 color tiles with paradise_palbank as color code */
@@ -89,9 +86,9 @@ WRITE8_HANDLER( paradise_palbank_w )
 	int bank2 = (data & 0xf0);
 
 	for (i = 0; i < 15; i++)
-		palette_set_color(Machine,0x800+i,	paletteram[0x200 + bank2 + i + 0x800 * 0],
-											paletteram[0x200 + bank2 + i + 0x800 * 1],
-											paletteram[0x200 + bank2 + i + 0x800 * 2]	);
+		palette_set_color_rgb(Machine,0x800+i,	paletteram[0x200 + bank2 + i + 0x800 * 0],
+												paletteram[0x200 + bank2 + i + 0x800 * 1],
+												paletteram[0x200 + bank2 + i + 0x800 * 2]	);
 	if (paradise_palbank != bank1)
 	{
 		paradise_palbank = bank1;
@@ -99,7 +96,7 @@ WRITE8_HANDLER( paradise_palbank_w )
 	}
 }
 
-static void get_tile_info_0( int tile_index )
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	int code = paradise_vram_0[tile_index] + (paradise_vram_0[tile_index + 0x400] << 8);
 	SET_TILE_INFO(1, code, paradise_palbank, 0);
@@ -109,14 +106,11 @@ static void get_tile_info_0( int tile_index )
 /* Midground */
 WRITE8_HANDLER( paradise_vram_1_w )
 {
-	if (paradise_vram_1[offset] != data)
-	{
-		paradise_vram_1[offset] = data;
-		tilemap_mark_tile_dirty(tilemap_1, offset % 0x400);
-	}
+	paradise_vram_1[offset] = data;
+	tilemap_mark_tile_dirty(tilemap_1, offset % 0x400);
 }
 
-static void get_tile_info_1( int tile_index )
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	int code = paradise_vram_1[tile_index] + (paradise_vram_1[tile_index + 0x400] << 8);
 	SET_TILE_INFO(2, code, 0, 0);
@@ -126,14 +120,11 @@ static void get_tile_info_1( int tile_index )
 /* Foreground */
 WRITE8_HANDLER( paradise_vram_2_w )
 {
-	if (paradise_vram_2[offset] != data)
-	{
-		paradise_vram_2[offset] = data;
-		tilemap_mark_tile_dirty(tilemap_2, offset % 0x400);
-	}
+	paradise_vram_2[offset] = data;
+	tilemap_mark_tile_dirty(tilemap_2, offset % 0x400);
 }
 
-static void get_tile_info_2( int tile_index )
+static TILE_GET_INFO( get_tile_info_2 )
 {
 	int code = paradise_vram_2[tile_index] + (paradise_vram_2[tile_index + 0x400] << 8);
 	SET_TILE_INFO(3, code, 0, 0);
@@ -183,7 +174,6 @@ VIDEO_START( paradise )
 	tilemap_set_transparent_pen(tilemap_0,0x0f);
 	tilemap_set_transparent_pen(tilemap_1,0xff);
 	tilemap_set_transparent_pen(tilemap_2,0xff);
-	return 0;
 }
 
 

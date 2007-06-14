@@ -11,10 +11,10 @@
 #include "driver.h"
 
 
-unsigned char *dday_bgvideoram;
-unsigned char *dday_fgvideoram;
-unsigned char *dday_textvideoram;
-unsigned char *dday_colorram;
+UINT8 *dday_bgvideoram;
+UINT8 *dday_fgvideoram;
+UINT8 *dday_textvideoram;
+UINT8 *dday_colorram;
 
 static tilemap *fg_tilemap, *bg_tilemap, *text_tilemap, *sl_tilemap;
 static mame_bitmap *main_bitmap;
@@ -89,7 +89,7 @@ PALETTE_INIT( dday )
 		bit3 = (color_prom[i + 2*machine->drv->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 
@@ -176,7 +176,7 @@ PALETTE_INIT( dday )
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code;
 
@@ -184,7 +184,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(0, code, code >> 5, 0);
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code, flipx;
 
@@ -193,7 +193,7 @@ static void get_fg_tile_info(int tile_index)
 	SET_TILE_INFO(2, code, code >> 5, flipx ? TILE_FLIPX : 0);
 }
 
-static void get_text_tile_info(int tile_index)
+static TILE_GET_INFO( get_text_tile_info )
 {
 	int code;
 
@@ -201,7 +201,7 @@ static void get_text_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, code >> 5, 0)
 }
 
-static void get_sl_tile_info(int tile_index)
+static TILE_GET_INFO( get_sl_tile_info )
 {
 	int code, sl_flipx, flipx;
 	UINT8* sl_map;
@@ -255,8 +255,6 @@ VIDEO_START( dday )
 	sl_image = 0;
 
 	start_countdown_timer();
-
-	return 0;
 }
 
 WRITE8_HANDLER( dday_bgvideoram_w )

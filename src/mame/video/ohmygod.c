@@ -14,7 +14,7 @@ static tilemap *bg_tilemap;
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT16 code = ohmygod_videoram[2*tile_index+1];
 	UINT16 attr = ohmygod_videoram[2*tile_index];
@@ -36,8 +36,6 @@ static void get_tile_info(int tile_index)
 VIDEO_START( ohmygod )
 {
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,64,64);
-
-	return 0;
 }
 
 
@@ -50,10 +48,8 @@ VIDEO_START( ohmygod )
 
 WRITE16_HANDLER( ohmygod_videoram_w )
 {
-	int oldword = ohmygod_videoram[offset];
 	COMBINE_DATA(&ohmygod_videoram[offset]);
-	if (oldword != ohmygod_videoram[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset/2);
+	tilemap_mark_tile_dirty(bg_tilemap,offset/2);
 }
 
 WRITE16_HANDLER( ohmygod_spritebank_w )

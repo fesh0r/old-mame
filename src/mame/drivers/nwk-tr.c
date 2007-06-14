@@ -49,7 +49,7 @@ static WRITE32_HANDLER( paletteram32_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 	data = paletteram32[offset];
-	palette_set_color(Machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(Machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 
@@ -125,7 +125,7 @@ static UINT32 K001604_scan_layer_roz_1( UINT32 col, UINT32 row, UINT32 num_cols,
 	return (row * width) + col + (K001604_layer_size ? 192 : 64);
 }
 
-static void K001604_0_tile_info_layer_8x8(int tile_index)
+static TILE_GET_INFO( K001604_0_tile_info_layer_8x8 )
 {
 	UINT32 val = K001604_tile_ram[0][tile_index];
 	int color = (val >> 17) & 0x1f;
@@ -140,7 +140,7 @@ static void K001604_0_tile_info_layer_8x8(int tile_index)
 	SET_TILE_INFO(K001604_gfx_index[0][0], tile, color, flags);
 }
 
-static void K001604_0_tile_info_layer_roz(int tile_index)
+static TILE_GET_INFO( K001604_0_tile_info_layer_roz )
 {
 	UINT32 val = K001604_tile_ram[0][tile_index];
 	int flags = 0;
@@ -157,7 +157,7 @@ static void K001604_0_tile_info_layer_roz(int tile_index)
 	SET_TILE_INFO(K001604_gfx_index[0][K001604_roz_size[0]], tile, color, flags);
 }
 
-static void K001604_1_tile_info_layer_8x8(int tile_index)
+static TILE_GET_INFO( K001604_1_tile_info_layer_8x8 )
 {
 	UINT32 val = K001604_tile_ram[1][tile_index];
 	int color = (val >> 17) & 0x1f;
@@ -172,7 +172,7 @@ static void K001604_1_tile_info_layer_8x8(int tile_index)
 	SET_TILE_INFO(K001604_gfx_index[1][0], tile, color, flags);
 }
 
-static void K001604_1_tile_info_layer_roz(int tile_index)
+static TILE_GET_INFO( K001604_1_tile_info_layer_roz )
 {
 	UINT32 val = K001604_tile_ram[1][tile_index];
 	int flags = 0;
@@ -540,12 +540,10 @@ static void voodoo_vblank_0(int param)
 
 VIDEO_START( nwktr )
 {
-	if (voodoo_start(0, 0, VOODOO_1, 2, 2, 2))
-		return 1;
-
+	voodoo_start(0, 0, VOODOO_1, 2, 2, 2);
 	voodoo_set_vblank_callback(0, voodoo_vblank_0);
 
-	return K001604_vh_start(0);
+	K001604_vh_start(0);
 }
 
 
@@ -1036,7 +1034,7 @@ static DRIVER_INIT(thrilld)
 	backup_ram[0x0e] = (checksum >> 8) & 0xff;	// checksum
 	backup_ram[0x0f] = (checksum >> 0) & 0xff;	// checksum
 
-	init_nwktr(machine);
+	driver_init_nwktr(machine);
 }
 
 static DRIVER_INIT(racingj)
@@ -1070,7 +1068,7 @@ static DRIVER_INIT(racingj)
 	backup_ram[0x0e] = (checksum >> 8) & 0xff;	// checksum
 	backup_ram[0x0f] = (checksum >> 0) & 0xff;	// checksum
 
-	init_nwktr(machine);
+	driver_init_nwktr(machine);
 }
 
 static DRIVER_INIT(racingj2)
@@ -1104,7 +1102,7 @@ static DRIVER_INIT(racingj2)
 	backup_ram[0x0e] = (checksum >> 8) & 0xff;	// checksum
 	backup_ram[0x0f] = (checksum >> 0) & 0xff;	// checksum
 
-	init_nwktr(machine);
+	driver_init_nwktr(machine);
 }
 
 

@@ -67,9 +67,9 @@ PALETTE_INIT( quasar );
 VIDEO_UPDATE( quasar );
 VIDEO_START( quasar );
 
-extern unsigned char *bullet_ram;
+extern UINT8 *bullet_ram;
 
-extern unsigned char *effectram;
+extern UINT8 *effectram;
 extern int			 effectcontrol;
 
 static int page = 0;
@@ -159,7 +159,7 @@ static WRITE8_HANDLER( quasar_video_w )
 
 static READ8_HANDLER( quasar_IO_r )
 {
-	unsigned int ans = 0;
+	UINT32 ans = 0;
 
 	if (IOpage == 8) ans = input_port_0_r(0);
 	if (IOpage == 9) ans = input_port_1_r(0);
@@ -411,7 +411,7 @@ static const gfx_decode gfxdecodeinfo[] =
   	{ REGION_GFX1, 0x0000, &s2636_character10, 2072, 8 },	/* s2636 #1  */
   	{ REGION_GFX1, 0x0000, &s2636_character10, 2072, 8 },	/* s2636 #2  */
   	{ REGION_GFX1, 0x0000, &s2636_character10, 2072, 8 },	/* s2636 #3  */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static INTERRUPT_GEN( quasar_interrupt )

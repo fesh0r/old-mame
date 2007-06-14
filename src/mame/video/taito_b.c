@@ -68,7 +68,7 @@ static UINT16 TC0180VCU_ctrl[0x10] = {0};
 *
 */
 
-static void taitob_video_control (unsigned char data)
+static void taitob_video_control (UINT8 data)
 {
 #if 0
 	if (data != video_control)
@@ -165,7 +165,7 @@ static void hitice_clear_pixel_bitmap(void)
 		hitice_pixelram_w(i,0,0);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tile  = TC0180VCU_ram[tile_index + bg_rambank[0]];
 	int color = TC0180VCU_ram[tile_index + bg_rambank[1]];
@@ -177,7 +177,7 @@ static void get_bg_tile_info(int tile_index)
 		TILE_FLIPYX((color & 0x00c0)>>6))
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int tile  = TC0180VCU_ram[tile_index + fg_rambank[0]];
 	int color = TC0180VCU_ram[tile_index + fg_rambank[1]];
@@ -189,7 +189,7 @@ static void get_fg_tile_info(int tile_index)
 		TILE_FLIPYX((color & 0x00c0)>>6))
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int tile = TC0180VCU_ram[tile_index + tx_rambank];
 
@@ -231,8 +231,6 @@ static VIDEO_START( taitob_core )
 
 	state_save_register_global_bitmap(framebuffer[0]);
 	state_save_register_global_bitmap(framebuffer[1]);
-
-	return 0;
 }
 
 VIDEO_START( taitob_color_order0 )
@@ -249,7 +247,7 @@ VIDEO_START( taitob_color_order0 )
   b_sp_color_base = 0x40*16;	/*sprites   */
   b_tx_color_base = 0x00;		/*text      */
 
-  return video_start_taitob_core(machine);
+  video_start_taitob_core(machine);
 }
 
 VIDEO_START( taitob_color_order1 )
@@ -260,7 +258,7 @@ VIDEO_START( taitob_color_order1 )
   b_sp_color_base = 0x80*16;
   b_tx_color_base = 0xc0;
 
-  return video_start_taitob_core(machine);
+  video_start_taitob_core(machine);
 }
 
 VIDEO_START( taitob_color_order2 )
@@ -271,20 +269,17 @@ VIDEO_START( taitob_color_order2 )
   b_sp_color_base = 0x10*16;
   b_tx_color_base = 0x00;
 
-  return video_start_taitob_core(machine);
+  video_start_taitob_core(machine);
 }
 
 
 VIDEO_START( hitice )
 {
-  if (video_start_taitob_color_order0(machine))
-    return 1;
+  video_start_taitob_color_order0(machine);
 
   pixel_bitmap = auto_bitmap_alloc(1024,512,machine->screen[0].format);
 
   state_save_register_global_bitmap(pixel_bitmap);
-
-  return 0;
 }
 
 VIDEO_RESET( hitice )
@@ -301,18 +296,14 @@ READ16_HANDLER( TC0180VCU_word_r )
 
 WRITE16_HANDLER( TC0180VCU_word_w )
 {
-  UINT16 oldword = TC0180VCU_ram[offset];
-  COMBINE_DATA(&TC0180VCU_ram[offset]);
+	COMBINE_DATA(&TC0180VCU_ram[offset]);
 
-  if (oldword != TC0180VCU_ram[offset])
-  {
-    if ((offset & 0x7000) == fg_rambank[0] || (offset & 0x7000) == fg_rambank[1])
-      tilemap_mark_tile_dirty(fg_tilemap,offset & 0x0fff);
-    if ((offset & 0x7000) == bg_rambank[0] || (offset & 0x7000) == bg_rambank[1])
-      tilemap_mark_tile_dirty(bg_tilemap,offset & 0x0fff);
-    if ((offset & 0x7800) == tx_rambank)
-      tilemap_mark_tile_dirty(tx_tilemap,offset & 0x7ff);
-  }
+	if ((offset & 0x7000) == fg_rambank[0] || (offset & 0x7000) == fg_rambank[1])
+		tilemap_mark_tile_dirty(fg_tilemap,offset & 0x0fff);
+	if ((offset & 0x7000) == bg_rambank[0] || (offset & 0x7000) == bg_rambank[1])
+		tilemap_mark_tile_dirty(bg_tilemap,offset & 0x0fff);
+	if ((offset & 0x7800) == tx_rambank)
+		tilemap_mark_tile_dirty(tx_tilemap,offset & 0x7ff);
 }
 
 READ16_HANDLER( TC0180VCU_framebuffer_word_r )
@@ -369,7 +360,7 @@ static void taitob_draw_sprites (mame_bitmap *bitmap,const rectangle *cliprect)
 
   int x,y,xlatch=0,ylatch=0,x_no=0,y_no=0,x_num=0,y_num=0,big_sprite=0;
   int offs,code,color,flipx,flipy;
-  unsigned int data, zoomx, zoomy, zx, zy, zoomxlatch=0, zoomylatch=0;
+  UINT32 data, zoomx, zoomy, zx, zy, zoomxlatch=0, zoomylatch=0;
 
   for (offs = (0x1980-16)/2; offs >=0; offs -= 8)
   {

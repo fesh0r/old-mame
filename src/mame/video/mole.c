@@ -17,11 +17,11 @@ PALETTE_INIT( mole )
 	int i;
 
 	for (i = 0; i < 8; i++) {
-		palette_set_color(machine, i, pal1bit(i >> 0), pal1bit(i >> 2), pal1bit(i >> 1));
+		palette_set_color_rgb(machine, i, pal1bit(i >> 0), pal1bit(i >> 2), pal1bit(i >> 1));
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	UINT16 code = tileram[tile_index];
 	SET_TILE_INFO((code & 0x200) ? 1 : 0, code & 0x1ff, 0, 0)
@@ -33,17 +33,12 @@ VIDEO_START( mole )
 
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 40, 25);
-
-	return 0;
 }
 
 WRITE8_HANDLER( mole_videoram_w )
 {
-	if (tileram[offset] != data)
-	{
-		tileram[offset] = data | (tile_bank << 8);
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	tileram[offset] = data | (tile_bank << 8);
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( mole_tilebank_w )

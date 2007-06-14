@@ -110,20 +110,17 @@ static PALETTE_INIT( wallc )
 		bit7 = (color_prom[i] >> 7) & 0x01;
 		b = combine_3_weights(weights_b, bit7, bit1, bit0);
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 
 static WRITE8_HANDLER( wallc_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	SET_TILE_INFO(0, videoram[tile_index] + 0x100, 1, 0)
 }
@@ -131,8 +128,6 @@ static void get_bg_tile_info(int tile_index)
 VIDEO_START( wallc )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flip_y,	TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 VIDEO_UPDATE( wallc )
@@ -237,13 +232,13 @@ static const gfx_layout charlayout =
 static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0     , &charlayout, 0, 4 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static DRIVER_INIT( wallc )
 {
-	unsigned char c;
-	unsigned int i;
+	UINT8 c;
+	UINT32 i;
 
 	UINT8 *ROM = memory_region(REGION_CPU1);
 
@@ -257,8 +252,8 @@ static DRIVER_INIT( wallc )
 
 static DRIVER_INIT( wallca )
 {
-	unsigned char c;
-	unsigned int i;
+	UINT8 c;
+	UINT32 i;
 
 	UINT8 *ROM = memory_region(REGION_CPU1);
 
@@ -315,7 +310,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( wallc )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for main CPU */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "wac05.h7",   0x0000, 0x2000, CRC(ab6e472e) SHA1(a387fec24fb899df349a35d1d3a91e897b074712) )
 	ROM_LOAD( "wac1-52.h6", 0x2000, 0x2000, CRC(988eaa6d) SHA1(d5e5dbee6e7e0488fdecfb864198c686cbd5d59c) )
 
@@ -330,7 +325,7 @@ ROM_END
 
 /* this set uses a different encryption, but the decrypted code is the same */
 ROM_START( wallca )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for main CPU */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "rom4.rom",     0x0000, 0x2000, CRC(ce43af1b) SHA1(c05419cb4aa57c6187b469573a3787d9123c4a05) )
 	ROM_LOAD( "rom5.rom",     0x2000, 0x2000, CRC(b789a705) SHA1(2b62b14d1a3ad5eff5b8d502d7891e58379ee820) )
 

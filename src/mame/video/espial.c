@@ -67,7 +67,7 @@ PALETTE_INIT( espial )
 		bit2 = (color_prom[i + machine->drv->total_colors] >> 3) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -79,7 +79,7 @@ PALETTE_INIT( espial )
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code = espial_videoram[tile_index];
 	UINT8 col = espial_colorram[tile_index];
@@ -103,8 +103,6 @@ VIDEO_START( espial )
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
 
 	tilemap_set_scroll_cols(bg_tilemap, 32);
-
-	return 0;
 }
 
 VIDEO_START( netwars )
@@ -114,8 +112,6 @@ VIDEO_START( netwars )
 
 	tilemap_set_scroll_cols(bg_tilemap, 32);
 	tilemap_set_scrolldy(bg_tilemap, 0, 0x100);
-
-	return 0;
 }
 
 
@@ -127,31 +123,22 @@ VIDEO_START( netwars )
 
 WRITE8_HANDLER( espial_videoram_w )
 {
-	if (espial_videoram[offset] != data)
-	{
-		espial_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	espial_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 
 WRITE8_HANDLER( espial_colorram_w )
 {
-	if (espial_colorram[offset] != data)
-	{
-		espial_colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	espial_colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 
 WRITE8_HANDLER( espial_attributeram_w )
 {
-	if (espial_attributeram[offset] != data)
-	{
-		espial_attributeram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	espial_attributeram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 

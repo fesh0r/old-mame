@@ -15,13 +15,13 @@ WRITE8_HANDLER( dynduke_paletteram_w )
 
 	paletteram[offset]=data;
 	color=paletteram[offset&0xffe]|(paletteram[offset|1]<<8);
-	palette_set_color(Machine,offset/2,pal4bit(color >> 0),pal4bit(color >> 4),pal4bit(color >> 8));
+	palette_set_color_rgb(Machine,offset/2,pal4bit(color >> 0),pal4bit(color >> 4),pal4bit(color >> 8));
 
 	/* This is a kludge to handle 5bpp graphics but 4bpp palette data */
 	/* the 5th bit is actually transparency, so I should use TILEMAP_BITMASK */
 	if (offset<1024) {
-		palette_set_color(Machine,((offset&0x1f)/2) | (offset&0xffe0) | 2048,pal4bit(color >> 0),pal4bit(color >> 4),pal4bit(color >> 8));
-		palette_set_color(Machine,((offset&0x1f)/2) | (offset&0xffe0) | 2048 | 16,pal4bit(color >> 0),pal4bit(color >> 4),pal4bit(color >> 8));
+		palette_set_color_rgb(Machine,((offset&0x1f)/2) | (offset&0xffe0) | 2048,pal4bit(color >> 0),pal4bit(color >> 4),pal4bit(color >> 8));
+		palette_set_color_rgb(Machine,((offset&0x1f)/2) | (offset&0xffe0) | 2048 | 16,pal4bit(color >> 0),pal4bit(color >> 4),pal4bit(color >> 8));
 	}
 }
 
@@ -43,7 +43,7 @@ WRITE8_HANDLER( dynduke_text_w )
 	tilemap_mark_tile_dirty(tx_layer,offset/2);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tile=dynduke_back_data[2*tile_index]+(dynduke_back_data[2*tile_index+1]<<8);
 	int color=tile >> 12;
@@ -57,7 +57,7 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int tile=dynduke_fore_data[2*tile_index]+(dynduke_fore_data[2*tile_index+1]<<8);
 	int color=tile >> 12;
@@ -71,7 +71,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int tile=videoram[2*tile_index]+((videoram[2*tile_index+1]&0xc0)<<2);
 	int color=videoram[2*tile_index+1]&0xf;
@@ -93,8 +93,6 @@ VIDEO_START( dynduke )
 
 	tilemap_set_transparent_pen(fg_layer,15);
 	tilemap_set_transparent_pen(tx_layer,15);
-
-	return 0;
 }
 
 WRITE8_HANDLER( dynduke_gfxbank_w )

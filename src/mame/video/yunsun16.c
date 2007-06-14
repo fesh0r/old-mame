@@ -54,7 +54,7 @@ UINT32 yunsun16_tilemap_scan_pages(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 
 			(col % TILES_PER_PAGE_X) * TILES_PER_PAGE_Y;
 }
 
-static void get_tile_info_0(int tile_index)
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	UINT16 code = yunsun16_vram_0[ 2 * tile_index + 0 ];
 	UINT16 attr = yunsun16_vram_0[ 2 * tile_index + 1 ];
@@ -65,7 +65,7 @@ static void get_tile_info_0(int tile_index)
 			(attr & 0x20) ? TILE_FLIPX : 0)
 }
 
-static void get_tile_info_1(int tile_index)
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	UINT16 code = yunsun16_vram_1[ 2 * tile_index + 0 ];
 	UINT16 attr = yunsun16_vram_1[ 2 * tile_index + 1 ];
@@ -78,16 +78,14 @@ static void get_tile_info_1(int tile_index)
 
 WRITE16_HANDLER( yunsun16_vram_0_w )
 {
-	UINT16 old_data	=	yunsun16_vram_0[offset];
-	UINT16 new_data	=	COMBINE_DATA(&yunsun16_vram_0[offset]);
-	if (old_data != new_data)	tilemap_mark_tile_dirty(tilemap_0,offset/2);
+	COMBINE_DATA(&yunsun16_vram_0[offset]);
+	tilemap_mark_tile_dirty(tilemap_0,offset/2);
 }
 
 WRITE16_HANDLER( yunsun16_vram_1_w )
 {
-	UINT16 old_data	=	yunsun16_vram_1[offset];
-	UINT16 new_data	=	COMBINE_DATA(&yunsun16_vram_1[offset]);
-	if (old_data != new_data)	tilemap_mark_tile_dirty(tilemap_1,offset/2);
+	COMBINE_DATA(&yunsun16_vram_1[offset]);
+	tilemap_mark_tile_dirty(tilemap_1,offset/2);
 }
 
 
@@ -123,7 +121,6 @@ VIDEO_START( yunsun16 )
 
 	tilemap_set_transparent_pen(tilemap_0,0xff);
 	tilemap_set_transparent_pen(tilemap_1,0xff);
-	return 0;
 }
 
 

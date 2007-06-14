@@ -432,8 +432,6 @@ VIDEO_START(jchan)
 	buffered_spriteram32 = auto_malloc ( 0x4000 );
 	spriteram_size = 0x4000;
 	skns_spc_regs = auto_malloc (0x40);
-
-	return 0;
 }
 
 extern void skns_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect );
@@ -685,7 +683,7 @@ static const gfx_decode gfxdecodeinfo[] =
 //  { REGION_GFX1, 0, &char2layout,   0, 512  },
 //  { REGION_GFX2, 0, &char2layout,   0, 512  },
 	{ REGION_GFX3, 0, &tilelayout,   16384, 16384  },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

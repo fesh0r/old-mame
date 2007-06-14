@@ -68,13 +68,13 @@ static void convert_palette(running_machine *machine,const UINT8 *color_prom)
 		bit3 = (color_prom[2*1024] >> 3) & 0x01;
 		b = 255 - (0x10 * bit0 + 0x21 * bit1 + 0x46 * bit2 + 0x88 * bit3);
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
 	/* reserve the last color for the transparent pen (none of the game colors has */
 	/* these RGB components) */
-	palette_set_color(machine,1024,240,240,240);
+	palette_set_color(machine,1024,MAKE_RGB(240,240,240));
 }
 
 
@@ -185,35 +185,35 @@ DRIVER_INIT( armwrest )
   Start the video hardware emulation.
 
 ***************************************************************************/
-static void top_get_info(int offs)
+static TILE_GET_INFO( top_get_info )
 {
-	int code = videoram[offs*2] + 256 * (videoram[offs*2 + 1] & 0x03);
-	int color = ((videoram[offs*2 + 1] & 0x7c) >> 2) + 64 * top_palette_bank;
-	int flipx = videoram[offs*2 + 1] & 0x80;
+	int code = videoram[tile_index*2] + 256 * (videoram[tile_index*2 + 1] & 0x03);
+	int color = ((videoram[tile_index*2 + 1] & 0x7c) >> 2) + 64 * top_palette_bank;
+	int flipx = videoram[tile_index*2 + 1] & 0x80;
 	SET_TILE_INFO(0, code, color, flipx ? TILE_FLIPX : 0);
 }
 
-static void bot_get_info(int offs)
+static TILE_GET_INFO( bot_get_info )
 {
-	int code = punchout_videoram2[offs*2] + 256 * (punchout_videoram2[offs*2 + 1] & 0x03);
-	int color = ((punchout_videoram2[offs*2 + 1] & 0x7c) >> 2) + 64 * bottom_palette_bank;
-	int flipx = punchout_videoram2[offs*2 + 1] & 0x80;
+	int code = punchout_videoram2[tile_index*2] + 256 * (punchout_videoram2[tile_index*2 + 1] & 0x03);
+	int color = ((punchout_videoram2[tile_index*2 + 1] & 0x7c) >> 2) + 64 * bottom_palette_bank;
+	int flipx = punchout_videoram2[tile_index*2 + 1] & 0x80;
 	SET_TILE_INFO(1, code, color, flipx ? TILE_FLIPX : 0);
 }
 
-static void bs1_get_info(int offs)
+static TILE_GET_INFO( bs1_get_info )
 {
-	int code = punchout_bigsprite1ram[offs*4] + 256 * (punchout_bigsprite1ram[offs*4 + 1] & 0x1f);
-	int color = (punchout_bigsprite1ram[offs*4 + 3] & 0x1f) + 32 * bottom_palette_bank;
-	int flipx = punchout_bigsprite1ram[offs*4 + 3] & 0x80;
+	int code = punchout_bigsprite1ram[tile_index*4] + 256 * (punchout_bigsprite1ram[tile_index*4 + 1] & 0x1f);
+	int color = (punchout_bigsprite1ram[tile_index*4 + 3] & 0x1f) + 32 * bottom_palette_bank;
+	int flipx = punchout_bigsprite1ram[tile_index*4 + 3] & 0x80;
 	SET_TILE_INFO(2, code, color, flipx ? TILE_FLIPX : 0);
 }
 
-static void bs2_get_info(int offs)
+static TILE_GET_INFO( bs2_get_info )
 {
-	int code = punchout_bigsprite2ram[offs*4] + 256 * (punchout_bigsprite2ram[offs*4 + 1] & 0x0f);
-	int color = (punchout_bigsprite2ram[offs*4 + 3] & 0x3f) + 64 * bottom_palette_bank;
-	int flipx = punchout_bigsprite2ram[offs*4 + 3] & 0x80;
+	int code = punchout_bigsprite2ram[tile_index*4] + 256 * (punchout_bigsprite2ram[tile_index*4 + 1] & 0x0f);
+	int color = (punchout_bigsprite2ram[tile_index*4 + 3] & 0x3f) + 64 * bottom_palette_bank;
+	int flipx = punchout_bigsprite2ram[tile_index*4 + 3] & 0x80;
 	SET_TILE_INFO(3, code, color, flipx ? TILE_FLIPX : 0);
 }
 
@@ -227,24 +227,23 @@ VIDEO_START( punchout )
 	spr2tilemap = tilemap_create(bs2_get_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 16,32);
 
 	fgtilemap = NULL;
-	return 0;
 }
 
 
 
-static void armwrest_top_get_info(int offs)
+static TILE_GET_INFO( armwrest_top_get_info )
 {
-	int code = videoram[offs*2] + 256 * (videoram[offs*2 + 1] & 0x03) +
-								8 * (videoram[offs*2 + 1] & 0x80);
-	int color = ((videoram[offs*2 + 1] & 0x7c) >> 2) + 64 * top_palette_bank;
+	int code = videoram[tile_index*2] + 256 * (videoram[tile_index*2 + 1] & 0x03) +
+								8 * (videoram[tile_index*2 + 1] & 0x80);
+	int color = ((videoram[tile_index*2 + 1] & 0x7c) >> 2) + 64 * top_palette_bank;
 	SET_TILE_INFO(0, code, color, 0);
 }
 
-static void armwrest_bot_get_info(int offs)
+static TILE_GET_INFO( armwrest_bot_get_info )
 {
-	int code = punchout_videoram2[offs*2] + 256 * (punchout_videoram2[offs*2 + 1] & 0x03);
-	int color = 128 + ((punchout_videoram2[offs*2 + 1] & 0x7c) >> 2) + 64 * bottom_palette_bank;
-	int flipx = punchout_videoram2[offs*2 + 1] & 0x80;
+	int code = punchout_videoram2[tile_index*2] + 256 * (punchout_videoram2[tile_index*2 + 1] & 0x03);
+	int color = 128 + ((punchout_videoram2[tile_index*2 + 1] & 0x7c) >> 2) + 64 * bottom_palette_bank;
+	int flipx = punchout_videoram2[tile_index*2 + 1] & 0x80;
 	SET_TILE_INFO(0, code, color, flipx ? TILE_FLIPX : 0);
 }
 
@@ -254,11 +253,11 @@ static UINT32 armwrest_bs1_scan(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 
 	return (col/halfcols)*(halfcols*num_rows) + row*halfcols + col%halfcols;
 }
 
-static void armwrest_fg_get_info(int offs)
+static TILE_GET_INFO( armwrest_fg_get_info )
 {
-	int code = armwrest_videoram3[offs*2] + 256 * (armwrest_videoram3[offs*2 + 1] & 0x07);
-	int color = ((armwrest_videoram3[offs*2 + 1] & 0xf8) >> 3) + 32 * bottom_palette_bank;
-	int flipx = armwrest_videoram3[offs*2 + 1] & 0x80;
+	int code = armwrest_videoram3[tile_index*2] + 256 * (armwrest_videoram3[tile_index*2 + 1] & 0x07);
+	int color = ((armwrest_videoram3[tile_index*2 + 1] & 0xf8) >> 3) + 32 * bottom_palette_bank;
+	int flipx = armwrest_videoram3[tile_index*2 + 1] & 0x80;
 	SET_TILE_INFO(1, code, color, flipx ? TILE_FLIPX : 0);
 }
 
@@ -272,7 +271,6 @@ VIDEO_START( armwrest )
 
 	fgtilemap = tilemap_create(armwrest_fg_get_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8,8, 32,32);
 	tilemap_set_transparent_pen(fgtilemap, 7);
-	return 0;
 }
 
 

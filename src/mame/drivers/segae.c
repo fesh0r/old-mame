@@ -235,7 +235,7 @@ static UINT8 vc_pal_240[] =
 
 static struct
 {
-	unsigned char sms2_name[40];
+	UINT8 sms2_name[40];
 	int sms2_valid;
 	int sms2_height;
 	int sms2_tilemap_height;
@@ -495,7 +495,7 @@ void vdp_data_w(UINT8 data, struct sms_vdp* chip)
 					r = (palword & 0x000f)>>0;
 					g = (palword & 0x00f0)>>4;
 					b = (palword & 0x0f00)>>8;
-					palette_set_color(Machine,(chip->addr_reg&0x3e)/2, r<<4, g<<4, b<<4);
+					palette_set_color_rgb(Machine,(chip->addr_reg&0x3e)/2, pal4bit(r), pal4bit(g), pal4bit(b));
 					chip->cram_mamecolours[(chip->addr_reg&0x3e)/2]=(b<<1)|(g<<6)|(r<<11);
 				}
 			}
@@ -510,7 +510,7 @@ void vdp_data_w(UINT8 data, struct sms_vdp* chip)
 				r = (data & 0x03)>>0;
 				g = (data & 0x0c)>>2;
 				b = (data & 0x30)>>4;
-				palette_set_color(Machine,chip->addr_reg&0x1f, r<<6, g<<6, b<<6);
+				palette_set_color_rgb(Machine,chip->addr_reg&0x1f, pal2bit(r), pal2bit(g), pal2bit(b));
 				chip->cram_mamecolours[chip->addr_reg&0x1f]=(b<<3)|(g<<8)|(r<<13);
 			}
 
@@ -1146,10 +1146,6 @@ VIDEO_START(sms)
 //  vdp->is_pal = 1;
 //  vdp->sms_total_scanlines = 313;
 //  vdp->sms_framerate = 50;
-
-
-
-	return 0;
 }
 
 
@@ -1937,7 +1933,7 @@ static WRITE8_HANDLER (segae_ridleofp_port_fa_w)
 
 static DRIVER_INIT( ridleofp )
 {
-	init_segasyse(machine);
+	driver_init_segasyse(machine);
 
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0xf8, 0xf8, 0, 0, segae_ridleofp_port_f8_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xfa, 0xfa, 0, 0, segae_ridleofp_port_fa_w);
@@ -1946,7 +1942,7 @@ static DRIVER_INIT( ridleofp )
 
 static DRIVER_INIT( hangonjr )
 {
-	init_segasyse(machine);
+	driver_init_segasyse(machine);
 
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0xf8, 0xf8, 0, 0, segae_hangonjr_port_f8_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xfa, 0xfa, 0, 0, segae_hangonjr_port_fa_w);
@@ -1954,21 +1950,21 @@ static DRIVER_INIT( hangonjr )
 
 static DRIVER_INIT( opaopa )
 {
-	init_segasyse(machine);
+	driver_init_segasyse(machine);
 
 	mc8123_decrypt_rom(0, memory_region(REGION_USER1), 1, 8);
 }
 
 static DRIVER_INIT( fantzn2 )
 {
-	init_segasyse(machine);
+	driver_init_segasyse(machine);
 
 	mc8123_decrypt_rom(0, memory_region(REGION_USER1), 0, 0);
 }
 
 static DRIVER_INIT( astrofl )
 {
-	init_segasyse(machine);
+	driver_init_segasyse(machine);
 
 	astrofl_decode();
 }

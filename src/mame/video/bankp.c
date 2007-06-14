@@ -66,7 +66,7 @@ PALETTE_INIT( bankp )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -93,38 +93,26 @@ WRITE8_HANDLER( bankp_scroll_w )
 
 WRITE8_HANDLER( bankp_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( bankp_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( bankp_videoram2_w )
 {
-	if (bankp_videoram2[offset] != data)
-	{
-		bankp_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	bankp_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( bankp_colorram2_w )
 {
-	if (bankp_colorram2[offset] != data)
-	{
-		bankp_colorram2[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	bankp_colorram2[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( bankp_out_w )
@@ -144,7 +132,7 @@ WRITE8_HANDLER( bankp_out_w )
 	/* bits 6-7 unknown */
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = bankp_videoram2[tile_index] + 256 * (bankp_colorram2[tile_index] & 0x07);
 	int color = bankp_colorram2[tile_index] >> 4;
@@ -153,7 +141,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = videoram[tile_index] + 256 * ((colorram[tile_index] & 3) >> 0);
 	int color = colorram[tile_index] >> 3;
@@ -172,8 +160,6 @@ VIDEO_START( bankp )
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 VIDEO_UPDATE( bankp )

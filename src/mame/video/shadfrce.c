@@ -7,7 +7,7 @@ extern UINT16 *shadfrce_fgvideoram, *shadfrce_bg0videoram,  *shadfrce_bg1videora
 static UINT16 *shadfrce_spvideoram_old; /* I *think* the sprites need to be delayed anyway */
 
 
-static void get_shadfrce_fgtile_info(int tile_index)
+static TILE_GET_INFO( get_shadfrce_fgtile_info )
 {
 
 	/* ---- ----  tttt tttt  ---- ----  pppp TTTT */
@@ -21,14 +21,11 @@ static void get_shadfrce_fgtile_info(int tile_index)
 
 WRITE16_HANDLER( shadfrce_fgvideoram_w )
 {
-	if (shadfrce_fgvideoram[offset] != data)
-	{
-		shadfrce_fgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(shadfrce_fgtilemap,offset/2);
-	}
+	shadfrce_fgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(shadfrce_fgtilemap,offset/2);
 }
 
-static void get_shadfrce_bg0tile_info(int tile_index)
+static TILE_GET_INFO( get_shadfrce_bg0tile_info )
 {
 
 	/* ---- ----  ---- cccc  --TT TTTT TTTT TTTT */
@@ -44,14 +41,11 @@ static void get_shadfrce_bg0tile_info(int tile_index)
 
 WRITE16_HANDLER( shadfrce_bg0videoram_w )
 {
-	if (shadfrce_bg0videoram[offset] != data)
-	{
-		shadfrce_bg0videoram[offset] = data;
-		tilemap_mark_tile_dirty(shadfrce_bg0tilemap,offset/2);
-	}
+	shadfrce_bg0videoram[offset] = data;
+	tilemap_mark_tile_dirty(shadfrce_bg0tilemap,offset/2);
 }
 
-static void get_shadfrce_bg1tile_info(int tile_index)
+static TILE_GET_INFO( get_shadfrce_bg1tile_info )
 {
 	int tileno, colour;
 
@@ -63,11 +57,8 @@ static void get_shadfrce_bg1tile_info(int tile_index)
 
 WRITE16_HANDLER( shadfrce_bg1videoram_w )
 {
-	if (shadfrce_bg1videoram[offset] != data)
-	{
-		shadfrce_bg1videoram[offset] = data;
-		tilemap_mark_tile_dirty(shadfrce_bg1tilemap,offset);
-	}
+	shadfrce_bg1videoram[offset] = data;
+	tilemap_mark_tile_dirty(shadfrce_bg1tilemap,offset);
 }
 
 
@@ -84,8 +75,6 @@ VIDEO_START( shadfrce )
 	shadfrce_bg1tilemap = tilemap_create(get_shadfrce_bg1tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 16, 16,32,32);
 
 	shadfrce_spvideoram_old = auto_malloc(spriteram_size);
-
-	return 0;
 }
 
 WRITE16_HANDLER ( shadfrce_bg0scrollx_w )

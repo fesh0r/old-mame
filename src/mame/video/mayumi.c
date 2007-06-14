@@ -12,7 +12,7 @@ Video hardware
 static UINT8 *mayumi_videoram;
 static tilemap *mayumi_tilemap;
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int code = mayumi_videoram[tile_index] + (mayumi_videoram[tile_index+0x800] & 0x1f)*0x100 ;
 	int col = (mayumi_videoram[tile_index+0x1000] >> 3) & 0x1f;
@@ -25,8 +25,6 @@ VIDEO_START( mayumi )
 	mayumi_videoram = auto_malloc(0x1800);
 
 	mayumi_tilemap = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,64,32 );
-
-	return 0;
 }
 
 WRITE8_HANDLER( mayumi_videoram_w )

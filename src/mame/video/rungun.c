@@ -19,7 +19,7 @@ extern UINT16 *rng_936_videoram;
 
 /* TTL text plane stuff */
 
-INLINE void ttl_get_tile_info(int tile_index)
+static TILE_GET_INFO( ttl_get_tile_info )
 {
 	UINT32 *lvram = (UINT32 *)ttl_vram;
 	int attr, code;
@@ -32,7 +32,7 @@ INLINE void ttl_get_tile_info(int tile_index)
 	SET_TILE_INFO(ttl_gfx_index, code, attr, 0);
 }
 
-INLINE UINT32 ttl_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
+static UINT32 ttl_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 {
 	/* logical (col,row) -> memory offset */
 	return((row<<6) + col);
@@ -61,7 +61,7 @@ WRITE16_HANDLER(rng_936_videoram_w)
 	tilemap_mark_tile_dirty(rng_936_tilemap, offset/2);
 }
 
-INLINE void get_rng_936_tile_info(int tile_index)
+static TILE_GET_INFO( get_rng_936_tile_info )
 {
 	int tileno, colour, flipx;
 
@@ -87,10 +87,7 @@ VIDEO_START(rng)
 		8*8*4
 	};
 
-	if (K055673_vh_start(REGION_GFX2, 1, -8, 15, rng_sprite_callback))
-	{
-		return(1);
-	}
+	K055673_vh_start(REGION_GFX2, 1, -8, 15, rng_sprite_callback);
 
 	K053936_wraparound_enable(0, 0);
 	K053936_set_offset(0, 34, 9);
@@ -103,8 +100,7 @@ VIDEO_START(rng)
 		if (machine->gfx[ttl_gfx_index] == 0)
 			break;
 
-	if (ttl_gfx_index == MAX_GFX_ELEMENTS)
-		return(1);
+	assert(ttl_gfx_index != MAX_GFX_ELEMENTS);
 
 	// decode the ttl layer's gfx
 	machine->gfx[ttl_gfx_index] = allocgfx(&charlayout);
@@ -129,8 +125,6 @@ VIDEO_START(rng)
 	state_save_register_global_array(ttl_vram);
 
 	sprite_colorbase = 0x20;
-
-	return(0);
 }
 
 VIDEO_UPDATE(rng)

@@ -64,7 +64,7 @@ WRITE16_HANDLER( unico_palette_w )
 	COMBINE_DATA(&paletteram16[offset]);
 	data1 = paletteram16[offset & ~1];
 	data2 = paletteram16[offset |  1];
-	palette_set_color( Machine,offset/2,
+	palette_set_color_rgb( Machine,offset/2,
 		 (data1 >> 8) & 0xFC,
 		 (data1 >> 0) & 0xFC,
 		 (data2 >> 8) & 0xFC	);
@@ -73,7 +73,7 @@ WRITE16_HANDLER( unico_palette_w )
 WRITE32_HANDLER( unico_palette32_w )
 {
 	UINT32 rgb0 = COMBINE_DATA(&paletteram32[offset]);
-	palette_set_color( Machine,offset,
+	palette_set_color_rgb( Machine,offset,
 		 (rgb0 >> 24) & 0xFC,
 		 (rgb0 >> 16) & 0xFC,
 		 (rgb0 >>  8) & 0xFC	);
@@ -97,14 +97,14 @@ WRITE32_HANDLER( unico_palette32_w )
 #define LAYER( _N_ ) \
 static tilemap *tilemap_##_N_; \
 \
-static void get_tile_info_##_N_(int tile_index) \
+static TILE_GET_INFO( get_tile_info_##_N_ ) \
 { \
 	UINT16 code = unico_vram_##_N_[ 2 * tile_index + 0 ]; \
 	UINT16 attr = unico_vram_##_N_[ 2 * tile_index + 1 ]; \
 	SET_TILE_INFO(1, code, attr & 0x1f, TILE_FLIPYX( attr >> 5 )) \
 } \
 \
-static void get_tile_info32_##_N_(int tile_index) \
+static TILE_GET_INFO( get_tile_info32_##_N_ ) \
 { \
 	UINT32 code = unico_vram32_##_N_[tile_index]; \
 	SET_TILE_INFO(1, code >> 16, code & 0x1f, TILE_FLIPYX( code >> 5 )) \
@@ -112,16 +112,14 @@ static void get_tile_info32_##_N_(int tile_index) \
 \
 WRITE16_HANDLER( unico_vram_##_N_##_w ) \
 { \
-	UINT16 old_data	=	unico_vram_##_N_[offset]; \
-	UINT16 new_data	=	COMBINE_DATA(&unico_vram_##_N_[offset]); \
-	if (old_data != new_data)	tilemap_mark_tile_dirty(tilemap_##_N_,offset/2); \
+	COMBINE_DATA(&unico_vram_##_N_[offset]); \
+	tilemap_mark_tile_dirty(tilemap_##_N_,offset/2); \
 } \
 \
 WRITE32_HANDLER( unico_vram32_##_N_##_w ) \
 { \
-	UINT32 old_data	=	unico_vram32_##_N_[offset]; \
-	UINT32 new_data	=	COMBINE_DATA(&unico_vram32_##_N_[offset]); \
-	if (old_data != new_data)	tilemap_mark_tile_dirty(tilemap_##_N_,offset); \
+	COMBINE_DATA(&unico_vram32_##_N_[offset]); \
+	tilemap_mark_tile_dirty(tilemap_##_N_,offset); \
 }
 
 LAYER( 0 )
@@ -165,7 +163,6 @@ VIDEO_START( unico )
 	tilemap_set_transparent_pen(tilemap_0,0x00);
 	tilemap_set_transparent_pen(tilemap_1,0x00);
 	tilemap_set_transparent_pen(tilemap_2,0x00);
-	return 0;
 }
 
 VIDEO_START( zeropnt2 )
@@ -193,7 +190,6 @@ VIDEO_START( zeropnt2 )
 	tilemap_set_transparent_pen(tilemap_0,0x00);
 	tilemap_set_transparent_pen(tilemap_1,0x00);
 	tilemap_set_transparent_pen(tilemap_2,0x00);
-	return 0;
 }
 
 

@@ -13,7 +13,7 @@ UINT8 *speedbal_foreground_videoram;
 
 static tilemap *bg_tilemap, *fg_tilemap;
 
-static void get_tile_info_bg(int tile_index)
+static TILE_GET_INFO( get_tile_info_bg )
 {
 	int code = speedbal_background_videoram[tile_index*2] + ((speedbal_background_videoram[tile_index*2+1] & 0x30) << 4);
 	int color = speedbal_background_videoram[tile_index*2+1] & 0x0f;
@@ -21,7 +21,7 @@ static void get_tile_info_bg(int tile_index)
 	SET_TILE_INFO(1, code, color, TILE_SPLIT(color == 8 ? 1 : 0))
 }
 
-static void get_tile_info_fg(int tile_index)
+static TILE_GET_INFO( get_tile_info_fg )
 {
 	int code = speedbal_foreground_videoram[tile_index*2] + ((speedbal_foreground_videoram[tile_index*2+1] & 0x30) << 4);
 	int color = speedbal_foreground_videoram[tile_index*2+1] & 0x0f;
@@ -45,9 +45,6 @@ VIDEO_START( speedbal )
 
 	tilemap_set_transmask(fg_tilemap,0,0xffff,0x0001); /* split type 0 is totally transparent in front half and has pen 0 transparent in back half */
 	tilemap_set_transmask(fg_tilemap,1,0x0001,0x0001); /* split type 1 has pen 0 transparent in front and back half */
-
-	return 0;
-
 }
 
 
@@ -60,11 +57,8 @@ VIDEO_START( speedbal )
 
 WRITE8_HANDLER( speedbal_foreground_videoram_w )
 {
-	if (speedbal_foreground_videoram[offset] != data)
-	{
-		speedbal_foreground_videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset>>1);
-	}
+	speedbal_foreground_videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset>>1);
 }
 
 /*************************************
@@ -75,11 +69,8 @@ WRITE8_HANDLER( speedbal_foreground_videoram_w )
 
 WRITE8_HANDLER( speedbal_background_videoram_w )
 {
-	if (speedbal_background_videoram[offset] != data)
-	{
-		speedbal_background_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset>>1);
-	}
+	speedbal_background_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset>>1);
 }
 
 

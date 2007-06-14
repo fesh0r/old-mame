@@ -132,17 +132,17 @@ int uchar_from_utf16(unicode_char *uchar, const utf16_char *utf16char, size_t co
 		return 0;
 
 	/* handle the two-byte case */
-	if (utf16char[0] > 0xd800 && utf16char[0] < 0xdbff)
+	if (utf16char[0] >= 0xd800 && utf16char[0] <= 0xdbff)
 	{
-		if (count > 1 && utf16char[1] > 0xdc00 && utf16char[1] < 0xdfff)
+		if (count > 1 && utf16char[1] >= 0xdc00 && utf16char[1] <= 0xdfff)
 		{
-			*uchar = 0x10000 + (utf16char[0] & 0x3ff) + ((utf16char[1] & 0x3ff) * 0x400);
+			*uchar = 0x10000 + ((utf16char[0] & 0x3ff) * 0x400) + (utf16char[1] & 0x3ff);
 			rc = 2;
 		}
 	}
 
 	/* handle the one-byte case */
-	else if (utf16char[0] <= 0xdc00 || utf16char[0] > 0xdfff)
+	else if (utf16char[0] < 0xdc00 || utf16char[0] > 0xdfff)
 	{
 		*uchar = utf16char[0];
 		rc = 1;
@@ -160,11 +160,11 @@ int uchar_from_utf16(unicode_char *uchar, const utf16_char *utf16char, size_t co
 
 int uchar_from_utf16f(unicode_char *uchar, const utf16_char *utf16char, size_t count)
 {
-	utf16_char buf[2];
+	utf16_char buf[2] = {0};
 	if (count > 0)
 		buf[0] = FLIPENDIAN_INT16(utf16char[0]);
 	if (count > 1)
-		buf[1] = FLIPENDIAN_INT16(utf16char[0]);
+		buf[1] = FLIPENDIAN_INT16(utf16char[1]);
 	return uchar_from_utf16(uchar, buf, count);
 }
 

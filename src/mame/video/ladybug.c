@@ -53,7 +53,7 @@ PALETTE_INIT( ladybug )
 		bit1 = (~color_prom[i] >> 4) & 0x01;
 		bit2 = (~color_prom[i] >> 7) & 0x01;
 		b = 0x47 * bit1 + 0x97 * bit2;
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 	/* characters */
@@ -105,7 +105,7 @@ PALETTE_INIT( sraider )
 		bit1 = (~color_prom[i] >> 7) & 0x01;
 		bit2 = (~color_prom[i] >> 6) & 0x01;
 		b = 0x47 * bit1 + 0x97 * bit2;
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 	/* This is for the stars colors */
@@ -122,11 +122,11 @@ PALETTE_INIT( sraider )
 			g = 0x47 * bit1 + 0x97 * bit2;
 			bit1 = i & 0x01;
 			r = 0x47 * bit1;
-			palette_set_color(machine,i,r,g,b);
+			palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 	/* This is reserved for the grid color */
-	palette_set_color(machine,64,0,0,0);
+	palette_set_color(machine,64,MAKE_RGB(0,0,0));
 
 	/* characters */
 	for (i = 0;i < 8;i++)
@@ -165,21 +165,14 @@ PALETTE_INIT( sraider )
 
 WRITE8_HANDLER( ladybug_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( ladybug_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( ladybug_flipscreen_w )
@@ -294,7 +287,7 @@ WRITE8_HANDLER( sraider_io_w )
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
-	palette_set_color(Machine,64,
+	palette_set_color_rgb(Machine,64,
 		              ((data&0x40)>>6)*0xff,
 		              ((data&0x20)>>5)*0xff,
 		              ((data&0x10)>>4)*0xff);
@@ -310,7 +303,7 @@ WRITE8_HANDLER( sraider_io_w )
 	redclash_set_stars_speed((data&0x07) - 1);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] + 32 * (colorram[tile_index] & 0x08);
 	int color = colorram[tile_index] & 0x07;
@@ -318,7 +311,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(0, code, color, 0)
 }
 
-static void get_grid_tile_info(int tile_index)
+static TILE_GET_INFO( get_grid_tile_info )
 {
 	if (tile_index < 512)
 		SET_TILE_INFO(3, tile_index, 0, 0)
@@ -336,8 +329,6 @@ VIDEO_START( ladybug )
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
 
 	tilemap_set_scroll_rows(bg_tilemap, 32);
-
-	return 0;
 }
 
 VIDEO_START( sraider )
@@ -354,8 +345,6 @@ VIDEO_START( sraider )
 
 	tilemap_set_transparent_pen(grid_tilemap, 0);
 	tilemap_set_transparent_pen(bg_tilemap, 0);
-
-	return 0;
 }
 
 static void ladybug_draw_sprites( mame_bitmap *bitmap )

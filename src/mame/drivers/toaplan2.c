@@ -2361,6 +2361,7 @@ INPUT_PORTS_START( fixeight )
 	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* Unknown/Unused */
 
 	PORT_MODIFY("SYS")
+	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_COIN3 )
 	PORT_SERVICE_NO_TOGGLE(0x0004, IP_ACTIVE_HIGH)	/* Service input is a push-button marked 'Test SW' */
 
 #if 0
@@ -3192,7 +3193,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tilelayout,   0, 128 },
 	{ REGION_GFX1, 0, &spritelayout, 0,  64 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode gfxdecodeinfo_2[] =
@@ -3201,7 +3202,7 @@ static const gfx_decode gfxdecodeinfo_2[] =
 	{ REGION_GFX1, 0, &spritelayout, 0,  64 },
 	{ REGION_GFX2, 0, &tilelayout,   0, 128 },
 	{ REGION_GFX2, 0, &spritelayout, 0,  64 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode truxton2_gfxdecodeinfo[] =
@@ -3211,7 +3212,7 @@ static const gfx_decode truxton2_gfxdecodeinfo[] =
 //  { REGION_CPU1, 0x40000, &truxton2_tx_tilelayout, 0, 128 },  /* Truxton 2 */
 //  { REGION_CPU1, 0x68000, &truxton2_tx_tilelayout, 0, 128 },  /* Fix Eight */
 	{ 0, 0, &truxton2_tx_tilelayout,  0, 128 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode raizing_gfxdecodeinfo[] =
@@ -3219,7 +3220,7 @@ static const gfx_decode raizing_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &tilelayout,         0, 128 },
 	{ REGION_GFX1, 0, &spritelayout,       0,  64 },
 	{ REGION_GFX2, 0, &raizing_textlayout, 0, 128 },		/* Extra-text layer */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /* This is wrong a bit. Text layer is dynamically changed. */
@@ -3228,7 +3229,7 @@ static const gfx_decode batrider_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &tilelayout,             0, 128 },
 	{ REGION_GFX1, 0, &spritelayout,           0,  64 },
 	{ 0,           0, &batrider_tx_tilelayout, 0,  16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode fixeighb_gfxdecodeinfo[] =
@@ -3236,7 +3237,7 @@ static const gfx_decode fixeighb_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &tilelayout     , 0, 128 },
 	{ REGION_GFX1, 0, &spritelayout   , 0,  64 },
 	{ REGION_GFX2, 0, &fixeighblayout , 0, 128 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static void irqhandler(int linestate)

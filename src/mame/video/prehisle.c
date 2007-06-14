@@ -18,22 +18,14 @@ static tilemap *bg2_tilemap, *bg_tilemap, *fg_tilemap;
 
 WRITE16_HANDLER( prehisle_bg_videoram16_w )
 {
-	UINT16 oldword = prehisle_bg_videoram16[offset];
 	COMBINE_DATA(&prehisle_bg_videoram16[offset]);
-	if (oldword != prehisle_bg_videoram16[offset])
-	{
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE16_HANDLER( prehisle_fg_videoram16_w )
 {
-	UINT16 oldword = videoram16[offset];
 	COMBINE_DATA(&videoram16[offset]);
-	if (oldword != videoram16[offset])
-	{
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 READ16_HANDLER( prehisle_control16_r )
@@ -68,7 +60,7 @@ WRITE16_HANDLER( prehisle_control16_w )
 	}
 }
 
-static void get_bg2_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg2_tile_info )
 {
 	UINT8 *tilerom = memory_region(REGION_GFX5);
 
@@ -81,7 +73,7 @@ static void get_bg2_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, flags)
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = prehisle_bg_videoram16[tile_index];
 	int code = attr & 0x7ff;
@@ -91,7 +83,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(2, code, color, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = videoram16[tile_index];
 	int code = attr & 0xfff;
@@ -116,8 +108,6 @@ VIDEO_START( prehisle )
 
 	/* register for saving */
 	state_save_register_global(invert_controls);
-
-	return 0;
 }
 
 static void prehisle_draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect, int foreground )

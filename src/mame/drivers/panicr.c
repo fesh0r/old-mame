@@ -63,8 +63,8 @@ D.9B         [f99cac4b] /
 #include "audio/t5182.h"
 
 static tilemap *bgtilemap, *txttilemap;
-static unsigned char *scrollram;
-static unsigned char *mainram;
+static UINT8 *scrollram;
+static UINT8 *mainram;
 
 PALETTE_INIT( panicr )
 {
@@ -102,7 +102,7 @@ PALETTE_INIT( panicr )
 	}
 }
 
-static void get_bgtile_info(int tile_index)
+static TILE_GET_INFO( get_bgtile_info )
 {
 	int code,attr;
 
@@ -116,7 +116,7 @@ static void get_bgtile_info(int tile_index)
         0)
 }
 
-static void get_txttile_info(int tile_index)
+static TILE_GET_INFO( get_txttile_info )
 {
 	int code,attr;
 
@@ -169,7 +169,6 @@ VIDEO_START( panicr )
 	bgtilemap = tilemap_create( get_bgtile_info,tilemap_scan_rows,TILEMAP_OPAQUE,16,16,1024,16 );
 	txttilemap = tilemap_create( get_txttile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT_COLOR,8,8,32,32 );
 	tilemap_set_transparent_pen(txttilemap, 0);
-	return 0;
 }
 
 static void draw_sprites( mame_bitmap *bitmap,const rectangle *cliprect )
@@ -348,7 +347,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &charlayout,   0x000,  8 },
 	{ REGION_GFX2, 0, &tilelayout,   0x100, 16 },
 	{ REGION_GFX3, 0, &spritelayout, 0x200, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static MACHINE_DRIVER_START( panicr )

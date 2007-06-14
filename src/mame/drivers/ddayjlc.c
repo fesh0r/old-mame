@@ -131,11 +131,8 @@ static WRITE8_HANDLER( ddayjlc_bgram_w )
 	if(!offset)
 		tilemap_set_scrollx(bg_tilemap,0,data+8);
 
-	if( bgram[offset] != data )
-	{
-		bgram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset&0x3ff);
-	}
+	bgram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset&0x3ff);
 }
 
 static WRITE8_HANDLER( ddayjlc_videoram_w )
@@ -337,7 +334,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ -1 }
 };
 
-static void get_tile_info_bg(int tile_index)
+static TILE_GET_INFO( get_tile_info_bg )
 {
 	int code = bgram[tile_index]+((bgram[tile_index+0x400]&(1<<3))<<(8-3));
 
@@ -347,8 +344,6 @@ static void get_tile_info_bg(int tile_index)
 VIDEO_START( ddayjlc )
 {
 	bg_tilemap = tilemap_create(get_tile_info_bg,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
-
-	return 0;
 }
 
 VIDEO_UPDATE( ddayjlc )

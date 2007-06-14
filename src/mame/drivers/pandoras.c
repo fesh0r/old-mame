@@ -24,8 +24,8 @@ static int irq_enable_a, irq_enable_b;
 static int firq_old_data_a, firq_old_data_b;
 static int i8039_status;
 
-unsigned char *pandoras_sharedram;
-static unsigned char *pandoras_sharedram2;
+UINT8 *pandoras_sharedram;
+static UINT8 *pandoras_sharedram2;
 
 /* from video */
 PALETTE_INIT( pandoras );
@@ -365,7 +365,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,       0, 16 },
 	{ REGION_GFX2, 0, &spritelayout, 16*16, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /***************************************************************************

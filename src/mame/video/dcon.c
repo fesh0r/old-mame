@@ -51,37 +51,29 @@ WRITE16_HANDLER( dcon_gfxbank_w )
 
 WRITE16_HANDLER( dcon_background_w )
 {
-	int oldword = dcon_back_data[offset];
 	COMBINE_DATA(&dcon_back_data[offset]);
-	if (oldword != dcon_back_data[offset])
-		tilemap_mark_tile_dirty(background_layer,offset);
+	tilemap_mark_tile_dirty(background_layer,offset);
 }
 
 WRITE16_HANDLER( dcon_foreground_w )
 {
-	int oldword = dcon_fore_data[offset];
 	COMBINE_DATA(&dcon_fore_data[offset]);
-	if (oldword != dcon_fore_data[offset])
-		tilemap_mark_tile_dirty(foreground_layer,offset);
+	tilemap_mark_tile_dirty(foreground_layer,offset);
 }
 
 WRITE16_HANDLER( dcon_midground_w )
 {
-	int oldword = dcon_mid_data[offset];
 	COMBINE_DATA(&dcon_mid_data[offset]);
-	if (oldword != dcon_mid_data[offset])
-		tilemap_mark_tile_dirty(midground_layer,offset);
+	tilemap_mark_tile_dirty(midground_layer,offset);
 }
 
 WRITE16_HANDLER( dcon_text_w )
 {
-	int oldword = dcon_textram[offset];
 	COMBINE_DATA(&dcon_textram[offset]);
-	if (oldword != dcon_textram[offset])
-		tilemap_mark_tile_dirty(text_layer,offset);
+	tilemap_mark_tile_dirty(text_layer,offset);
 }
 
-static void get_back_tile_info(int tile_index)
+static TILE_GET_INFO( get_back_tile_info )
 {
 	int tile=dcon_back_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -95,7 +87,7 @@ static void get_back_tile_info(int tile_index)
 			0)
 }
 
-static void get_fore_tile_info(int tile_index)
+static TILE_GET_INFO( get_fore_tile_info )
 {
 	int tile=dcon_fore_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -109,7 +101,7 @@ static void get_fore_tile_info(int tile_index)
 			0)
 }
 
-static void get_mid_tile_info(int tile_index)
+static TILE_GET_INFO( get_mid_tile_info )
 {
 	int tile=dcon_mid_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -123,7 +115,7 @@ static void get_mid_tile_info(int tile_index)
 			0)
 }
 
-static void get_text_tile_info(int tile_index)
+static TILE_GET_INFO( get_text_tile_info )
 {
 	int tile = dcon_textram[tile_index];
 	int color=(tile>>12)&0xf;
@@ -149,8 +141,6 @@ VIDEO_START( dcon )
 	tilemap_set_transparent_pen(text_layer,15);
 
 	dcon_gfx_bank_select = 0;
-
-	return 0;
 }
 
 static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)

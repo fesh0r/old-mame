@@ -16,7 +16,7 @@
  *
  *************************************/
 
-static void get_playfield_tile_info(int tile_index)
+static TILE_GET_INFO( get_playfield_tile_info )
 {
 	UINT16 data1 = atarigen_playfield[tile_index];
 	UINT16 data2 = atarigen_playfield_upper[tile_index] >> 8;
@@ -76,9 +76,7 @@ VIDEO_START( klax )
 	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols, TILEMAP_OPAQUE, 8,8, 64,32);
 
 	/* initialize the motion objects */
-	if (!atarimo_init(0, &modesc))
-		return 1;
-	return 0;
+	atarimo_init(0, &modesc);
 }
 
 

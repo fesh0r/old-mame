@@ -26,7 +26,7 @@ WRITE16_HANDLER( sshangha_palette_24bit_w )
 	g = (paletteram16[offset+1] >> 8) & 0xff;
 	r = (paletteram16[offset+1] >> 0) & 0xff;
 
-	palette_set_color(Machine,offset/2,r,g,b);
+	palette_set_color(Machine,offset/2,MAKE_RGB(r,g,b));
 }
 
 static void sshangha_tilemap_draw(mame_bitmap *bitmap)
@@ -126,20 +126,15 @@ static void sshangha_drawsprites(mame_bitmap *bitmap, UINT16 *spritesrc, UINT16 
 
 WRITE16_HANDLER( sshangha_pf2_data_w )
 {
-	UINT16 oldword=sshangha_pf2_data[offset];
 	COMBINE_DATA(&sshangha_pf2_data[offset]);
-	if (oldword!=sshangha_pf2_data[offset])
-		tilemap_mark_tile_dirty(pf2_tilemap,offset);
+	tilemap_mark_tile_dirty(pf2_tilemap,offset);
 }
 
 WRITE16_HANDLER( sshangha_pf1_data_w )
 {
-	UINT16 oldword=sshangha_pf1_data[offset];
 	COMBINE_DATA(&sshangha_pf1_data[offset]);
-	if (oldword!=sshangha_pf1_data[offset]) {
-		tilemap_mark_tile_dirty(pf1_8x8_tilemap,offset);
-		tilemap_mark_tile_dirty(pf1_16x16_tilemap,offset);
-	}
+	tilemap_mark_tile_dirty(pf1_8x8_tilemap,offset);
+	tilemap_mark_tile_dirty(pf1_16x16_tilemap,offset);
 }
 
 WRITE16_HANDLER( sshangha_control_0_w )
@@ -157,19 +152,19 @@ static UINT32 sshangha_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_row
 }
 #endif
 
-static void get_pf2_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf2_tile_info )
 {
 	UINT16 tile=sshangha_pf2_data[tile_index];
 	SET_TILE_INFO(1,(tile&0xfff)|sshangha_pf2_bank,(tile>>12)|32,0)
 }
 
-static void get_pf1_16x16_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf1_16x16_tile_info )
 {
 	UINT16 tile=sshangha_pf1_data[tile_index];
 	SET_TILE_INFO(1,(tile&0xfff)|sshangha_pf1_bank,tile>>12,0)
 }
 
-static void get_pf1_8x8_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf1_8x8_tile_info )
 {
 	UINT16 tile=sshangha_pf1_data[tile_index];
 	SET_TILE_INFO(0,(tile&0xfff)|sshangha_pf1_bank,tile>>12,0)
@@ -183,8 +178,6 @@ VIDEO_START( sshangha )
 
 	tilemap_set_transparent_pen(pf1_8x8_tilemap,0);
 	tilemap_set_transparent_pen(pf1_16x16_tilemap,0);
-
-	return 0;
 }
 
 /******************************************************************************/

@@ -448,7 +448,7 @@ static struct CustomSound_interface snes_sound_interface =
 
 static const gfx_decode gfxdecodeinfo[] =
 {
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static PALETTE_INIT( snes )
@@ -456,7 +456,7 @@ static PALETTE_INIT( snes )
 	int i;
 
 	for( i = 0; i < 32768; i++ )
-		palette_set_color( machine, i, pal5bit(i >> 0), pal5bit(i >> 5), pal5bit(i >> 10) );
+		palette_set_color_rgb( machine, i, pal5bit(i >> 0), pal5bit(i >> 5), pal5bit(i >> 10) );
 
 	/* The colortable can be black */
 	for( i = 0; i < 256; i++ )

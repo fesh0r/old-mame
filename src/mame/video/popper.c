@@ -33,49 +33,37 @@ PALETTE_INIT( popper )
 		bit1 = (*color_prom >> 6) & 0x01;
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x97 * bit1 + 0x68 * bit2;
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 }
 
 WRITE8_HANDLER( popper_ol_videoram_w )
 {
-	if (popper_ol_videoram[offset] != data)
-	{
-		popper_ol_videoram[offset] = data;
-		tilemap_mark_tile_dirty(popper_ol_p123_tilemap,offset);
-		tilemap_mark_tile_dirty(popper_ol_p0_tilemap,offset);
-	}
+	popper_ol_videoram[offset] = data;
+	tilemap_mark_tile_dirty(popper_ol_p123_tilemap,offset);
+	tilemap_mark_tile_dirty(popper_ol_p0_tilemap,offset);
 }
 
 WRITE8_HANDLER( popper_videoram_w )
 {
-	if (popper_videoram[offset] != data)
-	{
-		popper_videoram[offset] = data;
-		tilemap_mark_tile_dirty(popper_p123_tilemap,offset);
-		tilemap_mark_tile_dirty(popper_p0_tilemap,offset);
-	}
+	popper_videoram[offset] = data;
+	tilemap_mark_tile_dirty(popper_p123_tilemap,offset);
+	tilemap_mark_tile_dirty(popper_p0_tilemap,offset);
 }
 
 WRITE8_HANDLER( popper_ol_attribram_w )
 {
-	if (popper_ol_attribram[offset] != data)
-	{
-		popper_ol_attribram[offset] = data;
-		tilemap_mark_tile_dirty(popper_ol_p123_tilemap,offset);
-		tilemap_mark_tile_dirty(popper_ol_p0_tilemap,offset);
-	}
+	popper_ol_attribram[offset] = data;
+	tilemap_mark_tile_dirty(popper_ol_p123_tilemap,offset);
+	tilemap_mark_tile_dirty(popper_ol_p0_tilemap,offset);
 }
 
 WRITE8_HANDLER( popper_attribram_w )
 {
-	if (popper_attribram[offset] != data)
-	{
-		popper_attribram[offset] = data;
-		tilemap_mark_tile_dirty(popper_p123_tilemap,offset);
-		tilemap_mark_tile_dirty(popper_p0_tilemap,offset);
-	}
+	popper_attribram[offset] = data;
+	tilemap_mark_tile_dirty(popper_p123_tilemap,offset);
+	tilemap_mark_tile_dirty(popper_p0_tilemap,offset);
 }
 
 WRITE8_HANDLER( popper_flipscreen_w )
@@ -105,10 +93,10 @@ WRITE8_HANDLER( popper_gfx_bank_w )
 	}
 }
 
-static void get_popper_p123_tile_info(int tile_index)
+static TILE_GET_INFO( get_popper_p123_tile_info )
 {
-	unsigned int tile_number = popper_videoram[tile_index];
-	unsigned char attr  = popper_attribram[tile_index];
+	UINT32 tile_number = popper_videoram[tile_index];
+	UINT8 attr  = popper_attribram[tile_index];
 	tile_number += popper_gfx_bank << 8;
 
 	SET_TILE_INFO(
@@ -118,11 +106,11 @@ static void get_popper_p123_tile_info(int tile_index)
 			TILE_SPLIT((attr & 0x80)>>7))
 }
 
-static void get_popper_p0_tile_info(int tile_index)
+static TILE_GET_INFO( get_popper_p0_tile_info )
 {
-	unsigned int tile_number = popper_videoram[tile_index];
-	unsigned char attr = popper_attribram[tile_index];
-	unsigned int flags = 0;
+	UINT32 tile_number = popper_videoram[tile_index];
+	UINT8 attr = popper_attribram[tile_index];
+	UINT32 flags = 0;
 	tile_number += popper_gfx_bank << 8;
 
 	//pen 0 only in front if colour set as well
@@ -135,10 +123,10 @@ static void get_popper_p0_tile_info(int tile_index)
 			flags)
 }
 
-static void get_popper_ol_p123_tile_info(int tile_index)
+static TILE_GET_INFO( get_popper_ol_p123_tile_info )
 {
-	unsigned int tile_number = popper_ol_videoram[tile_index];
-	unsigned char attr  = popper_ol_attribram[tile_index];
+	UINT32 tile_number = popper_ol_videoram[tile_index];
+	UINT8 attr  = popper_ol_attribram[tile_index];
 	tile_number += popper_gfx_bank << 8;
 
 	SET_TILE_INFO(
@@ -148,11 +136,11 @@ static void get_popper_ol_p123_tile_info(int tile_index)
 			TILE_SPLIT((attr & 0x80)>>7))
 }
 
-static void get_popper_ol_p0_tile_info(int tile_index)
+static TILE_GET_INFO( get_popper_ol_p0_tile_info )
 {
-	unsigned int tile_number = popper_ol_videoram[tile_index];
-	unsigned char attr = popper_ol_attribram[tile_index];
-	unsigned int flags = 0;
+	UINT32 tile_number = popper_ol_videoram[tile_index];
+	UINT8 attr = popper_ol_attribram[tile_index];
+	UINT32 flags = 0;
 	tile_number += popper_gfx_bank << 8;
 
 	//pen 0 only in front if colour set as well
@@ -186,8 +174,6 @@ VIDEO_START( popper )
 	state_save_register_global(popper_flipscreen);
 //  state_save_register_global(popper_e002);
 	state_save_register_global(popper_gfx_bank);
-
-	return 0;
 }
 
 static void popper_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)

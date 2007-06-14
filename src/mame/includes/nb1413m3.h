@@ -229,7 +229,6 @@ enum {
 
 /*----------- defined in machine/nb1413m3.c -----------*/
 
-DRIVER_INIT( nb1413m3 );
 MACHINE_RESET( nb1413m3 );
 WRITE8_HANDLER( nb1413m3_nmi_clock_w );
 INTERRUPT_GEN( nb1413m3_interrupt );
@@ -260,5 +259,5 @@ extern int nb1413m3_sndrombank2;
 extern int nb1413m3_busyctr;
 extern int nb1413m3_busyflag;
 extern int nb1413m3_inputport;
-extern unsigned char *nb1413m3_nvram;
+extern UINT8 *nb1413m3_nvram;
 extern size_t nb1413m3_nvram_size;

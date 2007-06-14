@@ -21,7 +21,7 @@ static UINT32 get_memory_offset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 
 }
 
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code = videopin_video_ram[tile_index];
 
@@ -32,8 +32,6 @@ static void get_tile_info(int tile_index)
 VIDEO_START( videopin )
 {
 	bg_tilemap = tilemap_create(get_tile_info, get_memory_offset, TILEMAP_OPAQUE, 8, 8, 48, 32);
-
-	return 0;
 }
 
 
@@ -113,10 +111,6 @@ WRITE8_HANDLER( videopin_ball_w )
 
 WRITE8_HANDLER( videopin_video_ram_w )
 {
-	if (videopin_video_ram[offset] != data)
-	{
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
-
 	videopin_video_ram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }

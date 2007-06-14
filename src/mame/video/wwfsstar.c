@@ -20,25 +20,21 @@ static tilemap *fg0_tilemap, *bg0_tilemap;
 
 WRITE16_HANDLER( wwfsstar_fg0_videoram_w )
 {
-	int oldword = wwfsstar_fg0_videoram[offset];
 	COMBINE_DATA(&wwfsstar_fg0_videoram[offset]);
-	if (oldword != wwfsstar_fg0_videoram[offset])
-		tilemap_mark_tile_dirty(fg0_tilemap,offset/2);
+	tilemap_mark_tile_dirty(fg0_tilemap,offset/2);
 }
 
 WRITE16_HANDLER( wwfsstar_bg0_videoram_w )
 {
-	int oldword =wwfsstar_bg0_videoram[offset];
 	COMBINE_DATA(&wwfsstar_bg0_videoram[offset]);
-	if (oldword != wwfsstar_bg0_videoram[offset])
-		tilemap_mark_tile_dirty(bg0_tilemap,offset/2);
+	tilemap_mark_tile_dirty(bg0_tilemap,offset/2);
 }
 
 /*******************************************************************************
  Tilemap Related Functions
 *******************************************************************************/
 
-static void get_fg0_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg0_tile_info )
 {
 	/*- FG0 RAM Format -**
 
@@ -73,7 +69,7 @@ static UINT32 bg0_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 	return (col & 0x0f) + ((row & 0x0f) << 4) + ((col & 0x10) << 4) + ((row & 0x10) << 5);
 }
 
-static void get_bg0_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg0_tile_info )
 {
 	/*- BG0 RAM Format -**
 
@@ -214,8 +210,6 @@ VIDEO_START( wwfsstar )
 
 	bg0_tilemap = tilemap_create(get_bg0_tile_info,bg0_scan,TILEMAP_OPAQUE, 16, 16,32,32);
 	tilemap_set_transparent_pen(fg0_tilemap,0);
-
-	return 0;
 }
 
 VIDEO_UPDATE( wwfsstar )
@@ -226,5 +220,6 @@ VIDEO_UPDATE( wwfsstar )
 	tilemap_draw(bitmap,cliprect,bg0_tilemap,0,0);
 	wwfsstar_drawsprites( bitmap,cliprect );
 	tilemap_draw(bitmap,cliprect,fg0_tilemap,0,0);
+
 	return 0;
 }

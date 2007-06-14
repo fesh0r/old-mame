@@ -27,7 +27,7 @@ PALETTE_INIT( blueprnt )
 		int r = ((i >> 0) & 1) * ((i & 0x08) ? 0xbf : 0xff);
 		int g = ((i >> 2) & 1) * ((i & 0x08) ? 0xbf : 0xff);
 		int b = ((i >> 1) & 1) * ((i & 0x08) ? 0xbf : 0xff);
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 	/* chars */
@@ -47,20 +47,14 @@ PALETTE_INIT( blueprnt )
 
 WRITE8_HANDLER( blueprnt_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( blueprnt_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( blueprnt_flipscreen_w )
@@ -74,13 +68,13 @@ WRITE8_HANDLER( blueprnt_flipscreen_w )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] + 256 * gfx_bank;
 	int color = attr & 0x7f;
 
-	tile_info.priority = (attr & 0x80) ? 1 : 0;
+	tileinfo->priority = (attr & 0x80) ? 1 : 0;
 
 	SET_TILE_INFO(0, code, color, 0)
 }
@@ -92,8 +86,6 @@ VIDEO_START( blueprnt )
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 	tilemap_set_scroll_cols(bg_tilemap, 32);
-
-	return 0;
 }
 
 static void blueprnt_draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )

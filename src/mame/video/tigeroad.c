@@ -5,11 +5,8 @@ static tilemap *bg_tilemap, *fg_tilemap;
 
 WRITE16_HANDLER( tigeroad_videoram_w )
 {
-	if (videoram16[offset] != data)
-	{
-		COMBINE_DATA(&videoram16[offset]);
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	COMBINE_DATA(&videoram16[offset]);
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE16_HANDLER( tigeroad_videoctrl_w )
@@ -112,7 +109,7 @@ static void tigeroad_draw_sprites( mame_bitmap *bitmap, int priority )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	UINT8 *tilerom = memory_region(REGION_GFX4);
 
@@ -125,7 +122,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int data = videoram16[tile_index];
 	int attr = data >> 8;
@@ -154,8 +151,6 @@ VIDEO_START( tigeroad )
 	tilemap_set_transmask(bg_tilemap, 1, 0x1ff, 0xfe00);
 
 	tilemap_set_transparent_pen(fg_tilemap, 3);
-
-	return 0;
 }
 
 VIDEO_UPDATE( tigeroad )

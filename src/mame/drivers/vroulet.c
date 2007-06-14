@@ -58,30 +58,24 @@ static WRITE8_HANDLER(vroulet_paletteram_w)
 		{
 			a=paletteram[((i*8+j)*2)&0xff ];
 			b=paletteram[((i*8+j)*2+1)&0xff ];
-			palette_set_color(Machine,i*16+j,pal4bit(b),pal4bit(b>>4),pal4bit(a));
+			palette_set_color_rgb(Machine,i*16+j,pal4bit(b),pal4bit(b>>4),pal4bit(a));
 		}
 	}
 }
 
 static WRITE8_HANDLER( vroulet_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 static WRITE8_HANDLER( vroulet_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] + ((attr & 0xc0) << 2);
@@ -94,8 +88,6 @@ VIDEO_START(vroulet)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 VIDEO_UPDATE(vroulet)

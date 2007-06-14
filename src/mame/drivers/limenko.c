@@ -63,38 +63,32 @@ static WRITE32_HANDLER( limenko_paletteram_w )
 	if(ACCESSING_LSW32)
 	{
 		paldata = paletteram32[offset] & 0x7fff;
-		palette_set_color(Machine, offset * 2 + 1, pal5bit(paldata >> 0), pal5bit(paldata >> 5), pal5bit(paldata >> 10));
+		palette_set_color_rgb(Machine, offset * 2 + 1, pal5bit(paldata >> 0), pal5bit(paldata >> 5), pal5bit(paldata >> 10));
 	}
 
 	if(ACCESSING_MSW32)
 	{
 		paldata = (paletteram32[offset] >> 16) & 0x7fff;
-		palette_set_color(Machine, offset * 2 + 0, pal5bit(paldata >> 0), pal5bit(paldata >> 5), pal5bit(paldata >> 10));
+		palette_set_color_rgb(Machine, offset * 2 + 0, pal5bit(paldata >> 0), pal5bit(paldata >> 5), pal5bit(paldata >> 10));
 	}
 }
 
 static WRITE32_HANDLER( bg_videoram_w )
 {
-	UINT32 oldword = bg_videoram[offset];
 	COMBINE_DATA(&bg_videoram[offset]);
-	if (oldword != bg_videoram[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 static WRITE32_HANDLER( md_videoram_w )
 {
-	UINT32 oldword = md_videoram[offset];
 	COMBINE_DATA(&md_videoram[offset]);
-	if (oldword != md_videoram[offset])
-		tilemap_mark_tile_dirty(md_tilemap,offset);
+	tilemap_mark_tile_dirty(md_tilemap,offset);
 }
 
 static WRITE32_HANDLER( fg_videoram_w )
 {
-	UINT32 oldword = fg_videoram[offset];
 	COMBINE_DATA(&fg_videoram[offset]);
-	if (oldword != fg_videoram[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 static WRITE32_HANDLER( spotty_soundlatch_w )
@@ -172,21 +166,21 @@ ADDRESS_MAP_END
   VIDEO HARDWARE EMULATION
 *****************************************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tile  = bg_videoram[tile_index] & 0x7ffff;
 	int color = (bg_videoram[tile_index]>>28) & 0xf;
 	SET_TILE_INFO(0,tile,color,0)
 }
 
-static void get_md_tile_info(int tile_index)
+static TILE_GET_INFO( get_md_tile_info )
 {
 	int tile  = md_videoram[tile_index] & 0x7ffff;
 	int color = (md_videoram[tile_index]>>28) & 0xf;
 	SET_TILE_INFO(0,tile,color,0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int tile  = fg_videoram[tile_index] & 0x7ffff;
 	int color = (fg_videoram[tile_index]>>28) & 0xf;
@@ -199,10 +193,10 @@ static void limenko_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 	int i;
 	int sprites_on_screen = (limenko_videoreg[0] & 0x1ff0000) >> 16;
 
-	unsigned char *base_gfx	= memory_region(REGION_GFX1);
-	unsigned char *gfx_max	= base_gfx + memory_region_length(REGION_GFX1);
+	UINT8 *base_gfx	= memory_region(REGION_GFX1);
+	UINT8 *gfx_max	= base_gfx + memory_region_length(REGION_GFX1);
 
-	unsigned char *gfxdata;
+	UINT8 *gfxdata;
 	gfx_element gfx;
 
 	for(i = 0; i <= sprites_on_screen*2; i += 2)
@@ -285,8 +279,6 @@ VIDEO_START( limenko )
 
 	tilemap_set_transparent_pen(md_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
-
-	return 0;
 }
 
 VIDEO_UPDATE( limenko )
@@ -474,7 +466,7 @@ static gfx_layout tile_layout =
 static gfx_decode limenko_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tile_layout, 0, 16 }, /* tiles */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

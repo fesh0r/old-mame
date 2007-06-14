@@ -23,9 +23,9 @@ static int fg_tile_bank, bg_tile_bank;
 
 ***************************************************************************/
 
-static void bg_get_tile_info(int tile_index)
+static TILE_GET_INFO( bg_get_tile_info )
 {
-	unsigned char attr = gladiatr_colorram[tile_index];
+	UINT8 attr = gladiatr_colorram[tile_index];
 
 	SET_TILE_INFO(
 			1,
@@ -34,7 +34,7 @@ static void bg_get_tile_info(int tile_index)
 			0)
 }
 
-static void fg_get_tile_info(int tile_index)
+static TILE_GET_INFO( fg_get_tile_info )
 {
 	SET_TILE_INFO(
 			0,
@@ -61,8 +61,6 @@ VIDEO_START( ppking )
 	tilemap_set_scroll_cols(bg_tilemap, 0x10);
 
 	sprite_bank = 1;
-
-	return 0;
 }
 
 VIDEO_START( gladiatr )
@@ -76,8 +74,6 @@ VIDEO_START( gladiatr )
 	tilemap_set_scrolldx(fg_tilemap, -0x30, 0x12f);
 
 	sprite_bank = 2;
-
-	return 0;
 }
 
 
@@ -90,29 +86,20 @@ VIDEO_START( gladiatr )
 
 WRITE8_HANDLER( gladiatr_videoram_w )
 {
-	if (gladiatr_videoram[offset] != data)
-	{
-		gladiatr_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	gladiatr_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE8_HANDLER( gladiatr_colorram_w )
 {
-	if (gladiatr_colorram[offset] != data)
-	{
-		gladiatr_colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	gladiatr_colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE8_HANDLER( gladiatr_textram_w )
 {
-	if (gladiatr_textram[offset] != data)
-	{
-		gladiatr_textram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
-	}
+	gladiatr_textram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 WRITE8_HANDLER( gladiatr_paletteram_w )
@@ -130,7 +117,7 @@ WRITE8_HANDLER( gladiatr_paletteram_w )
 	g = (g << 1) + ((paletteram[offset + 0x400] >> 5) & 0x01);
 	b = (b << 1) + ((paletteram[offset + 0x400] >> 6) & 0x01);
 
-	palette_set_color(Machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(Machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 

@@ -1,7 +1,7 @@
 #include "driver.h"
 #include "video/konamiic.h"
 
-unsigned char *fastlane_k007121_regs,*fastlane_videoram1,*fastlane_videoram2;
+UINT8 *fastlane_k007121_regs,*fastlane_videoram1,*fastlane_videoram2;
 static tilemap *layer0, *layer1;
 static rectangle clip0, clip1;
 
@@ -25,7 +25,7 @@ PALETTE_INIT( fastlane )
 
 ***************************************************************************/
 
-static void get_tile_info0(int tile_index)
+static TILE_GET_INFO( get_tile_info0 )
 {
 	int attr = fastlane_videoram1[tile_index];
 	int code = fastlane_videoram1[tile_index + 0x400];
@@ -50,7 +50,7 @@ static void get_tile_info0(int tile_index)
 			0)
 }
 
-static void get_tile_info1(int tile_index)
+static TILE_GET_INFO( get_tile_info1 )
 {
 	int attr = fastlane_videoram2[tile_index];
 	int code = fastlane_videoram2[tile_index + 0x400];
@@ -94,8 +94,6 @@ VIDEO_START( fastlane )
 	clip1 = machine->screen[0].visarea;
 	clip1.max_x = 39;
 	clip1.min_x = 0;
-
-	return 0;
 }
 
 /***************************************************************************
@@ -106,20 +104,14 @@ VIDEO_START( fastlane )
 
 WRITE8_HANDLER( fastlane_vram1_w )
 {
-	if (fastlane_videoram1[offset] != data)
-	{
-		tilemap_mark_tile_dirty(layer0,offset & 0x3ff);
-		fastlane_videoram1[offset] = data;
-	}
+	fastlane_videoram1[offset] = data;
+	tilemap_mark_tile_dirty(layer0,offset & 0x3ff);
 }
 
 WRITE8_HANDLER( fastlane_vram2_w )
 {
-	if (fastlane_videoram2[offset] != data)
-	{
-		tilemap_mark_tile_dirty(layer1,offset & 0x3ff);
-		fastlane_videoram2[offset] = data;
-	}
+	fastlane_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(layer1,offset & 0x3ff);
 }
 
 

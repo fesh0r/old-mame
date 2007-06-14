@@ -19,7 +19,7 @@ static mame_bitmap *sprite_bitmap, *tile_bitmap_bg, *tile_bitmap_fg;
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	UINT16 *videoram1 = &gaiden_videoram3[0x0800];
 	UINT16 *videoram2 = gaiden_videoram3;
@@ -30,7 +30,7 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	UINT16 *videoram1 = &gaiden_videoram2[0x0800];
 	UINT16 *videoram2 = gaiden_videoram2;
@@ -41,22 +41,22 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info_raiga(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info_raiga )
 {
 	UINT16 *videoram1 = &gaiden_videoram2[0x0800];
 	UINT16 *videoram2 = gaiden_videoram2;
 
 	/* bit 3 controls blending */
-	tile_info.priority = (videoram2[tile_index] & 0x08) >> 3;
+	tileinfo->priority = (videoram2[tile_index] & 0x08) >> 3;
 
 	SET_TILE_INFO(
 			2,
 			videoram1[tile_index] & 0x0fff,
-			((videoram2[tile_index] & 0xf0) >> 4) | (tile_info.priority ? 0x80 : 0x00),
+			((videoram2[tile_index] & 0xf0) >> 4) | (tileinfo->priority ? 0x80 : 0x00),
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	UINT16 *videoram1 = &gaiden_videoram[0x0400];
 	UINT16 *videoram2 = gaiden_videoram;
@@ -84,8 +84,6 @@ VIDEO_START( gaiden )
 	tilemap_set_transparent_pen(background, 0);
 	tilemap_set_transparent_pen(foreground, 0);
 	tilemap_set_transparent_pen(text_layer, 0);
-
-	return 0;
 }
 
 VIDEO_START( raiga )
@@ -104,8 +102,6 @@ VIDEO_START( raiga )
 
 	/* set up sprites */
 	sprite_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
-
-	return 0;
 }
 
 VIDEO_START( drgnbowl )
@@ -120,8 +116,6 @@ VIDEO_START( drgnbowl )
 
 	tilemap_set_scrolldx(background, -248, 248);
 	tilemap_set_scrolldx(foreground, -252, 252);
-
-	return 0;
 }
 
 
@@ -176,10 +170,8 @@ WRITE16_HANDLER( gaiden_bgscrolly_w )
 
 WRITE16_HANDLER( gaiden_videoram3_w )
 {
-	int oldword = gaiden_videoram3[offset];
 	COMBINE_DATA(&gaiden_videoram3[offset]);
-	if (oldword != gaiden_videoram3[offset])
-		tilemap_mark_tile_dirty(background,offset & 0x07ff);
+	tilemap_mark_tile_dirty(background,offset & 0x07ff);
 }
 
 WRITE16_HANDLER( gaiden_flip_w )
@@ -196,10 +188,8 @@ READ16_HANDLER( gaiden_videoram3_r )
 
 WRITE16_HANDLER( gaiden_videoram2_w )
 {
-	int oldword = gaiden_videoram2[offset];
 	COMBINE_DATA(&gaiden_videoram2[offset]);
-	if (oldword != gaiden_videoram2[offset])
-		tilemap_mark_tile_dirty(foreground,offset & 0x07ff);
+	tilemap_mark_tile_dirty(foreground,offset & 0x07ff);
 }
 
 READ16_HANDLER( gaiden_videoram2_r )
@@ -209,10 +199,8 @@ READ16_HANDLER( gaiden_videoram2_r )
 
 WRITE16_HANDLER( gaiden_videoram_w )
 {
-	int oldword = gaiden_videoram[offset];
 	COMBINE_DATA(&gaiden_videoram[offset]);
-	if (oldword != gaiden_videoram[offset])
-		tilemap_mark_tile_dirty(text_layer,offset & 0x03ff);
+	tilemap_mark_tile_dirty(text_layer,offset & 0x03ff);
 }
 
 

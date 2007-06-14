@@ -23,7 +23,7 @@ static tilemap *tx_tilemap,*fg_tilemap,*bg_tilemap;
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = wc90_bgvideoram[tile_index];
 	int tile = wc90_bgvideoram[tile_index + 0x800] +
@@ -35,7 +35,7 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = wc90_fgvideoram[tile_index];
 	int tile = wc90_fgvideoram[tile_index + 0x800] +
@@ -47,7 +47,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	SET_TILE_INFO(
 			0,
@@ -56,7 +56,7 @@ static void get_tx_tile_info(int tile_index)
 			0)
 }
 
-static void track_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( track_get_bg_tile_info )
 {
 	int attr = wc90_bgvideoram[tile_index];
 	int tile = wc90_bgvideoram[tile_index + 0x800] +
@@ -68,7 +68,7 @@ static void track_get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void track_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( track_get_fg_tile_info )
 {
 	int attr = wc90_fgvideoram[tile_index];
 	int tile = wc90_fgvideoram[tile_index + 0x800] +
@@ -95,8 +95,6 @@ VIDEO_START( wc90 )
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
-
-	return 0;
 }
 
 VIDEO_START( wc90t )
@@ -107,8 +105,6 @@ VIDEO_START( wc90t )
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
-
-	return 0;
 }
 
 
@@ -120,29 +116,20 @@ VIDEO_START( wc90t )
 
 WRITE8_HANDLER( wc90_bgvideoram_w )
 {
-	if (wc90_bgvideoram[offset] != data)
-	{
-		wc90_bgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset & 0x7ff);
-	}
+	wc90_bgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset & 0x7ff);
 }
 
 WRITE8_HANDLER( wc90_fgvideoram_w )
 {
-	if (wc90_fgvideoram[offset] != data)
-	{
-		wc90_fgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset & 0x7ff);
-	}
+	wc90_fgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset & 0x7ff);
 }
 
 WRITE8_HANDLER( wc90_txvideoram_w )
 {
-	if (wc90_txvideoram[offset] != data)
-	{
-		wc90_txvideoram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset & 0x7ff);
-	}
+	wc90_txvideoram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset & 0x7ff);
 }
 
 

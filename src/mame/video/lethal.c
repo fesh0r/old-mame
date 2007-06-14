@@ -40,7 +40,7 @@ static void lethalen_sprite_callback(int *code, int *color, int *priority_mask)
 	*code = (*code & 0x3fff); // | spritebanks[(*code >> 12) & 3];
 }
 
-static void lethalen_tile_callback(int layer, int *code, int *color)
+static void lethalen_tile_callback(int layer, int *code, int *color, int *flags)
 {
 	*color = layer_colorbase[layer] + ((*color & 0x3c)<<2);
 }
@@ -53,8 +53,7 @@ VIDEO_START(lethalen)
 
 	K056832_vh_start(REGION_GFX1, K056832_BPP_8LE, 1, NULL, lethalen_tile_callback, 0);
 
-	if (K053245_vh_start(0, REGION_GFX3,NORMAL_PLANE_ORDER, lethalen_sprite_callback))
-		return 1;
+	K053245_vh_start(0, REGION_GFX3,NORMAL_PLANE_ORDER, lethalen_sprite_callback);
 
 	/* the default drawmode table is no good for 6bpp, create a new one */
 	gfx_drawmode_table[0] = DRAWMODE_NONE;
@@ -88,8 +87,6 @@ VIDEO_START(lethalen)
 	layer_colorbase[1] = 0x40;
 	layer_colorbase[2] = 0x80;
 	layer_colorbase[3] = 0xc0;
-
-	return 0;
 }
 
 WRITE8_HANDLER(le_palette_control)

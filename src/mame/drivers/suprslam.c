@@ -124,7 +124,7 @@ static WRITE8_HANDLER( pending_command_clear_w )
 
 static WRITE8_HANDLER( suprslam_sh_bankswitch_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 	int bankaddress;
 
 	bankaddress = 0x10000 + (data & 0x03) * 0x8000;
@@ -308,7 +308,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &suprslam_8x8x4_layout,   0x000, 16 },
 	{ REGION_GFX2, 0, &suprslam_16x16x4_layout, 0x200, 16 },
 	{ REGION_GFX3, 0, &suprslam_16x16x4_layout, 0x100, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /*** MORE SOUND **************************************************************/

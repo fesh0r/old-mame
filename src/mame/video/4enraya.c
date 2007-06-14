@@ -17,7 +17,7 @@ WRITE8_HANDLER( fenraya_videoram_w )
 	tilemap_mark_tile_dirty(bg_tilemap,offset&0x3ff);
 }
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int code = videoram[tile_index*2]+(videoram[tile_index*2+1]<<8);
 	SET_TILE_INFO(
@@ -30,7 +30,7 @@ static void get_tile_info(int tile_index)
 VIDEO_START( 4enraya )
 {
 	bg_tilemap = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32 );
-	return video_start_generic(machine);
+	video_start_generic(machine);
 }
 
 VIDEO_UPDATE( 4enraya)

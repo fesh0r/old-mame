@@ -52,21 +52,21 @@ READ8_HANDLER( stactics_vert_pos_r );
 READ8_HANDLER( stactics_horiz_pos_r );
 INTERRUPT_GEN( stactics_interrupt );
 WRITE8_HANDLER( stactics_coin_lockout_w );
-extern unsigned char *stactics_motor_on;
+extern UINT8 *stactics_motor_on;
 
 /* Defined in video/stactics.c */
 VIDEO_START( stactics );
 VIDEO_UPDATE( stactics );
-extern unsigned char *stactics_scroll_ram;
-extern unsigned char *stactics_videoram_b;
-extern unsigned char *stactics_chardata_b;
-extern unsigned char *stactics_videoram_d;
-extern unsigned char *stactics_chardata_d;
-extern unsigned char *stactics_videoram_e;
-extern unsigned char *stactics_chardata_e;
-extern unsigned char *stactics_videoram_f;
-extern unsigned char *stactics_chardata_f;
-extern unsigned char *stactics_display_buffer;
+extern UINT8 *stactics_scroll_ram;
+extern UINT8 *stactics_videoram_b;
+extern UINT8 *stactics_chardata_b;
+extern UINT8 *stactics_videoram_d;
+extern UINT8 *stactics_chardata_d;
+extern UINT8 *stactics_videoram_e;
+extern UINT8 *stactics_chardata_e;
+extern UINT8 *stactics_videoram_f;
+extern UINT8 *stactics_chardata_f;
+extern UINT8 *stactics_display_buffer;
 
 PALETTE_INIT( stactics );
 
@@ -290,7 +290,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( stactics )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "epr-218x",     0x0000, 0x0800, CRC(b1186ad2) SHA1(88929a183ac0499619b3e07241f3b5a0c89bdab1) )
 	ROM_LOAD( "epr-219x",     0x0800, 0x0800, CRC(3b86036d) SHA1(6ad5e14dcfdbc6d2a0a32ae7f18ce41ab4b51eec) )
 	ROM_LOAD( "epr-220x",     0x1000, 0x0800, CRC(c58702da) SHA1(93936c46810722d435f9ddb0641defb741743dee) )

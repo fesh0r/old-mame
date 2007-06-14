@@ -22,9 +22,9 @@ static tilemap *bg_tilemap;
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
-	unsigned char code = aeroboto_videoram[tile_index];
+	UINT8 code = aeroboto_videoram[tile_index];
 	SET_TILE_INFO(
 			0,
 			code + (aeroboto_charbank << 8),
@@ -63,8 +63,6 @@ VIDEO_START( aeroboto )
 		free(temp);
 	}
 	#endif
-
-	return 0;
 }
 
 
@@ -98,11 +96,8 @@ WRITE8_HANDLER( aeroboto_3000_w )
 
 WRITE8_HANDLER( aeroboto_videoram_w )
 {
-	if (aeroboto_videoram[offset] != data)
-	{
-		aeroboto_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	aeroboto_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE8_HANDLER( aeroboto_tilecolor_w )

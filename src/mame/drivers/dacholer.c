@@ -20,20 +20,14 @@ static tilemap *bg_tilemap,*fg_tilemap;
 
 static WRITE8_HANDLER( background_w )
 {
-	if (bgvideoram[offset] != data)
-	{
-		bgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	bgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 static WRITE8_HANDLER( foreground_w )
 {
-	if (fgvideoram[offset] != data)
-	{
-		fgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
-	}
+	fgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 static WRITE8_HANDLER( bg_bank_w )
@@ -179,12 +173,12 @@ INPUT_PORTS_START( dacholer )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 INPUT_PORTS_END
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	SET_TILE_INFO(1,bgvideoram[tile_index] + bg_bank * 0x100,0,0);
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	SET_TILE_INFO(0,fgvideoram[tile_index],0,0);
 }
@@ -195,8 +189,6 @@ VIDEO_START( dacholer )
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
-
-	return 0;
 }
 
 static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )

@@ -31,14 +31,13 @@ PALETTE_INIT( hanaroku )
 		g = ((color_prom[i*2+1] & 0xe0) | ( (color_prom[i*2+0]& 0x03) <<8)  ) >> 5;
 		r = (color_prom[i*2+0]&0x7c) >> 2;
 
-		palette_set_color(machine,i,pal5bit(r),pal5bit(g),pal5bit(b));
+		palette_set_color_rgb(machine,i,pal5bit(r),pal5bit(g),pal5bit(b));
 	}
 }
 
 
 VIDEO_START(hanaroku)
 {
-	return 0;
 }
 
 static void hanaroku_draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
@@ -227,7 +226,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &hanaroku_charlayout,   0, 32  },
 
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

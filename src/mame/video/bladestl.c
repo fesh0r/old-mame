@@ -21,7 +21,7 @@ PALETTE_INIT( bladestl )
 
 ***************************************************************************/
 
-static void tile_callback(int layer, int bank, int *code, int *color)
+static void tile_callback(int layer, int bank, int *code, int *color, int *flags)
 {
 	*code |= ((*color & 0x0f) << 8) | ((*color & 0x40) << 6);
 	*color = layer_colorbase[layer];
@@ -52,13 +52,8 @@ VIDEO_START( bladestl )
 	layer_colorbase[0] = 0;
 	layer_colorbase[1] = 1;
 
-	if (K007342_vh_start(0,tile_callback))
-		return 1;
-
-	if (K007420_vh_start(1,sprite_callback))
-		return 1;
-
-	return 0;
+	K007342_vh_start(0,tile_callback);
+	K007420_vh_start(1,sprite_callback);
 }
 
 /***************************************************************************

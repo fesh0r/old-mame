@@ -16,6 +16,7 @@ Various Data East 8 bit games:
     Last Mission (rev 5)        (c) 1986 Data East USA (2*6809 + I8751)
     Shackled                    (c) 1986 Data East USA (2*6809 + I8751)
     Breywood                    (c) 1986 Data East Corporation (2*6809 + I8751)
+    Captain Silver (World)      (c) 1987 Data East Corporation (2*6809 + I8751)
     Captain Silver (Japan)      (c) 1987 Data East Corporation (2*6809 + I8751)
     Garyo Retsuden (Japan)      (c) 1987 Data East Corporation (6809 + I8751)
 
@@ -341,7 +342,8 @@ static WRITE8_HANDLER( csilver_i8751_w )
  		if ((readinputport(2)&3)==3 && !latch) latch=1;
  		if ((readinputport(2)&3)!=3 && latch) {coin++; latch=0;snd=0x1200; i8751_return=0x1200;return;}
 
-		if (i8751_value==0x054a) {i8751_return=~(0x4a); coin=0; snd=0;} /* Captain Silver ID */
+		if (i8751_value==0x054a) {i8751_return=~(0x4a); coin=0; snd=0;} /* Captain Silver (Japan) ID */
+		if (i8751_value==0x054c) {i8751_return=~(0x4c); coin=0; snd=0;} /* Captain Silver (World) ID */
 		if ((i8751_value>>8)==0x01) i8751_return=0; /* Coinage - Not Supported */
 		if ((i8751_value>>8)==0x02) {i8751_return=snd | coin; snd=0; } /* Coin Return */
 		if ((i8751_value>>8)==0x03 && coin) {i8751_return=0; coin--;} /* Coin Clear */
@@ -1442,8 +1444,8 @@ INPUT_PORTS_START( oscar )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x20, 0x20, "Demo Freeze Mode" )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x10, 0x10, "Freeze Mode" )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -1953,7 +1955,7 @@ static const gfx_decode cobracom_gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &tiles,         64, 4 },
 	{ REGION_GFX4, 0, &tiles,        128, 4 },
 	{ REGION_GFX3, 0, &tiles,        192, 4 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode ghostb_gfxdecodeinfo[] =
@@ -1961,7 +1963,7 @@ static const gfx_decode ghostb_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &chars_3bpp,	0,  4 },
 	{ REGION_GFX2, 0, &tiles,     256, 16 },
 	{ REGION_GFX3, 0, &tiles_r,   512, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode srdarwin_gfxdecodeinfo[] =
@@ -1972,7 +1974,7 @@ static const gfx_decode srdarwin_gfxdecodeinfo[] =
   	{ REGION_GFX3, 0x10000, &srdarwin_tiles,  0, 8 },
     { REGION_GFX3, 0x20000, &srdarwin_tiles,  0, 8 },
     { REGION_GFX3, 0x30000, &srdarwin_tiles,  0, 8 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode gondo_gfxdecodeinfo[] =
@@ -1980,7 +1982,7 @@ static const gfx_decode gondo_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &chars_3bpp,  0, 16 }, /* Chars */
 	{ REGION_GFX2, 0, &tiles,     256, 32 }, /* Sprites */
 	{ REGION_GFX3, 0, &tiles,     768, 16 }, /* Tiles */
- 	{ -1 } /* end of array */
+ 	{ -1 }
 };
 
 static const gfx_decode oscar_gfxdecodeinfo[] =
@@ -1988,7 +1990,7 @@ static const gfx_decode oscar_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &oscar_charlayout, 256,  8 }, /* Chars */
 	{ REGION_GFX2, 0, &tiles,              0, 16 }, /* Sprites */
 	{ REGION_GFX3, 0, &tiles,            384,  8 }, /* Tiles */
- 	{ -1 } /* end of array */
+ 	{ -1 }
 };
 
 static const gfx_decode shackled_gfxdecodeinfo[] =
@@ -1996,7 +1998,7 @@ static const gfx_decode shackled_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &chars_3bpp,   0,  4 },
 	{ REGION_GFX2, 0, &tiles,      256, 16 },
 	{ REGION_GFX3, 0, &tiles,      768, 16 },
- 	{ -1 } /* end of array */
+ 	{ -1 }
 };
 
 /******************************************************************************/
@@ -2455,7 +2457,7 @@ ROM_START( cobracom )
 	ROM_LOAD( "el12-4.bin",  0x10000, 0x10000, CRC(7a44ef38) SHA1(d7dc277dce08f9d073290e100be4a7ca2e2b82cb) )
 	ROM_LOAD( "el13.bin",    0x20000, 0x10000, CRC(04505acb) SHA1(2220efb277884588859375dab9960f04f07273a7) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "el10-4.bin",  0x8000,  0x8000,  CRC(edfad118) SHA1(10de8805472346fead62460a3fdc09ae26a4e0d5) )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
@@ -2486,7 +2488,7 @@ ROM_START( cobracmj )
 	ROM_LOAD( "eh-12.rom",    0x10000, 0x10000, CRC(7c878a83) SHA1(9b2a3083c6dae69626fdab16d97517d30eaa1859) )
 	ROM_LOAD( "el13.bin",     0x20000, 0x10000, CRC(04505acb) SHA1(2220efb277884588859375dab9960f04f07273a7) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "eh-10.rom",    0x8000,  0x8000,  CRC(62ca5e89) SHA1(b04acaccc58846e0d277868a873a440b7f8071b0) )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
@@ -2521,6 +2523,9 @@ ROM_START( ghostb )
 
 	ROM_REGION( 2*0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU + 64k for decrypted opcodes */
 	ROM_LOAD( "dz-06.rom", 0x8000, 0x8000, CRC(798f56df) SHA1(aee33cd0c102015114e17f6cb98945e7cc806f55) )
+
+	ROM_REGION( 0x1000, REGION_CPU3, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dz-00.rom", 0x00000, 0x08000, CRC(992b4f31) SHA1(a9f255286193ccc261a9b6983aabf3c76ebe5ce5) )
@@ -2557,6 +2562,9 @@ ROM_START( ghostb3 )
 	ROM_REGION( 2*0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU + 64k for decrypted opcodes */
 	ROM_LOAD( "dz-06.rom", 0x8000, 0x8000, CRC(798f56df) SHA1(aee33cd0c102015114e17f6cb98945e7cc806f55) )
 
+	ROM_REGION( 0x1000, REGION_CPU3, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
+
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dz-00.rom", 0x00000, 0x08000, CRC(992b4f31) SHA1(a9f255286193ccc261a9b6983aabf3c76ebe5ce5) )
 
@@ -2588,8 +2596,11 @@ ROM_START( meikyuh )
 	ROM_LOAD( "dz-03.rom",  0x20000, 0x10000, CRC(5606a8f4) SHA1(e46e887f13f648fe2162cb853b3c20fa60e3d215) )
 	ROM_LOAD( "dw-04.6d",  0x30000, 0x10000, CRC(235c0c36) SHA1(f0635f8348459cb8a56eb6184f1bc31c3a82de6a) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "dw-05.5f", 0x8000, 0x8000, CRC(c28c4d82) SHA1(ad88506bcbc9763e39d6e6bb25ef2bd6aa929f30) )
+
+	ROM_REGION( 0x1000, REGION_CPU3, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dw-00.16b", 0x00000, 0x8000, CRC(3d25f15c) SHA1(590518460d069bc235b5efebec81731d7a2375de) )
@@ -2680,8 +2691,11 @@ ROM_START( meikyuha )
 	ROM_LOAD( "24512.4d", 0x20000, 0x10000, CRC(5606a8f4) SHA1(e46e887f13f648fe2162cb853b3c20fa60e3d215) )
 	ROM_LOAD( "27512.6d", 0x30000, 0x10000, CRC(8ca6055d) SHA1(37dc5d3b158dc5d7c9677fc4f82e10804181619f) ) // dw-04.6d matched 99.995422%
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "27256.5f", 0x8000, 0x8000, CRC(c28c4d82) SHA1(ad88506bcbc9763e39d6e6bb25ef2bd6aa929f30) )
+
+	ROM_REGION( 0x1000, REGION_CPU3, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "27256.16b", 0x00000, 0x8000, CRC(3d25f15c) SHA1(590518460d069bc235b5efebec81731d7a2375de) )
@@ -2715,6 +2729,9 @@ ROM_START( srdarwin )
 
 	ROM_REGION( 2*0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU + 64k for decrypted opcodes */
 	ROM_LOAD( "dy04.d7", 0x8000, 0x8000, CRC(2ae3591c) SHA1(f21b06d84e2c3d3895be0812024641fd006e45cf) )
+
+	ROM_REGION( 0x1000, REGION_CPU3, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dy05.b6", 0x00000, 0x4000, CRC(8780e8a3) SHA1(03ea91fdc5aba8e139201604fb3bf9b69f71f056) )
@@ -2750,6 +2767,9 @@ ROM_START( srdarwnj )
 	ROM_REGION( 2*0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU + 64k for decrypted opcodes */
 	ROM_LOAD( "dy04.d7", 0x8000, 0x8000, CRC(2ae3591c) SHA1(f21b06d84e2c3d3895be0812024641fd006e45cf) )
 
+	ROM_REGION( 0x1000, REGION_CPU3, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
+
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dy05.b6", 0x00000, 0x4000, CRC(8780e8a3) SHA1(03ea91fdc5aba8e139201604fb3bf9b69f71f056) )
 
@@ -2782,8 +2802,11 @@ ROM_START( gondo )
 	ROM_LOAD( "dt-02.512", 0x20000, 0x10000, CRC(bb5e674b) SHA1(8057dc7464a8b6987536f248d607957923b223cf) )
 	ROM_LOAD( "dt-03.512", 0x30000, 0x10000, CRC(99c32b13) SHA1(3d79f48e7d198cb2e519d592a89eda505044bce5) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "dt-05.256", 0x8000, 0x8000, CRC(ec08aa29) SHA1(ce83974ae095d9518d1ebf9f7e712f0cbc2c1b42) )
+
+	ROM_REGION( 0x1000, REGION_CPU3, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dt-14.256", 0x00000, 0x08000, CRC(4bef16e1) SHA1(b8157a7a1b8f36cea1fd353267a4e03d920cb4aa) )
@@ -2823,8 +2846,11 @@ ROM_START( makyosen )
 	ROM_LOAD( "ds02",      0x20000, 0x10000, CRC(925307a4) SHA1(1e8b8eb21df1a11b14c981b343b34c6cc3676517) )
 	ROM_LOAD( "ds03",      0x30000, 0x10000, CRC(9c0fcbf6) SHA1(bfe42b5277fea111840a9f59b2cb8dfe44444029) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "ds05",      0x8000, 0x8000, CRC(e6e28ca9) SHA1(3b1f8219331db1910bfb428f8964f8fc1063df6f) )
+
+	ROM_REGION( 0x1000, REGION_CPU3, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "ds14",      0x00000, 0x08000, CRC(00cbe9c8) SHA1(de7b640de8fd54ee79194945c96d5768d09f483b) )
@@ -2873,6 +2899,9 @@ ROM_START( oscar )
 	ROM_REGION( 2*0x10000, REGION_CPU3, 0 )	/* 64K for sound CPU + 64k for decrypted opcodes */
 	ROM_LOAD( "ed12", 0x8000, 0x8000,  CRC(432031c5) SHA1(af2deea48b98eb0f9e85a4fb1486021f999f9abd) )
 
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
+
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "ed08", 0x00000, 0x04000, CRC(308ac264) SHA1(fd1c4ec4e4f99c33e93cd15e178c4714251a9b7e) )
 
@@ -2903,6 +2932,9 @@ ROM_START( oscarj0 )
 	ROM_REGION( 2*0x10000, REGION_CPU3, 0 )	/* 64K for sound CPU + 64k for decrypted opcodes */
 	ROM_LOAD( "ed12", 0x8000, 0x8000, CRC(432031c5) SHA1(af2deea48b98eb0f9e85a4fb1486021f999f9abd) )
 
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
+
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "ed08", 0x00000, 0x04000, CRC(308ac264) SHA1(fd1c4ec4e4f99c33e93cd15e178c4714251a9b7e) )
 
@@ -2929,6 +2961,9 @@ ROM_START( oscarj1 )
 
 	ROM_REGION( 2*0x10000, REGION_CPU3, 0 )	/* 64K for sound CPU + 64k for decrypted opcodes */
 	ROM_LOAD( "ed12", 0x8000, 0x8000, CRC(432031c5) SHA1(af2deea48b98eb0f9e85a4fb1486021f999f9abd) )
+
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "ed08", 0x00000, 0x04000, CRC(308ac264) SHA1(fd1c4ec4e4f99c33e93cd15e178c4714251a9b7e) )
@@ -2960,6 +2995,9 @@ ROM_START( oscarj )
 	ROM_REGION( 2*0x10000, REGION_CPU3, 0 )	/* 64K for sound CPU + 64k for decrypted opcodes */
 	ROM_LOAD( "ed12", 0x8000, 0x8000, CRC(432031c5) SHA1(af2deea48b98eb0f9e85a4fb1486021f999f9abd) )
 
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
+
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "ed08", 0x00000, 0x04000, CRC(308ac264) SHA1(fd1c4ec4e4f99c33e93cd15e178c4714251a9b7e) )
 
@@ -2987,8 +3025,11 @@ ROM_START( lastmisn )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* CPU 2, 1st 16k is empty */
 	ROM_LOAD( "lm_dl02.18h", 0x0000, 0x10000, CRC(ec9b5daf) SHA1(86d47bad123676abc82dd7c92943878c54c33075) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU3, 0 )
 	ROM_LOAD( "dl05-.5h",    0x8000, 0x8000, CRC(1a5df8c0) SHA1(83d36b1d5fb87f50c44f3110804d6bbdbbc0da99) )
+
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dl01-.2a",    0x00000, 0x2000, CRC(f3787a5d) SHA1(3701df42cb2aca951963703e72c6c7b272eed82b) )
@@ -3020,8 +3061,11 @@ ROM_START( lastmsno )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* CPU 2, 1st 16k is empty */
 	ROM_LOAD( "lm_dl02.18h", 0x0000, 0x10000, CRC(ec9b5daf) SHA1(86d47bad123676abc82dd7c92943878c54c33075) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU3, 0 )
 	ROM_LOAD( "dl05-.5h",    0x8000, 0x8000, CRC(1a5df8c0) SHA1(83d36b1d5fb87f50c44f3110804d6bbdbbc0da99) )
+
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dl01-.2a",    0x00000, 0x2000, CRC(f3787a5d) SHA1(3701df42cb2aca951963703e72c6c7b272eed82b) )
@@ -3053,8 +3097,11 @@ ROM_START( lastmsnj )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* CPU 2, 1st 16k is empty */
 	ROM_LOAD( "dl02-.18h",   0x0000, 0x10000, CRC(d0de2b5d) SHA1(e0bb34c2a2ef6fc6f05ab9a98bd23a39004c0c05) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU3, 0 )
 	ROM_LOAD( "dl05-.5h",    0x8000, 0x8000, CRC(1a5df8c0) SHA1(83d36b1d5fb87f50c44f3110804d6bbdbbc0da99) )
+
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dl01-.2a",    0x00000, 0x2000, CRC(f3787a5d) SHA1(3701df42cb2aca951963703e72c6c7b272eed82b) )
@@ -3089,8 +3136,11 @@ ROM_START( shackled )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* CPU 2, 1st 16k is empty */
 	ROM_LOAD( "dk-01.rom", 0x00000, 0x10000, CRC(71fe3bda) SHA1(959cce01362b2c670c2e15b03a78a1ff9cea4ee9) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU3, 0 )
 	ROM_LOAD( "dk-07.rom", 0x08000, 0x08000, CRC(887e4bcc) SHA1(6427396080e9cd8647adff47c8ed04593a14268c) )
+
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dk-00.rom", 0x00000, 0x08000, CRC(69b975aa) SHA1(38cb96768c79ff1aa1b4b190e08ec9155baf698a) )
@@ -3123,8 +3173,11 @@ ROM_START( breywood )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* CPU 2, 1st 16k is empty */
 	ROM_LOAD( "8.bin", 0x0000, 0x10000,  CRC(3d9fb623) SHA1(6e5eaad9bb0a432e2da5da5b18a2ed36617bdde2) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU3, 0 )
 	ROM_LOAD( "2.bin", 0x8000, 0x8000,  CRC(4a471c38) SHA1(963ed7b6afeefdfc2cf0d65b0998f973330e6495) )
+
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "1.bin",  0x00000, 0x08000, CRC(815a891a) SHA1(e557d6a35821a8589d9e3df0f42131b58b08c8ca) )
@@ -3146,7 +3199,92 @@ ROM_START( breywood )
 	ROM_LOAD( "12.bin", 0x60000, 0x10000, CRC(beee880f) SHA1(9a818a75cbec425a13f629bda6d50aa341aa1896) )
 ROM_END
 
+/*
+Main Compoennts
+---------------
+
+Top board (DATA EAST DE-0250-3):
+2x MC68B09EP (18e,19e)(main)
+1x RP65C02A (3f)(sound)
+1x YM3812 (1e)(sound)
+1x YM2203 (1f)(sound)
+2x Y30148 (1j,2j)(sound)
+1x OKI M5205 (3j)(sound)
+1x NEC PC3403C (1j)(sound)
+1x C4558C (2j)(sound)
+1x oscillator 8.000 (x1)
+1x ID8751H (read protected)
+
+Lower board (DATA EAST DE-0251-2):
+1x DECO TC15G032AY-0013-8644a-DSPC10 (square component, with 135 pass-through pins)(14h)
+1x DECO VSC30-M60348-6102 (DIL40)(9a)
+1x DECO HMC20-M60232-6902 (DIL28)(14a)
+1x oscillator 12.000 (x1)
+
+ROMs
+----
+
+Top board (DATA EAST DE-0250-3):
+2x MBM27256 (00,03)
+10x MBM27C512 (01,02,04,05,06,07,08,09,10,11)
+1x MB7122 (DIL18) (15)
+
+Lower board (DATA EAST DE-0251-2):
+3x MBM27C512
+
+Notes
+-----
+
+Top board (DATA EAST DE-0250-3):
+1x JAMMA edge connector
+2x 25x2 legs connectors to lower board (cn1,cn2)
+1x trimmer (volume)
+2x 8 switches dip (7k,16k)
+
+Lower board (DATA EAST DE-0251-2):
+2x 25x2 legs connectors to top board (cn1,cn2)
+
+*/
+
 ROM_START( csilver )
+	ROM_REGION( 0x48000, REGION_CPU1, 0 )
+	ROM_LOAD( "dx03-12.18d", 0x08000, 0x08000, CRC(2d926e7c) SHA1(cf38e92904edb1870b0a4965f9049d67efe8cf6a) )
+	ROM_LOAD( "dx01.12d", 0x10000, 0x10000, CRC(570fb50c) SHA1(3002f53182834a060fc282be1bc5767906e19ba2) )
+	ROM_LOAD( "dx02.13d", 0x20000, 0x10000, CRC(58625890) SHA1(503a969085f6dcb16687217c48136ea22d07c89f) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* CPU 2, 1st 16k is empty */
+	ROM_LOAD( "dx04-1.19d", 0x0000, 0x10000,  CRC(29432691) SHA1(a76ecd27d217c66a0e43f93e29efe83c657925c3) )
+
+	ROM_REGION( 0x18000, REGION_CPU3, 0 )
+	ROM_LOAD( "dx05.3f", 0x10000, 0x08000,  CRC(eb32cf25) SHA1(9390c88033259c65eb15320e31f5d696970987cc) )
+	ROM_CONTINUE(   0x08000, 0x08000 )
+
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP ) // dx-8.19a ?
+
+	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
+	ROM_LOAD( "dx00.3d",  0x00000, 0x08000, CRC(f01ef985) SHA1(d5b823bd7c0efcf3137f8643c5d99a260bed5675) )
+
+	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )	/* sprites (3bpp) */
+	ROM_LOAD( "dx14.15k",  0x00000, 0x10000, CRC(80f07915) SHA1(ea100f12ef3a68110af911fa9beeb73b388f069d) )
+	/* 0x10000-0x1ffff empy */
+	ROM_LOAD( "dx13.13k",  0x20000, 0x10000, CRC(d32c02e7) SHA1(d0518ec31e9e3f7b4e76fba5d7c05c33c61a9c72) )
+	/* 0x30000-0x3ffff empy */
+	ROM_LOAD( "dx12.10k",  0x40000, 0x10000, CRC(ac78b76b) SHA1(c2be347fd950894401123ada8b27bfcfce53e66b) )
+	/* 0x50000-0x5ffff empy */
+	/* 0x60000-0x7ffff empy (no 4th plane) */
+
+	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE )	/* tiles (3bpp) */
+	ROM_LOAD( "dx06.5f",  0x00000, 0x10000, CRC(b6fb208c) SHA1(027d33f0b5feb6f0433134213cfcef96790eaace) )
+	ROM_LOAD( "dx07.7f",  0x10000, 0x10000, CRC(ee3e1817) SHA1(013496976a9ffacf1587b3a6fc0f548becb1ab0e) )
+	ROM_LOAD( "dx08.8f",  0x20000, 0x10000, CRC(705900fe) SHA1(53b9d09f9780a3bf3545bc27a2855ebee3884124) )
+	ROM_LOAD( "dx09.10f", 0x30000, 0x10000, CRC(3192571d) SHA1(240c6c099f1e6edbf0be7d5a4ec396b056c9f70f) )
+	ROM_LOAD( "dx10.12f",  0x40000, 0x10000, CRC(3ef77a32) SHA1(97b97c35a6ca994d2e7a6e7a63101eda9709bcb1) )
+	ROM_LOAD( "dx11.13f",  0x50000, 0x10000, CRC(9cf3d5b8) SHA1(df4974f8412ab1cf65871b8e4e3dbee478bf4d21) )
+ROM_END
+
+/* Different IC positions to World set? */
+ROM_START( csilverj )
 	ROM_REGION( 0x48000, REGION_CPU1, 0 )
 	ROM_LOAD( "dx03-3.a4", 0x08000, 0x08000, CRC(02dd8cfc) SHA1(f29c0d9dd03e8c52672c0f3dbee44a93c5b4261d) )
 	ROM_LOAD( "dx01.a2", 0x10000, 0x10000, CRC(570fb50c) SHA1(3002f53182834a060fc282be1bc5767906e19ba2) )
@@ -3155,9 +3293,12 @@ ROM_START( csilver )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* CPU 2, 1st 16k is empty */
 	ROM_LOAD( "dx04-1.a5", 0x0000, 0x10000,  CRC(29432691) SHA1(a76ecd27d217c66a0e43f93e29efe83c657925c3) )
 
-	ROM_REGION( 0x18000, REGION_CPU3, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x18000, REGION_CPU3, 0 )
 	ROM_LOAD( "dx05.a6", 0x10000, 0x08000,  CRC(eb32cf25) SHA1(9390c88033259c65eb15320e31f5d696970987cc) )
 	ROM_CONTINUE(   0x08000, 0x08000 )
+
+	ROM_REGION( 0x1000, REGION_CPU4, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dx00.a1",  0x00000, 0x08000, CRC(f01ef985) SHA1(d5b823bd7c0efcf3137f8643c5d99a260bed5675) )
@@ -3188,8 +3329,11 @@ ROM_START( garyoret )
 	ROM_LOAD( "dv03", 0x30000, 0x10000, CRC(55d8d699) SHA1(da1519cd54d27cc406420ce0845e43f7228cfd4e) )
 	ROM_LOAD( "dv04", 0x40000, 0x10000, CRC(ed3d00ee) SHA1(6daa2ee509235ad03d3012a00382820279add620) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64K for sound CPU */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "dv05", 0x08000, 0x08000, CRC(c97c347f) SHA1(a1b22733dc15d524af97db3e608a82503a49b182) )
+
+	ROM_REGION( 0x1000, REGION_CPU3, 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "dv14", 0x00000, 0x08000, CRC(fb2bc581) SHA1(d597976c5ae586166c49051cc3de8cf0c2e5a5e1) )	/* Characters */
@@ -3258,8 +3402,8 @@ static DRIVER_INIT( meikyuh )
 
 static DRIVER_INIT( ghostb )
 {
-	init_deco222(machine);
-	init_meikyuh(machine);
+	driver_init_deco222(machine);
+	driver_init_meikyuh(machine);
 }
 
 /******************************************************************************/
@@ -3283,5 +3427,6 @@ GAME( 1986, lastmsno, lastmisn, lastmiss, lastmisn, 0,       ROT270, "Data East 
 GAME( 1986, lastmsnj, lastmisn, lastmiss, lastmsnj, 0,       ROT270, "Data East Corporation", "Last Mission (Japan)", 0 )
 GAME( 1986, shackled, 0,        shackled, shackled, 0,       ROT0,   "Data East USA", "Shackled (US)", 0 )
 GAME( 1986, breywood, shackled, shackled, shackled, 0,       ROT0,   "Data East Corporation", "Breywood (Japan revision 2)", 0 )
-GAME( 1987, csilver,  0,        csilver,  csilver,  0,       ROT0,   "Data East Corporation", "Captain Silver (Japan)", 0 )
+GAME( 1987, csilver,  0,        csilver,  csilver,  0,       ROT0,   "Data East Corporation", "Captain Silver (World)", 0 )
+GAME( 1987, csilverj, csilver,  csilver,  csilver,  0,       ROT0,   "Data East Corporation", "Captain Silver (Japan)", 0 )
 GAME( 1987, garyoret, 0,        garyoret, garyoret, 0,       ROT0,   "Data East Corporation", "Garyo Retsuden (Japan)", 0 )

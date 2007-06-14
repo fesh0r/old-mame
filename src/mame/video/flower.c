@@ -12,7 +12,7 @@ PALETTE_INIT( flower )
 
 	for (i=0; i<256; i++)
 	{
-		palette_set_color(machine, i, pal4bit(color_prom[i]), pal4bit(color_prom[i+0x100]), pal4bit(color_prom[i+0x200]));
+		palette_set_color_rgb(machine, i, pal4bit(color_prom[i]), pal4bit(color_prom[i+0x100]), pal4bit(color_prom[i+0x200]));
 		colortable[i] = i;
 	}
 }
@@ -109,7 +109,7 @@ static void flower_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect )
 
 }
 
-static void get_bg0_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg0_tile_info )
 {
 	int code = flower_bg0ram[tile_index];
 	int color = flower_bg0ram[tile_index+0x100];
@@ -118,7 +118,7 @@ static void get_bg0_tile_info(int tile_index)
 	SET_TILE_INFO(2, code, color>>4, 0)
 }
 
-static void get_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg1_tile_info )
 {
 	int code = flower_bg1ram[tile_index];
 	int color = flower_bg1ram[tile_index+0x100];
@@ -127,7 +127,7 @@ static void get_bg1_tile_info(int tile_index)
 	SET_TILE_INFO(2, code, color>>4, 0)
 }
 
-static void get_text_tile_info(int tile_index)
+static TILE_GET_INFO( get_text_tile_info )
 {
 	int code = flower_textram[tile_index];
 	int color = flower_textram[tile_index+0x400];
@@ -149,9 +149,6 @@ VIDEO_START(flower)
 
 	tilemap_set_scrolly(flower_text_tilemap, 0, 16);
 	tilemap_set_scrolly(flower_text_right_tilemap, 0, 16);
-
-	return 0;
-
 }
 
 VIDEO_UPDATE( flower )

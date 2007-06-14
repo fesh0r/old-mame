@@ -25,18 +25,18 @@ static tilemap *fg_tilemap;
  *
  *************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int data = LOW_BYTE(videoram16[tile_index * 2]) | (LOW_BYTE(videoram16[tile_index * 2 + 1]) << 8);
 	int code = (data & 0x3ff) | ((data >> 4) & 0xc00);
 	int color = (~data >> 12) & 3;
 	SET_TILE_INFO(0, code, color, TILE_FLIPYX((data >> 10) & 3));
 	if (Machine->gfx[0]->total_elements < 0x1000)
-		tile_info.priority = (data >> 15) & 1;
+		tileinfo->priority = (data >> 15) & 1;
 }
 
 
-static void zwackery_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( zwackery_get_bg_tile_info )
 {
 	int data = videoram16[tile_index];
 	int color = (data >> 13) & 7;
@@ -44,12 +44,12 @@ static void zwackery_get_bg_tile_info(int tile_index)
 }
 
 
-static void zwackery_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( zwackery_get_fg_tile_info )
 {
 	int data = videoram16[tile_index];
 	int color = (data >> 13) & 7;
 	SET_TILE_INFO(2, data & 0x3ff, color, TILE_FLIPYX((data >> 11) & 3));
-	tile_info.priority = (color != 0);
+	tileinfo->priority = (color != 0);
 }
 
 
@@ -65,7 +65,6 @@ VIDEO_START( mcr68 )
 	/* initialize the background tilemap */
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 16,16, 32,32);
 	tilemap_set_transparent_pen(bg_tilemap, 0);
-	return 0;
 }
 
 
@@ -118,8 +117,6 @@ VIDEO_START( zwackery )
 			gfxdata2 += gfx2->line_modulo;
 		}
 	}
-
-	return 0;
 }
 
 
@@ -136,7 +133,7 @@ WRITE16_HANDLER( mcr68_paletteram_w )
 
 	COMBINE_DATA(&paletteram16[offset]);
 	newword = paletteram16[offset];
-	palette_set_color(Machine, offset, pal3bit(newword >> 6), pal3bit(newword >> 0), pal3bit(newword >> 3));
+	palette_set_color_rgb(Machine, offset, pal3bit(newword >> 6), pal3bit(newword >> 0), pal3bit(newword >> 3));
 }
 
 
@@ -146,7 +143,7 @@ WRITE16_HANDLER( zwackery_paletteram_w )
 
 	COMBINE_DATA(&paletteram16[offset]);
 	newword = paletteram16[offset];
-	palette_set_color(Machine, offset, pal5bit(~newword >> 10), pal5bit(~newword >> 0), pal5bit(~newword >> 5));
+	palette_set_color_rgb(Machine, offset, pal5bit(~newword >> 10), pal5bit(~newword >> 0), pal5bit(~newword >> 5));
 }
 
 

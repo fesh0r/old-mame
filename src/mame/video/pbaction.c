@@ -16,38 +16,26 @@ static tilemap *bg_tilemap, *fg_tilemap;
 
 WRITE8_HANDLER( pbaction_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( pbaction_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( pbaction_videoram2_w )
 {
-	if (pbaction_videoram2[offset] != data)
-	{
-		pbaction_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	pbaction_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( pbaction_colorram2_w )
 {
-	if (pbaction_colorram2[offset] != data)
-	{
-		pbaction_colorram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	pbaction_colorram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( pbaction_scroll_w )
@@ -63,7 +51,7 @@ WRITE8_HANDLER( pbaction_flipscreen_w )
 	flip_screen_set(data & 0x01);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] + 0x10 * (attr & 0x70);
@@ -73,7 +61,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = pbaction_colorram2[tile_index];
 	int code = pbaction_videoram2[tile_index] + 0x10 * (attr & 0x30);
@@ -92,8 +80,6 @@ VIDEO_START( pbaction )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 static void pbaction_draw_sprites( mame_bitmap *bitmap )

@@ -740,7 +740,7 @@ static WRITE16_HANDLER( mcu_command_w )
  */
 static READ16_HANDLER( custom_key_r )
 {
-	static unsigned char keyseq;
+	static UINT8 keyseq;
 	static UINT16 count;
 	int old_count;
 
@@ -1288,7 +1288,6 @@ static WRITE8_HANDLER( port8_w )
 static MACHINE_START( namcona1 )
 {
 	C140_set_base(0, namcona1_workram);
-	return 0;
 }
 
 // for games with the MCU emulated, the MCU boots the 68000.  don't allow it before that.

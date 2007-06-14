@@ -124,7 +124,7 @@ static UINT16 fg_scrollx,fg_scrolly;
 
 static tilemap *bg_tilemap, *fg_tilemap, *tx_tilemap;
 
-static void get_fg_tile_info( int tile_index )
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int data = fg_videoram[tile_index];
 	SET_TILE_INFO(
@@ -135,7 +135,7 @@ static void get_fg_tile_info( int tile_index )
 }
 
 
-static void get_bg_tile_info( int tile_index )
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int data = bg_videoram[tile_index];
 	SET_TILE_INFO(
@@ -145,7 +145,7 @@ static void get_bg_tile_info( int tile_index )
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int tile_number = text_videoram[tile_index]&0xff;
 	int attributes;
@@ -167,8 +167,6 @@ VIDEO_START( bigfghtr )
 
 	tilemap_set_transparent_pen(fg_tilemap,0xf);
 	tilemap_set_transparent_pen(tx_tilemap,0xf);
-
-	return 0;
 }
 
 WRITE16_HANDLER(text_videoram_w )
@@ -415,7 +413,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &tile_layout,		64*16,	32 },
 	{ REGION_GFX3, 0, &tile_layout,		96*16,	32 },
 	{ REGION_GFX4, 0, &sprite_layout,	32*16,	32 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

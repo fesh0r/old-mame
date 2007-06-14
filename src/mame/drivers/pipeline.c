@@ -64,7 +64,7 @@ static UINT8 vidctrl;
 static UINT8 *palram;
 static UINT8 toMCU, fromMCU, ddrA;
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int code = vram2[tile_index]+vram2[tile_index+0x800]*256;
 	SET_TILE_INFO(
@@ -74,7 +74,7 @@ static void get_tile_info(int tile_index)
 		0)
 }
 
-static void get_tile_info2(int tile_index)
+static TILE_GET_INFO( get_tile_info2 )
 {
 	int code =vram1[tile_index]+((vram1[tile_index+0x800]>>4))*256;
 	int color=((vram1[tile_index+0x800])&0xf);
@@ -93,7 +93,6 @@ VIDEO_START ( pipeline )
 	tilemap1 = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,64,32 );
 	tilemap2 = tilemap_create( get_tile_info2,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32 );
 	tilemap_set_transparent_pen(tilemap2,0);
-	return 0;
 }
 
 VIDEO_UPDATE ( pipeline)
@@ -187,7 +186,7 @@ static WRITE8_HANDLER(vram2_w)
 		 if(offset<0x300)
 		 {
 		 	offset&=0xff;
-		 	palette_set_color(Machine, offset, pal6bit(palram[offset]), pal6bit(palram[offset+0x100]), pal6bit(palram[offset+0x200]));
+		 	palette_set_color_rgb(Machine, offset, pal6bit(palram[offset]), pal6bit(palram[offset+0x100]), pal6bit(palram[offset+0x200]));
 		 }
 	}
 }
@@ -343,7 +342,7 @@ static PALETTE_INIT(pipeline)
 		r*=36;
 		g*=36;
 		b*=85;
-		palette_set_color(machine, 0x100+i, r, g, b);
+		palette_set_color(machine, 0x100+i, MAKE_RGB(r, g, b));
 	}
 }
 

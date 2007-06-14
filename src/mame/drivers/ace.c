@@ -40,9 +40,9 @@ A1                   2101            2101
 #include "driver.h"
 
 
-static unsigned char *ace_scoreram;
-static unsigned char *ace_ram2;
-static unsigned char *ace_characterram;
+static UINT8 *ace_scoreram;
+static UINT8 *ace_ram2;
+static UINT8 *ace_characterram;
 
 
 static int objpos[8];
@@ -112,8 +112,8 @@ VIDEO_UPDATE( ace )
 
 static PALETTE_INIT( ace )
 {
-	palette_set_color(machine,0,0x10,0x20,0xd0); /* light bluish */
-	palette_set_color(machine,1,0xff,0xff,0xff); /* white */
+	palette_set_color(machine,0,MAKE_RGB(0x10,0x20,0xd0)); /* light bluish */
+	palette_set_color(machine,1,MAKE_RGB(0xff,0xff,0xff)); /* white */
 }
 
 
@@ -311,7 +311,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ 0          , 0x8000, &charlayout1, 0, 2 },    /* the game dynamically modifies this */
 	{ 0          , 0x8000, &charlayout2, 0, 2 },    /* the game dynamically modifies this */
 	{ 0          , 0x8000, &scorelayout, 0, 2 },    /* the game dynamically modifies this */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -349,7 +349,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( ace )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for main CPU */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "ace.a1",		0x0000, 0x0200, CRC(16811834) SHA1(5502812dd161908eea3fa8851d7e5c1e22b0f8ff) )
 	ROM_LOAD( "ace.a2",		0x0200, 0x0200, CRC(f9eae80e) SHA1(8865b86c7b5d57c76312c16f8a614bf35ffaf532) )
 	ROM_LOAD( "ace.a3",		0x0400, 0x0200, CRC(c5c63b8c) SHA1(2079dd12ff0c4aafec19aeb9baa70fc9b6788356) )

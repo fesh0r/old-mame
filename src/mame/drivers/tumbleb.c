@@ -1996,7 +1996,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &tlayout,     512, 16 },	/* Tiles 16x16 */
 	{ REGION_GFX1, 0, &tlayout,     256, 16 },	/* Tiles 16x16 */
 	{ REGION_GFX2, 0, &tlayout,       0, 16 },	/* Sprites 16x16 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode suprtrio_gfxdecodeinfo[] =
@@ -2005,7 +2005,7 @@ static const gfx_decode suprtrio_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &suprtrio_tlayout,     512, 16 },	/* Tiles 16x16 */
 	{ REGION_GFX1, 0, &suprtrio_tlayout,     256, 16 },	/* Tiles 16x16 */
 	{ REGION_GFX2, 0, &tlayout,       0, 16 },	/* Sprites 16x16 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode fncywld_gfxdecodeinfo[] =
@@ -2014,7 +2014,7 @@ static const gfx_decode fncywld_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &tlayout,     0x400, 0x40 },	/* Tiles 16x16 */
 	{ REGION_GFX1, 0, &tlayout,     0x200, 0x40 },	/* Tiles 16x16 */
 	{ REGION_GFX2, 0, &tlayout,       0, 0x40 },	/* Sprites 16x16 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode jumppop_gfxdecodeinfo[] =
@@ -2023,7 +2023,7 @@ static const gfx_decode jumppop_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &jumpop_tlayout,     0x100, 0x40 },	/* Tiles 16x16 */
 	{ REGION_GFX1, 0, &jumpop_tlayout,     0x100, 0x40 },	/* Tiles 16x16 */
 	{ REGION_GFX2, 0, &tlayout,       0, 0x40 },	/* Sprites 16x16 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -3672,7 +3672,7 @@ DRIVER_INIT( suprtrio )
 
 DRIVER_INIT( chokchok )
 {
-	init_htchctch(machine);
+	driver_init_htchctch(machine);
 
 	/* different palette format, closer to tumblep -- is this controlled by a register? the palette was right with the hatch catch trojan */
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x140000, 0x140fff, 0, 0, paletteram16_xxxxBBBBGGGGRRRR_word_w);
@@ -3683,7 +3683,7 @@ DRIVER_INIT( chokchok )
 
 DRIVER_INIT( wlstar )
 {
-	init_htchctch(machine);
+	driver_init_htchctch(machine);
 
 	/* slightly different banking */
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x100002, 0x100003, 0, 0, wlstar_tilebank_w);

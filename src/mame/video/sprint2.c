@@ -15,7 +15,7 @@ static mame_bitmap* helper;
 static int collision[2];
 
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code = sprint2_video_ram[tile_index];
 
@@ -28,8 +28,6 @@ VIDEO_START( sprint2 )
 	helper = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
 
 	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 16, 8, 32, 32);
-
-	return 0;
 }
 
 
@@ -55,12 +53,8 @@ WRITE8_HANDLER( sprint2_collision_reset2_w )
 
 WRITE8_HANDLER( sprint2_video_ram_w )
 {
-	if (data != sprint2_video_ram[offset])
-	{
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
-
 	sprint2_video_ram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 

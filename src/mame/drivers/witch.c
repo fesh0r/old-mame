@@ -213,7 +213,7 @@ static int scrolly=0;
 static UINT8 reg_a002=0;
 static int bank=-1;
 
-static void get_gfx0b_tile_info(int tile_index)
+static TILE_GET_INFO( get_gfx0b_tile_info )
 {
 	int code  = gfx0_vram[tile_index];
 	int color = gfx0_cram[tile_index];
@@ -232,7 +232,7 @@ static void get_gfx0b_tile_info(int tile_index)
 			0)
 }
 
-static void get_gfx0a_tile_info(int tile_index)
+static TILE_GET_INFO( get_gfx0a_tile_info )
 {
 	int code  = gfx0_vram[tile_index];
 	int color = gfx0_cram[tile_index];
@@ -251,7 +251,7 @@ static void get_gfx0a_tile_info(int tile_index)
 			0)
 }
 
-static void get_gfx1_tile_info(int tile_index)
+static TILE_GET_INFO( get_gfx1_tile_info )
 {
 	int code  = gfx1_vram[tile_index];
 	int color = gfx1_cram[tile_index];
@@ -265,22 +265,16 @@ static void get_gfx1_tile_info(int tile_index)
 
 static WRITE8_HANDLER( gfx0_vram_w )
 {
-	if(gfx0_vram[offset] != data)
-	{
-		gfx0_vram[offset] = data;
-		tilemap_mark_tile_dirty(gfx0a_tilemap,offset);
-		tilemap_mark_tile_dirty(gfx0b_tilemap,offset);
-	}
+	gfx0_vram[offset] = data;
+	tilemap_mark_tile_dirty(gfx0a_tilemap,offset);
+	tilemap_mark_tile_dirty(gfx0b_tilemap,offset);
 }
 
 static WRITE8_HANDLER( gfx0_cram_w )
 {
-	if(gfx0_cram[offset] != data)
-	{
-		gfx0_cram[offset] = data;
-		tilemap_mark_tile_dirty(gfx0a_tilemap,offset);
-		tilemap_mark_tile_dirty(gfx0b_tilemap,offset);
-	}
+	gfx0_cram[offset] = data;
+	tilemap_mark_tile_dirty(gfx0a_tilemap,offset);
+	tilemap_mark_tile_dirty(gfx0b_tilemap,offset);
 }
 static READ8_HANDLER( gfx0_vram_r )
 {
@@ -297,21 +291,15 @@ static READ8_HANDLER( gfx0_cram_r )
 static WRITE8_HANDLER( gfx1_vram_w )
 {
 	FIX_OFFSET();
-	if(gfx1_vram[offset] != data)
-	{
-		gfx1_vram[offset] = data;
-		tilemap_mark_tile_dirty(gfx1_tilemap,offset);
-	}
+	gfx1_vram[offset] = data;
+	tilemap_mark_tile_dirty(gfx1_tilemap,offset);
 }
 
 static WRITE8_HANDLER( gfx1_cram_w )
 {
 	FIX_OFFSET();
-	if(gfx1_cram[offset] != data)
-	{
-		gfx1_cram[offset] = data;
-		tilemap_mark_tile_dirty(gfx1_tilemap,offset);
-	}
+	gfx1_cram[offset] = data;
+	tilemap_mark_tile_dirty(gfx1_tilemap,offset);
 }
 static READ8_HANDLER( gfx1_vram_r )
 {
@@ -702,8 +690,6 @@ VIDEO_START(witch)
   tilemap_set_palette_offset(gfx0a_tilemap,0x100);
   tilemap_set_palette_offset(gfx0b_tilemap,0x100);
   tilemap_set_palette_offset(gfx1_tilemap,0x200);
-
-	return 0;
 }
 
 static void draw_sprites(mame_bitmap *bitmap)

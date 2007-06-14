@@ -26,12 +26,12 @@ static tilemap *bg_tilemap;
     Byte 0:
         pppppppp = picture index
  */
-static void mcr_90009_get_tile_info(int tile_index)
+static TILE_GET_INFO( mcr_90009_get_tile_info )
 {
 	SET_TILE_INFO(0, videoram[tile_index], 0, 0);
 
 	/* sprite color base is constant 0x10 */
-	tile_info.priority = 1;
+	tileinfo->priority = 1;
 }
 
 
@@ -48,7 +48,7 @@ static void mcr_90009_get_tile_info(int tile_index)
         ------x- = X flip
         -------p = picture index (high 1 bit)
  */
-static void mcr_90010_get_tile_info(int tile_index)
+static TILE_GET_INFO( mcr_90010_get_tile_info )
 {
 	int data = videoram[tile_index * 2] | (videoram[tile_index * 2 + 1] << 8);
 	int code = data & 0x1ff;
@@ -56,7 +56,7 @@ static void mcr_90010_get_tile_info(int tile_index)
 	SET_TILE_INFO(0, code, color, TILE_FLIPYX((data >> 9) & 3));
 
 	/* sprite color base comes from the top 2 bits */
-	tile_info.priority = (data >> 14) & 3;
+	tileinfo->priority = (data >> 14) & 3;
 }
 
 
@@ -73,7 +73,7 @@ static void mcr_90010_get_tile_info(int tile_index)
         -----x-- = X flip
         ------pp = picture index (high 2 bits)
  */
-static void mcr_91490_get_tile_info(int tile_index)
+static TILE_GET_INFO( mcr_91490_get_tile_info )
 {
 	int data = videoram[tile_index * 2] | (videoram[tile_index * 2 + 1] << 8);
 	int code = data & 0x3ff;
@@ -81,7 +81,7 @@ static void mcr_91490_get_tile_info(int tile_index)
 	SET_TILE_INFO(0, code, color, TILE_FLIPYX((data >> 10) & 3));
 
 	/* sprite color base might come from the top 2 bits */
-	tile_info.priority = (data >> 14) & 3;
+	tileinfo->priority = (data >> 14) & 3;
 }
 
 
@@ -117,7 +117,6 @@ VIDEO_START( mcr )
 			assert_always(0, "Unknown mcr board");
 			break;
 	}
-	return 0;
 }
 
 
@@ -130,7 +129,7 @@ VIDEO_START( mcr )
 
 static void mcr_set_color(int index, int data)
 {
-	palette_set_color(Machine, index, pal3bit(data >> 6), pal3bit(data >> 0), pal3bit(data >> 3));
+	palette_set_color_rgb(Machine, index, pal3bit(data >> 6), pal3bit(data >> 0), pal3bit(data >> 3));
 }
 
 
@@ -147,7 +146,7 @@ static void journey_set_color(int index, int data)
 	b = (b << 5) | (b << 1);
 
 	/* set the BG color */
-	palette_set_color(Machine, index, r, g, b);
+	palette_set_color(Machine, index, MAKE_RGB(r, g, b));
 
 	/* if this is an odd entry in the upper palette bank, the hardware */
 	/* hard-codes a low 1 bit -- this is used for better grayscales */
@@ -159,7 +158,7 @@ static void journey_set_color(int index, int data)
 	}
 
 	/* set the FG color */
-	palette_set_color(Machine, index + 64, r, g, b);
+	palette_set_color(Machine, index + 64, MAKE_RGB(r, g, b));
 }
 
 

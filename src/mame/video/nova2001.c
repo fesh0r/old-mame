@@ -56,7 +56,7 @@ PALETTE_INIT( nova2001 )
 		/* blue component */
 		b = (((*color_prom >> 4) & 0x0c) | intensity) * 0x11;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -89,38 +89,26 @@ PALETTE_INIT( nova2001 )
 
 WRITE8_HANDLER( nova2001_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( nova2001_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( nova2001_videoram2_w )
 {
-	if (nova2001_videoram2[offset] != data)
-	{
-		nova2001_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	nova2001_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( nova2001_colorram2_w )
 {
-	if (nova2001_colorram2[offset] != data)
-	{
-		nova2001_colorram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	nova2001_colorram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( nova2001_scroll_x_w )
@@ -142,7 +130,7 @@ WRITE8_HANDLER( nova2001_flipscreen_w )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 	int color = colorram[tile_index] & 0x0f;
@@ -150,7 +138,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = nova2001_videoram2[tile_index];
 	int color = nova2001_colorram2[tile_index] & 0x0f;
@@ -167,8 +155,6 @@ VIDEO_START( nova2001 )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 static void nova2001_draw_sprites( mame_bitmap *bitmap )

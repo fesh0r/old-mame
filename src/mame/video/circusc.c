@@ -10,11 +10,11 @@
 
 
 
-unsigned char *circusc_videoram,*circusc_colorram;
+UINT8 *circusc_videoram,*circusc_colorram;
 static tilemap *bg_tilemap;
 
-unsigned char *circusc_spritebank;
-unsigned char *circusc_scroll;
+UINT8 *circusc_spritebank;
+UINT8 *circusc_scroll;
 
 
 
@@ -63,7 +63,7 @@ PALETTE_INIT( circusc )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -86,10 +86,10 @@ PALETTE_INIT( circusc )
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
-	unsigned char attr = circusc_colorram[tile_index];
-	tile_info.priority = (attr & 0x10) >> 4;
+	UINT8 attr = circusc_colorram[tile_index];
+	tileinfo->priority = (attr & 0x10) >> 4;
 	SET_TILE_INFO(
 			0,
 			circusc_videoram[tile_index] + ((attr & 0x20) << 3),
@@ -110,8 +110,6 @@ VIDEO_START( circusc )
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
 
 	tilemap_set_scroll_cols(bg_tilemap,32);
-
-	return 0;
 }
 
 
@@ -124,20 +122,14 @@ VIDEO_START( circusc )
 
 WRITE8_HANDLER( circusc_videoram_w )
 {
-	if (circusc_videoram[offset] != data)
-	{
-		circusc_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	circusc_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE8_HANDLER( circusc_colorram_w )
 {
-	if (circusc_colorram[offset] != data)
-	{
-		circusc_colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	circusc_colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE8_HANDLER( circusc_flipscreen_w )
@@ -156,7 +148,7 @@ WRITE8_HANDLER( circusc_flipscreen_w )
 static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int offs;
-	unsigned char *sr;
+	UINT8 *sr;
 
 
 	if ((*circusc_spritebank & 0x01) != 0)

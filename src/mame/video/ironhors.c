@@ -56,7 +56,7 @@ PALETTE_INIT( ironhors )
 		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -91,20 +91,14 @@ PALETTE_INIT( ironhors )
 
 WRITE8_HANDLER( ironhors_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( ironhors_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( ironhors_charbank_w )
@@ -147,7 +141,7 @@ WRITE8_HANDLER( ironhors_flipscreen_w )
 	/* other bits are used too, but unknown */
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] + ((colorram[tile_index] & 0x40) << 2) +
 		((colorram[tile_index] & 0x20) << 4) + (charbank << 10);
@@ -164,8 +158,6 @@ VIDEO_START( ironhors )
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
 
 	tilemap_set_scroll_rows(bg_tilemap, 32);
-
-	return 0;
 }
 
 static void ironhors_draw_sprites( mame_bitmap *bitmap )

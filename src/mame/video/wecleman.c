@@ -416,7 +416,7 @@ static void sprite_draw(mame_bitmap *bitmap, const rectangle *cliprect)
                 [ Frontmost (text) layer + video registers ]
 ------------------------------------------------------------------------*/
 
-void wecleman_get_txt_tile_info( int tile_index )
+TILE_GET_INFO( wecleman_get_txt_tile_info )
 {
 	int code = wecleman_txtram[tile_index];
 	SET_TILE_INFO(PAGE_GFX, code&0xfff, (code>>5&0x78)+(code>>12), 0)
@@ -462,7 +462,7 @@ WRITE16_HANDLER( wecleman_txtram_w )
                             [ Background ]
 ------------------------------------------------------------------------*/
 
-void wecleman_get_bg_tile_info( int tile_index )
+TILE_GET_INFO( wecleman_get_bg_tile_info )
 {
 	int page = wecleman_bgpage[((tile_index&0x7f)>>6) + ((tile_index>>12)<<1)];
 	int code = wecleman_pageram[(tile_index&0x3f) + ((tile_index>>7&0x1f)<<6) + (page<<11)];
@@ -474,7 +474,7 @@ void wecleman_get_bg_tile_info( int tile_index )
                             [ Foreground ]
 ------------------------------------------------------------------------*/
 
-void wecleman_get_fg_tile_info( int tile_index )
+TILE_GET_INFO( wecleman_get_fg_tile_info )
 {
 	int page = wecleman_fgpage[((tile_index&0x7f)>>6) + ((tile_index>>12)<<1)];
 	int code = wecleman_pageram[(tile_index&0x3f) + ((tile_index>>7&0x1f)<<6) + (page<<11)];
@@ -490,10 +490,8 @@ void wecleman_get_fg_tile_info( int tile_index )
 /* Pages that compose both the background and the foreground */
 WRITE16_HANDLER( wecleman_pageram_w )
 {
-	UINT16 old_data = wecleman_pageram[offset];
-	UINT16 new_data = COMBINE_DATA(&wecleman_pageram[offset]);
+	COMBINE_DATA(&wecleman_pageram[offset]);
 
-	if ( old_data != new_data )
 	{
 		int page,col,row;
 
@@ -851,9 +849,9 @@ WRITE16_HANDLER( hotchase_paletteram16_SBGRBBBBGGGGRRRR_word_w )
 	g = ((newword >> 3) & 0x1E ) | ((newword >> 13) & 0x01);
 	b = ((newword >> 7) & 0x1E ) | ((newword >> 14) & 0x01);
 
-	palette_set_color(Machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
+	palette_set_color_rgb(Machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
 	r>>=1; g>>=1; b>>=1;
-	palette_set_color(Machine, offset+0x800, pal5bit(r)/2, pal5bit(g)/2, pal5bit(b)/2);
+	palette_set_color_rgb(Machine, offset+0x800, pal5bit(r)/2, pal5bit(g)/2, pal5bit(b)/2);
 }
 
 WRITE16_HANDLER( wecleman_paletteram16_SSSSBBBBGGGGRRRR_word_w )
@@ -862,7 +860,7 @@ WRITE16_HANDLER( wecleman_paletteram16_SSSSBBBBGGGGRRRR_word_w )
 
 	// the highest nibble has some unknown functions
 //  if (newword & 0xf000) logerror("MSN set on color %03x: %1x\n", offset, newword>>12);
-	palette_set_color(Machine, offset, pal4bit(newword >> 0), pal4bit(newword >> 4), pal4bit(newword >> 8));
+	palette_set_color_rgb(Machine, offset, pal4bit(newword >> 0), pal4bit(newword >> 4), pal4bit(newword >> 8));
 }
 
 
@@ -918,7 +916,7 @@ VIDEO_START( wecleman )
 		}
 	}
 
-	if (!(sprite_list = sprite_list_create(NUM_SPRITES))) return 1;
+	sprite_list = sprite_list_create(NUM_SPRITES);
 
 	bg_tilemap = tilemap_create(wecleman_get_bg_tile_info,
 								tilemap_scan_rows,
@@ -955,21 +953,19 @@ VIDEO_START( wecleman )
 
 	// patches out a mysterious pixel floating in the sky (tile decoding bug?)
 	*(machine->gfx[0]->gfxdata + (machine->gfx[0]->char_modulo*0xaca+7)) = 0;
-
-	return 0;
 }
 
 //  Callbacks for the K051316
 #define ZOOMROM0_MEM_REGION REGION_GFX2
 #define ZOOMROM1_MEM_REGION REGION_GFX3
 
-static void zoom_callback_0(int *code,int *color)
+static void zoom_callback_0(int *code,int *color,int *flags)
 {
 	*code |= (*color & 0x03) << 8;
 	*color = (*color & 0xfc) >> 2;
 }
 
-static void zoom_callback_1(int *code,int *color)
+static void zoom_callback_1(int *code,int *color,int *flags)
 {
 	*code |= (*color & 0x01) << 8;
 	*color = ((*color & 0x3f) << 1) | ((*code & 0x80) >> 7);
@@ -1000,18 +996,16 @@ VIDEO_START( hotchase )
 
 	spr_ptr_list = (struct sprite **)buffer;
 
-	if (!(sprite_list = sprite_list_create(NUM_SPRITES))) return 1;
+	sprite_list = sprite_list_create(NUM_SPRITES);
 
-	if (K051316_vh_start_0(ZOOMROM0_MEM_REGION,4,TILEMAP_TRANSPARENT,0,zoom_callback_0)) return 1;
+	K051316_vh_start_0(ZOOMROM0_MEM_REGION,4,TILEMAP_TRANSPARENT,0,zoom_callback_0);
 
-	if (K051316_vh_start_1(ZOOMROM1_MEM_REGION,4,TILEMAP_TRANSPARENT,0,zoom_callback_1)) return 1;
+	K051316_vh_start_1(ZOOMROM1_MEM_REGION,4,TILEMAP_TRANSPARENT,0,zoom_callback_1);
 
 	K051316_wraparound_enable(0,1);
 //  K051316_wraparound_enable(1,1);
 	K051316_set_offset(0, -0xB0/2, -16);
 	K051316_set_offset(1, -0xB0/2, -16);
-
-	return 0;
 }
 
 

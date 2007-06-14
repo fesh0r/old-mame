@@ -52,7 +52,7 @@ static UINT32 tilemap_scan_rows_back( UINT32 col, UINT32 row, UINT32 num_cols, U
 	return (col & 0x0f) + ((col & 0x10) << 5) + (row << 4);
 }
 
-static void get_tile_info_0( int tile_index )
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	UINT8 code	=	thedeep_vram_0[ tile_index * 2 + 0 ];
 	UINT8 color	=	thedeep_vram_0[ tile_index * 2 + 1 ];
@@ -63,7 +63,7 @@ static void get_tile_info_0( int tile_index )
 			TILE_FLIPX	)	// why?
 }
 
-static void get_tile_info_1( int tile_index )
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	UINT8 code	=	thedeep_vram_1[ tile_index * 2 + 0 ];
 	UINT8 color	=	thedeep_vram_1[ tile_index * 2 + 1 ];
@@ -76,20 +76,14 @@ static void get_tile_info_1( int tile_index )
 
 WRITE8_HANDLER( thedeep_vram_0_w )
 {
-	if (thedeep_vram_0[offset] != data)
-	{
-		thedeep_vram_0[offset] = data;
-		tilemap_mark_tile_dirty(tilemap_0, offset / 2);
-	}
+	thedeep_vram_0[offset] = data;
+	tilemap_mark_tile_dirty(tilemap_0, offset / 2);
 }
 
 WRITE8_HANDLER( thedeep_vram_1_w )
 {
-	if (thedeep_vram_1[offset] != data)
-	{
-		thedeep_vram_1[offset] = data;
-		tilemap_mark_tile_dirty(tilemap_1, offset / 2);
-	}
+	thedeep_vram_1[offset] = data;
+	tilemap_mark_tile_dirty(tilemap_1, offset / 2);
 }
 
 
@@ -103,7 +97,7 @@ PALETTE_INIT( thedeep )
 {
 	int i;
 	for (i = 0;i < 512;i++)
-		palette_set_color(machine,i,pal4bit(color_prom[0x400 + i] >> 0),pal4bit(color_prom[0x400 + i] >> 4),pal4bit(color_prom[0x200 + i] >> 0));
+		palette_set_color_rgb(machine,i,pal4bit(color_prom[0x400 + i] >> 0),pal4bit(color_prom[0x400 + i] >> 4),pal4bit(color_prom[0x200 + i] >> 0));
 }
 
 /***************************************************************************
@@ -121,8 +115,6 @@ VIDEO_START( thedeep )
 	tilemap_set_transparent_pen( tilemap_1,  0 );
 
 	tilemap_set_scroll_cols(tilemap_0, 0x20);	// column scroll for the background
-
-	return 0;
 }
 
 /***************************************************************************

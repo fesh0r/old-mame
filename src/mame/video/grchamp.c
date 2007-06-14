@@ -74,28 +74,28 @@ WRITE8_HANDLER( grchamp_right_w )
 	tilemap_mark_tile_dirty(state->right_tilemap, offset);
 }
 
-static void get_text_tile_info(int offset)
+static TILE_GET_INFO( get_text_tile_info )
 {
 	grchamp_state *state = Machine->driver_data;
-	SET_TILE_INFO(0, state->videoram[offset], 0, 0);
+	SET_TILE_INFO(0, state->videoram[tile_index], 0, 0);
 }
 
-static void get_left_tile_info(int offset)
+static TILE_GET_INFO( get_left_tile_info )
 {
 	grchamp_state *state = Machine->driver_data;
-	SET_TILE_INFO(1, state->leftram[offset], 0, 0);
+	SET_TILE_INFO(1, state->leftram[tile_index], 0, 0);
 }
 
-static void get_right_tile_info(int offset)
+static TILE_GET_INFO( get_right_tile_info )
 {
 	grchamp_state *state = Machine->driver_data;
-	SET_TILE_INFO(2, state->rightram[offset], 0, 0);
+	SET_TILE_INFO(2, state->rightram[tile_index], 0, 0);
 }
 
-static void get_center_tile_info(int offset)
+static TILE_GET_INFO( get_center_tile_info )
 {
 	grchamp_state *state = Machine->driver_data;
-	SET_TILE_INFO(3, state->centerram[offset], 0, 0);
+	SET_TILE_INFO(3, state->centerram[tile_index], 0, 0);
 }
 
 static UINT32 get_memory_offset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows)
@@ -115,8 +115,6 @@ VIDEO_START( grchamp )
 	state->left_tilemap = tilemap_create(get_left_tile_info, get_memory_offset, TILEMAP_OPAQUE, 8,8, 64,32);
 	state->right_tilemap = tilemap_create(get_right_tile_info, get_memory_offset, TILEMAP_OPAQUE, 8,8, 64,32);
 	state->center_tilemap = tilemap_create(get_center_tile_info, get_memory_offset, TILEMAP_OPAQUE, 8,8, 64,32);
-
-	return 0;
 }
 
 #if 0

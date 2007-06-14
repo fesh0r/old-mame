@@ -53,7 +53,7 @@ Credits:
 #include "sound/msm5205.h"
 #include "sound/sn76496.h"
 
-static unsigned char *adpcmptr = 0;
+static UINT8 *adpcmptr = 0;
 static int appoooh_adpcm_data;
 
 static void appoooh_adpcm_int(int num)
@@ -78,7 +78,7 @@ static void appoooh_adpcm_int(int num)
 /* adpcm address write */
 static WRITE8_HANDLER( appoooh_adpcm_w )
 {
-	unsigned char *RAM = memory_region(REGION_SOUND1);
+	UINT8 *RAM = memory_region(REGION_SOUND1);
 	adpcmptr  = &RAM[data*256];
 	MSM5205_reset_w(0,0);
 	appoooh_adpcm_data=-1;
@@ -213,7 +213,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &charlayout,     32*8, 32 },
 	{ REGION_GFX1, 0, &spritelayout,      0, 32 },
 	{ REGION_GFX2, 0, &spritelayout,   32*8, 32 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -470,7 +470,7 @@ static const gfx_decode robowres_gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &robowres_charlayout,     	 0, 32 },
 	{ REGION_GFX1, 0, &robowres_spritelayout,      0, 32 },
 	{ REGION_GFX2, 0, &robowres_spritelayout,   	 0, 32 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static MACHINE_DRIVER_START( robowres )

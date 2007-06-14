@@ -6,7 +6,7 @@
 #include "driver.h"
 
 static tilemap *background, *foreground;
-extern unsigned char *shootout_textram;
+extern UINT8 *shootout_textram;
 
 
 PALETTE_INIT( shootout )
@@ -34,13 +34,13 @@ PALETTE_INIT( shootout )
 		bit2 = (color_prom[i] >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 
 
 
-static void get_bg_tile_info(int tile_index){
+static TILE_GET_INFO( get_bg_tile_info ){
 	int attributes = videoram[tile_index+0x400]; /* CCCC -TTT */
 	int tile_number = videoram[tile_index] + 256*(attributes&7);
 	int color = attributes>>4;
@@ -51,7 +51,7 @@ static void get_bg_tile_info(int tile_index){
 			0)
 }
 
-static void get_fg_tile_info(int tile_index){
+static TILE_GET_INFO( get_fg_tile_info ){
 	int attributes = shootout_textram[tile_index+0x400]; /* CCCC --TT */
 	int tile_number = shootout_textram[tile_index] + 256*(attributes&0x3);
 	int color = attributes>>4;
@@ -63,23 +63,18 @@ static void get_fg_tile_info(int tile_index){
 }
 
 WRITE8_HANDLER( shootout_videoram_w ){
-	if( videoram[offset]!=data ){
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty( background, offset&0x3ff );
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty( background, offset&0x3ff );
 }
 WRITE8_HANDLER( shootout_textram_w ){
-	if( shootout_textram[offset]!=data ){
-		shootout_textram[offset] = data;
-		tilemap_mark_tile_dirty( foreground, offset&0x3ff );
-	}
+	shootout_textram[offset] = data;
+	tilemap_mark_tile_dirty( foreground, offset&0x3ff );
 }
 
 VIDEO_START( shootout ){
 	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
 	foreground = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,32,32);
 		tilemap_set_transparent_pen( foreground, 0 );
-		return 0;
 }
 
 static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect, int bank_bits ){

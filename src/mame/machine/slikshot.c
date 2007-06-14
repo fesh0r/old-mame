@@ -405,7 +405,7 @@ static void words_to_sensors(UINT16 word1, UINT16 word2, UINT16 word3, UINT8 bea
 static void compute_sensors(void)
 {
 	UINT16 inter1, inter2, inter3;
-	UINT16 word1, word2, word3;
+	UINT16 word1 = 0, word2 = 0, word3 = 0;
 	UINT8 beams;
 
 	/* skip if we're not ready */
@@ -642,7 +642,7 @@ int main(int argc, char *argv[])
 
 	if (argc == 5)
 	{
-		unsigned int sens0, sens1, sens2, sens3;
+		UINT32 sens0, sens1, sens2, sens3;
 
 		sscanf(argv[1], "%x", &sens0);
 		sscanf(argv[2], "%x", &sens1);
@@ -667,7 +667,7 @@ int main(int argc, char *argv[])
 	}
 	else if (argc == 4)
 	{
-		unsigned int xin, vxin, vyin;
+		UINT32 xin, vxin, vyin;
 		UINT16 sens0, sens1, sens2, sens3;
 
 		sscanf(argv[1], "%x", &xin);

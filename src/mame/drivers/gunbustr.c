@@ -79,10 +79,10 @@ static WRITE32_HANDLER( gunbustr_palette_w )
 	COMBINE_DATA(&paletteram32[offset]);
 
 	a = paletteram32[offset] >> 16;
-	palette_set_color(Machine,offset*2,pal5bit(a >> 10),pal5bit(a >> 5),pal5bit(a >> 0));
+	palette_set_color_rgb(Machine,offset*2,pal5bit(a >> 10),pal5bit(a >> 5),pal5bit(a >> 0));
 
 	a = paletteram32[offset] &0xffff;
-	palette_set_color(Machine,offset*2+1,pal5bit(a >> 10),pal5bit(a >> 5),pal5bit(a >> 0));
+	palette_set_color_rgb(Machine,offset*2+1,pal5bit(a >> 10),pal5bit(a >> 5),pal5bit(a >> 0));
 }
 
 static READ32_HANDLER( gunbustr_input_r )
@@ -322,7 +322,7 @@ static const gfx_decode gunbustr_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tile16x16_layout,  0, 512 },
 	{ REGION_GFX1, 0x0, &charlayout,        0, 512 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

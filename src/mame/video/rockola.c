@@ -58,7 +58,7 @@ PALETTE_INIT( rockola )
 
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i, r, g, b);
+		palette_set_color(machine,i, MAKE_RGB(r, g, b));
 
 		color_prom++;
 	}
@@ -79,30 +79,21 @@ PALETTE_INIT( rockola )
 
 WRITE8_HANDLER( rockola_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( rockola_videoram2_w )
 {
-	if (rockola_videoram2[offset] != data)
-	{
-		rockola_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	rockola_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( rockola_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( rockola_charram_w )
@@ -168,7 +159,7 @@ WRITE8_HANDLER( rockola_scrolly_w )
   the main emulation engine.
 
 ***************************************************************************/
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] + 256 * charbank;
 	int color = (colorram[tile_index] & 0x38) >> 3;
@@ -176,7 +167,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = rockola_videoram2[tile_index];
 	int color = colorram[tile_index] & 0x07;
@@ -196,8 +187,6 @@ VIDEO_START( rockola )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 VIDEO_UPDATE( rockola )
@@ -244,7 +233,7 @@ PALETTE_INIT( satansat )
 
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine, i, r, g, b);
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
 
 		color_prom++;
 	}
@@ -299,7 +288,7 @@ WRITE8_HANDLER( satansat_backcolor_w )
 	}
 }
 
-static void satansat_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( satansat_get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 	int color = (colorram[tile_index] & 0x0c) >> 2;
@@ -307,7 +296,7 @@ static void satansat_get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, 0)
 }
 
-static void satansat_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( satansat_get_fg_tile_info )
 {
 	int code = rockola_videoram2[tile_index];
 	int color = colorram[tile_index] & 0x03;
@@ -327,6 +316,4 @@ VIDEO_START( satansat )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }

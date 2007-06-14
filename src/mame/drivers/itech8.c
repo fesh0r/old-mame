@@ -614,8 +614,7 @@ static void behind_the_beam_update(int scanline_plus_interval);
 
 static MACHINE_START( itech8 )
 {
-	pia_config(0, PIA_STANDARD_ORDERING, &pia_interface);
-	return 0;
+	pia_config(0, &pia_interface);
 }
 
 static MACHINE_START( sstrike )
@@ -624,8 +623,6 @@ static MACHINE_START( sstrike )
 
 	/* we need to update behind the beam as well */
 	mame_timer_set(video_screen_get_time_until_pos(0, 0, 0), 32, behind_the_beam_update);
-
-	return 0;
 }
 
 static MACHINE_RESET( itech8 )

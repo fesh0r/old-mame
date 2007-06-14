@@ -20,7 +20,7 @@ static UINT16 bg1_gfxset = 0;
 /*******************************************************************/
 
 
-static void get_bg0_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg0_tile_info )
 {
 	UINT16 tilenum = gcpinbal_tilemapram[0 + tile_index*2];
 	UINT16 attr    = gcpinbal_tilemapram[1 + tile_index*2];
@@ -32,7 +32,7 @@ static void get_bg0_tile_info(int tile_index)
 			TILE_FLIPYX( (attr & 0x300) >> 8))
 }
 
-static void get_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg1_tile_info )
 {
 	UINT16 tilenum = gcpinbal_tilemapram[0x800 + tile_index*2];
 	UINT16 attr    = gcpinbal_tilemapram[0x801 + tile_index*2];
@@ -44,7 +44,7 @@ static void get_bg1_tile_info(int tile_index)
 			TILE_FLIPYX( (attr & 0x300) >> 8))
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	UINT16 tilenum = gcpinbal_tilemapram[0x1000 + tile_index];
 
@@ -64,7 +64,7 @@ static void dirty_tilemaps(void)	// will be used for save states
 }
 #endif
 
-int gcpinbal_core_vh_start (void)
+void gcpinbal_core_vh_start (void)
 {
 	int xoffs = 0;
 	int yoffs = 0;
@@ -84,13 +84,11 @@ int gcpinbal_core_vh_start (void)
 	tilemap_set_scrolldy( gcpinbal_tilemap[0],-yoffs,0 );
 	tilemap_set_scrolldy( gcpinbal_tilemap[1],-yoffs,0 );
 	tilemap_set_scrolldy( gcpinbal_tilemap[2],-yoffs,0 );
-
-	return 0;
 }
 
 VIDEO_START( gcpinbal )
 {
-	return (gcpinbal_core_vh_start());
+	gcpinbal_core_vh_start();
 }
 
 
@@ -105,23 +103,19 @@ READ16_HANDLER( gcpinbal_tilemaps_word_r )
 
 WRITE16_HANDLER( gcpinbal_tilemaps_word_w )
 {
-	UINT16 oldword = gcpinbal_tilemapram[offset];
 	COMBINE_DATA(&gcpinbal_tilemapram[offset]);
 
 	if (offset<0x800)	/* BG0 */
 	{
-		if (oldword != gcpinbal_tilemapram[offset])
-			tilemap_mark_tile_dirty(gcpinbal_tilemap[0],offset/2);
+		tilemap_mark_tile_dirty(gcpinbal_tilemap[0],offset/2);
 	}
 	else if ((offset<0x1000))	/* BG1 */
 	{
-		if (oldword != gcpinbal_tilemapram[offset])
-			tilemap_mark_tile_dirty(gcpinbal_tilemap[1],(offset%0x800)/2);
+		tilemap_mark_tile_dirty(gcpinbal_tilemap[1],(offset%0x800)/2);
 	}
 	else if ((offset<0x1800))	/* FG */
 	{
-		if (oldword != gcpinbal_tilemapram[offset])
-			tilemap_mark_tile_dirty(gcpinbal_tilemap[2],(offset%0x800));
+		tilemap_mark_tile_dirty(gcpinbal_tilemap[2],(offset%0x800));
 	}
 }
 

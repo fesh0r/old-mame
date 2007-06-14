@@ -819,7 +819,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &charlayout_2bpp,   0x0200,  64 },
 	{ REGION_GFX3, 0, &smallspritelayout, 0x0300, 128 },
 	{ REGION_GFX4, 0, &bigspritelayout,   0x0300, 128 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -1706,7 +1706,7 @@ static DRIVER_INIT( polepos2 )
 	/* note that the bootleg version doesn't need this custom IC; it has a hacked ROM in its place */
 	memory_install_read16_handler(1, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, polepos2_ic25_r);
 
-	init_polepos(machine);
+	driver_init_polepos(machine);
 }
 
 

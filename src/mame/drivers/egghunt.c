@@ -92,7 +92,7 @@ static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = ((egghunt_bgram[tile_index*2+1] << 8) | egghunt_bgram[tile_index*2]) & 0x3fff;
 	int colour = egghunt_atram[tile_index];
@@ -147,8 +147,6 @@ VIDEO_START(egghunt)
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,64, 32);
 	egghunt_bgram = auto_malloc(0x1000);
 	egghunt_spram = auto_malloc(0x1000);
-
-	return 0;
 }
 
 VIDEO_UPDATE(egghunt)

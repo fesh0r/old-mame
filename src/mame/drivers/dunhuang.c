@@ -76,13 +76,13 @@ static UINT8 *dunhuang_paldata;
 
 
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT16 code		=	dunhuang_videoram[ tile_index ];
 	UINT8  color	=	dunhuang_colorram[ tile_index ] & 0x0f;
 	SET_TILE_INFO(0, code, color, 0);
 }
-static void get_tile_info2(int tile_index)
+static TILE_GET_INFO( get_tile_info2 )
 {
 	UINT16 code		=	dunhuang_videoram2[ tile_index ];
 	UINT8  color	=	dunhuang_colorram2[ tile_index ] & 0x0f;
@@ -107,8 +107,6 @@ VIDEO_START(dunhuang)
 	dunhuang_colorram2 = (UINT8*) auto_malloc(sizeof(UINT8)  * 0x40 * 0x8);
 
 	dunhuang_paldata  = (UINT8*)auto_malloc(sizeof(UINT8) * 3 * 256);
-
-	return 0;
 }
 
 VIDEO_UPDATE( dunhuang )
@@ -309,7 +307,7 @@ static WRITE8_HANDLER( dunhuang_paldata_w )
 {
 	dunhuang_paldata[dunhuang_paloffs] = data;
 
-	palette_set_color( Machine, dunhuang_paloffs/3,
+	palette_set_color_rgb( Machine, dunhuang_paloffs/3,
 		pal6bit(dunhuang_paldata[(dunhuang_paloffs/3)*3+0]),
 		pal6bit(dunhuang_paldata[(dunhuang_paloffs/3)*3+1]),
 		pal6bit(dunhuang_paldata[(dunhuang_paloffs/3)*3+2])

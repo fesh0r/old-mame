@@ -85,7 +85,7 @@ PALETTE_INIT( yard )
 		bit2 = (color_prom[0] >> 2) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -114,7 +114,7 @@ PALETTE_INIT( yard )
 		bit2 = (*color_prom >> 2) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i+256,r,g,b);
+		palette_set_color(machine,i+256,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -149,7 +149,7 @@ PALETTE_INIT( yard )
 		bit2 = (color_prom[0] >> 2) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i+256+16,r,g,b);
+		palette_set_color(machine,i+256+16,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -157,11 +157,8 @@ PALETTE_INIT( yard )
 
 WRITE8_HANDLER( yard_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
 }
 
 WRITE8_HANDLER( yard_scroll_panel_w )
@@ -186,7 +183,7 @@ WRITE8_HANDLER( yard_scroll_panel_w )
 	}
 }
 
-static void yard_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( yard_get_bg_tile_info )
 {
 	int offs = tile_index * 2;
 	int attr = videoram[offs + 1];
@@ -212,8 +209,6 @@ VIDEO_START( yard )
 		TILEMAP_OPAQUE, 8, 8, 64, 32);
 
 	scroll_panel_bitmap = auto_bitmap_alloc(SCROLL_PANEL_WIDTH, machine->screen[0].height, machine->screen[0].format);
-
-	return 0;
 }
 
 #define DRAW_SPRITE(code, sy) drawgfx(bitmap, Machine->gfx[1], code, color, flipx, flipy, sx, sy, cliprect, TRANSPARENCY_COLOR, 256);

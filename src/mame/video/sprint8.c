@@ -19,7 +19,7 @@ static mame_bitmap* helper1;
 static mame_bitmap* helper2;
 
 
-static void get_tile_info1(int tile_index)
+static TILE_GET_INFO( get_tile_info1 )
 {
 	UINT8 code = sprint8_video_ram[tile_index];
 
@@ -49,7 +49,7 @@ static void get_tile_info1(int tile_index)
 }
 
 
-static void get_tile_info2(int tile_index)
+static TILE_GET_INFO( get_tile_info2 )
 {
 	UINT8 code = sprint8_video_ram[tile_index];
 
@@ -70,13 +70,9 @@ static void get_tile_info2(int tile_index)
 
 WRITE8_HANDLER( sprint8_video_ram_w )
 {
-	if (data != sprint8_video_ram[offset])
-	{
-		tilemap_mark_tile_dirty(tilemap1, offset);
-		tilemap_mark_tile_dirty(tilemap2, offset);
-	}
-
 	sprint8_video_ram[offset] = data;
+	tilemap_mark_tile_dirty(tilemap1, offset);
+	tilemap_mark_tile_dirty(tilemap2, offset);
 }
 
 
@@ -90,8 +86,6 @@ VIDEO_START( sprint8 )
 
 	tilemap_set_scrolly(tilemap1, 0, +24);
 	tilemap_set_scrolly(tilemap2, 0, +24);
-
-	return 0;
 }
 
 

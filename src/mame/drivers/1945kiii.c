@@ -63,14 +63,11 @@ static tilemap *k3_bg_tilemap;
 
 static WRITE16_HANDLER( k3_bgram_w )
 {
-	if (k3_bgram[offset] != data)
-	{
-		COMBINE_DATA(&k3_bgram[offset]);
-		tilemap_mark_tile_dirty(k3_bg_tilemap,offset);
-	}
+	COMBINE_DATA(&k3_bgram[offset]);
+	tilemap_mark_tile_dirty(k3_bg_tilemap,offset);
 }
 
-static void get_k3_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_k3_bg_tile_info )
 {
 	int tileno;
 	tileno = k3_bgram[tile_index];
@@ -80,7 +77,6 @@ static void get_k3_bg_tile_info(int tile_index)
 VIDEO_START(k3)
 {
 	k3_bg_tilemap = tilemap_create(get_k3_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,      16, 16, 32,64);
-	return 0;
 }
 
 static void k3_draw_sprites ( mame_bitmap *bitmap, const rectangle *cliprect )
@@ -257,7 +253,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &k3_layout,   0x0, 2  }, /* bg tiles */
 	{ REGION_GFX2, 0, &k3_layout,   0x0, 2  }, /* bg tiles */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

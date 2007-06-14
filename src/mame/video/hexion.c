@@ -13,7 +13,7 @@ static tilemap *bg_tilemap[2];
 
 ***************************************************************************/
 
-INLINE void get_tile_info(int tile_index,UINT8 *ram)
+INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT8 *ram)
 {
 	tile_index *= 4;
 	SET_TILE_INFO(
@@ -23,14 +23,14 @@ INLINE void get_tile_info(int tile_index,UINT8 *ram)
 			0)
 }
 
-static void get_tile_info0(int tile_index)
+static TILE_GET_INFO( get_tile_info0 )
 {
-	get_tile_info(tile_index,vram[0]);
+	get_tile_info(machine,tileinfo,tile_index,vram[0]);
 }
 
-static void get_tile_info1(int tile_index)
+static TILE_GET_INFO( get_tile_info1 )
 {
-	get_tile_info(tile_index,vram[1]);
+	get_tile_info(machine,tileinfo,tile_index,vram[1]);
 }
 
 
@@ -53,8 +53,6 @@ VIDEO_START( hexion )
 	vram[0] = memory_region(REGION_CPU1) + 0x30000;
 	vram[1] = vram[0] + 0x2000;
 	unkram = vram[1] + 0x2000;
-
-	return 0;
 }
 
 
@@ -67,7 +65,7 @@ VIDEO_START( hexion )
 
 WRITE8_HANDLER( hexion_bankswitch_w )
 {
-	unsigned char *rom = memory_region(REGION_CPU1) + 0x10000;
+	UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
 
 	/* bits 0-3 select ROM bank */
 	memory_set_bankptr(1,rom + 0x2000 * (data & 0x0f));
@@ -122,11 +120,8 @@ WRITE8_HANDLER( hexion_bankedram_w )
 		if (pmcbank)
 		{
 //logerror("%04x: bankedram_w offset %04x, data %02x, bankctrl = %02x\n",activecpu_get_pc(),offset,data,bankctrl);
-			if (vram[rambank][offset] != data)
-			{
-				vram[rambank][offset] = data;
-				tilemap_mark_tile_dirty(bg_tilemap[rambank],offset/4);
-			}
+			vram[rambank][offset] = data;
+			tilemap_mark_tile_dirty(bg_tilemap[rambank],offset/4);
 		}
 		else
 			logerror("%04x pmc internal ram %04x = %02x\n",activecpu_get_pc(),offset,data);

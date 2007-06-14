@@ -10,7 +10,7 @@
 static tilemap *k007121_tilemap[2];
 static rectangle k007121_clip[2];
 
-unsigned char *k007121_ram;
+UINT8 *k007121_ram;
 
 int flkatck_irq_enabled;
 
@@ -22,7 +22,7 @@ static int k007121_flip_screen = 0;
 
 ***************************************************************************/
 
-static void get_tile_info_A(int tile_index)
+static TILE_GET_INFO( get_tile_info_A )
 {
 	int attr = k007121_ram[tile_index];
 	int code = k007121_ram[tile_index+0x400];
@@ -51,7 +51,7 @@ static void get_tile_info_A(int tile_index)
 			(attr & 0x20) ? TILE_FLIPY : 0)
 }
 
-static void get_tile_info_B(int tile_index)
+static TILE_GET_INFO( get_tile_info_B )
 {
 	int attr = k007121_ram[tile_index+0x800];
 	int code = k007121_ram[tile_index+0xc00];
@@ -81,8 +81,6 @@ VIDEO_START( flkatck )
 	k007121_clip[1] = machine->screen[0].visarea;
 	k007121_clip[1].max_x = 39;
 	k007121_clip[1].min_x = 0;
-
-	return 0;
 }
 
 
@@ -94,18 +92,14 @@ VIDEO_START( flkatck )
 
 WRITE8_HANDLER( flkatck_k007121_w )
 {
-	if (offset < 0x1000){	/* tiles */
-		if (k007121_ram[offset] != data)
-		{
-			k007121_ram[offset] = data;
-			if (offset & 0x800)	/* score */
-				tilemap_mark_tile_dirty(k007121_tilemap[1],offset & 0x3ff);
-			else
-				tilemap_mark_tile_dirty(k007121_tilemap[0],offset & 0x3ff);
-		}
+	k007121_ram[offset] = data;
+	if (offset < 0x1000)	/* tiles */
+	{
+		if (offset & 0x800)	/* score */
+			tilemap_mark_tile_dirty(k007121_tilemap[1],offset & 0x3ff);
+		else
+			tilemap_mark_tile_dirty(k007121_tilemap[0],offset & 0x3ff);
 	}
-	else	/* sprites */
-		k007121_ram[offset] = data;
 }
 
 WRITE8_HANDLER( flkatck_k007121_regs_w )

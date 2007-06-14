@@ -56,18 +56,15 @@ PALETTE_INIT( yiear )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 }
 
 WRITE8_HANDLER( yiear_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
 }
 
 WRITE8_HANDLER( yiear_control_w )
@@ -94,7 +91,7 @@ WRITE8_HANDLER( yiear_control_w )
 	coin_counter_w(1, data & 0x10);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int offs = tile_index * 2;
 	int attr = videoram[offs];
@@ -109,8 +106,6 @@ VIDEO_START( yiear )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void yiear_draw_sprites( mame_bitmap *bitmap )

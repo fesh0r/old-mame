@@ -87,7 +87,7 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( adpcm_control_w )
 {
 	int bankaddress;
-	unsigned char *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 
 	/* the code writes either 2 or 3 in the bottom two bits */
 	bankaddress = 0x10000 + (data & 0x01) * 0x4000;
@@ -306,7 +306,7 @@ static const gfx_decode goal92_gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &layout_16x16x4,		   0*16,   16 }, // BG Layer
 	{ REGION_GFX2, 0, &layout_16x16x4,		  16*16,   16 }, // Mid Layer
 	{ REGION_GFX2, 0, &layout_16x16x4,		  32*16,   16 }, // FG Layer
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

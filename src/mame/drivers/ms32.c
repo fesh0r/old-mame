@@ -2145,10 +2145,10 @@ static void rearrange_sprites(void)
 {
 	/* sprites are not encrypted, but we need to move the data around to handle them as 256x256 tiles */
 	int i;
-	unsigned char *source_data;
+	UINT8 *source_data;
 	int source_size;
 
-	unsigned char *result_data;
+	UINT8 *result_data;
 
 	source_data = memory_region       ( REGION_GFX1 );
 	source_size = memory_region_length( REGION_GFX1 );
@@ -2170,10 +2170,10 @@ static void rearrange_sprites(void)
 static void decrypt_ms32_tx(int addr_xor,int data_xor)
 {
 	int i;
-	unsigned char *source_data;
+	UINT8 *source_data;
 	int source_size;
 
-	unsigned char *result_data;
+	UINT8 *result_data;
 
 	source_data = memory_region       ( REGION_GFX4 );
 	source_size = memory_region_length( REGION_GFX4 );
@@ -2224,10 +2224,10 @@ static void decrypt_ms32_tx(int addr_xor,int data_xor)
 static void decrypt_ms32_bg(int addr_xor,int data_xor)
 {
 	int i;
-	unsigned char *source_data;
+	UINT8 *source_data;
 	int source_size;
 
-	unsigned char *result_data;
+	UINT8 *result_data;
 
 	source_data = memory_region       ( REGION_GFX3 );
 	source_size = memory_region_length( REGION_GFX3 );
@@ -2326,7 +2326,7 @@ static DRIVER_INIT (kirarast)
 //  { 0xfcc00004, 0xfcc00007, ms32_mahjong_read_inputs1 }
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xfcc00004, 0xfcc00007, 0, 0, ms32_mahjong_read_inputs1 );
 
-	init_ss92047_01(machine);
+	driver_init_ss92047_01(machine);
 }
 
 static DRIVER_INIT (47pie2)
@@ -2334,14 +2334,14 @@ static DRIVER_INIT (47pie2)
 //  { 0xfcc00004, 0xfcc00007, ms32_mahjong_read_inputs1 }
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xfcc00004, 0xfcc00007, 0, 0, ms32_mahjong_read_inputs1 );
 
-	init_ss92048_01(machine);
+	driver_init_ss92048_01(machine);
 }
 
 static DRIVER_INIT (f1superb)
 {
 	UINT32 *pROM = (UINT32 *)memory_region(REGION_CPU1);
 	pROM[0x19d04/4]=0x167a021a; // bne->br  : sprite Y offset table is always copied to RAM
-	init_ss92046_01(machine);
+	driver_init_ss92046_01(machine);
 }
 
 /********** GAME DRIVERS **********/

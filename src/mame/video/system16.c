@@ -165,7 +165,7 @@ UINT16 *sys16_gr_pal;
 UINT16 *sys16_gr_flip;
 int sys16_gr_palette;
 int sys16_gr_palette_default;
-unsigned char sys16_gr_colorflip[2][4];
+UINT8 sys16_gr_colorflip[2][4];
 UINT16 *sys16_gr_second_road;
 
 static tilemap *background, *foreground, *text_layer;
@@ -199,7 +199,7 @@ READ16_HANDLER( sys16_tileram_r ){
 static void draw_sprite( //*
 	mame_bitmap *bitmap,
 	const rectangle *cliprect,
-	const unsigned char *addr, int pitch,
+	const UINT8 *addr, int pitch,
 	const pen_t *paldata,
 	int x0, int y0, int screen_width, int screen_height,
 	int width, int height,
@@ -340,7 +340,7 @@ static void draw_sprite( //*
 static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect, int b3d ) //*
 {
 	const pen_t *base_pal = Machine->gfx[0]->colortable;
-	const unsigned char *base_gfx = memory_region(REGION_GFX2);
+	const UINT8 *base_gfx = memory_region(REGION_GFX2);
 	const int gfx_rom_size = memory_region_length(REGION_GFX2);
 	const UINT16 *source = sys16_spriteram;
 	struct sys16_sprite_attributes sprite;
@@ -521,9 +521,9 @@ WRITE16_HANDLER( sys16_paletteram_w )
 		gh = combine_6_weights(weights[1][1], g0, g1, g2, g3, g4, 1);
 		bh = combine_6_weights(weights[1][2], b0, b1, b2, b3, b4, 1);
 
-		palette_set_color( Machine, offset, r, g, b );
+		palette_set_color( Machine, offset, MAKE_RGB(r, g, b) );
 
-		palette_set_color( Machine, offset+Machine->drv->total_colors/2,rs,gs,bs);
+		palette_set_color( Machine, offset+Machine->drv->total_colors/2,MAKE_RGB(rs,gs,bs));
 	}
 }
 
@@ -581,9 +581,9 @@ static void update_page( void ){
 	}
 }
 
-static void get_bg_tile_info( int offset ){
-	const UINT16 *source = 64*32*sys16_bg_page[offset/(64*32)] + sys16_tileram;
-	int data = source[offset%(64*32)];
+static TILE_GET_INFO( get_bg_tile_info ){
+	const UINT16 *source = 64*32*sys16_bg_page[tile_index/(64*32)] + sys16_tileram;
+	int data = source[tile_index%(64*32)];
 	int tile_number = (data&0xfff) + 0x1000*((data&sys16_tilebank_switch)?sys16_tile_bank1:sys16_tile_bank0);
 
 	if (!shinobl_kludge)
@@ -605,25 +605,25 @@ static void get_bg_tile_info( int offset ){
 
 	switch(sys16_bg_priority_mode) {
 	case 1: // Alien Syndrome
-		tile_info.priority = (data&0x8000)?1:0;
+		tileinfo->priority = (data&0x8000)?1:0;
 		break;
 	case 2: // Body Slam / wrestwar
-		tile_info.priority = ((data&0xff00) >= sys16_bg_priority_value)?1:0;
+		tileinfo->priority = ((data&0xff00) >= sys16_bg_priority_value)?1:0;
 		break;
 	case 3: // sys18 games
 		if( data&0x8000 ){
-			tile_info.priority = 2;
+			tileinfo->priority = 2;
 		}
 		else {
-			tile_info.priority = ((data&0xff00) >= sys16_bg_priority_value)?1:0;
+			tileinfo->priority = ((data&0xff00) >= sys16_bg_priority_value)?1:0;
 		}
 		break;
 	}
 }
 
-static void get_fg_tile_info( int offset ){
-	const UINT16 *source = 64*32*sys16_fg_page[offset/(64*32)] + sys16_tileram;
-	int data = source[offset%(64*32)];
+static TILE_GET_INFO( get_fg_tile_info ){
+	const UINT16 *source = 64*32*sys16_fg_page[tile_index/(64*32)] + sys16_tileram;
+	int data = source[tile_index%(64*32)];
 	int tile_number = (data&0xfff) + 0x1000*((data&sys16_tilebank_switch)?sys16_tile_bank1:sys16_tile_bank0);
 
 	if (!shinobl_kludge)
@@ -645,24 +645,24 @@ static void get_fg_tile_info( int offset ){
 
 	switch(sys16_fg_priority_mode){
 	case 1: // alien syndrome
-		tile_info.priority = (data&0x8000)?1:0;
+		tileinfo->priority = (data&0x8000)?1:0;
 		break;
 
 	case 3:
-		tile_info.priority = ((data&0xff00) >= sys16_fg_priority_value)?1:0;
+		tileinfo->priority = ((data&0xff00) >= sys16_fg_priority_value)?1:0;
 		break;
 
 	default:
 		if( sys16_fg_priority_mode>=0 ){
-			tile_info.priority = (data&0x8000)?1:0;
+			tileinfo->priority = (data&0x8000)?1:0;
 		}
 		break;
 	}
 }
 
-static void get_bg2_tile_info( int offset ){
-	const UINT16 *source = 64*32*sys16_bg2_page[offset/(64*32)] + sys16_tileram;
-	int data = source[offset%(64*32)];
+static TILE_GET_INFO( get_bg2_tile_info ){
+	const UINT16 *source = 64*32*sys16_bg2_page[tile_index/(64*32)] + sys16_tileram;
+	int data = source[tile_index%(64*32)];
 	int tile_number = (data&0xfff) + 0x1000*((data&0x1000)?sys16_tile_bank1:sys16_tile_bank0);
 
 	SET_TILE_INFO(
@@ -671,12 +671,12 @@ static void get_bg2_tile_info( int offset ){
 			(data>>6)&0x7f,
 			0)
 
-	tile_info.priority = 0;
+	tileinfo->priority = 0;
 }
 
-static void get_fg2_tile_info( int offset ){
-	const UINT16 *source = 64*32*sys16_fg2_page[offset/(64*32)] + sys16_tileram;
-	int data = source[offset%(64*32)];
+static TILE_GET_INFO( get_fg2_tile_info ){
+	const UINT16 *source = 64*32*sys16_fg2_page[tile_index/(64*32)] + sys16_tileram;
+	int data = source[tile_index%(64*32)];
 	int tile_number = (data&0xfff) + 0x1000*((data&0x1000)?sys16_tile_bank1:sys16_tile_bank0);
 
 	SET_TILE_INFO(
@@ -685,8 +685,8 @@ static void get_fg2_tile_info( int offset ){
 			(data>>6)&0x7f,
 			0)
 
-	if((data&0xff00) >= sys16_fg_priority_value) tile_info.priority = 1;
-	else tile_info.priority = 0;
+	if((data&0xff00) >= sys16_fg_priority_value) tileinfo->priority = 1;
+	else tileinfo->priority = 0;
 }
 
 WRITE16_HANDLER( sys16_tileram_w ){
@@ -722,9 +722,9 @@ WRITE16_HANDLER( sys16_tileram_w ){
 
 /***************************************************************************/
 
-static void get_text_tile_info( int offset ){
+static TILE_GET_INFO( get_text_tile_info ){
 	const UINT16 *source = sys16_textram;
-	int tile_number = source[offset];
+	int tile_number = source[tile_index];
 	int pri = tile_number >> 8;
 
 	if (!shinobl_kludge)
@@ -745,17 +745,14 @@ static void get_text_tile_info( int offset ){
 	}
 
 	if(pri>=sys16_textlayer_lo_min && pri<=sys16_textlayer_lo_max)
-		tile_info.priority = 1;
+		tileinfo->priority = 1;
 	if(pri>=sys16_textlayer_hi_min && pri<=sys16_textlayer_hi_max)
-		tile_info.priority = 0;
+		tileinfo->priority = 0;
 }
 
 WRITE16_HANDLER( sys16_textram_w ){
-	int oldword = sys16_textram[offset];
 	COMBINE_DATA( &sys16_textram[offset] );
-	if( oldword!=sys16_textram[offset] ){
-		tilemap_mark_tile_dirty( text_layer, offset );
-	}
+	tilemap_mark_tile_dirty( text_layer, offset );
 }
 
 /***************************************************************************/
@@ -822,7 +819,7 @@ VIDEO_START( system16 ){
 		/* initialize all entries to black - needed for Golden Axe*/
 		int i;
 		for( i=0; i<machine->drv->total_colors; i++ ){
-			palette_set_color( machine, i, 0,0,0 );
+			palette_set_color( machine, i, MAKE_RGB(0,0,0) );
 		}
 
 		if(sys16_bg1_trans) tilemap_set_transparent_pen( background, 0 );
@@ -856,8 +853,6 @@ VIDEO_START( system16 ){
 		sys16_textlayer_hi_max=0xff;
 
 		sys16_18_mode=0;
-
-		return 0;
 	}
 }
 
@@ -888,8 +883,7 @@ VIDEO_START( system18old ){
 		8,8,
 		64*2,32*2 );
 
-	if( video_start_system16(machine) )
-		return 1;
+	video_start_system16(machine);
 
 			tilemap_set_transparent_pen( foreground2, 0 );
 
@@ -912,8 +906,6 @@ VIDEO_START( system18old ){
 			sys16_fg_priority_mode=3;
 			sys16_bg_priority_value=0x1800;
 			sys16_fg_priority_value=0x2000;
-
-			return 0;
 }
 
 /***************************************************************************/

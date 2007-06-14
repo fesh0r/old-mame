@@ -17,7 +17,7 @@ static tilemap *bg_tilemap;
  *
  *************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int code = videoram[tile_index * 2] | ((videoram[tile_index * 2 + 1] & 7) << 8);
 	int color = (videoram[tile_index * 2 + 1] & 0xf0) >> 4;
@@ -50,7 +50,6 @@ WRITE8_HANDLER( atetris_videoram_w )
 VIDEO_START( atetris )
 {
 	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 64,32);
-	return 0;
 }
 
 

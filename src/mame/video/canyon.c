@@ -14,16 +14,12 @@ UINT8* canyon_videoram;
 
 WRITE8_HANDLER( canyon_videoram_w )
 {
-	if (canyon_videoram[offset] != data)
-	{
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
-
 	canyon_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	UINT8 code = canyon_videoram[tile_index];
 
@@ -35,8 +31,6 @@ VIDEO_START( canyon )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 

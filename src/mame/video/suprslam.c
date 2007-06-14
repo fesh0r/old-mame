@@ -96,14 +96,12 @@ static void suprslam_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect
 
 WRITE16_HANDLER( suprslam_screen_videoram_w )
 {
-	if (suprslam_screen_videoram[offset] != data) {
-		suprslam_screen_videoram[offset] = data;
-		tilemap_mark_tile_dirty(suprslam_screen_tilemap,offset);
-	}
+	suprslam_screen_videoram[offset] = data;
+	tilemap_mark_tile_dirty(suprslam_screen_tilemap,offset);
 }
 
 
-static void get_suprslam_tile_info(int tile_index)
+static TILE_GET_INFO( get_suprslam_tile_info )
 {
 	int tileno, colour;
 
@@ -120,14 +118,12 @@ static void get_suprslam_tile_info(int tile_index)
 /* BG LAYER */
 WRITE16_HANDLER( suprslam_bg_videoram_w )
 {
-	if (suprslam_bg_videoram[offset] != data) {
-		suprslam_bg_videoram[offset] = data;
-		tilemap_mark_tile_dirty(suprslam_bg_tilemap,offset);
-	}
+	suprslam_bg_videoram[offset] = data;
+	tilemap_mark_tile_dirty(suprslam_bg_tilemap,offset);
 }
 
 
-static void get_suprslam_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_suprslam_bg_tile_info )
 {
 	int tileno, colour;
 
@@ -150,8 +146,6 @@ VIDEO_START( suprslam )
 	K053936_set_offset(0, -45, -21);
 
 	tilemap_set_transparent_pen(suprslam_screen_tilemap,15);
-
-	return 0;
 }
 
 VIDEO_UPDATE( suprslam )

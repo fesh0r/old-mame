@@ -23,8 +23,6 @@ static int sprite_xoff, bg0_dx, bg1_dx[2];
 
 WRITE16_HANDLER( wwfwfest_fg0_videoram_w )
 {
-	int oldword = wwfwfest_fg0_videoram[offset];
-
 	/* Videoram is 8 bit, upper & lower byte writes end up in the same place */
 	if (ACCESSING_MSB && ACCESSING_LSB) {
 		COMBINE_DATA(&wwfwfest_fg0_videoram[offset]);
@@ -34,30 +32,25 @@ WRITE16_HANDLER( wwfwfest_fg0_videoram_w )
 		wwfwfest_fg0_videoram[offset]=data&0xff;
 	}
 
-	if (oldword != wwfwfest_fg0_videoram[offset])
-		tilemap_mark_tile_dirty(fg0_tilemap,offset/2);
+	tilemap_mark_tile_dirty(fg0_tilemap,offset/2);
 }
 
 WRITE16_HANDLER( wwfwfest_bg0_videoram_w )
 {
-	int oldword = wwfwfest_bg0_videoram[offset];
 	COMBINE_DATA(&wwfwfest_bg0_videoram[offset]);
-	if (oldword != wwfwfest_bg0_videoram[offset])
-		tilemap_mark_tile_dirty(bg0_tilemap,offset/2);
+	tilemap_mark_tile_dirty(bg0_tilemap,offset/2);
 }
 
 WRITE16_HANDLER( wwfwfest_bg1_videoram_w )
 {
-	int oldword = wwfwfest_bg1_videoram[offset];
 	COMBINE_DATA(&wwfwfest_bg1_videoram[offset]);
-	if (oldword != wwfwfest_bg1_videoram[offset])
-		tilemap_mark_tile_dirty(bg1_tilemap,offset);
+	tilemap_mark_tile_dirty(bg1_tilemap,offset);
 }
 
 /*******************************************************************************
  Tilemap Related Functions
 *******************************************************************************/
-static void get_fg0_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg0_tile_info )
 {
 	/*- FG0 RAM Format -**
 
@@ -88,7 +81,7 @@ static void get_fg0_tile_info(int tile_index)
 			0)
 }
 
-static void get_bg0_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg0_tile_info )
 {
 	/*- BG0 RAM Format -**
 
@@ -118,7 +111,7 @@ static void get_bg0_tile_info(int tile_index)
 			TILE_FLIPYX((tilebase[0] & 0x00c0) >> 6))
 }
 
-static void get_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg1_tile_info )
 {
 	/*- BG1 RAM Format -**
 
@@ -240,20 +233,15 @@ VIDEO_START( wwfwfest )
 	tilemap_set_transparent_pen(bg0_tilemap,0);
 
 	sprite_xoff = bg0_dx = bg1_dx[0] = bg1_dx[1] = 0;
-
-	return 0;
 }
 
 VIDEO_START( wwfwfstb )
 {
-	if(video_start_wwfwfest(machine))
-		return 1;
+	video_start_wwfwfest(machine);
 
 	sprite_xoff = 2;
 	bg0_dx = bg1_dx[0] = -4;
 	bg1_dx[1] = -2;
-
-	return 0;
 }
 
 VIDEO_UPDATE( wwfwfest )

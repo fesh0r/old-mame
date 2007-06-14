@@ -62,9 +62,9 @@ write:
 #include "sound/msm5205.h"
 
 
-extern unsigned char *firetrap_bg1videoram;
-extern unsigned char *firetrap_bg2videoram;
-extern unsigned char *firetrap_fgvideoram;
+extern UINT8 *firetrap_bg1videoram;
+extern UINT8 *firetrap_bg2videoram;
+extern UINT8 *firetrap_fgvideoram;
 
 WRITE8_HANDLER( firetrap_fgvideoram_w );
 WRITE8_HANDLER( firetrap_bg1videoram_w );
@@ -89,7 +89,7 @@ static WRITE8_HANDLER( firetrap_nmi_disable_w )
 static WRITE8_HANDLER( firetrap_bankselect_w )
 {
 	int bankaddress;
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 	bankaddress = 0x10000 + (data & 0x03) * 0x4000;
 	memory_set_bankptr(1,&RAM[bankaddress]);
@@ -211,7 +211,7 @@ static WRITE8_HANDLER( firetrap_sound_2400_w )
 static WRITE8_HANDLER( firetrap_sound_bankselect_w )
 {
 	int bankaddress;
-	unsigned char *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 
 	bankaddress = 0x10000 + (data & 0x01) * 0x4000;
 	memory_set_bankptr(2,&RAM[bankaddress]);
@@ -528,7 +528,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &tilelayout,   0x80,  4 },	/* colors 0x80-0xbf */
 	{ REGION_GFX3, 0, &tilelayout,   0xc0,  4 },	/* colors 0xc0-0xff */
 	{ REGION_GFX4, 0, &spritelayout, 0x40,  4 },	/* colors 0x40-0x7f */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

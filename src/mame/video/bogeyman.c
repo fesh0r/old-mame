@@ -32,45 +32,33 @@ PALETTE_INIT( bogeyman )
 		bit2 = (color_prom[256] >> 3) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i+16,r,g,b);
+		palette_set_color(machine,i+16,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 }
 
 WRITE8_HANDLER( bogeyman_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( bogeyman_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( bogeyman_videoram2_w )
 {
-	if (bogeyman_videoram2[offset] != data)
-	{
-		bogeyman_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	bogeyman_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( bogeyman_colorram2_w )
 {
-	if (bogeyman_colorram2[offset] != data)
-	{
-		bogeyman_colorram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	bogeyman_colorram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( bogeyman_paletteram_w )
@@ -79,7 +67,7 @@ WRITE8_HANDLER( bogeyman_paletteram_w )
 	paletteram_BBGGGRRR_w(offset, ~data);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int gfxbank = ((((attr & 0x01) << 8) + videoram[tile_index]) / 0x80) + 3;
@@ -89,7 +77,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(gfxbank, code, color, 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = bogeyman_colorram2[tile_index];
 	int tile = bogeyman_videoram2[tile_index] | ((attr & 0x03) << 8);
@@ -108,8 +96,6 @@ VIDEO_START( bogeyman )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 static void bogeyman_draw_sprites( mame_bitmap *bitmap )

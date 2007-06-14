@@ -69,26 +69,26 @@ static write8_handler ssio_custom_output[2];
 static UINT8 csdeluxe_sound_cpu;
 static UINT8 csdeluxe_dac_index;
 static UINT8 csdeluxe_status;
-extern const pia6821_interface csdeluxe_pia_intf;
+static const pia6821_interface csdeluxe_pia_intf;
 
 /* Turbo Chip Squeak-specific globals */
 static UINT8 turbocs_sound_cpu;
 static UINT8 turbocs_dac_index;
 static UINT8 turbocs_status;
-extern const pia6821_interface turbocs_pia_intf;
+static const pia6821_interface turbocs_pia_intf;
 
 /* Sounds Good-specific globals */
 static UINT8 soundsgood_sound_cpu;
 static UINT8 soundsgood_dac_index;
 static UINT8 soundsgood_status;
-extern const pia6821_interface soundsgood_pia_intf;
+static const pia6821_interface soundsgood_pia_intf;
 
 /* Squawk n' Talk-specific globals */
 static UINT8 squawkntalk_sound_cpu;
 static UINT8 squawkntalk_tms_command;
 static UINT8 squawkntalk_tms_strobes;
-extern const pia6821_interface squawkntalk_pia0_intf;
-extern const pia6821_interface squawkntalk_pia1_intf;
+static const pia6821_interface squawkntalk_pia0_intf;
+static const pia6821_interface squawkntalk_pia1_intf;
 
 
 
@@ -131,7 +131,7 @@ void mcr_sound_init(UINT8 config)
 	/* Turbo Chip Squeak */
 	if (mcr_sound_config & MCR_TURBO_CHIP_SQUEAK)
 	{
-		pia_config(0, PIA_ALTERNATE_ORDERING, &turbocs_pia_intf);
+		pia_config(0, &turbocs_pia_intf);
 		turbocs_dac_index = dac_index++;
 		turbocs_sound_cpu = sound_cpu++;
 		state_save_register_global(turbocs_status);
@@ -140,7 +140,7 @@ void mcr_sound_init(UINT8 config)
 	/* Chip Squeak Deluxe */
 	if (mcr_sound_config & MCR_CHIP_SQUEAK_DELUXE)
 	{
-		pia_config(0, PIA_ALTERNATE_ORDERING, &csdeluxe_pia_intf);
+		pia_config(0, &csdeluxe_pia_intf);
 		csdeluxe_dac_index = dac_index++;
 		csdeluxe_sound_cpu = sound_cpu++;
 		state_save_register_global(csdeluxe_status);
@@ -150,7 +150,7 @@ void mcr_sound_init(UINT8 config)
 	if (mcr_sound_config & MCR_SOUNDS_GOOD)
 	{
 		/* special case: Spy Hunter 2 has both Turbo CS and Sounds Good, so we use PIA slot 1 */
-		pia_config(1, PIA_ALTERNATE_ORDERING, &soundsgood_pia_intf);
+		pia_config(1, &soundsgood_pia_intf);
 		soundsgood_dac_index = dac_index++;
 		soundsgood_sound_cpu = sound_cpu++;
 		state_save_register_global(soundsgood_status);
@@ -159,8 +159,8 @@ void mcr_sound_init(UINT8 config)
 	/* Squawk n Talk */
 	if (mcr_sound_config & MCR_SQUAWK_N_TALK)
 	{
-		pia_config(0, PIA_STANDARD_ORDERING, &squawkntalk_pia0_intf);
-		pia_config(1, PIA_STANDARD_ORDERING, &squawkntalk_pia1_intf);
+		pia_config(0, &squawkntalk_pia0_intf);
+		pia_config(1, &squawkntalk_pia1_intf);
 		squawkntalk_sound_cpu = sound_cpu++;
 		state_save_register_global(squawkntalk_tms_command);
 		state_save_register_global(squawkntalk_tms_strobes);
@@ -291,7 +291,7 @@ static INTERRUPT_GEN( ssio_14024_clock )
         /SINT is generated as follows:
 
         Starts with a 16MHz oscillator
-            /2 via 7474 flip-flip @ F11
+            /2 via 7474 flip-flop @ F11
             /16 via 74161 binary counter @ E11
             /10 via 74190 decade counter @ D11
 
@@ -505,13 +505,13 @@ static WRITE8_HANDLER( csdeluxe_porta_w )
 
 static WRITE8_HANDLER( csdeluxe_portb_w )
 {
+	UINT8 z_mask = pia_get_port_b_z_mask(0);
+
 	dacval = (dacval & ~0x003) | (data >> 6);
 	DAC_signed_data_16_w(csdeluxe_dac_index, dacval << 6);
 
-	/* some games tend to set the DDR only temporarily to allow these bits */
-	/* to go through, assuming that they will be effectively latched */
-	if (pia_get_ddr_b(0) & 0x30)
-		csdeluxe_status = (data >> 4) & 3;
+	if (~z_mask & 0x10)  csdeluxe_status = (csdeluxe_status & ~1) | ((data >> 4) & 1);
+	if (~z_mask & 0x20)  csdeluxe_status = (csdeluxe_status & ~2) | ((data >> 4) & 2);
 }
 
 static void csdeluxe_irq(int state)
@@ -536,17 +536,17 @@ static READ16_HANDLER( csdeluxe_pia_r )
 	/* using the MOVEP instruction outputs the same value on the high and */
 	/* low bytes. */
 	if (ACCESSING_MSB)
-		return pia_0_r(offset) << 8;
+		return pia_0_alt_r(offset) << 8;
 	else
-		return pia_0_r(offset);
+		return pia_0_alt_r(offset);
 }
 
 static WRITE16_HANDLER( csdeluxe_pia_w )
 {
 	if (ACCESSING_MSB)
-		pia_0_w(offset, data >> 8);
+		pia_0_alt_w(offset, data >> 8);
 	else
-		pia_0_w(offset, data);
+		pia_0_alt_w(offset, data);
 }
 
 
@@ -579,7 +579,7 @@ ADDRESS_MAP_END
 
 
 /********* PIA interfaces ***********/
-const pia6821_interface csdeluxe_pia_intf =
+static const pia6821_interface csdeluxe_pia_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ csdeluxe_porta_w, csdeluxe_portb_w, 0, 0,
@@ -625,13 +625,13 @@ static WRITE8_HANDLER( soundsgood_porta_w )
 
 static WRITE8_HANDLER( soundsgood_portb_w )
 {
+	UINT8 z_mask = pia_get_port_b_z_mask(1);
+
 	dacval = (dacval & ~0x003) | (data >> 6);
 	DAC_signed_data_16_w(soundsgood_dac_index, dacval << 6);
 
-	/* some games tend to set the DDR only temporarily to allow these bits */
-	/* to go through, assuming that they will be effectively latched */
-	if (pia_get_ddr_b(1) & 0x30)
-		soundsgood_status = (data >> 4) & 3;
+	if (~z_mask & 0x10)  soundsgood_status = (soundsgood_status & ~1) | ((data >> 4) & 1);
+	if (~z_mask & 0x20)  soundsgood_status = (soundsgood_status & ~2) | ((data >> 4) & 2);
 }
 
 static void soundsgood_irq(int state)
@@ -674,7 +674,7 @@ void soundsgood_reset_w(int state)
 ADDRESS_MAP_START( soundsgood_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(19) )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
-	AM_RANGE(0x060000, 0x060007) AM_READWRITE(pia_1_msb_r, pia_1_msb_w)
+	AM_RANGE(0x060000, 0x060007) AM_READWRITE(pia_1_msb_alt_r, pia_1_msb_alt_w)
 	AM_RANGE(0x070000, 0x070fff) AM_RAM
 ADDRESS_MAP_END
 
@@ -683,7 +683,7 @@ ADDRESS_MAP_END
 /* Note: we map this board to PIA #1. It is only used in Spy Hunter and Spy Hunter 2 */
 /* For Spy Hunter 2, we also have a Turbo Chip Squeak in PIA slot 0, so we don't want */
 /* to interfere */
-const pia6821_interface soundsgood_pia_intf =
+static const pia6821_interface soundsgood_pia_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ soundsgood_porta_w, soundsgood_portb_w, 0, 0,
@@ -764,13 +764,13 @@ void turbocs_reset_w(int state)
 ADDRESS_MAP_START( turbocs_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x3800) AM_RAM
-	AM_RANGE(0x4000, 0x4003) AM_MIRROR(0x3ffc) AM_READWRITE(pia_0_r, pia_0_w)
+	AM_RANGE(0x4000, 0x4003) AM_MIRROR(0x3ffc) AM_READWRITE(pia_0_alt_r, pia_0_alt_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 
 /********* PIA interfaces ***********/
-const pia6821_interface turbocs_pia_intf =
+static const pia6821_interface turbocs_pia_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ turbocs_porta_w, turbocs_portb_w, 0, 0,
@@ -907,14 +907,14 @@ ADDRESS_MAP_END
 
 
 /********* PIA interfaces ***********/
-const pia6821_interface squawkntalk_pia0_intf =
+static const pia6821_interface squawkntalk_pia0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ squawkntalk_porta1_w, 0, 0, 0,
 	/*irqs   : A/B             */ squawkntalk_irq, squawkntalk_irq
 };
 
-const pia6821_interface squawkntalk_pia1_intf =
+static const pia6821_interface squawkntalk_pia1_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ squawkntalk_porta2_w, squawkntalk_portb2_w, 0, 0,

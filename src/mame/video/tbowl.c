@@ -20,7 +20,7 @@ static UINT16 tbowl_bg2yscroll;
 
 /* Foreground Layer (tx) Tilemap */
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int tileno;
 	int col;
@@ -33,16 +33,13 @@ static void get_tx_tile_info(int tile_index)
 
 WRITE8_HANDLER( tbowl_txvideoram_w )
 {
-	if (tbowl_txvideoram[offset] != data)
-	{
-		tbowl_txvideoram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset & 0x7ff);
-	}
+	tbowl_txvideoram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset & 0x7ff);
 }
 
 /* Bottom BG Layer (bg) Tilemap */
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tileno;
 	int col;
@@ -55,11 +52,8 @@ static void get_bg_tile_info(int tile_index)
 
 WRITE8_HANDLER( tbowl_bg2videoram_w )
 {
-	if (tbowl_bg2videoram[offset] != data)
-	{
-		tbowl_bg2videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg2_tilemap,offset & 0xfff);
-	}
+	tbowl_bg2videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg2_tilemap,offset & 0xfff);
 }
 
 WRITE8_HANDLER (tbowl_bgxscroll_lo)
@@ -84,7 +78,7 @@ WRITE8_HANDLER (tbowl_bgyscroll_hi)
 
 /* Middle BG Layer (bg2) Tilemaps */
 
-static void get_bg2_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg2_tile_info )
 {
 	int tileno;
 	int col;
@@ -98,11 +92,8 @@ static void get_bg2_tile_info(int tile_index)
 
 WRITE8_HANDLER( tbowl_bgvideoram_w )
 {
-	if (tbowl_bgvideoram[offset] != data)
-	{
-		tbowl_bgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset & 0xfff);
-	}
+	tbowl_bgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset & 0xfff);
 }
 
 WRITE8_HANDLER (tbowl_bg2xscroll_lo)
@@ -220,8 +211,6 @@ VIDEO_START( tbowl )
 	tilemap_set_transparent_pen(tx_tilemap,0);
 	tilemap_set_transparent_pen(bg_tilemap,0);
 	tilemap_set_transparent_pen(bg2_tilemap,0);
-
-	return 0;
 }
 
 

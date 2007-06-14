@@ -19,7 +19,7 @@ static UINT32 get_memory_offset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 
 }
 
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code = dragrace_playfield_ram[tile_index];
 
@@ -57,8 +57,6 @@ VIDEO_START( dragrace )
 {
 	bg_tilemap = tilemap_create(
 		get_tile_info, get_memory_offset, TILEMAP_OPAQUE, 16, 16, 16, 16);
-
-	return 0;
 }
 
 

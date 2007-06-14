@@ -22,15 +22,13 @@ MACHINE_START( namcond1 )
 {
 	state_save_register_global(namcond1_h8_irq5_enabled);
 	state_save_register_global(namcond1_gfxbank);
-
-	return 0;
 }
 
 MACHINE_RESET( namcond1 )
 {
 #ifdef MAME_DEBUG
-    /*unsigned char   *ROM = memory_region(REGION_CPU1);*/
-    /*unsigned int debug_trigger_addr;*/
+    /*UINT8   *ROM = memory_region(REGION_CPU1);*/
+    /*UINT32 debug_trigger_addr;*/
     /*int             i;*/
 
 #if 0

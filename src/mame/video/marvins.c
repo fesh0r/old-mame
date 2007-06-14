@@ -58,7 +58,7 @@ static void stuff_palette( running_machine *machine, int source_index, int dest_
 		bit3 = (color_prom[0x400] >> 1) & 0x01;
 		blue = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color( machine, dest_index++, red, green, blue );
+		palette_set_color( machine, dest_index++, MAKE_RGB(red, green, blue) );
 		color_prom++;
 	}
 
@@ -96,23 +96,20 @@ WRITE8_HANDLER( marvins_spriteram_w )
 
 WRITE8_HANDLER( marvins_foreground_ram_w )
 {
-	if (offset < 0x800 && spriteram_2[offset] != data) tilemap_mark_tile_dirty(fg_tilemap,offset);
-
 	spriteram_2[offset] = data;
+	if (offset < 0x800) tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 WRITE8_HANDLER( marvins_background_ram_w )
 {
-	if (offset < 0x800 && spriteram_3[offset] != data) tilemap_mark_tile_dirty(bg_tilemap,offset);
-
 	spriteram_3[offset] = data;
+	if (offset < 0x800) tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE8_HANDLER( marvins_text_ram_w )
 {
-	if (offset < 0x400 && videoram[offset] != data) tilemap_mark_tile_dirty(tx_tilemap,offset);
-
 	videoram[offset] = data;
+	if (offset < 0x400) tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 /***************************************************************************
@@ -121,7 +118,7 @@ WRITE8_HANDLER( marvins_text_ram_w )
 **
 ***************************************************************************/
 
-static void get_bg_tilemap_info(int tile_index)
+static TILE_GET_INFO( get_bg_tilemap_info )
 {
 	SET_TILE_INFO(
 			2,
@@ -130,7 +127,7 @@ static void get_bg_tilemap_info(int tile_index)
 			0)
 }
 
-static void get_fg_tilemap_info(int tile_index)
+static TILE_GET_INFO( get_fg_tilemap_info )
 {
 	SET_TILE_INFO(
 			1,
@@ -139,7 +136,7 @@ static void get_fg_tilemap_info(int tile_index)
 			0)
 }
 
-static void get_tx_tilemap_info(int tile_index)
+static TILE_GET_INFO( get_tx_tilemap_info )
 {
 	int tile_number = videoram[tile_index];
 	SET_TILE_INFO(
@@ -222,8 +219,6 @@ VIDEO_START( marvins )
 
 		tilemap_set_scrolldx( tx_tilemap, 16, 16 );
 		tilemap_set_scrolldy( tx_tilemap, 0, 0 );
-
-		return 0;
 	}
 }
 

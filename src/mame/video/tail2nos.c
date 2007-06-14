@@ -10,7 +10,7 @@ static tilemap *bg_tilemap;
 static int charbank,charpalette,video_enable;
 static UINT16 *zoomdata;
 static int dirtygfx;
-static unsigned char *dirtychar;
+static UINT8 *dirtychar;
 
 #define TOTAL_CHARS 0x400
 
@@ -21,7 +21,7 @@ static unsigned char *dirtychar;
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT16 code = tail2nos_bgvideoram[tile_index];
 	SET_TILE_INFO(
@@ -38,7 +38,7 @@ static void get_tile_info(int tile_index)
 
 ***************************************************************************/
 
-static void zoom_callback(int *code,int *color)
+static void zoom_callback(int *code,int *color,int *flags)
 {
 	*code |= ((*color & 0x03) << 8);
 	*color = 32 + ((*color & 0x38) >> 3);
@@ -54,8 +54,7 @@ VIDEO_START( tail2nos )
 {
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32);
 
-	if (K051316_vh_start_0(REGION_GFX3,4,TILEMAP_OPAQUE,0,zoom_callback))
-		return 1;
+	K051316_vh_start_0(REGION_GFX3,4,TILEMAP_OPAQUE,0,zoom_callback);
 
 	dirtychar = auto_malloc(TOTAL_CHARS);
 	memset(dirtychar,1,TOTAL_CHARS);
@@ -65,8 +64,6 @@ VIDEO_START( tail2nos )
 	K051316_wraparound_enable(0,1);
 	K051316_set_offset(0,-89,-14);
 	zoomdata = (UINT16 *)memory_region(REGION_GFX3);
-
-	return 0;
 }
 
 
@@ -79,10 +76,8 @@ VIDEO_START( tail2nos )
 
 WRITE16_HANDLER( tail2nos_bgvideoram_w )
 {
-	int oldword = tail2nos_bgvideoram[offset];
 	COMBINE_DATA(&tail2nos_bgvideoram[offset]);
-	if (oldword != tail2nos_bgvideoram[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 READ16_HANDLER( tail2nos_zoomdata_r )

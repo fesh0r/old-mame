@@ -29,7 +29,7 @@ static UINT16 playfield_yscroll;
  *
  *************************************/
 
-static void get_alpha_tile_info(int tile_index)
+static TILE_GET_INFO( get_alpha_tile_info )
 {
 	UINT16 data = atarigen_alpha[tile_index];
 	int code = data & 0x3ff;
@@ -39,7 +39,7 @@ static void get_alpha_tile_info(int tile_index)
 }
 
 
-static void get_playfield_tile_info(int tile_index)
+static TILE_GET_INFO( get_playfield_tile_info )
 {
 	UINT16 data = atarigen_playfield[tile_index];
 	int code = (playfield_tile_bank * 0x1000) + (data & 0xfff);
@@ -98,14 +98,11 @@ VIDEO_START( vindictr )
 	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols, TILEMAP_OPAQUE, 8,8, 64,64);
 
 	/* initialize the motion objects */
-	if (!atarimo_init(0, &modesc))
-		return 1;
+	atarimo_init(0, &modesc);
 
 	/* initialize the alphanumerics */
 	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
-
-	return 0;
 }
 
 
@@ -134,7 +131,7 @@ WRITE16_HANDLER( vindictr_paletteram_w )
 		int g = ((data >> 4) & 15) * i;
 		int b = ((data >> 0) & 15) * i;
 
-		palette_set_color(Machine,offset + c*2048,r,g,b);
+		palette_set_color(Machine,offset + c*2048,MAKE_RGB(r,g,b));
 	}
 }
 

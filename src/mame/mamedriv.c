@@ -1051,6 +1051,11 @@ const game_driver * const drivers[] =
 	DRIVER( smgolfb )	/* (c) 1985 Nintendo */
 	DRIVER( vsbbaljb )	/* (c) 1984 Nintendo */
 
+	/* NES-based hacks */
+	DRIVER( multigam )	/* 1992 */
+	DRIVER( multigmb )	/* 1992 */
+	DRIVER( cham24 )	/* 2002 */
+
 	/* Nintendo Super System Games */
 	DRIVER( nss )
 	DRIVER( nss_ssoc )	/* 1992 Human Inc. */
@@ -1207,6 +1212,7 @@ const game_driver * const drivers[] =
 	DRIVER( robby )		/* (c) 1981 Bally Midway */
 	DRIVER( demndrgn )	/* (c) 1982 Bally Midway */
 	DRIVER( profpac )	/* (c) 1983 Bally Midway */
+	DRIVER( tenpindx )	/* (c) 1983 Bally Midway */
 
 	/* Bally Midway MCR games */
 	/* MCR1 */
@@ -1639,7 +1645,8 @@ const game_driver * const drivers[] =
 	DRIVER( bonzeado )	/* B41 (c) 1988 Taito Corporation Japan (World) */
 	DRIVER( bonzeadu )	/* B41 (c) 1988 Taito America Corporation (US) */
 	DRIVER( jigkmgri )	/* B41 (c) 1988 Taito Corporation (Japan)*/
-	DRIVER( asuka )		/* B68 (c) 1988 Taito Corporation (Japan) */
+	DRIVER( asuka )		/* B68 (c) 1988 Taito Corporation (World) */
+	DRIVER( asukaj )	/* B68 (c) 1988 Taito Corporation (Japan) */
 	DRIVER( mofflott )	/* C17 (c) 1989 Taito Corporation (Japan) */
 	DRIVER( cadash )	/* C21 (c) 1989 Taito Corporation Japan */
 	DRIVER( cadashj )	/* C21 (c) 1989 Taito Corporation */
@@ -2138,8 +2145,9 @@ V-V                           TP-027
 	/* Kyugo games */
 	/* Kyugo only made four games: Repulse, Flash Gal, SRD Mission and Air Wolf. */
 	/* Gyrodine was made by Crux. Crux was antecedent of Toa Plan, and spin-off from Orca. */
-	DRIVER( gyrodine )	/* (c) 1984 Taito Corporation */
-	DRIVER( gyrodinc )	/* (c) 1984 Taito Coropration (Crux License) */
+	DRIVER( gyrodine )	/* (c) 1984 Crux (Taito Corporation license) */
+	DRIVER( gyrodinc )	/* (c) 1984 Crux */
+	DRIVER( buzzard )	/* (c) 1984 Crux */
 	DRIVER( sonofphx )	/* (c) 1985 Associated Overseas MFR */
 	DRIVER( repulse )	/* (c) 1985 Sega */
 	DRIVER( 99lstwar )	/* (c) 1985 Proma */
@@ -2507,6 +2515,7 @@ V-V                           TP-027
 	DRIVER( 19xxjr1 )	/* 07/12/1995 (c) 1996 (Japan) */
 	DRIVER( 19xxa )		/* 07/12/1995 (c) 1996 (Asia) */
 	DRIVER( 19xxh )		/* 18/12/1995 (c) 1996 (Hispanic) */
+	DRIVER( 19xxb )		/* 18/12/1995 (c) 1996 (Brazil) */
 	DRIVER( ddsom )		/* 19/06/1996 (c) 1996 (Euro) */
 	DRIVER( ddsomr1 )	/* 23/02/1996 (c) 1996 (Euro) */
 	DRIVER( ddsomr2 )	/* 09/02/1996 (c) 1996 (Euro) */
@@ -3149,7 +3158,9 @@ V-V                           TP-027
 	DRIVER( mrvikngj )	/* 834-5383 (c) 1984 (S1) */
 	DRIVER( swat )		/* 834-5388 (c) 1984 Coreland / Sega (S1) */
 	DRIVER( flicky )	/* (c) 1984 (S1) */
+	DRIVER( flicks2 )	/* (c) 1984 (S1) */
 	DRIVER( flickyo )	/* (c) 1984 (S1) */
+	DRIVER( flicks1 )	/* (c) 1984 (S1) */
 	DRIVER( wmatch )	/* (c) 1984 (S1) */
 	DRIVER( bullfgt )	/* 834-5478 (c) 1984 Sega / Coreland (S1) */
 	DRIVER( thetogyu )	/* 834-5478 (c) 1984 Sega / Coreland (S1) */
@@ -3944,8 +3955,8 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( acombat )	/* bootleg */
 	DRIVER( acombato )	/* bootleg */
 	DRIVER( sstarbtl )	/* bootleg */
-	DRIVER( tomahawk )	/* (c) [1980?] */
-	DRIVER( tomahaw5 )	/* (c) [1980?] */
+	DRIVER( tomahawk )	/* (c) 1980 Data East, Inc. */
+	DRIVER( tomahaw1 )	/* (c) 1980 Data East, Inc. */
 	DRIVER( progolf )	/* (c) 1981 */
 	DRIVER( progolfa )	/* (c) 1981 */
 	DRIVER( prosoccr )	/* (c) 1983 */
@@ -4011,6 +4022,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( shackled )	/* (c) 1986 Data East USA (US) */
 	DRIVER( breywood )	/* (c) 1986 Data East Corporation (Japan) */
 	DRIVER( csilver )	/* (c) 1987 Data East Corporation (Japan) */
+	DRIVER( csilverj )	/* (c) 1987 Data East Corporation (Japan) */
 	DRIVER( ghostb )	/* (c) 1987 Data East USA (US) */
 	DRIVER( ghostb3 )	/* (c) 1987 Data East USA (US) */
 	DRIVER( meikyuh )	/* (c) 1987 Data East Corporation (Japan) */
@@ -5728,6 +5740,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( strahla )	/* UPL-91074 (c) 1992 UPL (Japan) */
 	DRIVER( bjtwin )	/* UPL-93087 (c) 1993 NMK */
 	DRIVER( tdragon2 )	/* UPL-93091 (c) 1993 NMK */
+	DRIVER( tdragn2a )	/* UPL-93091 (c) 1993 NMK */
 	DRIVER( bigbang )	/* UPL-93091 (c) 1993 NMK */
 	DRIVER( tdragon )	/* (c) 1991 NMK / Tecmo */
 	DRIVER( hachamf )	/* (c) 1991 NMK */
@@ -6540,6 +6553,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( srmp6 )		/* (c) 1996 Seta (Japan) */
 
 	/* Seta Aleck64 and similar (N64 based) */
+	DRIVER( aleck64 )	/* (c) 1998 Nintendo/Seta */
 	DRIVER( 11beat )	/* (c) 1998 Hudson */
 	DRIVER( mtetrisc )	/* (c) 1998 Capcom */
 	DRIVER( starsldr )	/* (c) 1998 Hudson/Seta */
@@ -7206,6 +7220,13 @@ Other Sun games
 	DRIVER( skattva )	/* (c) 1995 */
 	DRIVER( fashiong )	/* (c) 1997 */
 
+	/* JMP Impact Games */
+	DRIVER( cluedo )	/* (c) 1995 */
+	DRIVER( cluedo2c )	/* (c) 1995 */
+	DRIVER( trivialp )	/* (c) 1996 */
+	DRIVER( scrabble )	/* (c) 1997 */
+	DRIVER( hngmnjpm )	/* (c) 1998 */
+
 	/* Other Games */
 	DRIVER( astinvad )	/* (c) 1980 Stern */
 	DRIVER( kosmokil )	/* bootleg */
@@ -7493,8 +7514,8 @@ Other Sun games
 	DRIVER( dambustr )	/* (c) 19?? GAT */
 	DRIVER( gunpey )	/* (c) 2000 Banpresto */
 	DRIVER( spaceg )	/* (c) 19?? */
-	DRIVER( wldarrow )	/* (c) 19?? */
-	DRIVER( unkmeyco )	/* (c) 19?? */
+	DRIVER( wldarrow )	/* (c) 1982 */
+	DRIVER( mdrawpkr )	/* (c) 19?? */
 	DRIVER( laserbas )	/* (c) 1981 Amstar/HOEI */
 	DRIVER( laserbsa )	/* (c) 1981 Amstar/HOEI */
 	DRIVER( futflash )	/* (c) 19?? HOEI */
@@ -7606,5 +7627,6 @@ Other Sun games
 	DRIVER( good )		/* (c) 1983 Kiwako */
 	DRIVER( filetto )
 	DRIVER( quizo )		/* (c) 1985 Seoul Coin Corp. */
+	DRIVER( gstream )	/* (c) 2002, Oriental Soft Japan */
 
 #endif	/* DRIVER_RECURSIVE */

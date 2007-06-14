@@ -43,11 +43,11 @@ Sprite layout.
 #include "driver.h"
 
 
-unsigned char *ddragon_bgvideoram,*ddragon_fgvideoram;
+UINT8 *ddragon_bgvideoram,*ddragon_fgvideoram;
 int ddragon_scrollx_hi, ddragon_scrolly_hi;
-unsigned char *ddragon_scrollx_lo;
-unsigned char *ddragon_scrolly_lo;
-unsigned char *ddragon_spriteram;
+UINT8 *ddragon_scrollx_lo;
+UINT8 *ddragon_scrolly_lo;
+UINT8 *ddragon_spriteram;
 int technos_video_hw;
 
 static tilemap *fg_tilemap,*bg_tilemap;
@@ -66,9 +66,9 @@ static UINT32 background_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_r
 	return (col & 0x0f) + ((row & 0x0f) << 4) + ((col & 0x10) << 4) + ((row & 0x10) << 5);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
-	unsigned char attr = ddragon_bgvideoram[2*tile_index];
+	UINT8 attr = ddragon_bgvideoram[2*tile_index];
 	SET_TILE_INFO(
 			2,
 			ddragon_bgvideoram[2*tile_index+1] + ((attr & 0x07) << 8),
@@ -76,9 +76,9 @@ static void get_bg_tile_info(int tile_index)
 			TILE_FLIPYX((attr & 0xc0) >> 6))
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
-	unsigned char attr = ddragon_fgvideoram[2*tile_index];
+	UINT8 attr = ddragon_fgvideoram[2*tile_index];
 	SET_TILE_INFO(
 			0,
 			ddragon_fgvideoram[2*tile_index+1] + ((attr & 0x07) << 8),
@@ -86,9 +86,9 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_16color_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_16color_tile_info )
 {
-	unsigned char attr = ddragon_fgvideoram[2*tile_index];
+	UINT8 attr = ddragon_fgvideoram[2*tile_index];
 	SET_TILE_INFO(
 			0,
 			ddragon_fgvideoram[2*tile_index+1] + ((attr & 0x0f) << 8),
@@ -109,8 +109,6 @@ VIDEO_START( ddragon )
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
-
-	return 0;
 }
 
 VIDEO_START( chinagat )
@@ -119,8 +117,6 @@ VIDEO_START( chinagat )
 	fg_tilemap = tilemap_create(get_fg_16color_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
-
-	return 0;
 }
 
 
@@ -132,20 +128,14 @@ VIDEO_START( chinagat )
 
 WRITE8_HANDLER( ddragon_bgvideoram_w )
 {
-	if (ddragon_bgvideoram[offset] != data)
-	{
-		ddragon_bgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset/2);
-	}
+	ddragon_bgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset/2);
 }
 
 WRITE8_HANDLER( ddragon_fgvideoram_w )
 {
-	if (ddragon_fgvideoram[offset] != data)
-	{
-		ddragon_fgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset/2);
-	}
+	ddragon_fgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset/2);
 }
 
 

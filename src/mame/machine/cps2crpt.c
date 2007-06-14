@@ -458,7 +458,7 @@ static UINT8 fn(UINT8 in, const struct optimised_sbox *sboxes, UINT32 key)
 
 // srckey is the 64-bit master key (2x32 bits)
 // dstkey will contain the 96-bit key for the 1st FN (4x24 bits)
-void expand_1st_key(unsigned int *dstkey, const unsigned int *srckey)
+void expand_1st_key(UINT32 *dstkey, const UINT32 *srckey)
 {
 	static const int bits[96] =
 	{
@@ -493,7 +493,7 @@ void expand_1st_key(unsigned int *dstkey, const unsigned int *srckey)
 
 // srckey is the 64-bit master key (2x32 bits) XORed with the subkey
 // dstkey will contain the 96-bit key for the 2nd FN (4x24 bits)
-void expand_2nd_key(unsigned int *dstkey, const unsigned int *srckey)
+void expand_2nd_key(UINT32 *dstkey, const UINT32 *srckey)
 {
 	static const int bits[96] =
 	{
@@ -595,7 +595,7 @@ static UINT16 feistel(UINT16 val, const int *bitsA, const int *bitsB,
 
 
 
-static int extract_inputs(unsigned int val, const int *inputs)
+static int extract_inputs(UINT32 val, const int *inputs)
 {
 	int i;
 	int res = 0;
@@ -640,7 +640,7 @@ static void optimise_sboxes(struct optimised_sbox* out, const struct sbox* in)
 }
 
 
-static void cps2_decrypt(const UINT32 *master_key, unsigned int upper_limit)
+static void cps2_decrypt(const UINT32 *master_key, UINT32 upper_limit)
 {
 	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
 	int length = memory_region_length(REGION_CPU1);
@@ -851,6 +851,7 @@ static const struct game_keys keys_table[] =
 	{ "19xxj",    { 0x293c170d,0x081fc06e }, 0x200000 },	// 0C81 0095 1101  cmpi.l  #$00951101,D1
 	{ "19xxjr1",  { 0x293c170d,0x081fc06e }, 0x200000 },	// 0C81 0095 1101  cmpi.l  #$00951101,D1
 	{ "19xxh",    { 0x1f7f8fcb,0x5f333c14 }, 0x200000 },	// 0C81 0095 1101  cmpi.l  #$00951101,D1
+	{ "19xxb",    { 0x6dd8ffef,0x174623ec }, 0x200000 },	// 0C81 0095 1101  cmpi.l  #$00951101,D1
 	{ "ddsom",    { 0xd524e525,0x3ebdde0c }, 0x100000 },	// 0C81 1966 0419  cmpi.l  #$19660419,D1
 	{ "ddsomr1",  { 0xd524e525,0x3ebdde0c }, 0x100000 },	// 0C81 1966 0419  cmpi.l  #$19660419,D1
 	{ "ddsomr2",  { 0xd524e525,0x3ebdde0c }, 0x100000 },	// 0C81 1966 0419  cmpi.l  #$19660419,D1
@@ -980,5 +981,5 @@ DRIVER_INIT( cps2crpt )
 		++k;
 	}
 
-	init_cps2_video(machine);
+	driver_init_cps2_video(machine);
 }

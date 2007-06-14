@@ -81,7 +81,7 @@ Offset:
 
 ***************************************************************************/
 
-static void get_tile_info_0( int tile_index )
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	UINT16 code = ((UINT16 *)psikyo_vram_0)[BYTE_XOR_BE(tile_index)];
 	SET_TILE_INFO(
@@ -91,7 +91,7 @@ static void get_tile_info_0( int tile_index )
 			0)
 }
 
-static void get_tile_info_1( int tile_index )
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	UINT16 code = ((UINT16 *)psikyo_vram_1)[BYTE_XOR_BE(tile_index)];
 	SET_TILE_INFO(
@@ -104,9 +104,7 @@ static void get_tile_info_1( int tile_index )
 
 WRITE32_HANDLER( psikyo_vram_0_w )
 {
-	UINT32 newlong = psikyo_vram_0[offset];
-	UINT32 oldlong = COMBINE_DATA(&psikyo_vram_0[offset]);
-	if (oldlong == newlong)	return;
+	COMBINE_DATA(&psikyo_vram_0[offset]);
 	if (ACCESSING_MSW32)
 	{
 		tilemap_mark_tile_dirty(tilemap_0_size0, offset*2);
@@ -126,9 +124,7 @@ WRITE32_HANDLER( psikyo_vram_0_w )
 
 WRITE32_HANDLER( psikyo_vram_1_w )
 {
-	UINT32 newlong = psikyo_vram_1[offset];
-	UINT32 oldlong = COMBINE_DATA(&psikyo_vram_1[offset]);
-	if (oldlong == newlong)	return;
+	COMBINE_DATA(&psikyo_vram_1[offset]);
 	if (ACCESSING_MSW32)
 	{
 		tilemap_mark_tile_dirty(tilemap_1_size0, offset*2);
@@ -245,8 +241,6 @@ VIDEO_START( psikyo )
 
 		tilemap_set_scroll_rows(tilemap_1_size3,0x10*16);	// line scrolling
 		tilemap_set_scroll_cols(tilemap_1_size3,1);
-
-		return 0;
 }
 
 
@@ -304,7 +298,7 @@ static void psikyo_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, 
 
 	UINT16 *spritelist	=	(UINT16 *)(spritebuf2 + 0x1800/4);
 
-	unsigned char *TILES	=	memory_region(REGION_USER1);	// Sprites LUT
+	UINT8 *TILES	=	memory_region(REGION_USER1);	// Sprites LUT
 	int TILES_LEN			=	memory_region_length(REGION_USER1);
 
 	int width	=	Machine->screen[0].width;

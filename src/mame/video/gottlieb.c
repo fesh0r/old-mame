@@ -85,7 +85,7 @@ WRITE8_HANDLER( gottlieb_paletteram_w )
 
 	b = 0x10 * bit0 + 0x21 * bit1 + 0x46 * bit2 + 0x88 * bit3;
 
-	palette_set_color(Machine, offset / 2, r, g, b);
+	palette_set_color(Machine, offset / 2, MAKE_RGB(r, g, b));
 }
 
 WRITE8_HANDLER( gottlieb_video_outputs_w )
@@ -131,11 +131,8 @@ WRITE8_HANDLER( usvsthem_video_outputs_w )
 
 WRITE8_HANDLER( gottlieb_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( gottlieb_charram_w )
@@ -151,33 +148,31 @@ WRITE8_HANDLER( gottlieb_charram_w )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 
 	SET_TILE_INFO(0, code^swap_bg_ramrom, 0, 0)
 }
 
-static int gottlieb_video_start_common(void)
+static void gottlieb_video_start_common(void)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
-
-	return 0;
 }
 
 VIDEO_START( gottlieb )
 {
 	swap_bg_ramrom = 0x00;
-	return gottlieb_video_start_common();
+	gottlieb_video_start_common();
 }
 
 VIDEO_START( vidvince )
 {
 	swap_bg_ramrom = 0x80;
-	return gottlieb_video_start_common();
+	gottlieb_video_start_common();
 }
 
 static void gottlieb_draw_sprites( mame_bitmap *bitmap )

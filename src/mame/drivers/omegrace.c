@@ -277,7 +277,7 @@ static READ8_HANDLER( omegrace_vg_status_r )
  * 5 4 3 2 1 0 for encoder 2 (not shifted..)
  */
 
-static unsigned char spinnerTable[64] =
+static UINT8 spinnerTable[64] =
 {
 	0x00, 0x04, 0x14, 0x10, 0x18, 0x1c, 0x5c, 0x58,
 	0x50, 0x54, 0x44, 0x40, 0x48, 0x4c, 0x6c, 0x68,
@@ -530,7 +530,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( omegrace )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "omega.m7",     0x0000, 0x1000, CRC(0424d46e) SHA1(cc1ac6c06ba6f6e8466fa08286a0c70b5335af33) )
 	ROM_LOAD( "omega.l7",     0x1000, 0x1000, CRC(edcd7a7d) SHA1(5d142de2f48b01d563578a54fd5540e5d0ac8f4c) )
 	ROM_LOAD( "omega.k7",     0x2000, 0x1000, CRC(6d10f197) SHA1(9609a0cbeeef2efa10d49cde9f0afdca96e9c2f8) )
@@ -538,16 +538,16 @@ ROM_START( omegrace )
 	ROM_LOAD( "omega.e1",     0x9000, 0x0800, CRC(1d0fdf3a) SHA1(3333397a9745874cea1dd6a1bda783cc59393b55) )
 	ROM_LOAD( "omega.f1",     0x9800, 0x0800, CRC(d44c0814) SHA1(2f216ee6de88bbe09775619003aee2d5aa8c554d) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for audio cpu */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "sound.k5",     0x0000, 0x0800, CRC(7d426017) SHA1(370f0fb5608819de873c845f6010cbde75a9818e) )
 
-    /* DVG PROM */
-    ROM_REGION( 0x100, REGION_PROMS, 0 )
-    ROM_LOAD( "01-34602.bin",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	/* DVG PROM */
+	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_LOAD( "01-34602.bin",	0x0000, 0x0100, BAD_DUMP CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( deltrace )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "omega.m7",     0x0000, 0x1000, CRC(0424d46e) SHA1(cc1ac6c06ba6f6e8466fa08286a0c70b5335af33) )
 	ROM_LOAD( "omega.l7",     0x1000, 0x1000, CRC(edcd7a7d) SHA1(5d142de2f48b01d563578a54fd5540e5d0ac8f4c) )
 	ROM_LOAD( "omega.k7",     0x2000, 0x1000, CRC(6d10f197) SHA1(9609a0cbeeef2efa10d49cde9f0afdca96e9c2f8) )
@@ -555,12 +555,12 @@ ROM_START( deltrace )
 	ROM_LOAD( "omega.e1",     0x9000, 0x0800, CRC(1d0fdf3a) SHA1(3333397a9745874cea1dd6a1bda783cc59393b55) )
 	ROM_LOAD( "omega.f1",     0x9800, 0x0800, CRC(d44c0814) SHA1(2f216ee6de88bbe09775619003aee2d5aa8c554d) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for audio cpu */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "sound.k5",     0x0000, 0x0800, CRC(7d426017) SHA1(370f0fb5608819de873c845f6010cbde75a9818e) )
 
-    /* DVG PROM */
-    ROM_REGION( 0x100, REGION_PROMS, 0 )
-    ROM_LOAD( "01-34602.bin",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	/* DVG PROM */
+	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_LOAD( "01-34602.bin",	0x0000, 0x0100, BAD_DUMP CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 

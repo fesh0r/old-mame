@@ -24,14 +24,14 @@ static UINT8 flipx, flipy;
  *
  *************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code = suprridr_bgram[tile_index];
 	SET_TILE_INFO(0, code, 0, 0);
 }
 
 
-static void get_tile_info2(int tile_index)
+static TILE_GET_INFO( get_tile_info2 )
 {
 	UINT8 code = suprridr_fgram[tile_index];
 	SET_TILE_INFO(1, code, 0, 0);
@@ -52,7 +52,6 @@ VIDEO_START( suprridr )
 	bg_tilemap_noscroll = tilemap_create(get_tile_info,  tilemap_scan_rows, TILEMAP_OPAQUE,      8,8, 32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-	return 0;
 }
 
 
@@ -86,7 +85,7 @@ PALETTE_INIT( suprridr )
 		bit1 = (*color_prom >> 7) & 0x01;
 		b = 0x4f * bit0 + 0xa8 * bit1;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 }

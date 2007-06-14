@@ -87,7 +87,7 @@ PALETTE_INIT( galivan )
 		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -142,7 +142,7 @@ PALETTE_INIT( galivan )
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	UINT8 *BGROM = memory_region(REGION_GFX4);
 	int attr = BGROM[tile_index + 0x4000];
@@ -154,7 +154,7 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] | ((attr & 0x01) << 8);
@@ -163,10 +163,10 @@ static void get_tx_tile_info(int tile_index)
 			code,
 			(attr & 0xe0) >> 5,		/* not sure */
 			0)
-	tile_info.priority = attr & 8 ? 0 : 1;	/* seems correct */
+	tileinfo->priority = attr & 8 ? 0 : 1;	/* seems correct */
 }
 
-static void ninjemak_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( ninjemak_get_bg_tile_info )
 {
 	UINT8 *BGROM = memory_region(REGION_GFX4);
 	int attr = BGROM[tile_index + 0x4000];
@@ -178,7 +178,7 @@ static void ninjemak_get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void ninjemak_get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( ninjemak_get_tx_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] | ((attr & 0x03) << 8);
@@ -214,8 +214,6 @@ VIDEO_START( galivan )
 	state_save_register_global(flipscreen);
 	state_save_register_global(write_layers);
 	state_save_register_global(layers);
-
-	return 0;
 }
 
 VIDEO_START( ninjemak )
@@ -234,8 +232,6 @@ VIDEO_START( ninjemak )
 	state_save_register_global_array(scrolly);
 	state_save_register_global(flipscreen);
 	state_save_register_global(ninjemak_dispdisable);
-
-	return 0;
 }
 
 
@@ -248,20 +244,14 @@ VIDEO_START( ninjemak )
 
 WRITE8_HANDLER( galivan_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 WRITE8_HANDLER( galivan_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 /* Written through port 40 */

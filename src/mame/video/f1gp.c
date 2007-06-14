@@ -10,7 +10,7 @@ size_t f1gp_spr1cgram_size,f1gp_spr2cgram_size;
 
 static UINT16 *zoomdata;
 static int dirtygfx,flipscreen,gfxctrl;
-static unsigned char *dirtychar;
+static UINT8 *dirtychar;
 
 #define TOTAL_CHARS 0x800
 
@@ -24,21 +24,21 @@ static int f1gp2_roz_bank;
 
 ***************************************************************************/
 
-static void f1gp_get_roz_tile_info(int tile_index)
+static TILE_GET_INFO( f1gp_get_roz_tile_info )
 {
 	int code = f1gp_rozvideoram[tile_index];
 
 	SET_TILE_INFO(3,code & 0x7ff,code >> 12,0)
 }
 
-static void f1gp2_get_roz_tile_info(int tile_index)
+static TILE_GET_INFO( f1gp2_get_roz_tile_info )
 {
 	int code = f1gp_rozvideoram[tile_index];
 
 	SET_TILE_INFO(2,(code & 0x7ff) + (f1gp2_roz_bank << 11),code >> 12,0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = f1gp_fgvideoram[tile_index];
 
@@ -66,8 +66,6 @@ VIDEO_START( f1gp )
 	memset(dirtychar,1,TOTAL_CHARS);
 
 	zoomdata = (UINT16 *)memory_region(REGION_GFX4);
-
-	return 0;
 }
 
 VIDEO_START( f1gp2 )
@@ -88,8 +86,6 @@ VIDEO_START( f1gp2 )
 	memset(dirtychar,1,TOTAL_CHARS);
 
 	zoomdata = (UINT16 *)memory_region(REGION_GFX4);
-
-	return 0;
 }
 
 
@@ -122,18 +118,14 @@ READ16_HANDLER( f1gp_rozvideoram_r )
 
 WRITE16_HANDLER( f1gp_rozvideoram_w )
 {
-	int oldword = f1gp_rozvideoram[offset];
 	COMBINE_DATA(&f1gp_rozvideoram[offset]);
-	if (oldword != f1gp_rozvideoram[offset])
-		tilemap_mark_tile_dirty(roz_tilemap,offset);
+	tilemap_mark_tile_dirty(roz_tilemap,offset);
 }
 
 WRITE16_HANDLER( f1gp_fgvideoram_w )
 {
-	int oldword = f1gp_fgvideoram[offset];
 	COMBINE_DATA(&f1gp_fgvideoram[offset]);
-	if (oldword != f1gp_fgvideoram[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 WRITE16_HANDLER( f1gp_fgscroll_w )

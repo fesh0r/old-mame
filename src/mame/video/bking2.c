@@ -79,7 +79,7 @@ PALETTE_INIT( bking2 )
 		bit2 = 0;
 		b = 0x92 * bit0 + 0x46 * bit1 + 0x27 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -207,12 +207,8 @@ WRITE8_HANDLER( bking2_hitclr_w )
 
 WRITE8_HANDLER( bking2_playfield_w )
 {
-	if (bking2_playfield_ram[offset] != data)
-	{
-		tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
-	}
-
 	bking2_playfield_ram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
 }
 
 
@@ -238,7 +234,7 @@ static UINT32 get_memory_offset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 
 }
 
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code0 = bking2_playfield_ram[2 * tile_index + 0];
 	UINT8 code1 = bking2_playfield_ram[2 * tile_index + 1];
@@ -257,8 +253,6 @@ VIDEO_START( bking2 )
 	bg_tilemap = tilemap_create(get_tile_info, get_memory_offset, 0, 8, 8, 32, 32);
 	helper0 = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
 	helper1 = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
-
-	return 0;
 }
 
 

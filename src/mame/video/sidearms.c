@@ -15,26 +15,20 @@ UINT8 *sidearms_bg_scrolly;
 
 static UINT8 *tilerom;
 static int bgon, objon, staron, charon, flipon;
-static unsigned int hflop_74a_n, hcount_191, vcount_191, latch_374;
+static UINT32 hflop_74a_n, hcount_191, vcount_191, latch_374;
 
 static tilemap *bg_tilemap, *fg_tilemap;
 
 WRITE8_HANDLER( sidearms_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( sidearms_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( sidearms_c804_w )
@@ -89,7 +83,7 @@ WRITE8_HANDLER( sidearms_gfxctrl_w )
 
 WRITE8_HANDLER( sidearms_star_scrollx_w )
 {
-	unsigned int last_state = hcount_191;
+	UINT32 last_state = hcount_191;
 
 	hcount_191++;
 	hcount_191 &= 0x1ff;
@@ -106,12 +100,12 @@ WRITE8_HANDLER( sidearms_star_scrolly_w )
 }
 
 
-INLINE void get_sidearms_bg_tile_info(int offs)
+static TILE_GET_INFO( get_sidearms_bg_tile_info )
 {
 	int code, attr, color, flags;
 
-	code = tilerom[offs];
-	attr = tilerom[offs + 1];
+	code = tilerom[tile_index];
+	attr = tilerom[tile_index + 1];
 	code |= attr<<8 & 0x100;
 	color = attr>>3 & 0x1f;
 	flags = attr>>1 & 0x03;
@@ -119,12 +113,12 @@ INLINE void get_sidearms_bg_tile_info(int offs)
 	SET_TILE_INFO(1, code, color, flags)
 }
 
-INLINE void get_philko_bg_tile_info(int offs)
+static TILE_GET_INFO( get_philko_bg_tile_info )
 {
 	int code, attr, color, flags;
 
-	code = tilerom[offs];
-	attr = tilerom[offs + 1];
+	code = tilerom[tile_index];
+	attr = tilerom[tile_index + 1];
 	code |= (((attr>>6 & 0x02) | (attr & 0x01)) * 0x100);
 	color = attr>>3 & 0x0f;
 	flags = attr>>1 & 0x03;
@@ -132,7 +126,7 @@ INLINE void get_philko_bg_tile_info(int offs)
 	SET_TILE_INFO(1, code, color, flags)
 }
 
-INLINE void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] + (attr<<2 & 0x300);
@@ -141,7 +135,7 @@ INLINE void get_fg_tile_info(int tile_index)
 	SET_TILE_INFO(0, code, color, 0)
 }
 
-INLINE UINT32 sidearms_tilemap_scan( UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows )
+static UINT32 sidearms_tilemap_scan( UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows )
 {
 	/* logical (col,row) -> memory offset */
 	int offset = ((row << 7) + col) << 1;
@@ -175,8 +169,6 @@ VIDEO_START( sidearms )
 	latch_374 = vcount_191 = hcount_191 = 0;
 
 	flipon = charon = staron = objon = bgon = 0;
-
-	return 0;
 }
 
 void sidearms_draw_sprites_region( mame_bitmap *bitmap, int start_offset, int end_offset )
@@ -215,7 +207,7 @@ void sidearms_draw_sprites_region( mame_bitmap *bitmap, int start_offset, int en
 static void sidearms_draw_starfield( mame_bitmap *bitmap )
 {
 	int x, y, i;
-	unsigned int hadd_283, vadd_283, _hflop_74a_n, _hcount_191, _vcount_191;
+	UINT32 hadd_283, vadd_283, _hflop_74a_n, _hcount_191, _vcount_191;
 	UINT8 *sf_rom;
 	UINT16 *lineptr;
 	int pixadv, lineadv;

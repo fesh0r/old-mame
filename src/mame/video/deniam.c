@@ -55,7 +55,7 @@ static UINT32 scan_pages(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 	return (col & 0x3f) + ((row & 0x1f) << 6) + ((col & 0x40) << 5) + ((row & 0x20) << 7);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int page = tile_index >> 11;
 	UINT16 attr = deniam_videoram[bg_page[page] * 0x0800 + (tile_index & 0x7ff)];
@@ -66,7 +66,7 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int page = tile_index >> 11;
 	UINT16 attr = deniam_videoram[fg_page[page] * 0x0800 + (tile_index & 0x7ff)];
@@ -77,7 +77,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	UINT16 attr = deniam_textram[tile_index];
 	SET_TILE_INFO(
@@ -103,8 +103,6 @@ VIDEO_START( deniam )
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
-
-	return 0;
 }
 
 
@@ -117,30 +115,24 @@ VIDEO_START( deniam )
 
 WRITE16_HANDLER( deniam_videoram_w )
 {
-	int oldword = deniam_videoram[offset];
+	int page,i;
 	COMBINE_DATA(&deniam_videoram[offset]);
-	if (oldword != deniam_videoram[offset])
-	{
-		int page,i;
 
-		page = offset >> 11;
-		for (i = 0;i < 4;i++)
-		{
-			if (bg_page[i] == page)
-				tilemap_mark_tile_dirty(bg_tilemap,i * 0x800 + (offset & 0x7ff));
-			if (fg_page[i] == page)
-				tilemap_mark_tile_dirty(fg_tilemap,i * 0x800 + (offset & 0x7ff));
-		}
+	page = offset >> 11;
+	for (i = 0;i < 4;i++)
+	{
+		if (bg_page[i] == page)
+			tilemap_mark_tile_dirty(bg_tilemap,i * 0x800 + (offset & 0x7ff));
+		if (fg_page[i] == page)
+			tilemap_mark_tile_dirty(fg_tilemap,i * 0x800 + (offset & 0x7ff));
 	}
 }
 
 
 WRITE16_HANDLER( deniam_textram_w )
 {
-	int oldword = deniam_textram[offset];
 	COMBINE_DATA(&deniam_textram[offset]);
-	if (oldword != deniam_textram[offset])
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 
@@ -153,7 +145,7 @@ WRITE16_HANDLER( deniam_palette_w )
 	r = ((data << 1) & 0x1e) | ((data >> 12) & 0x01);
 	g = ((data >> 3) & 0x1e) | ((data >> 13) & 0x01);
 	b = ((data >> 7) & 0x1e) | ((data >> 14) & 0x01);
-	palette_set_color(Machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(Machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 

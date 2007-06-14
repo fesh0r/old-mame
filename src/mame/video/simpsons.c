@@ -2,7 +2,7 @@
 #include "video/konamiic.h"
 
 static int bg_colorbase,sprite_colorbase,layer_colorbase[3];
-unsigned char *simpsons_xtraram;
+UINT8 *simpsons_xtraram;
 static int layerpri[3];
 
 
@@ -12,7 +12,7 @@ static int layerpri[3];
 
 ***************************************************************************/
 
-static void tile_callback(int layer,int bank,int *code,int *color)
+static void tile_callback(int layer,int bank,int *code,int *color,int *flags,int *priority)
 {
 	*code |= ((*color & 0x3f) << 8) | (bank << 14);
 	*color = layer_colorbase[layer] + ((*color & 0xc0) >> 6);
@@ -47,12 +47,8 @@ VIDEO_START( simpsons )
 {
 	K053251_vh_start();
 
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tile_callback))
-		return 1;
-	if (K053247_vh_start(REGION_GFX2,53,23,NORMAL_PLANE_ORDER,sprite_callback))
-		return 1;
-
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tile_callback);
+	K053247_vh_start(REGION_GFX2,53,23,NORMAL_PLANE_ORDER,sprite_callback);
 }
 
 /***************************************************************************

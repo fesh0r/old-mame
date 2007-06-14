@@ -17,9 +17,8 @@ static int orbit_flip_screen;
 
 WRITE8_HANDLER( orbit_playfield_w )
 {
-	tilemap_mark_tile_dirty(bg_tilemap, offset);
-
 	orbit_playfield_ram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 
@@ -35,7 +34,7 @@ static UINT32 get_memory_offset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 
 }
 
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code = orbit_playfield_ram[tile_index];
 
@@ -57,8 +56,6 @@ static void get_tile_info(int tile_index)
 VIDEO_START( orbit )
 {
 	bg_tilemap = tilemap_create(get_tile_info, get_memory_offset, 0, 16, 16, 32, 30);
-
-	return 0;
 }
 
 

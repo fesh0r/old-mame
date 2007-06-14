@@ -36,7 +36,7 @@ static tilemap *ms32_tx_tilemap, *ms32_roz_tilemap, *ms32_bg_tilemap;
 static int flipscreen;
 
 
-static void get_ms32_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_ms32_tx_tile_info )
 {
 	int tileno, colour;
 
@@ -46,7 +46,7 @@ static void get_ms32_tx_tile_info(int tile_index)
 	SET_TILE_INFO(3,tileno,colour,0)
 }
 
-static void get_ms32_roz_tile_info(int tile_index)
+static TILE_GET_INFO( get_ms32_roz_tile_info )
 {
 	int tileno,colour;
 
@@ -56,7 +56,7 @@ static void get_ms32_roz_tile_info(int tile_index)
 	SET_TILE_INFO(1,tileno,colour,0)
 }
 
-static void get_ms32_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_ms32_bg_tile_info )
 {
 	int tileno,colour;
 
@@ -89,8 +89,6 @@ VIDEO_START( ms32 )
 
 	// tp2m32 doesn't set the brightness registers so we need sensible defaults
 	brt[0] = brt[1] = 0xffff;
-
-	return 0;
 }
 
 /********** PALETTE WRITES **********/
@@ -117,7 +115,7 @@ static void update_color(int color)
 		b = ((ms32_palram[color*2+1] & 0x00ff) >>0 );
 	}
 
-	palette_set_color(Machine,color,r,g,b);
+	palette_set_color(Machine,color,MAKE_RGB(r,g,b));
 }
 
 WRITE32_HANDLER( ms32_brightness_w )

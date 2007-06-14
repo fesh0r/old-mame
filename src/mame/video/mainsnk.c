@@ -16,7 +16,7 @@ WRITE8_HANDLER(me_c600_w)
 	mame_printf_debug("canvas %04x\n",data&=0xf0);
 }
 
-static void get_me_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_me_fg_tile_info )
 {
 	int code = (me_fgram[tile_index]);
 
@@ -57,7 +57,7 @@ static void stuff_palette( running_machine *machine, int source_index, int dest_
 		bit3 = (color_prom[0x800] >> 1) & 0x01;
 		blue = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color( machine, dest_index++, red, green, blue );
+		palette_set_color( machine, dest_index++, MAKE_RGB(red, green, blue) );
 		color_prom++;
 	}
 
@@ -80,7 +80,7 @@ WRITE8_HANDLER( me_fgram_w )
 }
 
 
-static void get_me_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_me_bg_tile_info )
 {
 	int code = (me_bgram[tile_index]);
 
@@ -109,7 +109,6 @@ VIDEO_START(mainsnk)
 	me_bg_tilemap = tilemap_create(get_me_bg_tile_info,tilemap_scan_cols,TILEMAP_OPAQUE,8,8,32, 32);
 	tilemap_set_scrollx( me_fg_tilemap, 0, -mainsnk_offset );
 	tilemap_set_scrollx( me_bg_tilemap, 0, -mainsnk_offset );
-	return 0;
 }
 
 static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect, int scrollx, int scrolly )

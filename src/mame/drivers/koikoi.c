@@ -48,7 +48,7 @@ static int ioram[8];
 
 static const int inputTab[]= {	0x22,	0x64, 0x44, 0x68, 0x30, 0x50, 0x70, 0x48, 0x28, 0x21, 0x41, 0x82, 0x81, 0x42  };
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int code  = videoram[tile_index]|((videoram[tile_index+0x400]<<2)&0x100);
 	int color = videoram[tile_index+0x400]&0x1f;
@@ -205,14 +205,13 @@ PALETTE_INIT( koikoi ) //wrong
 		g=bit1*255;
 		b=bit2*255;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 
 VIDEO_START(koikoi)
 {
 	koikoi_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
-	return 0;
 }
 
 VIDEO_UPDATE(koikoi)
@@ -237,7 +236,7 @@ static const gfx_layout tilelayout =
 static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &tilelayout,      0, 32 },
-	{ -1 } /* end of array */
+	{ -1 }
 
 };
 

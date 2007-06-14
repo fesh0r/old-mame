@@ -23,7 +23,7 @@ static tilemap *fix_tilemap;
 
 ***************************************************************************/
 
-static void get_pow_tile_info(int tile_index)
+static TILE_GET_INFO( get_pow_tile_info )
 {
 	int tile=videoram16[2*tile_index]&0xff;
 	int color=videoram16[2*tile_index+1];
@@ -38,7 +38,7 @@ static void get_pow_tile_info(int tile_index)
 			0)
 }
 
-static void get_sar_tile_info(int tile_index)
+static TILE_GET_INFO( get_sar_tile_info )
 {
 	int tile=videoram16[2*tile_index];
 	int color=tile >> 12;
@@ -52,7 +52,7 @@ static void get_sar_tile_info(int tile_index)
 			0)
 }
 
-static void get_ikari3_tile_info(int tile_index)
+static TILE_GET_INFO( get_ikari3_tile_info )
 {
 	int tile=videoram16[2*tile_index];
 	int color=tile >> 12;
@@ -82,8 +82,6 @@ VIDEO_START( pow )
 	fix_tilemap = tilemap_create(get_pow_tile_info,tilemap_scan_cols,TILEMAP_TRANSPARENT,8,8,32,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
-
-	return 0;
 }
 
 VIDEO_START( searchar )
@@ -91,8 +89,6 @@ VIDEO_START( searchar )
 	fix_tilemap = tilemap_create(get_sar_tile_info,tilemap_scan_cols,TILEMAP_TRANSPARENT,8,8,32,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
-
-	return 0;
 }
 
 VIDEO_START( ikari3 )
@@ -100,8 +96,6 @@ VIDEO_START( ikari3 )
 	fix_tilemap = tilemap_create(get_ikari3_tile_info,tilemap_scan_cols,TILEMAP_TRANSPARENT,8,8,32,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
-
-	return 0;
 }
 
 /***************************************************************************
@@ -132,7 +126,7 @@ WRITE16_HANDLER( pow_paletteram16_word_w )
 	g = ((newword >> 3) & 0x1e) | ((newword >> 13) & 0x01) ;
 	b = ((newword << 1) & 0x1e) | ((newword >> 12) & 0x01) ;
 
-	palette_set_color(Machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(Machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 WRITE16_HANDLER( pow_video16_w )

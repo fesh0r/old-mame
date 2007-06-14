@@ -28,7 +28,7 @@ static UINT32 get_memory_offset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 
 }
 
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int code = triplhnt_playfield_ram[tile_index] & 0x3f;
 
@@ -41,8 +41,6 @@ VIDEO_START( triplhnt )
 	helper = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
 
 	bg_tilemap = tilemap_create(get_tile_info, get_memory_offset, 0, 16, 16, 16, 16);
-
-	return 0;
 }
 
 

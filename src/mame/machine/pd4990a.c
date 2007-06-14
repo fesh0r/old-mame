@@ -47,7 +47,7 @@ struct pd4990a_s pd4990a =
 	1		/* weekday BCD */
 };
 
-static unsigned int shiftlo,shifthi;
+static UINT32 shiftlo,shifthi;
 
 static int retraces = 0;	/* Assumes 60 retraces a second */
 static int testwaits= 0;
@@ -56,8 +56,8 @@ static int testbit = 0;	/* Pulses a bit in order to simulate */
 					/* test output */
 static int outputbit=0;
 static int bitno=0;
-static char reading=0;
-static char writting=0;
+static INT8 reading=0;
+static INT8 writting=0;
 
 static int clock_line=0;
 static int command_line=0;	//??
@@ -231,7 +231,7 @@ static void pd4990a_resetbitstream(void)
 	bitno=0;
 }
 
-static void pd4990a_writebit(unsigned char bit)
+static void pd4990a_writebit(UINT8 bit)
 {
 	if(bitno<=31)	//low part
 		shiftlo|=bit<<bitno;
@@ -252,7 +252,7 @@ static void pd4990a_nextbit(void)
 
 }
 
-static unsigned char pd4990a_getcommand(void)
+static UINT8 pd4990a_getcommand(void)
 {
 	//Warning: problems if the 4 bits are in different
 	//parts, It's very strange that this case could happen.
@@ -302,7 +302,7 @@ static void pd4990a_process_command(void)
 }
 
 
-void pd4990a_serial_control(unsigned char data)
+void pd4990a_serial_control(UINT8 data)
 {
 	//Check for command end
 	if(command_line && !(data&END_BIT)) //end of command

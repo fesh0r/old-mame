@@ -1,12 +1,25 @@
-/*************************************************************************
+/***************************************************************************
 
-    audio\spiders.c
+    Sigma Spiders hardware
 
-*************************************************************************/
+***************************************************************************/
+
 #include "driver.h"
-#include "spiders.h"
+#include "sound/discrete.h"
+#include "machine/6821pia.h"
+
+
+/* Discrete Sound Input Nodes */
+#define SPIDERS_WEB_SOUND_DATA      NODE_01
+#define SPIDER_WEB_SOUND_MOD_DATA   NODE_02
+#define SPIDERS_FIRE_EN             NODE_03
+#define SPIDERS_EXP_EN              NODE_04
+#define SPIDERS_SUPER_WEB_EN        NODE_05
+#define SPIDERS_SUPER_WEB_EXPL_EN   NODE_06
+#define SPIDERS_X_EN                NODE_07
 
 #define SPIDERS_SOUND_CLK 6000000 /* 6 MHZ*/
+
 
 /************************************************************************/
 /* Spiders Sound System Analog emulation                                */
@@ -43,7 +56,7 @@ static const discrete_lfsr_desc spiders_lfsr =
 };
 
 
-discrete_dac_r1_ladder spiders_fire_dac =
+static discrete_dac_r1_ladder spiders_fire_dac =
 {
 	1,
 	{RES_K(10)},	// R29
@@ -53,7 +66,7 @@ discrete_dac_r1_ladder spiders_fire_dac =
 	CAP_N(100)		// C100
 };
 
-discrete_dac_r1_ladder spiders_web_exp_dac =
+static discrete_dac_r1_ladder spiders_web_exp_dac =
 {
 	1,
 	{RES_K(10)},	// R44
@@ -90,7 +103,7 @@ static const discrete_555_desc spiders_super_web_555a =
 #define SPIDERS_SW          NODE_13
 #define SPIDERS_X           NODE_14
 
-DISCRETE_SOUND_START(spiders_discrete_interface)
+static DISCRETE_SOUND_START(spiders_discrete_interface)
 
 	/************************************************/
 	/* Input register mapping for spiders           */
@@ -154,3 +167,40 @@ DISCRETE_SOUND_START(spiders_discrete_interface)
 
 DISCRETE_SOUND_END
 
+
+
+WRITE8_HANDLER( spiders_audio_command_w )
+{
+	pia_set_input_a(4, data & 0xf8, 0);
+	pia_set_input_ca1(4, data  & 0x80 ? 1 : 0);
+}
+
+
+WRITE8_HANDLER( spiders_audio_a_w )
+{
+	discrete_sound_w(SPIDER_WEB_SOUND_MOD_DATA, 1 + (data & 4) * 8 + (data & 2) * 4 + (data & 1) * 2);
+}
+
+WRITE8_HANDLER( spiders_audio_b_w )
+{
+	discrete_sound_w(SPIDERS_WEB_SOUND_DATA, data);
+}
+
+
+WRITE8_HANDLER( spiders_audio_ctrl_w )
+{
+	discrete_sound_w(SPIDERS_FIRE_EN, data & 0x10 ? 1 : 0);
+	discrete_sound_w(SPIDERS_EXP_EN, data & 0x08 ? 1 : 0);
+	discrete_sound_w(SPIDERS_SUPER_WEB_EXPL_EN, data & 0x04 ? 1 : 0);
+	discrete_sound_w(SPIDERS_SUPER_WEB_EN, data & 0x02 ? 1 : 0);
+	discrete_sound_w(SPIDERS_X_EN, data & 0x01 ? 1 : 0);
+}
+
+
+MACHINE_DRIVER_START( spiders_audio )
+
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_CONFIG(spiders_discrete_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+MACHINE_DRIVER_END

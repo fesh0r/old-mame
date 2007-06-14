@@ -70,7 +70,7 @@ static void set_color(pen_t pen, int i)
 	bit3 = (fastfred_color_prom[i + 0x200] >> 3) & 0x01;
 	b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-	palette_set_color(Machine,pen,r,g,b);
+	palette_set_color_rgb(Machine,pen,r,g,b);
 }
 
 PALETTE_INIT( fastfred )
@@ -108,7 +108,7 @@ PALETTE_INIT( fastfred )
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 x = tile_index & 0x1f;
 
@@ -131,8 +131,6 @@ VIDEO_START( fastfred )
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
 
 	tilemap_set_scroll_cols(bg_tilemap, 32);
-
-	return 0;
 }
 
 
@@ -144,12 +142,8 @@ VIDEO_START( fastfred )
 
 WRITE8_HANDLER( fastfred_videoram_w )
 {
-	if (fastfred_videoram[offset] != data)
-	{
-		fastfred_videoram[offset] = data;
-
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	fastfred_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 
@@ -344,7 +338,7 @@ VIDEO_UPDATE( fastfred )
 }
 
 
-static void imago_get_tile_info_bg(int tile_index)
+static TILE_GET_INFO( imago_get_tile_info_bg )
 {
 	UINT8 x = tile_index & 0x1f;
 
@@ -354,24 +348,21 @@ static void imago_get_tile_info_bg(int tile_index)
 	SET_TILE_INFO(0, code, color, 0)
 }
 
-static void imago_get_tile_info_fg(int tile_index)
+static TILE_GET_INFO( imago_get_tile_info_fg )
 {
 	int code = imago_fg_videoram[tile_index];
 	SET_TILE_INFO(2, code, 2, 0)
 }
 
-static void imago_get_tile_info_web(int tile_index)
+static TILE_GET_INFO( imago_get_tile_info_web )
 {
 	SET_TILE_INFO(3, tile_index & 0x1ff, 0, 0)
 }
 
 WRITE8_HANDLER( imago_fg_videoram_w )
 {
-	if( imago_fg_videoram[offset] != data)
-	{
-		imago_fg_videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	imago_fg_videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( imago_charbank_w )
@@ -397,10 +388,8 @@ VIDEO_START( imago )
 	galaxian_stars_on = 1;
 
 	/* web colors */
-	palette_set_color(machine,256+64+0,0x50,0x00,0x00);
-	palette_set_color(machine,256+64+1,0x00,0x00,0x00);
-
-	return 0;
+	palette_set_color(machine,256+64+0,MAKE_RGB(0x50,0x00,0x00));
+	palette_set_color(machine,256+64+1,MAKE_RGB(0x00,0x00,0x00));
 }
 
 VIDEO_UPDATE( imago )

@@ -7,20 +7,17 @@
 #include "driver.h"
 #include "bsktball.h"
 
-unsigned char *bsktball_motion;
+UINT8 *bsktball_motion;
 
 static tilemap *bg_tilemap;
 
 WRITE8_HANDLER( bsktball_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = videoram[tile_index];
 	int code = ((attr & 0x0f) << 2) | ((attr & 0x30) >> 4);
@@ -34,8 +31,6 @@ VIDEO_START( bsktball )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void bsktball_draw_sprites( mame_bitmap *bitmap )

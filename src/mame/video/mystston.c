@@ -62,7 +62,7 @@ PALETTE_INIT( mystston )
 
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine, i + 24, r, g, b);	// first 24 colors are from RAM
+		palette_set_color(machine, i + 24, MAKE_RGB(r, g, b));	// first 24 colors are from RAM
 
 		color_prom++;
 	}
@@ -70,20 +70,14 @@ PALETTE_INIT( mystston )
 
 WRITE8_HANDLER( mystston_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset & 0x3ff);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset & 0x3ff);
 }
 
 WRITE8_HANDLER( mystston_videoram2_w )
 {
-	if (mystston_videoram2[offset] != data)
-	{
-		mystston_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset & 0x1ff);
-	}
+	mystston_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset & 0x1ff);
 }
 
 WRITE8_HANDLER( mystston_scroll_w )
@@ -111,7 +105,7 @@ WRITE8_HANDLER( mystston_control_w )
 	flip_screen_set((data & 0x80) ^ ((readinputport(3) & 0x20) ? 0x80:0));
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = mystston_videoram2[tile_index] + ((mystston_videoram2[tile_index + 0x200] & 0x01) << 8);
 	int flags = (tile_index & 0x10) ? TILE_FLIPY : 0;
@@ -119,7 +113,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, 0, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = videoram[tile_index] + ((videoram[tile_index + 0x400] & 0x07) << 8);
 	int color = mystston_fgcolor;
@@ -136,8 +130,6 @@ VIDEO_START( mystston )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )

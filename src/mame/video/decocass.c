@@ -43,7 +43,7 @@ static char object_dirty;
 static rectangle bg_tilemap_l_clip;
 static rectangle bg_tilemap_r_clip;
 
-static UINT32 tile_offset[32*32] = {
+static const UINT32 tile_offset[32*32] = {
 	0x078,0x079,0x07a,0x07b,0x07c,0x07d,0x07e,0x07f,0x0ff,0x0fe,0x0fd,0x0fc,0x0fb,0x0fa,0x0f9,0x0f8,0x278,0x279,0x27a,0x27b,0x27c,0x27d,0x27e,0x27f,0x2ff,0x2fe,0x2fd,0x2fc,0x2fb,0x2fa,0x2f9,0x2f8,
 	0x070,0x071,0x072,0x073,0x074,0x075,0x076,0x077,0x0f7,0x0f6,0x0f5,0x0f4,0x0f3,0x0f2,0x0f1,0x0f0,0x270,0x271,0x272,0x273,0x274,0x275,0x276,0x277,0x2f7,0x2f6,0x2f5,0x2f4,0x2f3,0x2f2,0x2f1,0x2f0,
 	0x068,0x069,0x06a,0x06b,0x06c,0x06d,0x06e,0x06f,0x0ef,0x0ee,0x0ed,0x0ec,0x0eb,0x0ea,0x0e9,0x0e8,0x268,0x269,0x26a,0x26b,0x26c,0x26d,0x26e,0x26f,0x2ef,0x2ee,0x2ed,0x2ec,0x2eb,0x2ea,0x2e9,0x2e8,
@@ -113,7 +113,7 @@ static UINT32 bgvideoram_scan_cols( UINT32 col, UINT32 row, UINT32 num_cols, UIN
 	return tile_offset[col * num_rows + row];
 }
 
-static void get_bg_l_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_l_tile_info )
 {
 	int color = (color_center_bot >> 7) & 1;
 	SET_TILE_INFO(
@@ -123,7 +123,7 @@ static void get_bg_l_tile_info(int tile_index)
 			0)
 }
 
-static void get_bg_r_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_r_tile_info )
 {
 	int color = (color_center_bot >> 7) & 1;
 	SET_TILE_INFO(
@@ -133,7 +133,7 @@ static void get_bg_r_tile_info(int tile_index)
 			TILE_FLIPY)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	UINT8 code = decocass_fgvideoram[tile_index];
 	UINT8 attr = decocass_colorram[tile_index];
@@ -225,16 +225,12 @@ WRITE8_HANDLER( decocass_charram_w )
 
 WRITE8_HANDLER( decocass_fgvideoram_w )
 {
-	if (data == decocass_fgvideoram[offset])
-		return;
 	decocass_fgvideoram[offset] = data;
 	tilemap_mark_tile_dirty( fg_tilemap, offset );
 }
 
 WRITE8_HANDLER( decocass_colorram_w )
 {
-	if (data == decocass_colorram[offset])
-		return;
 	decocass_colorram[offset] = data;
 	tilemap_mark_tile_dirty( fg_tilemap, offset );
 }
@@ -343,6 +339,13 @@ WRITE8_HANDLER( decocass_color_center_bot_w )
      * D0   CLD3
      */
 
+	if ((color_center_bot ^ data) & 0x80)
+	{
+		tilemap_mark_all_tiles_dirty(bg_tilemap_r);
+		tilemap_mark_all_tiles_dirty(bg_tilemap_l);
+	}
+	if ((color_center_bot ^ data) & 0x01)
+		tilemap_mark_all_tiles_dirty(fg_tilemap);
 	color_center_bot = data;
 }
 
@@ -459,7 +462,7 @@ static void draw_missiles(mame_bitmap *bitmap, const rectangle *cliprect,
 						int missile_y_adjust, int missile_y_adjust_flip_screen,
 						UINT8 *missile_ram, int interleave)
 {
-	int i,offs;
+	int i,offs,x;
 
 	/* Draw the missiles (16 of them) seemingly with alternating colors
      * from the E302 latch (color_missiles) */
@@ -475,9 +478,13 @@ static void draw_missiles(mame_bitmap *bitmap, const rectangle *cliprect,
 			sy = 240 - sy + missile_y_adjust_flip_screen;
 		}
 		sy -= missile_y_adjust;
-		drawgfx(bitmap,Machine->gfx[4],
-				0,32 + ((color_missiles >> 4) & 7), 0,0, sx,sy,
-				cliprect, TRANSPARENCY_PEN, 0);
+		if (sy >= cliprect->min_y && sy <= cliprect->max_y)
+			for (x = 0; x < 4; x++)
+			{
+				if (sx >= cliprect->min_x && sx <= cliprect->max_x)
+					*BITMAP_ADDR16(bitmap, sy, sx) = Machine->pens[(color_missiles >> 4) & 7];
+				sx++;
+			}
 
 		sy = 255 - missile_ram[offs + 1*interleave];
 		sx = 255 - missile_ram[offs + 3*interleave];
@@ -487,9 +494,13 @@ static void draw_missiles(mame_bitmap *bitmap, const rectangle *cliprect,
 			sy = 240 - sy + missile_y_adjust_flip_screen;
 		}
 		sy -= missile_y_adjust;
-		drawgfx(bitmap,Machine->gfx[4],
-				0,32 + (color_missiles & 7), 0,0, sx,sy,
-				cliprect, TRANSPARENCY_PEN, 0);
+		if (sy >= cliprect->min_y && sy <= cliprect->max_y)
+			for (x = 0; x < 4; x++)
+			{
+				if (sx >= cliprect->min_x && sx <= cliprect->max_x)
+					*BITMAP_ADDR16(bitmap, sy, sx) = Machine->pens[color_missiles & 7];
+				sx++;
+			}
 	}
 }
 
@@ -589,8 +600,6 @@ VIDEO_START( decocass )
 	/* background videroam bits D0-D3 are shared with the tileram */
 	decocass_bgvideoram = decocass_tileram;
 	decocass_bgvideoram_size = 0x0400;	/* d000-d3ff */
-
-	return 0;
 }
 
 VIDEO_UPDATE( decocass )

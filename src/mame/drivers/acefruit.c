@@ -49,8 +49,6 @@ static void acefruit_refresh(int ref)
 VIDEO_START( acefruit )
 {
 	acefruit_refresh_timer = timer_alloc( acefruit_refresh );
-
-	return 0;
 }
 
 INTERRUPT_GEN( acefruit_vblank )
@@ -233,14 +231,14 @@ WRITE8_HANDLER( acefruit_solenoid_w )
 PALETTE_INIT( acefruit )
 {
 	/* sprites */
-	palette_set_color( Machine, 0, 0x00, 0x00, 0x00 );
-	palette_set_color( Machine, 1, 0x00, 0x00, 0xff );
-	palette_set_color( Machine, 2, 0x00, 0xff, 0x00 );
-	palette_set_color( Machine, 3, 0xff, 0x7f, 0x00 );
-	palette_set_color( Machine, 4, 0xff, 0x00, 0x00 );
-	palette_set_color( Machine, 5, 0xff, 0xff, 0x00 );
-	palette_set_color( Machine, 6, 0xff, 0xff, 0xff );
-	palette_set_color( Machine, 7, 0x7f, 0x3f, 0x1f );
+	palette_set_color( Machine, 0, MAKE_RGB(0x00, 0x00, 0x00) );
+	palette_set_color( Machine, 1, MAKE_RGB(0x00, 0x00, 0xff) );
+	palette_set_color( Machine, 2, MAKE_RGB(0x00, 0xff, 0x00) );
+	palette_set_color( Machine, 3, MAKE_RGB(0xff, 0x7f, 0x00) );
+	palette_set_color( Machine, 4, MAKE_RGB(0xff, 0x00, 0x00) );
+	palette_set_color( Machine, 5, MAKE_RGB(0xff, 0xff, 0x00) );
+	palette_set_color( Machine, 6, MAKE_RGB(0xff, 0xff, 0xff) );
+	palette_set_color( Machine, 7, MAKE_RGB(0x7f, 0x3f, 0x1f) );
 
 	colortable[ 0 ] = 0;
 	colortable[ 1 ] = 1;
@@ -252,10 +250,10 @@ PALETTE_INIT( acefruit )
 	colortable[ 7 ] = 7;
 
 	/* tiles */
-	palette_set_color( Machine, 8, 0xff, 0xff, 0xff );
-	palette_set_color( Machine, 9, 0x00, 0x00, 0xff );
-	palette_set_color( Machine, 10, 0x00, 0xff, 0x00 );
-	palette_set_color( Machine, 11, 0xff, 0x00, 0x00 );
+	palette_set_color( Machine, 8, MAKE_RGB(0xff, 0xff, 0xff) );
+	palette_set_color( Machine, 9, MAKE_RGB(0x00, 0x00, 0xff) );
+	palette_set_color( Machine, 10, MAKE_RGB(0x00, 0xff, 0x00) );
+	palette_set_color( Machine, 11, MAKE_RGB(0xff, 0x00, 0x00) );
 
 	colortable[ 8 ] = 0;
 	colortable[ 9 ] = 8;
@@ -557,7 +555,7 @@ static gfx_decode acefruit_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &spritelayout, 0, 1 },
 	{ REGION_GFX1, 0x1800, &charlayout, 8, 4 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static MACHINE_DRIVER_START( acefruit )
@@ -604,7 +602,7 @@ static DRIVER_INIT( sidewndr )
 ***************************************************************************/
 
 ROM_START( sidewndr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "2_h09.bin",    0x000000, 0x000800, BAD_DUMP CRC(141f3b0c) SHA1(1704feba950fe7aa939b9ed54c37264d10527d11) )
 	ROM_LOAD( "2_h10.bin",    0x000800, 0x000800, CRC(36a2d4af) SHA1(2388e22245497240e5721895d94d2ccd1f579eff) )
 	ROM_LOAD( "2_h11.bin",    0x001000, 0x000800, CRC(e2932643) SHA1(e1c0cd5d0cd332519432cbefa8718362a6cd1ccc) )
@@ -618,7 +616,7 @@ ROM_START( sidewndr )
 ROM_END
 
 ROM_START( spellbnd )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "h9.bin",       0x000000, 0x000800, CRC(9919fcfa) SHA1(04167b12ee9e60ef891893a305a35d3f2eccb0bb) )
 	ROM_LOAD( "h10.bin",      0x000800, 0x000800, CRC(90502d00) SHA1(3bdd859d9146df2eb97b4517c446182569a55a46) )
 	ROM_LOAD( "h11.bin",      0x001000, 0x000800, CRC(7375166c) SHA1(f05b01941423fd36e0a5d3aa913a594e4e7aa5d4) )
@@ -681,7 +679,7 @@ Notes:
 */
 
 ROM_START( starspnr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "h9.h9",        0x00e000, 0x0800, CRC(083068aa) SHA1(160a5f3bf33d0a53354f98295cd67022762928b6) )
 	ROM_CONTINUE(             0x000000, 0x0800 )
 	ROM_LOAD( "h10.h10",      0x00e800, 0x0800, CRC(a0a96e55) SHA1(de4dc0da5a1f358085817690cc6bdc8d94a849f8) )

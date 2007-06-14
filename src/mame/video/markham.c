@@ -24,7 +24,7 @@ PALETTE_INIT( markham )
 		int g = color_prom[machine->drv->total_colors];
 		int b = color_prom[2*machine->drv->total_colors];
 
-		palette_set_color(machine,i,pal4bit(r),pal4bit(g),pal4bit(b));
+		palette_set_color_rgb(machine,i,pal4bit(r),pal4bit(g),pal4bit(b));
 		color_prom++;
 	}
 
@@ -44,11 +44,8 @@ PALETTE_INIT( markham )
 
 WRITE8_HANDLER( markham_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
 }
 
 WRITE8_HANDLER( markham_scroll_x_w )
@@ -65,7 +62,7 @@ WRITE8_HANDLER( markham_flipscreen_w )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = videoram[tile_index * 2];
 	int code = videoram[(tile_index * 2) + 1] + ((attr & 0x60) << 3);
@@ -80,8 +77,6 @@ VIDEO_START( markham )
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
 
 	tilemap_set_scroll_rows(bg_tilemap, 32);
-
-	return 0;
 }
 
 static void markham_draw_sprites( mame_bitmap *bitmap )

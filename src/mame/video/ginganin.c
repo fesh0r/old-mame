@@ -82,7 +82,7 @@ UINT16 *ginganin_fgram16, *ginganin_txtram16, *ginganin_vregs16;
 #define BG_NX  (16*32)
 #define BG_NY  (16*2)
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = memory_region(REGION_GFX5)[2*tile_index + 0] * 256 + memory_region(REGION_GFX5)[2*tile_index + 1];
 	SET_TILE_INFO(
@@ -99,7 +99,7 @@ static void get_bg_tile_info(int tile_index)
 #define FG_NX  (16*16)
 #define FG_NY  (16*2)
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	UINT16 code = ginganin_fgram16[tile_index];
 	SET_TILE_INFO(
@@ -111,10 +111,8 @@ static void get_fg_tile_info(int tile_index)
 
 WRITE16_HANDLER( ginganin_fgram16_w )
 {
-	UINT16 oldword = ginganin_fgram16[offset];
 	COMBINE_DATA(&ginganin_fgram16[offset]);
-	if (oldword != ginganin_fgram16[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 
@@ -124,7 +122,7 @@ WRITE16_HANDLER( ginganin_fgram16_w )
 #define TXT_NX	(32)
 #define TXT_NY	(32)
 
-static void get_txt_tile_info(int tile_index)
+static TILE_GET_INFO( get_txt_tile_info )
 {
 	UINT16 code = ginganin_txtram16[tile_index];
 	SET_TILE_INFO(
@@ -136,10 +134,8 @@ static void get_txt_tile_info(int tile_index)
 
 WRITE16_HANDLER( ginganin_txtram16_w )
 {
-	UINT16 oldword = ginganin_txtram16[offset];
 	COMBINE_DATA(&ginganin_txtram16[offset]);
-	if (oldword != ginganin_txtram16[offset])
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 
@@ -151,8 +147,6 @@ VIDEO_START( ginganin )
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 	tilemap_set_transparent_pen(tx_tilemap,15);
-
-	return 0;
 }
 
 

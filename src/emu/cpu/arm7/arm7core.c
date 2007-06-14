@@ -175,7 +175,8 @@ INLINE UINT32 arm7_cpu_read32( int addr )
 
     if (addr&3)
     {
-	result = program_read_byte_32le(addr) | program_read_byte_32le(addr+1)<<8 | program_read_byte_32le(addr+2)<<16 | program_read_byte_32le(addr+3)<<24;
+        result = program_read_dword_32le(addr);
+        result = ( result >> ( 8 * ( addr & 3 ) ) ) | ( result << ( 32 - ( 8 * ( addr & 3 ) ) ) );
     }
     else
     {
@@ -230,13 +231,16 @@ INLINE UINT8 arm7_cpu_read8( offs_t addr )
       | HandleALUNZFlags(rd))); \
   	R15 += 2;
 
+#define IsNeg(i) ((i) >> 31)
+#define IsPos(i) ((~(i)) >> 31)
+
 #define HandleALUSubFlags(rd, rn, op2) \
   if (insn & INSN_S) \
     SET_CPSR( \
       ((GET_CPSR &~ (N_MASK | Z_MASK | V_MASK | C_MASK)) \
       | ((SIGN_BITS_DIFFER(rn, op2) && SIGN_BITS_DIFFER(rn, rd)) \
           << V_BIT) \
-      | (((op2) <= (rn)) << C_BIT) \
+      | (((IsNeg(rn) & IsPos(op2)) | (IsNeg(rn) & IsPos(rd)) | (IsPos(op2) & IsPos(rd))) ? C_MASK : 0) \
       | HandleALUNZFlags(rd))); \
   R15 += 4;
 
@@ -245,7 +249,7 @@ INLINE UINT8 arm7_cpu_read8( offs_t addr )
       ((GET_CPSR &~ (N_MASK | Z_MASK | V_MASK | C_MASK)) \
       | ((THUMB_SIGN_BITS_DIFFER(rn, op2) && THUMB_SIGN_BITS_DIFFER(rn, rd)) \
           << V_BIT) \
-      | (((op2) <= (rn)) << C_BIT) \
+      | (((IsNeg(rn) & IsPos(op2)) | (IsNeg(rn) & IsPos(rd)) | (IsPos(op2) & IsPos(rd))) ? C_MASK : 0) \
       | HandleALUNZFlags(rd))); \
 	R15 += 2;
 
@@ -315,8 +319,6 @@ static UINT32 decodeShift( UINT32 insn, UINT32 *pCarry)
     UINT32 t  = (insn & INSN_OP2_SHIFT_TYPE) >> INSN_OP2_SHIFT_TYPE_SHIFT;
 
     if ((insn & INSN_OP2_RM)==0xf) {
-        /* If hardwired shift, then PC is 8 bytes ahead, else if register shift
-        is used, then 12 bytes - TODO?? */
         rm+=8;
     }
 
@@ -1132,21 +1134,20 @@ static void HandleSwap(UINT32 insn)
 
 static void HandlePSRTransfer( UINT32 insn )
 {
-    int reg = (insn & 0x400000)?SPSR:eCPSR; //Either CPSR or SPSR
-    int val = 0;
+    int reg = (insn & 0x400000) ? SPSR : eCPSR; //Either CPSR or SPSR
+    UINT32 newval, val = 0;
     int oldmode = GET_CPSR & MODE_FLAG;
 
-    //MSR ( bit 21 set ) - Copy value to CPSR/SPSR
-    if( (insn & 0x00200000) ) {
+    // get old value of CPSR/SPSR
+    newval = GET_REGISTER(reg);
 
+    //MSR ( bit 21 set ) - Copy value to CPSR/SPSR
+    if( (insn & 0x00200000) )
+    {
         //MSR (register transfer)?
         if(insn & 0x10000)
         {
             val = GET_REGISTER(insn & 0x0f);
-
-            //If in non-privelge mode -> only condition codes (top 4 bits) can be changed!
-            if( (GET_MODE==eARM7_MODE_USER))
-                val = (val & 0xF0000000);
         }
         //MSR (register or immediate transfer - flag bits only)
         else
@@ -1161,16 +1162,65 @@ static void HandlePSRTransfer( UINT32 insn )
                     val = insn & INSN_OP2_IMM;
             }
             //Value from Register
-            else {
+            else
+	    {
                 val = GET_REGISTER(insn & 0x0f);
             }
-
-            //This instruction is flag bits only, so keep only top 4 bits!
-            val = (val & 0xF0000000);
         }
 
+	// apply field code bits
+	if (reg == eCPSR)
+	{
+		if ((GET_CPSR & 0x1f) > 0x10)
+		{
+			if (insn & 0x00010000)
+			{
+				newval = (newval & 0xffffff00) | (val & 0xff);
+			}
+			if (insn & 0x00020000)
+			{
+				newval = (newval & 0xffff00ff) | (val & 0xff00);
+			}
+			if (insn & 0x00040000)
+			{
+				newval = (newval & 0xff00ffff) | (val & 0xff0000);
+			}
+		}
+
+		// status flags can be modified regardless of mode
+		if (insn & 0x00080000)
+		{
+			newval = (newval & 0x00ffffff) | (val & 0xff000000);
+		}
+	}
+	else	// SPSR has stricter requirements
+	{
+		if (((GET_CPSR & 0x1f) > 0x10) && ((GET_CPSR & 0x1f) < 0x1f))
+		{
+			if (insn & 0x00010000)
+			{
+				newval = (newval & 0xffffff00) | (val & 0xff);
+			}
+			if (insn & 0x00020000)
+			{
+				newval = (newval & 0xffff00ff) | (val & 0xff00);
+			}
+			if (insn & 0x00040000)
+			{
+				newval = (newval & 0xff00ffff) | (val & 0xff0000);
+			}
+			if (insn & 0x00080000)
+			{
+				newval = (newval & 0x00ffffff) | (val & 0xff000000);
+			}
+		}
+	}
+
+	// force valid mode
+	newval |= 0x10;
+
         //Update the Register
-        SET_REGISTER(reg,val);
+        SET_REGISTER(reg, val);
 
         //Switch to new mode if changed
         if( (val & MODE_FLAG) != oldmode)
@@ -1178,7 +1228,8 @@ static void HandlePSRTransfer( UINT32 insn )
 
     }
     //MRS ( bit 21 clear ) - Copy CPSR or SPSR to specified Register
-    else {
+    else
+    {
         SET_REGISTER( (insn>>12)& 0x0f ,GET_REGISTER(reg));
     }
 }
@@ -1215,9 +1266,9 @@ static void HandleALU( UINT32 insn )
     /* Op2 = Register Value */
     else
     {
-        op2 = decodeShift(insn, (insn & INSN_S && (opcode & 4) == 4)? &sc : NULL);
+        op2 = decodeShift(insn, (insn & INSN_S) ? &sc : NULL);
 
-        if (!(insn & INSN_S && (opcode & 4) == 4))
+        if (!(insn & INSN_S))
             sc=0;
     }
 
@@ -1408,7 +1459,7 @@ static void HandleSMulLong( UINT32 insn)
     /* Add on Rn if this is a MLA */
     if (insn & INSN_MUL_A)
     {
-        INT64 acum = (INT64)((((INT64)(rhi))<<32) | rlo);
+        INT64 acum = (INT64)((((INT64)(GET_REGISTER(rhi)))<<32) | GET_REGISTER(rlo));
         res += acum;
     }
 
@@ -1446,7 +1497,7 @@ static void HandleUMulLong( UINT32 insn)
     /* Add on Rn if this is a MLA */
     if (insn & INSN_MUL_A)
     {
-        UINT64 acum = (UINT64)((((UINT64)(rhi))<<32) | rlo);
+        UINT64 acum = (UINT64)((((UINT64)(GET_REGISTER(rhi)))<<32) | GET_REGISTER(rlo));
         res += acum;
     }
 

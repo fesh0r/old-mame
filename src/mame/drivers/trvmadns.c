@@ -157,7 +157,7 @@ static WRITE8_HANDLER( trvmadns_palette_w )
 	g = (paletteram[offset | 1] & 0xf0) >> 4;
 	b = paletteram[offset | 1] & 0xf;
 
-	palette_set_color(Machine, offset >> 1, pal4bit(r), pal4bit(g), pal4bit(b));
+	palette_set_color_rgb(Machine, offset >> 1, pal4bit(r), pal4bit(g), pal4bit(b));
 }
 
 static WRITE8_HANDLER( w2 )
@@ -240,10 +240,10 @@ static const gfx_layout charlayout =
 static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_CPU1, 0x6000, &charlayout, 0, 4 }, // doesn't matter where we point this, all the tiles are decoded while the game runs
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tile,attr,color,flag;
 
@@ -266,8 +266,6 @@ VIDEO_START( trvmadns )
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap,1);
-
-	return 0;
 }
 
 VIDEO_UPDATE( trvmadns )

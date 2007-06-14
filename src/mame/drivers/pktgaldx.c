@@ -124,7 +124,7 @@ WRITE16_HANDLER( paletteram16_xRGB_w )
 	g = ((paldat & 0x0000ff00) >>8);
 	b = ((paldat & 0x00ff0000) >>16);
 
-	palette_set_color(Machine,pen,r,g,b);
+	palette_set_color(Machine,pen,MAKE_RGB(r,g,b));
 }
 
 READ16_HANDLER( pckgaldx_protection_r )
@@ -324,7 +324,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &tile_8x8_layout,     0, 32 },	/* Tiles (8x8) */
 	{ REGION_GFX1, 0, &tile_16x16_layout,   0, 32 },	/* Tiles (16x16) */
 	{ REGION_GFX2, 0, &spritelayout,      512, 32 },	/* Sprites (16x16) */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_layout bootleg_spritelayout =
@@ -342,7 +342,7 @@ static const gfx_layout bootleg_spritelayout =
 static const gfx_decode bootleg_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &bootleg_spritelayout,     0, 64 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

@@ -94,7 +94,7 @@ PALETTE_INIT( cvs );
 VIDEO_UPDATE( cvs );
 VIDEO_START( cvs );
 
-extern unsigned char *bullet_ram;
+extern UINT8 *bullet_ram;
 
 WRITE8_HANDLER( cvs_videoram_w );
 WRITE8_HANDLER( cvs_bullet_w );
@@ -184,7 +184,7 @@ WRITE8_HANDLER( control_port_w )
 
 int cvs_speech_rom_read_bit(void)
 {
-	unsigned char *ROM = memory_region(REGION_SOUND1);
+	UINT8 *ROM = memory_region(REGION_SOUND1);
     int bit;
 
 	speech_rom_address %= memory_region_length(REGION_SOUND1);
@@ -366,7 +366,7 @@ static const gfx_decode cvs_gfxdecodeinfo[] =
   	{ REGION_GFX1, 0x0000, &s2636_character10, 2072, 8 },	/* s2636 #1  */
   	{ REGION_GFX1, 0x0000, &s2636_character10, 2072, 8 },	/* s2636 #2  */
   	{ REGION_GFX1, 0x0000, &s2636_character10, 2072, 8 },	/* s2636 #3  */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static MACHINE_DRIVER_START( cvs )

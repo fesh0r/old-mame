@@ -45,7 +45,7 @@ static WRITE16_HANDLER( layer2_videoram_w )
 static WRITE16_HANDLER( paletteram_w )
 {
 	data = COMBINE_DATA(&paletteram16[offset]);
-	palette_set_color( Machine, offset, pal4bit(data >> 4), pal4bit(data >> 0), pal4bit(data >> 8));
+	palette_set_color_rgb( Machine, offset, pal4bit(data >> 4), pal4bit(data >> 0), pal4bit(data >> 8));
 }
 
 static WRITE16_HANDLER( magic10_misc_w )
@@ -276,17 +276,17 @@ INPUT_PORTS_START( magic102 )
 */
 INPUT_PORTS_END
 
-static void get_layer0_tile_info(int tile_index)
+static TILE_GET_INFO( get_layer0_tile_info )
 {
 	SET_TILE_INFO(1,layer0_videoram[tile_index*2],layer0_videoram[tile_index*2+1] & 0xf,TILE_FLIPYX((layer0_videoram[tile_index*2+1] & 0xc0) >> 6))
 }
 
-static void get_layer1_tile_info(int tile_index)
+static TILE_GET_INFO( get_layer1_tile_info )
 {
 	SET_TILE_INFO(1,layer1_videoram[tile_index*2],layer1_videoram[tile_index*2+1] & 0xf,TILE_FLIPYX((layer1_videoram[tile_index*2+1] & 0xc0) >> 6))
 }
 
-static void get_layer2_tile_info(int tile_index)
+static TILE_GET_INFO( get_layer2_tile_info )
 {
 	SET_TILE_INFO(0,layer2_videoram[tile_index*2],layer2_videoram[tile_index*2+1] & 0xf,0)
 }
@@ -303,8 +303,6 @@ VIDEO_START( magic10 )
 
 	tilemap_set_scrollx(layer2_tilemap,0,layer2_offset[0]);
 	tilemap_set_scrolly(layer2_tilemap,0,layer2_offset[1]);
-
-	return 0;
 }
 
 VIDEO_UPDATE( magic10 )
@@ -343,7 +341,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &tiles8x8_layout,   0, 16 },
 	{ REGION_GFX1, 0, &tiles16x16_layout, 0, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static MACHINE_DRIVER_START( magic10 )

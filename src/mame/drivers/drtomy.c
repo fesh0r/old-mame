@@ -14,7 +14,7 @@ static UINT16 *drtomy_spriteram;
 static UINT16 *drtomy_videoram_bg, *drtomy_videoram_fg;
 static tilemap *tilemap_bg, *tilemap_fg;
 
-static void get_tile_info_fg(int tile_index)
+static TILE_GET_INFO( get_tile_info_fg )
 {
 	int code  = drtomy_videoram_fg[tile_index] & 0xfff;
 	int color = (drtomy_videoram_fg[tile_index] & 0xf000) >> 12;
@@ -22,7 +22,7 @@ static void get_tile_info_fg(int tile_index)
 }
 
 
-static void get_tile_info_bg(int tile_index)
+static TILE_GET_INFO( get_tile_info_bg )
 {
 	int code  = drtomy_videoram_bg[tile_index] & 0xfff;
 	int color = (drtomy_videoram_bg[tile_index] & 0xf000) >> 12;
@@ -95,8 +95,6 @@ VIDEO_START( drtomy )
 	tilemap_fg = tilemap_create(get_tile_info_fg,tilemap_scan_rows,TILEMAP_TRANSPARENT, 16,16,32,32);
 
 	tilemap_set_transparent_pen(tilemap_fg,0);
-
-	return 0;
 }
 
 VIDEO_UPDATE( drtomy )

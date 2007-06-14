@@ -247,7 +247,7 @@ static const gfx_layout K037122_char_layout =
 	8*128
 };
 
-static void K037122_0_tile_info_layer0(int tile_index)
+static TILE_GET_INFO( K037122_0_tile_info_layer0 )
 {
 	UINT32 val = K037122_tile_ram[0][tile_index + (0x8000/4)];
 	int color = (val >> 17) & 0x1f;
@@ -262,7 +262,7 @@ static void K037122_0_tile_info_layer0(int tile_index)
 	SET_TILE_INFO(K037122_gfx_index[0], tile, color, flags);
 }
 
-static void K037122_0_tile_info_layer1(int tile_index)
+static TILE_GET_INFO( K037122_0_tile_info_layer1 )
 {
 	UINT32 val = K037122_tile_ram[0][tile_index];
 	int color = (val >> 17) & 0x1f;
@@ -277,7 +277,7 @@ static void K037122_0_tile_info_layer1(int tile_index)
 	SET_TILE_INFO(K037122_gfx_index[0], tile, color, flags);
 }
 
-static void K037122_1_tile_info_layer0(int tile_index)
+static TILE_GET_INFO( K037122_1_tile_info_layer0 )
 {
 	UINT32 val = K037122_tile_ram[1][tile_index + (0x8000/4)];
 	int color = (val >> 17) & 0x1f;
@@ -292,7 +292,7 @@ static void K037122_1_tile_info_layer0(int tile_index)
 	SET_TILE_INFO(K037122_gfx_index[1], tile, color, flags);
 }
 
-static void K037122_1_tile_info_layer1(int tile_index)
+static TILE_GET_INFO( K037122_1_tile_info_layer1 )
 {
 	UINT32 val = K037122_tile_ram[1][tile_index];
 	int color = (val >> 17) & 0x1f;
@@ -390,7 +390,7 @@ void K037122_tile_draw(int chip, mame_bitmap *bitmap, const rectangle *cliprect)
 static void update_palette_color(int chip, UINT32 palette_base, int color)
 {
 	UINT32 data = K037122_tile_ram[chip][(palette_base/4) + color];
-	palette_set_color(Machine, color, pal5bit(data >> 6), pal6bit(data >> 0), pal5bit(data >> 11));
+	palette_set_color_rgb(Machine, color, pal5bit(data >> 6), pal6bit(data >> 0), pal5bit(data >> 11));
 }
 
 READ32_HANDLER(K037122_sram_r)
@@ -501,40 +501,33 @@ static void voodoo_vblank_1(int param)
 VIDEO_START( hornet )
 {
 	if (voodoo_version == 0)
-	{
-		if (voodoo_start(0, 0, VOODOO_1, 2, 4, 0))
-			return 1;
-	}
+		voodoo_start(0, 0, VOODOO_1, 2, 4, 0);
 	else
-	{
-		if (voodoo_start(0, 0, VOODOO_2, 2, 4, 0))
-			return 1;
-	}
+		voodoo_start(0, 0, VOODOO_2, 2, 4, 0);
 
 	voodoo_set_vblank_callback(0, voodoo_vblank_0);
 
-	return K037122_vh_start(0);
+	K037122_vh_start(0);
 }
 
 VIDEO_START( hornet_2board )
 {
 	if (voodoo_version == 0)
 	{
-		if (voodoo_start(0, 0, VOODOO_1, 2, 4, 0) ||
-		    voodoo_start(1, 1, VOODOO_1, 2, 4, 0))
-			return 1;
+		voodoo_start(0, 0, VOODOO_1, 2, 4, 0);
+		voodoo_start(1, 1, VOODOO_1, 2, 4, 0);
 	}
 	else
 	{
-		if (voodoo_start(0, 0, VOODOO_2, 2, 4, 0) ||
-			voodoo_start(1, 1, VOODOO_2, 2, 4, 0))
-			return 1;
+		voodoo_start(0, 0, VOODOO_2, 2, 4, 0);
+		voodoo_start(1, 1, VOODOO_2, 2, 4, 0);
 	}
 
 	voodoo_set_vblank_callback(0, voodoo_vblank_0);
 	voodoo_set_vblank_callback(1, voodoo_vblank_1);
 
-	return K037122_vh_start(0) | K037122_vh_start(1);
+	K037122_vh_start(0);
+	K037122_vh_start(1);
 }
 
 
@@ -1150,7 +1143,7 @@ static void sound_irq_callback(int irq)
 }
 
 static UINT8 backup_ram[0x2000];
-static DRIVER_INIT( hornet )
+static void init_hornet(running_machine *machine)
 {
 	init_konami_cgboard(1, CGBOARD_TYPE_HORNET);
 	set_cgboard_texture_bank(0, 5, memory_region(REGION_USER5));
@@ -1166,7 +1159,7 @@ static DRIVER_INIT( hornet )
 	ppc403_install_spu_rx_dma_handler(jamma_r, jamma_rdata);
 }
 
-static DRIVER_INIT( hornet_2board )
+static void init_hornet_2board(running_machine *machine)
 {
 	init_konami_cgboard(2, CGBOARD_TYPE_HORNET);
 	set_cgboard_texture_bank(0, 5, memory_region(REGION_USER5));

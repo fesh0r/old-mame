@@ -16,7 +16,7 @@ static tilemap *roz_tilemap;
 
 static int glfgreat_roz_rom_bank,glfgreat_roz_char_bank,glfgreat_roz_rom_mode;
 
-static void glfgreat_get_roz_tile_info(int tile_index)
+static TILE_GET_INFO( glfgreat_get_roz_tile_info )
 {
 	UINT8 *rom = memory_region(REGION_USER1);
 	int code;
@@ -28,7 +28,7 @@ static void glfgreat_get_roz_tile_info(int tile_index)
 	SET_TILE_INFO(0,code & 0x3fff,code >> 14,0)
 }
 
-static void prmrsocr_get_roz_tile_info(int tile_index)
+static TILE_GET_INFO( prmrsocr_get_roz_tile_info )
 {
 	UINT8 *rom = memory_region(REGION_USER1);
 	int code = rom[tile_index+0x20000] + 256*rom[tile_index];
@@ -46,9 +46,9 @@ static void prmrsocr_get_roz_tile_info(int tile_index)
 
 /* Missing in Action */
 
-static void mia_tile_callback(int layer,int bank,int *code,int *color)
+static void mia_tile_callback(int layer,int bank,int *code,int *color,int *flags,int *priority)
 {
-	tile_info.flags = (*color & 0x04) ? TILE_FLIPX : 0;
+	*flags = (*color & 0x04) ? TILE_FLIPX : 0;
 	if (layer == 0)
 	{
 		*code |= ((*color & 0x01) << 8);
@@ -61,7 +61,7 @@ static void mia_tile_callback(int layer,int bank,int *code,int *color)
 	}
 }
 
-static void cuebrckj_tile_callback(int layer,int bank,int *code,int *color)
+static void cuebrckj_tile_callback(int layer,int bank,int *code,int *color,int *flags,int *priority)
 {
 	if (layer == 0)
 	{
@@ -75,14 +75,14 @@ static void cuebrckj_tile_callback(int layer,int bank,int *code,int *color)
 	}
 }
 
-static void tmnt_tile_callback(int layer,int bank,int *code,int *color)
+static void tmnt_tile_callback(int layer,int bank,int *code,int *color,int *flags,int *priority)
 {
 	*code |= ((*color & 0x03) << 8) | ((*color & 0x10) << 6) | ((*color & 0x0c) << 9)
 			| (bank << 13);
 	*color = layer_colorbase[layer] + ((*color & 0xe0) >> 5);
 }
 
-static void ssbl_tile_callback(int layer,int bank,int *code,int *color)
+static void ssbl_tile_callback(int layer,int bank,int *code,int *color,int *flags,int *priority)
 {
 	if (layer == 0)
 	{
@@ -101,7 +101,7 @@ static void ssbl_tile_callback(int layer,int bank,int *code,int *color)
 
 static int detatwin_rombank;
 
-static void detatwin_tile_callback(int layer,int bank,int *code,int *color)
+static void detatwin_tile_callback(int layer,int bank,int *code,int *color,int *flags,int *priority)
 {
 	/* (color & 0x02) is flip y handled internally by the 052109 */
 	*code |= ((*color & 0x01) << 8) | ((*color & 0x10) << 5) | ((*color & 0x0c) << 8)
@@ -212,11 +212,8 @@ VIDEO_START( mia )
 	layer_colorbase[1] = 32;
 	layer_colorbase[2] = 40;
 	sprite_colorbase = 16;
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,mia_tile_callback))
-		return 1;
-	if (K051960_vh_start(REGION_GFX2,REVERSE_PLANE_ORDER,mia_sprite_callback))
-		return 1;
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,mia_tile_callback);
+	K051960_vh_start(REGION_GFX2,REVERSE_PLANE_ORDER,mia_sprite_callback);
 }
 
 VIDEO_START( cuebrckj )
@@ -225,11 +222,8 @@ VIDEO_START( cuebrckj )
 	layer_colorbase[1] = 32;
 	layer_colorbase[2] = 40;
 	sprite_colorbase = 16;
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,cuebrckj_tile_callback))
-		return 1;
-	if (K051960_vh_start(REGION_GFX2,REVERSE_PLANE_ORDER,mia_sprite_callback))
-		return 1;
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,cuebrckj_tile_callback);
+	K051960_vh_start(REGION_GFX2,REVERSE_PLANE_ORDER,mia_sprite_callback);
 }
 
 VIDEO_START( tmnt )
@@ -238,32 +232,22 @@ VIDEO_START( tmnt )
 	layer_colorbase[1] = 32;
 	layer_colorbase[2] = 40;
 	sprite_colorbase = 16;
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback))
-		return 1;
-	if (K051960_vh_start(REGION_GFX2,REVERSE_PLANE_ORDER,tmnt_sprite_callback))
-		return 1;
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
+	K051960_vh_start(REGION_GFX2,REVERSE_PLANE_ORDER,tmnt_sprite_callback);
 }
 
 VIDEO_START( punkshot )
 {
 	K053251_vh_start();
-
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback))
-		return 1;
-	if (K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,punkshot_sprite_callback))
-		return 1;
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
+	K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,punkshot_sprite_callback);
 }
 
 VIDEO_START( lgtnfght )	/* also tmnt2, ssriders */
 {
 	K053251_vh_start();
-
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback))
-		return 1;
-	if (K053245_vh_start(0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback))
-		return 1;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
+	K053245_vh_start(0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback);
 
 	K05324x_set_z_rejection(0);
 
@@ -273,40 +257,27 @@ VIDEO_START( lgtnfght )	/* also tmnt2, ssriders */
 	state_save_register_global(dim_v);
 	state_save_register_global(lastdim);
 	state_save_register_global(lasten);
-
-	return 0;
 }
 
 VIDEO_START( sunsetbl )
 {
 	K053251_vh_start();
-
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,ssbl_tile_callback))
-		return 1;
-	if (K053245_vh_start(0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback))
-		return 1;
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,ssbl_tile_callback);
+	K053245_vh_start(0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback);
 }
 
 VIDEO_START( detatwin )
 {
 	K053251_vh_start();
-
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,detatwin_tile_callback))
-		return 1;
-	if (K053245_vh_start(0, REGION_GFX2,NORMAL_PLANE_ORDER,detatwin_sprite_callback))
-		return 1;
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,detatwin_tile_callback);
+	K053245_vh_start(0, REGION_GFX2,NORMAL_PLANE_ORDER,detatwin_sprite_callback);
 }
 
 VIDEO_START( glfgreat )
 {
 	K053251_vh_start();
-
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback))
-		return 1;
-	if (K053245_vh_start(0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback))
-		return 1;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
+	K053245_vh_start(0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback);
 
 	roz_tilemap = tilemap_create(glfgreat_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,512,512);
 
@@ -314,29 +285,20 @@ VIDEO_START( glfgreat )
 
 	K053936_wraparound_enable(0, 1);
 	K053936_set_offset(0, 85, 0);
-
-	return 0;
 }
 
 VIDEO_START( thndrx2 )
 {
 	K053251_vh_start();
-
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback))
-		return 1;
-	if (K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,thndrx2_sprite_callback))
-		return 1;
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
+	K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,thndrx2_sprite_callback);
 }
 
 VIDEO_START( prmrsocr )
 {
 	K053251_vh_start();
-
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback))
-		return 1;
-	if (K053245_vh_start(0, REGION_GFX2,NORMAL_PLANE_ORDER,prmrsocr_sprite_callback))
-		return 1;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
+	K053245_vh_start(0, REGION_GFX2,NORMAL_PLANE_ORDER,prmrsocr_sprite_callback);
 
 	roz_tilemap = tilemap_create(prmrsocr_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,512,256);
 
@@ -344,8 +306,6 @@ VIDEO_START( prmrsocr )
 
 	K053936_wraparound_enable(0, 0);
 	K053936_set_offset(0, 85, 1);
-
-	return 0;
 }
 
 
@@ -362,7 +322,7 @@ WRITE16_HANDLER( tmnt_paletteram_word_w )
 	offset &= ~1;
 
 	data = (paletteram16[offset] << 8) | paletteram16[offset+1];
-	palette_set_color(Machine,offset / 2,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+	palette_set_color_rgb(Machine,offset / 2,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 }
 
 

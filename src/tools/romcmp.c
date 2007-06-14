@@ -14,21 +14,6 @@
 #include "osdcore.h"
 
 #include <stdarg.h>
-#ifdef macintosh
-#	include "macromcmp.h"
-#else
-#ifndef _WIN32
-#	include <dirent.h>
-#	include <errno.h>
-#else
-#	include <windows.h>
-#endif
-#include <sys/stat.h>
-#ifdef _MSC_VER
-#define S_ISDIR(m) (((m) & _S_IFMT) == _S_IFDIR)
-#define S_ISREG(m) (((m) & _S_IFMT) == _S_IFREG)
-#endif
-#endif
 
 
 #define MAX_FILES 100
@@ -366,7 +351,7 @@ static float filecompare(const fileinfo *file1,const fileinfo *file2,int mode1,i
 	int i;
 	int match = 0;
 	int size1,size2;
-	int base1,base2,mult1,mult2,mask1,mask2;
+	int base1=0,base2=0,mult1=0,mult2=0,mask1=0,mask2=0;
 
 
 	if (file1->buf == 0 || file2->buf == 0) return 0.0;
@@ -695,7 +680,7 @@ int CLIB_DECL main(int argc,char **argv)
 
 				if (besti != -1)
 				{
-					int start,end;
+					int start=0,end=0;
 
 					printname(&files[0][besti],&files[1][bestj],bestscore,bestmode1,bestmode2);
 					files[0][besti].listed = 1;

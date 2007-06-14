@@ -170,7 +170,7 @@ static WRITE16_HANDLER( color_ram_word_w )
 		g = (color_ram[offset] &0xff00) >> 8;
 		b = (color_ram[offset] &0xff);
 
-		palette_set_color(Machine,offset/2,r,g,b);
+		palette_set_color(Machine,offset/2,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -235,7 +235,6 @@ static MACHINE_START( slapshot )
 {
 	state_save_register_global(banknum);
 	state_save_register_func_postload(reset_sound_region);
-	return 0;
 }
 
 
@@ -520,7 +519,7 @@ static const gfx_decode slapshot_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tilelayout,  0, 256 },	/* sprite parts */
 	{ REGION_GFX1, 0x0, &slapshot_charlayout,  0, 256 },	/* sprites & playfield */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -722,7 +721,7 @@ ROM_END
 
 static DRIVER_INIT( slapshot )
 {
-	unsigned int offset,i;
+	UINT32 offset,i;
 	UINT8 *gfx = memory_region(REGION_GFX2);
 	int size=memory_region_length(REGION_GFX2);
 	int data;

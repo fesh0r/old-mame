@@ -325,7 +325,7 @@ INPUT_PORTS_START( magicstk )
 	PORT_DIPSETTING(    0xe0, "Easy 9" )
 INPUT_PORTS_END
 
-static void powerbal_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( powerbal_get_bg_tile_info )
 {
 	int code = (magicstk_videoram[tile_index] & 0x07ff) + magicstk_tilebank * 0x800;
 	int colr = magicstk_videoram[tile_index] & 0xf000;
@@ -369,8 +369,6 @@ VIDEO_START( powerbal )
 	xoffset = -20;
 
 	tilemap_set_scrolly(bg_tilemap, 0, bg_yoffset);
-
-	return 0;
 }
 
 VIDEO_UPDATE( powerbal )
@@ -410,7 +408,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &tilelayout,          0x100, 16 },	/* colors 0x100-0x1ff */
 	{ REGION_GFX1, 0, &magicstk_charlayout, 0x000, 16 },	/* colors 0x000-0x0ff */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static MACHINE_DRIVER_START( powerbal )

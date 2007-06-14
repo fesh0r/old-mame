@@ -10,7 +10,7 @@ static int layer_colorbase[3],sprite_colorbase;
 
 ***************************************************************************/
 
-static void tile_callback(int layer,int bank,int *code,int *color)
+static void tile_callback(int layer,int bank,int *code,int *color, int *flags, int *priority)
 {
 	*code |= ((*color & 0x3f) << 8) | (bank << 14);
 	*color = layer_colorbase[layer] + ((*color & 0xc0) >> 6);
@@ -59,12 +59,8 @@ VIDEO_START( aliens )
 	layer_colorbase[1] = 4;
 	layer_colorbase[2] = 8;
 	sprite_colorbase = 16;
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tile_callback))
-		return 1;
-	if (K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,sprite_callback))
-		return 1;
-
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tile_callback);
+	K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,sprite_callback);
 }
 
 

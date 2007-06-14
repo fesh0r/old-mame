@@ -42,45 +42,33 @@ PALETTE_INIT( ssozumo )
 		bit3 = (color_prom[64] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 }
 
 WRITE8_HANDLER( ssozumo_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( ssozumo_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( ssozumo_videoram2_w )
 {
-	if (ssozumo_videoram2[offset] != data)
-	{
-		ssozumo_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	ssozumo_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( ssozumo_colorram2_w )
 {
-	if (ssozumo_colorram2[offset] != data)
-	{
-		ssozumo_colorram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	ssozumo_colorram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( ssozumo_paletteram_w )
@@ -113,7 +101,7 @@ WRITE8_HANDLER( ssozumo_paletteram_w )
 	bit3 = (val >> 3) & 0x01;
 	b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-	palette_set_color(Machine, offs2 + 64, r, g, b);
+	palette_set_color(Machine, offs2 + 64, MAKE_RGB(r, g, b));
 }
 
 WRITE8_HANDLER( ssozumo_scroll_w )
@@ -126,7 +114,7 @@ WRITE8_HANDLER( ssozumo_flipscreen_w )
 	flip_screen_set(data & 0x80);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] + ((colorram[tile_index] & 0x08) << 5);
 	int color = (colorram[tile_index] & 0x30) >> 4;
@@ -135,7 +123,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = ssozumo_videoram2[tile_index] + 256 * (ssozumo_colorram2[tile_index] & 0x07);
 	int color = (ssozumo_colorram2[tile_index] & 0x30) >> 4;
@@ -152,8 +140,6 @@ VIDEO_START( ssozumo )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 static void ssozumo_draw_sprites( mame_bitmap *bitmap )

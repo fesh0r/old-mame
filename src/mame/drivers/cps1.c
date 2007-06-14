@@ -219,7 +219,7 @@ static int cps1_sound_fade_timer;
 
 static WRITE8_HANDLER( cps1_snd_bankswitch_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 	int length = memory_region_length(REGION_CPU2) - 0x10000;
 	int bankaddr;
 
@@ -311,7 +311,7 @@ struct QSound_interface qsound_interface =
 	REGION_SOUND1
 };
 
-static unsigned char *qsound_sharedram1,*qsound_sharedram2;
+static UINT8 *qsound_sharedram1,*qsound_sharedram2;
 
 INTERRUPT_GEN( cps1_qsound_interrupt )
 {
@@ -321,7 +321,7 @@ INTERRUPT_GEN( cps1_qsound_interrupt )
 
 READ16_HANDLER( qsound_rom_r )
 {
-	unsigned char *rom = memory_region(REGION_USER1);
+	UINT8 *rom = memory_region(REGION_USER1);
 
 	if (rom) return rom[offset] | 0xff00;
 	else
@@ -359,7 +359,7 @@ static WRITE8_HANDLER( qsound_banksw_w )
     Z80 bank register for music note data. It's odd that it isn't encrypted
     though.
     */
-	unsigned char *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(REGION_CPU2);
 	int bankaddress=0x10000+((data&0x0f)*0x4000);
 	if (bankaddress >= memory_region_length(REGION_CPU2))
 	{
@@ -4027,7 +4027,7 @@ ROM_START( forgottn )
 	ROM_REGION( 0x8000, REGION_GFX2, 0 )
 	ROM_COPY( REGION_GFX1, 0x000000, 0x000000, 0x8000 )	/* stars */
 
-	ROM_REGION( 0x18000, REGION_CPU2, 0 ) /* 64k for the audio CPU */
+	ROM_REGION( 0x18000, REGION_CPU2, 0 )
 	ROM_LOAD( "lwu00",         0x00000, 0x08000, CRC(59df2a63) SHA1(dfe1fffc7a17179a80a2ae623e93b30a7d6df20d) )
 	ROM_CONTINUE(              0x10000, 0x08000 )
 
@@ -4066,7 +4066,7 @@ ROM_START( lostwrld )
 	ROM_REGION( 0x8000, REGION_GFX2, 0 )
 	ROM_COPY( REGION_GFX1, 0x000000, 0x000000, 0x8000 )	/* stars */
 
-	ROM_REGION( 0x18000, REGION_CPU2, 0 ) /* 64k for the audio CPU */
+	ROM_REGION( 0x18000, REGION_CPU2, 0 )
 	ROM_LOAD( "lwu00",         0x00000, 0x08000, CRC(59df2a63) SHA1(dfe1fffc7a17179a80a2ae623e93b30a7d6df20d) )
 	ROM_CONTINUE(              0x10000, 0x08000 )
 
@@ -4108,7 +4108,7 @@ ROM_START( ghouls )
 	ROM_REGION( 0x8000, REGION_GFX2, 0 )
 	ROM_COPY( REGION_GFX1, 0x000000, 0x000000, 0x8000 )	/* stars */
 
-	ROM_REGION( 0x18000, REGION_CPU2, 0 ) /* 64k for the audio CPU */
+	ROM_REGION( 0x18000, REGION_CPU2, 0 )
 	ROM_LOAD( "ghl26.bin",     0x00000, 0x08000, CRC(3692f6e5) SHA1(61b8438d60a39b4cf5062dff0a53228e8a4e4b5f) )
 	ROM_CONTINUE(              0x10000, 0x08000 )
 ROM_END
@@ -4146,7 +4146,7 @@ ROM_START( ghoulsu )
 	ROM_REGION( 0x8000, REGION_GFX2, 0 )
 	ROM_COPY( REGION_GFX1, 0x000000, 0x000000, 0x8000 )	/* stars */
 
-	ROM_REGION( 0x18000, REGION_CPU2, 0 ) /* 64k for the audio CPU */
+	ROM_REGION( 0x18000, REGION_CPU2, 0 )
 	ROM_LOAD( "ghl26.bin",     0x00000, 0x08000, CRC(3692f6e5) SHA1(61b8438d60a39b4cf5062dff0a53228e8a4e4b5f) )
 	ROM_CONTINUE(              0x10000, 0x08000 )
 ROM_END
@@ -4184,7 +4184,7 @@ ROM_START( daimakai )
 	ROM_REGION( 0x8000, REGION_GFX2, 0 )
 	ROM_COPY( REGION_GFX1, 0x000000, 0x000000, 0x8000 )	/* stars */
 
-	ROM_REGION( 0x18000, REGION_CPU2, 0 ) /* 64k for the audio CPU */
+	ROM_REGION( 0x18000, REGION_CPU2, 0 )
 	ROM_LOAD( "ghl26.bin",     0x00000, 0x08000, CRC(3692f6e5) SHA1(61b8438d60a39b4cf5062dff0a53228e8a4e4b5f) )
 	ROM_CONTINUE(              0x10000, 0x08000 )
 ROM_END
@@ -7716,25 +7716,25 @@ ROM_END
 static DRIVER_INIT( wof )
 {
 	wof_decode();
-	init_cps1(machine);
+	driver_init_cps1(machine);
 }
 
 static DRIVER_INIT( dino )
 {
 	dino_decode();
-	init_cps1(machine);
+	driver_init_cps1(machine);
 }
 
 static DRIVER_INIT( punisher )
 {
 	punisher_decode();
-	init_cps1(machine);
+	driver_init_cps1(machine);
 }
 
 static DRIVER_INIT( slammast )
 {
 	slammast_decode();
-	init_cps1(machine);
+	driver_init_cps1(machine);
 }
 
 static DRIVER_INIT( pang3 )
@@ -7758,7 +7758,7 @@ static DRIVER_INIT( pang3 )
 		rom[A/2] = dst;
 	}
 
-	init_cps1(machine);
+	driver_init_cps1(machine);
 }
 
 

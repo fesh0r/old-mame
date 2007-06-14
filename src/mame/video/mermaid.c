@@ -34,13 +34,13 @@ PALETTE_INIT( mermaid )
 		int g = 0x21 * BIT(*color_prom, 3) + 0x47 * BIT(*color_prom, 4) + 0x97 * BIT(*color_prom, 5);
 		int b =                              0x47 * BIT(*color_prom, 6) + 0x97 * BIT(*color_prom, 7);
 
-		palette_set_color(machine, i, r, g, b);
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
 
 		color_prom++;
 	}
 
 	// blue background
-	palette_set_color(machine, TOTAL_COLORS(0), 0, 0, 0xff);
+	palette_set_color(machine, TOTAL_COLORS(0), MAKE_RGB(0, 0, 0xff));
 
 	// set up background palette
     COLOR(2,0) = 32;
@@ -52,29 +52,20 @@ PALETTE_INIT( mermaid )
 
 WRITE8_HANDLER( mermaid_videoram2_w )
 {
-	if (mermaid_videoram2[offset] != data)
-	{
-		mermaid_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	mermaid_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( mermaid_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( mermaid_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( mermaid_flip_screen_x_w )
@@ -126,7 +117,7 @@ READ8_HANDLER( mermaid_collision_r )
 	return 0;	// not implemented
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = mermaid_videoram2[tile_index];
 	int sx = tile_index % 32;
@@ -135,7 +126,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(2, code, color, 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] + ((attr & 0x30) << 4);
@@ -159,8 +150,6 @@ VIDEO_START( mermaid )
 	tilemap_set_scroll_cols(bg_tilemap, 32);
 	tilemap_set_scroll_cols(fg_tilemap, 32);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 static void mermaid_draw_sprites( mame_bitmap *bitmap )

@@ -8,10 +8,10 @@
 
 #include "driver.h"
 
-unsigned char *slapfight_videoram;
-unsigned char *slapfight_colorram;
+UINT8 *slapfight_videoram;
+UINT8 *slapfight_colorram;
 size_t slapfight_videoram_size;
-unsigned char *slapfight_scrollx_lo,*slapfight_scrollx_hi,*slapfight_scrolly;
+UINT8 *slapfight_scrollx_lo,*slapfight_scrollx_hi,*slapfight_scrolly;
 static int flipscreen, slapfight_palette_bank = 0;
 
 static tilemap *pf1_tilemap,*fix_tilemap;
@@ -25,7 +25,7 @@ static tilemap *pf1_tilemap,*fix_tilemap;
 
 ***************************************************************************/
 
-static void get_pf_tile_info(int tile_index)	/* For Performan only */
+static TILE_GET_INFO( get_pf_tile_info )	/* For Performan only */
 {
 	int tile,color;
 
@@ -38,7 +38,7 @@ static void get_pf_tile_info(int tile_index)	/* For Performan only */
 			0)
 }
 
-static void get_pf1_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf1_tile_info )
 {
 	int tile,color;
 
@@ -52,7 +52,7 @@ static void get_pf1_tile_info(int tile_index)
 			0)
 }
 
-static void get_fix_tile_info(int tile_index)
+static TILE_GET_INFO( get_fix_tile_info )
 {
 	int tile,color;
 
@@ -78,8 +78,6 @@ VIDEO_START( perfrman )
 	pf1_tilemap = tilemap_create(get_pf_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
-
-	return 0;
 }
 
 VIDEO_START( slapfight )
@@ -88,8 +86,6 @@ VIDEO_START( slapfight )
 	fix_tilemap = tilemap_create(get_fix_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
-
-	return 0;
 }
 
 

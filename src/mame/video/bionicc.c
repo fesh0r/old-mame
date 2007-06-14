@@ -38,7 +38,7 @@ static tilemap *tx_tilemap, *bg_tilemap, *fg_tilemap;
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = bionicc_bgvideoram[2*tile_index+1];
 	SET_TILE_INFO(
@@ -48,19 +48,19 @@ static void get_bg_tile_info(int tile_index)
 			TILE_FLIPXY((attr & 0xc0) >> 6))
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = bionicc_fgvideoram[2*tile_index+1];
 	int flags;
 
 	if ((attr & 0xc0) == 0xc0)
 	{
-		tile_info.priority = 1;
+		tileinfo->priority = 1;
 		flags = TILE_SPLIT(0);
 	}
 	else
 	{
-		tile_info.priority = 0;
+		tileinfo->priority = 0;
 		flags = TILE_SPLIT((attr & 0x20) >> 5) | TILE_FLIPXY((attr & 0xc0) >> 6);
 	}
 
@@ -71,7 +71,7 @@ static void get_fg_tile_info(int tile_index)
 			flags)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int attr = bionicc_txvideoram[tile_index + 0x400];
 	SET_TILE_INFO(
@@ -99,8 +99,6 @@ VIDEO_START( bionicc )
 	tilemap_set_transmask(fg_tilemap,0,0xffff,0x8000); /* split type 0 is completely transparent in front half */
 	tilemap_set_transmask(fg_tilemap,1,0xffc1,0x803e); /* split type 1 has pens 1-5 opaque in front half */
 	tilemap_set_transparent_pen(bg_tilemap,15);
-
-	return 0;
 }
 
 
@@ -113,26 +111,20 @@ VIDEO_START( bionicc )
 
 WRITE16_HANDLER( bionicc_bgvideoram_w )
 {
-	int oldword = bionicc_bgvideoram[offset];
 	COMBINE_DATA(&bionicc_bgvideoram[offset]);
-	if (oldword != bionicc_bgvideoram[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset/2);
+	tilemap_mark_tile_dirty(bg_tilemap,offset/2);
 }
 
 WRITE16_HANDLER( bionicc_fgvideoram_w )
 {
-	int oldword = bionicc_fgvideoram[offset];
 	COMBINE_DATA(&bionicc_fgvideoram[offset]);
-	if (oldword != bionicc_fgvideoram[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset/2);
+	tilemap_mark_tile_dirty(fg_tilemap,offset/2);
 }
 
 WRITE16_HANDLER( bionicc_txvideoram_w )
 {
-	int oldword = bionicc_txvideoram[offset];
 	COMBINE_DATA(&bionicc_txvideoram[offset]);
-	if (oldword != bionicc_txvideoram[offset])
-		tilemap_mark_tile_dirty(tx_tilemap,offset&0x3ff);
+	tilemap_mark_tile_dirty(tx_tilemap,offset&0x3ff);
 }
 
 WRITE16_HANDLER( bionicc_paletteram_w )

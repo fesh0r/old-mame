@@ -166,14 +166,11 @@ WRITE16_HANDLER( taotaido_tileregs_w )
 
 WRITE16_HANDLER( taotaido_bgvideoram_w )
 {
-	if (taotaido_bgram[offset] != data)
-	{
-		COMBINE_DATA(&taotaido_bgram[offset]);
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	COMBINE_DATA(&taotaido_bgram[offset]);
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
-static void taotaido_bg_tile_info(int tile_index)
+static TILE_GET_INFO( taotaido_bg_tile_info )
 {
 	int code = taotaido_bgram[tile_index]&0x01ff;
 	int bank = (taotaido_bgram[tile_index]&0x0e00)>>9;
@@ -203,8 +200,6 @@ VIDEO_START(taotaido)
 
 	taotaido_spriteram2_old = auto_malloc(0x10000);
 	taotaido_spriteram2_older = auto_malloc(0x10000);
-
-	return 0;
 }
 
 

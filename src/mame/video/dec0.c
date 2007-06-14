@@ -130,7 +130,7 @@ static void update_24bitcol(int offset)
 	g = (paletteram16[offset] >> 8) & 0xff;
 	b = (paletteram16_2[offset] >> 0) & 0xff;
 
-	palette_set_color(Machine,offset,r,g,b);
+	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
 }
 
 WRITE16_HANDLER( dec0_paletteram_rg_w )
@@ -227,8 +227,8 @@ static void custom_tilemap_draw(mame_bitmap *bitmap,
 	const mame_bitmap *src_bitmap = tilemap_get_pixmap(tilemap_ptr);
 	int x, y, p;
 	int column_offset=0, src_x=0, src_y=0;
-	unsigned int scrollx=control1[0];
-	unsigned int scrolly=control1[1];
+	UINT32 scrollx=control1[0];
+	UINT32 scrolly=control1[1];
 	int width_mask = src_bitmap->width - 1;
 	int height_mask = src_bitmap->height - 1;
 	int row_scroll_enabled = (rowscroll_ptr && (control0[0]&0x4));
@@ -554,13 +554,10 @@ WRITE16_HANDLER( dec0_pf1_control_1_w )
 
 WRITE16_HANDLER( dec0_pf1_data_w )
 {
-	UINT16 oldword=dec0_pf1_data[offset];
 	COMBINE_DATA(&dec0_pf1_data[offset]);
-	if (oldword!=dec0_pf1_data[offset]) {
-		tilemap_mark_tile_dirty(pf1_tilemap_0,offset);
-		tilemap_mark_tile_dirty(pf1_tilemap_1,offset);
-		tilemap_mark_tile_dirty(pf1_tilemap_2,offset);
-	}
+	tilemap_mark_tile_dirty(pf1_tilemap_0,offset);
+	tilemap_mark_tile_dirty(pf1_tilemap_1,offset);
+	tilemap_mark_tile_dirty(pf1_tilemap_2,offset);
 }
 
 WRITE16_HANDLER( dec0_pf2_control_0_w )
@@ -575,13 +572,10 @@ WRITE16_HANDLER( dec0_pf2_control_1_w )
 
 WRITE16_HANDLER( dec0_pf2_data_w )
 {
-	UINT16 oldword=dec0_pf2_data[offset];
 	COMBINE_DATA(&dec0_pf2_data[offset]);
-	if (oldword!=dec0_pf2_data[offset]) {
-		tilemap_mark_tile_dirty(pf2_tilemap_0,offset);
-		tilemap_mark_tile_dirty(pf2_tilemap_1,offset);
-		tilemap_mark_tile_dirty(pf2_tilemap_2,offset);
-	}
+	tilemap_mark_tile_dirty(pf2_tilemap_0,offset);
+	tilemap_mark_tile_dirty(pf2_tilemap_1,offset);
+	tilemap_mark_tile_dirty(pf2_tilemap_2,offset);
 }
 
 WRITE16_HANDLER( dec0_pf3_control_0_w )
@@ -596,13 +590,10 @@ WRITE16_HANDLER( dec0_pf3_control_1_w )
 
 WRITE16_HANDLER( dec0_pf3_data_w )
 {
-	UINT16 oldword=dec0_pf3_data[offset];
 	COMBINE_DATA(&dec0_pf3_data[offset]);
-	if (oldword!=dec0_pf3_data[offset]) {
-		tilemap_mark_tile_dirty(pf3_tilemap_0,offset);
-		tilemap_mark_tile_dirty(pf3_tilemap_1,offset);
-		tilemap_mark_tile_dirty(pf3_tilemap_2,offset);
-	}
+	tilemap_mark_tile_dirty(pf3_tilemap_0,offset);
+	tilemap_mark_tile_dirty(pf3_tilemap_1,offset);
+	tilemap_mark_tile_dirty(pf3_tilemap_2,offset);
 }
 
 WRITE16_HANDLER( dec0_priority_w )
@@ -682,20 +673,20 @@ static UINT32 tile_shape2_8x8_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 
 	return (col & 0x1f) + ((row & 0x7f) << 5);
 }
 
-static void get_pf1_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf1_tile_info )
 {
 	int tile=dec0_pf1_data[tile_index];
 	SET_TILE_INFO(0,tile&0xfff,tile>>12,0)
 }
 
-static void get_pf2_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf2_tile_info )
 {
 	int tile=dec0_pf2_data[tile_index];
 	int pri=((tile>>12)>7);
 	SET_TILE_INFO(1,tile&0xfff,tile>>12,TILE_SPLIT(pri))
 }
 
-static void get_pf3_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf3_tile_info )
 {
 	int tile=dec0_pf3_data[tile_index];
 	int pri=((tile>>12)>7);
@@ -715,16 +706,12 @@ VIDEO_START( dec0_nodma )
 	pf3_tilemap_2 = tilemap_create(get_pf3_tile_info,tile_shape2_scan,    TILEMAP_TRANSPARENT,16,16, 16, 64);
 
 	dec0_spriteram=spriteram16;
-
-	return 0;
 }
 
 VIDEO_START( dec0 )
 {
 	video_start_dec0_nodma(machine);
 	dec0_spriteram=auto_malloc(0x800);
-
-	return 0;
 }
 
 /******************************************************************************/

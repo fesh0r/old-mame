@@ -90,7 +90,7 @@ UINT8* cshooter_txram;
 static tilemap *cshooter_txtilemap;
 static int coin_stat=0;
 
-static unsigned char *mainram;
+static UINT8 *mainram;
 
 static void ar_coin_hack(void)
 {
@@ -114,7 +114,7 @@ static void ar_coin_hack(void)
 	}
 }
 
-static void get_cstx_tile_info(int tile_index)
+static TILE_GET_INFO( get_cstx_tile_info )
 {
 	int code = (cshooter_txram[tile_index*2]);
 	int attr = (cshooter_txram[tile_index*2+1]);
@@ -140,7 +140,6 @@ VIDEO_START(cshooter)
 {
 	cshooter_txtilemap = tilemap_create(get_cstx_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,32, 32);
 	tilemap_set_transparent_pen(cshooter_txtilemap, 3);
-	return 0;
 }
 
 VIDEO_UPDATE(cshooter)
@@ -249,14 +248,14 @@ static WRITE8_HANDLER(pal_w)
 {
 	paletteram[offset]=data;
 	offset&=0xff;
-	palette_set_color(Machine, offset, pal4bit(paletteram[offset] >> 4), pal4bit(paletteram[offset]), pal4bit(paletteram[offset+0x100]));
+	palette_set_color_rgb(Machine, offset, pal4bit(paletteram[offset] >> 4), pal4bit(paletteram[offset]), pal4bit(paletteram[offset+0x100]));
 }
 
 static WRITE8_HANDLER(pal2_w)
 {
 	paletteram[offset]=data;
 	offset&=0x1ff;
-	palette_set_color(Machine, offset, pal4bit(paletteram[offset] >> 4), pal4bit(paletteram[offset]), pal4bit(paletteram[offset+0x200]));
+	palette_set_color_rgb(Machine, offset, pal4bit(paletteram[offset] >> 4), pal4bit(paletteram[offset]), pal4bit(paletteram[offset+0x200]));
 }
 
 static READ8_HANDLER(pal_r)
@@ -474,7 +473,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0,     &cshooter_charlayout,   0, 64  },
 	{ REGION_GFX1, 128/8, &cshooter_charlayout,   0, 64  },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static MACHINE_DRIVER_START( cshooter )
@@ -713,7 +712,7 @@ ROM_END
 DRIVER_INIT( cshooter )
 {
 	/* temp so it boots */
-	unsigned char *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(REGION_CPU1);
 
 	rom[0xa2] = 0x00;
 	rom[0xa3] = 0x00;

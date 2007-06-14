@@ -71,7 +71,7 @@ static INTERRUPT_GEN( rockrage_interrupt )
 static WRITE8_HANDLER( rockrage_bankswitch_w )
 {
 	int bankaddress;
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 	/* bits 4-6 = bank number */
 	bankaddress = 0x10000 + ((data & 0x70) >> 4) * 0x2000;
@@ -276,7 +276,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   64, 32 },	/* colors 00..31, but using 2 lookup tables */
 	{ REGION_GFX2, 0, &spritelayout, 32,  1 },	/* colors 32..63 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /***************************************************************************

@@ -14,20 +14,14 @@ static tilemap *fg_tilemap, *bg_tilemap;
 
 WRITE8_HANDLER( bombjack_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( bombjack_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( bombjack_background_w )
@@ -48,7 +42,7 @@ WRITE8_HANDLER( bombjack_flipscreen_w )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	UINT8 *tilerom = memory_region(REGION_GFX4);
 
@@ -61,7 +55,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = videoram[tile_index] + 16 * (colorram[tile_index] & 0x10);
 	int color = colorram[tile_index] & 0x0f;
@@ -80,8 +74,6 @@ VIDEO_START( bombjack )
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 
 	state_save_register_global(background_image);
-
-	return 0;
 }
 
 static void bombjack_draw_sprites( mame_bitmap *bitmap )

@@ -22,7 +22,7 @@ UINT8 *horizon_scrollram;
 static tilemap *m62_background;
 static tilemap *m62_foreground;
 static UINT8 flipscreen;
-static const unsigned char *sprite_height_prom;
+static const UINT8 *sprite_height_prom;
 static INT32 m62_background_hscroll;
 static INT32 m62_background_vscroll;
 
@@ -77,7 +77,7 @@ PALETTE_INIT( irem )
 		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
 		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -116,7 +116,7 @@ PALETTE_INIT( battroad )
 		bit3 = (color_prom[2*512] >> 3) & 0x01;
 		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -142,7 +142,7 @@ PALETTE_INIT( battroad )
 		bit2 = (color_prom[i] >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i+512,r,g,b);
+		palette_set_color(machine,i+512,MAKE_RGB(r,g,b));
 	}
 
 	color_prom += 32;
@@ -180,7 +180,7 @@ PALETTE_INIT( spelunk2 )
 		bit3 = (color_prom[2*256] >> 3) & 0x01;
 		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -211,7 +211,7 @@ PALETTE_INIT( spelunk2 )
 		bit3 = (color_prom[2*256] >> 3) & 0x01;
 		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i+512,r,g,b);
+		palette_set_color(machine,i+512,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -349,7 +349,7 @@ static void draw_sprites(mame_bitmap *bitmap, int colormask, int prioritymask, i
 	}
 }
 
-int m62_start( void (*tile_get_info)( int memory_offset ), int rows, int cols, int x1, int y1, int x2, int y2 )
+void m62_start( tile_get_info_fn tile_get_info, int rows, int cols, int x1, int y1, int x2, int y2 )
 {
 	m62_background = tilemap_create( tile_get_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, x1, y1, x2, y2 );
 
@@ -366,11 +366,9 @@ int m62_start( void (*tile_get_info)( int memory_offset ), int rows, int cols, i
 	{
 		tilemap_set_scroll_cols( m62_background, cols );
 	}
-
-	return 0;
 }
 
-int m62_textlayer( void (*tile_get_info)( int memory_offset ), int rows, int cols, int x1, int y1, int x2, int y2 )
+void m62_textlayer( tile_get_info_fn tile_get_info, int rows, int cols, int x1, int y1, int x2, int y2 )
 {
 	m62_foreground = tilemap_create( tile_get_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, x1, y1, x2, y2 );
 
@@ -382,8 +380,6 @@ int m62_textlayer( void (*tile_get_info)( int memory_offset ), int rows, int col
 	{
 		tilemap_set_scroll_cols( m62_foreground, cols );
 	}
-
-	return 0;
 }
 
 WRITE8_HANDLER( kungfum_tileram_w )
@@ -392,13 +388,13 @@ WRITE8_HANDLER( kungfum_tileram_w )
 	tilemap_mark_tile_dirty( m62_background, offset & 0x7ff );
 }
 
-static void get_kungfum_bg_tile_info( int offs )
+static TILE_GET_INFO( get_kungfum_bg_tile_info )
 {
 	int code;
 	int color;
 	int flags;
-	code = m62_tileram[ offs ];
-	color = m62_tileram[ offs + 0x800 ];
+	code = m62_tileram[ tile_index ];
+	color = m62_tileram[ tile_index + 0x800 ];
 	flags = 0;
 	if( ( color & 0x20 ) )
 	{
@@ -407,13 +403,13 @@ static void get_kungfum_bg_tile_info( int offs )
 	SET_TILE_INFO( 0, code | ( ( color & 0xc0 ) << 2 ), color & 0x1f, flags );
 
 	/* is the following right? */
-	if( ( offs / 64 ) < 6 || ( ( color & 0x1f ) >> 1 ) > 0x0c )
+	if( ( tile_index / 64 ) < 6 || ( ( color & 0x1f ) >> 1 ) > 0x0c )
 	{
-		tile_info.priority = 1;
+		tileinfo->priority = 1;
 	}
 	else
 	{
-		tile_info.priority = 0;
+		tileinfo->priority = 0;
 	}
 }
 
@@ -436,17 +432,17 @@ VIDEO_UPDATE( kungfum )
 
 VIDEO_START( kungfum )
 {
-	return m62_start( get_kungfum_bg_tile_info, 32, 0, 8, 8, 64, 32 );
+	m62_start( get_kungfum_bg_tile_info, 32, 0, 8, 8, 64, 32 );
 }
 
 
-static void get_ldrun_bg_tile_info( int offs )
+static TILE_GET_INFO( get_ldrun_bg_tile_info )
 {
 	int code;
 	int color;
 	int flags;
-	code = m62_tileram[ offs << 1 ];
-	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	code = m62_tileram[ tile_index << 1 ];
+	color = m62_tileram[ ( tile_index << 1 ) | 1 ];
 	flags = 0;
 	if( ( color & 0x20 ) )
 	{
@@ -455,11 +451,11 @@ static void get_ldrun_bg_tile_info( int offs )
 	SET_TILE_INFO( 0, code | ( ( color & 0xc0 ) << 2 ), color & 0x1f, flags );
 	if( ( ( color & 0x1f ) >> 1 ) >= 0x0c )
 	{
-		tile_info.priority = 1;
+		tileinfo->priority = 1;
 	}
 	else
 	{
-		tile_info.priority = 0;
+		tileinfo->priority = 0;
 	}
 }
 
@@ -477,16 +473,16 @@ VIDEO_UPDATE( ldrun )
 
 VIDEO_START( ldrun )
 {
-	return m62_start( get_ldrun_bg_tile_info, 1, 1, 8, 8, 64, 32 );
+	m62_start( get_ldrun_bg_tile_info, 1, 1, 8, 8, 64, 32 );
 }
 
-static void get_ldrun2_bg_tile_info( int offs )
+static TILE_GET_INFO( get_ldrun2_bg_tile_info )
 {
 	int code;
 	int color;
 	int flags;
-	code = m62_tileram[ offs << 1 ];
-	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	code = m62_tileram[ tile_index << 1 ];
+	color = m62_tileram[ ( tile_index << 1 ) | 1 ];
 	flags = 0;
 	if( ( color & 0x20 ) )
 	{
@@ -495,26 +491,26 @@ static void get_ldrun2_bg_tile_info( int offs )
 	SET_TILE_INFO( 0, code | ( ( color & 0xc0 ) << 2 ), color & 0x1f, flags );
 	if( ( ( color & 0x1f ) >> 1 ) >= 0x04 )
 	{
-		tile_info.priority = 1;
+		tileinfo->priority = 1;
 	}
 	else
 	{
-		tile_info.priority = 0;
+		tileinfo->priority = 0;
 	}
 }
 
 VIDEO_START( ldrun2 )
 {
-	return m62_start( get_ldrun2_bg_tile_info, 1, 1, 8, 8, 64, 32 );
+	m62_start( get_ldrun2_bg_tile_info, 1, 1, 8, 8, 64, 32 );
 }
 
-static void get_battroad_bg_tile_info( int offs )
+static TILE_GET_INFO( get_battroad_bg_tile_info )
 {
 	int code;
 	int color;
 	int flags;
-	code = m62_tileram[ offs << 1 ];
-	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	code = m62_tileram[ tile_index << 1 ];
+	color = m62_tileram[ ( tile_index << 1 ) | 1 ];
 	flags = 0;
 	if( ( color & 0x20 ) )
 	{
@@ -523,20 +519,20 @@ static void get_battroad_bg_tile_info( int offs )
 	SET_TILE_INFO( 0, code | ( ( color & 0x40 ) << 3 ) | ( ( color & 0x10 ) << 4 ), color & 0x0f, flags );
 	if( ( ( color & 0x1f ) >> 1 ) >= 0x04 )
 	{
-		tile_info.priority = 1;
+		tileinfo->priority = 1;
 	}
 	else
 	{
-		tile_info.priority = 0;
+		tileinfo->priority = 0;
 	}
 }
 
-static void get_battroad_fg_tile_info( int offs )
+static TILE_GET_INFO( get_battroad_fg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_textram[ offs << 1 ];
-	color = m62_textram[ ( offs << 1 ) | 1 ];
+	code = m62_textram[ tile_index << 1 ];
+	color = m62_textram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 2, code | ( ( color & 0x40 ) << 3 ) | ( ( color & 0x10 ) << 4 ), color & 0x0f, 0 );
 }
 
@@ -558,19 +554,19 @@ VIDEO_UPDATE( battroad )
 
 VIDEO_START( battroad )
 {
-	return m62_start( get_battroad_bg_tile_info, 1, 1, 8, 8, 64, 32 ) ||
-		m62_textlayer( get_battroad_fg_tile_info, 1, 1, 8, 8, 32, 32 );
+	m62_start( get_battroad_bg_tile_info, 1, 1, 8, 8, 64, 32 );
+	m62_textlayer( get_battroad_fg_tile_info, 1, 1, 8, 8, 32, 32 );
 }
 
 
 /* almost identical but scrolling background, more characters, */
 /* no char x flip, and more sprites */
-static void get_ldrun4_bg_tile_info( int offs )
+static TILE_GET_INFO( get_ldrun4_bg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_tileram[ offs << 1 ];
-	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	code = m62_tileram[ tile_index << 1 ];
+	color = m62_tileram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 0, code | ( ( color & 0xc0 ) << 2 ) | ( ( color & 0x20 ) << 5 ), color & 0x1f, 0 );
 }
 
@@ -585,17 +581,17 @@ VIDEO_UPDATE( ldrun4 )
 
 VIDEO_START( ldrun4 )
 {
-	return m62_start( get_ldrun4_bg_tile_info, 1, 0, 8, 8, 64, 32 );
+	m62_start( get_ldrun4_bg_tile_info, 1, 0, 8, 8, 64, 32 );
 }
 
 
-static void get_lotlot_bg_tile_info( int offs )
+static TILE_GET_INFO( get_lotlot_bg_tile_info )
 {
 	int code;
 	int color;
 	int flags;
-	code = m62_tileram[ offs << 1 ];
-	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	code = m62_tileram[ tile_index << 1 ];
+	color = m62_tileram[ ( tile_index << 1 ) | 1 ];
 	flags = 0;
 	if( ( color & 0x20 ) )
 	{
@@ -604,12 +600,12 @@ static void get_lotlot_bg_tile_info( int offs )
 	SET_TILE_INFO( 0, code | ( ( color & 0xc0 ) << 2 ), color & 0x1f, flags );
 }
 
-static void get_lotlot_fg_tile_info( int offs )
+static TILE_GET_INFO( get_lotlot_fg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_textram[ offs << 1 ];
-	color = m62_textram[ ( offs << 1 ) | 1 ];
+	code = m62_textram[ tile_index << 1 ];
+	color = m62_textram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 2, code | ( ( color & 0xc0 ) << 2 ), color & 0x1f, 0 );
 }
 
@@ -629,8 +625,8 @@ VIDEO_UPDATE( lotlot )
 
 VIDEO_START( lotlot )
 {
-	return m62_start( get_lotlot_bg_tile_info, 1, 1, 12, 10, 32, 64 ) ||
-		m62_textlayer( get_lotlot_fg_tile_info, 1, 1, 12, 10, 32, 64 );
+	m62_start( get_lotlot_bg_tile_info, 1, 1, 12, 10, 32, 64 );
+	m62_textlayer( get_lotlot_fg_tile_info, 1, 1, 12, 10, 32, 64 );
 }
 
 
@@ -653,22 +649,22 @@ WRITE8_HANDLER( kidniki_background_bank_w )
 	}
 }
 
-static void get_kidniki_bg_tile_info( int offs )
+static TILE_GET_INFO( get_kidniki_bg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_tileram[ offs << 1 ];
-	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	code = m62_tileram[ tile_index << 1 ];
+	color = m62_tileram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 0, code | ( ( color & 0xe0 ) << 3 ) | ( kidniki_background_bank << 11 ), color & 0x1f,
 			TILE_SPLIT( ( ( color & 0xe0 ) == 0xe0 ) ? 1 : 0 ) );
 }
 
-static void get_kidniki_fg_tile_info( int offs )
+static TILE_GET_INFO( get_kidniki_fg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_textram[ offs << 1 ];
-	color = m62_textram[ ( offs << 1 ) | 1 ];
+	code = m62_textram[ tile_index << 1 ];
+	color = m62_textram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 2, code | ( ( color & 0xc0 ) << 2 ), color & 0x1f, 0 );
 }
 
@@ -698,7 +694,7 @@ VIDEO_START( kidniki )
 
 	register_savestate();
 
-	return m62_textlayer( get_kidniki_fg_tile_info, 1, 1, 12, 8, 32, 64 );
+	m62_textlayer( get_kidniki_fg_tile_info, 1, 1, 12, 8, 32, 64 );
 }
 
 
@@ -712,21 +708,21 @@ WRITE8_HANDLER( spelunkr_palbank_w )
 	}
 }
 
-static void get_spelunkr_bg_tile_info( int offs )
+static TILE_GET_INFO( get_spelunkr_bg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_tileram[ offs << 1 ];
-	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	code = m62_tileram[ tile_index << 1 ];
+	color = m62_tileram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 0, code | ( ( color & 0x10 ) << 4 ) | ( ( color & 0x20 ) << 6 ) | ( ( color & 0xc0 ) << 3 ), ( color & 0x0f ) | ( spelunkr_palbank << 4 ), 0 );
 }
 
-static void get_spelunkr_fg_tile_info( int offs )
+static TILE_GET_INFO( get_spelunkr_fg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_textram[ offs << 1 ];
-	color = m62_textram[ ( offs << 1 ) | 1 ];
+	code = m62_textram[ tile_index << 1 ];
+	color = m62_textram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 2, code | ( ( color & 0x10 ) << 4 ), ( color & 0x0f ) | ( spelunkr_palbank << 4 ), 0 );
 }
 
@@ -746,8 +742,8 @@ VIDEO_UPDATE( spelunkr )
 
 VIDEO_START( spelunkr )
 {
-	return m62_start( get_spelunkr_bg_tile_info, 1, 1, 8, 8, 64, 64 ) ||
-		m62_textlayer( get_spelunkr_fg_tile_info, 1, 1, 12, 8, 32, 32 );
+	m62_start( get_spelunkr_bg_tile_info, 1, 1, 8, 8, 64, 64 );
+	m62_textlayer( get_spelunkr_fg_tile_info, 1, 1, 12, 8, 32, 32 );
 }
 
 
@@ -763,12 +759,12 @@ WRITE8_HANDLER( spelunk2_gfxport_w )
 	}
 }
 
-static void get_spelunk2_bg_tile_info( int offs )
+static TILE_GET_INFO( get_spelunk2_bg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_tileram[ offs << 1 ];
-	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	code = m62_tileram[ tile_index << 1 ];
+	color = m62_tileram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 0, code | ( ( color & 0xf0 ) << 4 ), ( color & 0x0f ) | ( spelunkr_palbank << 4 ), 0 );
 }
 
@@ -788,34 +784,34 @@ VIDEO_UPDATE( spelunk2 )
 
 VIDEO_START( spelunk2 )
 {
-	return m62_start( get_spelunk2_bg_tile_info, 1, 1, 8, 8, 64, 64 ) ||
-		m62_textlayer( get_spelunkr_fg_tile_info, 1, 1, 12, 8, 32, 32 );
+	m62_start( get_spelunk2_bg_tile_info, 1, 1, 8, 8, 64, 64 );
+	m62_textlayer( get_spelunkr_fg_tile_info, 1, 1, 12, 8, 32, 32 );
 }
 
 
-static void get_youjyudn_bg_tile_info( int offs )
+static TILE_GET_INFO( get_youjyudn_bg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_tileram[ offs << 1 ];
-	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	code = m62_tileram[ tile_index << 1 ];
+	color = m62_tileram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 0, code | ( ( color & 0x60 ) << 3 ), color & 0x1f, 0 );
 	if( ( ( color & 0x1f ) >> 1 ) >= 0x08 )
 	{
-		tile_info.priority = 1;
+		tileinfo->priority = 1;
 	}
 	else
 	{
-		tile_info.priority = 0;
+		tileinfo->priority = 0;
 	}
 }
 
-static void get_youjyudn_fg_tile_info( int offs )
+static TILE_GET_INFO( get_youjyudn_fg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_textram[ offs << 1 ];
-	color = m62_textram[ ( offs << 1 ) | 1 ];
+	code = m62_textram[ tile_index << 1 ];
+	color = m62_textram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 2, code | ( ( color & 0xc0 ) << 2 ), ( color & 0x0f ), 0 );
 }
 
@@ -835,8 +831,8 @@ VIDEO_UPDATE( youjyudn )
 
 VIDEO_START( youjyudn )
 {
-	return m62_start( get_youjyudn_bg_tile_info, 1, 0, 8, 16, 64, 16 ) ||
-		m62_textlayer( get_youjyudn_fg_tile_info, 1, 1, 12, 8, 32, 32 );
+	m62_start( get_youjyudn_bg_tile_info, 1, 0, 8, 16, 64, 16 );
+	m62_textlayer( get_youjyudn_fg_tile_info, 1, 1, 12, 8, 32, 32 );
 }
 
 
@@ -845,20 +841,20 @@ WRITE8_HANDLER( horizon_scrollram_w )
 	horizon_scrollram[ offset ] = data;
 }
 
-static void get_horizon_bg_tile_info( int offs )
+static TILE_GET_INFO( get_horizon_bg_tile_info )
 {
 	int code;
 	int color;
-	code = m62_tileram[ offs << 1 ];
-	color = m62_tileram[ ( offs << 1 ) | 1 ];
+	code = m62_tileram[ tile_index << 1 ];
+	color = m62_tileram[ ( tile_index << 1 ) | 1 ];
 	SET_TILE_INFO( 0, code | ( ( color & 0xc0 ) << 2 ) | ( ( color & 0x20 ) << 5 ), color & 0x1f, 0 );
 	if( ( ( color & 0x1f ) >> 1 ) >= 0x08 )
 	{
-		tile_info.priority = 1;
+		tileinfo->priority = 1;
 	}
 	else
 	{
-		tile_info.priority = 0;
+		tileinfo->priority = 0;
 	}
 }
 
@@ -877,5 +873,5 @@ VIDEO_UPDATE( horizon )
 
 VIDEO_START( horizon )
 {
-	return m62_start( get_horizon_bg_tile_info, 32, 0, 8, 8, 64, 32 );
+	m62_start( get_horizon_bg_tile_info, 32, 0, 8, 8, 64, 32 );
 }

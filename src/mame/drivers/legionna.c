@@ -120,7 +120,7 @@ static WRITE16_HANDLER( legionna_paletteram16_w )	/* xBBBBxRRRRxGGGGx */
 	int a;
 	COMBINE_DATA(&paletteram16[offset]);
 	a = paletteram16[offset];
-	palette_set_color(Machine,offset,pal4bit(a >> 1),pal4bit(a >> 6),pal4bit(a >> 11));
+	palette_set_color_rgb(Machine,offset,pal4bit(a >> 1),pal4bit(a >> 6),pal4bit(a >> 11));
 }
 
 
@@ -3434,7 +3434,7 @@ static const gfx_decode legionna_gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &legionna_spritelayout,  0*16, 8*16 },
 	{ REGION_GFX5, 0, &legionna_tilelayout,   32*16, 16 },	/* this should be the BK3 decode */
 	{ REGION_GFX6, 0, &legionna_tilelayout,   16*16, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode heatbrl_gfxdecodeinfo[] =
@@ -3445,7 +3445,7 @@ static const gfx_decode heatbrl_gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &legionna_spritelayout,  0*16, 8*16 },
 	{ REGION_GFX5, 0, &legionna_tilelayout,   32*16, 16 },
 	{ REGION_GFX6, 0, &legionna_tilelayout,   16*16, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode sdgndmrb_gfxdecodeinfo[] =
@@ -3456,7 +3456,7 @@ static const gfx_decode sdgndmrb_gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &legionna_spritelayout,  0*16, 8*16 },
 	{ REGION_GFX5, 0, &legionna_tilelayout,   32*16, 16 },
 	{ REGION_GFX6, 0, &legionna_tilelayout,   16*16, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /*****************************************************************************/

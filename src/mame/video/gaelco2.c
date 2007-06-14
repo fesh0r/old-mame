@@ -107,7 +107,7 @@ int dual_monitor;
 
 ***************************************************************************/
 
-static void get_tile_info_gaelco2_screen0(int tile_index)
+static TILE_GET_INFO( get_tile_info_gaelco2_screen0 )
 {
 	int data = gaelco2_videoram[(((gaelco2_vregs[0] >> 9) & 0x07)*0x2000/2) + (tile_index << 1)];
 	int data2 = gaelco2_videoram[(((gaelco2_vregs[0] >> 9) & 0x07)*0x2000/2) + ((tile_index << 1) + 1)];
@@ -116,7 +116,7 @@ static void get_tile_info_gaelco2_screen0(int tile_index)
 	SET_TILE_INFO(0, code, ((data >> 9) & 0x7f), TILE_FLIPXY((data >> 6) & 0x03))
 }
 
-static void get_tile_info_gaelco2_screen1(int tile_index)
+static TILE_GET_INFO( get_tile_info_gaelco2_screen1 )
 {
 	int data = gaelco2_videoram[(((gaelco2_vregs[1] >> 9) & 0x07)*0x2000/2) + (tile_index << 1)];
 	int data2 = gaelco2_videoram[(((gaelco2_vregs[1] >> 9) & 0x07)*0x2000/2) + ((tile_index << 1) + 1)];
@@ -148,7 +148,7 @@ static void get_tile_info_gaelco2_screen1(int tile_index)
 
 ***************************************************************************/
 
-static void get_tile_info_gaelco2_screen0_dual(int tile_index)
+static TILE_GET_INFO( get_tile_info_gaelco2_screen0_dual )
 {
 	int data = gaelco2_videoram[(((gaelco2_vregs[0] >> 9) & 0x07)*0x2000/2) + (tile_index << 1)];
 	int data2 = gaelco2_videoram[(((gaelco2_vregs[0] >> 9) & 0x07)*0x2000/2) + ((tile_index << 1) + 1)];
@@ -157,7 +157,7 @@ static void get_tile_info_gaelco2_screen0_dual(int tile_index)
 	SET_TILE_INFO(0, code, ((data >> 9) & 0x3f), TILE_FLIPXY((data >> 6) & 0x03))
 }
 
-static void get_tile_info_gaelco2_screen1_dual(int tile_index)
+static TILE_GET_INFO( get_tile_info_gaelco2_screen1_dual )
 {
 	int data = gaelco2_videoram[(((gaelco2_vregs[1] >> 9) & 0x07)*0x2000/2) + (tile_index << 1)];
 	int data2 = gaelco2_videoram[(((gaelco2_vregs[1] >> 9) & 0x07)*0x2000/2) + ((tile_index << 1) + 1)];
@@ -180,21 +180,16 @@ WRITE16_HANDLER( gaelco2_vram_w )
 	int pant1_start = ((gaelco2_vregs[1] >> 9) & 0x07)*0x1000;
 	int pant1_end = pant1_start + 0x1000;
 
-	int oldword = gaelco2_videoram[offset];
 	COMBINE_DATA(&gaelco2_videoram[offset]);
 
 	/* tilemap 0 writes */
 	if ((offset >= pant0_start) && (offset < pant0_end)){
-		if (oldword != gaelco2_videoram[offset]){
-			tilemap_mark_tile_dirty(pant[0], ((offset << 1) & 0x1fff) >> 2);
-		}
+		tilemap_mark_tile_dirty(pant[0], ((offset << 1) & 0x1fff) >> 2);
 	}
 
 	/* tilemap 1 writes */
 	if ((offset >= pant1_start) && (offset < pant1_end)){
-		if (oldword != gaelco2_videoram[offset]){
-			tilemap_mark_tile_dirty(pant[1], ((offset << 1) & 0x1fff) >> 2);
-		}
+		tilemap_mark_tile_dirty(pant[1], ((offset << 1) & 0x1fff) >> 2);
 	}
 }
 
@@ -245,7 +240,7 @@ WRITE16_HANDLER( gaelco2_palette_w )
 	b = pal5bit(b);
 
 	/* update game palette */
-	palette_set_color(Machine, 4096*0 + offset, r, g, b);
+	palette_set_color(Machine, 4096*0 + offset, MAKE_RGB(r, g, b));
 
 	/* update shadow/highligh palettes */
 	for (i = 1; i < 16; i++){
@@ -257,7 +252,7 @@ WRITE16_HANDLER( gaelco2_palette_w )
 		auxg = ADJUST_COLOR(g + pen_color_adjust[i]);
 		auxb = ADJUST_COLOR(b + pen_color_adjust[i]);
 
-		palette_set_color(Machine, 4096*i + offset, auxr, auxg, auxb);
+		palette_set_color(Machine, 4096*i + offset, MAKE_RGB(auxr, auxg, auxb));
 	}
 }
 
@@ -285,8 +280,6 @@ VIDEO_START( gaelco2 )
 	tilemap_set_scroll_cols(pant[1], 1);
 
 	dual_monitor = 0;
-
-	return 0;
 }
 
 VIDEO_START( gaelco2_dual )
@@ -307,8 +300,6 @@ VIDEO_START( gaelco2_dual )
 	tilemap_set_scroll_cols(pant[1], 1);
 
 	dual_monitor = 1;
-
-	return 0;
 }
 
 /***************************************************************************

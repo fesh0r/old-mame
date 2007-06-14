@@ -10,11 +10,11 @@
 
 #define BGHEIGHT 64
 
-static unsigned char bg1xpos;
-static unsigned char bg1ypos;
-static unsigned char bg2xpos;
-static unsigned char bg2ypos;
-static unsigned char bgcontrol;
+static UINT8 bg1xpos;
+static UINT8 bg1ypos;
+static UINT8 bg2xpos;
+static UINT8 bg2ypos;
+static UINT8 bgcontrol;
 
 static tilemap* bg_tilemap;
 
@@ -82,7 +82,7 @@ PALETTE_INIT( mpatrol )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -108,7 +108,7 @@ PALETTE_INIT( mpatrol )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i+512,r,g,b);
+		palette_set_color(machine,i+512,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -136,7 +136,7 @@ PALETTE_INIT( mpatrol )
 		bit2 = (*color_prom >> 2) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i+512+32,r,g,b);
+		palette_set_color(machine,i+512+32,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -171,7 +171,7 @@ PALETTE_INIT( mpatrol )
 
 
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 video = videoram[tile_index];
 	UINT8 color = colorram[tile_index];
@@ -211,7 +211,6 @@ VIDEO_START( mpatrol )
 	{
 		tilemap_set_scrollx(bg_tilemap, y, 255);
 	}
-	return 0;
 }
 
 
@@ -233,24 +232,16 @@ WRITE8_HANDLER( mpatrol_scroll_w )
 
 WRITE8_HANDLER( mpatrol_videoram_w )
 {
-	if (data != videoram[offset])
-	{
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
-
 	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 
 
 WRITE8_HANDLER( mpatrol_colorram_w )
 {
-	if (data != colorram[offset])
-	{
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
-
 	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 

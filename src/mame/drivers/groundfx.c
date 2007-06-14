@@ -96,7 +96,7 @@ static WRITE32_HANDLER( color_ram_w )
 		g = (a &0xff00) >> 8;
 		b = (a &0xff);
 
-		palette_set_color(Machine,offset,r,g,b);
+		palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -385,7 +385,7 @@ static const gfx_decode groundfx_gfxdecodeinfo[] =
 	{ REGION_GFX2, 0x0, &tile16x16_layout,  4096, 512 },
 	{ REGION_GFX1, 0x0, &charlayout,        0, 512 },
 	{ REGION_GFX3, 0x0, &pivlayout,         0, 512 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -492,7 +492,7 @@ static READ32_HANDLER( irq_speedup_r_groundfx )
 
 DRIVER_INIT( groundfx )
 {
-	unsigned int offset,i;
+	UINT32 offset,i;
 	UINT8 *gfx = memory_region(REGION_GFX3);
 	int size=memory_region_length(REGION_GFX3);
 	int data;

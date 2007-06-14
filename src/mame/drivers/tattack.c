@@ -23,7 +23,7 @@
 
 static tilemap *tmap;
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int code = videoram[tile_index];
 	int color=colorram[tile_index];
@@ -50,7 +50,6 @@ VIDEO_UPDATE( tattack )
 VIDEO_START( tattack )
 {
 		tmap = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32 );
-		return 0;
 }
 
 static ADDRESS_MAP_START( mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -161,7 +160,7 @@ static gfx_layout charlayout =
 static gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0     , &charlayout,  0, 1 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static PALETTE_INIT( tattack  )
@@ -178,8 +177,8 @@ static PALETTE_INIT( tattack  )
 		else
 			r=g=b=128;
 
-		palette_set_color(machine,2*i,0x00,0x00,0x00);
-		palette_set_color(machine,2*i+1,r,g,b);
+		palette_set_color(machine,2*i,MAKE_RGB(0x00,0x00,0x00));
+		palette_set_color(machine,2*i+1,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -218,7 +217,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( tattack )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for main CPU */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "rom.9a",		0x0000, 0x1000, CRC(47120994) SHA1(b6e90abbc50cba77df4c0aaf50d1f97b99e33b6d) )
 
 	ROM_REGION( 0x1000, REGION_GFX1, 0 )

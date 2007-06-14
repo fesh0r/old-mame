@@ -401,8 +401,6 @@ static MACHINE_START( missile )
 	state_save_register_global(flipscreen);
 	state_save_register_global(madsel_delay);
 	state_save_register_global(madsel_lastpc);
-
-	return 0;
 }
 
 
@@ -438,7 +436,7 @@ INLINE int get_madsel(void)
             to do in MAME, we just ignore the first two positive hits on MADSEL
             and only return TRUE on the third or later */
 		madsel_lastpc = pc;
-		return (++madsel_delay >= 3);
+		return (++madsel_delay >= 4);
 	}
 	madsel_delay = 0;
 	return 0;
@@ -604,7 +602,7 @@ static WRITE8_HANDLER( missile_w )
 
 	/* color RAM */
 	else if (offset >= 0x4b00 && offset < 0x4c00)
-		palette_set_color(Machine, offset & 7, pal1bit(~data >> 3), pal1bit(~data >> 2), pal1bit(~data >> 1));
+		palette_set_color_rgb(Machine, offset & 7, pal1bit(~data >> 3), pal1bit(~data >> 2), pal1bit(~data >> 1));
 
 	/* watchdog */
 	else if (offset >= 0x4c00 && offset < 0x4d00)

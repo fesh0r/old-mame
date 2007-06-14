@@ -56,7 +56,7 @@ PALETTE_INIT( clshroad )
 {
 	int i;
 	for (i = 0;i < 256;i++)
-		palette_set_color(machine,i,	pal4bit(color_prom[i + 256 * 0]),
+		palette_set_color_rgb(machine,i,	pal4bit(color_prom[i + 256 * 0]),
 								        pal4bit(color_prom[i + 256 * 1]),
 								        pal4bit(color_prom[i + 256 * 2]));
 }
@@ -93,7 +93,7 @@ PALETTE_INIT( firebatl )
 		bit3 = (color_prom[i + 2*256] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 #endif
 
@@ -127,7 +127,7 @@ Offset:
 
 ***************************************************************************/
 
-static void get_tile_info_0a( int tile_index )
+static TILE_GET_INFO( get_tile_info_0a )
 {
 	UINT8 code;
 	tile_index = (tile_index & 0x1f) + (tile_index & ~0x1f)*2;
@@ -140,7 +140,7 @@ static void get_tile_info_0a( int tile_index )
 			0)
 }
 
-static void get_tile_info_0b( int tile_index )
+static TILE_GET_INFO( get_tile_info_0b )
 {
 	UINT8 code;
 	tile_index = (tile_index & 0x1f) + (tile_index & ~0x1f)*2;
@@ -155,14 +155,11 @@ static void get_tile_info_0b( int tile_index )
 
 WRITE8_HANDLER( clshroad_vram_0_w )
 {
-	if (clshroad_vram_0[offset] != data)
-	{
-		int tile_index = offset / 2;
-		int tile = (tile_index & 0x1f) + (tile_index & ~0x3f)/2;
-		clshroad_vram_0[offset] = data;
-		if (tile_index & 0x20)	tilemap_mark_tile_dirty(tilemap_0a, tile);
-		else					tilemap_mark_tile_dirty(tilemap_0b, tile);
-	}
+	int tile_index = offset / 2;
+	int tile = (tile_index & 0x1f) + (tile_index & ~0x3f)/2;
+	clshroad_vram_0[offset] = data;
+	if (tile_index & 0x20)	tilemap_mark_tile_dirty(tilemap_0a, tile);
+	else					tilemap_mark_tile_dirty(tilemap_0b, tile);
 }
 
 /***************************************************************************
@@ -200,7 +197,7 @@ static UINT32 tilemap_scan_rows_extra( UINT32 col, UINT32 row, UINT32 num_cols, 
 	return (col-2) + row * 0x20;
 }
 
-static void get_tile_info_fb1( int tile_index )
+static TILE_GET_INFO( get_tile_info_fb1 )
 {
 	UINT8 code	=	clshroad_vram_1[ tile_index + 0x000 ];
 	UINT8 color	=	clshroad_vram_1[ tile_index + 0x400 ];
@@ -211,7 +208,7 @@ static void get_tile_info_fb1( int tile_index )
 			0)
 }
 
-static void get_tile_info_1( int tile_index )
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	UINT8 code	=	clshroad_vram_1[ tile_index + 0x000 ];
 	UINT8 color	=	clshroad_vram_1[ tile_index + 0x400 ];
@@ -224,11 +221,8 @@ static void get_tile_info_1( int tile_index )
 
 WRITE8_HANDLER( clshroad_vram_1_w )
 {
-	if (clshroad_vram_1[offset] != data)
-	{
-		clshroad_vram_1[offset] = data;
-		tilemap_mark_tile_dirty(tilemap_1, offset % 0x400);
-	}
+	clshroad_vram_1[offset] = data;
+	tilemap_mark_tile_dirty(tilemap_1, offset % 0x400);
 }
 
 
@@ -254,8 +248,6 @@ VIDEO_START( firebatl )
 	tilemap_set_transparent_pen( tilemap_0a, 0 );
 	tilemap_set_transparent_pen( tilemap_0b, 0 );
 	tilemap_set_transparent_pen( tilemap_1,  0x0f );
-
-	return 0;
 }
 
 VIDEO_START( clshroad )
@@ -280,8 +272,6 @@ VIDEO_START( clshroad )
 	tilemap_set_transparent_pen( tilemap_0a, 0x0f );
 	tilemap_set_transparent_pen( tilemap_0b, 0x0f );
 	tilemap_set_transparent_pen( tilemap_1,  0x0f );
-
-	return 0;
 }
 
 

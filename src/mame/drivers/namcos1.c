@@ -776,6 +776,9 @@ INPUT_PORTS_START( bakutotu )
 	PORT_DIPNAME( 0x08, 0x08, "Sprite Viewer" )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, "Invincibility (Cheat)")
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x01, 0x01, "Freeze" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -954,7 +957,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &tilelayout,   0x0800,   8 },  /* characters */
 	{ REGION_GFX3, 0, &spritelayout, 0x0000, 128 },  /* sprites 32/16/8/4 dots */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

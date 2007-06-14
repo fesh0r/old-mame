@@ -55,37 +55,29 @@ WRITE16_HANDLER( legionna_control_w )
 
 WRITE16_HANDLER( legionna_background_w )
 {
-	int oldword = legionna_back_data[offset];
 	COMBINE_DATA(&legionna_back_data[offset]);
-	if (oldword != legionna_back_data[offset])
-		tilemap_mark_tile_dirty(background_layer,offset);
+	tilemap_mark_tile_dirty(background_layer,offset);
 }
 
 WRITE16_HANDLER( legionna_midground_w )
 {
-	int oldword = legionna_mid_data[offset];
 	COMBINE_DATA(&legionna_mid_data[offset]);
-	if (oldword != legionna_mid_data[offset])
-		tilemap_mark_tile_dirty(midground_layer,offset);
+	tilemap_mark_tile_dirty(midground_layer,offset);
 }
 
 WRITE16_HANDLER( legionna_foreground_w )
 {
-	int oldword = legionna_fore_data[offset];
 	COMBINE_DATA(&legionna_fore_data[offset]);
-	if (oldword != legionna_fore_data[offset])
-		tilemap_mark_tile_dirty(foreground_layer,offset);
+	tilemap_mark_tile_dirty(foreground_layer,offset);
 }
 
 WRITE16_HANDLER( legionna_text_w )
 {
-	int oldword = legionna_textram[offset];
 	COMBINE_DATA(&legionna_textram[offset]);
-	if (oldword != legionna_textram[offset])
-		tilemap_mark_tile_dirty(text_layer,offset);
+	tilemap_mark_tile_dirty(text_layer,offset);
 }
 
-static void get_back_tile_info(int tile_index)
+static TILE_GET_INFO( get_back_tile_info )
 {
 	int tile=legionna_back_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -96,7 +88,7 @@ static void get_back_tile_info(int tile_index)
 	SET_TILE_INFO(1,tile,color,0)
 }
 
-static void get_mid_tile_info(int tile_index)
+static TILE_GET_INFO( get_mid_tile_info )
 {
 	int tile=legionna_mid_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -106,7 +98,7 @@ static void get_mid_tile_info(int tile_index)
 	SET_TILE_INFO(5,tile,color,0)
 }
 
-static void get_mid_tile_info_denji(int tile_index)
+static TILE_GET_INFO( get_mid_tile_info_denji )
 {
 	int tile=legionna_mid_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -117,7 +109,7 @@ static void get_mid_tile_info_denji(int tile_index)
 	SET_TILE_INFO(5,tile,color,0)
 }
 
-static void get_mid_tile_info_cupsoc(int tile_index)
+static TILE_GET_INFO( get_mid_tile_info_cupsoc )
 {
 	int tile=legionna_mid_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -129,7 +121,7 @@ static void get_mid_tile_info_cupsoc(int tile_index)
 	SET_TILE_INFO(1,tile,color,0)
 }
 
-static void get_fore_tile_info(int tile_index)	/* this is giving bad tiles... */
+static TILE_GET_INFO( get_fore_tile_info )	/* this is giving bad tiles... */
 {
 	int tile=legionna_fore_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -140,7 +132,7 @@ static void get_fore_tile_info(int tile_index)	/* this is giving bad tiles... */
 	SET_TILE_INFO(4,tile,color,0)
 }
 
-static void get_fore_tile_info_denji(int tile_index)
+static TILE_GET_INFO( get_fore_tile_info_denji )
 {
 	int tile=legionna_fore_data[tile_index];
 	int color=(tile>>12)&0xf;
@@ -151,7 +143,7 @@ static void get_fore_tile_info_denji(int tile_index)
 	SET_TILE_INFO(4,tile,color,0)
 }
 
-static void get_text_tile_info(int tile_index)
+static TILE_GET_INFO( get_text_tile_info )
 {
 	int tile = legionna_textram[tile_index];
 	int color=(tile>>12)&0xf;
@@ -174,8 +166,6 @@ VIDEO_START( legionna )
 	tilemap_set_transparent_pen(midground_layer,15);
 	tilemap_set_transparent_pen(foreground_layer,15);
 	tilemap_set_transparent_pen(text_layer,15);
-
-	return 0;
 }
 
 VIDEO_START( denjinmk )
@@ -191,8 +181,6 @@ VIDEO_START( denjinmk )
 	tilemap_set_transparent_pen(midground_layer,15);
 	tilemap_set_transparent_pen(foreground_layer,15);
 	tilemap_set_transparent_pen(text_layer,7);//?
-
-	return 0;
 }
 
 VIDEO_START( cupsoc )
@@ -208,8 +196,6 @@ VIDEO_START( cupsoc )
 	tilemap_set_transparent_pen(midground_layer,15);
 	tilemap_set_transparent_pen(foreground_layer,15);
 	tilemap_set_transparent_pen(text_layer,15);
-
-	return 0;
 }
 
 

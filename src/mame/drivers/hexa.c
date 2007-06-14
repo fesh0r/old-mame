@@ -118,7 +118,7 @@ static const gfx_layout charlayout =
 static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &charlayout,  0 , 32 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -188,7 +188,7 @@ ROM_END
 static DRIVER_INIT( hexa )
 {
 #if 0
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 
 	/* Hexa is not protected or anything, but it keeps writing 0x3f to register */

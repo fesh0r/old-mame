@@ -16,7 +16,7 @@
  *
  *************************************/
 
-static void get_playfield_tile_info(int tile_index)
+static TILE_GET_INFO( get_playfield_tile_info )
 {
 	UINT16 data1 = atarigen_playfield[tile_index];
 	UINT16 data2 = atarigen_playfield_upper[tile_index] & 0xff;
@@ -26,7 +26,7 @@ static void get_playfield_tile_info(int tile_index)
 }
 
 
-static void get_playfield2_tile_info(int tile_index)
+static TILE_GET_INFO( get_playfield2_tile_info )
 {
 	UINT16 data1 = atarigen_playfield2[tile_index];
 	UINT16 data2 = atarigen_playfield_upper[tile_index] >> 8;
@@ -93,10 +93,7 @@ VIDEO_START( relief )
 	tilemap_set_transparent_pen(atarigen_playfield2_tilemap, 0);
 
 	/* initialize the motion objects */
-	if (!atarimo_init(0, &modesc))
-		return 1;
-
-	return 0;
+	atarimo_init(0, &modesc);
 }
 
 

@@ -248,7 +248,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0x000000, &tilelayout,    0x000, 0x500 },	/* Tiles 16x16 */
 	{ REGION_GFX2, 0x000000, &tilelayout,    0x000, 0x500 },	/* Tiles 16x16 */ // ok
 	{ REGION_GFX3, 0x000000, &tilelayout,    0x100, 16 },	/* Sprites 16x16 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /******************************************************************************/
@@ -812,7 +812,7 @@ C3D54*
 
 static DRIVER_INIT( vaportra )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 	int i;
 
 	for (i=0x00000; i<0x80000; i++)

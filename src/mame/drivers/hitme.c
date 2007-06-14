@@ -30,7 +30,7 @@ static UINT8 *hitme_vidram;
  *
  *************************************/
 
-static void get_hitme_tile_info(int tile_index)
+static TILE_GET_INFO( get_hitme_tile_info )
 {
 	/* the code is the low 6 bits */
 	UINT8 code = hitme_vidram[tile_index] & 0x3f;
@@ -56,14 +56,12 @@ WRITE8_HANDLER( hitme_vidram_w )
 static VIDEO_START(hitme)
 {
 	hitme_tilemap = tilemap_create(get_hitme_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 8,10, 40,19);
-	return 0;
 }
 
 
 static VIDEO_START(barricad)
 {
 	hitme_tilemap = tilemap_create(get_hitme_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 8,8, 32,24);
-	return 0;
 }
 
 

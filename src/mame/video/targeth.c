@@ -37,7 +37,7 @@ static tilemap *pant[2];
       1  | xxxxxxxx x------- | not used?
 */
 
-static void get_tile_info_targeth_screen0(int tile_index)
+static TILE_GET_INFO( get_tile_info_targeth_screen0 )
 {
 	int data = targeth_videoram[tile_index << 1];
 	int data2 = targeth_videoram[(tile_index << 1) + 1];
@@ -46,7 +46,7 @@ static void get_tile_info_targeth_screen0(int tile_index)
 	SET_TILE_INFO(0, code, data2 & 0x1f, TILE_FLIPXY((data2 >> 5) & 0x03))
 }
 
-static void get_tile_info_targeth_screen1(int tile_index)
+static TILE_GET_INFO( get_tile_info_targeth_screen1 )
 {
 	int data = targeth_videoram[(0x2000/2) + (tile_index << 1)];
 	int data2 = targeth_videoram[(0x2000/2) + (tile_index << 1) + 1];
@@ -64,7 +64,6 @@ static void get_tile_info_targeth_screen1(int tile_index)
 WRITE16_HANDLER( targeth_vram_w )
 {
 	targeth_videoram[offset] = data;
-
 	tilemap_mark_tile_dirty(pant[(offset & 0x1fff) >> 12], ((offset << 1) & 0x1fff) >> 2);
 }
 
@@ -81,8 +80,6 @@ VIDEO_START( targeth )
 	pant[1] = tilemap_create(get_tile_info_targeth_screen1,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,64,32);
 
 	tilemap_set_transparent_pen(pant[0],0);
-
-	return 0;
 }
 
 

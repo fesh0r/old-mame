@@ -72,7 +72,7 @@ WRITE8_HANDLER( yunsung8_videoram_w )
 	if (offset < 0x0800)		// c000-c7ff    Banked Palette RAM
 	{
 		int bank = yunsung8_videobank & 2;
-		unsigned char *RAM;
+		UINT8 *RAM;
 		int color;
 
 		if (bank)	RAM = yunsung8_videoram_0;
@@ -82,7 +82,7 @@ WRITE8_HANDLER( yunsung8_videoram_w )
 		color = RAM[offset & ~1] | (RAM[offset | 1] << 8);
 
 		/* BBBBBGGGGGRRRRRx */
-		palette_set_color(Machine, offset/2 + (bank ? 0x400:0), pal5bit(color >> 0), pal5bit(color >> 5), pal5bit(color >> 10));
+		palette_set_color_rgb(Machine, offset/2 + (bank ? 0x400:0), pal5bit(color >> 0), pal5bit(color >> 5), pal5bit(color >> 10));
 	}
 	else
 	{
@@ -125,7 +125,7 @@ WRITE8_HANDLER( yunsung8_flipscreen_w )
 #define DIM_NX_0			(0x40)
 #define DIM_NY_0			(0x20)
 
-static void get_tile_info_0( int tile_index )
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	int code  =  yunsung8_videoram_0[0x1000+tile_index * 2 + 0] + yunsung8_videoram_0[0x1000+tile_index * 2 + 1] * 256;
 	int color =  yunsung8_videoram_0[0x0800+ tile_index] & 0x07;
@@ -141,7 +141,7 @@ static void get_tile_info_0( int tile_index )
 #define DIM_NX_1			(0x40)
 #define DIM_NY_1			(0x20)
 
-static void get_tile_info_1( int tile_index )
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	int code  =  yunsung8_videoram_1[0x1000+ tile_index * 2 + 0] + yunsung8_videoram_1[0x1000+tile_index * 2 + 1] * 256;
 	int color =  yunsung8_videoram_1[0x0800+ tile_index] & 0x3f;
@@ -172,7 +172,6 @@ VIDEO_START( yunsung8 )
 								TILEMAP_TRANSPARENT, 8,8, DIM_NX_1, DIM_NY_1 );
 
 		tilemap_set_transparent_pen(tilemap_1,0);
-		return 0;
 }
 
 

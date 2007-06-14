@@ -160,23 +160,17 @@ static tilemap *bg_tilemap;
 
 WRITE8_HANDLER( gdrawpkr_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( gdrawpkr_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 /*  - bits -
     7654 3210
@@ -205,8 +199,6 @@ VIDEO_START( gdrawpkr )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 31);
-
-	return 0;
 }
 
 VIDEO_UPDATE( gdrawpkr )
@@ -247,7 +239,7 @@ PALETTE_INIT( gdrawpkr )
 		b = bit2 * 0xff;
 
 
-		palette_set_color(machine, i, r, g, b);
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
 	}
 }
 
@@ -627,8 +619,8 @@ static DRIVER_INIT( gdrawpkr )
 	}
 
 	/* Initializing PIAs... */
-	pia_config(0, PIA_STANDARD_ORDERING, &pia0_intf);
-	pia_config(1, PIA_STANDARD_ORDERING, &pia1_intf);
+	pia_config(0, &pia0_intf);
+	pia_config(1, &pia1_intf);
 }
 
 

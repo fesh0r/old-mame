@@ -65,7 +65,7 @@ PALETTE_INIT( chaknpop )
 		bit2 = (col >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine, i, r, g, b);
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
 	}
 }
 
@@ -126,11 +126,8 @@ WRITE8_HANDLER( chaknpop_gfxmode_w )
 
 WRITE8_HANDLER( chaknpop_txram_w )
 {
-	if (chaknpop_txram[offset] != data)
-	{
-		chaknpop_txram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap, offset);
-	}
+	chaknpop_txram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap, offset);
 }
 
 WRITE8_HANDLER( chaknpop_attrram_w )
@@ -153,7 +150,7 @@ WRITE8_HANDLER( chaknpop_attrram_w )
  *  I'm not sure how to handle attributes about color
  */
 
-static void chaknpop_get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( chaknpop_get_tx_tile_info )
 {
 	int tile = chaknpop_txram[tile_index];
 	int tile_h_bank = (gfxmode & GFX_TX_BANK2) << 2;	/* 0x00-0xff -> 0x200-0x2ff */
@@ -201,8 +198,6 @@ VIDEO_START( chaknpop )
 
 	state_save_register_func_postload(set_vram_bank);
 	state_save_register_func_postload(tx_tilemap_mark_all_dirty);
-
-	return 0;
 }
 
 

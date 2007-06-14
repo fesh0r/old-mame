@@ -67,7 +67,7 @@ VIDEO_UPDATE( esd16 );
 
 tilemap *esdtilemap_0, *esdtilemap_1, *esdtilemap_1_16x16;
 
-static void get_tile_info_0(int tile_index)
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	UINT16 code = esd16_vram_0[tile_index];
 	SET_TILE_INFO(
@@ -77,7 +77,7 @@ static void get_tile_info_0(int tile_index)
 			0)
 }
 
-static void get_tile_info_1(int tile_index)
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	UINT16 code = esd16_vram_1[tile_index];
 	SET_TILE_INFO(
@@ -87,7 +87,7 @@ static void get_tile_info_1(int tile_index)
 			0)
 }
 
-static void get_tile_info_1_16x16(int tile_index)
+static TILE_GET_INFO( get_tile_info_1_16x16 )
 {
 	UINT16 code = esd16_vram_1[tile_index];
 	SET_TILE_INFO(
@@ -99,20 +99,15 @@ static void get_tile_info_1_16x16(int tile_index)
 
 WRITE16_HANDLER( esd16_vram_0_w )
 {
-	UINT16 old_data	=	esd16_vram_0[offset];
-	UINT16 new_data	=	COMBINE_DATA(&esd16_vram_0[offset]);
-	if (old_data != new_data)	tilemap_mark_tile_dirty(esdtilemap_0,offset);
+	COMBINE_DATA(&esd16_vram_0[offset]);
+	tilemap_mark_tile_dirty(esdtilemap_0,offset);
 }
 
 WRITE16_HANDLER( esd16_vram_1_w )
 {
-	UINT16 old_data	=	esd16_vram_1[offset];
-	UINT16 new_data	=	COMBINE_DATA(&esd16_vram_1[offset]);
-	if (old_data != new_data)
-	{
-		tilemap_mark_tile_dirty(esdtilemap_1,offset);
-		tilemap_mark_tile_dirty(esdtilemap_1_16x16,offset);
-	}
+	COMBINE_DATA(&esd16_vram_1[offset]);
+	tilemap_mark_tile_dirty(esdtilemap_1,offset);
+	tilemap_mark_tile_dirty(esdtilemap_1_16x16,offset);
 }
 
 WRITE16_HANDLER( esd16_tilemap0_color_w )
@@ -152,8 +147,6 @@ VIDEO_START( esd16 )
 	tilemap_set_transparent_pen(esdtilemap_0,0x00);
 	tilemap_set_transparent_pen(esdtilemap_1,0x00);
 	tilemap_set_transparent_pen(esdtilemap_1_16x16,0x00);
-
-	return 0;
 }
 
 

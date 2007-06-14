@@ -41,28 +41,22 @@ PALETTE_INIT( trucocl )
 	int i;
 
 	for (i = 0;i < 32;i++)
-		palette_set_color(machine,i,pal4bit(color_prom[i] >> 0),pal4bit(color_prom[i+32] >> 0),pal4bit(color_prom[i+32] >> 4));
+		palette_set_color_rgb(machine,i,pal4bit(color_prom[i] >> 0),pal4bit(color_prom[i+32] >> 0),pal4bit(color_prom[i+32] >> 4));
 }
 
 WRITE8_HANDLER( trucocl_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( trucocl_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int gfxsel = colorram[tile_index] & 1;
 	int bank = ( ( colorram[tile_index] >> 2 ) & 0x07 );
@@ -79,8 +73,6 @@ static void get_bg_tile_info(int tile_index)
 VIDEO_START( trucocl )
 {
 	bg_tilemap = tilemap_create( get_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 32, 32 );
-
-	return 0;
 }
 
 VIDEO_UPDATE( trucocl )

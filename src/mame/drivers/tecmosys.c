@@ -111,7 +111,7 @@ ae500w07.ad1 - M6295 Samples (23c4001)
 static int gametype;
 
 static tilemap *txt_tilemap;
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 
 	SET_TILE_INFO(
@@ -404,7 +404,6 @@ VIDEO_START(deroon)
 {
 	txt_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,32*2,32*2);
 	tilemap_set_transparent_pen(txt_tilemap,0);
-	return 0;
 }
 
 
@@ -447,9 +446,9 @@ VIDEO_UPDATE(deroon)
 
 	// bg color , to see text in deroon
 	if(!gametype)
-			palette_set_color(machine,0x800,0x80,0x80,0x80);
+			palette_set_color(machine,0x800,MAKE_RGB(0x80,0x80,0x80));
 	else
-			palette_set_color(machine,0x800,0x0,0x0,0x0);
+			palette_set_color(machine,0x800,MAKE_RGB(0x0,0x0,0x0));
 
 	fillbitmap(bitmap,0x800,cliprect);
 

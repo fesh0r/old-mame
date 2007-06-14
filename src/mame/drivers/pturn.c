@@ -93,7 +93,7 @@ static UINT8 tile_lookup[0x10]=
 	0xa0, 0xb0, 0xe0, 0xf0
 };
 
-static void get_pturn_tile_info(int tile_index)
+static TILE_GET_INFO( get_pturn_tile_info )
 {
 	int tileno;
 	tileno = videoram[tile_index];
@@ -105,7 +105,7 @@ static void get_pturn_tile_info(int tile_index)
 
 
 
-static void get_pturn_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_pturn_bg_tile_info )
 {
 	int tileno,palno;
 	tileno = memory_region(REGION_USER1)[tile_index];
@@ -123,7 +123,6 @@ VIDEO_START(pturn)
 	tilemap_set_transparent_pen(pturn_fgmap,0);
 	pturn_bgmap = tilemap_create(get_pturn_bg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,32,32*8);
 	tilemap_set_transparent_pen(pturn_bgmap,0);
-	return 0;
 }
 
 VIDEO_UPDATE(pturn)

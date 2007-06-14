@@ -14,7 +14,7 @@ static tilemap *bg_tilemap;
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int attr = mjkjidai_videoram[tile_index + 0x800];
 	int code = mjkjidai_videoram[tile_index] + ((attr & 0x1f) << 8);
@@ -33,8 +33,6 @@ static void get_tile_info(int tile_index)
 VIDEO_START( mjkjidai )
 {
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,64,32);
-
-	return 0;
 }
 
 
@@ -47,11 +45,8 @@ VIDEO_START( mjkjidai )
 
 WRITE8_HANDLER( mjkjidai_videoram_w )
 {
-	if (mjkjidai_videoram[offset] != data)
-	{
-		mjkjidai_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset & 0x7ff);
-	}
+	mjkjidai_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset & 0x7ff);
 }
 
 WRITE8_HANDLER( mjkjidai_ctrl_w )

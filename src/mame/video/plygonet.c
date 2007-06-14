@@ -18,16 +18,14 @@ static UINT16 ttl_vram[0x800];
 
 /* TTL text plane */
 
-static void ttl_get_tile_info(int tile_index)
+static TILE_GET_INFO( ttl_get_tile_info )
 {
 	int attr, code;
 
 	code = ttl_vram[tile_index]&0xff;
 	attr = 0;
 
-	tile_info.flags = 0;
-
-	SET_TILE_INFO(ttl_gfx_index, code, attr, tile_info.flags);
+	SET_TILE_INFO(ttl_gfx_index, code, attr, 0);
 }
 
 static UINT32 ttl_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
@@ -72,8 +70,7 @@ VIDEO_START(polygonet_vh_start)
 		if (machine->gfx[ttl_gfx_index] == 0)
 			break;
 
-	if (ttl_gfx_index == MAX_GFX_ELEMENTS)
-		return 1;
+	assert(ttl_gfx_index != MAX_GFX_ELEMENTS);
 
 	// decode the ttl layer's gfx
 	machine->gfx[ttl_gfx_index] = allocgfx(&charlayout);
@@ -96,8 +93,6 @@ VIDEO_START(polygonet_vh_start)
 	tilemap_set_transparent_pen(ttl_tilemap, 0);
 
 	state_save_register_global_array(ttl_vram);
-
-	return 0;
 }
 
 VIDEO_UPDATE(polygonet_vh_screenrefresh)

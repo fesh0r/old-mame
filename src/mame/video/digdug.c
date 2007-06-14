@@ -50,7 +50,7 @@ PALETTE_INIT( digdug )
 		bit1 = (*color_prom >> 6) & 0x01;
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -93,7 +93,7 @@ static UINT32 tilemap_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows
 }
 
 
-static void bg_get_tile_info(int tile_index)
+static TILE_GET_INFO( bg_get_tile_info )
 {
 	UINT8 *rom = memory_region(REGION_GFX4);
 	int code = rom[tile_index | (bg_select << 10)];
@@ -110,9 +110,9 @@ static void bg_get_tile_info(int tile_index)
 			0)
 }
 
-static void tx_get_tile_info(int tile_index)
+static TILE_GET_INFO( tx_get_tile_info )
 {
-	unsigned char code = digdug_videoram[tile_index];
+	UINT8 code = digdug_videoram[tile_index];
 	int color;
 
 	/* the hardware has two ways to pick the color, either straight from the
@@ -160,8 +160,6 @@ VIDEO_START( digdug )
 	state_save_register_global(tx_color_mode);
 	state_save_register_global(bg_disable);
 	state_save_register_global(bg_color_bank);
-
-	return 0;
 }
 
 
@@ -179,11 +177,8 @@ READ8_HANDLER( digdug_videoram_r )
 
 WRITE8_HANDLER( digdug_videoram_w )
 {
-	if (digdug_videoram[offset] != data)
-	{
-		digdug_videoram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
-	}
+	digdug_videoram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
 }
 
 WRITE8_HANDLER( digdug_PORT_w )

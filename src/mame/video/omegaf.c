@@ -74,22 +74,22 @@ Atomic Robokid  256x192(H)  512x512
   Variables
 **************************************************************************/
 
-unsigned char *omegaf_fg_videoram;
-unsigned char *omegaf_bg0_videoram;
-unsigned char *omegaf_bg1_videoram;
-unsigned char *omegaf_bg2_videoram;
+UINT8 *omegaf_fg_videoram;
+UINT8 *omegaf_bg0_videoram;
+UINT8 *omegaf_bg1_videoram;
+UINT8 *omegaf_bg2_videoram;
 size_t omegaf_fgvideoram_size;
 
 static int omegaf_bg0_bank = 0;
 static int omegaf_bg1_bank = 0;
 static int omegaf_bg2_bank = 0;
 
-unsigned char *omegaf_bg0_scroll_x;
-unsigned char *omegaf_bg1_scroll_x;
-unsigned char *omegaf_bg2_scroll_x;
-unsigned char *omegaf_bg0_scroll_y;
-unsigned char *omegaf_bg1_scroll_y;
-unsigned char *omegaf_bg2_scroll_y;
+UINT8 *omegaf_bg0_scroll_x;
+UINT8 *omegaf_bg1_scroll_x;
+UINT8 *omegaf_bg2_scroll_x;
+UINT8 *omegaf_bg0_scroll_y;
+UINT8 *omegaf_bg1_scroll_y;
+UINT8 *omegaf_bg2_scroll_y;
 
 static tilemap *fg_tilemap;
 static tilemap *bg0_tilemap;
@@ -111,7 +111,7 @@ static int bank_mask = 1;
   Callbacks for the tilemap code
 ***************************************************************************/
 
-static void get_bg0_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg0_tile_info )
 {
 	int color, tile, hi, lo;
 
@@ -127,10 +127,10 @@ static void get_bg0_tile_info(int tile_index)
 			tile,
 			color,
 			0)
-	tile_info.priority = 0;
+	tileinfo->priority = 0;
 }
 
-static void get_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg1_tile_info )
 {
 	int color, tile, hi, lo;
 
@@ -146,10 +146,10 @@ static void get_bg1_tile_info(int tile_index)
 			tile,
 			color,
 			0)
-	tile_info.priority = 0;
+	tileinfo->priority = 0;
 }
 
-static void get_bg2_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg2_tile_info )
 {
 	int color, tile, hi, lo;
 
@@ -165,10 +165,10 @@ static void get_bg2_tile_info(int tile_index)
 			tile,
 			color,
 			0)
-	tile_info.priority = 0;
+	tileinfo->priority = 0;
 }
 
-static void robokid_get_bg0_tile_info(int tile_index)
+static TILE_GET_INFO( robokid_get_bg0_tile_info )
 {
 	int color, tile, hi, lo;
 
@@ -184,10 +184,10 @@ static void robokid_get_bg0_tile_info(int tile_index)
 			tile,
 			color,
 			0)
-	tile_info.priority = 0;
+	tileinfo->priority = 0;
 }
 
-static void robokid_get_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( robokid_get_bg1_tile_info )
 {
 	int color, tile, hi, lo;
 
@@ -203,10 +203,10 @@ static void robokid_get_bg1_tile_info(int tile_index)
 			tile,
 			color,
 			0)
-	tile_info.priority = 0;
+	tileinfo->priority = 0;
 }
 
-static void robokid_get_bg2_tile_info(int tile_index)
+static TILE_GET_INFO( robokid_get_bg2_tile_info )
 {
 	int color, tile, hi, lo;
 
@@ -222,10 +222,10 @@ static void robokid_get_bg2_tile_info(int tile_index)
 			tile,
 			color,
 			0)
-	tile_info.priority = 0;
+	tileinfo->priority = 0;
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int color, tile, hi, lo;
 
@@ -239,7 +239,7 @@ static void get_fg_tile_info(int tile_index)
 			tile,
 			color,
 			0)
-	tile_info.priority = 0;
+	tileinfo->priority = 0;
 }
 
 
@@ -247,7 +247,7 @@ static void get_fg_tile_info(int tile_index)
   Initialize and destroy video hardware emulation
 ***************************************************************************/
 
-static int videoram_alloc(int size)
+static void videoram_alloc(int size)
 {
 	/* create video ram */
 	omegaf_bg0_videoram = auto_malloc(size);
@@ -260,8 +260,6 @@ static int videoram_alloc(int size)
 	memset( omegaf_bg2_videoram, 0x00, size );
 
 	bitmap_sp = auto_bitmap_alloc (Machine -> screen[0].width, Machine -> screen[0].height, Machine -> screen[0].format  );
-
-	return 0;
 }
 
 VIDEO_START( omegaf )
@@ -269,8 +267,7 @@ VIDEO_START( omegaf )
 	scrollx_mask = 0x07ff;
 	bank_mask = 7;
 
-	if ( videoram_alloc(0x2000) )
-		return 1;
+	videoram_alloc(0x2000);
 
 	/*                           Info               Offset             Type                 w   h  col  row */
 	fg_tilemap  = tilemap_create(get_fg_tile_info,  tilemap_scan_rows, TILEMAP_TRANSPARENT, 8,  8,  32, 32);
@@ -282,8 +279,6 @@ VIDEO_START( omegaf )
 	tilemap_set_transparent_pen( bg0_tilemap, 15 );
 	tilemap_set_transparent_pen( bg1_tilemap, 15 );
 	tilemap_set_transparent_pen( bg2_tilemap, 15 );
-
-	return 0;
 }
 
 VIDEO_START( robokid )
@@ -291,8 +286,7 @@ VIDEO_START( robokid )
 	scrollx_mask = 0x01ff;
 	bank_mask = 1;
 
-	if ( videoram_alloc(0x0800) )
-		return 1;
+	videoram_alloc(0x0800);
 
 	/*                           Info               Offset             Type                         w   h  col  row */
 	fg_tilemap  = tilemap_create(        get_fg_tile_info,  tilemap_scan_rows, TILEMAP_TRANSPARENT, 8,  8,  32, 32);
@@ -303,8 +297,6 @@ VIDEO_START( robokid )
 	tilemap_set_transparent_pen( fg_tilemap,  15 );
 	tilemap_set_transparent_pen( bg1_tilemap, 15 );
 	tilemap_set_transparent_pen( bg2_tilemap, 15 );
-
-	return 0;
 }
 
 
@@ -348,13 +340,10 @@ WRITE8_HANDLER( omegaf_bg0_videoram_w )
 	int tile_index;
 
 	address = (omegaf_bg0_bank << 10 ) | offset;
-	if ( omegaf_bg0_videoram[address] != data )
-	{
-		omegaf_bg0_videoram[ address ] = data;
-		tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x1c00) >> 6 ) |
-		             ( (address & 0x03e0) << 2 );
-		tilemap_mark_tile_dirty( bg0_tilemap, tile_index );
-	}
+	omegaf_bg0_videoram[ address ] = data;
+	tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x1c00) >> 6 ) |
+	             ( (address & 0x03e0) << 2 );
+	tilemap_mark_tile_dirty( bg0_tilemap, tile_index );
 }
 
 WRITE8_HANDLER( omegaf_bg1_videoram_w )
@@ -363,13 +352,10 @@ WRITE8_HANDLER( omegaf_bg1_videoram_w )
 	int tile_index;
 
 	address = (omegaf_bg1_bank << 10 ) | offset;
-	if ( omegaf_bg1_videoram[address] != data )
-	{
-		omegaf_bg1_videoram[ address ] = data;
-		tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x1c00) >> 6 ) |
-		             ( (address & 0x03e0) << 2 );
-		tilemap_mark_tile_dirty( bg1_tilemap, tile_index );
-	}
+	omegaf_bg1_videoram[ address ] = data;
+	tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x1c00) >> 6 ) |
+	             ( (address & 0x03e0) << 2 );
+	tilemap_mark_tile_dirty( bg1_tilemap, tile_index );
 }
 
 WRITE8_HANDLER( omegaf_bg2_videoram_w )
@@ -378,13 +364,10 @@ WRITE8_HANDLER( omegaf_bg2_videoram_w )
 	int tile_index;
 
 	address = (omegaf_bg2_bank << 10 ) | offset;
-	if ( omegaf_bg2_videoram[address] != data )
-	{
-		omegaf_bg2_videoram[ address ] = data;
-		tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x1c00) >> 6 ) |
-		             ( (address & 0x03e0) << 2 );
-		tilemap_mark_tile_dirty( bg2_tilemap, tile_index );
-	}
+	omegaf_bg2_videoram[ address ] = data;
+	tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x1c00) >> 6 ) |
+	             ( (address & 0x03e0) << 2 );
+	tilemap_mark_tile_dirty( bg2_tilemap, tile_index );
 }
 
 WRITE8_HANDLER( robokid_bg0_videoram_w )
@@ -393,13 +376,10 @@ WRITE8_HANDLER( robokid_bg0_videoram_w )
 	int tile_index;
 
 	address = (omegaf_bg0_bank << 10 ) | offset;
-	if ( omegaf_bg0_videoram[address] != data )
-	{
-		omegaf_bg0_videoram[ address ] = data;
-		tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x0400) >> 6 ) |
-		               (address & 0x03e0);
-		tilemap_mark_tile_dirty( bg0_tilemap, tile_index );
-	}
+	omegaf_bg0_videoram[ address ] = data;
+	tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x0400) >> 6 ) |
+	               (address & 0x03e0);
+	tilemap_mark_tile_dirty( bg0_tilemap, tile_index );
 }
 
 WRITE8_HANDLER( robokid_bg1_videoram_w )
@@ -408,13 +388,10 @@ WRITE8_HANDLER( robokid_bg1_videoram_w )
 	int tile_index;
 
 	address = (omegaf_bg1_bank << 10 ) | offset;
-	if ( omegaf_bg1_videoram[address] != data )
-	{
-		omegaf_bg1_videoram[ address ] = data;
-		tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x0400) >> 6 ) |
-		               (address & 0x03e0);
-		tilemap_mark_tile_dirty( bg1_tilemap, tile_index );
-	}
+	omegaf_bg1_videoram[ address ] = data;
+	tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x0400) >> 6 ) |
+	               (address & 0x03e0);
+	tilemap_mark_tile_dirty( bg1_tilemap, tile_index );
 }
 
 WRITE8_HANDLER( robokid_bg2_videoram_w )
@@ -423,13 +400,10 @@ WRITE8_HANDLER( robokid_bg2_videoram_w )
 	int tile_index;
 
 	address = (omegaf_bg2_bank << 10 ) | offset;
-	if ( omegaf_bg2_videoram[address] != data )
-	{
-		omegaf_bg2_videoram[ address ] = data;
-		tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x0400) >> 6 ) |
-		               (address & 0x03e0);
-		tilemap_mark_tile_dirty( bg2_tilemap, tile_index );
-	}
+	omegaf_bg2_videoram[ address ] = data;
+	tile_index = ( (address & 0x001e) >> 1 ) | ( (address & 0x0400) >> 6 ) |
+	               (address & 0x03e0);
+	tilemap_mark_tile_dirty( bg2_tilemap, tile_index );
 }
 
 WRITE8_HANDLER( omegaf_bg0_scrollx_w )
@@ -500,11 +474,8 @@ WRITE8_HANDLER( omegaf_bg2_scrolly_w )
 
 WRITE8_HANDLER( omegaf_fgvideoram_w )
 {
-	if (omegaf_fg_videoram[offset] != data)
-	{
-		omegaf_fg_videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset >> 1);
-	}
+	omegaf_fg_videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset >> 1);
 }
 
 WRITE8_HANDLER( omegaf_bg0_enabled_w )

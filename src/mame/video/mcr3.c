@@ -42,7 +42,7 @@ static tilemap *alpha_tilemap;
  *
  *************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int data = videoram[tile_index * 2] | (videoram[tile_index * 2 + 1] << 8);
 	int code = (data & 0x3ff) | ((data >> 4) & 0x400);
@@ -51,7 +51,7 @@ static void get_bg_tile_info(int tile_index)
 }
 
 
-static void mcrmono_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( mcrmono_get_bg_tile_info )
 {
 	int data = videoram[tile_index * 2] | (videoram[tile_index * 2 + 1] << 8);
 	int code = (data & 0x3ff) | ((data >> 4) & 0x400);
@@ -67,7 +67,7 @@ static UINT32 spyhunt_bg_scan(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 nu
 }
 
 
-static void spyhunt_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( spyhunt_get_bg_tile_info )
 {
 	int data = videoram[tile_index];
 	int code = (data & 0x3f) | ((data >> 1) & 0x40);
@@ -75,7 +75,7 @@ static void spyhunt_get_bg_tile_info(int tile_index)
 }
 
 
-static void spyhunt_get_alpha_tile_info(int tile_index)
+static TILE_GET_INFO( spyhunt_get_alpha_tile_info )
 {
 	SET_TILE_INFO(2, spyhunt_alpharam[tile_index], 0, 0);
 }
@@ -91,10 +91,10 @@ static void spyhunt_get_alpha_tile_info(int tile_index)
 PALETTE_INIT( spyhunt )
 {
 	/* alpha colors are hard-coded */
-	palette_set_color(machine,4*16+0,0x00,0x00,0x00);
-	palette_set_color(machine,4*16+1,0x00,0xff,0x00);
-	palette_set_color(machine,4*16+2,0x00,0x00,0xff);
-	palette_set_color(machine,4*16+3,0xff,0xff,0xff);
+	palette_set_color(machine,4*16+0,MAKE_RGB(0x00,0x00,0x00));
+	palette_set_color(machine,4*16+1,MAKE_RGB(0x00,0xff,0x00));
+	palette_set_color(machine,4*16+2,MAKE_RGB(0x00,0x00,0xff));
+	palette_set_color(machine,4*16+3,MAKE_RGB(0xff,0xff,0xff));
 }
 
 
@@ -109,7 +109,6 @@ VIDEO_START( mcr3 )
 {
 	/* initialize the background tilemap */
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 16,16, 32,30);
-	return 0;
 }
 
 
@@ -117,7 +116,6 @@ VIDEO_START( mcrmono )
 {
 	/* initialize the background tilemap */
 	bg_tilemap = tilemap_create(mcrmono_get_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 16,16, 32,30);
-	return 0;
 }
 
 
@@ -135,7 +133,6 @@ VIDEO_START( spyhunt )
 	state_save_register_global(spyhunt_scrollx);
 	state_save_register_global(spyhunt_scrolly);
 	state_save_register_global(spyhunt_scroll_offset);
-	return 0;
 }
 
 
@@ -152,7 +149,7 @@ WRITE8_HANDLER( mcr3_paletteram_w )
 	offset &= 0x7f;
 
 	/* high bit of red comes from low bit of address */
-	palette_set_color(Machine, offset / 2, pal3bit(((offset & 1) << 2) + (data >> 6)), pal3bit(data >> 0), pal3bit(data >> 3));
+	palette_set_color_rgb(Machine, offset / 2, pal3bit(((offset & 1) << 2) + (data >> 6)), pal3bit(data >> 0), pal3bit(data >> 3));
 }
 
 

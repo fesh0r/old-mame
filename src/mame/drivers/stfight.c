@@ -258,10 +258,10 @@ VIDEO_START( stfight );
 VIDEO_UPDATE( stfight );
 
 // video
-extern unsigned char *stfight_text_char_ram;
-extern unsigned char *stfight_text_attr_ram;
-extern unsigned char *stfight_vh_latch_ram;
-extern unsigned char *stfight_sprite_ram;
+extern UINT8 *stfight_text_char_ram;
+extern UINT8 *stfight_text_attr_ram;
+extern UINT8 *stfight_vh_latch_ram;
+extern UINT8 *stfight_sprite_ram;
 
 static ADDRESS_MAP_START( readmem_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
@@ -475,7 +475,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX3, 0x0000, &bglayout,     16*4+16*16,       16 },
 	{ REGION_GFX3, 0x0020, &bglayout,     16*4+16*16,       16 },
 	{ REGION_GFX4, 0x0000, &spritelayout, 16*4+16*16+16*16, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static struct MSM5205interface msm5205_interface =

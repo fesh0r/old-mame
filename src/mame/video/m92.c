@@ -50,7 +50,7 @@ static INT32 pf1_shape,pf2_shape,pf3_shape;
 static INT32 m92_sprite_list;
 
 int m92_raster_irq_position,m92_raster_enable;
-unsigned char *m92_vram_data,*m92_spritecontrol;
+UINT8 *m92_vram_data,*m92_spritecontrol;
 int m92_game_kludge;
 
 extern void m92_sprite_interrupt(void);
@@ -140,7 +140,7 @@ WRITE8_HANDLER( m92_paletteram_w )
 
 /*****************************************************************************/
 
-static void get_pf1_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf1_tile_info )
 {
 	int tile,color,pri;
 	tile_index = 4*tile_index+pf1_vram_ptr;
@@ -158,7 +158,7 @@ static void get_pf1_tile_info(int tile_index)
 			TILE_FLIPYX((m92_vram_data[tile_index+3] & 0x6)>>1) | TILE_SPLIT(pri))
 }
 
-static void get_pf2_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf2_tile_info )
 {
 	int tile,color,pri;
 	tile_index = 4*tile_index + pf2_vram_ptr;
@@ -176,7 +176,7 @@ static void get_pf2_tile_info(int tile_index)
 			TILE_FLIPYX((m92_vram_data[tile_index+3] & 0x6)>>1) | TILE_SPLIT(pri))
 }
 
-static void get_pf3_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf3_tile_info )
 {
 	int tile,color,pri;
 	tile_index = 4*tile_index + pf3_vram_ptr;
@@ -193,7 +193,7 @@ static void get_pf3_tile_info(int tile_index)
 			TILE_FLIPYX((m92_vram_data[tile_index+3] & 0x6)>>1) | TILE_SPLIT(pri))
 }
 
-static void get_pf1_wide_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf1_wide_tile_info )
 {
 	int tile,color,pri;
 	tile_index = 4*tile_index + pf1_vram_ptr;
@@ -211,7 +211,7 @@ static void get_pf1_wide_tile_info(int tile_index)
 			TILE_FLIPYX((m92_vram_data[tile_index+3] & 0x6)>>1) | TILE_SPLIT(pri))
 }
 
-static void get_pf3_wide_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf3_wide_tile_info )
 {
 	int tile,color,pri;
 	tile_index = 4*tile_index + pf3_vram_ptr;
@@ -442,72 +442,78 @@ VIDEO_START( m92 )
 	state_save_register_global(m92_palette_bank);
 
 	state_save_register_global_pointer(paletteram, 0x1000);
-
-	return 0;
 }
 
 /*****************************************************************************/
 
 static void m92_drawsprites(mame_bitmap *bitmap, const rectangle *cliprect)
 {
-	int offs=0;
+	int offs,k;
 
-	while (offs<m92_sprite_list) {
-		int x,y,sprite,colour,fx,fy,x_multi,y_multi,i,j,s_ptr,pri;
+	for (k=0; k<8; k++) {
+		offs = 0;
+		while (offs<m92_sprite_list) {
 
-		y=(buffered_spriteram[offs+0] | (buffered_spriteram[offs+1]<<8))&0x1ff;
-		x=(buffered_spriteram[offs+6] | (buffered_spriteram[offs+7]<<8))&0x1ff;
+			int x,y,sprite,colour,fx,fy,x_multi,y_multi,i,j,s_ptr,pri_back,pri_sprite;
 
-		if ((buffered_spriteram[offs+4]&0x80)==0x80) pri=0; else pri=2;
+			y=(buffered_spriteram[offs+0] | (buffered_spriteram[offs+1]<<8))&0x1ff;
+			x=(buffered_spriteram[offs+6] | (buffered_spriteram[offs+7]<<8))&0x1ff;
 
-		x = x - 16;
-		y = 512 - 16 - y;
+			if ((buffered_spriteram[offs+4] & 0x80)==0x80) pri_back=0; else pri_back=2;
 
-	    sprite=(buffered_spriteram[offs+2] | (buffered_spriteram[offs+3]<<8));
-		colour=buffered_spriteram[offs+4]&0x7f;
+			x = x - 16;
+			y = 512 - 16 - y;
 
-		fx=buffered_spriteram[offs+5]&1;
-		fy=(buffered_spriteram[offs+5]&2)>>1;
-		y_multi=(buffered_spriteram[offs+1]>>1)&0x3;
-		x_multi=(buffered_spriteram[offs+1]>>3)&0x3;
+		 	sprite=(buffered_spriteram[offs+2] | (buffered_spriteram[offs+3]<<8));
+			colour=buffered_spriteram[offs+4]&0x7f;
+			pri_sprite=(buffered_spriteram[offs+1] & 0xe0)>>5;
 
-		y_multi=1 << y_multi; /* 1, 2, 4 or 8 */
-		x_multi=1 << x_multi; /* 1, 2, 4 or 8 */
+			fx=buffered_spriteram[offs+5]&1;
+			fy=(buffered_spriteram[offs+5]&2)>>1;
+			y_multi=(buffered_spriteram[offs+1]>>1)&0x3;
+			x_multi=(buffered_spriteram[offs+1]>>3)&0x3;
 
-		if (fx) x+=16 * (x_multi - 1);
+			y_multi=1 << y_multi;
+			x_multi=1 << x_multi;
 
-		for (j=0; j<x_multi; j++)
-		{
-			s_ptr=8 * j;
-			if (!fy) s_ptr+=y_multi-1;
+			if (fx) x+=16 * (x_multi - 1);
 
-			for (i=0; i<y_multi; i++)
+			for (j=0; j<x_multi; j++)
 			{
-				if (flip_screen) {
-					int ffx=fx,ffy=fy;
-					if (ffx) ffx=0; else ffx=1;
-					if (ffy) ffy=0; else ffy=1;
-					pdrawgfx(bitmap,Machine->gfx[1],
-							sprite + s_ptr,
-							colour,
-							ffx,ffy,
-							496-x,496-(y-i*16),
-							cliprect,TRANSPARENCY_PEN,0,pri);
-				} else {
-					pdrawgfx(bitmap,Machine->gfx[1],
-							sprite + s_ptr,
-							colour,
-							fx,fy,
-							x,y-i*16,
-							cliprect,TRANSPARENCY_PEN,0,pri);
+				s_ptr=8 * j;
+				if (!fy) s_ptr+=y_multi-1;
+
+				for (i=0; i<y_multi; i++)
+				{
+					if (flip_screen) {
+						int ffx=fx,ffy=fy;
+						if (ffx) ffx=0; else ffx=1;
+						if (ffy) ffy=0; else ffy=1;
+							if (pri_sprite==k)
+								pdrawgfx(bitmap,Machine->gfx[1],
+									sprite + s_ptr,
+									colour,
+									ffx,ffy,
+									496-x,496-(y-i*16),
+									cliprect,TRANSPARENCY_PEN,0,pri_back);
+					} else {
+							if (pri_sprite==k)
+								pdrawgfx(bitmap,Machine->gfx[1],
+									sprite + s_ptr,
+									colour,
+									fx,fy,
+									x,y-i*16,
+									cliprect,TRANSPARENCY_PEN,0,pri_back);
+					}
+					if (fy) s_ptr++; else s_ptr--;
 				}
-				if (fy) s_ptr++; else s_ptr--;
+				if (fx) x-=16; else x+=16;
+				offs+=8;
 			}
-			if (fx) x-=16; else x+=16;
-			offs+=8;
 		}
 	}
 }
+
 
 /*****************************************************************************/
 

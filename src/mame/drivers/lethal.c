@@ -184,7 +184,7 @@ static UINT8 cur_control2;
 
 /* Default Eeprom for the parent.. otherwise it will always complain first boot */
 /* its easy to init but this saves me a bit of time.. */
-unsigned char lethalen_default_eeprom[48] = {
+UINT8 lethalen_default_eeprom[48] = {
 	0x02, 0x1E, 0x00, 0x00, 0x39, 0x31, 0x39, 0x31, 0x55, 0x45, 0x77, 0x00, 0x00, 0x00, 0x00, 0x01,
 	0x02, 0x01, 0x00, 0x03, 0x05, 0x01, 0x01, 0x02, 0x28, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
@@ -620,7 +620,6 @@ static struct K054539interface k054539_interface =
 static MACHINE_START( lethalen )
 {
 	state_save_register_global(cur_control2);
-	return 0;
 }
 
 static MACHINE_RESET( lethalen )
@@ -647,7 +646,7 @@ static const gfx_layout lethal_6bpp =
 static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0, &lethal_6bpp,   0x000/*0x400*/, 256  }, /* sprites tiles */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static MACHINE_DRIVER_START( lethalen )

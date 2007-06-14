@@ -18,7 +18,6 @@ GFX might be some kind of blitter device, with memory mapped framebuffer?
 
 VIDEO_START( tmaster )
 {
-	return 0;
 }
 
 VIDEO_UPDATE( tmaster )
@@ -175,7 +174,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &tmaster_layout,   0x300, 2  },
 	{ REGION_GFX2, 0, &tmaster_layout,   0x300, 2  },
 	{ REGION_GFX3, 0, &tmaster_layout,   0x300, 2  },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static INTERRUPT_GEN( tmaster_interrupt )

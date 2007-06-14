@@ -50,21 +50,24 @@ DRIVER_INIT( senjyo )
 
 ***************************************************************************/
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
-	unsigned char attr = senjyo_fgcolorram[tile_index];
+	UINT8 attr = senjyo_fgcolorram[tile_index];
+	int flags = (attr & 0x80) ? TILE_FLIPY : 0;
+
+	if (senjyo && (tile_index & 0x1f) >= 32-8)
+		flags |= TILE_IGNORE_TRANSPARENCY;
+
 	SET_TILE_INFO(
 			0,
 			senjyo_fgvideoram[tile_index] + ((attr & 0x10) << 4),
 			attr & 0x07,
-			(attr & 0x80) ? TILE_FLIPY : 0)
-	if (senjyo && (tile_index & 0x1f) >= 32-8)
-		tile_info.flags |= TILE_IGNORE_TRANSPARENCY;
+			flags)
 }
 
-static void senjyo_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( senjyo_bg1_tile_info )
 {
-	unsigned char code = senjyo_bg1videoram[tile_index];
+	UINT8 code = senjyo_bg1videoram[tile_index];
 	SET_TILE_INFO(
 			1,
 			code,
@@ -72,12 +75,12 @@ static void senjyo_bg1_tile_info(int tile_index)
 			0)
 }
 
-static void starforc_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( starforc_bg1_tile_info )
 {
 	/* Star Force has more tiles in bg1, so to get a uniform color code spread */
 	/* they wired bit 7 of the tile code in place of bit 4 to get the color code */
 	static int colormap[8] = { 0,2,4,6,1,3,5,7 };
-	unsigned char code = senjyo_bg1videoram[tile_index];
+	UINT8 code = senjyo_bg1videoram[tile_index];
 	SET_TILE_INFO(
 			1,
 			code,
@@ -85,9 +88,9 @@ static void starforc_bg1_tile_info(int tile_index)
 			0)
 }
 
-static void get_bg2_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg2_tile_info )
 {
-	unsigned char code = senjyo_bg2videoram[tile_index];
+	UINT8 code = senjyo_bg2videoram[tile_index];
 	SET_TILE_INFO(
 			2,
 			code,
@@ -95,9 +98,9 @@ static void get_bg2_tile_info(int tile_index)
 			0)
 }
 
-static void get_bg3_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg3_tile_info )
 {
-	unsigned char code = senjyo_bg3videoram[tile_index];
+	UINT8 code = senjyo_bg3videoram[tile_index];
 	SET_TILE_INFO(
 			3,
 			code,
@@ -135,8 +138,6 @@ VIDEO_START( senjyo )
 	tilemap_set_transparent_pen(bg2_tilemap,0);
 	tilemap_set_transparent_pen(bg3_tilemap,0);
 	tilemap_set_scroll_cols(fg_tilemap,32);
-
-	return 0;
 }
 
 
@@ -149,43 +150,28 @@ VIDEO_START( senjyo )
 
 WRITE8_HANDLER( senjyo_fgvideoram_w )
 {
-	if (senjyo_fgvideoram[offset] != data)
-	{
-		senjyo_fgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
-	}
+	senjyo_fgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 WRITE8_HANDLER( senjyo_fgcolorram_w )
 {
-	if (senjyo_fgcolorram[offset] != data)
-	{
-		senjyo_fgcolorram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
-	}
+	senjyo_fgcolorram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 WRITE8_HANDLER( senjyo_bg1videoram_w )
 {
-	if (senjyo_bg1videoram[offset] != data)
-	{
-		senjyo_bg1videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg1_tilemap,offset);
-	}
+	senjyo_bg1videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg1_tilemap,offset);
 }
 WRITE8_HANDLER( senjyo_bg2videoram_w )
 {
-	if (senjyo_bg2videoram[offset] != data)
-	{
-		senjyo_bg2videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg2_tilemap,offset);
-	}
+	senjyo_bg2videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg2_tilemap,offset);
 }
 WRITE8_HANDLER( senjyo_bg3videoram_w )
 {
-	if (senjyo_bg3videoram[offset] != data)
-	{
-		senjyo_bg3videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg3_tilemap,offset);
-	}
+	senjyo_bg3videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg3_tilemap,offset);
 }
 
 WRITE8_HANDLER( senjyo_bgstripes_w )
@@ -332,8 +318,8 @@ VIDEO_UPDATE( senjyo )
 
 
 	/* two colors for the radar dots (verified on the real board) */
-	palette_set_color(machine,512,0xff,0x00,0x00);	/* red for enemies */
-	palette_set_color(machine,513,0xff,0xff,0x00);	/* yellow for player */
+	palette_set_color(machine,512,MAKE_RGB(0xff,0x00,0x00));	/* red for enemies */
+	palette_set_color(machine,513,MAKE_RGB(0xff,0xff,0x00));	/* yellow for player */
 
 	{
 		int scrollx,scrolly;

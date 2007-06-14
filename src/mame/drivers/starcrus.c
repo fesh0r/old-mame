@@ -148,18 +148,18 @@ static const gfx_decode gfxdecodeinfo[] =
     { REGION_GFX3, 0x0100, &spritelayout2, 0, 1 },
     { REGION_GFX3, 0x0200, &spritelayout2, 0, 1 },
     { REGION_GFX3, 0x0300, &spritelayout2, 0, 1 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
-static unsigned short colortable_source[] =
+static UINT16 colortable_source[] =
 {
 	0x00, 0x01, /* White on Black */
 };
 static PALETTE_INIT( starcrus )
 {
-	palette_set_color(machine,0,0x00,0x00,0x00); /* Black */
-    palette_set_color(machine,1,0xff,0xff,0xff); /* White */
+	palette_set_color(machine,0,MAKE_RGB(0x00,0x00,0x00)); /* Black */
+    palette_set_color(machine,1,MAKE_RGB(0xff,0xff,0xff)); /* White */
 	memcpy(colortable,colortable_source,sizeof(colortable_source));
 }
 
@@ -170,7 +170,7 @@ static const char *starcrus_sample_names[] =
     "explos1.wav",	/* explosion sound, first part, channel 1 */
     "explos2.wav",	/* explosion sound, second part, channel 1 */
     "launch.wav",	/* launch sound, channels 2 and 3 */
-    0   /* end of array */
+    0
 };
 
 static struct Samplesinterface samples_interface =

@@ -298,7 +298,7 @@ ADDRESS_MAP_END
 
 static WRITE16_HANDLER( OKIM6295_bankswitch_w )
 {
-	unsigned char *RAM = memory_region(REGION_SOUND1);
+	UINT8 *RAM = memory_region(REGION_SOUND1);
 
 	if (ACCESSING_LSB){
 		memcpy(&RAM[0x30000], &RAM[0x40000 + (data & 0x0f)*0x10000], 0x10000);
@@ -1040,14 +1040,12 @@ static UINT16 squash_encrypt(int offset, int data, int game)
 
 WRITE16_HANDLER( gaelco_vram_encrypted_w )
 {
-	int oldword = gaelco_videoram[offset];
 //  mame_printf_debug("gaelco_vram_encrypted_w!!\n");
 
 	data = squash_encrypt(offset,data,0);
 	COMBINE_DATA(&gaelco_videoram[offset]);
 
-	if (oldword != gaelco_videoram[offset])
-		tilemap_mark_tile_dirty(pant[offset >> 11],((offset << 1) & 0x0fff) >> 2);
+	tilemap_mark_tile_dirty(pant[offset >> 11],((offset << 1) & 0x0fff) >> 2);
 }
 
 
@@ -1061,14 +1059,12 @@ WRITE16_HANDLER(gaelco_encrypted_w)
 
 WRITE16_HANDLER( thoop_vram_encrypted_w )
 {
-	int oldword = gaelco_videoram[offset];
 //  mame_printf_debug("gaelco_vram_encrypted_w!!\n");
 
 	data = squash_encrypt(offset,data,1);
 	COMBINE_DATA(&gaelco_videoram[offset]);
 
-	if (oldword != gaelco_videoram[offset])
-		tilemap_mark_tile_dirty(pant[offset >> 11],((offset << 1) & 0x0fff) >> 2);
+	tilemap_mark_tile_dirty(pant[offset >> 11],((offset << 1) & 0x0fff) >> 2);
 }
 
 WRITE16_HANDLER(thoop_encrypted_w)

@@ -24,11 +24,8 @@ static tilemap *bg_tilemap;
 
 WRITE8_HANDLER( circus_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( circus_clown_x_w )
@@ -41,7 +38,7 @@ WRITE8_HANDLER( circus_clown_y_w )
 	clown_y = 240-data;
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 
@@ -52,8 +49,6 @@ VIDEO_START( circus )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void draw_line(mame_bitmap *bitmap, int x1, int y1, int x2, int y2, int dotted)
@@ -211,7 +206,7 @@ static void ripcord_draw_skydiver( mame_bitmap *bitmap )
 	pen_t *pal_ptr;
 	UINT8  *src_lineptr, *src_pixptr;
 	UINT16 *dst_lineptr, *dst_lineend;
-	unsigned int code, color;
+	UINT32 code, color;
 	int sx, sy;
 	int src_pitch, dst_width, dst_height, dst_pitch, dst_pixoffs, dst_pixend;
 	int collision, eax, edx;

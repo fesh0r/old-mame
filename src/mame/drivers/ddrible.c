@@ -15,13 +15,13 @@ Driver by Manuel Abadia <manu@teleline.es>
 int ddrible_int_enable_0;
 int ddrible_int_enable_1;
 
-static unsigned char *ddrible_sharedram;
-static unsigned char *ddrible_snd_sharedram;
+static UINT8 *ddrible_sharedram;
+static UINT8 *ddrible_snd_sharedram;
 
-extern unsigned char *ddrible_spriteram_1;
-extern unsigned char *ddrible_spriteram_2;
-extern unsigned char *ddrible_fg_videoram;
-extern unsigned char *ddrible_bg_videoram;
+extern UINT8 *ddrible_spriteram_1;
+extern UINT8 *ddrible_spriteram_2;
+extern UINT8 *ddrible_fg_videoram;
+extern UINT8 *ddrible_bg_videoram;
 
 /* video hardware memory handlers */
 WRITE8_HANDLER( ddrible_fg_videoram_w );
@@ -51,7 +51,7 @@ static INTERRUPT_GEN( ddrible_interrupt_1 )
 static WRITE8_HANDLER( ddrible_bankswitch_w )
 {
 	int bankaddress;
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 
 	bankaddress = 0x10000 + (data & 0x0f)*0x2000;
 	memory_set_bankptr(1,&RAM[bankaddress]);
@@ -97,7 +97,7 @@ static READ8_HANDLER( ddrible_vlm5030_busy_r )
 
 static WRITE8_HANDLER( ddrible_vlm5030_ctrl_w )
 {
-	unsigned char *SPEECH_ROM = memory_region(REGION_SOUND1);
+	UINT8 *SPEECH_ROM = memory_region(REGION_SOUND1);
 	/* b7 : vlm data bus OE   */
 	/* b6 : VLM5030-RST       */
 	/* b5 : VLM5030-ST        */
@@ -321,7 +321,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX2, 0x00000, &charlayout,    16,  1 },	/* colors 16-31 */
 	{ REGION_GFX1, 0x20000, &spritelayout,  32,  1 },	/* colors 32-47 */
 	{ REGION_GFX2, 0x40000, &spritelayout,  64, 16 },	/* colors  0-15 but using lookup table */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static struct YM2203interface ym2203_interface =

@@ -32,7 +32,7 @@
  *
  *************************************/
 
-static unsigned short colortable_source[] =
+static UINT16 colortable_source[] =
 {
 	/* Playfield */
 	0x01, 0x00, 0x00, 0x00,
@@ -122,10 +122,10 @@ static unsigned short colortable_source[] =
 
 static PALETTE_INIT( bsktball )
 {
-	palette_set_color(machine,0,0x00,0x00,0x00); /* BLACK */
-	palette_set_color(machine,1,0x80,0x80,0x80); /* LIGHT GREY */
-	palette_set_color(machine,2,0x50,0x50,0x50); /* DARK GREY */
-	palette_set_color(machine,3,0xff,0xff,0xff); /* WHITE */
+	palette_set_color(machine,0,MAKE_RGB(0x00,0x00,0x00)); /* BLACK */
+	palette_set_color(machine,1,MAKE_RGB(0x80,0x80,0x80)); /* LIGHT GREY */
+	palette_set_color(machine,2,MAKE_RGB(0x50,0x50,0x50)); /* DARK GREY */
+	palette_set_color(machine,3,MAKE_RGB(0xff,0xff,0xff)); /* WHITE */
 	memcpy(colortable,colortable_source,sizeof(colortable_source));
 }
 
@@ -314,7 +314,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( bsktball )
-	ROM_REGION( 0x4000, REGION_CPU1, 0 ) /* 16k for code */
+	ROM_REGION( 0x4000, REGION_CPU1, 0 )
 	ROM_LOAD( "034765.d1",    0x2000, 0x0800, CRC(798cea39) SHA1(b1b709a74258b01b21d7c2038a3b6abe879944c5) )
 	ROM_LOAD( "034764.c1",    0x2800, 0x0800, CRC(a087109e) SHA1(f5d6dcccc4a54db35be3d8997bc51e73892747fb) )
 	ROM_LOAD( "034766.f1",    0x3000, 0x0800, CRC(a82e9a9f) SHA1(9aca236c5145c04a8aaebb316179482bbdc9ddfc) )

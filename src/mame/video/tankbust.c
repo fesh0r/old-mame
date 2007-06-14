@@ -32,7 +32,7 @@ note:
 
 */
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 	int attr = colorram[tile_index];
@@ -54,7 +54,7 @@ static void get_bg_tile_info(int tile_index)
 #endif
 
 	/* priority bg/sprites (1 = this bg tile on top of sprites) */
-	tile_info.priority = (attr & 0x08) >> 3;
+	tileinfo->priority = (attr & 0x08) >> 3;
 
 	SET_TILE_INFO(	1,
 			code,
@@ -62,7 +62,7 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_txt_tile_info(int tile_index)
+static TILE_GET_INFO( get_txt_tile_info )
 {
 	int code = txt_ram[tile_index];
 	int color = ((code>>6) & 0x03);
@@ -90,8 +90,6 @@ VIDEO_START( tankbust )
 
 
 	tilemap_set_transparent_pen(txt_tilemap, 0);
-
-	return 0;
 }
 
 
@@ -103,11 +101,8 @@ VIDEO_START( tankbust )
 
 WRITE8_HANDLER( tankbust_background_videoram_w )
 {
-	if( videoram[offset]!=data )
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 READ8_HANDLER( tankbust_background_videoram_r )
 {
@@ -116,11 +111,8 @@ READ8_HANDLER( tankbust_background_videoram_r )
 
 WRITE8_HANDLER( tankbust_background_colorram_w )
 {
-	if( colorram[offset]!=data )
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 READ8_HANDLER( tankbust_background_colorram_r )
 {
@@ -129,11 +121,8 @@ READ8_HANDLER( tankbust_background_colorram_r )
 
 WRITE8_HANDLER( tankbust_txtram_w )
 {
-	if( txt_ram[offset]!=data )
-	{
-		txt_ram[offset] = data;
-		tilemap_mark_tile_dirty(txt_tilemap, offset);
-	}
+	txt_ram[offset] = data;
+	tilemap_mark_tile_dirty(txt_tilemap, offset);
 }
 READ8_HANDLER( tankbust_txtram_r )
 {

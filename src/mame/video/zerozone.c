@@ -13,11 +13,8 @@ static tilemap *zerozone_tilemap;
 
 WRITE16_HANDLER( zerozone_tilemap_w )
 {
-	if (zerozone_videoram[offset] != data)
-	{
-		COMBINE_DATA(&zerozone_videoram[offset]);
-		tilemap_mark_tile_dirty(zerozone_tilemap,offset);
-	}
+	COMBINE_DATA(&zerozone_videoram[offset]);
+	tilemap_mark_tile_dirty(zerozone_tilemap,offset);
 }
 
 
@@ -28,7 +25,7 @@ WRITE16_HANDLER(zerozone_tilebank_w)
 	tilemap_mark_all_tiles_dirty(zerozone_tilemap);
 }
 
-static void get_zerozone_tile_info(int tile_index)
+static TILE_GET_INFO( get_zerozone_tile_info )
 {
 	int tileno,colour;
 	tileno = zerozone_videoram[tile_index] & 0x07ff;
@@ -44,8 +41,6 @@ VIDEO_START( zerozone )
 	// i'm not 100% sure it should be opaque, pink title screen looks strange in las vegas girls
 	// but if its transparent other things look incorrect
 	zerozone_tilemap = tilemap_create(get_zerozone_tile_info,tilemap_scan_cols,TILEMAP_OPAQUE,      8, 8, 64,32);
-
-	return 0;
 }
 
 VIDEO_UPDATE( zerozone )

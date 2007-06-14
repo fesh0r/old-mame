@@ -20,7 +20,7 @@ static tilemap *fromanc2_tilemap[2][4];
 
 ******************************************************************************/
 
-INLINE void fromanc2_get_tile_info(int tile_index, int vram, int layer)
+INLINE void fromanc2_get_tile_info(running_machine *machine, tile_data *tileinfo, int tile_index, int vram, int layer)
 {
 	int tile, color;
 
@@ -30,17 +30,17 @@ INLINE void fromanc2_get_tile_info(int tile_index, int vram, int layer)
 	SET_TILE_INFO(layer, tile, color, 0)
 }
 
-static void fromanc2_get_v0_l0_tile_info(int tile_index) { fromanc2_get_tile_info(tile_index, 0, 0); }
-static void fromanc2_get_v0_l1_tile_info(int tile_index) { fromanc2_get_tile_info(tile_index, 0, 1); }
-static void fromanc2_get_v0_l2_tile_info(int tile_index) { fromanc2_get_tile_info(tile_index, 0, 2); }
-static void fromanc2_get_v0_l3_tile_info(int tile_index) { fromanc2_get_tile_info(tile_index, 0, 3); }
-static void fromanc2_get_v1_l0_tile_info(int tile_index) { fromanc2_get_tile_info(tile_index, 1, 0); }
-static void fromanc2_get_v1_l1_tile_info(int tile_index) { fromanc2_get_tile_info(tile_index, 1, 1); }
-static void fromanc2_get_v1_l2_tile_info(int tile_index) { fromanc2_get_tile_info(tile_index, 1, 2); }
-static void fromanc2_get_v1_l3_tile_info(int tile_index) { fromanc2_get_tile_info(tile_index, 1, 3); }
+static TILE_GET_INFO( fromanc2_get_v0_l0_tile_info ) { fromanc2_get_tile_info(machine, tileinfo, tile_index, 0, 0); }
+static TILE_GET_INFO( fromanc2_get_v0_l1_tile_info ) { fromanc2_get_tile_info(machine, tileinfo, tile_index, 0, 1); }
+static TILE_GET_INFO( fromanc2_get_v0_l2_tile_info ) { fromanc2_get_tile_info(machine, tileinfo, tile_index, 0, 2); }
+static TILE_GET_INFO( fromanc2_get_v0_l3_tile_info ) { fromanc2_get_tile_info(machine, tileinfo, tile_index, 0, 3); }
+static TILE_GET_INFO( fromanc2_get_v1_l0_tile_info ) { fromanc2_get_tile_info(machine, tileinfo, tile_index, 1, 0); }
+static TILE_GET_INFO( fromanc2_get_v1_l1_tile_info ) { fromanc2_get_tile_info(machine, tileinfo, tile_index, 1, 1); }
+static TILE_GET_INFO( fromanc2_get_v1_l2_tile_info ) { fromanc2_get_tile_info(machine, tileinfo, tile_index, 1, 2); }
+static TILE_GET_INFO( fromanc2_get_v1_l3_tile_info ) { fromanc2_get_tile_info(machine, tileinfo, tile_index, 1, 3); }
 
 
-INLINE void fromancr_get_tile_info(int tile_index, int vram, int layer)
+INLINE void fromancr_get_tile_info(running_machine *machine, tile_data *tileinfo, int tile_index, int vram, int layer)
 {
 	int tile, color;
 
@@ -50,12 +50,12 @@ INLINE void fromancr_get_tile_info(int tile_index, int vram, int layer)
 	SET_TILE_INFO(layer, tile, color, 0)
 }
 
-static void fromancr_get_v0_l0_tile_info(int tile_index) { fromancr_get_tile_info(tile_index, 0, 0); }
-static void fromancr_get_v0_l1_tile_info(int tile_index) { fromancr_get_tile_info(tile_index, 0, 1); }
-static void fromancr_get_v0_l2_tile_info(int tile_index) { fromancr_get_tile_info(tile_index, 0, 2); }
-static void fromancr_get_v1_l0_tile_info(int tile_index) { fromancr_get_tile_info(tile_index, 1, 0); }
-static void fromancr_get_v1_l1_tile_info(int tile_index) { fromancr_get_tile_info(tile_index, 1, 1); }
-static void fromancr_get_v1_l2_tile_info(int tile_index) { fromancr_get_tile_info(tile_index, 1, 2); }
+static TILE_GET_INFO( fromancr_get_v0_l0_tile_info ) { fromancr_get_tile_info(machine, tileinfo, tile_index, 0, 0); }
+static TILE_GET_INFO( fromancr_get_v0_l1_tile_info ) { fromancr_get_tile_info(machine, tileinfo, tile_index, 0, 1); }
+static TILE_GET_INFO( fromancr_get_v0_l2_tile_info ) { fromancr_get_tile_info(machine, tileinfo, tile_index, 0, 2); }
+static TILE_GET_INFO( fromancr_get_v1_l0_tile_info ) { fromancr_get_tile_info(machine, tileinfo, tile_index, 1, 0); }
+static TILE_GET_INFO( fromancr_get_v1_l1_tile_info ) { fromancr_get_tile_info(machine, tileinfo, tile_index, 1, 1); }
+static TILE_GET_INFO( fromancr_get_v1_l2_tile_info ) { fromancr_get_tile_info(machine, tileinfo, tile_index, 1, 2); }
 
 
 /******************************************************************************
@@ -82,7 +82,7 @@ WRITE16_HANDLER( fromanc2_paletteram_0_w )
 
 	// GGGG_GRRR_RRBB_BBBx
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color(Machine, 0x000 + color, pal5bit(data >> 6), pal5bit(data >> 11), pal5bit(data >> 1));
+	palette_set_color_rgb(Machine, 0x000 + color, pal5bit(data >> 6), pal5bit(data >> 11), pal5bit(data >> 1));
 }
 
 WRITE16_HANDLER( fromanc2_paletteram_1_w )
@@ -93,7 +93,7 @@ WRITE16_HANDLER( fromanc2_paletteram_1_w )
 
 	// GGGG_GRRR_RRBB_BBBx
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color(Machine, 0x100 + color, pal5bit(data >> 6), pal5bit(data >> 11), pal5bit(data >> 1));
+	palette_set_color_rgb(Machine, 0x100 + color, pal5bit(data >> 6), pal5bit(data >> 11), pal5bit(data >> 1));
 }
 
 
@@ -115,7 +115,7 @@ WRITE16_HANDLER( fromancr_paletteram_0_w )
 
 	// xGGG_GGRR_RRRB_BBBB
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color(Machine, 0x000 + color, pal5bit(data >> 5), pal5bit(data >> 10), pal5bit(data >> 0));
+	palette_set_color_rgb(Machine, 0x000 + color, pal5bit(data >> 5), pal5bit(data >> 10), pal5bit(data >> 0));
 }
 
 WRITE16_HANDLER( fromancr_paletteram_1_w )
@@ -126,7 +126,7 @@ WRITE16_HANDLER( fromancr_paletteram_1_w )
 
 	// xGGG_GGRR_RRRB_BBBB
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color(Machine, 0x100 + color, pal5bit(data >> 5), pal5bit(data >> 10), pal5bit(data >> 0));
+	palette_set_color_rgb(Machine, 0x100 + color, pal5bit(data >> 5), pal5bit(data >> 10), pal5bit(data >> 0));
 }
 
 
@@ -148,7 +148,7 @@ WRITE16_HANDLER( fromanc4_paletteram_0_w )
 
 	// xRRR_RRGG_GGGB_BBBB
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color(Machine, 0x000 + color, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(Machine, 0x000 + color, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 WRITE16_HANDLER( fromanc4_paletteram_1_w )
@@ -159,7 +159,7 @@ WRITE16_HANDLER( fromanc4_paletteram_1_w )
 
 	// xRRR_RRGG_GGGB_BBBB
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color(Machine, 0x100 + color, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(Machine, 0x100 + color, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 
@@ -397,8 +397,6 @@ VIDEO_START( fromanc2 )
 	tilemap_set_transparent_pen(fromanc2_tilemap[1][1], 0x000);
 	tilemap_set_transparent_pen(fromanc2_tilemap[1][2], 0x000);
 	tilemap_set_transparent_pen(fromanc2_tilemap[1][3], 0x000);
-
-	return 0;
 }
 
 VIDEO_START( fromancr )
@@ -426,8 +424,6 @@ VIDEO_START( fromancr )
 	tilemap_set_transparent_pen(fromanc2_tilemap[0][2], 0x0ff);
 	tilemap_set_transparent_pen(fromanc2_tilemap[1][1], 0x0ff);
 	tilemap_set_transparent_pen(fromanc2_tilemap[1][2], 0x0ff);
-
-	return 0;
 }
 
 
@@ -456,8 +452,6 @@ VIDEO_START( fromanc4 )
 	tilemap_set_transparent_pen(fromanc2_tilemap[0][2], 0x000);
 	tilemap_set_transparent_pen(fromanc2_tilemap[1][1], 0x000);
 	tilemap_set_transparent_pen(fromanc2_tilemap[1][2], 0x000);
-
-	return 0;
 }
 
 /******************************************************************************

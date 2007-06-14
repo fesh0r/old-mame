@@ -1375,17 +1375,16 @@ static MACHINE_DRIVER_START( defender )
 	MDRV_CPU_ADD_TAG("sound", M6808, SOUND_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(defender_sound_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_MACHINE_RESET(defender)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(384, 256)
-	MDRV_SCREEN_VISIBLE_AREA(10, 303, 7, 245)
 	MDRV_PALETTE_LENGTH(16)
+
+	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK*2/3, 512, 10, 304, 260, 7, 245)
 
 	MDRV_VIDEO_START(williams)
 	MDRV_VIDEO_UPDATE(williams)
@@ -1482,18 +1481,17 @@ static MACHINE_DRIVER_START( williams2 )
 	MDRV_CPU_ADD_TAG("sound", M6808, MASTER_CLOCK/3/4)	/* yes, this is different from the older games */
 	MDRV_CPU_PROGRAM_MAP(williams2_sound_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_MACHINE_RESET(williams2)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(384, 256)
-	MDRV_SCREEN_VISIBLE_AREA(8, 288-5, 8, 248-1)
 	MDRV_GFXDECODE(williams2_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(1024)
+
+	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK*2/3, 512, 8, 284, 260, 8, 248)
 
 	MDRV_VIDEO_START(williams2)
 	MDRV_VIDEO_UPDATE(williams2)
@@ -2503,9 +2501,9 @@ ROM_END
 	williams2_tilemap_config = x
 
 #define CONFIGURE_PIAS(a,b,c) \
-	pia_config(0, PIA_STANDARD_ORDERING, &a);\
-	pia_config(1, PIA_STANDARD_ORDERING, &b);\
-	pia_config(2, PIA_STANDARD_ORDERING, &c)
+	pia_config(0, &a);\
+	pia_config(1, &b);\
+	pia_config(2, &c)
 
 
 
@@ -2632,7 +2630,7 @@ static DRIVER_INIT( spdball )
 	CONFIGURE_PIAS(williams_pia_0_intf, williams_pia_1_intf, williams_snd_pia_intf);
 
 	/* add a third PIA */
-	pia_config(3, PIA_STANDARD_ORDERING, &spdball_pia_3_intf);
+	pia_config(3, &spdball_pia_3_intf);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc808, 0xc80b, 0, 0, pia_3_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc808, 0xc80b, 0, 0, pia_3_w);
 
@@ -2766,5 +2764,5 @@ GAME( 1987, lottofun, 0,        williams, lottofun, lottofun, ROT0,   "H.A.R. Ma
 /* 2nd Generation Williams hardware with tilemaps */
 GAME( 1983, mysticm,  0,        williams2,mysticm,  mysticm,  ROT0,   "Williams", "Mystic Marathon", GAME_SUPPORTS_SAVE )
 GAME( 1984, tshoot,   0,        williams2,tshoot,   tshoot,   ROT0,   "Williams", "Turkey Shoot", GAME_SUPPORTS_SAVE )
-GAME( 1984, inferno,  0,        williams2,inferno,  inferno,  ROT0,   "Williams", "Inferno", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1984, inferno,  0,        williams2,inferno,  inferno,  ROT0,   "Williams", "Inferno", GAME_SUPPORTS_SAVE )
 GAME( 1986, joust2,   0,        joust2,   joust2,   joust2,   ROT270, "Williams", "Joust 2 - Survival of the Fittest (set 1)", GAME_SUPPORTS_SAVE )

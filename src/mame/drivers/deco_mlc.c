@@ -161,7 +161,7 @@ static WRITE32_HANDLER( avengrs_palette_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 	/* x bbbbb ggggg rrrrr */
-	palette_set_color(Machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
+	palette_set_color_rgb(Machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
 }
 
 static READ32_HANDLER( avengrs_sound_r )
@@ -409,19 +409,19 @@ static const gfx_layout spritelayout_6bpp =
 static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &spritelayout_4bpp,   0, 256 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode gfxdecodeinfo_5bpp[] =
 {
 	{ REGION_GFX1, 0, &spritelayout_5bpp,   0, 128 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode gfxdecodeinfo_6bpp[] =
 {
 	{ REGION_GFX1, 0, &spritelayout_6bpp,   0,  64 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /******************************************************************************/

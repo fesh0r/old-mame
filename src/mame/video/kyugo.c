@@ -31,7 +31,7 @@ static const UINT8 *color_codes;
 
 ***************************************************************************/
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = kyugo_fgvideoram[tile_index];
 	SET_TILE_INFO(0,
@@ -41,7 +41,7 @@ static void get_fg_tile_info(int tile_index)
 }
 
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = kyugo_bgvideoram[tile_index];
 	int attr = kyugo_bgattribram[tile_index];
@@ -70,8 +70,6 @@ VIDEO_START( kyugo )
 
 	tilemap_set_scrolldx(fg_tilemap,   0, 224);
 	tilemap_set_scrolldx(bg_tilemap, -32, 32);
-
-	return 0;
 }
 
 
@@ -83,31 +81,22 @@ VIDEO_START( kyugo )
 
 WRITE8_HANDLER( kyugo_fgvideoram_w )
 {
-	if (kyugo_fgvideoram[offset] != data)
-	{
-		kyugo_fgvideoram[offset] = data;
-		tilemap_mark_tile_dirty( fg_tilemap, offset );
-	}
+	kyugo_fgvideoram[offset] = data;
+	tilemap_mark_tile_dirty( fg_tilemap, offset );
 }
 
 
 WRITE8_HANDLER( kyugo_bgvideoram_w )
 {
-	if (kyugo_bgvideoram[offset] != data)
-	{
-		kyugo_bgvideoram[offset] = data;
-		tilemap_mark_tile_dirty( bg_tilemap, offset );
-	}
+	kyugo_bgvideoram[offset] = data;
+	tilemap_mark_tile_dirty( bg_tilemap, offset );
 }
 
 
 WRITE8_HANDLER( kyugo_bgattribram_w )
 {
-	if (kyugo_bgattribram[offset] != data)
-	{
-		kyugo_bgattribram[offset] = data;
-		tilemap_mark_tile_dirty( bg_tilemap, offset );
-	}
+	kyugo_bgattribram[offset] = data;
+	tilemap_mark_tile_dirty( bg_tilemap, offset );
 }
 
 

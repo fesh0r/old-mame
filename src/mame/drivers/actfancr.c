@@ -40,8 +40,8 @@ WRITE8_HANDLER( actfancr_pf2_control_w );
 VIDEO_START( actfancr );
 VIDEO_START( triothep );
 
-extern unsigned char *actfancr_pf1_data,*actfancr_pf2_data,*actfancr_pf1_rowscroll_data;
-static unsigned char *actfancr_ram;
+extern UINT8 *actfancr_pf1_data,*actfancr_pf2_data,*actfancr_pf1_rowscroll_data;
+static UINT8 *actfancr_ram;
 
 /******************************************************************************/
 
@@ -366,7 +366,7 @@ static const gfx_decode actfan_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &chars,       0, 16 },
 	{ REGION_GFX2, 0, &sprites,   512, 16 },
 	{ REGION_GFX3, 0, &tiles,     256, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode triothep_gfxdecodeinfo[] =
@@ -374,7 +374,7 @@ static const gfx_decode triothep_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &chars,       0, 16 },
 	{ REGION_GFX2, 0, &sprites,   256, 16 },
 	{ REGION_GFX3, 0, &tiles,     512, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /******************************************************************************/

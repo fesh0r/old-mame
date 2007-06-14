@@ -23,9 +23,9 @@ WRITE8_HANDLER( djboy_scrolly_w )
 	djboy_scrolly = data;
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
-	unsigned char attr;
+	UINT8 attr;
 	attr = videoram[tile_index + 0x400];
 	SET_TILE_INFO(
 			2,
@@ -36,17 +36,13 @@ static void get_bg_tile_info(int tile_index)
 
 WRITE8_HANDLER( djboy_videoram_w )
 {
-	if( videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty( background, offset & 0x7ff);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty( background, offset & 0x7ff);
 }
 
 VIDEO_START( djboy )
 {
 	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,16,16,64,32);
-		return 0;
 }
 
 static void
@@ -97,7 +93,7 @@ WRITE8_HANDLER( djboy_paletteram_w )
 	offset &= ~1;
 	val = (paletteram[offset]<<8) | paletteram[offset+1];
 
-	palette_set_color(Machine,offset/2,pal4bit(val >> 8),pal4bit(val >> 4),pal4bit(val >> 0));
+	palette_set_color_rgb(Machine,offset/2,pal4bit(val >> 8),pal4bit(val >> 4),pal4bit(val >> 0));
 }
 
 VIDEO_UPDATE( djboy )

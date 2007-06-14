@@ -1,8 +1,8 @@
 #include "driver.h"
 
 static tilemap *bg_tilemap, *fg_tilemap, *tx_tilemap;
-static unsigned char bg_tile_bank, fg_tile_bank;
-unsigned char *lkage_scroll, *lkage_vreg;
+static UINT8 bg_tile_bank, fg_tile_bank;
+UINT8 *lkage_scroll, *lkage_vreg;
 
 /*
     lkage_scroll[0x00]: text layer horizontal scroll
@@ -38,43 +38,40 @@ unsigned char *lkage_scroll, *lkage_vreg;
 
 WRITE8_HANDLER( lkage_videoram_w )
 {
-	if( videoram[offset]!=data )
+	videoram[offset] = data;
+
+	switch( offset/0x400 )
 	{
-		videoram[offset] = data;
+	case 0:
+		tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
+		break;
 
-		switch( offset/0x400 )
-		{
-		case 0:
-			tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
-			break;
+	case 1:
+		tilemap_mark_tile_dirty(fg_tilemap,offset & 0x3ff);
+		break;
 
-		case 1:
-			tilemap_mark_tile_dirty(fg_tilemap,offset & 0x3ff);
-			break;
+	case 2:
+		tilemap_mark_tile_dirty(bg_tilemap,offset & 0x3ff);
+		break;
 
-		case 2:
-			tilemap_mark_tile_dirty(bg_tilemap,offset & 0x3ff);
-			break;
-
-		default:
-			break;
-		}
+	default:
+		break;
 	}
 } /* lkage_videoram_w */
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index + 0x800] + 256 * (bg_tile_bank?5:1);
 	SET_TILE_INFO( 0/*gfx*/, code, 0/*color*/, 0/*flags*/ )
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = videoram[tile_index + 0x400] + 256 * (fg_tile_bank?1:0);
 	SET_TILE_INFO( 0/*gfx*/, code, 0/*color*/, 0/*flags*/)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int code = videoram[tile_index];
 	SET_TILE_INFO( 0/*gfx*/, code, 0/*color*/, 0/*flags*/)
@@ -94,15 +91,13 @@ VIDEO_START( lkage )
 	tilemap_set_scrolldx(bg_tilemap,-5,-5+24);
 	tilemap_set_scrolldx(fg_tilemap,-3,-3+24);
 	tilemap_set_scrolldx(tx_tilemap,-1,-1+24);
-
-	return 0;
 } /* VIDEO_START( lkage ) */
 
 static void
 draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 {
-	const unsigned char *source = spriteram;
-	const unsigned char *finish = source+0x60;
+	const UINT8 *source = spriteram;
+	const UINT8 *finish = source+0x60;
 	while( source<finish )
 	{
 		int attributes = source[2];

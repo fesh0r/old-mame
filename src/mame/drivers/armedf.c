@@ -818,7 +818,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &tile_layout,		64*16,	32 },
 	{ REGION_GFX3, 0, &tile_layout,		96*16,	32 },
 	{ REGION_GFX4, 0, &sprite_layout,	32*16,	32 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -940,10 +940,10 @@ static MACHINE_DRIVER_START( armedf )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MDRV_SOUND_ADD(DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
 	MDRV_SOUND_ADD(DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( cclimbr2 )

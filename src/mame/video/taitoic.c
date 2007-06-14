@@ -690,7 +690,7 @@ static tilemap *PC080SN_tilemap[PC080SN_MAX_CHIPS][2];
 static int PC080SN_bg_gfx[PC080SN_MAX_CHIPS];
 static int PC080SN_yinvert,PC080SN_dblwidth;
 
-INLINE void common_get_PC080SN_bg_tile_info(UINT16 *ram,int gfxnum,int tile_index)
+INLINE void common_get_PC080SN_bg_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT16 *ram,int gfxnum)
 {
 	UINT16 code,attr;
 
@@ -712,7 +712,7 @@ INLINE void common_get_PC080SN_bg_tile_info(UINT16 *ram,int gfxnum,int tile_inde
 			TILE_FLIPYX((attr & 0xc000) >> 14))
 }
 
-INLINE void common_get_PC080SN_fg_tile_info(UINT16 *ram,int gfxnum,int tile_index)
+INLINE void common_get_PC080SN_fg_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT16 *ram,int gfxnum)
 {
 	UINT16 code,attr;
 
@@ -734,27 +734,27 @@ INLINE void common_get_PC080SN_fg_tile_info(UINT16 *ram,int gfxnum,int tile_inde
 			TILE_FLIPYX((attr & 0xc000) >> 14))
 }
 
-static void PC080SN_get_bg_tile_info_0(int tile_index)
+static TILE_GET_INFO( PC080SN_get_bg_tile_info_0 )
 {
-	common_get_PC080SN_bg_tile_info(PC080SN_bg_ram[0][0],PC080SN_bg_gfx[0],tile_index);
+	common_get_PC080SN_bg_tile_info(machine,tileinfo,tile_index,PC080SN_bg_ram[0][0],PC080SN_bg_gfx[0]);
 }
 
-static void PC080SN_get_fg_tile_info_0(int tile_index)
+static TILE_GET_INFO( PC080SN_get_fg_tile_info_0 )
 {
-	common_get_PC080SN_fg_tile_info(PC080SN_bg_ram[0][1],PC080SN_bg_gfx[0],tile_index);
+	common_get_PC080SN_fg_tile_info(machine,tileinfo,tile_index,PC080SN_bg_ram[0][1],PC080SN_bg_gfx[0]);
 }
 
-static void PC080SN_get_bg_tile_info_1(int tile_index)
+static TILE_GET_INFO( PC080SN_get_bg_tile_info_1 )
 {
-	common_get_PC080SN_bg_tile_info(PC080SN_bg_ram[1][0],PC080SN_bg_gfx[1],tile_index);
+	common_get_PC080SN_bg_tile_info(machine,tileinfo,tile_index,PC080SN_bg_ram[1][0],PC080SN_bg_gfx[1]);
 }
 
-static void PC080SN_get_fg_tile_info_1(int tile_index)
+static TILE_GET_INFO( PC080SN_get_fg_tile_info_1 )
 {
-	common_get_PC080SN_fg_tile_info(PC080SN_bg_ram[1][1],PC080SN_bg_gfx[1],tile_index);
+	common_get_PC080SN_fg_tile_info(machine,tileinfo,tile_index,PC080SN_bg_ram[1][1],PC080SN_bg_gfx[1]);
 }
 
-void (*PC080SN_get_tile_info[PC080SN_MAX_CHIPS][2])(int tile_index) =
+tile_get_info_fn PC080SN_get_tile_info[PC080SN_MAX_CHIPS][2] =
 {
 	{ PC080SN_get_bg_tile_info_0, PC080SN_get_fg_tile_info_0 },
 	{ PC080SN_get_bg_tile_info_1, PC080SN_get_fg_tile_info_1 }
@@ -777,12 +777,12 @@ static void PC080SN_restore_scroll(int chip)
 
 /* opaque parameter is no longer supported and will be removed */
 
-int PC080SN_vh_start(int chips,int gfxnum,int x_offset,int y_offset,int y_invert,
+void PC080SN_vh_start(int chips,int gfxnum,int x_offset,int y_offset,int y_invert,
 				int opaque,int dblwidth)
 {
 	int i;
 
-	if (chips > PC080SN_MAX_CHIPS) return 1;
+	assert(chips <= PC080SN_MAX_CHIPS);
 	PC080SN_chips = chips;
 
 	PC080SN_yinvert = y_invert;
@@ -838,8 +838,6 @@ int PC080SN_vh_start(int chips,int gfxnum,int x_offset,int y_offset,int y_invert
 			tilemap_set_scroll_rows(PC080SN_tilemap[i][1],512);
 		}
 	}
-
-	return 0;
 }
 
 READ16_HANDLER( PC080SN_word_0_r )
@@ -854,25 +852,20 @@ READ16_HANDLER( PC080SN_word_1_r )
 
 static void PC080SN_word_w(int chip,offs_t offset,UINT16 data,UINT32 mem_mask)
 {
-	int oldword = PC080SN_ram[chip][offset];
-
 	COMBINE_DATA(&PC080SN_ram[chip][offset]);
-	if (oldword != PC080SN_ram[chip][offset])
+	if (!PC080SN_dblwidth)
 	{
-		if (!PC080SN_dblwidth)
-		{
-			if (offset < 0x2000)
-				tilemap_mark_tile_dirty(PC080SN_tilemap[chip][0],offset / 2);
-			else if (offset >= 0x4000 && offset < 0x6000)
-				tilemap_mark_tile_dirty(PC080SN_tilemap[chip][1],(offset & 0x1fff) / 2);
-		}
-		else
-		{
-			if (offset < 0x4000)
-				tilemap_mark_tile_dirty(PC080SN_tilemap[chip][0],(offset & 0x1fff));
-			else if (offset >= 0x4000 && offset < 0x8000)
-				tilemap_mark_tile_dirty(PC080SN_tilemap[chip][1],(offset & 0x1fff));
-		}
+		if (offset < 0x2000)
+			tilemap_mark_tile_dirty(PC080SN_tilemap[chip][0],offset / 2);
+		else if (offset >= 0x4000 && offset < 0x6000)
+			tilemap_mark_tile_dirty(PC080SN_tilemap[chip][1],(offset & 0x1fff) / 2);
+	}
+	else
+	{
+		if (offset < 0x4000)
+			tilemap_mark_tile_dirty(PC080SN_tilemap[chip][0],(offset & 0x1fff));
+		else if (offset >= 0x4000 && offset < 0x8000)
+			tilemap_mark_tile_dirty(PC080SN_tilemap[chip][1],(offset & 0x1fff));
 	}
 }
 
@@ -1219,7 +1212,7 @@ static int PC090OJ_xoffs,PC090OJ_yoffs;
 
 
 
-int PC090OJ_vh_start(int gfxnum,int x_offset,int y_offset,int use_buffer)
+void PC090OJ_vh_start(int gfxnum,int x_offset,int y_offset,int use_buffer)
 {
 	/* use the given gfx set */
 	PC090OJ_gfxnum = gfxnum;
@@ -1240,8 +1233,6 @@ int PC090OJ_vh_start(int gfxnum,int x_offset,int y_offset,int use_buffer)
 	state_save_register_global(PC090OJ_ctrl);
 
 //  state_save_register_func_postload(PC090OJ_restore);
-
-	return 0;
 }
 
 READ16_HANDLER( PC090OJ_word_0_r )	// in case we find a game using 2...
@@ -1397,14 +1388,14 @@ static int TC0080VCO_zoomy_conv_table[] =
 #endif
 
 
-static void TC0080VCO_get_bg0_tile_info_0(int tile_index)
+static TILE_GET_INFO( TC0080VCO_get_bg0_tile_info_0 )
 {
 	int color, tile;
 
 	color = TC0080VCO_bg0_ram_1[ tile_index ] & 0x001f;
 	tile  = TC0080VCO_bg0_ram_0[ tile_index ] & 0x7fff;
 
-	tile_info.priority = 0;
+	tileinfo->priority = 0;
 
 	SET_TILE_INFO(
 			TC0080VCO_bg_gfx,
@@ -1413,14 +1404,14 @@ static void TC0080VCO_get_bg0_tile_info_0(int tile_index)
 			TILE_FLIPYX((TC0080VCO_bg0_ram_1[tile_index] & 0x00c0) >> 6))
 }
 
-static void TC0080VCO_get_bg1_tile_info_0(int tile_index)
+static TILE_GET_INFO( TC0080VCO_get_bg1_tile_info_0 )
 {
 	int color, tile;
 
 	color = TC0080VCO_bg1_ram_1[ tile_index ] & 0x001f;
 	tile  = TC0080VCO_bg1_ram_0[ tile_index ] & 0x7fff;
 
-	tile_info.priority = 0;
+	tileinfo->priority = 0;
 
 	SET_TILE_INFO(
 			TC0080VCO_bg_gfx,
@@ -1429,7 +1420,7 @@ static void TC0080VCO_get_bg1_tile_info_0(int tile_index)
 			TILE_FLIPYX((TC0080VCO_bg1_ram_1[tile_index] & 0x00c0) >> 6))
 }
 
-static void TC0080VCO_get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( TC0080VCO_get_tx_tile_info )
 {
 	int tile;
 
@@ -1439,7 +1430,7 @@ static void TC0080VCO_get_tx_tile_info(int tile_index)
 			tile = (TC0080VCO_tx_ram_0[tile_index >> 1] & 0x00ff);
 		else
 			tile = (TC0080VCO_tx_ram_0[tile_index >> 1] & 0xff00) >> 8;
-		tile_info.priority = 0;
+		tileinfo->priority = 0;
 	}
 	else
 	{
@@ -1447,7 +1438,7 @@ static void TC0080VCO_get_tx_tile_info(int tile_index)
 			tile = (TC0080VCO_tx_ram_0[tile_index >> 1] & 0xff00) >> 8;
 		else
 			tile = (TC0080VCO_tx_ram_0[tile_index >> 1] & 0x00ff);
-		tile_info.priority = 0;
+		tileinfo->priority = 0;
 	}
 
 	SET_TILE_INFO(
@@ -1532,7 +1523,7 @@ void TC0080VCO_restore_scroll(void)
 }
 
 
-int TC0080VCO_vh_start(int gfxnum,int has_fg0,int bg_xoffs,int bg_yoffs,int bg_flip_yoffs)
+void TC0080VCO_vh_start(int gfxnum,int has_fg0,int bg_xoffs,int bg_yoffs,int bg_flip_yoffs)
 {
 	int gfx_index=0;
 
@@ -1575,8 +1566,7 @@ int TC0080VCO_vh_start(int gfxnum,int has_fg0,int bg_xoffs,int bg_yoffs,int bg_f
 		for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
 			if (Machine->gfx[gfx_index] == 0)
 				break;
-		if (gfx_index == MAX_GFX_ELEMENTS)
-			return 1;
+		assert(gfx_index != MAX_GFX_ELEMENTS);
 
 		/* create the char set (gfx will then be updated dynamically from RAM) */
 		Machine->gfx[gfx_index] = allocgfx(&TC0080VCO_charlayout);
@@ -1597,8 +1587,6 @@ int TC0080VCO_vh_start(int gfxnum,int has_fg0,int bg_xoffs,int bg_yoffs,int bg_f
 
 	/* bg0 tilemap scrollable per pixel row */
 	tilemap_set_scroll_rows(TC0080VCO_tilemap[0],512);
-
-	return 0;
 }
 
 
@@ -1638,79 +1626,75 @@ READ16_HANDLER( TC0080VCO_word_r )
 
 WRITE16_HANDLER( TC0080VCO_word_w )
 {
-	int oldword = TC0080VCO_ram[offset];
 	COMBINE_DATA(&TC0080VCO_ram[offset]);
 
 	/* A lot of TC0080VCO writes require no action... */
 
-	if (oldword != TC0080VCO_ram[offset])
+	if (offset < 0x1000/2)
 	{
-		if (offset < 0x1000/2)
-		{
-			TC0080VCO_char_dirty[offset / 8] = 1;
-			TC0080VCO_chars_dirty = 1;
+		TC0080VCO_char_dirty[offset / 8] = 1;
+		TC0080VCO_chars_dirty = 1;
 #if 0
-			if (!TC0080VCO_has_tx)
-			{
-				if (TC0080VCO_ram[offset])
-				popmessage("Write non-zero to TC0080VCO char ram\nPlease report to MAMEDEV");
-			}
-#endif
-		}
-		else if (offset < 0x2000/2)	/* fg0 (text layer) */
+		if (!TC0080VCO_has_tx)
 		{
-			tilemap_mark_tile_dirty( TC0080VCO_tilemap[2],(offset &0x07ff) * 2 );
-			tilemap_mark_tile_dirty( TC0080VCO_tilemap[2],(offset &0x07ff) * 2 + 1 );
-#if 0
-			if (!TC0080VCO_has_tx)
-			{
-				if (TC0080VCO_ram[offset])
-				popmessage("Write non-zero to TC0080VCO fg0\nPlease report to MAMEDEV");
-			}
-#endif
-		}
-		else if (offset < 0xc000/2)	/* chain ram */
-		{}
-		else if (offset < 0xe000/2)	/* bg0 (0) */
-			tilemap_mark_tile_dirty(TC0080VCO_tilemap[0],(offset & 0xfff));
-
-		else if (offset < 0x10000/2)	/* bg1 (0) */
-			tilemap_mark_tile_dirty(TC0080VCO_tilemap[1],(offset & 0xfff));
-
-		else if (offset < 0x11000/2)
-		{
-			TC0080VCO_char_dirty[(offset - 0x10000/2) / 8] = 1;
-			TC0080VCO_chars_dirty = 1;
-#if 0
-			if (!TC0080VCO_has_tx)
-			{
-				if (TC0080VCO_ram[offset])
-				popmessage("Write non-zero to TC0080VCO char-hi ram\nPlease report to MAMEDEV");
-			}
-#endif
-		}
-		else if (offset < 0x12000/2)	/* unknown/unused */
-		{
-#if 1
 			if (TC0080VCO_ram[offset])
-			popmessage("Write non-zero to mystery TC0080VCO area\nPlease report to MAMEDEV");
-#endif
+			popmessage("Write non-zero to TC0080VCO char ram\nPlease report to MAMEDEV");
 		}
-		else if (offset < 0x1c000/2)	/* chain ram */
-		{}
-		else if (offset < 0x1e000/2)	/* bg0 (1) */
-			tilemap_mark_tile_dirty(TC0080VCO_tilemap[0],(offset & 0xfff));
-
-		else if (offset < 0x20000/2)	/* bg1 (1) */
-			tilemap_mark_tile_dirty(TC0080VCO_tilemap[1],(offset & 0xfff));
-
-		else if (offset < 0x20400/2)	/* bg0 rowscroll */
-		{}
-		else if (offset < 0x20800/2)	/* sprite ram */
-		{}
-		else if (offset < 0x20fff/2)
-			TC0080VCO_scrollram_w(offset-(0x20800/2),TC0080VCO_ram[offset],mem_mask);
+#endif
 	}
+	else if (offset < 0x2000/2)	/* fg0 (text layer) */
+	{
+		tilemap_mark_tile_dirty( TC0080VCO_tilemap[2],(offset &0x07ff) * 2 );
+		tilemap_mark_tile_dirty( TC0080VCO_tilemap[2],(offset &0x07ff) * 2 + 1 );
+#if 0
+		if (!TC0080VCO_has_tx)
+		{
+			if (TC0080VCO_ram[offset])
+			popmessage("Write non-zero to TC0080VCO fg0\nPlease report to MAMEDEV");
+		}
+#endif
+	}
+	else if (offset < 0xc000/2)	/* chain ram */
+	{}
+	else if (offset < 0xe000/2)	/* bg0 (0) */
+		tilemap_mark_tile_dirty(TC0080VCO_tilemap[0],(offset & 0xfff));
+
+	else if (offset < 0x10000/2)	/* bg1 (0) */
+		tilemap_mark_tile_dirty(TC0080VCO_tilemap[1],(offset & 0xfff));
+
+	else if (offset < 0x11000/2)
+	{
+		TC0080VCO_char_dirty[(offset - 0x10000/2) / 8] = 1;
+		TC0080VCO_chars_dirty = 1;
+#if 0
+		if (!TC0080VCO_has_tx)
+		{
+			if (TC0080VCO_ram[offset])
+			popmessage("Write non-zero to TC0080VCO char-hi ram\nPlease report to MAMEDEV");
+		}
+#endif
+	}
+	else if (offset < 0x12000/2)	/* unknown/unused */
+	{
+#if 1
+		if (TC0080VCO_ram[offset])
+		popmessage("Write non-zero to mystery TC0080VCO area\nPlease report to MAMEDEV");
+#endif
+	}
+	else if (offset < 0x1c000/2)	/* chain ram */
+	{}
+	else if (offset < 0x1e000/2)	/* bg0 (1) */
+		tilemap_mark_tile_dirty(TC0080VCO_tilemap[0],(offset & 0xfff));
+
+	else if (offset < 0x20000/2)	/* bg1 (1) */
+		tilemap_mark_tile_dirty(TC0080VCO_tilemap[1],(offset & 0xfff));
+
+	else if (offset < 0x20400/2)	/* bg0 rowscroll */
+	{}
+	else if (offset < 0x20800/2)	/* sprite ram */
+	{}
+	else if (offset < 0x20fff/2)
+		TC0080VCO_scrollram_w(offset-(0x20800/2),TC0080VCO_ram[offset],mem_mask);
 }
 
 
@@ -2069,7 +2053,7 @@ static INT32 TC0100SCN_gfxbank,TC0100SCN_chip_colbank[3],TC0100SCN_colbank[3];
 static int TC0100SCN_dblwidth[TC0100SCN_MAX_CHIPS];
 
 
-INLINE void common_get_bg0_tile_info(UINT16 *ram,int gfxnum,int tile_index,int colbank,int dblwidth)
+INLINE void common_get_bg0_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT16 *ram,int gfxnum,int colbank,int dblwidth)
 {
 	int code,attr;
 
@@ -2091,7 +2075,7 @@ INLINE void common_get_bg0_tile_info(UINT16 *ram,int gfxnum,int tile_index,int c
 			TILE_FLIPYX((attr & 0xc000) >> 14))
 }
 
-INLINE void common_get_bg1_tile_info(UINT16 *ram,int gfxnum,int tile_index,int colbank,int dblwidth)
+INLINE void common_get_bg1_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT16 *ram,int gfxnum,int colbank,int dblwidth)
 {
 	int code,attr;
 
@@ -2113,7 +2097,7 @@ INLINE void common_get_bg1_tile_info(UINT16 *ram,int gfxnum,int tile_index,int c
 			TILE_FLIPYX((attr & 0xc000) >> 14))
 }
 
-INLINE void common_get_tx_tile_info(UINT16 *ram,int gfxnum,int tile_index,int colbank,int dblwidth)
+INLINE void common_get_tx_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT16 *ram,int gfxnum,int colbank,int dblwidth)
 {
 	int attr = ram[tile_index];
 
@@ -2124,63 +2108,63 @@ INLINE void common_get_tx_tile_info(UINT16 *ram,int gfxnum,int tile_index,int co
 			TILE_FLIPYX((attr & 0xc000) >> 14))
 }
 
-static void TC0100SCN_get_bg_tile_info_0(int tile_index)
+static TILE_GET_INFO( TC0100SCN_get_bg_tile_info_0 )
 {
-	common_get_bg0_tile_info(TC0100SCN_bg_ram[0],TC0100SCN_bg_gfx[0],tile_index,
+	common_get_bg0_tile_info(machine,tileinfo,tile_index,TC0100SCN_bg_ram[0],TC0100SCN_bg_gfx[0],
 			TC0100SCN_chip_colbank[0],TC0100SCN_dblwidth[0]);
 }
 
-static void TC0100SCN_get_fg_tile_info_0(int tile_index)
+static TILE_GET_INFO( TC0100SCN_get_fg_tile_info_0 )
 {
-	common_get_bg1_tile_info(TC0100SCN_fg_ram[0],TC0100SCN_bg_gfx[0],tile_index,
+	common_get_bg1_tile_info(machine,tileinfo,tile_index,TC0100SCN_fg_ram[0],TC0100SCN_bg_gfx[0],
 			TC0100SCN_chip_colbank[0],TC0100SCN_dblwidth[0]);
 }
 
-static void TC0100SCN_get_tx_tile_info_0(int tile_index)
+static TILE_GET_INFO( TC0100SCN_get_tx_tile_info_0 )
 {
-	common_get_tx_tile_info(TC0100SCN_tx_ram[0],TC0100SCN_tx_gfx[0],tile_index,
+	common_get_tx_tile_info(machine,tileinfo,tile_index,TC0100SCN_tx_ram[0],TC0100SCN_tx_gfx[0],
 			TC0100SCN_chip_colbank[0],TC0100SCN_dblwidth[0]);
 }
 
-static void TC0100SCN_get_bg_tile_info_1(int tile_index)
+static TILE_GET_INFO( TC0100SCN_get_bg_tile_info_1 )
 {
-	common_get_bg0_tile_info(TC0100SCN_bg_ram[1],TC0100SCN_bg_gfx[1],tile_index,
+	common_get_bg0_tile_info(machine,tileinfo,tile_index,TC0100SCN_bg_ram[1],TC0100SCN_bg_gfx[1],
 			TC0100SCN_chip_colbank[1],TC0100SCN_dblwidth[1]);
 }
 
-static void TC0100SCN_get_fg_tile_info_1(int tile_index)
+static TILE_GET_INFO( TC0100SCN_get_fg_tile_info_1 )
 {
-	common_get_bg1_tile_info(TC0100SCN_fg_ram[1],TC0100SCN_bg_gfx[1],tile_index,
+	common_get_bg1_tile_info(machine,tileinfo,tile_index,TC0100SCN_fg_ram[1],TC0100SCN_bg_gfx[1],
 			TC0100SCN_chip_colbank[1],TC0100SCN_dblwidth[1]);
 }
 
-static void TC0100SCN_get_tx_tile_info_1(int tile_index)
+static TILE_GET_INFO( TC0100SCN_get_tx_tile_info_1 )
 {
-	common_get_tx_tile_info(TC0100SCN_tx_ram[1],TC0100SCN_tx_gfx[1],tile_index,
+	common_get_tx_tile_info(machine,tileinfo,tile_index,TC0100SCN_tx_ram[1],TC0100SCN_tx_gfx[1],
 			TC0100SCN_chip_colbank[1],TC0100SCN_dblwidth[1]);
 }
 
-static void TC0100SCN_get_bg_tile_info_2(int tile_index)
+static TILE_GET_INFO( TC0100SCN_get_bg_tile_info_2 )
 {
-	common_get_bg0_tile_info(TC0100SCN_bg_ram[2],TC0100SCN_bg_gfx[2],tile_index,
+	common_get_bg0_tile_info(machine,tileinfo,tile_index,TC0100SCN_bg_ram[2],TC0100SCN_bg_gfx[2],
 			TC0100SCN_chip_colbank[2],TC0100SCN_dblwidth[2]);
 }
 
-static void TC0100SCN_get_fg_tile_info_2(int tile_index)
+static TILE_GET_INFO( TC0100SCN_get_fg_tile_info_2 )
 {
-	common_get_bg1_tile_info(TC0100SCN_fg_ram[2],TC0100SCN_bg_gfx[2],tile_index,
+	common_get_bg1_tile_info(machine,tileinfo,tile_index,TC0100SCN_fg_ram[2],TC0100SCN_bg_gfx[2],
 			TC0100SCN_chip_colbank[2],TC0100SCN_dblwidth[2]);
 }
 
-static void TC0100SCN_get_tx_tile_info_2(int tile_index)
+static TILE_GET_INFO( TC0100SCN_get_tx_tile_info_2 )
 {
-	common_get_tx_tile_info(TC0100SCN_tx_ram[2],TC0100SCN_tx_gfx[2],tile_index,
+	common_get_tx_tile_info(machine,tileinfo,tile_index,TC0100SCN_tx_ram[2],TC0100SCN_tx_gfx[2],
 			TC0100SCN_chip_colbank[2],TC0100SCN_dblwidth[2]);
 }
 
 /* This array changes with TC0100SCN_MAX_CHIPS */
 
-void (*TC0100SCN_get_tile_info[TC0100SCN_MAX_CHIPS][3])(int tile_index) =
+tile_get_info_fn TC0100SCN_get_tile_info[TC0100SCN_MAX_CHIPS][3] =
 {
 	{ TC0100SCN_get_bg_tile_info_0, TC0100SCN_get_fg_tile_info_0, TC0100SCN_get_tx_tile_info_0 },
 	{ TC0100SCN_get_bg_tile_info_1, TC0100SCN_get_fg_tile_info_1, TC0100SCN_get_tx_tile_info_1 },
@@ -2292,13 +2276,12 @@ static void TC0100SCN_restore_scroll(int chip)
 }
 
 
-int TC0100SCN_vh_start(int chips,int gfxnum,int x_offset,int y_offset,int flip_xoffs,
+void TC0100SCN_vh_start(int chips,int gfxnum,int x_offset,int y_offset,int flip_xoffs,
 		int flip_yoffs,int flip_text_xoffs,int flip_text_yoffs,int multiscrn_xoffs)
 {
 	int gfx_index,gfxset_offs,i;
 
-
-	if (chips > TC0100SCN_MAX_CHIPS) return 1;
+	assert(chips <= TC0100SCN_MAX_CHIPS);
 
 	TC0100SCN_chips = chips;
 
@@ -2348,8 +2331,7 @@ int TC0100SCN_vh_start(int chips,int gfxnum,int x_offset,int y_offset,int flip_x
 		for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
 			if (Machine->gfx[gfx_index] == 0)
 				break;
-		if (gfx_index == MAX_GFX_ELEMENTS)
-			return 1;
+		assert(gfx_index != MAX_GFX_ELEMENTS);
 
 		/* create the char set (gfx will then be updated dynamically from RAM) */
 		Machine->gfx[gfx_index] = allocgfx(&TC0100SCN_charlayout);
@@ -2442,8 +2424,6 @@ int TC0100SCN_vh_start(int chips,int gfxnum,int x_offset,int y_offset,int flip_x
 //Machine->gfx[gfxnum]->color_granularity,TC0100SCN_tx_col_mult);
 
 	TC0100SCN_set_colbanks(0,0,0);	/* standard values, only Wgp changes them */
-
-	return 0;
 }
 
 
@@ -2464,39 +2444,34 @@ READ16_HANDLER( TC0100SCN_word_2_r )
 
 static void TC0100SCN_word_w(int chip,offs_t offset,UINT16 data,UINT32 mem_mask)
 {
-	int oldword = TC0100SCN_ram[chip][offset];
-
 	COMBINE_DATA(&TC0100SCN_ram[chip][offset]);
-	if (oldword != TC0100SCN_ram[chip][offset])
+	if (!TC0100SCN_dblwidth[chip])
 	{
-		if (!TC0100SCN_dblwidth[chip])
+		if (offset < 0x2000)
+			tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][0][0],offset / 2);
+		else if (offset < 0x3000)
+			tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][2][0],(offset & 0x0fff));
+		else if (offset < 0x3800)
 		{
-			if (offset < 0x2000)
-				tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][0][0],offset / 2);
-			else if (offset < 0x3000)
-				tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][2][0],(offset & 0x0fff));
-			else if (offset < 0x3800)
-			{
-				TC0100SCN_char_dirty[chip][(offset - 0x3000) / 8] = 1;
-				TC0100SCN_chars_dirty[chip] = 1;
-			}
-			else if (offset >= 0x4000 && offset < 0x6000)
-				tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][1][0],(offset & 0x1fff) / 2);
+			TC0100SCN_char_dirty[chip][(offset - 0x3000) / 8] = 1;
+			TC0100SCN_chars_dirty[chip] = 1;
 		}
-		else	/* Double-width tilemaps have a different memory map */
+		else if (offset >= 0x4000 && offset < 0x6000)
+			tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][1][0],(offset & 0x1fff) / 2);
+	}
+	else	/* Double-width tilemaps have a different memory map */
+	{
+		if (offset < 0x4000)
+			tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][0][1],offset / 2);
+		else if (offset >= 0x4000 && offset < 0x8000)
+			tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][1][1],(offset & 0x3fff) / 2);
+		else if (offset >= 0x8800 && offset < 0x9000)
 		{
-			if (offset < 0x4000)
-				tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][0][1],offset / 2);
-			else if (offset >= 0x4000 && offset < 0x8000)
-				tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][1][1],(offset & 0x3fff) / 2);
-			else if (offset >= 0x8800 && offset < 0x9000)
-			{
-				TC0100SCN_char_dirty[chip][(offset - 0x8800) / 8] = 1;
-				TC0100SCN_chars_dirty[chip] = 1;
-			}
-			else if (offset >= 0x9000)
-				tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][2][1],(offset & 0x0fff));
+			TC0100SCN_char_dirty[chip][(offset - 0x8800) / 8] = 1;
+			TC0100SCN_chars_dirty[chip] = 1;
 		}
+		else if (offset >= 0x9000)
+			tilemap_mark_tile_dirty(TC0100SCN_tilemap[chip][2][1],(offset & 0x0fff));
 	}
 }
 
@@ -2799,7 +2774,7 @@ static tilemap *TC0280GRD_tilemap;
 static int TC0280GRD_gfxnum,TC0280GRD_base_color;
 
 
-static void TC0280GRD_get_tile_info(int tile_index)
+static TILE_GET_INFO( TC0280GRD_get_tile_info )
 {
 	int attr = TC0280GRD_ram[tile_index];
 	SET_TILE_INFO(
@@ -2810,7 +2785,7 @@ static void TC0280GRD_get_tile_info(int tile_index)
 }
 
 
-int TC0280GRD_vh_start(int gfxnum)
+void TC0280GRD_vh_start(int gfxnum)
 {
 	TC0280GRD_ram = auto_malloc(TC0280GRD_RAM_SIZE);
 	TC0280GRD_tilemap = tilemap_create(TC0280GRD_get_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,64);
@@ -2821,13 +2796,11 @@ int TC0280GRD_vh_start(int gfxnum)
 	tilemap_set_transparent_pen(TC0280GRD_tilemap,0);
 
 	TC0280GRD_gfxnum = gfxnum;
-
-	return 0;
 }
 
-int TC0430GRW_vh_start(int gfxnum)
+void TC0430GRW_vh_start(int gfxnum)
 {
-	return TC0280GRD_vh_start(gfxnum);
+	TC0280GRD_vh_start(gfxnum);
 }
 
 READ16_HANDLER( TC0280GRD_word_r )
@@ -2842,13 +2815,8 @@ READ16_HANDLER( TC0430GRW_word_r )
 
 WRITE16_HANDLER( TC0280GRD_word_w )
 {
-	int oldword = TC0280GRD_ram[offset];
-
 	COMBINE_DATA(&TC0280GRD_ram[offset]);
-	if (oldword != TC0280GRD_ram[offset])
-	{
-		tilemap_mark_tile_dirty(TC0280GRD_tilemap,offset);
-	}
+	tilemap_mark_tile_dirty(TC0280GRD_tilemap,offset);
 }
 
 WRITE16_HANDLER( TC0430GRW_word_w )
@@ -2922,10 +2890,9 @@ void TC0430GRW_zoom_draw(mame_bitmap *bitmap,const rectangle *cliprect,int xoffs
 
 UINT8 TC0360PRI_regs[16];
 
-int TC0360PRI_vh_start(void)
+void TC0360PRI_vh_start(void)
 {
 	state_save_register_global_array(TC0360PRI_regs);
-	return 0;
 }
 
 WRITE8_HANDLER( TC0360PRI_w )
@@ -3000,7 +2967,7 @@ static int TC0480SCP_text_xoffs,TC0480SCP_text_yoffs;
 static int TC0480SCP_flip_xoffs,TC0480SCP_flip_yoffs;
 
 
-INLINE void common_get_tc0480bg_tile_info(UINT16 *ram,int gfxnum,int tile_index)
+INLINE void common_get_tc0480bg_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT16 *ram,int gfxnum)
 {
 	int code = ram[2*tile_index + 1] & 0x7fff;
 	int attr = ram[2*tile_index];
@@ -3011,7 +2978,7 @@ INLINE void common_get_tc0480bg_tile_info(UINT16 *ram,int gfxnum,int tile_index)
 			TILE_FLIPYX((attr & 0xc000) >> 14))
 }
 
-INLINE void common_get_tc0480tx_tile_info(UINT16 *ram,int gfxnum,int tile_index)
+INLINE void common_get_tc0480tx_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT16 *ram,int gfxnum)
 {
 	int attr = ram[tile_index];
 	SET_TILE_INFO(
@@ -3021,32 +2988,32 @@ INLINE void common_get_tc0480tx_tile_info(UINT16 *ram,int gfxnum,int tile_index)
 			TILE_FLIPYX((attr & 0xc000) >> 14))
 }
 
-static void TC0480SCP_get_bg0_tile_info(int tile_index)
+static TILE_GET_INFO( TC0480SCP_get_bg0_tile_info )
 {
-	common_get_tc0480bg_tile_info(TC0480SCP_bg_ram[0],TC0480SCP_bg_gfx,tile_index);
+	common_get_tc0480bg_tile_info(machine,tileinfo,tile_index,TC0480SCP_bg_ram[0],TC0480SCP_bg_gfx);
 }
 
-static void TC0480SCP_get_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( TC0480SCP_get_bg1_tile_info )
 {
-	common_get_tc0480bg_tile_info(TC0480SCP_bg_ram[1],TC0480SCP_bg_gfx,tile_index);
+	common_get_tc0480bg_tile_info(machine,tileinfo,tile_index,TC0480SCP_bg_ram[1],TC0480SCP_bg_gfx);
 }
 
-static void TC0480SCP_get_bg2_tile_info(int tile_index)
+static TILE_GET_INFO( TC0480SCP_get_bg2_tile_info )
 {
-	common_get_tc0480bg_tile_info(TC0480SCP_bg_ram[2],TC0480SCP_bg_gfx,tile_index);
+	common_get_tc0480bg_tile_info(machine,tileinfo,tile_index,TC0480SCP_bg_ram[2],TC0480SCP_bg_gfx);
 }
 
-static void TC0480SCP_get_bg3_tile_info(int tile_index)
+static TILE_GET_INFO( TC0480SCP_get_bg3_tile_info )
 {
-	common_get_tc0480bg_tile_info(TC0480SCP_bg_ram[3],TC0480SCP_bg_gfx,tile_index);
+	common_get_tc0480bg_tile_info(machine,tileinfo,tile_index,TC0480SCP_bg_ram[3],TC0480SCP_bg_gfx);
 }
 
-static void TC0480SCP_get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( TC0480SCP_get_tx_tile_info )
 {
-	common_get_tc0480tx_tile_info(TC0480SCP_tx_ram,TC0480SCP_tx_gfx,tile_index);
+	common_get_tc0480tx_tile_info(machine,tileinfo,tile_index,TC0480SCP_tx_ram,TC0480SCP_tx_gfx);
 }
 
-void (*tc480_get_tile_info[5])(int tile_index) =
+tile_get_info_fn tc480_get_tile_info[5] =
 {
 	TC0480SCP_get_bg0_tile_info, TC0480SCP_get_bg1_tile_info,
 	TC0480SCP_get_bg2_tile_info, TC0480SCP_get_bg3_tile_info,
@@ -3185,7 +3152,7 @@ static void TC0480SCP_restore_scroll(void)
 }
 
 
-int TC0480SCP_vh_start(int gfxnum,int pixels,int x_offset,int y_offset,int text_xoffs,
+void TC0480SCP_vh_start(int gfxnum,int pixels,int x_offset,int y_offset,int text_xoffs,
 				int text_yoffs,int flip_xoffs,int flip_yoffs,int col_base)
 {
 	int gfx_index;
@@ -3231,8 +3198,7 @@ int TC0480SCP_vh_start(int gfxnum,int pixels,int x_offset,int y_offset,int text_
 		for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
 			if (Machine->gfx[gfx_index] == 0)
 				break;
-		if (gfx_index == MAX_GFX_ELEMENTS)
-			return 1;
+		assert(gfx_index != MAX_GFX_ELEMENTS);
 
 		/* create the char set (gfx will then be updated dynamically from RAM) */
 		Machine->gfx[gfx_index] = allocgfx(&TC0480SCP_charlayout);
@@ -3301,8 +3267,6 @@ int TC0480SCP_vh_start(int gfxnum,int pixels,int x_offset,int y_offset,int text_
 			tilemap_set_scroll_rows(TC0480SCP_tilemap[2][i],512);
 			tilemap_set_scroll_rows(TC0480SCP_tilemap[3][i],512);
 		}
-
-	return 0;
 }
 
 READ32_HANDLER( TC0480SCP_ctrl_long_r )
@@ -3354,52 +3318,48 @@ READ16_HANDLER( TC0480SCP_word_r )
 
 static void TC0480SCP_word_write(offs_t offset,UINT16 data,UINT32 mem_mask)
 {
-	int oldword = TC0480SCP_ram[offset];
 	COMBINE_DATA(&TC0480SCP_ram[offset]);
 
-	if (oldword != TC0480SCP_ram[offset])
+	if (!TC0480SCP_dblwidth)
 	{
-		if (!TC0480SCP_dblwidth)
+		if (offset < 0x2000)
 		{
-			if (offset < 0x2000)
-			{
-				tilemap_mark_tile_dirty(TC0480SCP_tilemap[(offset /
-					0x800)][TC0480SCP_dblwidth],((offset % 0x800) / 2));
-			}
-			else if (offset < 0x6000)
-			{   /* do nothing */
-			}
-			else if (offset < 0x7000)
-			{
-				tilemap_mark_tile_dirty(TC0480SCP_tilemap[4][TC0480SCP_dblwidth],
-					(offset - 0x6000));
-			}
-			else if (offset <= 0x7fff)
-			{
-				TC0480SCP_char_dirty[(offset - 0x7000) / 16] = 1;
-				TC0480SCP_chars_dirty = 1;
-			}
+			tilemap_mark_tile_dirty(TC0480SCP_tilemap[(offset /
+				0x800)][TC0480SCP_dblwidth],((offset % 0x800) / 2));
 		}
-		else
+		else if (offset < 0x6000)
+		{   /* do nothing */
+		}
+		else if (offset < 0x7000)
 		{
-			if (offset < 0x4000)
-			{
-				tilemap_mark_tile_dirty(TC0480SCP_tilemap[(offset /
-					0x1000)][TC0480SCP_dblwidth],((offset % 0x1000) / 2));
-			}
-			else if (offset < 0x6000)
-			{   /* do nothing */
-			}
-			else if (offset < 0x7000)
-			{
-				tilemap_mark_tile_dirty(TC0480SCP_tilemap[4][TC0480SCP_dblwidth],
-					(offset - 0x6000));
-			}
-			else if (offset <= 0x7fff)
-			{
-				TC0480SCP_char_dirty[(offset - 0x7000) / 16] = 1;
-				TC0480SCP_chars_dirty = 1;
-			}
+			tilemap_mark_tile_dirty(TC0480SCP_tilemap[4][TC0480SCP_dblwidth],
+				(offset - 0x6000));
+		}
+		else if (offset <= 0x7fff)
+		{
+			TC0480SCP_char_dirty[(offset - 0x7000) / 16] = 1;
+			TC0480SCP_chars_dirty = 1;
+		}
+	}
+	else
+	{
+		if (offset < 0x4000)
+		{
+			tilemap_mark_tile_dirty(TC0480SCP_tilemap[(offset /
+				0x1000)][TC0480SCP_dblwidth],((offset % 0x1000) / 2));
+		}
+		else if (offset < 0x6000)
+		{   /* do nothing */
+		}
+		else if (offset < 0x7000)
+		{
+			tilemap_mark_tile_dirty(TC0480SCP_tilemap[4][TC0480SCP_dblwidth],
+				(offset - 0x6000));
+		}
+		else if (offset <= 0x7fff)
+		{
+			TC0480SCP_char_dirty[(offset - 0x7000) / 16] = 1;
+			TC0480SCP_chars_dirty = 1;
 		}
 	}
 }
@@ -3970,12 +3930,11 @@ WRITE16_HANDLER( TC0150ROD_word_w )
 	COMBINE_DATA(&TC0150ROD_ram[offset]);
 }
 
-int TC0150ROD_vh_start(void)
+void TC0150ROD_vh_start(void)
 {
 	TC0150ROD_ram = auto_malloc(TC0150ROD_RAM_SIZE);
 
 	state_save_register_global_pointer(TC0150ROD_ram, TC0150ROD_RAM_SIZE/2);
-	return 0;
 }
 
 
@@ -4762,12 +4721,12 @@ void TC0110PCR_restore_colors(int chip)
 			}
 		}
 
-		palette_set_color(Machine, i + (chip << 12),r,g,b);
+		palette_set_color(Machine, i + (chip << 12),MAKE_RGB(r,g,b));
 	}
 }
 
 
-int TC0110PCR_vh_start(void)
+void TC0110PCR_vh_start(void)
 {
 	TC0110PCR_ram[0] = auto_malloc(TC0110PCR_RAM_SIZE * sizeof(*TC0110PCR_ram[0]));
 
@@ -4775,28 +4734,22 @@ int TC0110PCR_vh_start(void)
 	state_save_register_func_postload_int(TC0110PCR_restore_colors, 0);
 
 	TC0110PCR_type = 0;	/* default, xBBBBBGGGGGRRRRR */
-
-	return 0;
 }
 
-int TC0110PCR_1_vh_start(void)
+void TC0110PCR_1_vh_start(void)
 {
 	TC0110PCR_ram[1] = auto_malloc(TC0110PCR_RAM_SIZE * sizeof(*TC0110PCR_ram[1]));
 
 	state_save_register_global_pointer(TC0110PCR_ram[1], TC0110PCR_RAM_SIZE);
 	state_save_register_func_postload_int(TC0110PCR_restore_colors, 1);
-
-	return 0;
 }
 
-int TC0110PCR_2_vh_start(void)
+void TC0110PCR_2_vh_start(void)
 {
 	TC0110PCR_ram[2] = auto_malloc(TC0110PCR_RAM_SIZE * sizeof(*TC0110PCR_ram[2]));
 
 	state_save_register_global_pointer(TC0110PCR_ram[2], TC0110PCR_RAM_SIZE);
 	state_save_register_func_postload_int(TC0110PCR_restore_colors, 2);
-
-	return 0;
 }
 
 READ16_HANDLER( TC0110PCR_word_r )
@@ -4851,7 +4804,7 @@ WRITE16_HANDLER( TC0110PCR_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color(Machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(Machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
@@ -4873,7 +4826,7 @@ WRITE16_HANDLER( TC0110PCR_step1_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color(Machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(Machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
@@ -4896,7 +4849,7 @@ WRITE16_HANDLER( TC0110PCR_step1_word_1_w )
 		{
 			TC0110PCR_ram[1][(TC0110PCR_addr[1])] = data & 0xffff;
 			/* change a color in the second color area (4096-8191) */
-			palette_set_color(Machine,TC0110PCR_addr[1] + 4096,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(Machine,TC0110PCR_addr[1] + 4096,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
@@ -4919,7 +4872,7 @@ WRITE16_HANDLER( TC0110PCR_step1_word_2_w )
 		{
 			TC0110PCR_ram[2][(TC0110PCR_addr[2])] = data & 0xffff;
 			/* change a color in the second color area (8192-12288) */
-			palette_set_color(Machine,TC0110PCR_addr[2] + 8192,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(Machine,TC0110PCR_addr[2] + 8192,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
@@ -4943,7 +4896,7 @@ WRITE16_HANDLER( TC0110PCR_step1_rbswap_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color(Machine,TC0110PCR_addr[0],pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
+			palette_set_color_rgb(Machine,TC0110PCR_addr[0],pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
 			break;
 		}
 
@@ -4967,7 +4920,7 @@ WRITE16_HANDLER( TC0110PCR_step1_4bpg_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color(Machine,TC0110PCR_addr[0],pal4bit(data >> 0),pal4bit(data >> 4),pal4bit(data >> 8));
+			palette_set_color_rgb(Machine,TC0110PCR_addr[0],pal4bit(data >> 0),pal4bit(data >> 4),pal4bit(data >> 8));
 			break;
 		}
 

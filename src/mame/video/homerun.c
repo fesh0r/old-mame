@@ -27,7 +27,6 @@ WRITE8_HANDLER(homerun_banking_w)
 
 WRITE8_HANDLER( homerun_videoram_w )
 {
-
 	homerun_videoram[offset]=data;
 	tilemap_mark_tile_dirty(homerun_tilemap,offset&0xfff);
 }
@@ -48,10 +47,10 @@ WRITE8_HANDLER(homerun_color_w)
 	bit1 = (data >> 6) & 0x01;
 	bit2 = (data >> 7) & 0x01;
 	b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-	palette_set_color(Machine,offset,r,g,b);
+	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
 }
 
-static void get_homerun_tile_info(int tile_index)
+static TILE_GET_INFO( get_homerun_tile_info )
 {
 	int tileno,palno;
 	tileno = (homerun_videoram[tile_index])+((homerun_videoram[tile_index+0x1000]&0x38)<<5)+ ((homerun_gfx_ctrl&1)<<11);
@@ -64,7 +63,6 @@ static void get_homerun_tile_info(int tile_index)
 VIDEO_START(homerun)
 {
 	homerun_tilemap = tilemap_create(get_homerun_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 8, 8,64,64);
-	return 0;
 }
 
 static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )

@@ -49,7 +49,7 @@ PALETTE_INIT( timelimt ) {
 		bit1 = (*color_prom >> 7) & 0x01;
 		b = 0x4f * bit0 + 0xa8 * bit1;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 }
@@ -60,12 +60,12 @@ PALETTE_INIT( timelimt ) {
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	SET_TILE_INFO(1, timelimt_bg_videoram[tile_index], 0, 0);
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	SET_TILE_INFO(0, videoram[tile_index], 0, 0);
 }
@@ -79,28 +79,20 @@ VIDEO_START( timelimt )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 /***************************************************************************/
 
 WRITE8_HANDLER( timelimt_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( timelimt_bg_videoram_w )
 {
-	if (timelimt_bg_videoram[offset] != data)
-	{
-		timelimt_bg_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	timelimt_bg_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( timelimt_scroll_x_lsb_w )

@@ -39,14 +39,8 @@ static tilemap *fg_tilemap;
 
 WRITE16_HANDLER( twin16_videoram2_w )
 {
-	int oldword = twin16_videoram2[offset];
-
 	COMBINE_DATA(&twin16_videoram2[offset]);
-
-	if (oldword != twin16_videoram2[offset])
-	{
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE16_HANDLER( twin16_paletteram_word_w )
@@ -55,7 +49,7 @@ WRITE16_HANDLER( twin16_paletteram_word_w )
 	offset &= ~1;
 
 	data = ((paletteram16[offset] & 0xff) << 8) | (paletteram16[offset + 1] & 0xff);
-	palette_set_color(Machine, offset / 2, pal5bit(data >> 0), pal5bit(data >> 5), pal5bit(data >> 10));
+	palette_set_color_rgb(Machine, offset / 2, pal5bit(data >> 0), pal5bit(data >> 5), pal5bit(data >> 10));
 }
 
 WRITE16_HANDLER( fround_gfx_bank_w )
@@ -496,7 +490,7 @@ static void draw_layer( mame_bitmap *bitmap, int opaque ){
 	}
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	const UINT16 *source = twin16_videoram2;
 	int attr = source[tile_index];
@@ -512,8 +506,6 @@ VIDEO_START( twin16 )
 		TILEMAP_TRANSPARENT, 8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 VIDEO_START( fround )
@@ -522,8 +514,6 @@ VIDEO_START( fround )
 		TILEMAP_TRANSPARENT, 8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 VIDEO_EOF( twin16 )

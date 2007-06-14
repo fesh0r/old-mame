@@ -45,7 +45,7 @@ static void video_cleanup(running_machine *machine)
 		render_texture_free(overlay_texture);
 }
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int tile = videoram[tile_index];
 
@@ -57,8 +57,6 @@ VIDEO_START( superdq )
 	superdq_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 8, 8, 32, 32);
 
 	add_exit_callback(machine, video_cleanup);
-
-	return 0;
 }
 
 VIDEO_UPDATE( superdq )
@@ -144,14 +142,13 @@ PALETTE_INIT( superdq )
 		bit1 = (color_prom[i] >> 0) & 0x01;
 		b = combine_2_weights(bweights, bit1, bit0);
 
-		palette_set_color(machine, i, r, g, b);
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
 	}
 }
 
 static MACHINE_START( superdq )
 {
 	discinfo = laserdisc_init(LASERDISC_TYPE_LDV1000, get_disk_handle(0), 0);
-	return 0;
 }
 
 static INTERRUPT_GEN( superdq_vblank )

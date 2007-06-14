@@ -49,7 +49,7 @@ UINT16 *blmbycar_vram_1, *blmbycar_scroll_1;
 WRITE16_HANDLER( blmbycar_palette_w )
 {
 	data = COMBINE_DATA(&paletteram16[offset]);
-	palette_set_color( Machine, offset, pal4bit(data >> 4), pal4bit(data >> 0), pal4bit(data >> 8));
+	palette_set_color_rgb( Machine, offset, pal4bit(data >> 4), pal4bit(data >> 0), pal4bit(data >> 8));
 }
 
 
@@ -75,7 +75,7 @@ static tilemap *tilemap_0, *tilemap_1;
 #define DIM_NX		(0x40)
 #define DIM_NY		(0x20)
 
-static void get_tile_info_0( int tile_index )
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	UINT16 code = blmbycar_vram_0[ tile_index * 2 + 0 ];
 	UINT16 attr = blmbycar_vram_0[ tile_index * 2 + 1 ];
@@ -85,10 +85,10 @@ static void get_tile_info_0( int tile_index )
 			attr & 0x1f,
 			TILE_FLIPYX((attr >> 6) & 3))
 
-	tile_info.priority = (attr >> 5) & 1;
+	tileinfo->priority = (attr >> 5) & 1;
 }
 
-static void get_tile_info_1( int tile_index )
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	UINT16 code = blmbycar_vram_1[ tile_index * 2 + 0 ];
 	UINT16 attr = blmbycar_vram_1[ tile_index * 2 + 1 ];
@@ -98,22 +98,20 @@ static void get_tile_info_1( int tile_index )
 			attr & 0x1f,
 			TILE_FLIPYX((attr >> 6) & 3))
 
-	tile_info.priority = (attr >> 5) & 1;
+	tileinfo->priority = (attr >> 5) & 1;
 }
 
 
 WRITE16_HANDLER( blmbycar_vram_0_w )
 {
-	UINT16 oldword = blmbycar_vram_0[offset];
-	UINT16 newword = COMBINE_DATA(&blmbycar_vram_0[offset]);
-	if (oldword != newword)	tilemap_mark_tile_dirty(tilemap_0, offset/2);
+	COMBINE_DATA(&blmbycar_vram_0[offset]);
+	tilemap_mark_tile_dirty(tilemap_0, offset/2);
 }
 
 WRITE16_HANDLER( blmbycar_vram_1_w )
 {
-	UINT16 oldword = blmbycar_vram_1[offset];
-	UINT16 newword = COMBINE_DATA(&blmbycar_vram_1[offset]);
-	if (oldword != newword)	tilemap_mark_tile_dirty(tilemap_1, offset/2);
+	COMBINE_DATA(&blmbycar_vram_1[offset]);
+	tilemap_mark_tile_dirty(tilemap_1, offset/2);
 }
 
 
@@ -140,8 +138,6 @@ VIDEO_START( blmbycar )
 		tilemap_set_scroll_rows(tilemap_1,1);
 		tilemap_set_scroll_cols(tilemap_1,1);
 		tilemap_set_transparent_pen(tilemap_1,0);
-
-		return 0;
 }
 
 

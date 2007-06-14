@@ -20,7 +20,7 @@ UINT8 *angelkds_txvideoram, *angelkds_bgbotvideoram, *angelkds_bgtopvideoram;
 static int angelkds_txbank;
 
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int tileno;
 
@@ -31,11 +31,8 @@ static void get_tx_tile_info(int tile_index)
 
 WRITE8_HANDLER( angelkds_txvideoram_w )
 {
-	if (angelkds_txvideoram[offset] != data)
-	{
-		angelkds_txvideoram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
-	}
+	angelkds_txvideoram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 WRITE8_HANDLER( angelkds_txbank_write )
@@ -56,7 +53,7 @@ if (angelkds_txbank != data)
 static int angelkds_bgtopbank;
 
 
-static void get_bgtop_tile_info(int tile_index)
+static TILE_GET_INFO( get_bgtop_tile_info )
 {
 	int tileno;
 
@@ -68,11 +65,8 @@ static void get_bgtop_tile_info(int tile_index)
 
 WRITE8_HANDLER( angelkds_bgtopvideoram_w )
 {
-	if (angelkds_bgtopvideoram[offset] != data)
-	{
-		angelkds_bgtopvideoram[offset] = data;
-		tilemap_mark_tile_dirty(bgtop_tilemap,offset);
-	}
+	angelkds_bgtopvideoram[offset] = data;
+	tilemap_mark_tile_dirty(bgtop_tilemap,offset);
 }
 
 WRITE8_HANDLER( angelkds_bgtopbank_write )
@@ -97,7 +91,7 @@ WRITE8_HANDLER( angelkds_bgtopscroll_write )
 
 static int angelkds_bgbotbank;
 
-static void get_bgbot_tile_info(int tile_index)
+static TILE_GET_INFO( get_bgbot_tile_info )
 {
 	int tileno;
 
@@ -109,11 +103,8 @@ static void get_bgbot_tile_info(int tile_index)
 
 WRITE8_HANDLER( angelkds_bgbotvideoram_w )
 {
-	if (angelkds_bgbotvideoram[offset] != data)
-	{
-		angelkds_bgbotvideoram[offset] = data;
-		tilemap_mark_tile_dirty(bgbot_tilemap,offset);
-	}
+	angelkds_bgbotvideoram[offset] = data;
+	tilemap_mark_tile_dirty(bgbot_tilemap,offset);
 }
 
 
@@ -262,7 +253,7 @@ WRITE8_HANDLER( angelkds_paletteram_w )
 	paletteram[offset] = data;
 
 	no=offset & 0xff;
-	palette_set_color(Machine,no,pal4bit(paletteram[no]),pal4bit(paletteram[no]>>4),pal4bit(paletteram[no+0x100]));
+	palette_set_color_rgb(Machine,no,pal4bit(paletteram[no]),pal4bit(paletteram[no]>>4),pal4bit(paletteram[no+0x100]));
 }
 
 /*** Video Start & Update
@@ -280,8 +271,6 @@ VIDEO_START( angelkds )
 
 	bgtop_tilemap = tilemap_create(get_bgtop_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 8, 8,32,32);
 	tilemap_set_transparent_pen(bgtop_tilemap,15);
-
-	return 0;
 }
 
 /* enable bits are uncertain */

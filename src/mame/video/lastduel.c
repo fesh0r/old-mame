@@ -22,7 +22,7 @@ static int sprite_flipy_mask,sprite_pri_mask;
 
 ***************************************************************************/
 
-static void ld_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( ld_get_bg_tile_info )
 {
 	int tile = lastduel_scroll2[2*tile_index] & 0x1fff;
 	int color = lastduel_scroll2[2*tile_index+1];
@@ -32,7 +32,7 @@ static void ld_get_bg_tile_info(int tile_index)
 			TILE_FLIPYX((color & 0x60) >> 5))
 }
 
-static void ld_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( ld_get_fg_tile_info )
 {
 	int tile = lastduel_scroll1[2*tile_index] & 0x1fff;
 	int color = lastduel_scroll1[2*tile_index+1];
@@ -43,7 +43,7 @@ static void ld_get_fg_tile_info(int tile_index)
 			TILE_FLIPYX((color & 0x60) >> 5) | TILE_SPLIT((color & 0x80) >> 7))
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tile = lastduel_scroll2[tile_index] & 0x1fff;
 	int color = lastduel_scroll2[tile_index+0x0800];
@@ -54,7 +54,7 @@ static void get_bg_tile_info(int tile_index)
 			TILE_FLIPYX((color & 0x60) >> 5))
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int tile = lastduel_scroll1[tile_index] & 0x1fff;
 	int color = lastduel_scroll1[tile_index+0x0800];
@@ -65,7 +65,7 @@ static void get_fg_tile_info(int tile_index)
 			TILE_FLIPYX((color & 0x60) >> 5) | TILE_SPLIT((color & 0x10) >> 4))
 }
 
-static void get_fix_info(int tile_index)
+static TILE_GET_INFO( get_fix_info )
 {
 	int tile = lastduel_vram[tile_index];
 	SET_TILE_INFO(
@@ -95,8 +95,6 @@ VIDEO_START( lastduel )
 
 	sprite_flipy_mask = 0x40;
 	sprite_pri_mask = 0x00;
-
-	return 0;
 }
 
 VIDEO_START( madgear )
@@ -111,8 +109,6 @@ VIDEO_START( madgear )
 
 	sprite_flipy_mask = 0x80;
 	sprite_pri_mask = 0x10;
-
-	return 0;
 }
 
 
@@ -152,42 +148,32 @@ WRITE16_HANDLER( lastduel_scroll_w )
 
 WRITE16_HANDLER( lastduel_scroll1_w )
 {
-	int oldword = lastduel_scroll1[offset];
 	COMBINE_DATA(&lastduel_scroll1[offset]);
-	if (oldword != lastduel_scroll1[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset/2);
+	tilemap_mark_tile_dirty(fg_tilemap,offset/2);
 }
 
 WRITE16_HANDLER( lastduel_scroll2_w )
 {
-	int oldword = lastduel_scroll2[offset];
 	COMBINE_DATA(&lastduel_scroll2[offset]);
-	if (oldword != lastduel_scroll2[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset/2);
+	tilemap_mark_tile_dirty(bg_tilemap,offset/2);
 }
 
 WRITE16_HANDLER( lastduel_vram_w )
 {
-	int oldword = lastduel_vram[offset];
 	COMBINE_DATA(&lastduel_vram[offset]);
-	if (oldword != lastduel_vram[offset])
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 WRITE16_HANDLER( madgear_scroll1_w )
 {
-	int oldword = lastduel_scroll1[offset];
 	COMBINE_DATA(&lastduel_scroll1[offset]);
-	if (oldword != lastduel_scroll1[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset & 0x7ff);
+	tilemap_mark_tile_dirty(fg_tilemap,offset & 0x7ff);
 }
 
 WRITE16_HANDLER( madgear_scroll2_w )
 {
-	int oldword = lastduel_scroll2[offset];
 	COMBINE_DATA(&lastduel_scroll2[offset]);
-	if (oldword != lastduel_scroll2[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset & 0x7ff);
+	tilemap_mark_tile_dirty(bg_tilemap,offset & 0x7ff);
 }
 
 

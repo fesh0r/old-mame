@@ -20,7 +20,7 @@ static tilemap *bg_tilemap[3];
 
 ***************************************************************************/
 
-INLINE void get_tile_info(int tile_index,int plane)
+INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int plane)
 {
 	UINT16 attr;
 
@@ -31,22 +31,22 @@ INLINE void get_tile_info(int tile_index,int plane)
 			vram[tile_index+1],
 			attr & 0x7f,
 			0)
-	tile_info.priority = (attr & 0x0600) >> 9;
+	tileinfo->priority = (attr & 0x0600) >> 9;
 }
 
-static void get_tile_info0(int tile_index)
+static TILE_GET_INFO( get_tile_info0 )
 {
-	get_tile_info(tile_index,0);
+	get_tile_info(machine,tileinfo,tile_index,0);
 }
 
-static void get_tile_info1(int tile_index)
+static TILE_GET_INFO( get_tile_info1 )
 {
-	get_tile_info(tile_index,1);
+	get_tile_info(machine,tileinfo,tile_index,1);
 }
 
-static void get_tile_info2(int tile_index)
+static TILE_GET_INFO( get_tile_info2 )
 {
-	get_tile_info(tile_index,2);
+	get_tile_info(machine,tileinfo,tile_index,2);
 }
 
 
@@ -71,8 +71,6 @@ VIDEO_START( othldrby )
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
 	tilemap_set_transparent_pen(bg_tilemap[2],0);
-
-	return 0;
 }
 
 
@@ -83,7 +81,7 @@ VIDEO_START( othldrby )
 
 ***************************************************************************/
 
-static unsigned int vram_addr,vreg_addr;
+static UINT32 vram_addr,vreg_addr;
 
 WRITE16_HANDLER( othldrby_videoram_addr_w )
 {

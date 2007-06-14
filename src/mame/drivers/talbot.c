@@ -14,20 +14,14 @@ static tilemap *bg_tilemap;
 
 static WRITE8_HANDLER( talbot_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 static WRITE8_HANDLER( talbot_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 static WRITE8_HANDLER( talbot_mcu_halt_w )
@@ -149,10 +143,10 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,   0, 64 },
 	{ REGION_GFX2, 0, &spritelayout, 0, 64 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
-static void get_tile_info_bg(int tile_index)
+static TILE_GET_INFO( get_tile_info_bg )
 {
 	int code = videoram[tile_index];
 	int color = colorram[tile_index] & 0x1f;
@@ -163,8 +157,6 @@ static void get_tile_info_bg(int tile_index)
 VIDEO_START( talbot )
 {
 	bg_tilemap = tilemap_create(get_tile_info_bg, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void talbot_draw_sprites( mame_bitmap *bitmap )
@@ -222,7 +214,7 @@ PALETTE_INIT( talbot )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -268,7 +260,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( talbot )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )          /* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "11.10g", 0x0000, 0x1000, CRC(0368607d) SHA1(275a29fb018bd327e64cf4fcc04590099c90290a) )
 	ROM_LOAD( "12.11g", 0x1000, 0x1000, CRC(400e633b) SHA1(8d76df34174286e2b0c9341bbc141c9e77533f06) )
 	ROM_LOAD( "13.10h", 0x2000, 0x1000, CRC(be575d9e) SHA1(17d3bbdc755920b5a6e1e81cbb7d51be20257ff1) )

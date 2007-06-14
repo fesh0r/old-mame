@@ -63,12 +63,12 @@ PALETTE_INIT( xevious )
 		bit3 = (color_prom[2*256] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
 	/* color 0x80 is used by sprites to mark transparency */
-	palette_set_color(machine,0x80,0,0,0);
+	palette_set_color(machine,0x80,MAKE_RGB(0,0,0));
 
 	color_prom += 128;  /* the bottom part of the PROM is unused */
 	color_prom += 2*256;
@@ -136,12 +136,12 @@ PALETTE_INIT( battles )
 		bit3 = (color_prom[2*256] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
 	/* color 0x80 is used by sprites to mark transparency */
-	palette_set_color(machine,0x80,0,0,0);
+	palette_set_color(machine,0x80,MAKE_RGB(0,0,0));
 
 	color_prom += 128;  /* the bottom part of the PROM is unused */
 	color_prom += 2*256;
@@ -183,9 +183,9 @@ PALETTE_INIT( battles )
 
 ***************************************************************************/
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
-	unsigned char attr = xevious_fg_colorram[tile_index];
+	UINT8 attr = xevious_fg_colorram[tile_index];
 
 	/* the hardware has two character sets, one normal and one x-flipped. When
        screen is flipped, character y flip is done by the hardware inverting the
@@ -199,10 +199,10 @@ static void get_fg_tile_info(int tile_index)
 			TILE_FLIPYX((attr & 0xc0) >> 6) ^ (flip_screen ? TILE_FLIPX : 0))
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
-	unsigned char code = xevious_bg_videoram[tile_index];
-	unsigned char attr = xevious_bg_colorram[tile_index];
+	UINT8 code = xevious_bg_videoram[tile_index];
+	UINT8 attr = xevious_bg_colorram[tile_index];
 	SET_TILE_INFO(
 			1,
 			code + ((attr & 0x01) << 8),
@@ -234,8 +234,6 @@ VIDEO_START( xevious )
 	spriteram   = xevious_sr3 + 0x780;
 
 	state_save_register_global_array(xevious_bs);
-
-	return 0;
 }
 
 
@@ -268,38 +266,26 @@ READ8_HANDLER( xevious_bg_colorram_r )
 
 WRITE8_HANDLER( xevious_fg_videoram_w )
 {
-	if (xevious_fg_videoram[offset] != data)
-	{
-		xevious_fg_videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
-	}
+	xevious_fg_videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 WRITE8_HANDLER( xevious_fg_colorram_w )
 {
-	if (xevious_fg_colorram[offset] != data)
-	{
-		xevious_fg_colorram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
-	}
+	xevious_fg_colorram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 WRITE8_HANDLER( xevious_bg_videoram_w )
 {
-	if (xevious_bg_videoram[offset] != data)
-	{
-		xevious_bg_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	xevious_bg_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE8_HANDLER( xevious_bg_colorram_w )
 {
-	if (xevious_bg_colorram[offset] != data)
-	{
-		xevious_bg_colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	xevious_bg_colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE8_HANDLER( xevious_vh_latch_w )

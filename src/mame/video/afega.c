@@ -64,7 +64,7 @@ WRITE16_HANDLER( afega_palette_w )
 	b = ((data & 0x00F0) >> 3 ) + ((data & 0x0002) >> 1);
 	g = ((data & 0x0F00) >> 7 ) + ((data & 0x0004) >> 2);
 	r = ((data & 0xF000) >> 11) + ((data & 0x0008) >> 3);
-	palette_set_color( Machine, offset, pal5bit(r) , pal5bit(g) , pal5bit(b) );
+	palette_set_color_rgb( Machine, offset, pal5bit(r) , pal5bit(g) , pal5bit(b) );
 }
 
 /* This game uses 8 bit tiles, so it ignores the color codes and just
@@ -130,7 +130,7 @@ UINT32 firehawk_tilemap_scan_pages(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 
 
 static tilemap *tilemap_0, *tilemap_1;
 
-static void get_tile_info_0(int tile_index)
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	UINT16 code = afega_vram_0[tile_index];
 	SET_TILE_INFO(
@@ -139,7 +139,7 @@ static void get_tile_info_0(int tile_index)
 			(code & 0xf000) >> 12,
 			0)
 }
-static void get_tile_info_1(int tile_index)
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	UINT16 code = afega_vram_1[tile_index];
 	SET_TILE_INFO(
@@ -151,15 +151,13 @@ static void get_tile_info_1(int tile_index)
 
 WRITE16_HANDLER( afega_vram_0_w )
 {
-	UINT16 old_data	=	afega_vram_0[offset];
-	UINT16 new_data	=	COMBINE_DATA(&afega_vram_0[offset]);
-	if (old_data != new_data)	tilemap_mark_tile_dirty(tilemap_0,offset);
+	COMBINE_DATA(&afega_vram_0[offset]);
+	tilemap_mark_tile_dirty(tilemap_0,offset);
 }
 WRITE16_HANDLER( afega_vram_1_w )
 {
-	UINT16 old_data	=	afega_vram_1[offset];
-	UINT16 new_data	=	COMBINE_DATA(&afega_vram_1[offset]);
-	if (old_data != new_data)	tilemap_mark_tile_dirty(tilemap_1,offset);
+	COMBINE_DATA(&afega_vram_1[offset]);
+	tilemap_mark_tile_dirty(tilemap_1,offset);
 }
 
 
@@ -185,7 +183,6 @@ VIDEO_START( afega )
 
 	tilemap_set_transparent_pen(tilemap_0,0x0);
 	tilemap_set_transparent_pen(tilemap_1,0xf);
-	return 0;
 }
 
 VIDEO_START( twinactn )
@@ -202,7 +199,6 @@ VIDEO_START( twinactn )
 
 	tilemap_set_transparent_pen(tilemap_0,0x0);
 	tilemap_set_transparent_pen(tilemap_1,0xf);
-	return 0;
 }
 
 VIDEO_START( firehawk )
@@ -219,7 +215,6 @@ VIDEO_START( firehawk )
 
 	tilemap_set_transparent_pen(tilemap_0,0x0);
 	tilemap_set_transparent_pen(tilemap_1,0xf);
-	return 0;
 }
 
 

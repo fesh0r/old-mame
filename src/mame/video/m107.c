@@ -38,8 +38,8 @@
 
 static tilemap *pf4_layer,*pf3_layer,*pf2_layer,*pf1_layer;
 static int m107_control[0x20];
-static unsigned char *m107_spriteram;
-unsigned char *m107_vram_data;
+static UINT8 *m107_spriteram;
+UINT8 *m107_vram_data;
 int m107_raster_irq_position,m107_sprite_list;
 int m107_spritesystem;
 
@@ -49,7 +49,7 @@ static int pf1_rowscroll,pf2_rowscroll,pf3_rowscroll,pf4_rowscroll;
 
 /*****************************************************************************/
 
-static void get_pf1_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf1_tile_info )
 {
 	int tile,color;
 	tile_index = 4*tile_index + pf1_vram_ptr;
@@ -65,10 +65,10 @@ static void get_pf1_tile_info(int tile_index)
 			TILE_FLIPYX((m107_vram_data[tile_index+3] & 0xc)>>2))
 
 	/* Priority 1 = tile appears above sprites */
-	tile_info.priority = ((m107_vram_data[tile_index+3]&2)>>1);
+	tileinfo->priority = ((m107_vram_data[tile_index+3]&2)>>1);
 }
 
-static void get_pf2_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf2_tile_info )
 {
 	int tile,color;
 	tile_index = 4*tile_index + pf2_vram_ptr;
@@ -83,10 +83,10 @@ static void get_pf2_tile_info(int tile_index)
 			color&0x7f,
 			TILE_FLIPYX((m107_vram_data[tile_index+3] & 0xc)>>2))
 
-	tile_info.priority = ((m107_vram_data[tile_index+3]&2)>>1);
+	tileinfo->priority = ((m107_vram_data[tile_index+3]&2)>>1);
 }
 
-static void get_pf3_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf3_tile_info )
 {
 	int tile,color;
 	tile_index = 4*tile_index + pf3_vram_ptr;
@@ -102,7 +102,7 @@ static void get_pf3_tile_info(int tile_index)
 			TILE_FLIPYX((m107_vram_data[tile_index+3] & 0xc)>>2))
 }
 
-static void get_pf4_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf4_tile_info )
 {
 	int tile,color;
 	tile_index = 4*tile_index + pf4_vram_ptr;
@@ -256,8 +256,6 @@ VIDEO_START( m107 )
 	memset(m107_spriteram,0,0x1000);
 
 	m107_sprite_list=0;
-
-	return 0;
 }
 
 /*****************************************************************************/

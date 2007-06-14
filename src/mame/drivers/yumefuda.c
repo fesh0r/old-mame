@@ -58,7 +58,7 @@ Code disassembling
 
 static tilemap *bg_tilemap;
 
-static void y_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( y_get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 	int color = colorram[tile_index];
@@ -74,8 +74,6 @@ static void y_get_bg_tile_info(int tile_index)
 VIDEO_START( yumefuda )
 {
 	bg_tilemap = tilemap_create(y_get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
-
-	return 0;
 }
 
 VIDEO_UPDATE( yumefuda )
@@ -102,26 +100,20 @@ static const gfx_layout charlayout =
 gfx_decode yumefuda_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &charlayout,   0, 0x10 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
 static WRITE8_HANDLER( yumefuda_vram_w )
 {
-	if(videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 static WRITE8_HANDLER( yumefuda_cram_w )
 {
-	if(colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 static UINT8 *cus_ram;
@@ -193,7 +185,7 @@ static WRITE8_HANDLER( mux_w )
 	//0x14000 bonus game
 	//0x16000 ?
 	if(bank!=new_bank) {
-		unsigned char *ROM = memory_region(REGION_CPU1);
+		UINT8 *ROM = memory_region(REGION_CPU1);
 		UINT32 bankaddress;
 
 		bank = new_bank;

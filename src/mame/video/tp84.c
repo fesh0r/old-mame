@@ -78,7 +78,7 @@ PALETTE_INIT( tp84 )
 		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x42 * bit2 + 0x90 * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -118,38 +118,26 @@ PALETTE_INIT( tp84 )
 
 WRITE8_HANDLER( tp84_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( tp84_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( tp84_videoram2_w )
 {
-	if (tp84_videoram2[offset] != data)
-	{
-		tp84_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	tp84_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( tp84_colorram2_w )
 {
-	if (tp84_colorram2[offset] != data)
-	{
-		tp84_colorram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	tp84_colorram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( tp84_scroll_x_w )
@@ -190,7 +178,7 @@ READ8_HANDLER( tp84_scanline_r )
 	return scanline;
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int coloffs = ((col0 & 0x18) << 1) + ((col0 & 0x07) << 6);
 	int attr = colorram[tile_index];
@@ -201,7 +189,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(0, code, color, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int coloffs = ((col0 & 0x18) << 1) + ((col0 & 0x07) << 6);
 	int attr = tp84_colorram2[tile_index];
@@ -223,8 +211,6 @@ VIDEO_START( tp84 )
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 
 	sprite_mux_buffer = auto_malloc(256 * spriteram_size);
-
-	return 0;
 }
 
 static void tp84_draw_sprites(mame_bitmap *bitmap)

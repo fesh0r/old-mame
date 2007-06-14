@@ -28,7 +28,7 @@ static WRITE8_HANDLER( skylncr_colorram_w )
 	tilemap_mark_tile_dirty(tmap, offset);
 }
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT16 code = skylncr_videoram[ tile_index ] + (skylncr_colorram[ tile_index ] << 8);
 	SET_TILE_INFO(0, code, 0, TILE_FLIPYX( 0 ));
@@ -47,7 +47,7 @@ static WRITE8_HANDLER( skylncr_colorram2_w )
 	tilemap_mark_tile_dirty(tmap2, offset);
 }
 
-static void get_tile_info2(int tile_index)
+static TILE_GET_INFO( get_tile_info2 )
 {
 	UINT16 code = skylncr_videoram2[ tile_index ] + (skylncr_colorram2[ tile_index ] << 8);
 	SET_TILE_INFO(1, code, 0, TILE_FLIPYX( 0 ));
@@ -79,8 +79,6 @@ VIDEO_START( skylncr )
 
 	tilemap_set_transparent_pen(tmap,  0);
 	tilemap_set_transparent_pen(tmap2, 0);
-
-	return 0;
 }
 
 VIDEO_UPDATE( skylncr )
@@ -122,7 +120,7 @@ static WRITE8_HANDLER( skylncr_paletteram_w )
 		paletteram[color] = data;
 		r = paletteram[(color/3*3)+0];	g = paletteram[(color/3*3)+1];	b = paletteram[(color/3*3)+2];
 		r = (r << 2) | (r >> 4);		g = (g << 2) | (g >> 4);		b = (b << 2) | (b >> 4);
-		palette_set_color(Machine,color/3,r,g,b);
+		palette_set_color(Machine,color/3,MAKE_RGB(r,g,b));
 		color = (color + 1) % (0x100*3);
 	}
 }
@@ -141,7 +139,7 @@ static WRITE8_HANDLER( skylncr_paletteram2_w )
 		paletteram_2[color] = data;
 		r = paletteram_2[(color/3*3)+0];	g = paletteram_2[(color/3*3)+1];	b = paletteram_2[(color/3*3)+2];
 		r = (r << 2) | (r >> 4);			g = (g << 2) | (g >> 4);			b = (b << 2) | (b >> 4);
-		palette_set_color(Machine,0x100 + color/3,r,g,b);
+		palette_set_color(Machine,0x100 + color/3,MAKE_RGB(r,g,b));
 		color = (color + 1) % (0x100*3);
 	}
 }
@@ -260,7 +258,7 @@ static const gfx_decode gfxdecodeinfo_skylncr[] =
 	{ REGION_GFX1, 0, &layout8x8x8,			0, 2 },
 	{ REGION_GFX2, 0, &layout8x32x8_rot,	0, 2 },
 	{ REGION_GFX2, 0, &layout8x32x8,		0, 2 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 INPUT_PORTS_START( skylncr )

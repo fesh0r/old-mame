@@ -242,7 +242,7 @@ static void hit_calc_axis(UINT16 x1p, UINT16 x1s, UINT16 x2p, UINT16 x2s, UINT16
 			  UINT16 *x1_p1, UINT16 *x1_p2, UINT16 *x2_p1, UINT16 *x2_p2,
 			  INT16 *x_in, UINT16 *x1tox2)
 {
-	UINT16 x1l, x1r, x2l, x2r;
+	UINT16 x1l=0, x1r=0, x2l=0, x2r=0;
 	hit_calc_orig(x1p, x1s, org,      &x1l, &x1r);
 	hit_calc_orig(x2p, x2s, org >> 8, &x2l, &x2r);
 
@@ -848,7 +848,7 @@ static void palette_set_rgb_brightness (int offset, UINT8 brightness_r, UINT8 br
 		r <<= 3;
 	}
 
-	palette_set_color(Machine,offset,r,g,b);
+	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
 }
 
 // This ignores the alpha values atm.
@@ -970,7 +970,7 @@ static WRITE32_HANDLER ( skns_palette_ram_w )
 		r <<= 3;
 	}
 
-	palette_set_color(Machine,offset,r,g,b);
+	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
 }
 
 static WRITE32_HANDLER( skns_v3t_w )
@@ -1238,7 +1238,11 @@ static READ32_HANDLER( sengekij_speedup_r ) // 60006ee  600308e
 	return skns_main_ram[0xb7380/4];
 }
 
-static DRIVER_INIT( skns )     { memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000028, 0x600002b, 0, 0, bios_skip_r );  }
+static void init_skns(running_machine *machine)
+{
+	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000028, 0x600002b, 0, 0, bios_skip_r );
+}
+
 static DRIVER_INIT( galpani4 ) { skns_sprite_kludge(-5,-1); init_skns(machine);  } // Idle Loop caught by sh-2 core
 static DRIVER_INIT( galpanis ) { skns_sprite_kludge(-5,-1); init_skns(machine);  } // Idle Loop caught by sh-2 core
 static DRIVER_INIT( cyvern )   { skns_sprite_kludge(+0,+2); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x604d3c8, 0x604d3cb, 0, 0, cyvern_speedup_r );   }

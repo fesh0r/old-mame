@@ -28,7 +28,7 @@ UINT8 *skyarmy_colorram;
 UINT8 *skyarmy_scrollram;
 static tilemap* skyarmy_tilemap;
 
-static void get_skyarmy_tile_info(int tile_index)
+static TILE_GET_INFO( get_skyarmy_tile_info )
 {
         int code = skyarmy_videoram[tile_index];
         int attr = skyarmy_colorram[tile_index];
@@ -92,7 +92,7 @@ PALETTE_INIT( skyarmy )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 }
@@ -101,7 +101,6 @@ VIDEO_START( skyarmy )
 {
         skyarmy_tilemap = tilemap_create(get_skyarmy_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
         tilemap_set_scroll_cols(skyarmy_tilemap,32);
-	return 0;
 }
 
 
@@ -249,7 +248,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
         { REGION_GFX1, 0, &charlayout,   0, 32 },
         { REGION_GFX2, 0, &spritelayout, 0, 32 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )

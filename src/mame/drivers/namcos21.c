@@ -965,7 +965,7 @@ static READ16_HANDLER( namcos21_dsp_control_r )
 
 #define PTRAM_SIZE 0x20000
 static UINT8 *ptram;
-static unsigned int ptram_addr;
+static UINT32 ptram_addr;
 
 static WRITE16_HANDLER( namcos21_dsp_data_w )
 {
@@ -1396,7 +1396,6 @@ static MACHINE_DRIVER_START( s21base )
 
 	MDRV_GFXDECODE(gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(NAMCOS21_NUM_COLORS)
-	MDRV_COLORTABLE_LENGTH(NAMCOS21_NUM_COLORS)
 
 	MDRV_VIDEO_START(namcos21)
 	MDRV_VIDEO_UPDATE(namcos21_default)
@@ -1467,7 +1466,6 @@ static MACHINE_DRIVER_START( winrun_c140_typeB )
 	MDRV_SCREEN_VISIBLE_AREA(0,511,0,511)
 
 	MDRV_PALETTE_LENGTH(NAMCOS21_NUM_COLORS)
-	MDRV_COLORTABLE_LENGTH(NAMCOS21_NUM_COLORS)
 
 	MDRV_VIDEO_START(namcos21)
 	MDRV_VIDEO_UPDATE(namcos21_winrun)

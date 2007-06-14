@@ -1,13 +1,13 @@
 #include "driver.h"
 
-unsigned char *timeplt_videoram,*timeplt_colorram;
+UINT8 *timeplt_videoram,*timeplt_colorram;
 static tilemap *bg_tilemap;
 
 /*
 sprites are multiplexed, so we have to buffer the spriteram
 scanline by scanline.
 */
-static unsigned char *sprite_mux_buffer,*sprite_mux_buffer_2;
+static UINT8 *sprite_mux_buffer,*sprite_mux_buffer_2;
 static int scanline;
 
 
@@ -69,7 +69,7 @@ PALETTE_INIT( timeplt )
 		bit4 = (color_prom[i] >> 7) & 0x01;
 		b = 0x19 * bit0 + 0x24 * bit1 + 0x35 * bit2 + 0x40 * bit3 + 0x4d * bit4;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 	color_prom += 2*machine->drv->total_colors;
@@ -93,10 +93,10 @@ PALETTE_INIT( timeplt )
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
-	unsigned char attr = timeplt_colorram[tile_index];
-	tile_info.priority = (attr & 0x10) >> 4;
+	UINT8 attr = timeplt_colorram[tile_index];
+	tileinfo->priority = (attr & 0x10) >> 4;
 	SET_TILE_INFO(
 			0,
 			timeplt_videoram[tile_index] + ((attr & 0x20) << 3),
@@ -118,8 +118,6 @@ VIDEO_START( timeplt )
 
 	sprite_mux_buffer = auto_malloc(256 * spriteram_size);
 	sprite_mux_buffer_2 = auto_malloc(256 * spriteram_size);
-
-	return 0;
 }
 
 
@@ -132,20 +130,14 @@ VIDEO_START( timeplt )
 
 WRITE8_HANDLER( timeplt_videoram_w )
 {
-	if (timeplt_videoram[offset] != data)
-	{
-		timeplt_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	timeplt_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE8_HANDLER( timeplt_colorram_w )
 {
-	if (timeplt_colorram[offset] != data)
-	{
-		timeplt_colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	timeplt_colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE8_HANDLER( timeplt_flipscreen_w )
@@ -179,7 +171,7 @@ static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 	{
 		if (line >= cliprect->min_y && line <= cliprect->max_y)
 		{
-			unsigned char *sr,*sr2;
+			UINT8 *sr,*sr2;
 
 			sr = sprite_mux_buffer + line * spriteram_size;
 			sr2 = sprite_mux_buffer_2 + line * spriteram_size;

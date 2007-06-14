@@ -160,7 +160,7 @@ static UINT8 williams2_fg_color;
 
 static void blitter_init(int blitter_config, const UINT8 *remap_prom);
 static void create_palette_lookup(void);
-static void get_tile_info(int tile_index);
+static TILE_GET_INFO( get_tile_info );
 static int blitter_core(int sstart, int dstart, int w, int h, int data);
 
 
@@ -189,7 +189,6 @@ VIDEO_START( williams )
 	blitter_init(williams_blitter_config, NULL);
 	create_palette_lookup();
 	state_save_register();
-	return 0;
 }
 
 
@@ -198,7 +197,6 @@ VIDEO_START( blaster )
 	blitter_init(williams_blitter_config, memory_region(REGION_PROMS));
 	create_palette_lookup();
 	state_save_register();
-	return 0;
 }
 
 
@@ -215,7 +213,6 @@ VIDEO_START( williams2 )
 	tilemap_set_scrolldx(bg_tilemap, 2, 0);
 
 	state_save_register();
-	return 0;
 }
 
 
@@ -368,9 +365,8 @@ static void create_palette_lookup(void)
 
 WRITE8_HANDLER( williams_paletteram_w )
 {
-	rgb_t color = palette_lookup[data];
 	paletteram[offset] = data;
-	palette_set_color(Machine, offset, RGB_RED(color), RGB_GREEN(color), RGB_BLUE(color));
+	palette_set_color(Machine, offset, palette_lookup[data]);
 }
 
 
@@ -401,7 +397,7 @@ WRITE8_HANDLER( williams2_paletteram_w )
 	b = ((entry_hi >> 0) & 15) * i;
 	g = ((entry_lo >> 4) & 15) * i;
 	r = ((entry_lo >> 0) & 15) * i;
-	palette_set_color(Machine, offset / 2, r, g, b);
+	palette_set_color(Machine, offset / 2, MAKE_RGB(r, g, b));
 }
 
 
@@ -438,7 +434,7 @@ READ8_HANDLER( williams2_video_counter_r )
  *
  *************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	int mask = Machine->gfx[0]->total_elements - 1;
 	int data = williams2_tileram[tile_index];
@@ -553,11 +549,9 @@ WRITE8_HANDLER( blaster_scanline_control_w )
 
 WRITE8_HANDLER( blaster_palette_0_w )
 {
-	rgb_t color = palette_lookup[data ^ 0xff];
-
 	video_screen_update_partial(0, video_screen_get_vpos(0));
 	blaster_palette_0[offset] = data;
-	palette_set_color(Machine, 16 + offset, RGB_RED(color), RGB_GREEN(color), RGB_BLUE(color));
+	palette_set_color(Machine, 16 + offset, palette_lookup[data ^ 0xff]);
 }
 
 

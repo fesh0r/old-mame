@@ -149,7 +149,7 @@ PALETTE_INIT( looping )
 		bit1 = (color_prom[i] >> 7) & 1;
 		b = combine_2_weights(bweights, bit0, bit1);
 
-		palette_set_color(machine, i, r, g, b);
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
 	}
 }
 
@@ -161,11 +161,11 @@ PALETTE_INIT( looping )
  *
  *************************************/
 
-static void get_tile_info(int offset)
+static TILE_GET_INFO( get_tile_info )
 {
 	looping_state *state = Machine->driver_data;
-	int tile_number = state->videoram[offset];
-	int color = state->colorram[(offset & 0x1f) * 2 + 1] & 0x07;
+	int tile_number = state->videoram[tile_index];
+	int color = state->colorram[(tile_index & 0x1f) * 2 + 1] & 0x07;
 	SET_TILE_INFO(0, tile_number, color, 0);
 }
 
@@ -177,7 +177,6 @@ VIDEO_START( looping )
 	state->bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 32,32);
 
 	tilemap_set_scroll_cols(state->bg_tilemap, 0x20);
-	return 0;
 }
 
 
@@ -291,7 +290,6 @@ static MACHINE_START( looping )
 {
 	looping_state *state = machine->driver_data;
 	state_save_register_global_array(state->sound);
-	return 0;
 }
 
 

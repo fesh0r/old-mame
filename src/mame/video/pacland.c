@@ -92,7 +92,7 @@ static void switch_palette(running_machine *machine)
 
 		color_prom++;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -134,7 +134,7 @@ PALETTE_INIT( pacland )
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int offs = tile_index * 2;
 	int attr = pacland_videoram2[offs + 1];
@@ -145,7 +145,7 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int offs = tile_index * 2;
 	int attr = pacland_videoram[offs + 1];
@@ -153,7 +153,7 @@ static void get_fg_tile_info(int tile_index)
 	int color = ((attr & 0x1e) >> 1) + ((code & 0x1e0) >> 1);
 	int flags = TILE_FLIPYX(attr >> 6);
 
-	tile_info.priority = (attr & 0x20) ? 1 : 0;
+	tileinfo->priority = (attr & 0x20) ? 1 : 0;
 
 	SET_TILE_INFO(0, code, color, flags)
 }
@@ -180,8 +180,6 @@ VIDEO_START( pacland )
 	spriteram = pacland_spriteram + 0x780;
 	spriteram_2 = spriteram + 0x800;
 	spriteram_3 = spriteram_2 + 0x800;
-
-	return 0;
 }
 
 
@@ -194,20 +192,14 @@ VIDEO_START( pacland )
 
 WRITE8_HANDLER( pacland_videoram_w )
 {
-	if (pacland_videoram[offset] != data)
-	{
-		pacland_videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset / 2);
-	}
+	pacland_videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset / 2);
 }
 
 WRITE8_HANDLER( pacland_videoram2_w )
 {
-	if (pacland_videoram2[offset] != data)
-	{
-		pacland_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
-	}
+	pacland_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
 }
 
 WRITE8_HANDLER( pacland_scroll0_w )

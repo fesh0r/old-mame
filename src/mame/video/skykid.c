@@ -48,7 +48,7 @@ PALETTE_INIT( skykid )
 		bit3 = (color_prom[totcolors*2] >> 3) & 0x01;
 		b = 0x0e*bit0 + 0x1f*bit1 + 0x43*bit2 + 0x8f*bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -91,7 +91,7 @@ static UINT32 tx_tilemap_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_r
 	return offs;
 }
 
-static void tx_get_tile_info(int tile_index)
+static TILE_GET_INFO( tx_get_tile_info )
 {
 	/* the hardware has two character sets, one normal and one flipped. When
        screen is flipped, character flip is done by selecting the 2nd character set.
@@ -105,7 +105,7 @@ static void tx_get_tile_info(int tile_index)
 }
 
 
-static void bg_get_tile_info(int tile_index)
+static TILE_GET_INFO( bg_get_tile_info )
 {
 	int code = skykid_videoram[tile_index];
 	int attr = skykid_videoram[tile_index+0x800];
@@ -135,8 +135,6 @@ VIDEO_START( skykid )
 	spriteram = skykid_spriteram + 0x780;
 	spriteram_2 = spriteram + 0x0800;
 	spriteram_3 = spriteram_2 + 0x0800;
-
-	return 0;
 }
 
 
@@ -154,11 +152,8 @@ READ8_HANDLER( skykid_videoram_r )
 
 WRITE8_HANDLER( skykid_videoram_w )
 {
-	if (skykid_videoram[offset] != data)
-	{
-		skykid_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset & 0x7ff);
-	}
+	skykid_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset & 0x7ff);
 }
 
 READ8_HANDLER( skykid_textram_r )
@@ -168,11 +163,8 @@ READ8_HANDLER( skykid_textram_r )
 
 WRITE8_HANDLER( skykid_textram_w )
 {
-	if (skykid_textram[offset] != data)
-	{
-		skykid_textram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
-	}
+	skykid_textram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
 }
 
 WRITE8_HANDLER( skykid_scroll_x_w )

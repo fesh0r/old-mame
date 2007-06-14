@@ -118,7 +118,7 @@ static DRIVER_INIT( vanilla )
 
 static DRIVER_INIT( finalbny )
 {
-	unsigned char *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(REGION_CPU1);
 	int i;
 
 	for (i = 0xf800; i < 0x10000; i++) ROM[i] = 0x00;
@@ -134,75 +134,59 @@ static DRIVER_INIT( qmhayaku )
 static DRIVER_INIT( galkoku )
 {
 	nb1413m3_type = NB1413M3_GALKOKU;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( hyouban )
 {
 	nb1413m3_type = NB1413M3_HYOUBAN;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( galkaika )
 {
 #if 1
-	unsigned char *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(REGION_CPU1);
 
 	// Patch to IM2 -> IM1
 	ROM[0x0002] = 0x56;
 #endif
 	nb1413m3_type = NB1413M3_GALKAIKA;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( tokyogal )
 {
 #if 1
-	unsigned char *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(REGION_CPU1);
 
 	// Patch to IM2 -> IM1
 	ROM[0x0002] = 0x56;
 #endif
 	nb1413m3_type = NB1413M3_TOKYOGAL;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( tokimbsj )
 {
 #if 1
-	unsigned char *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(REGION_CPU1);
 
 	// Patch to IM2 -> IM1
 	ROM[0x0002] = 0x56;
 #endif
 	nb1413m3_type = NB1413M3_TOKIMBSJ;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( mcontest )
 {
 	nb1413m3_type = NB1413M3_MCONTEST;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( uchuuai )
 {
 	nb1413m3_type = NB1413M3_UCHUUAI;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( mjgottub )
 {
 	nb1413m3_type = NB1413M3_MJGOTTUB;
-
-	init_nb1413m3(machine);
 }
 
 static DRIVER_INIT( av2mj1bb )

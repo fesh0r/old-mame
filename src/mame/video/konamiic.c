@@ -1214,7 +1214,7 @@ void konami_rom_deinterleave_4(int mem_region)
 /*                                                                         */
 /***************************************************************************/
 
-/*static*/ unsigned char K007121_ctrlram[MAX_K007121][8];
+/*static*/ UINT8 K007121_ctrlram[MAX_K007121][8];
 /*static*/ int K007121_flipscreen[MAX_K007121];
 
 
@@ -1282,7 +1282,7 @@ WRITE8_HANDLER( K007121_ctrl_1_w )
  */
 
 void K007121_sprites_draw(int chip,mame_bitmap *bitmap,const rectangle *cliprect,
-		const unsigned char *source,int base_color,int global_x_offset,int bank_base,
+		const UINT8 *source,int base_color,int global_x_offset,int bank_base,
 		UINT32 pri_mask)
 {
 	const gfx_element *gfx = Machine->gfx[chip];
@@ -1439,16 +1439,16 @@ if (code_pressed(KEYCODE_D))
 /*                                                                         */
 /***************************************************************************/
 
-static unsigned char *K007342_ram,*K007342_scroll_ram;
+static UINT8 *K007342_ram,*K007342_scroll_ram;
 static int K007342_gfxnum;
 static int K007342_int_enabled;
 static int K007342_flipscreen;
 static int K007342_scrollx[2];
 static int K007342_scrolly[2];
-static unsigned char *K007342_videoram_0,*K007342_colorram_0;
-static unsigned char *K007342_videoram_1,*K007342_colorram_1;
+static UINT8 *K007342_videoram_0,*K007342_colorram_0;
+static UINT8 *K007342_videoram_1,*K007342_colorram_1;
 static int K007342_regs[8];
-static void (*K007342_callback)(int tmap, int bank, int *code, int *color);
+static void (*K007342_callback)(int tmap, int bank, int *code, int *color, int *flags);
 static tilemap *K007342_tilemap[2];
 
 /***************************************************************************
@@ -1473,31 +1473,31 @@ static UINT32 K007342_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows
 	return (col & 0x1f) + ((row & 0x1f) << 5) + ((col & 0x20) << 5);
 }
 
-INLINE void K007342_get_tile_info(int tile_index,int layer,UINT8 *cram,UINT8 *vram)
+INLINE void K007342_get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int layer,UINT8 *cram,UINT8 *vram)
 {
-	int color, code;
+	int color, code, flags;
 
 	color = cram[tile_index];
 	code = vram[tile_index];
+	flags = TILE_FLIPYX((color & 0x30) >> 4);
 
-	tile_info.flags = TILE_FLIPYX((color & 0x30) >> 4);
-	tile_info.priority = (color & 0x80) >> 7;
+	tileinfo->priority = (color & 0x80) >> 7;
 
-	(*K007342_callback)(layer, K007342_regs[1], &code, &color);
+	(*K007342_callback)(layer, K007342_regs[1], &code, &color, &flags);
 
 	SET_TILE_INFO(
 			K007342_gfxnum,
 			code,
 			color,
-			tile_info.flags)
+			flags)
 }
 
-static void K007342_get_tile_info0(int tile_index) { K007342_get_tile_info(tile_index,0,K007342_colorram_0,K007342_videoram_0); }
-static void K007342_get_tile_info1(int tile_index) { K007342_get_tile_info(tile_index,1,K007342_colorram_1,K007342_videoram_1); }
+static TILE_GET_INFO( K007342_get_tile_info0 ) { K007342_get_tile_info(machine,tileinfo,tile_index,0,K007342_colorram_0,K007342_videoram_0); }
+static TILE_GET_INFO( K007342_get_tile_info1 ) { K007342_get_tile_info(machine,tileinfo,tile_index,1,K007342_colorram_1,K007342_videoram_1); }
 
 
 
-int K007342_vh_start(int gfx_index, void (*callback)(int tmap, int bank, int *code, int *color))
+void K007342_vh_start(int gfx_index, void (*callback)(int tmap, int bank, int *code, int *color, int *flags))
 {
 	K007342_gfxnum = gfx_index;
 	K007342_callback = callback;
@@ -1517,8 +1517,6 @@ int K007342_vh_start(int gfx_index, void (*callback)(int tmap, int bank, int *co
 
 	tilemap_set_transparent_pen(K007342_tilemap[0],0);
 	tilemap_set_transparent_pen(K007342_tilemap[1],0);
-
-	return 0;
 }
 
 READ8_HANDLER( K007342_r )
@@ -1528,21 +1526,14 @@ READ8_HANDLER( K007342_r )
 
 WRITE8_HANDLER( K007342_w )
 {
+	K007342_ram[offset] = data;
 	if (offset < 0x1000)
 	{		/* layer 0 */
-		if (K007342_ram[offset] != data)
-		{
-			K007342_ram[offset] = data;
-			tilemap_mark_tile_dirty(K007342_tilemap[0],offset & 0x7ff);
-		}
+		tilemap_mark_tile_dirty(K007342_tilemap[0],offset & 0x7ff);
 	}
 	else
 	{						/* layer 1 */
-		if (K007342_ram[offset] != data)
-		{
-			K007342_ram[offset] = data;
-			tilemap_mark_tile_dirty(K007342_tilemap[1],offset & 0x7ff);
-		}
+		tilemap_mark_tile_dirty(K007342_tilemap[1],offset & 0x7ff);
 	}
 }
 
@@ -1674,10 +1665,10 @@ int K007342_is_INT_enabled(void)
 
 static gfx_element *K007420_gfx;
 static void (*K007420_callback)(int *code,int *color);
-static unsigned char *K007420_ram;
+static UINT8 *K007420_ram;
 static int K007420_banklimit;
 
-int K007420_vh_start(int gfxnum, void (*callback)(int *code,int *color))
+void K007420_vh_start(int gfxnum, void (*callback)(int *code,int *color))
 {
 	K007420_gfx = Machine->gfx[gfxnum];
 	K007420_callback = callback;
@@ -1686,8 +1677,6 @@ int K007420_vh_start(int gfxnum, void (*callback)(int *code,int *color))
 	memset(K007420_ram,0,0x200);
 
 	K007420_banklimit = -1;
-
-	return 0;
 }
 
 READ8_HANDLER( K007420_r )
@@ -1878,18 +1867,18 @@ void K007420_set_banklimit(int limit)
 
 static int K052109_memory_region;
 static int K052109_gfxnum;
-static void (*K052109_callback)(int tmap,int bank,int *code,int *color);
-static unsigned char *K052109_ram;
-static unsigned char *K052109_videoram_F,*K052109_videoram2_F,*K052109_colorram_F;
-static unsigned char *K052109_videoram_A,*K052109_videoram2_A,*K052109_colorram_A;
-static unsigned char *K052109_videoram_B,*K052109_videoram2_B,*K052109_colorram_B;
-static unsigned char K052109_charrombank[4];
+static void (*K052109_callback)(int tmap,int bank,int *code,int *color,int *flags,int *priority);
+static UINT8 *K052109_ram;
+static UINT8 *K052109_videoram_F,*K052109_videoram2_F,*K052109_colorram_F;
+static UINT8 *K052109_videoram_A,*K052109_videoram2_A,*K052109_colorram_A;
+static UINT8 *K052109_videoram_B,*K052109_videoram2_B,*K052109_colorram_B;
+static UINT8 K052109_charrombank[4];
 static UINT8 has_extra_video_ram;
 static INT32 K052109_RMRD_line;
 static int K052109_tileflip_enable;
 static UINT8 K052109_irq_enabled;
 static INT32 K052109_dx[3], K052109_dy[3];
-static unsigned char K052109_romsubbank,K052109_scrollctrl;
+static UINT8 K052109_romsubbank,K052109_scrollctrl;
 tilemap *K052109_tilemap[3];
 
 
@@ -1911,11 +1900,13 @@ tilemap *K052109_tilemap[3];
   color RAM    ------xx  depends on external connections (usually banking, flip)
 */
 
-INLINE void K052109_get_tile_info(int tile_index,int layer,UINT8 *cram,UINT8 *vram1,UINT8 *vram2)
+INLINE void K052109_get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int layer,UINT8 *cram,UINT8 *vram1,UINT8 *vram2)
 {
 	int flipy = 0;
 	int code = vram1[tile_index] + 256 * vram2[tile_index];
 	int color = cram[tile_index];
+	int flags = 0;
+	int priority = 0;
 	int bank = K052109_charrombank[(color & 0x0c) >> 2];
 if (has_extra_video_ram) bank = (color & 0x0c) >> 2;	/* kludge for X-Men */
 	color = (color & 0xf3) | ((bank & 0x03) << 2);
@@ -1923,26 +1914,26 @@ if (has_extra_video_ram) bank = (color & 0x0c) >> 2;	/* kludge for X-Men */
 
 	flipy = color & 0x02;
 
-	tile_info.flags = 0;
+	(*K052109_callback)(layer,bank,&code,&color,&flags,&priority);
 
-	(*K052109_callback)(layer,bank,&code,&color);
+	/* if the callback set flip X but it is not enabled, turn it off */
+	if (!(K052109_tileflip_enable & 1)) flags &= ~TILE_FLIPX;
+
+	/* if flip Y is enabled and the attribute but is set, turn it on */
+	if (flipy && (K052109_tileflip_enable & 2)) flags |= TILE_FLIPY;
 
 	SET_TILE_INFO(
 			K052109_gfxnum,
 			code,
 			color,
-			tile_info.flags);
+			flags);
 
-	/* if the callback set flip X but it is not enabled, turn it off */
-	if (!(K052109_tileflip_enable & 1)) tile_info.flags &= ~TILE_FLIPX;
-
-	/* if flip Y is enabled and the attribute but is set, turn it on */
-	if (flipy && (K052109_tileflip_enable & 2)) tile_info.flags |= TILE_FLIPY;
+	tileinfo->priority = priority;
 }
 
-static void K052109_get_tile_info0(int tile_index) { K052109_get_tile_info(tile_index,0,K052109_colorram_F,K052109_videoram_F,K052109_videoram2_F); }
-static void K052109_get_tile_info1(int tile_index) { K052109_get_tile_info(tile_index,1,K052109_colorram_A,K052109_videoram_A,K052109_videoram2_A); }
-static void K052109_get_tile_info2(int tile_index) { K052109_get_tile_info(tile_index,2,K052109_colorram_B,K052109_videoram_B,K052109_videoram2_B); }
+static TILE_GET_INFO( K052109_get_tile_info0 ) { K052109_get_tile_info(machine,tileinfo,tile_index,0,K052109_colorram_F,K052109_videoram_F,K052109_videoram2_F); }
+static TILE_GET_INFO( K052109_get_tile_info1 ) { K052109_get_tile_info(machine,tileinfo,tile_index,1,K052109_colorram_A,K052109_videoram_A,K052109_videoram2_A); }
+static TILE_GET_INFO( K052109_get_tile_info2 ) { K052109_get_tile_info(machine,tileinfo,tile_index,2,K052109_colorram_B,K052109_videoram_B,K052109_videoram2_B); }
 
 
 static void K052109_tileflip_reset(void)
@@ -1955,8 +1946,8 @@ static void K052109_tileflip_reset(void)
 }
 
 
-int K052109_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int plane3,
-		void (*callback)(int tmap,int bank,int *code,int *color))
+void K052109_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int plane3,
+		void (*callback)(int tmap,int bank,int *code,int *color,int *flags,int *priority))
 {
 	int gfx_index, i;
 	static gfx_layout charlayout =
@@ -1975,8 +1966,7 @@ int K052109_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int 
 	for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
 		if (Machine->gfx[gfx_index] == 0)
 			break;
-	if (gfx_index == MAX_GFX_ELEMENTS)
-		return 1;
+	assert(gfx_index != MAX_GFX_ELEMENTS);
 
 	/* tweak the structure for the number of tiles we have */
 	charlayout.total = memory_region_length(gfx_memory_region) / 32;
@@ -2047,7 +2037,6 @@ int K052109_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int 
 	state_save_register_global(has_extra_video_ram);
 
 	state_save_register_func_postload(K052109_tileflip_reset);
-	return 0;
 }
 
 
@@ -2078,12 +2067,14 @@ READ8_HANDLER( K052109_r )
 	{
 		int code = (offset & 0x1fff) >> 5;
 		int color = K052109_romsubbank;
+		int flags = 0;
+		int priority = 0;
 		int bank = K052109_charrombank[(color & 0x0c) >> 2] >> 2;   /* discard low bits (TMNT) */
 		int addr;
 
 if (has_extra_video_ram) code |= color << 8;	/* kludge for X-Men */
 else
-		(*K052109_callback)(0,bank,&code,&color);
+		(*K052109_callback)(0,bank,&code,&color,&flags,&priority);
 
 		addr = (code << 5) + (offset & 0x1f);
 		addr &= memory_region_length(K052109_memory_region)-1;
@@ -2098,12 +2089,9 @@ WRITE8_HANDLER( K052109_w )
 {
 	if ((offset & 0x1fff) < 0x1800) /* tilemap RAM */
 	{
-		if (K052109_ram[offset] != data)
-		{
-			if (offset >= 0x4000) has_extra_video_ram = 1;  /* kludge for X-Men */
-			K052109_ram[offset] = data;
-			tilemap_mark_tile_dirty(K052109_tilemap[(offset & 0x1800) >> 11],offset & 0x7ff);
-		}
+		if (offset >= 0x4000) has_extra_video_ram = 1;  /* kludge for X-Men */
+		K052109_ram[offset] = data;
+		tilemap_mark_tile_dirty(K052109_tilemap[(offset & 0x1800) >> 11],offset & 0x7ff);
 	}
 	else	/* control registers */
 	{
@@ -2246,7 +2234,7 @@ popmessage("%x %x %x %x",
 	if ((K052109_scrollctrl & 0x03) == 0x02)
 	{
 		int xscroll,yscroll,offs;
-		unsigned char *scrollram = &K052109_ram[0x1a00];
+		UINT8 *scrollram = &K052109_ram[0x1a00];
 
 
 		tilemap_set_scroll_rows(K052109_tilemap[1],256);
@@ -2263,7 +2251,7 @@ popmessage("%x %x %x %x",
 	else if ((K052109_scrollctrl & 0x03) == 0x03)
 	{
 		int xscroll,yscroll,offs;
-		unsigned char *scrollram = &K052109_ram[0x1a00];
+		UINT8 *scrollram = &K052109_ram[0x1a00];
 
 
 		tilemap_set_scroll_rows(K052109_tilemap[1],256);
@@ -2280,7 +2268,7 @@ popmessage("%x %x %x %x",
 	else if ((K052109_scrollctrl & 0x04) == 0x04)
 	{
 		int xscroll,yscroll,offs;
-		unsigned char *scrollram = &K052109_ram[0x1800];
+		UINT8 *scrollram = &K052109_ram[0x1800];
 
 
 		tilemap_set_scroll_rows(K052109_tilemap[1],1);
@@ -2297,7 +2285,7 @@ popmessage("%x %x %x %x",
 	else
 	{
 		int xscroll,yscroll;
-		unsigned char *scrollram = &K052109_ram[0x1a00];
+		UINT8 *scrollram = &K052109_ram[0x1a00];
 
 
 		tilemap_set_scroll_rows(K052109_tilemap[1],1);
@@ -2312,7 +2300,7 @@ popmessage("%x %x %x %x",
 	if ((K052109_scrollctrl & 0x18) == 0x10)
 	{
 		int xscroll,yscroll,offs;
-		unsigned char *scrollram = &K052109_ram[0x3a00];
+		UINT8 *scrollram = &K052109_ram[0x3a00];
 
 
 		tilemap_set_scroll_rows(K052109_tilemap[2],256);
@@ -2329,7 +2317,7 @@ popmessage("%x %x %x %x",
 	else if ((K052109_scrollctrl & 0x18) == 0x18)
 	{
 		int xscroll,yscroll,offs;
-		unsigned char *scrollram = &K052109_ram[0x3a00];
+		UINT8 *scrollram = &K052109_ram[0x3a00];
 
 
 		tilemap_set_scroll_rows(K052109_tilemap[2],256);
@@ -2346,7 +2334,7 @@ popmessage("%x %x %x %x",
 	else if ((K052109_scrollctrl & 0x20) == 0x20)
 	{
 		int xscroll,yscroll,offs;
-		unsigned char *scrollram = &K052109_ram[0x3800];
+		UINT8 *scrollram = &K052109_ram[0x3800];
 
 
 		tilemap_set_scroll_rows(K052109_tilemap[2],1);
@@ -2363,7 +2351,7 @@ popmessage("%x %x %x %x",
 	else
 	{
 		int xscroll,yscroll;
-		unsigned char *scrollram = &K052109_ram[0x3a00];
+		UINT8 *scrollram = &K052109_ram[0x3a00];
 
 
 		tilemap_set_scroll_rows(K052109_tilemap[2],1);
@@ -2420,13 +2408,13 @@ static gfx_element *K051960_gfx;
 static void (*K051960_callback)(int *code,int *color,int *priority,int *shadow);
 static int K051960_romoffset;
 static int K051960_spriteflip,K051960_readroms;
-static unsigned char K051960_spriterombank[3];
-static unsigned char *K051960_ram;
+static UINT8 K051960_spriterombank[3];
+static UINT8 *K051960_ram;
 static int K051960_dx, K051960_dy;
 static int K051960_irq_enabled, K051960_nmi_enabled;
 
 
-int K051960_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int plane3,
+void K051960_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int plane3,
 		void (*callback)(int *code,int *color,int *priority,int *shadow))
 {
 	int gfx_index,i;
@@ -2448,8 +2436,8 @@ int K051960_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int 
 	for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
 		if (Machine->gfx[gfx_index] == 0)
 			break;
-	if (gfx_index == MAX_GFX_ELEMENTS)
-		return 1;
+
+	assert(gfx_index != MAX_GFX_ELEMENTS);
 
 	/* tweak the structure for the number of tiles we have */
 	spritelayout.total = memory_region_length(gfx_memory_region) / 128;
@@ -2492,8 +2480,6 @@ int K051960_vh_start(int gfx_memory_region,int plane0,int plane1,int plane2,int 
 	K051960_callback = callback;
 	K051960_ram = auto_malloc(0x400);
 	memset(K051960_ram,0,0x400);
-
-	return 0;
 }
 
 
@@ -2921,7 +2907,7 @@ static UINT16 *K053245_ram[MAX_K053245_CHIPS], *K053245_buffer[MAX_K053245_CHIPS
 static UINT8 K053244_regs[MAX_K053245_CHIPS][0x10];
 static int K053245_dx[MAX_K053245_CHIPS], K053245_dy[MAX_K053245_CHIPS];
 
-int K053245_vh_start(int chip, int gfx_memory_region,int plane0,int plane1,int plane2,int plane3,
+void K053245_vh_start(int chip, int gfx_memory_region,int plane0,int plane1,int plane2,int plane3,
 		void (*callback)(int *code,int *color,int *priority))
 {
 	int gfx_index,i;
@@ -2938,11 +2924,7 @@ int K053245_vh_start(int chip, int gfx_memory_region,int plane0,int plane1,int p
 		128*8
 	};
 
-	if (chip>=MAX_K053245_CHIPS)
-	{
-		mame_printf_debug("K053245_vh_start chip >= MAX_K053245_CHIPS\n");
-		return 1;
-	}
+	assert_always(chip<MAX_K053245_CHIPS, "K053245_vh_start chip >= MAX_K053245_CHIPS");
 
 	K053245_memory_region[chip]=2;
 
@@ -2952,8 +2934,7 @@ int K053245_vh_start(int chip, int gfx_memory_region,int plane0,int plane1,int p
 	for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
 		if (Machine->gfx[gfx_index] == 0)
 			break;
-	if (gfx_index == MAX_GFX_ELEMENTS)
-		return 1;
+	assert(gfx_index != MAX_GFX_ELEMENTS);
 
 	/* tweak the structure for the number of tiles we have */
 	spritelayout.total = memory_region_length(gfx_memory_region) / 128;
@@ -3001,8 +2982,6 @@ int K053245_vh_start(int chip, int gfx_memory_region,int plane0,int plane1,int p
 
 	memset(K053245_ram[chip],0,K053245_ramsize[chip]);
 	memset(K053245_buffer[chip],0,K053245_ramsize[chip]);
-
-	return 0;
 }
 
 void K053245_set_SpriteOffset(int chip,int offsx, int offsy)
@@ -3679,7 +3658,7 @@ void K053247_wraparound_enable(int status)
 	K053247_wraparound = status;
 }
 
-int K053247_vh_start(int gfx_memory_region, int dx, int dy, int plane0,int plane1,int plane2,int plane3,
+void K053247_vh_start(int gfx_memory_region, int dx, int dy, int plane0,int plane1,int plane2,int plane3,
 					 void (*callback)(int *code,int *color,int *priority))
 {
 	int gfx_index,i;
@@ -3701,8 +3680,7 @@ int K053247_vh_start(int gfx_memory_region, int dx, int dy, int plane0,int plane
 	for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
 		if (Machine->gfx[gfx_index] == 0)
 			break;
-	if (gfx_index == MAX_GFX_ELEMENTS)
-		return 1;
+	assert(gfx_index != MAX_GFX_ELEMENTS);
 
 	/* tweak the structure for the number of tiles we have */
 	spritelayout.total = memory_region_length(gfx_memory_region) / 128;
@@ -3764,12 +3742,10 @@ int K053247_vh_start(int gfx_memory_region, int dx, int dy, int plane0,int plane
 	state_save_register_global_array(K053246_regs);
 	state_save_register_global_array(K053247_regs);
 	state_save_register_global(K053246_OBJCHA_line);
-
-	return 0;
 }
 
 /* K055673 used with the 54246 in PreGX/Run and Gun/System GX games */
-int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*callback)(int *code,int *color,int *priority))
+void K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*callback)(int *code,int *color,int *priority))
 {
 	int gfx_index;
 
@@ -3816,7 +3792,7 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 		  12*8*9, 12*8*10, 12*8*11, 12*8*12, 12*8*13, 12*8*14, 12*8*15 },
 		16*16*6
 	};
-	unsigned char *s1, *s2, *d;
+	UINT8 *s1, *s2, *d;
 	long i, c;
 	UINT16 *K055673_rom;
 
@@ -3824,8 +3800,7 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 	for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
 		if (Machine->gfx[gfx_index] == 0)
 			break;
-	if (gfx_index == MAX_GFX_ELEMENTS)
-		return 1;
+	assert(gfx_index != MAX_GFX_ELEMENTS);
 
 	switch(layout) {
 	case K055673_LAYOUT_GX:
@@ -3878,8 +3853,7 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 		break;
 	}
 
-	if (!Machine->gfx[gfx_index])
-		return 1;
+	assert(Machine->gfx[gfx_index]);
 
 	/* set the color information */
 	if (Machine->drv->color_table_len)
@@ -3923,8 +3897,6 @@ int K055673_vh_start(int gfx_memory_region, int layout, int dx, int dy, void (*c
 	state_save_register_global_array(K053246_regs);
 	state_save_register_global_array(K053247_regs);
 	state_save_register_global(K053246_OBJCHA_line);
-
-	return 0;
 }
 
 WRITE16_HANDLER( K053247_reg_word_w ) // write-only OBJSET2 registers (see p.43 table 6.1)
@@ -4547,9 +4519,9 @@ static int K051316_gfxnum[MAX_K051316];
 static int K051316_wraparound[MAX_K051316];
 static int K051316_offset[MAX_K051316][2];
 static int K051316_bpp[MAX_K051316];
-static void (*K051316_callback[MAX_K051316])(int *code,int *color);
-static unsigned char *K051316_ram[MAX_K051316];
-static unsigned char K051316_ctrlram[MAX_K051316][16];
+static void (*K051316_callback[MAX_K051316])(int *code,int *color,int *flags);
+static UINT8 *K051316_ram[MAX_K051316];
+static UINT8 K051316_ctrlram[MAX_K051316][16];
 static tilemap *K051316_tilemap[MAX_K051316];
 
 /***************************************************************************
@@ -4558,40 +4530,40 @@ static tilemap *K051316_tilemap[MAX_K051316];
 
 ***************************************************************************/
 
-INLINE void K051316_get_tile_info(int tile_index,int chip)
+INLINE void K051316_get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int chip)
 {
 	int code = K051316_ram[chip][tile_index];
 	int color = K051316_ram[chip][tile_index + 0x400];
+	int flags = 0;
 
-	tile_info.flags = 0;
-
-	(*K051316_callback[chip])(&code,&color);
+	(*K051316_callback[chip])(&code,&color,&flags);
 
 	SET_TILE_INFO(
 			K051316_gfxnum[chip],
 			code,
 			color,
-			tile_info.flags)
+			flags)
 }
 
-static void K051316_get_tile_info0(int tile_index) { K051316_get_tile_info(tile_index,0); }
-static void K051316_get_tile_info1(int tile_index) { K051316_get_tile_info(tile_index,1); }
-static void K051316_get_tile_info2(int tile_index) { K051316_get_tile_info(tile_index,2); }
+static TILE_GET_INFO( K051316_get_tile_info0 ) { K051316_get_tile_info(machine,tileinfo,tile_index,0); }
+static TILE_GET_INFO( K051316_get_tile_info1 ) { K051316_get_tile_info(machine,tileinfo,tile_index,1); }
+static TILE_GET_INFO( K051316_get_tile_info2 ) { K051316_get_tile_info(machine,tileinfo,tile_index,2); }
 
 
-int K051316_vh_start(int chip, int gfx_memory_region,int bpp,
+void K051316_vh_start(int chip, int gfx_memory_region,int bpp,
 		int tilemap_type,int transparent_pen,
-		void (*callback)(int *code,int *color))
+		void (*callback)(int *code,int *color,int *flags))
 {
 	int gfx_index;
-	static void (*get_tile_info[3])(int tile_index) = { K051316_get_tile_info0,K051316_get_tile_info1,K051316_get_tile_info2 };
+	static tile_get_info_fn get_tile_info[3] = { K051316_get_tile_info0,K051316_get_tile_info1,K051316_get_tile_info2 };
 
 	/* find first empty slot to decode gfx */
 	for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
 		if (Machine->gfx[gfx_index] == 0)
 			break;
-	if (gfx_index == MAX_GFX_ELEMENTS)
-		return 1;
+	assert(gfx_index != MAX_GFX_ELEMENTS);
+
+	assert((bpp == 4) || (bpp == 7) || (bpp == 8));
 
 	if (bpp == 4)
 	{
@@ -4616,7 +4588,7 @@ int K051316_vh_start(int chip, int gfx_memory_region,int bpp,
 		Machine->gfx[gfx_index] = allocgfx(&charlayout);
 		decodegfx(Machine->gfx[gfx_index], memory_region(gfx_memory_region), 0, Machine->gfx[gfx_index]->total_elements);
 	}
-	else if (bpp == 7 || bpp == 8)
+	else
 	{
 		static gfx_layout charlayout =
 		{
@@ -4643,14 +4615,8 @@ int K051316_vh_start(int chip, int gfx_memory_region,int bpp,
 		Machine->gfx[gfx_index] = allocgfx(&charlayout);
 		decodegfx(Machine->gfx[gfx_index], memory_region(gfx_memory_region), 0, Machine->gfx[gfx_index]->total_elements);
 	}
-	else
-	{
-//logerror("K051316_vh_start supports only 4, 7 and 8 bpp\n");
-		return 1;
-	}
 
-	if (!Machine->gfx[gfx_index])
-		return 1;
+	assert(Machine->gfx[gfx_index]);
 
 	/* set the color information */
 	if (Machine->drv->color_table_len)
@@ -4677,29 +4643,27 @@ int K051316_vh_start(int chip, int gfx_memory_region,int bpp,
 
 	K051316_wraparound[chip] = 0;	/* default = no wraparound */
 	K051316_offset[chip][0] = K051316_offset[chip][1] = 0;
-
-	return 0;
 }
 
-int K051316_vh_start_0(int gfx_memory_region,int bpp,
+void K051316_vh_start_0(int gfx_memory_region,int bpp,
 		int tilemap_type,int transparent_pen,
-		void (*callback)(int *code,int *color))
+		void (*callback)(int *code,int *color,int *flags))
 {
-	return K051316_vh_start(0,gfx_memory_region,bpp,tilemap_type,transparent_pen,callback);
+	K051316_vh_start(0,gfx_memory_region,bpp,tilemap_type,transparent_pen,callback);
 }
 
-int K051316_vh_start_1(int gfx_memory_region,int bpp,
+void K051316_vh_start_1(int gfx_memory_region,int bpp,
 		int tilemap_type,int transparent_pen,
-		void (*callback)(int *code,int *color))
+		void (*callback)(int *code,int *color,int *flags))
 {
-	return K051316_vh_start(1,gfx_memory_region,bpp,tilemap_type,transparent_pen,callback);
+	K051316_vh_start(1,gfx_memory_region,bpp,tilemap_type,transparent_pen,callback);
 }
 
-int K051316_vh_start_2(int gfx_memory_region,int bpp,
+void K051316_vh_start_2(int gfx_memory_region,int bpp,
 		int tilemap_type,int transparent_pen,
-		void (*callback)(int *code,int *color))
+		void (*callback)(int *code,int *color,int *flags))
 {
-	return K051316_vh_start(2,gfx_memory_region,bpp,tilemap_type,transparent_pen,callback);
+	K051316_vh_start(2,gfx_memory_region,bpp,tilemap_type,transparent_pen,callback);
 }
 
 
@@ -4726,11 +4690,8 @@ READ8_HANDLER( K051316_2_r )
 
 void K051316_w(int chip,int offset,int data)
 {
-	if (K051316_ram[chip][offset] != data)
-	{
-		K051316_ram[chip][offset] = data;
-		tilemap_mark_tile_dirty(K051316_tilemap[chip],offset & 0x3ff);
-	}
+	K051316_ram[chip][offset] = data;
+	tilemap_mark_tile_dirty(K051316_tilemap[chip],offset & 0x3ff);
 }
 
 WRITE8_HANDLER( K051316_0_w )
@@ -5034,7 +4995,7 @@ void K053936_set_offset(int chip, int xoffs, int yoffs)
 /*                                                                         */
 /***************************************************************************/
 
-static unsigned char K053251_ram[16];
+static UINT8 K053251_ram[16];
 static int K053251_palette_index[5];
 static tilemap *K053251_tilemaps[5];
 static int K053251_tilemaps_set;
@@ -5048,14 +5009,12 @@ static void K053251_reset_indexes(void)
 	K053251_palette_index[4] = 16 * ((K053251_ram[10] >> 3) & 0x07);
 }
 
-int K053251_vh_start(void)
+void K053251_vh_start(void)
 {
 	K053251_set_tilemaps(NULL,NULL,NULL,NULL,NULL);
 
 	state_save_register_global_array(K053251_ram);
 	state_save_register_func_postload(K053251_reset_indexes);
-
-	return 0;
 }
 
 void K053251_set_tilemaps(tilemap *ci0,tilemap *ci1,tilemap *ci2,tilemap *ci3,tilemap *ci4)
@@ -5147,7 +5106,7 @@ int K053251_get_palette_index(int ci)
 /*                                                                         */
 /***************************************************************************/
 
-static unsigned char K054000_ram[0x20];
+static UINT8 K054000_ram[0x20];
 
 WRITE8_HANDLER( K054000_w )
 {
@@ -5212,7 +5171,7 @@ WRITE16_HANDLER( K054000_lsb_w )
 /*                                                                         */
 /***************************************************************************/
 
-static unsigned char K051733_ram[0x20];
+static UINT8 K051733_ram[0x20];
 
 WRITE8_HANDLER( K051733_w )
 {
@@ -5456,14 +5415,14 @@ int K056832_get_lookup(int bits)
 	return res;
 }
 
-static void (*K056832_callback)(int, int *, int *);
+static void (*K056832_callback)(int layer, int *code, int *color, int *flags);
 
-INLINE UINT32 K056832_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
+static UINT32 K056832_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 {
 	return (row<<6) + col;
 }
 
-INLINE void K056832_get_tile_info( int tile_index, int pageIndex )
+INLINE void K056832_get_tile_info( running_machine *machine, tile_data *tileinfo, int tile_index, int pageIndex )
 {
 	static struct K056832_SHIFTMASKS
 	{
@@ -5472,7 +5431,7 @@ INLINE void K056832_get_tile_info( int tile_index, int pageIndex )
 	K056832_shiftmasks[4] = {{6,0x3f,0,0x00},{4,0x0f,2,0x30},{2,0x03,2,0x3c},{0,0x00,2,0x3f}};
 
 	struct K056832_SHIFTMASKS *smptr;
-	int layer, flip, fbits, attr, code;
+	int layer, flip, fbits, attr, code, color, flags;
 	UINT16 *pMem;
 
 	pMem  = &K056832_videoram[(pageIndex<<12)+(tile_index<<1)];
@@ -5495,33 +5454,33 @@ INLINE void K056832_get_tile_info( int tile_index, int pageIndex )
 	// see the tables on pages 4 and 10 of the Pt. 2-3 "VRAM" manual
 	// for a description of these bits "FBIT0" and "FBIT1"
 	flip &= attr>>smptr->flips & 3;
-	attr  = (attr & smptr->palm1) | (attr>>smptr->pals2 & smptr->palm2);
-	tile_info.flags = TILE_FLIPYX(flip);
+	color = (attr & smptr->palm1) | (attr>>smptr->pals2 & smptr->palm2);
+	flags = TILE_FLIPYX(flip);
 
-	(*K056832_callback)(layer, &code, &attr);
+	(*K056832_callback)(layer, &code, &color, &flags);
 
 	SET_TILE_INFO(K056832_gfxnum,
 			code,
-			attr,
-			tile_info.flags)
+			color,
+			flags)
 }
 
-static void K056832_get_tile_info0(int tile_index) { K056832_get_tile_info(tile_index,0x0); }
-static void K056832_get_tile_info1(int tile_index) { K056832_get_tile_info(tile_index,0x1); }
-static void K056832_get_tile_info2(int tile_index) { K056832_get_tile_info(tile_index,0x2); }
-static void K056832_get_tile_info3(int tile_index) { K056832_get_tile_info(tile_index,0x3); }
-static void K056832_get_tile_info4(int tile_index) { K056832_get_tile_info(tile_index,0x4); }
-static void K056832_get_tile_info5(int tile_index) { K056832_get_tile_info(tile_index,0x5); }
-static void K056832_get_tile_info6(int tile_index) { K056832_get_tile_info(tile_index,0x6); }
-static void K056832_get_tile_info7(int tile_index) { K056832_get_tile_info(tile_index,0x7); }
-static void K056832_get_tile_info8(int tile_index) { K056832_get_tile_info(tile_index,0x8); }
-static void K056832_get_tile_info9(int tile_index) { K056832_get_tile_info(tile_index,0x9); }
-static void K056832_get_tile_infoa(int tile_index) { K056832_get_tile_info(tile_index,0xa); }
-static void K056832_get_tile_infob(int tile_index) { K056832_get_tile_info(tile_index,0xb); }
-static void K056832_get_tile_infoc(int tile_index) { K056832_get_tile_info(tile_index,0xc); }
-static void K056832_get_tile_infod(int tile_index) { K056832_get_tile_info(tile_index,0xd); }
-static void K056832_get_tile_infoe(int tile_index) { K056832_get_tile_info(tile_index,0xe); }
-static void K056832_get_tile_infof(int tile_index) { K056832_get_tile_info(tile_index,0xf); }
+static TILE_GET_INFO( K056832_get_tile_info0 ) { K056832_get_tile_info(machine,tileinfo,tile_index,0x0); }
+static TILE_GET_INFO( K056832_get_tile_info1 ) { K056832_get_tile_info(machine,tileinfo,tile_index,0x1); }
+static TILE_GET_INFO( K056832_get_tile_info2 ) { K056832_get_tile_info(machine,tileinfo,tile_index,0x2); }
+static TILE_GET_INFO( K056832_get_tile_info3 ) { K056832_get_tile_info(machine,tileinfo,tile_index,0x3); }
+static TILE_GET_INFO( K056832_get_tile_info4 ) { K056832_get_tile_info(machine,tileinfo,tile_index,0x4); }
+static TILE_GET_INFO( K056832_get_tile_info5 ) { K056832_get_tile_info(machine,tileinfo,tile_index,0x5); }
+static TILE_GET_INFO( K056832_get_tile_info6 ) { K056832_get_tile_info(machine,tileinfo,tile_index,0x6); }
+static TILE_GET_INFO( K056832_get_tile_info7 ) { K056832_get_tile_info(machine,tileinfo,tile_index,0x7); }
+static TILE_GET_INFO( K056832_get_tile_info8 ) { K056832_get_tile_info(machine,tileinfo,tile_index,0x8); }
+static TILE_GET_INFO( K056832_get_tile_info9 ) { K056832_get_tile_info(machine,tileinfo,tile_index,0x9); }
+static TILE_GET_INFO( K056832_get_tile_infoa ) { K056832_get_tile_info(machine,tileinfo,tile_index,0xa); }
+static TILE_GET_INFO( K056832_get_tile_infob ) { K056832_get_tile_info(machine,tileinfo,tile_index,0xb); }
+static TILE_GET_INFO( K056832_get_tile_infoc ) { K056832_get_tile_info(machine,tileinfo,tile_index,0xc); }
+static TILE_GET_INFO( K056832_get_tile_infod ) { K056832_get_tile_info(machine,tileinfo,tile_index,0xd); }
+static TILE_GET_INFO( K056832_get_tile_infoe ) { K056832_get_tile_info(machine,tileinfo,tile_index,0xe); }
+static TILE_GET_INFO( K056832_get_tile_infof ) { K056832_get_tile_info(machine,tileinfo,tile_index,0xf); }
 
 static void K056832_change_rambank(void)
 {
@@ -5584,7 +5543,10 @@ void K056832_set_tile_bank(int bank)
 	K056832_change_rombank();
 }
 
-int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][2], void (*callback)(int, int *, int *), int djmain_hack)
+void K056832_vh_start(int gfx_memory_region, int bpp, int big,
+	int (*scrolld)[4][2],
+	void (*callback)(int layer, int *code, int *color, int *flags),
+	int djmain_hack)
 {
 	tilemap *tmap;
 	int gfx_index;
@@ -5658,7 +5620,7 @@ int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][
 	{
 		if (Machine->gfx[gfx_index] == 0) break;
 	}
-	if (gfx_index == MAX_GFX_ELEMENTS) return 1;
+	assert(gfx_index != MAX_GFX_ELEMENTS);
 
 	/* handle the various graphics formats */
 	i = (big) ? 8 : 16;
@@ -5719,7 +5681,7 @@ int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][
 	}
 
 	/* make sure the decode went OK */
-	if (!Machine->gfx[gfx_index]) return 1;
+	assert(Machine->gfx[gfx_index]);
 
 	/* set the color information */
 	if (Machine->drv->color_table_len)
@@ -5825,8 +5787,6 @@ int K056832_vh_start(int gfx_memory_region, int bpp, int big, int (*scrolld)[4][
 	state_save_register_func_postload(K056832_UpdatePageLayout);
 	state_save_register_func_postload(K056832_change_rambank);
 	state_save_register_func_postload(K056832_change_rombank);
-
-	return 0;
 }
 
 /* call if a game uses external linescroll */
@@ -6503,6 +6463,7 @@ static int K056832_update_linemap(mame_bitmap *bitmap, int page, int flags)
 
 	for (line=0; line<256; xpr_ptr+=dst_pitch, dst_ptr+=dst_pitch, line++)
 	{
+		tile_data *tileinfo = {0};
 		if (!all_dirty)
 		{
 			offs = line >> 5;
@@ -6511,10 +6472,10 @@ static int K056832_update_linemap(mame_bitmap *bitmap, int page, int flags)
 			dirty[offs] ^= mask;
 		}
 
-		K056832_get_tile_info(line, page);
-		src_ptr = src_base + ((tile_info.tile_number & ~7) << 6);
-		basepen = tile_info.pal_data - pal_ptr;
-		code_transparent = tile_info.priority;
+		K056832_get_tile_info(Machine, tileinfo, line, page);
+		src_ptr = src_base + ((tileinfo->tile_number & ~7) << 6);
+		basepen = tileinfo->pal_data - pal_ptr;
+		code_transparent = tileinfo->priority;
 		code_opaque = code_transparent | TILE_FLAG_FG_OPAQUE;
 		count = -LINE_WIDTH;
 
@@ -7232,15 +7193,13 @@ static int K054338_alphainverted;
 // K054338 alpha blend / final mixer (normally used with the 55555)
 // because the implementation is video dependant, this is just a
 // register-handling shell.
-int K054338_vh_start(void)
+void K054338_vh_start(void)
 {
 	memset(k54338_regs, 0, sizeof(UINT16)*32);
 	memset(K054338_shdRGB, 0, sizeof(int)*9);
 	K054338_alphainverted = 1;
 
 	state_save_register_global_array(k54338_regs);
-
-	return 0;
 }
 
 WRITE16_HANDLER( K054338_word_w )
@@ -7506,7 +7465,7 @@ void K053250_unpack_pixels(int region)
 	while ((--offset) >= 0);
 }
 
-int K053250_vh_start(int chips, int *region)
+void K053250_vh_start(int chips, int *region)
 {
 	UINT16 *ram;
 	int chip;
@@ -7530,8 +7489,6 @@ int K053250_vh_start(int chips, int *region)
 		state_save_register_item_pointer("K053250", chip, K053250_info.chip[chip].ram,  0x800);
 		state_save_register_item_array("K053250", chip, K053250_info.chip[chip].regs);
 	}
-
-	return 0;
 }
 
 WRITE16_HANDLER( K053250_0_w )
@@ -7923,10 +7880,10 @@ void K053250_draw(mame_bitmap *bitmap, const rectangle *cliprect, int chip, int 
 		UINT16 inc    = *line++;
 		INT16    offset = *line++;
 		int dim2;
-		unsigned char *pixel;
+		UINT8 *pixel;
 		UINT32 cpos;
-		unsigned char scanline[512];
-		unsigned char *gbase = K053250_info.chip[chip].base + (((start & 0xff00) << 7) % K053250_info.chip[chip].rommask);
+		UINT8 scanline[512];
+		UINT8 *gbase = K053250_info.chip[chip].base + (((start & 0xff00) << 7) % K053250_info.chip[chip].rommask);
 
 		if(offset >= 0x500)
 			offset -= 0x800;

@@ -35,22 +35,22 @@ void namco_tilemap_invalidate( void )
 	}
 } /* namco_tilemap_invalidate */
 
-INLINE void get_tile_info(int tile_index,UINT16 *vram)
+INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT16 *vram)
 {
 	int tile, mask;
 	mTilemapInfo.cb( vram[tile_index], &tile, &mask );
-	tile_info.mask_data = mTilemapInfo.maskBaseAddr+mask*8;
+	tileinfo->mask_data = mTilemapInfo.maskBaseAddr+mask*8;
 	SET_TILE_INFO(mTilemapInfo.gfxbank,tile,0,0)
 } /* get_tile_info */
 
-static void get_tile_info0(int tile_index) { get_tile_info(tile_index,&mTilemapInfo.videoram[0x0000]); }
-static void get_tile_info1(int tile_index) { get_tile_info(tile_index,&mTilemapInfo.videoram[0x1000]); }
-static void get_tile_info2(int tile_index) { get_tile_info(tile_index,&mTilemapInfo.videoram[0x2000]); }
-static void get_tile_info3(int tile_index) { get_tile_info(tile_index,&mTilemapInfo.videoram[0x3000]); }
-static void get_tile_info4(int tile_index) { get_tile_info(tile_index,&mTilemapInfo.videoram[0x4008]); }
-static void get_tile_info5(int tile_index) { get_tile_info(tile_index,&mTilemapInfo.videoram[0x4408]); }
+static TILE_GET_INFO( get_tile_info0 ) { get_tile_info(machine,tileinfo,tile_index,&mTilemapInfo.videoram[0x0000]); }
+static TILE_GET_INFO( get_tile_info1 ) { get_tile_info(machine,tileinfo,tile_index,&mTilemapInfo.videoram[0x1000]); }
+static TILE_GET_INFO( get_tile_info2 ) { get_tile_info(machine,tileinfo,tile_index,&mTilemapInfo.videoram[0x2000]); }
+static TILE_GET_INFO( get_tile_info3 ) { get_tile_info(machine,tileinfo,tile_index,&mTilemapInfo.videoram[0x3000]); }
+static TILE_GET_INFO( get_tile_info4 ) { get_tile_info(machine,tileinfo,tile_index,&mTilemapInfo.videoram[0x4008]); }
+static TILE_GET_INFO( get_tile_info5 ) { get_tile_info(machine,tileinfo,tile_index,&mTilemapInfo.videoram[0x4408]); }
 
-int
+void
 namco_tilemap_init( int gfxbank, void *maskBaseAddr,
 	void (*cb)( UINT16 code, int *gfx, int *mask) )
 {
@@ -85,7 +85,6 @@ namco_tilemap_init( int gfxbank, void *maskBaseAddr,
 		tilemap_set_scrolldx( mTilemapInfo.tmap[5], 0, 96 );
 		tilemap_set_scrolldy( mTilemapInfo.tmap[5], 0, 40 );
 
-		return 0;
 } /* namco_tilemap_init */
 
 void
@@ -267,7 +266,7 @@ WRITE32_HANDLER( namco_tilemapvideoram32_le_w )
 
 static void zdrawgfxzoom(
 		mame_bitmap *dest_bmp,const gfx_element *gfx,
-		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
+		UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
 		const rectangle *clip,int transparency,int transparent_color,
 		int scalex, int scaley, int zpos )
 {
@@ -743,7 +742,7 @@ draw_spriteC355( mame_bitmap *bitmap, const rectangle *cliprect, const UINT16 *p
 	xscroll &= 0x1ff; if( xscroll & 0x100 ) xscroll |= ~0x1ff;
 	yscroll &= 0x1ff; if( yscroll & 0x100 ) yscroll |= ~0x1ff;
 
-	if( bitmap->width > 288 )
+	if( bitmap->width > 384 )
 	{ /* Medium Resolution: System21 adjust */
 			yscroll += 0x10;
 	}
@@ -895,21 +894,13 @@ DrawObjectList(
 		const UINT16 *pSpriteList16,
 		const UINT16 *pSpriteTable )
 {
-	UINT16 which;
 	int i;
-	int count = 0;
-	/* count the sprites */
+	/* draw the sprites */
 	for( i=0; i<256; i++ )
 	{
-		which = pSpriteList16[i];
-		count++;
-		if( which&0x100 ) break;
-	}
-	/* draw the sprites */
-	for( i=0; i<count; i++ )
-	{
-		which = pSpriteList16[i];
+		UINT16 which = pSpriteList16[i];
 		draw_spriteC355( bitmap, cliprect, &pSpriteTable[(which&0xff)*8], pri, i );
+		if( which&0x100 ) break;
 	}
 } /* DrawObjectList */
 
@@ -991,7 +982,7 @@ static int mRozMaskRegion;
  * Graphics ROM addressing varies across games.
  */
 static void
-roz_get_info( int tile_index, int which )
+roz_get_info( running_machine *machine, tile_data *tileinfo, int tile_index, int which)
 {
 	UINT16 tile = rozvideoram16[tile_index];
 	int bank, mangle;
@@ -1051,19 +1042,19 @@ roz_get_info( int tile_index, int which )
 		break;
 	}
 	SET_TILE_INFO( mRozGfxBank,mangle,0/*color*/,0/*flag*/ );
-	tile_info.mask_data = 32*tile + (UINT8 *)memory_region( mRozMaskRegion );
+	tileinfo->mask_data = 32*tile + (UINT8 *)memory_region( mRozMaskRegion );
 } /* roz_get_info */
 
-static void
-roz_get_info0( int tile_index )
+static
+TILE_GET_INFO( roz_get_info0 )
 {
-	roz_get_info( tile_index,0 );
+	roz_get_info( machine,tileinfo,tile_index,0 );
 } /* roz_get_info0 */
 
-static void
-roz_get_info1( int tile_index )
+static
+TILE_GET_INFO( roz_get_info1 )
 {
-	roz_get_info( tile_index,1 );
+	roz_get_info( machine,tileinfo,tile_index,1 );
 } /* roz_get_info1 */
 
 static UINT32
@@ -1077,11 +1068,11 @@ namco_roz_scan( UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows )
 	return row*128+col;
 } /* namco_roz_scan*/
 
-int
+void
 namco_roz_init( int gfxbank, int maskregion )
 {
 	int i;
-	static void (*roz_info[ROZ_TILEMAP_COUNT])(int tile_index) =
+	static tile_get_info_fn roz_info[ROZ_TILEMAP_COUNT] =
 	{
 		roz_get_info0,
 		roz_get_info1
@@ -1103,7 +1094,6 @@ namco_roz_init( int gfxbank, int maskregion )
 				16,16,
 				256,256 );
 		}
-		return 0;
 } /* namco_roz_init */
 
 struct RozParam
@@ -1181,7 +1171,9 @@ DrawRozHelper(
 	const struct RozParam *rozInfo )
 {
 
-	if( bitmap->bpp == 16 )
+	if( (bitmap->bpp == 16) &&
+	    (namcos2_gametype != NAMCOFL_SPEED_RACER) &&
+	    (namcos2_gametype != NAMCOFL_FINAL_LAP_R))
 	{
 		UINT32 size_mask = rozInfo->size-1;
 		mame_bitmap *srcbitmap = tilemap_get_pixmap( tmap );
@@ -1330,14 +1322,11 @@ WRITE16_HANDLER( namco_rozbank16_w )
 static void
 writerozvideo( int offset, UINT16 data )
 {
-	if( rozvideoram16[offset]!=data )
+	int i;
+	rozvideoram16[offset] = data;
+	for( i=0; i<ROZ_TILEMAP_COUNT; i++ )
 	{
-		int i;
-		rozvideoram16[offset] = data;
-		for( i=0; i<ROZ_TILEMAP_COUNT; i++ )
-		{
-			tilemap_mark_tile_dirty( mRozTilemap[i], offset );
-		}
+		tilemap_mark_tile_dirty( mRozTilemap[i], offset );
 	}
 } /* writerozvideo */
 
@@ -1509,7 +1498,7 @@ static const gfx_layout RoadTileLayout =
 	0x200, /* offset to next tile */
 };
 
-void get_road_info( int tile_index )
+TILE_GET_INFO( get_road_info )
 {
 	UINT16 data = mpRoadRAM[tile_index];
 	/* ------xx xxxxxxxx tile number
@@ -1574,7 +1563,7 @@ RoadMarkAllDirty(void)
 	mbRoadSomethingIsDirty = 1;
 }
 
-int
+void
 namco_road_init( int gfxbank )
 {
 	mbRoadNeedTransparent = 0;
@@ -1601,7 +1590,6 @@ namco_road_init( int gfxbank )
 					state_save_register_global_pointer(mpRoadRAM,   0x20000 / 2);
 					state_save_register_func_postload(RoadMarkAllDirty);
 
-					return 0;
 		}
 	}
 } /* namco_road_init */

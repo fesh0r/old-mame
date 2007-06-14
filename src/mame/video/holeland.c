@@ -18,7 +18,7 @@ static tilemap *bg_tilemap;
 
 ***************************************************************************/
 
-static void holeland_get_tile_info(int tile_index)
+static TILE_GET_INFO( holeland_get_tile_info )
 {
 	int attr = colorram[tile_index];
 	int tile_number = videoram[tile_index] | ((attr & 0x03) << 8);
@@ -34,7 +34,7 @@ static void holeland_get_tile_info(int tile_index)
 			TILE_FLIPYX((attr >> 2) & 0x03) | TILE_SPLIT((attr >> 4) & 1))
 }
 
-static void crzrally_get_tile_info(int tile_index)
+static TILE_GET_INFO( crzrally_get_tile_info )
 {
 	int attr = colorram[tile_index];
 	int tile_number = videoram[tile_index] | ((attr & 0x03) << 8);
@@ -58,32 +58,23 @@ VIDEO_START( holeland )
 
 	tilemap_set_transmask(bg_tilemap,0,0xff,0x00); /* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(bg_tilemap,1,0x01,0xfe); /* split type 1 has pen 0? transparent in front half */
-	return 0;
 }
 
 VIDEO_START( crzrally )
 {
 	bg_tilemap = tilemap_create(crzrally_get_tile_info,tilemap_scan_cols,TILEMAP_SPLIT,8,8,32,32);
-
-	return 0;
 }
 
 WRITE8_HANDLER( holeland_videoram_w )
 {
-	if( videoram[offset]!=data )
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty( bg_tilemap, offset );
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty( bg_tilemap, offset );
 }
 
 WRITE8_HANDLER( holeland_colorram_w )
 {
-	if( colorram[offset]!=data )
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty( bg_tilemap, offset );
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty( bg_tilemap, offset );
 }
 
 WRITE8_HANDLER( holeland_pal_offs_w )

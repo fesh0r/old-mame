@@ -21,7 +21,7 @@ static tilemap *tx_tilemap,*fg_tilemap,*bg_tilemap;
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = wc90b_bgvideoram[tile_index];
 	int tile = wc90b_bgvideoram[tile_index + 0x800];
@@ -32,7 +32,7 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = wc90b_fgvideoram[tile_index];
 	int tile = wc90b_fgvideoram[tile_index + 0x800];
@@ -43,7 +43,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	SET_TILE_INFO(
 			0,
@@ -68,8 +68,6 @@ VIDEO_START( wc90b )
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 	tilemap_set_transparent_pen(tx_tilemap,15);
-
-	return 0;
 }
 
 
@@ -82,29 +80,20 @@ VIDEO_START( wc90b )
 
 WRITE8_HANDLER( wc90b_bgvideoram_w )
 {
-	if (wc90b_bgvideoram[offset] != data)
-	{
-		wc90b_bgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset & 0x7ff);
-	}
+	wc90b_bgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset & 0x7ff);
 }
 
 WRITE8_HANDLER( wc90b_fgvideoram_w )
 {
-	if (wc90b_fgvideoram[offset] != data)
-	{
-		wc90b_fgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap,offset & 0x7ff);
-	}
+	wc90b_fgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap,offset & 0x7ff);
 }
 
 WRITE8_HANDLER( wc90b_txvideoram_w )
 {
-	if (wc90b_txvideoram[offset] != data)
-	{
-		wc90b_txvideoram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset & 0x7ff);
-	}
+	wc90b_txvideoram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset & 0x7ff);
 }
 
 

@@ -94,10 +94,10 @@ VBlank = 58Hz
 #include "sound/okim6295.h"
 
 /* from video */
-extern unsigned char *vb_attribram;
-extern unsigned char *vb_spriteram;
-extern unsigned char *vb_videoram;
-extern unsigned char *vb_scrolly_lo;
+extern UINT8 *vb_attribram;
+extern UINT8 *vb_spriteram;
+extern UINT8 *vb_videoram;
+extern UINT8 *vb_scrolly_lo;
 extern int vb_scrollx_hi;
 extern int vb_scrolly_hi;
 extern int vb_scrollx_lo;
@@ -128,7 +128,7 @@ INTERRUPT_GEN( vball_interrupt );
 */
 static WRITE8_HANDLER( vb_bankswitch_w )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 	memory_set_bankptr( 1,&RAM[ 0x10000 + ( 0x4000 * ( data & 1 ) ) ] );
 
 	if (vball_gfxset != ((data  & 0x20) ^ 0x20)) {
@@ -385,7 +385,7 @@ static const gfx_decode vb_gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,     0, 8 },	/* 8x8 chars */
 	{ REGION_GFX2, 0, &spritelayout, 128, 8 },	/* 16x16 sprites */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static void vball_irq_handler(int irq)

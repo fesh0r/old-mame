@@ -94,7 +94,7 @@ VIDEO_UPDATE( suna8 );
 static tilemap *bg_tilemap;
 static int tiles, rombank, page;
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code, attr;
 	if (code_pressed(KEYCODE_X))
@@ -127,25 +127,19 @@ READ8_HANDLER( suna8_banked_spriteram_r )
 
 WRITE8_HANDLER( suna8_spriteram_w )
 {
-	if (spriteram[offset] != data)
-	{
-		spriteram[offset] = data;
+	spriteram[offset] = data;
 #if TILEMAPS
-		tilemap_mark_tile_dirty(bg_tilemap,offset/2);
+	tilemap_mark_tile_dirty(bg_tilemap,offset/2);
 #endif
-	}
 }
 
 WRITE8_HANDLER( suna8_banked_spriteram_w )
 {
 	offset += suna8_spritebank * 0x2000;
-	if (spriteram[offset] != data)
-	{
-		spriteram[offset] = data;
+	spriteram[offset] = data;
 #if TILEMAPS
-		tilemap_mark_tile_dirty(bg_tilemap,offset/2);
+	tilemap_mark_tile_dirty(bg_tilemap,offset/2);
 #endif
-	}
 }
 
 /*
@@ -171,12 +165,12 @@ WRITE8_HANDLER( brickzn_banked_paletteram_w )
 			(((rgb & (1<<0x6))?1:0)<<2) |
 			(((rgb & (1<<0x7))?1:0)<<3);
 
-	palette_set_color(Machine,offset/2,pal4bit(r),pal4bit(g),pal4bit(b));
+	palette_set_color_rgb(Machine,offset/2,pal4bit(r),pal4bit(g),pal4bit(b));
 }
 
 
 
-int suna8_vh_start_common(int dim)
+void suna8_vh_start_common(int dim)
 {
 	suna8_text_dim = dim;
 	if (!(suna8_text_dim > 0))
@@ -194,13 +188,11 @@ int suna8_vh_start_common(int dim)
 
 	tilemap_set_transparent_pen(bg_tilemap,15);
 #endif
-
-	return 0;
 }
 
-VIDEO_START( suna8_textdim0 )	{ return suna8_vh_start_common(0);  }
-VIDEO_START( suna8_textdim8 )	{ return suna8_vh_start_common(8);  }
-VIDEO_START( suna8_textdim12 )	{ return suna8_vh_start_common(12); }
+VIDEO_START( suna8_textdim0 )	{ suna8_vh_start_common(0);  }
+VIDEO_START( suna8_textdim8 )	{ suna8_vh_start_common(8);  }
+VIDEO_START( suna8_textdim12 )	{ suna8_vh_start_common(12); }
 
 /***************************************************************************
 

@@ -20,19 +20,17 @@ static int layer_colorbase[3],sprite_colorbase;
 
 ***************************************************************************/
 
-static void mainevt_tile_callback(int layer,int bank,int *code,int *color)
+static void mainevt_tile_callback(int layer,int bank,int *code,int *color,int *flags,int *priority)
 {
-	tile_info.flags = (*color & 0x02) ? TILE_FLIPX : 0;
+	*flags = (*color & 0x02) ? TILE_FLIPX : 0;
 
 	/* priority relative to HALF priority sprites */
-	if (layer == 2) tile_info.priority = (*color & 0x20) >> 5;
-	else tile_info.priority = 0;
-
+	*priority = (layer == 2) ? (*color & 0x20) >> 5 : 0;
 	*code |= ((*color & 0x01) << 8) | ((*color & 0x1c) << 7);
 	*color = layer_colorbase[layer] + ((*color & 0xc0) >> 6);
 }
 
-static void dv_tile_callback(int layer,int bank,int *code,int *color)
+static void dv_tile_callback(int layer,int bank,int *code,int *color,int *flags,int *priority)
 {
 	/* (color & 0x02) is flip y handled internally by the 052109 */
 	*code |= ((*color & 0x01) << 8) | ((*color & 0x3c) << 7);
@@ -74,12 +72,8 @@ VIDEO_START( mainevt )
 	layer_colorbase[2] = 4;
 	sprite_colorbase = 12;
 
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,mainevt_tile_callback))
-		return 1;
-	if (K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,mainevt_sprite_callback))
-		return 1;
-
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,mainevt_tile_callback);
+	K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,mainevt_sprite_callback);
 }
 
 VIDEO_START( dv )
@@ -89,12 +83,8 @@ VIDEO_START( dv )
 	layer_colorbase[2] = 4;
 	sprite_colorbase = 8;
 
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,dv_tile_callback))
-		return 1;
-	if (K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,dv_sprite_callback))
-		return 1;
-
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,dv_tile_callback);
+	K051960_vh_start(REGION_GFX2,NORMAL_PLANE_ORDER,dv_sprite_callback);
 }
 
 /*****************************************************************************/

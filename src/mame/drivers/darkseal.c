@@ -270,7 +270,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &seallayout,  768, 16 },	/* Tiles 16x16 */
 	{ REGION_GFX3, 0, &seallayout, 1024, 16 },	/* Tiles 16x16 */
 	{ REGION_GFX4, 0, &seallayout2, 256, 32 },	/* Sprites 16x16 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /******************************************************************************/
@@ -494,7 +494,7 @@ ROM_END
 
 static DRIVER_INIT( darkseal )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 	int i;
 
 	for (i=0x00000; i<0x80000; i++)

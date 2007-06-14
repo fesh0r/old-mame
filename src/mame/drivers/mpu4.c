@@ -191,7 +191,7 @@ IRQ line connected to CPU
            |   |                 |
            |   |                 |             CB1  INPUT,  connected to PB7 (Aux2 connector pin 4)
            |   |                 |
-           |   |                 |             CB2  OUTPUT, AY8910 chip select line
+           |   |                 |             CB2  OUTPUT, AY8913 chip select line
            |   |                 |             IRQB connected to IRQ of CPU
            |   |                 |
 -----------+---+-----------------+--------------------------------------------------------------------------
@@ -199,10 +199,10 @@ IRQ line connected to CPU
            |   |                 |
            |   |                 |  port A
            |   |                 |
-           |   |                 |        PA0 - PA7 (INPUT/OUTPUT) data port AY8910 sound chip
+           |   |                 |        PA0 - PA7 (INPUT/OUTPUT) data port AY8913 sound chip
            |   |                 |
            |   |                 |        CA1 INPUT,  not connected
-           |   |                 |        CA2 OUTPUT, BC1 pin AY8910 sound chip
+           |   |                 |        CA2 OUTPUT, BC1 pin AY8913 sound chip
            |   |                 |        IRQA , connected to IRQ CPU
            |   |                 |
            |   |                 |  port B
@@ -211,7 +211,7 @@ IRQ line connected to CPU
            |   |                 |        PB4-PB7 OUTPUT, reel B
            |   |                 |
            |   |                 |        CB1 INPUT,  not connected
-           |   |                 |        CB2 OUTPUT, B01R pin AY8910 sound chip
+           |   |                 |        CB2 OUTPUT, B01R pin AY8913 sound chip
            |   |                 |        IRQB , connected to IRQ CPU
            |   |                 |
 -----------+---+-----------------+--------------------------------------------------------------------------
@@ -311,7 +311,7 @@ IRQ line connected to CPU
 static int mmtr_data;
 static int alpha_data_line;
 static int alpha_clock;
-static int ay8910_address;
+static int ay8913_address;
 //static int expansion_latch;// MOD 4 and above only
 //static int global_volume;// MOD 4 and above only
 static int serial_data;
@@ -459,7 +459,6 @@ void awp_lamp_draw(void)
 
 VIDEO_START( mpu4 )
 {
-	return 0;
 }
 
 // video update ///////////////////////////////////////////////////////////
@@ -487,22 +486,22 @@ VIDEO_UPDATE( mpu4 )
 
 PALETTE_INIT( mpu4 )
 {
-	palette_set_color(machine, 0,0x00,0x00,0x00);
-	palette_set_color(machine, 1,0x00,0x00,0xFF);
-	palette_set_color(machine, 2,0x00,0xFF,0x00);
-	palette_set_color(machine, 3,0x00,0xFF,0xFF);
-	palette_set_color(machine, 4,0xFF,0x00,0x00);
-	palette_set_color(machine, 5,0xFF,0x00,0xFF);
-	palette_set_color(machine, 6,0xFF,0xFF,0x00);
-	palette_set_color(machine, 7,0xFF,0xFF,0xFF);
-	palette_set_color(machine, 8,0x80,0x80,0x80);
-	palette_set_color(machine, 9,0x00,0x00,0x80);
-	palette_set_color(machine,10,0x00,0x80,0x00);
-	palette_set_color(machine,11,0x00,0x80,0x80);
-	palette_set_color(machine,12,0x80,0x00,0x00);
-	palette_set_color(machine,13,0x80,0x00,0x80);
-	palette_set_color(machine,14,0x80,0x80,0x00);
-	palette_set_color(machine,15,0x80,0x80,0x80);
+	palette_set_color(machine, 0,MAKE_RGB(0x00,0x00,0x00));
+	palette_set_color(machine, 1,MAKE_RGB(0x00,0x00,0xFF));
+	palette_set_color(machine, 2,MAKE_RGB(0x00,0xFF,0x00));
+	palette_set_color(machine, 3,MAKE_RGB(0x00,0xFF,0xFF));
+	palette_set_color(machine, 4,MAKE_RGB(0xFF,0x00,0x00));
+	palette_set_color(machine, 5,MAKE_RGB(0xFF,0x00,0xFF));
+	palette_set_color(machine, 6,MAKE_RGB(0xFF,0xFF,0x00));
+	palette_set_color(machine, 7,MAKE_RGB(0xFF,0xFF,0xFF));
+	palette_set_color(machine, 8,MAKE_RGB(0x80,0x80,0x80));
+	palette_set_color(machine, 9,MAKE_RGB(0x00,0x00,0x80));
+	palette_set_color(machine,10,MAKE_RGB(0x00,0x80,0x00));
+	palette_set_color(machine,11,MAKE_RGB(0x00,0x80,0x80));
+	palette_set_color(machine,12,MAKE_RGB(0x80,0x00,0x00));
+	palette_set_color(machine,13,MAKE_RGB(0x80,0x00,0x80));
+	palette_set_color(machine,14,MAKE_RGB(0x80,0x80,0x00));
+	palette_set_color(machine,15,MAKE_RGB(0x80,0x80,0x80));
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -746,16 +745,9 @@ static void ic24_setup(void)
 		double duration = TIME_OF_74LS123((220*1000),(0.1*0.000001));
 		if (!ic24_active)
 		{
-			ic24_output(1);
+			ic24_output(0);
 			mame_timer_adjust(ic24_timer, double_to_mame_time(duration), 0, time_zero);
 			ic24_active = 1;
-		}
-	}
-	else
-	{
-		if (ic24_active)
-		{
-			mame_timer_adjust(ic24_timer, time_zero, 0, time_zero);
 		}
 	}
 }
@@ -763,7 +755,7 @@ static void ic24_setup(void)
 void ic24_timeout(int dummy)
 {
 	ic24_active = 0;
-	ic24_output(0);
+	ic24_output(1);
 }
 
 static WRITE8_HANDLER( pia_ic4_porta_w )
@@ -876,7 +868,7 @@ static void update_ay(void)
 {
 	if (pia_get_output_cb2(2));
 	{
-		switch (ay8910_address)
+		switch (ay8913_address)
 		{
   			case 0x00:
 			{
@@ -885,7 +877,7 @@ static void update_ay(void)
 		    }
 		  	case 0x01:
 			{	/* CA2 = 1 CB2 = 0? : Read from selected PSG register and make the register data available to Port A */
-				pia_set_input_a(3, AY8910_read_port_0_r(0));
+				pia_set_input_a(3, AY8910_read_port_0_r(0), 0);
 				LOG(("AY Chip Read \n"));
 				break;
 		  	}
@@ -936,8 +928,8 @@ static WRITE8_HANDLER( pia_ic6_ca2_w )
 {
 	LOG(("%04x IC6 PIA write CA2 %2x (AY8912 BC1)\n", activecpu_get_previouspc(),data));
 
-	if ( data ) ay8910_address |=  0x01;
-	else        ay8910_address &= ~0x01;
+	if ( data ) ay8913_address |=  0x01;
+	else        ay8913_address &= ~0x01;
 
 	update_ay();
 }
@@ -946,8 +938,8 @@ static WRITE8_HANDLER( pia_ic6_cb2_w )
 {
 	LOG(("%04x IC6 PIA write CB2 %2x (AY8912 BCDIR)\n", activecpu_get_previouspc(),data));
 
-	if ( data ) ay8910_address |=  0x02;
-	else        ay8910_address &= ~0x02;
+	if ( data ) ay8913_address |=  0x02;
+	else        ay8913_address &= ~0x02;
 
 	update_ay();
 }
@@ -1844,8 +1836,7 @@ VIDEO_START( mpu4_vid )
 		if (machine->gfx[mpu4_gfx_index] == 0)
 			break;
 
-	if (mpu4_gfx_index == MAX_GFX_ELEMENTS)
-		return 1;
+	assert(mpu4_gfx_index != MAX_GFX_ELEMENTS);
 
 	/* create the char set (gfx will then be updated dynamically from RAM) */
 	machine->gfx[mpu4_gfx_index+0] = allocgfx(&mpu4_vid_char_8x8_layout);
@@ -1864,8 +1855,6 @@ VIDEO_START( mpu4_vid )
 	machine->gfx[mpu4_gfx_index+3]->total_colors = machine->drv->total_colors / 16;
 
 	scn2675_IR_pointer = 0;
-
-	return 0;
 }
 
 /* palette support is very preliminary */
@@ -1883,7 +1872,7 @@ WRITE16_HANDLER( ef9369_data_w )
 
 	color = ef9369_counter/2;
 	coldat = (ef9369_palette[color*2+1]<<8)|ef9369_palette[color*2];
-	palette_set_color(Machine,color,pal4bit(coldat >> 0),pal4bit(coldat >> 8),pal4bit(coldat >> 4));
+	palette_set_color_rgb(Machine,color,pal4bit(coldat >> 0),pal4bit(coldat >> 8),pal4bit(coldat >> 4));
 
 	ef9369_counter++;
 	if (ef9369_counter>31) ef9369_counter = 31;
@@ -2459,12 +2448,12 @@ INTERRUPT_GEN(mpu4_vid_irq)
 
 MACHINE_START( mpu4_vid )
 {
-	pia_config(0, PIA_STANDARD_ORDERING, &pia_ic3_intf);
-	pia_config(1, PIA_STANDARD_ORDERING, &pia_ic4_intf);
-	pia_config(2, PIA_STANDARD_ORDERING, &pia_ic5_intf);
-	pia_config(3, PIA_STANDARD_ORDERING, &pia_ic6_intf);
-	pia_config(4, PIA_STANDARD_ORDERING, &pia_ic7_intf);
-	pia_config(5, PIA_STANDARD_ORDERING, &pia_ic8_intf);
+	pia_config(0, &pia_ic3_intf);
+	pia_config(1, &pia_ic4_intf);
+	pia_config(2, &pia_ic5_intf);
+	pia_config(3, &pia_ic6_intf);
+	pia_config(4, &pia_ic7_intf);
+	pia_config(5, &pia_ic8_intf);
 
 	pia_reset();
 
@@ -2497,18 +2486,16 @@ MACHINE_START( mpu4_vid )
 // setup the standard oki MSC1937 display ///////////////////////////////
 
 	vfd_init(0, VFDTYPE_MSC1937,0);   // ?
-
-	return 0;
 }
 
 static MACHINE_START( mpu4 )
 {
-	pia_config(0, PIA_STANDARD_ORDERING, &pia_ic3_intf);
-	pia_config(1, PIA_STANDARD_ORDERING, &pia_ic4_intf);
-	pia_config(2, PIA_STANDARD_ORDERING, &pia_ic5_intf);
-	pia_config(3, PIA_STANDARD_ORDERING, &pia_ic6_intf);
-	pia_config(4, PIA_STANDARD_ORDERING, &pia_ic7_intf);
-	pia_config(5, PIA_STANDARD_ORDERING, &pia_ic8_intf);
+	pia_config(0, &pia_ic3_intf);
+	pia_config(1, &pia_ic4_intf);
+	pia_config(2, &pia_ic5_intf);
+	pia_config(3, &pia_ic6_intf);
+	pia_config(4, &pia_ic7_intf);
+	pia_config(5, &pia_ic8_intf);
 
 	pia_reset();
 
@@ -2534,8 +2521,6 @@ static MACHINE_START( mpu4 )
 // setup the standard oki MSC1937 display ///////////////////////////////
 
 	vfd_init(0, VFDTYPE_MSC1937,0);
-
-	return 0;
 }
 
 /*
@@ -2798,7 +2783,7 @@ static const gfx_layout dealemcharlayout =
 static const gfx_decode dealemgfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x0000, &dealemcharlayout, 0, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 UINT8 *dealem_videoram,*dealem_charram;
@@ -2849,13 +2834,13 @@ PALETTE_INIT( dealem )
 		bit2 = BIT(*color_prom,7);
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tileno, colour;
 
@@ -2868,27 +2853,19 @@ static void get_bg_tile_info(int tile_index)
 VIDEO_START(dealem)
 {
 	dealem_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 8, 8,32,32);
-
-	return 0;
 }
 
 WRITE8_HANDLER( dealem_videoram_w )
 {
-	if (dealem_videoram[offset] != data)
-	{
-		dealem_videoram[offset] = data;
-		tilemap_mark_tile_dirty(dealem_tilemap, offset);
-	}
+	dealem_videoram[offset] = data;
+	tilemap_mark_tile_dirty(dealem_tilemap, offset);
 }
 
 // this is wrong, the PAL handles the colour selection
 WRITE8_HANDLER( dealem_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(dealem_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(dealem_tilemap, offset);
 }
 
 VIDEO_UPDATE(dealem)
@@ -2977,7 +2954,7 @@ static MACHINE_DRIVER_START( mpu4_vid )
 	MDRV_PALETTE_LENGTH(16)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, MPU4_MASTER_CLOCK/4)
+	MDRV_SOUND_ADD(AY8913, MPU4_MASTER_CLOCK/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")// Present on all video cards
@@ -2999,7 +2976,7 @@ static MACHINE_DRIVER_START( mpu4 )
 	MDRV_CPU_PERIODIC_INT(gen_50hz, 50 )	// generate 50 hz signal
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, MPU4_MASTER_CLOCK/4)
+	MDRV_SOUND_ADD(AY8913, MPU4_MASTER_CLOCK/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)					// load/save nv RAM
@@ -3035,7 +3012,7 @@ static MACHINE_DRIVER_START( dealem )
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, MPU4_MASTER_CLOCK/4)
+	MDRV_SOUND_ADD(AY8913, MPU4_MASTER_CLOCK/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)					// load/save nv RAM
@@ -3253,13 +3230,13 @@ ROM_START( matinga )
 ROM_END
 
 ROM_START( connect4 )
-	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASE00  )	/* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASE00  )
 	ROM_LOAD( "connect4.p2",  0x8000, 0x4000,  CRC(6090633c) )
 	ROM_LOAD( "connect4.p1",  0xC000, 0x4000,  CRC(b1af50c0) )
 ROM_END
 
 ROM_START( dealem )
-	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASE00  )	/* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASE00  )
 	ROM_LOAD( "zenndlem.u6",	0x8000, 0x8000,  CRC(571e5c05) SHA1(89b4c331407a04eae34bb187b036791e0a671533) )
 
 	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
@@ -3274,7 +3251,7 @@ ROM_END
 
 /*    YEAR   NAME    PARENT   MACHINE   INPUT     INIT   MONITOR COMPANY            FULLNAME                                                            FLAGS (0 if none)  */
 
-GAME( 198?, connect4,0,       mpu4,     connect4, 0,		0,   "Dolbeck Systems", "Connect 4",														GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
+GAME( 198?, connect4,0,       mpu4,     connect4, 0,		0,   "Dolbeck Systems", "Connect 4",														GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND|GAME_NOT_WORKING )
 GAME( 199?, bctvidbs,0,       mpu4,		mpu4,	  0,     ROT0,   "Barcrest", 		"MPU4 Video Firmware",												NOT_A_DRIVER )
 
 //Deal 'Em was a conversion kit designed to make early MPU4 machines into video games by replacing the top glass

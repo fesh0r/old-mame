@@ -47,7 +47,7 @@ VIDEO_EOF( tokib )
 	buffer_spriteram16_w(0,0,0);
 }
 
-static void get_text_tile_info(int tile_index)
+static TILE_GET_INFO( get_text_tile_info )
 {
 	int tile = videoram16[tile_index];
 	int color=(tile>>12)&0xf;
@@ -61,7 +61,7 @@ static void get_text_tile_info(int tile_index)
 			0)
 }
 
-static void get_back_tile_info(int tile_index)
+static TILE_GET_INFO( get_back_tile_info )
 {
 	int tile = toki_background1_videoram16[tile_index];
 	int color=(tile>>12)&0xf;
@@ -75,7 +75,7 @@ static void get_back_tile_info(int tile_index)
 			0)
 }
 
-static void get_fore_tile_info(int tile_index)
+static TILE_GET_INFO( get_fore_tile_info )
 {
 	int tile = toki_background2_videoram16[tile_index];
 	int color=(tile>>12)&0xf;
@@ -105,34 +105,26 @@ VIDEO_START( toki )
 	tilemap_set_transparent_pen(text_layer,15);
 	tilemap_set_transparent_pen(background_layer,15);
 	tilemap_set_transparent_pen(foreground_layer,15);
-
-	return 0;
 }
 
 /*************************************/
 
 WRITE16_HANDLER( toki_foreground_videoram16_w )
 {
-	int oldword = videoram16[offset];
 	COMBINE_DATA(&videoram16[offset]);
-	if (oldword != videoram16[offset])
-		tilemap_mark_tile_dirty(text_layer,offset);
+	tilemap_mark_tile_dirty(text_layer,offset);
 }
 
 WRITE16_HANDLER( toki_background1_videoram16_w )
 {
-	int oldword = toki_background1_videoram16[offset];
 	COMBINE_DATA(&toki_background1_videoram16[offset]);
-	if (oldword != toki_background1_videoram16[offset])
-		tilemap_mark_tile_dirty(background_layer,offset);
+	tilemap_mark_tile_dirty(background_layer,offset);
 }
 
 WRITE16_HANDLER( toki_background2_videoram16_w )
 {
-	int oldword = toki_background2_videoram16[offset];
 	COMBINE_DATA(&toki_background2_videoram16[offset]);
-	if (oldword != toki_background2_videoram16[offset])
-		tilemap_mark_tile_dirty(foreground_layer,offset);
+	tilemap_mark_tile_dirty(foreground_layer,offset);
 }
 
 /***************************************************************************

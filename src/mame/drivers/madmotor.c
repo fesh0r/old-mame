@@ -268,7 +268,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &tilelayout,   512, 16 },	/* Tiles 16x16 */
 	{ REGION_GFX3, 0, &tilelayout2,  768, 16 },	/* Tiles 16x16 */
 	{ REGION_GFX4, 0, &spritelayout, 256, 16 },	/* Sprites 16x16 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /******************************************************************************/
@@ -375,7 +375,7 @@ ROM_END
 
 static DRIVER_INIT( madmotor )
 {
-	unsigned char *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(REGION_CPU1);
 	int i;
 
 	for (i = 0x00000;i < 0x80000;i++)

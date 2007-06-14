@@ -80,7 +80,7 @@ static void lemmings_drawsprites(mame_bitmap *bitmap, UINT16 *spritedata, int gf
 
 /******************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT16 tile=lemmings_vram_data[tile_index];
 
@@ -103,8 +103,6 @@ VIDEO_START( lemmings )
 
 	tilemap_set_transparent_pen(vram_tilemap,0);
 	fillbitmap(bitmap0,0x100,0);
-
-	return 0;
 }
 
 VIDEO_EOF( lemmings )

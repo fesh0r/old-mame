@@ -37,11 +37,11 @@ static UINT8 *sprite3232_dirty;	/* 128 sprites */
 static UINT8 *sprite168_dirty;	/* 1024 sprites */
 static UINT8 *sprite6464_dirty;	/* 32 sprites */
 
-static void get_bg_tile_info( int offs )
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code,color,flags;
-	code = nemesis_videoram1f[offs];
-	color = nemesis_videoram2f[offs];
+	code = nemesis_videoram1f[tile_index];
+	color = nemesis_videoram2f[tile_index];
 	flags = 0;
 	if ( color & 0x80)  flags |= TILE_FLIPX;
 	if ( code & 0x0800) flags |= TILE_FLIPY;
@@ -52,14 +52,14 @@ static void get_bg_tile_info( int offs )
 	} else {
 		SET_TILE_INFO( 0, 0x800, 0x00, 0 );
 	}
-	tile_info.priority = (code & 0x1000)>>12;
+	tileinfo->priority = (code & 0x1000)>>12;
 }
 
-static void get_fg_tile_info( int offs )
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code,color,flags;
-	code = nemesis_videoram1b[offs];
-	color = nemesis_videoram2b[offs];
+	code = nemesis_videoram1b[tile_index];
+	color = nemesis_videoram2b[tile_index];
 	flags = 0;
 	if ( color & 0x80)  flags |= TILE_FLIPX;
 	if ( code & 0x0800) flags |= TILE_FLIPY;
@@ -70,7 +70,7 @@ static void get_fg_tile_info( int offs )
 	} else {
 		SET_TILE_INFO( 0, 0x800, 0x00, 0 );
 	}
-	tile_info.priority = (code & 0x1000)>>12;
+	tileinfo->priority = (code & 0x1000)>>12;
 }
 
 WRITE16_HANDLER( nemesis_gfx_flipx_w )
@@ -145,7 +145,7 @@ WRITE16_HANDLER( nemesis_palette_word_w )
 	bit5=(data >>  14)&1;
 	b = MULTIPLIER;
 
-	palette_set_color(Machine,offset,r,g,b);
+	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
 }
 
 WRITE16_HANDLER( salamander_palette_word_w )
@@ -154,7 +154,7 @@ WRITE16_HANDLER( salamander_palette_word_w )
 	offset &= ~1;
 
 	data = ((paletteram16[offset] << 8) & 0xff00) | (paletteram16[offset+1] & 0xff);
-	palette_set_color(Machine,offset / 2,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+	palette_set_color_rgb(Machine,offset / 2,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 }
 
 WRITE16_HANDLER( nemesis_videoram1b_word_w )
@@ -251,8 +251,6 @@ VIDEO_START( nemesis )
 
 	flipscreen = 0;
 	tilemap_flip = 0;
-
-	return 0;
 }
 
 static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)

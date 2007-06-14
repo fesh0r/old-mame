@@ -12,7 +12,7 @@ extern UINT16 *pass_fg_videoram;
 
 /* background tilemap stuff */
 
-static void get_pass_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_pass_bg_tile_info )
 {
 	int tileno,fx;
 
@@ -24,16 +24,13 @@ static void get_pass_bg_tile_info(int tile_index)
 
 WRITE16_HANDLER( pass_bg_videoram_w )
 {
-	if (pass_bg_videoram[offset] != data)
-	{
-		pass_bg_videoram[offset] = data;
-		tilemap_mark_tile_dirty(pass_bg_tilemap,offset);
-	}
+	pass_bg_videoram[offset] = data;
+	tilemap_mark_tile_dirty(pass_bg_tilemap,offset);
 }
 
 /* foreground 'sprites' tilemap stuff */
 
-static void get_pass_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_pass_fg_tile_info )
 {
 	int tileno, flip;
 
@@ -46,11 +43,8 @@ static void get_pass_fg_tile_info(int tile_index)
 
 WRITE16_HANDLER( pass_fg_videoram_w )
 {
-	if (pass_fg_videoram[offset] != data)
-	{
-		pass_fg_videoram[offset] = data;
-		tilemap_mark_tile_dirty(pass_fg_tilemap,offset);
-	}
+	pass_fg_videoram[offset] = data;
+	tilemap_mark_tile_dirty(pass_fg_tilemap,offset);
 }
 
 /* video update / start */
@@ -69,6 +63,4 @@ VIDEO_START( pass )
 	pass_fg_tilemap = tilemap_create(get_pass_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 4, 4,128,64);
 
 	tilemap_set_transparent_pen(pass_fg_tilemap,255);
-
-	return 0;
 }

@@ -45,7 +45,7 @@ PALETTE_INIT( kncljoe )
 		bit3 = (color_prom[0x200] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -71,7 +71,7 @@ PALETTE_INIT( kncljoe )
 		bit2 = (*color_prom >> 2) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i+128,r,g,b);
+		palette_set_color(machine,i+128,MAKE_RGB(r,g,b));
 		color_prom ++;
 	}
 
@@ -92,7 +92,7 @@ PALETTE_INIT( kncljoe )
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = videoram[2*tile_index+1];
 	int code = videoram[2*tile_index] + ((attr & 0xc0) << 2) + (tile_bank << 10);
@@ -119,8 +119,6 @@ VIDEO_START( kncljoe )
 	tilemap_set_scroll_rows(bg_tilemap,4);
 
 	tile_bank = sprite_bank = flipscreen = 0;
-
-	return 0;
 }
 
 
@@ -133,11 +131,8 @@ VIDEO_START( kncljoe )
 
 WRITE8_HANDLER( kncljoe_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset/2);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset/2);
 }
 
 WRITE8_HANDLER( kncljoe_control_w )

@@ -87,7 +87,7 @@ static WRITE8_HANDLER( bk3_h_w)
 
 static READ8_HANDLER( bk3_r )
 {
-	unsigned char *rom = memory_region(REGION_USER2);
+	UINT8 *rom = memory_region(REGION_USER2);
 	return rom[bk3_h*256+bk3_l];
 }
 
@@ -116,7 +116,7 @@ Todo:
 \-How to handle the reads at port($6f)?
 \-In-depth game untested.
 */
-static unsigned char mcu_val;
+static UINT8 mcu_val;
 
 static WRITE8_HANDLER( mcu_data_w )
 {
@@ -500,7 +500,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &crowlayout, 4*8,         4  }, /* crow */
 	{ REGION_GFX3, 0, &balllayout, 4*8+4*4,     4  }, /* ball 1 */
 	{ REGION_GFX4, 0, &balllayout, 4*8+4*4+4*2, 4  }, /* ball 2 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

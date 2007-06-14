@@ -70,7 +70,7 @@ static tilemap	*tilemap_0,*tilemap_1,	// Backgrounds
 
 ***************************************************************************/
 
-static void get_tile_info_0(int tile_index)
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	UINT16 attr = realbrk_vram_0[tile_index * 2 + 0];
 	UINT16 code = realbrk_vram_0[tile_index * 2 + 1];
@@ -81,7 +81,7 @@ static void get_tile_info_0(int tile_index)
 			TILE_FLIPYX( attr >> 14 ))
 }
 
-static void get_tile_info_1(int tile_index)
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	UINT16 attr = realbrk_vram_1[tile_index * 2 + 0];
 	UINT16 code = realbrk_vram_1[tile_index * 2 + 1];
@@ -94,16 +94,14 @@ static void get_tile_info_1(int tile_index)
 
 WRITE16_HANDLER( realbrk_vram_0_w )
 {
-	UINT16 old_data	=	realbrk_vram_0[offset];
-	UINT16 new_data	=	COMBINE_DATA(&realbrk_vram_0[offset]);
-	if (old_data != new_data)	tilemap_mark_tile_dirty(tilemap_0,offset/2);
+	COMBINE_DATA(&realbrk_vram_0[offset]);
+	tilemap_mark_tile_dirty(tilemap_0,offset/2);
 }
 
 WRITE16_HANDLER( realbrk_vram_1_w )
 {
-	UINT16 old_data	=	realbrk_vram_1[offset];
-	UINT16 new_data	=	COMBINE_DATA(&realbrk_vram_1[offset]);
-	if (old_data != new_data)	tilemap_mark_tile_dirty(tilemap_1,offset/2);
+	COMBINE_DATA(&realbrk_vram_1[offset]);
+	tilemap_mark_tile_dirty(tilemap_1,offset/2);
 }
 
 /***************************************************************************
@@ -120,7 +118,7 @@ WRITE16_HANDLER( realbrk_vram_1_w )
 
 ***************************************************************************/
 
-static void get_tile_info_2(int tile_index)
+static TILE_GET_INFO( get_tile_info_2 )
 {
 	UINT16 code = realbrk_vram_2[tile_index];
 	SET_TILE_INFO(
@@ -132,9 +130,8 @@ static void get_tile_info_2(int tile_index)
 
 WRITE16_HANDLER( realbrk_vram_2_w )
 {
-	UINT16 old_data	=	realbrk_vram_2[offset];
-	UINT16 new_data	=	COMBINE_DATA(&realbrk_vram_2[offset]);
-	if (old_data != new_data)	tilemap_mark_tile_dirty(tilemap_2,offset);
+	COMBINE_DATA(&realbrk_vram_2[offset]);
+	tilemap_mark_tile_dirty(tilemap_2,offset);
 }
 
 
@@ -177,7 +174,6 @@ VIDEO_START(realbrk)
 	tmpbitmap1 = auto_bitmap_alloc(	32,
 									32,
 									machine->screen[0].format);
-	return 0;
 }
 
 /***************************************************************************

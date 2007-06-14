@@ -27,7 +27,7 @@ static tilemap *bg_tilemap;
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code = marineb_videoram[tile_index];
 	UINT8 col = marineb_colorram[tile_index];
@@ -51,8 +51,6 @@ VIDEO_START( marineb )
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
 
 	tilemap_set_scroll_cols(bg_tilemap, 32);
-
-	return 0;
 }
 
 
@@ -65,21 +63,15 @@ VIDEO_START( marineb )
 
 WRITE8_HANDLER( marineb_videoram_w )
 {
-	if (marineb_videoram[offset] != data)
-	{
-		marineb_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	marineb_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 
 WRITE8_HANDLER( marineb_colorram_w )
 {
-	if (marineb_colorram[offset] != data)
-	{
-		marineb_colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	marineb_colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 

@@ -636,7 +636,7 @@ static WRITE32_HANDLER( hng64_pal_w )
 	// if (a != 0)
 	//  popmessage("Alpha is not zero!") ;
 
-	palette_set_color(Machine,offset,r,g,b);
+	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
 }
 
 
@@ -1280,7 +1280,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &hng64_16_layout,     0x0, 0x10 }, /* scroll tiles */
 	{ REGION_GFX2, 0, &hng64_4_16_layout,   0x0, 0x100 }, /* sprite tiles */
 	{ REGION_GFX2, 0, &hng64_16_layout,     0x0, 0x10 }, /* sprite tiles */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 DRIVER_INIT( hng64 )
@@ -1291,13 +1291,13 @@ DRIVER_INIT( hng64 )
 DRIVER_INIT(hng64_fght)
 {
 	no_machine_error_code=0x01010101;
-	init_hng64(machine);
+	driver_init_hng64(machine);
 }
 
 DRIVER_INIT(hng64_race)
 {
 	no_machine_error_code=0x02020202;
-	init_hng64(machine);
+	driver_init_hng64(machine);
 }
 
 

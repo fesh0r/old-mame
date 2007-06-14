@@ -68,7 +68,7 @@ static WRITE16_HANDLER( lemmings_palette_24bit_w )
 	g = (paletteram16[offset+1] >> 8) & 0xff;
 	r = (paletteram16[offset+1] >> 0) & 0xff;
 
-	palette_set_color(Machine,offset/2,r,g,b);
+	palette_set_color(Machine,offset/2,MAKE_RGB(r,g,b));
 }
 
 static WRITE16_HANDLER( lemmings_sound_w )
@@ -256,7 +256,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &sprite_layout,  32*16, 16 },	/* Sprites 16x16 */
 	{ REGION_GFX2, 0, &sprite_layout,  48*16, 16 },	/* Sprites 16x16 */
 	{ 0,           0, &charlayout,         0, 16 }, /* Dynamically modified */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /******************************************************************************/

@@ -89,7 +89,7 @@ PALETTE_INIT( combascb )
 
 ***************************************************************************/
 
-static void get_tile_info0(int tile_index)
+static TILE_GET_INFO( get_tile_info0 )
 {
 	UINT8 attributes = combasc_page[0][tile_index];
 	int bank = 4*((combasc_vreg & 0x0f) - 1);
@@ -111,10 +111,10 @@ static void get_tile_info0(int tile_index)
 			number,
 			color,
 			0)
-	tile_info.priority = (attributes & 0x40) >> 6;
+	tileinfo->priority = (attributes & 0x40) >> 6;
 }
 
-static void get_tile_info1(int tile_index)
+static TILE_GET_INFO( get_tile_info1 )
 {
 	UINT8 attributes = combasc_page[1][tile_index];
 	int bank = 4*((combasc_vreg >> 4) - 1);
@@ -136,10 +136,10 @@ static void get_tile_info1(int tile_index)
 			number,
 			color,
 			0)
-	tile_info.priority = (attributes & 0x40) >> 6;
+	tileinfo->priority = (attributes & 0x40) >> 6;
 }
 
-static void get_text_info(int tile_index)
+static TILE_GET_INFO( get_text_info )
 {
 	UINT8 attributes = combasc_page[0][tile_index + 0x800];
 	int number = combasc_page[0][tile_index + 0xc00];
@@ -153,7 +153,7 @@ static void get_text_info(int tile_index)
 }
 
 
-static void get_tile_info0_bootleg(int tile_index)
+static TILE_GET_INFO( get_tile_info0_bootleg )
 {
 	UINT8 attributes = combasc_page[0][tile_index];
 	int bank = 4*((combasc_vreg & 0x0f) - 1);
@@ -177,7 +177,7 @@ static void get_tile_info0_bootleg(int tile_index)
 			0)
 }
 
-static void get_tile_info1_bootleg(int tile_index)
+static TILE_GET_INFO( get_tile_info1_bootleg )
 {
 	UINT8 attributes = combasc_page[1][tile_index];
 	int bank = 4*((combasc_vreg >> 4) - 1);
@@ -201,7 +201,7 @@ static void get_tile_info1_bootleg(int tile_index)
 			0)
 }
 
-static void get_text_info_bootleg(int tile_index)
+static TILE_GET_INFO( get_text_info_bootleg )
 {
 //  UINT8 attributes = combasc_page[0][tile_index + 0x800];
 	int number = combasc_page[0][tile_index + 0xc00];
@@ -238,8 +238,6 @@ VIDEO_START( combasc )
 		tilemap_set_transparent_pen(textlayer,0);
 
 		tilemap_set_scroll_rows(textlayer,32);
-
-		return 0;
 }
 
 VIDEO_START( combascb )
@@ -261,8 +259,6 @@ VIDEO_START( combascb )
 
 		tilemap_set_scroll_rows(bg_tilemap[0],32);
 		tilemap_set_scroll_rows(bg_tilemap[1],32);
-
-		return 0;
 }
 
 /***************************************************************************
@@ -278,20 +274,17 @@ READ8_HANDLER( combasc_video_r )
 
 WRITE8_HANDLER( combasc_video_w )
 {
-	if( videoram[offset]!=data )
+	videoram[offset] = data;
+	if( offset<0x800 )
 	{
-		videoram[offset] = data;
-		if( offset<0x800 )
-		{
-			if (combasc_video_circuit)
-				tilemap_mark_tile_dirty(bg_tilemap[1],offset & 0x3ff);
-			else
-				tilemap_mark_tile_dirty(bg_tilemap[0],offset & 0x3ff);
-		}
-		else if( offset<0x1000 && combasc_video_circuit==0 )
-		{
-			tilemap_mark_tile_dirty( textlayer,offset & 0x3ff);
-		}
+		if (combasc_video_circuit)
+			tilemap_mark_tile_dirty(bg_tilemap[1],offset & 0x3ff);
+		else
+			tilemap_mark_tile_dirty(bg_tilemap[0],offset & 0x3ff);
+	}
+	else if( offset<0x1000 && combasc_video_circuit==0 )
+	{
+		tilemap_mark_tile_dirty( textlayer,offset & 0x3ff);
 	}
 }
 

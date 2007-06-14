@@ -83,7 +83,7 @@ PALETTE_INIT( polepos )
 		bit3 = (color_prom[0x200 + i] >> 3) & 1;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 	/*******************************************************
@@ -150,7 +150,7 @@ PALETTE_INIT( polepos )
 
 ***************************************************************************/
 
-static void bg_get_tile_info(int tile_index)
+static TILE_GET_INFO( bg_get_tile_info )
 {
 	UINT16 word = polepos_view16_memory[tile_index];
 	int code = (word & 0xff) | ((word & 0x4000) >> 6);
@@ -162,7 +162,7 @@ static void bg_get_tile_info(int tile_index)
 			0)
 }
 
-static void tx_get_tile_info(int tile_index)
+static TILE_GET_INFO( tx_get_tile_info )
 {
 	UINT16 word = polepos_alpha16_memory[tile_index];
 	int code = (word & 0xff) | ((word & 0x4000) >> 6);
@@ -201,8 +201,6 @@ VIDEO_START( polepos )
 	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT_COLOR,8,8,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap, 0x2f);
-
-	return 0;
 }
 
 
@@ -278,13 +276,9 @@ READ16_HANDLER( polepos_view16_r )
 
 WRITE16_HANDLER( polepos_view16_w )
 {
-	UINT16 oldword = polepos_view16_memory[offset];
 	COMBINE_DATA(&polepos_view16_memory[offset]);
-	if (oldword != polepos_view16_memory[offset])
-	{
-		if (offset < 0x400)
-			tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	if (offset < 0x400)
+		tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 READ8_HANDLER( polepos_view_r )
@@ -294,13 +288,9 @@ READ8_HANDLER( polepos_view_r )
 
 WRITE8_HANDLER( polepos_view_w )
 {
-	UINT16 oldword = polepos_view16_memory[offset];
 	polepos_view16_memory[offset] = (polepos_view16_memory[offset] & 0xff00) | data;
-	if (oldword != polepos_view16_memory[offset])
-	{
-		if (offset < 0x400)
-			tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	if (offset < 0x400)
+		tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE16_HANDLER( polepos_view16_hscroll_w )
@@ -334,12 +324,8 @@ READ16_HANDLER( polepos_alpha16_r )
 
 WRITE16_HANDLER( polepos_alpha16_w )
 {
-	UINT16 oldword = polepos_alpha16_memory[offset];
 	COMBINE_DATA(&polepos_alpha16_memory[offset]);
-	if (oldword != polepos_alpha16_memory[offset])
-	{
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
-	}
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 READ8_HANDLER( polepos_alpha_r )
@@ -349,12 +335,8 @@ READ8_HANDLER( polepos_alpha_r )
 
 WRITE8_HANDLER( polepos_alpha_w )
 {
-	UINT16 oldword = polepos_alpha16_memory[offset];
 	polepos_alpha16_memory[offset] = (polepos_alpha16_memory[offset] & 0xff00) | data;
-	if (oldword != polepos_alpha16_memory[offset])
-	{
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
-	}
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 
@@ -442,7 +424,7 @@ static void draw_road(mame_bitmap *bitmap)
 }
 
 static void zoom_sprite( mame_bitmap *bitmap,int big,
-		unsigned int code,unsigned int color,int flipx,int sx,int sy,
+		UINT32 code,UINT32 color,int flipx,int sx,int sy,
 		int sizex,int sizey)
 {
 	const gfx_element *gfx = Machine->gfx[big ? 3 : 2];

@@ -517,10 +517,10 @@ static const gfx_decode laserbat_gfxdecodeinfo[] =
 	{ REGION_CPU1, 0x1600, &s2636_character10, 0,   8 },	/* s2636 #2  */
 	{ REGION_CPU1, 0x1700, &s2636_character10, 0,   8 },	/* s2636 #3  */
 	{ REGION_GFX2, 0x0000, &sprites_layout,    0,   8 },	/* Sprites   */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	// wrong color index!
 	SET_TILE_INFO(0, videoram[tile_index], colorram[tile_index], 0)
@@ -536,8 +536,6 @@ VIDEO_START( laserbat )
 	collision_bitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,BITMAP_FORMAT_INDEXED8);
 
 	s2636_x_offset = -19;
-
-	return 0;
 }
 
 VIDEO_UPDATE( laserbat )
@@ -663,8 +661,7 @@ static struct AY8910interface ay8910_interface =
 
 static MACHINE_START( catnmous )
 {
-	pia_config(0, PIA_STANDARD_ORDERING, &pia_0_intf);
-	return 0;
+	pia_config(0, &pia_0_intf);
 }
 
 static MACHINE_RESET( catnmous )

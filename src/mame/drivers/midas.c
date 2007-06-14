@@ -56,7 +56,7 @@ VIDEO_UPDATE( livequiz );
 
 static tilemap *tmap;
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT16 code = livequiz_gfxram[ tile_index + 0x7000 ];
 	SET_TILE_INFO(1, code & 0xfff, (code >> 12) & 0xf, TILE_FLIPXY( 0 ));
@@ -68,7 +68,6 @@ VIDEO_START( livequiz )
 							TILEMAP_TRANSPARENT, 8,8, 0x80,0x20	);
 
 	tilemap_set_transparent_pen(tmap, 0);
-	return 0;
 }
 
 void livequiz_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
@@ -288,7 +287,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x000000, &layout16x16,  0, 0x100 },
 	{ REGION_GFX2, 0x000000, &layout8x8_2,  0, 0x80 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

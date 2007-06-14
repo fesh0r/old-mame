@@ -138,7 +138,7 @@ static UINT32 bg_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 	return (row & 0x0f) + ((col & 0xff) << 4) + ((row & 0x70) << 8);
 }
 
-static void get_sc0_tile_info(int tile_index)
+static TILE_GET_INFO( get_sc0_tile_info )
 {
 	int code = sc0_vram[tile_index];
 	SET_TILE_INFO(
@@ -148,7 +148,7 @@ static void get_sc0_tile_info(int tile_index)
 			0)
 }
 
-static void get_sc3_tile_info(int tile_index)
+static TILE_GET_INFO( get_sc3_tile_info )
 {
 	int code = sc3_vram[tile_index];
 	SET_TILE_INFO(
@@ -158,7 +158,7 @@ static void get_sc3_tile_info(int tile_index)
 			0)
 }
 
-static void get_sc2_tile_info(int tile_index)
+static TILE_GET_INFO( get_sc2_tile_info )
 {
 	int code = sc2_vram[tile_index];
 	SET_TILE_INFO(
@@ -168,7 +168,7 @@ static void get_sc2_tile_info(int tile_index)
 			0)
 }
 
-static void get_sc1_tile_info(int tile_index)
+static TILE_GET_INFO( get_sc1_tile_info )
 {
 	int code = sc1_vram[tile_index];
 	SET_TILE_INFO(
@@ -192,8 +192,6 @@ VIDEO_START( jalmah )
 	tilemap_set_transparent_pen(sc1_tilemap,15);
 	tilemap_set_transparent_pen(sc2_tilemap,15);
 	tilemap_set_transparent_pen(sc3_tilemap,15);
-
-	return 0;
 }
 
 #define MCU_READ(_number_,_bit_,_offset_,_retval_)\
@@ -414,55 +412,26 @@ VIDEO_UPDATE( jalmah )
 
 static WRITE16_HANDLER( sc0_vram_w )
 {
-	int oldword = sc0_vram[offset];
-	int newword = oldword;
-	COMBINE_DATA(&newword);
-
-	if (oldword != newword)
-	{
-		sc0_vram[offset] = newword;
-		tilemap_mark_tile_dirty(sc0_tilemap,offset);
-	}
+	COMBINE_DATA(&sc0_vram[offset]);
+	tilemap_mark_tile_dirty(sc0_tilemap,offset);
 }
 
 static WRITE16_HANDLER( sc1_vram_w )
 {
-	int oldword = sc1_vram[offset];
-	int newword = oldword;
-	COMBINE_DATA(&newword);
-
-	if (oldword != newword)
-	{
-		sc1_vram[offset] = newword;
-		tilemap_mark_tile_dirty(sc1_tilemap,offset);
-	}
+	COMBINE_DATA(&sc1_vram[offset]);
+	tilemap_mark_tile_dirty(sc1_tilemap,offset);
 }
 
 static WRITE16_HANDLER( sc3_vram_w )
 {
-	int oldword = sc3_vram[offset];
-	int newword = oldword;
-	COMBINE_DATA(&newword);
-
-	if (oldword != newword)
-	{
-		sc3_vram[offset] = newword;
-		tilemap_mark_tile_dirty(sc3_tilemap,offset);
-	}
+	COMBINE_DATA(&sc3_vram[offset]);
+	tilemap_mark_tile_dirty(sc3_tilemap,offset);
 }
 
 static WRITE16_HANDLER( sc2_vram_w )
 {
-	int oldword = sc2_vram[offset];
-	int newword = oldword;
-	COMBINE_DATA(&newword);
-
-	if (oldword != newword)
-	{
-		sc2_vram[offset] = newword;
-		tilemap_mark_tile_dirty(sc2_tilemap,offset);
-
-	}
+	COMBINE_DATA(&sc2_vram[offset]);
+	tilemap_mark_tile_dirty(sc2_tilemap,offset);
 }
 
 WRITE16_HANDLER( jalmah_tilebank_w )
@@ -1022,7 +991,7 @@ static const gfx_decode jalmah_gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &tilelayout, 0x200, 16 },
 	{ REGION_GFX3, 0, &tilelayout, 0x100, 16 },
 	{ REGION_GFX4, 0, &tilelayout, 0x000, 16 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static MACHINE_RESET (daireika)

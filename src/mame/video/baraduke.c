@@ -48,7 +48,7 @@ PALETTE_INIT( baraduke )
 		bit3 = (color_prom[0] >> 7) & 0x01;
 		b = 0x0e*bit0 + 0x1f*bit1 + 0x43*bit2 + 0x8f*bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 }
@@ -76,7 +76,7 @@ static UINT32 tx_tilemap_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_r
 	return offs;
 }
 
-static void tx_get_tile_info(int tile_index)
+static TILE_GET_INFO( tx_get_tile_info )
 {
 	SET_TILE_INFO(
 			0,
@@ -85,7 +85,7 @@ static void tx_get_tile_info(int tile_index)
 			0)
 }
 
-static void get_tile_info0(int tile_index)
+static TILE_GET_INFO( get_tile_info0 )
 {
 	int code = baraduke_videoram[2*tile_index];
 	int attr = baraduke_videoram[2*tile_index + 1];
@@ -97,7 +97,7 @@ static void get_tile_info0(int tile_index)
 			0)
 }
 
-static void get_tile_info1(int tile_index)
+static TILE_GET_INFO( get_tile_info1 )
 {
 	int code = baraduke_videoram[0x1000 + 2*tile_index];
 	int attr = baraduke_videoram[0x1000 + 2*tile_index + 1];
@@ -131,8 +131,6 @@ VIDEO_START( baraduke )
 	tilemap_set_scrolldy(tx_tilemap,16,16);
 
 	spriteram = baraduke_spriteram + 0x1800;
-
-	return 0;
 }
 
 
@@ -150,11 +148,8 @@ READ8_HANDLER( baraduke_videoram_r )
 
 WRITE8_HANDLER( baraduke_videoram_w )
 {
-	if (baraduke_videoram[offset] != data)
-	{
-		baraduke_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap[offset/0x1000],(offset&0xfff)/2);
-	}
+	baraduke_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap[offset/0x1000],(offset&0xfff)/2);
 }
 
 READ8_HANDLER( baraduke_textram_r )
@@ -164,11 +159,8 @@ READ8_HANDLER( baraduke_textram_r )
 
 WRITE8_HANDLER( baraduke_textram_w )
 {
-	if (baraduke_textram[offset] != data)
-	{
-		baraduke_textram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
-	}
+	baraduke_textram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset & 0x3ff);
 }
 
 

@@ -19,38 +19,26 @@ static tilemap *bg_tilemap, *fg_tilemap;
 
 WRITE8_HANDLER( tecfri_videoram_w )
 {
-	if (tecfri_videoram[offset] != data)
-	{
-		tecfri_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	tecfri_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( tecfri_colorram_w )
 {
-	if (tecfri_colorram[offset] != data)
-	{
-		tecfri_colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	tecfri_colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( tecfri_videoram2_w )
 {
-	if (tecfri_videoram2[offset] != data)
-	{
-		tecfri_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	tecfri_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( tecfri_colorram2_w )
 {
-	if (tecfri_colorram2[offset] != data)
-	{
-		tecfri_colorram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	tecfri_colorram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( tecfri_scroll_bg_w )
@@ -63,7 +51,7 @@ WRITE8_HANDLER( flip_screen_w )
 	flip_screen_set(data);
 }
 
-static void get_tile_info_bg(int tile_index)
+static TILE_GET_INFO( get_tile_info_bg )
 {
 	int code = tecfri_videoram[tile_index] + ((tecfri_colorram[tile_index] & 0x07) << 8);
 	int color = (tecfri_colorram[tile_index] >> 4) & 0x0f;
@@ -72,7 +60,7 @@ static void get_tile_info_bg(int tile_index)
 	SET_TILE_INFO(0, code, color, flags)
 }
 
-static void get_tile_info_fg(int tile_index)
+static TILE_GET_INFO( get_tile_info_fg )
 {
 	int code = tecfri_videoram2[tile_index] + ((tecfri_colorram2[tile_index] & 0x07) << 8);
 	int color = (tecfri_colorram2[tile_index] >> 4) & 0x0f;
@@ -103,8 +91,6 @@ VIDEO_START( sauro )
 		TILEMAP_TRANSPARENT, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 static void sauro_draw_sprites( mame_bitmap *bitmap )
@@ -172,8 +158,6 @@ VIDEO_START( trckydoc )
 {
 	bg_tilemap = tilemap_create(get_tile_info_bg, tilemap_scan_cols,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void trckydoc_draw_sprites( mame_bitmap *bitmap )

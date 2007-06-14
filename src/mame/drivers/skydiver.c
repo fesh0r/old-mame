@@ -100,7 +100,7 @@ static int skydiver_nmion;
  *
  *************************************/
 
-static unsigned short colortable_source[] =
+static UINT16 colortable_source[] =
 {
 	0x02, 0x00,
 	0x02, 0x01,
@@ -110,9 +110,9 @@ static unsigned short colortable_source[] =
 
 static PALETTE_INIT( skydiver )
 {
-	palette_set_color(machine,0,0x00,0x00,0x00); /* black */
-	palette_set_color(machine,1,0xff,0xff,0xff); /* white */
-	palette_set_color(machine,2,0xa0,0xa0,0xa0); /* grey */
+	palette_set_color(machine,0,MAKE_RGB(0x00,0x00,0x00)); /* black */
+	palette_set_color(machine,1,MAKE_RGB(0xff,0xff,0xff)); /* white */
+	palette_set_color(machine,2,MAKE_RGB(0xa0,0xa0,0xa0)); /* grey */
 
 	memcpy(colortable,colortable_source,sizeof(colortable_source));
 }
@@ -399,7 +399,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( skydiver )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "33167-02.f1", 0x2800, 0x0800, CRC(25a5c976) SHA1(50fbf5dceab5d78292dc14bf25f2076e8139a594) )
 	ROM_LOAD( "33164-02.e1", 0x3000, 0x0800, CRC(a348ac39) SHA1(7401cbd2f7236bd1d6ad0e39eb3de2b7d75e8f45) )
 	ROM_LOAD( "33165-02.d1", 0x3800, 0x0800, CRC(a1fc5504) SHA1(febaa78936de7703b708c0d1f350fe288e0a106b) )

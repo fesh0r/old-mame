@@ -111,19 +111,18 @@ Offset:
 ***************************************************************************/
 
 #define KANEKO16_LAYER(_N_) \
-static void get_tile_info_##_N_(int tile_index) \
+static TILE_GET_INFO( get_tile_info_##_N_ ) \
 { \
 	UINT16 code_hi = kaneko16_vram_##_N_[ 2 * tile_index + 0]; \
 	UINT16 code_lo = kaneko16_vram_##_N_[ 2 * tile_index + 1]; \
 	SET_TILE_INFO(1 + _N_/2, code_lo, (code_hi >> 2) & 0x3f, TILE_FLIPXY( code_hi & 3 )); \
-	tile_info.priority	=	(code_hi >> 8) & 7; \
+	tileinfo->priority	=	(code_hi >> 8) & 7; \
 } \
 \
 WRITE16_HANDLER( kaneko16_vram_##_N_##_w ) \
 { \
-	UINT16 old_data	=	kaneko16_vram_##_N_[offset]; \
-	UINT16 new_data	=	COMBINE_DATA(&kaneko16_vram_##_N_[offset]); \
-	if (old_data != new_data)	tilemap_mark_tile_dirty(kaneko16_tmap_##_N_, offset/2); \
+	COMBINE_DATA(&kaneko16_vram_##_N_[offset]); \
+	tilemap_mark_tile_dirty(kaneko16_tmap_##_N_, offset/2); \
 }
 
 
@@ -136,14 +135,11 @@ VIDEO_START( kaneko16_sprites )
 {
 	/* 0x400 sprites max */
 	spritelist.first_sprite = (struct tempsprite *)auto_malloc(0x400 * sizeof(spritelist.first_sprite[0]));
-
-	return 0;
 }
 
 VIDEO_START( kaneko16_1xVIEW2 )
 {
-	if (	video_start_kaneko16_sprites(machine)	)
-		return 1;
+	video_start_kaneko16_sprites(machine);
 
 	kaneko16_tmap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
 										TILEMAP_TRANSPARENT, 16,16, 0x20,0x20	);
@@ -184,15 +180,12 @@ VIDEO_START( kaneko16_1xVIEW2 )
 
 		tilemap_set_scroll_rows(kaneko16_tmap_0, 0x200);	// Line Scroll
 		tilemap_set_scroll_rows(kaneko16_tmap_1, 0x200);
-
-		return 0;
 	}
 }
 
 VIDEO_START( kaneko16_2xVIEW2 )
 {
-	if (	video_start_kaneko16_1xVIEW2(machine)	)
-		return 1;
+	video_start_kaneko16_1xVIEW2(machine);
 
 	kaneko16_tmap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
 										TILEMAP_TRANSPARENT, 16,16, 0x20,0x20	);
@@ -227,19 +220,15 @@ VIDEO_START( kaneko16_2xVIEW2 )
 
 		tilemap_set_scroll_rows(kaneko16_tmap_2, 0x200);	// Line Scroll
 		tilemap_set_scroll_rows(kaneko16_tmap_3, 0x200);
-
-		return 0;
 	}
 }
 
 VIDEO_START( sandscrp_1xVIEW2 )
 {
-	if (	video_start_kaneko16_1xVIEW2(machine)	)
-		return 1;
+	video_start_kaneko16_1xVIEW2(machine);
 
 	tilemap_set_scrolldy( kaneko16_tmap_0, 0, 256 - 1 );
 	tilemap_set_scrolldy( kaneko16_tmap_1, 0, 256 - 1 );
-	return 0;
 }
 
 
@@ -253,13 +242,13 @@ PALETTE_INIT( berlwall )
 
 	/* initialize 555 RGB lookup */
 	for (i = 0; i < 32768; i++)
-		palette_set_color(machine,2048 + i,pal5bit(i >> 5),pal5bit(i >> 10),pal5bit(i >> 0));
+		palette_set_color_rgb(machine,2048 + i,pal5bit(i >> 5),pal5bit(i >> 10),pal5bit(i >> 0));
 }
 
 VIDEO_START( berlwall )
 {
 	int sx, x,y;
-	unsigned char *RAM	=	memory_region(REGION_GFX3);
+	UINT8 *RAM	=	memory_region(REGION_GFX3);
 
 	/* Render the hi-color static backgrounds held in the ROMs */
 
@@ -299,7 +288,7 @@ VIDEO_START( berlwall )
 			*BITMAP_ADDR16(kaneko16_bg15_bitmap, y, sx * 256 + x) = machine->pens[2048 + ((g << 10) | (r << 5) | b)];
 	  }
 
-	return video_start_kaneko16_1xVIEW2(machine);
+	video_start_kaneko16_1xVIEW2(machine);
 }
 
 
@@ -457,7 +446,7 @@ int kaneko16_parse_sprite_type3(int i, struct tempsprite *s)
 
 // custom function to draw a single sprite. needed to keep correct sprites - sprites and sprites - tilemaps priorities
 static void kaneko16_draw_sprites_custom(mame_bitmap *dest_bmp,const gfx_element *gfx,
-		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
+		UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
 		const rectangle *clip,int priority)
 {
 	const pen_t *pal = &gfx->colortable[gfx->color_granularity * (color % gfx->total_colors)]; /* ASG 980209 */

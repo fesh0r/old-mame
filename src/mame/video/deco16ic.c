@@ -194,7 +194,7 @@ WRITE16_HANDLER( deco16_nonbuffered_palette_w )
 	g = (paletteram16[offset+1] >> 8) & 0xff;
 	r = (paletteram16[offset+1] >> 0) & 0xff;
 
-	palette_set_color(Machine,offset/2,r,g,b);
+	palette_set_color(Machine,offset/2,MAKE_RGB(r,g,b));
 }
 
 WRITE16_HANDLER( deco16_buffered_palette_w )
@@ -216,7 +216,7 @@ WRITE16_HANDLER( deco16_palette_dma_w )
 			g = (paletteram16[i*2+1] >> 8) & 0xff;
 			r = (paletteram16[i*2+1] >> 0) & 0xff;
 
-			palette_set_color(Machine,i,r,g,b);
+			palette_set_color(Machine,i,MAKE_RGB(r,g,b));
 		}
 	}
 }
@@ -242,7 +242,7 @@ static UINT32 deco16_scan_rows(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_
 	return (col & 0x1f) + ((row & 0x1f) << 5) + ((col & 0x20) << 5) + ((row & 0x20) << 6);
 }
 
-static void get_pf4_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf4_tile_info )
 {
 	UINT16 tile=deco16_pf4_data[tile_index];
 	UINT8 colour=(tile>>12)&0xf;
@@ -266,7 +266,7 @@ static void get_pf4_tile_info(int tile_index)
 			flags)
 }
 
-static void get_pf3_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf3_tile_info )
 {
 	UINT16 tile=deco16_pf3_data[tile_index];
 	UINT8 colour=(tile>>12)&0xf;
@@ -290,7 +290,7 @@ static void get_pf3_tile_info(int tile_index)
 			flags)
 }
 
-static void get_pf2_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf2_tile_info )
 {
 	UINT16 tile=deco16_pf2_data[tile_index];
 	UINT8 colour=(tile>>12)&0xf;
@@ -314,7 +314,7 @@ static void get_pf2_tile_info(int tile_index)
 			flags)
 }
 
-static void get_pf1_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf1_tile_info )
 {
 	UINT16 tile=deco16_pf1_data[tile_index];
 	UINT8 colour=(tile>>12)&0xf;
@@ -338,7 +338,7 @@ static void get_pf1_tile_info(int tile_index)
 			flags)
 }
 
-static void get_pf2_tile_info_b(int tile_index)
+static TILE_GET_INFO( get_pf2_tile_info_b )
 {
 	UINT16 tile=deco16_pf2_data[tile_index];
 	UINT8 colour=(tile>>12)&0xf;
@@ -362,7 +362,7 @@ static void get_pf2_tile_info_b(int tile_index)
 			flags)
 }
 
-static void get_pf1_tile_info_b(int tile_index)
+static TILE_GET_INFO( get_pf1_tile_info_b )
 {
 	UINT16 tile=deco16_pf1_data[tile_index];
 	UINT8 colour=(tile>>12)&0xf;
@@ -487,46 +487,35 @@ tilemap *deco16_get_tilemap(int pf, int size)
 
 WRITE16_HANDLER( deco16_pf1_data_w )
 {
-	UINT16 oldword=deco16_pf1_data[offset];
 	COMBINE_DATA(&deco16_pf1_data[offset]);
-	if (oldword!=deco16_pf1_data[offset]) {
-		tilemap_mark_tile_dirty(pf1_tilemap_8x8,offset);
-		if (offset<0x800)
-			tilemap_mark_tile_dirty(pf1_tilemap_16x16,offset);
-	}
+	tilemap_mark_tile_dirty(pf1_tilemap_8x8,offset);
+	if (offset<0x800)
+		tilemap_mark_tile_dirty(pf1_tilemap_16x16,offset);
 }
 
 WRITE16_HANDLER( deco16_pf2_data_w )
 {
-	UINT16 oldword=deco16_pf2_data[offset];
 	COMBINE_DATA(&deco16_pf2_data[offset]);
-	if (oldword!=deco16_pf2_data[offset]) {
-		tilemap_mark_tile_dirty(pf2_tilemap_8x8,offset);
-		if (offset<0x800)
-			tilemap_mark_tile_dirty(pf2_tilemap_16x16,offset);
-	}
+	tilemap_mark_tile_dirty(pf2_tilemap_8x8,offset);
+	if (offset<0x800)
+		tilemap_mark_tile_dirty(pf2_tilemap_16x16,offset);
 }
 
 WRITE16_HANDLER( deco16_pf3_data_w )
 {
-	UINT16 oldword=deco16_pf3_data[offset];
 	COMBINE_DATA(&deco16_pf3_data[offset]);
-	if (oldword!=deco16_pf3_data[offset]) {
-		tilemap_mark_tile_dirty(pf3_tilemap_16x16,offset);
-	}
+	tilemap_mark_tile_dirty(pf3_tilemap_16x16,offset);
 }
 
 WRITE16_HANDLER( deco16_pf4_data_w )
 {
-	UINT16 oldword=deco16_pf4_data[offset];
 	COMBINE_DATA(&deco16_pf4_data[offset]);
-	if (oldword!=deco16_pf4_data[offset])
-		tilemap_mark_tile_dirty(pf4_tilemap_16x16,offset);
+	tilemap_mark_tile_dirty(pf4_tilemap_16x16,offset);
 }
 
 /*****************************************************************************************/
 
-static int deco16_video_init(int pf12_only, int split, int full_width)
+static void deco16_video_init(int pf12_only, int split, int full_width)
 {
 	sprite_priority_bitmap = auto_bitmap_alloc( Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED8 );
 
@@ -588,31 +577,27 @@ static int deco16_video_init(int pf12_only, int split, int full_width)
 	deco16_pf34_16x16_gfx_bank=2;
 
 	deco16_raster_display_position=0;
-
-	return 0;
 }
 
-int deco16_1_video_init(void)  /* 1 times playfield generator chip */
+void deco16_1_video_init(void)  /* 1 times playfield generator chip */
 {
-	return deco16_video_init(1, 0, 1);
+	deco16_video_init(1, 0, 1);
 }
 
-int deco16_2_video_init(int split) /* 2 times playfield generator chips */
+void deco16_2_video_init(int split) /* 2 times playfield generator chips */
 {
-	return deco16_video_init(0, split, 1);
+	deco16_video_init(0, split, 1);
 }
 
-int deco16_2_video_init_half_width(void) /* 2 times playfield generator chips */
+void deco16_2_video_init_half_width(void) /* 2 times playfield generator chips */
 {
-	return deco16_video_init(0, 0, 0);
+	deco16_video_init(0, 0, 0);
 }
 
-int deco_allocate_sprite_bitmap(void)
+void deco_allocate_sprite_bitmap(void)
 {
 	/* Allow sprite bitmap to be used by Deco32 games as well */
 	sprite_priority_bitmap = auto_bitmap_alloc( Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED8 );
-
-	return (sprite_priority_bitmap!=0);
 }
 
 /*****************************************************************************************/
@@ -846,7 +831,7 @@ void deco16_clear_sprite_priority_bitmap(void)
 
 /* A special pdrawgfx z-buffered sprite renderer that is needed to properly draw multiple sprite sources with alpha */
 void deco16_pdrawgfx(mame_bitmap *dest,const gfx_element *gfx,
-		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
+		UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
 		const rectangle *clip,int transparency,int transparent_color,UINT32 pri_mask,UINT32 sprite_mask,UINT8 write_pri)
 {
 	int ox,oy,cx,cy;

@@ -107,7 +107,7 @@ static WRITE32_HANDLER( superchs_palette_w )
 	g = (a &0xff00) >> 8;
 	b = (a &0xff);
 
-	palette_set_color(Machine,offset,r,g,b);
+	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
 }
 
 static READ32_HANDLER( superchs_input_r )
@@ -361,7 +361,7 @@ static const gfx_decode superchs_gfxdecodeinfo[] =
 {
 	{ REGION_GFX2, 0x0, &tile16x16_layout,  0, 512 },
 	{ REGION_GFX1, 0x0, &charlayout,        0, 512 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

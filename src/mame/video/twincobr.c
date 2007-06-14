@@ -55,7 +55,7 @@ static tilemap *bg_tilemap, *fg_tilemap, *tx_tilemap;
     Callbacks for the TileMap code
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code, tile_number, color;
 
@@ -69,7 +69,7 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code, tile_number, color;
 
@@ -83,7 +83,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int code, tile_number, color;
 
@@ -101,7 +101,7 @@ static void get_tx_tile_info(int tile_index)
     Start the video hardware emulation.
 ***************************************************************************/
 
-static int twincobr_create_tilemaps(void)
+static void twincobr_create_tilemaps(void)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,64);
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,64);
@@ -109,8 +109,6 @@ static int twincobr_create_tilemaps(void)
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
-
-	return 0;
 }
 
 VIDEO_START( toaplan0 )
@@ -120,7 +118,7 @@ VIDEO_START( toaplan0 )
 	twincobr_bgvideoram_size = 0x2000;	/* banked two times 0x1000 */
 	twincobr_fgvideoram_size = 0x1000;
 
-	if (twincobr_create_tilemaps()) return 1;
+	twincobr_create_tilemaps();
 
 	twincobr_txvideoram16 = auto_malloc(twincobr_txvideoram_size*2);
 	memset(twincobr_txvideoram16,0,twincobr_txvideoram_size*2);
@@ -154,8 +152,6 @@ VIDEO_START( toaplan0 )
 	state_save_register_global(twincobr_flip_screen);
 	state_save_register_global(wardner_sprite_hack);
 	state_save_register_func_postload(twincobr_restore_screen);
-
-	return 0;
 }
 
 static void twincobr_restore_screen(void)
@@ -213,13 +209,8 @@ READ16_HANDLER( twincobr_txram_r )
 }
 WRITE16_HANDLER( twincobr_txram_w )
 {
-	UINT16 oldword = twincobr_txvideoram16[txoffs];
-
-	if (data != oldword)
-	{
-		COMBINE_DATA(&twincobr_txvideoram16[txoffs]);
-		tilemap_mark_tile_dirty(tx_tilemap,txoffs);
-	}
+	COMBINE_DATA(&twincobr_txvideoram16[txoffs]);
+	tilemap_mark_tile_dirty(tx_tilemap,txoffs);
 }
 
 WRITE16_HANDLER( twincobr_bgoffs_w )
@@ -233,13 +224,8 @@ READ16_HANDLER( twincobr_bgram_r )
 }
 WRITE16_HANDLER( twincobr_bgram_w )
 {
-	UINT16 oldword = twincobr_bgvideoram16[bgoffs+twincobr_bg_ram_bank];
-
-	if (data != oldword)
-	{
-		COMBINE_DATA(&twincobr_bgvideoram16[bgoffs+twincobr_bg_ram_bank]);
-		tilemap_mark_tile_dirty(bg_tilemap,(bgoffs+twincobr_bg_ram_bank));
-	}
+	COMBINE_DATA(&twincobr_bgvideoram16[bgoffs+twincobr_bg_ram_bank]);
+	tilemap_mark_tile_dirty(bg_tilemap,(bgoffs+twincobr_bg_ram_bank));
 }
 
 WRITE16_HANDLER( twincobr_fgoffs_w )
@@ -253,13 +239,8 @@ READ16_HANDLER( twincobr_fgram_r )
 }
 WRITE16_HANDLER( twincobr_fgram_w )
 {
-	UINT16 oldword = twincobr_fgvideoram16[fgoffs];
-
-	if (data != oldword)
-	{
-		COMBINE_DATA(&twincobr_fgvideoram16[fgoffs]);
-		tilemap_mark_tile_dirty(fg_tilemap,fgoffs);
-	}
+	COMBINE_DATA(&twincobr_fgvideoram16[fgoffs]);
+	tilemap_mark_tile_dirty(fg_tilemap,fgoffs);
 }
 
 

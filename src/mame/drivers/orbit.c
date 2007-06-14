@@ -252,14 +252,14 @@ static const gfx_decode orbit_gfx_decode_info[] =
 	{ REGION_GFX1, 0, &orbit_upper_sprite_layout, 0, 1 },
 	{ REGION_GFX1, 0, &orbit_lower_sprite_layout, 0, 1 },
 	{ REGION_GFX2, 0, &orbit_tile_layout, 0, 1 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
 static PALETTE_INIT( orbit )
 {
-	palette_set_color(machine, 0, 0x00, 0x00, 0x00);
-	palette_set_color(machine, 1, 0xFF, 0xFF, 0xFF);
+	palette_set_color(machine, 0, MAKE_RGB(0x00, 0x00, 0x00));
+	palette_set_color(machine, 1, MAKE_RGB(0xFF, 0xFF, 0xFF));
 }
 
 

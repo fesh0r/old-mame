@@ -6,20 +6,14 @@ static tilemap *bg_tilemap, *fg_tilemap;
 
 WRITE8_HANDLER( exprraid_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( exprraid_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( exprraid_flipscreen_w )
@@ -50,7 +44,7 @@ WRITE8_HANDLER( exprraid_scrolly_w )
 	tilemap_set_scrolly(bg_tilemap, 0, data);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	UINT8 *tilerom = memory_region(REGION_GFX4);
 
@@ -72,12 +66,12 @@ static void get_bg_tile_info(int tile_index)
 	color = (attr & 0x18) >> 3;
 	flags = (attr & 0x04) ? TILE_FLIPX : 0;
 
-	tile_info.priority = ((attr & 0x80) ? 1 : 0);
+	tileinfo->priority = ((attr & 0x80) ? 1 : 0);
 
 	SET_TILE_INFO(bank, code, color, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] + ((attr & 0x07) << 8);
@@ -96,8 +90,6 @@ VIDEO_START( exprraid )
 
 	tilemap_set_scroll_rows(bg_tilemap, 2);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 static void exprraid_draw_sprites( mame_bitmap *bitmap )

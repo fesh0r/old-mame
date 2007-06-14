@@ -42,12 +42,12 @@ WRITE8_HANDLER( wiping_flipscreen_w );
 PALETTE_INIT( wiping );
 VIDEO_UPDATE( wiping );
 
-extern unsigned char *wiping_soundregs;
+extern UINT8 *wiping_soundregs;
 void *wiping_sh_start(int clock, const struct CustomSound_interface *config);
 WRITE8_HANDLER( wiping_sound_w );
 
 
-static unsigned char *sharedram1,*sharedram2;
+static UINT8 *sharedram1,*sharedram2;
 
 static READ8_HANDLER( shared1_r )
 {
@@ -294,7 +294,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,      0, 64 },
 	{ REGION_GFX2, 0, &spritelayout, 64*4, 64 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

@@ -8,8 +8,8 @@
 
 #include "driver.h"
 
-unsigned char *vulgus_fgvideoram,*vulgus_bgvideoram;
-unsigned char *vulgus_scroll_low,*vulgus_scroll_high;
+UINT8 *vulgus_fgvideoram,*vulgus_bgvideoram;
+UINT8 *vulgus_scroll_low,*vulgus_scroll_high;
 
 static int vulgus_palette_bank;
 static tilemap *fg_tilemap, *bg_tilemap;
@@ -49,7 +49,7 @@ PALETTE_INIT( vulgus )
 		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -85,7 +85,7 @@ PALETTE_INIT( vulgus )
 
 ***************************************************************************/
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code, color;
 
@@ -98,7 +98,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code, color;
 
@@ -124,8 +124,6 @@ VIDEO_START( vulgus )
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_OPAQUE           ,16,16,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,47);
-
-	return 0;
 }
 
 

@@ -47,7 +47,7 @@ void jackal_mark_tile_dirty(int offset)
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 
@@ -63,8 +63,6 @@ VIDEO_START( jackal )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void jackal_draw_background( mame_bitmap *bitmap, const rectangle *cliprect )

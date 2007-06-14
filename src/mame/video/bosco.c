@@ -52,7 +52,7 @@ PALETTE_INIT( bosco )
 		bit2 = ((*color_prom) >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -84,7 +84,7 @@ PALETTE_INIT( bosco )
 		bits = (i >> 4) & 0x03;
 		b = map[bits];
 
-		palette_set_color(machine,i + 32,r,g,b);
+		palette_set_color(machine,i + 32,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -103,10 +103,10 @@ static UINT32 fg_tilemap_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_r
 }
 
 
-static void get_tile_info(int ram_offs,int tile_index)
+INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int ram_offs)
 {
 	UINT8 attr = bosco_videoram[ram_offs + tile_index + 0x800];
-	tile_info.priority = (attr & 0x20) >> 5;
+	tileinfo->priority = (attr & 0x20) >> 5;
 	SET_TILE_INFO(
 			0,
 			bosco_videoram[ram_offs + tile_index],
@@ -114,14 +114,14 @@ static void get_tile_info(int ram_offs,int tile_index)
 			TILE_FLIPYX(attr >> 6) ^ TILE_FLIPX)
 }
 
-static void bg_get_tile_info(int tile_index)
+static TILE_GET_INFO( bg_get_tile_info )
 {
-	get_tile_info(0x400,tile_index);
+	get_tile_info(machine,tileinfo,tile_index,0x400);
 }
 
-static void fg_get_tile_info(int tile_index)
+static TILE_GET_INFO( fg_get_tile_info )
 {
-	get_tile_info(0x000,tile_index);
+	get_tile_info(machine,tileinfo,tile_index,0x000);
 }
 
 
@@ -151,8 +151,6 @@ VIDEO_START( bosco )
 	state_save_register_global(stars_scrolly);
 	state_save_register_global(bosco_starcontrol);
 	state_save_register_global_array(bosco_starblink);
-
-	return 0;
 }
 
 
@@ -170,14 +168,11 @@ READ8_HANDLER( bosco_videoram_r )
 
 WRITE8_HANDLER( bosco_videoram_w )
 {
-	if (bosco_videoram[offset] != data)
-	{
-		bosco_videoram[offset] = data;
-		if (offset & 0x400)
-			tilemap_mark_tile_dirty(bg_tilemap,offset & 0x3ff);
-		else
-			tilemap_mark_tile_dirty(fg_tilemap,offset & 0x3ff);
-	}
+	bosco_videoram[offset] = data;
+	if (offset & 0x400)
+		tilemap_mark_tile_dirty(bg_tilemap,offset & 0x3ff);
+	else
+		tilemap_mark_tile_dirty(fg_tilemap,offset & 0x3ff);
 }
 
 WRITE8_HANDLER( bosco_scrollx_w )

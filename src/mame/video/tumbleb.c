@@ -257,48 +257,31 @@ WRITE16_HANDLER( suprtrio_tilebank_w )
 
 WRITE16_HANDLER( tumblepb_pf1_data_w )
 {
-	UINT16 oldword=tumblepb_pf1_data[offset];
 	COMBINE_DATA(&tumblepb_pf1_data[offset]);
-	if (oldword!=tumblepb_pf1_data[offset]) {
-		tilemap_mark_tile_dirty(pf1_tilemap,offset);
-		tilemap_mark_tile_dirty(pf1_alt_tilemap,offset);
-
-	}
+	tilemap_mark_tile_dirty(pf1_tilemap,offset);
+	tilemap_mark_tile_dirty(pf1_alt_tilemap,offset);
 }
 
 WRITE16_HANDLER( tumblepb_pf2_data_w )
 {
-	UINT16 oldword=tumblepb_pf2_data[offset];
 	COMBINE_DATA(&tumblepb_pf2_data[offset]);
-	if (oldword!=tumblepb_pf2_data[offset]) {
-		tilemap_mark_tile_dirty(pf2_tilemap,offset);
+	tilemap_mark_tile_dirty(pf2_tilemap,offset);
 
-		if (pf2_alt_tilemap)
-			tilemap_mark_tile_dirty(pf2_alt_tilemap,offset);
-	}
-
+	if (pf2_alt_tilemap)
+		tilemap_mark_tile_dirty(pf2_alt_tilemap,offset);
 }
 
 WRITE16_HANDLER( fncywld_pf1_data_w )
 {
-	UINT16 oldword=tumblepb_pf1_data[offset];
 	COMBINE_DATA(&tumblepb_pf1_data[offset]);
-	if (oldword!=tumblepb_pf1_data[offset]) {
-		tilemap_mark_tile_dirty(pf1_tilemap,offset/2);
-		tilemap_mark_tile_dirty(pf1_alt_tilemap,offset/2);
-
-	}
+	tilemap_mark_tile_dirty(pf1_tilemap,offset/2);
+	tilemap_mark_tile_dirty(pf1_alt_tilemap,offset/2);
 }
 
 WRITE16_HANDLER( fncywld_pf2_data_w )
 {
-	UINT16 oldword=tumblepb_pf2_data[offset];
 	COMBINE_DATA(&tumblepb_pf2_data[offset]);
-	if (oldword!=tumblepb_pf2_data[offset]) {
-		tilemap_mark_tile_dirty(pf2_tilemap,offset/2);
-	}
-
-
+	tilemap_mark_tile_dirty(pf2_tilemap,offset/2);
 }
 
 WRITE16_HANDLER( tumblepb_control_0_w )
@@ -314,7 +297,7 @@ static UINT32 tumblep_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows
 	return (col & 0x1f) + ((row & 0x1f) << 5) + ((col & 0x60) << 5);
 }
 
-INLINE void get_bg_tile_info(int tile_index,int gfx_bank,UINT16 *gfx_base)
+INLINE void get_bg_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int gfx_bank,UINT16 *gfx_base)
 {
 	int data = gfx_base[tile_index];
 
@@ -325,10 +308,10 @@ INLINE void get_bg_tile_info(int tile_index,int gfx_bank,UINT16 *gfx_base)
 			0)
 }
 
-static void get_bg1_tile_info(int tile_index) { get_bg_tile_info(tile_index,2,tumblepb_pf1_data); }
-static void get_bg2_tile_info(int tile_index) { get_bg_tile_info(tile_index,1,tumblepb_pf2_data); }
+static TILE_GET_INFO( get_bg1_tile_info ) { get_bg_tile_info(machine,tileinfo,tile_index,2,tumblepb_pf1_data); }
+static TILE_GET_INFO( get_bg2_tile_info ) { get_bg_tile_info(machine,tileinfo,tile_index,1,tumblepb_pf2_data); }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int data = tumblepb_pf1_data[tile_index];
 
@@ -339,7 +322,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-INLINE void get_fncywld_bg_tile_info(int tile_index,int gfx_bank,UINT16 *gfx_base)
+INLINE void get_fncywld_bg_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int gfx_bank,UINT16 *gfx_base)
 {
 	int data = gfx_base[tile_index*2];
 	int attr = gfx_base[tile_index*2+1];
@@ -351,10 +334,10 @@ INLINE void get_fncywld_bg_tile_info(int tile_index,int gfx_bank,UINT16 *gfx_bas
 			0)
 }
 
-static void get_fncywld_bg1_tile_info(int tile_index) { get_fncywld_bg_tile_info(tile_index,2,tumblepb_pf1_data); }
-static void get_fncywld_bg2_tile_info(int tile_index) { get_fncywld_bg_tile_info(tile_index,1,tumblepb_pf2_data); }
+static TILE_GET_INFO( get_fncywld_bg1_tile_info ) { get_fncywld_bg_tile_info(machine,tileinfo,tile_index,2,tumblepb_pf1_data); }
+static TILE_GET_INFO( get_fncywld_bg2_tile_info ) { get_fncywld_bg_tile_info(machine,tileinfo,tile_index,1,tumblepb_pf2_data); }
 
-static void get_fncywld_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fncywld_fg_tile_info )
 {
 	int data = tumblepb_pf1_data[tile_index*2];
 	int attr = tumblepb_pf1_data[tile_index*2+1];
@@ -368,7 +351,7 @@ static void get_fncywld_fg_tile_info(int tile_index)
 
 
 /* jump pop */
-static void get_jumppop_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( get_jumppop_bg1_tile_info )
 {
 	int data = tumblepb_pf1_data[tile_index];
 
@@ -379,7 +362,7 @@ static void get_jumppop_bg1_tile_info(int tile_index)
 			0)
 }
 
-static void get_jumppop_bg2_tile_info(int tile_index)
+static TILE_GET_INFO( get_jumppop_bg2_tile_info )
 {
 	int data = tumblepb_pf2_data[tile_index];
 
@@ -390,7 +373,7 @@ static void get_jumppop_bg2_tile_info(int tile_index)
 			0)
 }
 
-static void get_jumppop_bg2_alt_tile_info(int tile_index)
+static TILE_GET_INFO( get_jumppop_bg2_alt_tile_info )
 {
 	int data = tumblepb_pf2_data[tile_index];
 
@@ -402,7 +385,7 @@ static void get_jumppop_bg2_alt_tile_info(int tile_index)
 }
 
 
-static void get_jumppop_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_jumppop_fg_tile_info )
 {
 	int data = tumblepb_pf1_data[tile_index];
 
@@ -432,7 +415,7 @@ WRITE16_HANDLER( pangpang_pf2_data_w )
 
 
 
-INLINE void pangpang_get_bg_tile_info(int tile_index,int gfx_bank,UINT16 *gfx_base)
+INLINE void pangpang_get_bg_tile_info(running_machine *machine, tile_data *tileinfo, int tile_index,int gfx_bank,UINT16 *gfx_base)
 {
 	int data = gfx_base[tile_index*2+1];
 	int attr = gfx_base[tile_index*2];
@@ -444,7 +427,7 @@ INLINE void pangpang_get_bg_tile_info(int tile_index,int gfx_bank,UINT16 *gfx_ba
 			0)
 }
 
-INLINE void pangpang_get_bg2x_tile_info(int tile_index,int gfx_bank,UINT16 *gfx_base)
+INLINE void pangpang_get_bg2x_tile_info(running_machine *machine, tile_data *tileinfo, int tile_index,int gfx_bank,UINT16 *gfx_base)
 {
 	int data = gfx_base[tile_index*2+1];
 	int attr = gfx_base[tile_index*2];
@@ -457,10 +440,10 @@ INLINE void pangpang_get_bg2x_tile_info(int tile_index,int gfx_bank,UINT16 *gfx_
 }
 
 
-static void pangpang_get_bg1_tile_info(int tile_index) { pangpang_get_bg_tile_info(tile_index,2,tumblepb_pf1_data); }
-static void pangpang_get_bg2_tile_info(int tile_index) { pangpang_get_bg2x_tile_info(tile_index,1,tumblepb_pf2_data); }
+static TILE_GET_INFO( pangpang_get_bg1_tile_info ) { pangpang_get_bg_tile_info(machine,tileinfo,tile_index,2,tumblepb_pf1_data); }
+static TILE_GET_INFO( pangpang_get_bg2_tile_info ) { pangpang_get_bg2x_tile_info(machine,tileinfo,tile_index,1,tumblepb_pf2_data); }
 
-static void pangpang_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( pangpang_get_fg_tile_info )
 {
 	int data = tumblepb_pf1_data[tile_index*2+1];
 	int attr = tumblepb_pf1_data[tile_index*2];
@@ -485,8 +468,6 @@ VIDEO_START( pangpang )
 
 	sprite_xoffset = -1;
 	sprite_yoffset = 0;
-
-	return 0;
 }
 
 
@@ -502,8 +483,6 @@ VIDEO_START( tumblepb )
 
 	sprite_xoffset = -1;
 	sprite_yoffset = 0;
-
-	return 0;
 }
 
 VIDEO_START( sdfight )
@@ -519,8 +498,6 @@ VIDEO_START( sdfight )
 	/* aligned to monitor test */
 	sprite_xoffset = 0;
 	sprite_yoffset = 1;
-
-	return 0;
 }
 
 VIDEO_START( fncywld )
@@ -535,8 +512,6 @@ VIDEO_START( fncywld )
 
 	sprite_xoffset = -1;
 	sprite_yoffset = 0;
-
-	return 0;
 }
 
 VIDEO_START( jumppop )
@@ -557,8 +532,6 @@ VIDEO_START( jumppop )
 
 	sprite_xoffset = -1;
 	sprite_yoffset = 0;
-
-	return 0;
 }
 
 
@@ -862,8 +835,6 @@ VIDEO_START( suprtrio )
 
 	tilemap_set_transparent_pen(pf1_alt_tilemap,0);
 	bcstory_tilebank = 0;
-
-	return 0;
 }
 
 

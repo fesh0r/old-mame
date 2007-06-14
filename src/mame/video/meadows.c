@@ -21,7 +21,7 @@ static tilemap *bg_tilemap;
  *
  *************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	SET_TILE_INFO(0, videoram[tile_index] & 0x7f, 0, 0);
 }
@@ -37,7 +37,6 @@ static void get_tile_info(int tile_index)
 VIDEO_START( meadows )
 {
 	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 32,30);
-	return 0;
 }
 
 

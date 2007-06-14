@@ -130,7 +130,7 @@ static WRITE32_HANDLER( f3_sound_bankswitch_w )
 {
 	if (f3_game==KIRAMEKI) {
 		UINT16 *rom = (UINT16 *)memory_region(REGION_CPU2);
-		unsigned int idx;
+		UINT32 idx;
 
 		idx = (offset << 1) & 0x1e;
 		if (ACCESSING_LSW32)
@@ -382,7 +382,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX2, 0x000000, &tile_layout, 	       0, 512 }, /* Tiles area */
 	{ REGION_GFX1, 0x000000, &spriteram_layout, 4096, 256 }, /* Sprites area */
 	{ 0,           0x000000, &pivotlayout,         0,  64 }, /* Dynamically modified */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /******************************************************************************/
@@ -436,7 +436,6 @@ NVRAM_HANDLER( taito_f3 )
 static MACHINE_START(f3)
 {
 	state_save_register_global_array(coin_word);
-	return 0;
 }
 
 static MACHINE_DRIVER_START( f3 )
@@ -3131,8 +3130,8 @@ ROM_END
 
 static void tile_decode(int uses_5bpp_tiles)
 {
-	unsigned char lsb,msb;
-	unsigned int offset,i;
+	UINT8 lsb,msb;
+	UINT32 offset,i;
 	UINT8 *gfx = memory_region(REGION_GFX2);
 	int size=memory_region_length(REGION_GFX2);
 	int half=size/2,data;

@@ -13,11 +13,8 @@ static tilemap *bg_tilemap;
 
 WRITE8_HANDLER( nitedrvr_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( nitedrvr_hvc_w )
@@ -28,7 +25,7 @@ WRITE8_HANDLER( nitedrvr_hvc_w )
 		watchdog_reset_w(0, 0);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] & 0x3f;
 
@@ -41,8 +38,6 @@ VIDEO_START( nitedrvr )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void nitedrvr_draw_box( mame_bitmap *bitmap, int bx, int by, int ex, int ey )

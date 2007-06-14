@@ -33,7 +33,7 @@ t=tile, p=palette
 sVS920A VS920A[MAX_VS920A];
 static sVS920A* VS920A_cur_chip;
 
-static void VS920A_get_tile_info(int tile_index)
+static TILE_GET_INFO( VS920A_get_tile_info )
 {
 	int data;
 	int tileno, pal;
@@ -147,7 +147,7 @@ tMB60553 MB60553[MAX_MB60553];
 
 static tMB60553 *MB60553_cur_chip;
 
-static void MB60553_get_tile_info(int tile_index)
+static TILE_GET_INFO( MB60553_get_tile_info )
 {
 	int data, bankno;
 	int tileno, pal;
@@ -581,8 +581,6 @@ VIDEO_START(gstriker)
 	CG10103_init(1);
 	CG10103_set_gfx_region(0, 2);
 	CG10103_set_pal_base(0, 0x10);
-
-	return 0;
 }
 
 VIDEO_START(twrldc94)
@@ -605,7 +603,5 @@ VIDEO_START(twrldc94)
 	CG10103_init(1);
 	CG10103_set_gfx_region(0, 2);
 	CG10103_set_pal_base(0, 0x60);
-
-	return 0;
 }
 

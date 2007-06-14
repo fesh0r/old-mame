@@ -1480,8 +1480,13 @@ static UINT32 recompile_lswi(drc_core *drc, UINT32 op)
 
 static UINT32 recompile_lswx(drc_core *drc, UINT32 op)
 {
-	mame_printf_debug("PPCDRC: recompile lswx\n");
-	return RECOMPILE_UNIMPLEMENTED;
+	_mov_m32abs_r32(&ppc_icount, REG_EBP);
+	_push_imm(op);
+	_call((genf *)ppc_lswx);
+	_add_r32_imm(REG_ESP, 4);
+	_mov_r32_m32abs(REG_EBP, &ppc_icount);
+
+	return RECOMPILE_SUCCESSFUL_CP(1,4);
 }
 
 static UINT32 recompile_lwarx(drc_core *drc, UINT32 op)
@@ -2187,8 +2192,13 @@ static UINT32 recompile_stswi(drc_core *drc, UINT32 op)
 
 static UINT32 recompile_stswx(drc_core *drc, UINT32 op)
 {
-	mame_printf_debug("PPCDRC: recompile stswx\n");
-	return RECOMPILE_UNIMPLEMENTED;
+	_mov_m32abs_r32(&ppc_icount, REG_EBP);
+	_push_imm(op);
+	_call((genf *)ppc_stswx);
+	_add_r32_imm(REG_ESP, 4);
+	_mov_r32_m32abs(REG_EBP, &ppc_icount);
+
+	return RECOMPILE_SUCCESSFUL_CP(1,4);
 }
 
 static UINT32 recompile_stw(drc_core *drc, UINT32 op)
@@ -3730,7 +3740,9 @@ static UINT32 recompile_dsa(drc_core *drc, UINT32 op)
 
 	return RECOMPILE_SUCCESSFUL_CP(1,4);
 }
+#endif /* HAS_PPC602 */
 
+#if (HAS_PPC602 || HAS_MPC8240)
 static UINT32 recompile_tlbli(drc_core *drc, UINT32 op)
 {
 	return RECOMPILE_SUCCESSFUL_CP(1,4);
@@ -3740,5 +3752,5 @@ static UINT32 recompile_tlbld(drc_core *drc, UINT32 op)
 {
 	return RECOMPILE_SUCCESSFUL_CP(1,4);
 }
-#endif /* HAS_PPC602 */
+#endif
 

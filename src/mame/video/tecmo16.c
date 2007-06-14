@@ -23,22 +23,22 @@ static int flipscreen, game_is_riot;
 
 /******************************************************************************/
 
-static void fg_get_tile_info(int tile_index)
+static TILE_GET_INFO( fg_get_tile_info )
 {
 	int tile = tecmo16_videoram[tile_index] & 0x1fff;
 	int color = tecmo16_colorram[tile_index] & 0x0f;
 
 	/* bit 4 controls blending */
-	tile_info.priority = (tecmo16_colorram[tile_index] & 0x10) >> 4;
+	tileinfo->priority = (tecmo16_colorram[tile_index] & 0x10) >> 4;
 
 	SET_TILE_INFO(
 			1,
 			tile,
-			color | (tile_info.priority ? 0x70 : 0x00),
+			color | (tileinfo->priority ? 0x70 : 0x00),
 			0)
 }
 
-static void bg_get_tile_info(int tile_index)
+static TILE_GET_INFO( bg_get_tile_info )
 {
 	int tile = tecmo16_videoram2[tile_index] & 0x1fff;
 	int color = (tecmo16_colorram2[tile_index] & 0x0f)+0x10;
@@ -50,7 +50,7 @@ static void bg_get_tile_info(int tile_index)
 			0)
 }
 
-static void tx_get_tile_info(int tile_index)
+static TILE_GET_INFO( tx_get_tile_info )
 {
 	int tile = tecmo16_charram[tile_index];
 	SET_TILE_INFO(
@@ -82,8 +82,6 @@ VIDEO_START( fstarfrc )
 	tilemap_set_scrolly(tx_tilemap,0,-16);
 	flipscreen = 0;
 	game_is_riot = 0;
-
-	return 0;
 }
 
 VIDEO_START( ginkun )
@@ -104,8 +102,6 @@ VIDEO_START( ginkun )
 	tilemap_set_transparent_pen(tx_tilemap,0);
 	flipscreen = 0;
 	game_is_riot = 0;
-
-	return 0;
 }
 
 VIDEO_START( riot )
@@ -127,51 +123,39 @@ VIDEO_START( riot )
 	tilemap_set_scrolldy(tx_tilemap,-16,-16);
 	flipscreen = 0;
 	game_is_riot = 1;
-
-	return 0;
 }
 
 /******************************************************************************/
 
 WRITE16_HANDLER( tecmo16_videoram_w )
 {
-	int oldword = tecmo16_videoram[offset];
 	COMBINE_DATA(&tecmo16_videoram[offset]);
-	if (oldword != tecmo16_videoram[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 WRITE16_HANDLER( tecmo16_colorram_w )
 {
-	int oldword = tecmo16_colorram[offset];
 	COMBINE_DATA(&tecmo16_colorram[offset]);
-	if (oldword != tecmo16_colorram[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 WRITE16_HANDLER( tecmo16_videoram2_w )
 {
-	int oldword = tecmo16_videoram2[offset];
 	COMBINE_DATA(&tecmo16_videoram2[offset]);
-	if (oldword != tecmo16_videoram2[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE16_HANDLER( tecmo16_colorram2_w )
 {
-	int oldword = tecmo16_colorram2[offset];
 	COMBINE_DATA(&tecmo16_colorram2[offset]);
-	if (oldword != tecmo16_colorram2[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 
 WRITE16_HANDLER( tecmo16_charram_w )
 {
-	int oldword = tecmo16_charram[offset];
 	COMBINE_DATA(&tecmo16_charram[offset]);
-	if (oldword != tecmo16_charram[offset])
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 WRITE16_HANDLER( tecmo16_flipscreen_w )

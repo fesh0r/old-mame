@@ -11,7 +11,7 @@ static int layer_colorbase[2];
 
 ***************************************************************************/
 
-static void tile_callback(int layer, int bank, int *code, int *color)
+static void tile_callback(int layer, int bank, int *code, int *color, int *flags)
 {
 	*code |= ((*color & 0x0f) << 9) | ((*color & 0x40) << 2);
 	*color = layer_colorbase[layer];
@@ -46,13 +46,8 @@ VIDEO_START( battlnts )
 	layer_colorbase[0] = 0;
 	layer_colorbase[1] = 0;
 
-	if (K007342_vh_start(0,tile_callback))
-		return 1;
-
-	if (K007420_vh_start(1,sprite_callback))
-		return 1;
-
-	return 0;
+	K007342_vh_start(0,tile_callback);
+	K007420_vh_start(1,sprite_callback);
 }
 
 /***************************************************************************

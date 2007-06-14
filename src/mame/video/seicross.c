@@ -52,37 +52,31 @@ PALETTE_INIT( seicross )
 		bit1 = (color_prom[i] >> 7) & 0x01;
 		b = 0x4f * bit0 + 0xa8 * bit1;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 
 WRITE8_HANDLER( seicross_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( seicross_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		/* bit 5 of the address is not used for color memory. There is just */
-		/* 512k of memory; every two consecutive rows share the same memory */
-		/* region. */
-		offset &= 0xffdf;
+	/* bit 5 of the address is not used for color memory. There is just */
+	/* 512k of memory; every two consecutive rows share the same memory */
+	/* region. */
+	offset &= 0xffdf;
 
-		colorram[offset] = data;
-		colorram[offset + 0x20] = data;
+	colorram[offset] = data;
+	colorram[offset + 0x20] = data;
 
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-		tilemap_mark_tile_dirty(bg_tilemap, offset + 0x20);
-	}
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
+	tilemap_mark_tile_dirty(bg_tilemap, offset + 0x20);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] + ((colorram[tile_index] & 0x10) << 4);
 	int color = colorram[tile_index] & 0x0f;
@@ -97,8 +91,6 @@ VIDEO_START( seicross )
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
 
 	tilemap_set_scroll_cols(bg_tilemap, 32);
-
-	return 0;
 }
 
 static void seicross_draw_sprites( mame_bitmap *bitmap )

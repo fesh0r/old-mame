@@ -212,13 +212,12 @@ static const pia6821_interface slither_pia_3_intf =
 MACHINE_START( qix )
 {
 	/* configure the PIAs */
-	pia_config(0, PIA_STANDARD_ORDERING, &qix_pia_0_intf);
-	pia_config(1, PIA_STANDARD_ORDERING, &qix_pia_1_intf);
-	pia_config(2, PIA_STANDARD_ORDERING, &qix_pia_2_intf);
-	pia_config(3, PIA_STANDARD_ORDERING, &qix_pia_3_intf);
-	pia_config(4, PIA_STANDARD_ORDERING, &qix_pia_4_intf);
-	pia_config(5, PIA_STANDARD_ORDERING, &qix_pia_5_intf);
-	return 0;
+	pia_config(0, &qix_pia_0_intf);
+	pia_config(1, &qix_pia_1_intf);
+	pia_config(2, &qix_pia_2_intf);
+	pia_config(3, &qix_pia_3_intf);
+	pia_config(4, &qix_pia_4_intf);
+	pia_config(5, &qix_pia_5_intf);
 }
 
 MACHINE_RESET( qix )
@@ -234,27 +233,25 @@ MACHINE_RESET( qix )
 MACHINE_START( qixmcu )
 {
 	/* configure the PIAs */
-	pia_config(0, PIA_STANDARD_ORDERING, &qixmcu_pia_0_intf);
-	pia_config(1, PIA_STANDARD_ORDERING, &qix_pia_1_intf);
-	pia_config(2, PIA_STANDARD_ORDERING, &qixmcu_pia_2_intf);
-	pia_config(3, PIA_STANDARD_ORDERING, &qix_pia_3_intf);
-	pia_config(4, PIA_STANDARD_ORDERING, &qix_pia_4_intf);
-	pia_config(5, PIA_STANDARD_ORDERING, &qix_pia_5_intf);
+	pia_config(0, &qixmcu_pia_0_intf);
+	pia_config(1, &qix_pia_1_intf);
+	pia_config(2, &qixmcu_pia_2_intf);
+	pia_config(3, &qix_pia_3_intf);
+	pia_config(4, &qix_pia_4_intf);
+	pia_config(5, &qix_pia_5_intf);
 
 	/* set up save states */
 	state_save_register_global_array(qix_68705_port_in);
 	state_save_register_global(qix_coinctrl);
-	return 0;
 }
 
 MACHINE_START( slither )
 {
 	/* configure the PIAs */
-	pia_config(0, PIA_STANDARD_ORDERING, &qix_pia_0_intf);
-	pia_config(1, PIA_STANDARD_ORDERING, &slither_pia_1_intf);
-	pia_config(2, PIA_STANDARD_ORDERING, &slither_pia_2_intf);
-	pia_config(3, PIA_STANDARD_ORDERING, &slither_pia_3_intf);
-	return 0;
+	pia_config(0, &qix_pia_0_intf);
+	pia_config(1, &slither_pia_1_intf);
+	pia_config(2, &slither_pia_2_intf);
+	pia_config(3, &slither_pia_3_intf);
 }
 
 
@@ -518,35 +515,6 @@ WRITE8_HANDLER( qix_pia_0_w )
 	/* make all the CPUs synchronize, and only AFTER that write the command to the PIA */
 	/* otherwise the 68705 will miss commands */
 	mame_timer_set(time_zero, data | (offset << 8), pia_0_w_callback);
-}
-
-
-
-/*************************************
- *
- *  PIA/Protection(?) workarounds
- *
- *************************************/
-
-WRITE8_HANDLER( zookeep_pia_0_w )
-{
-	/* Hack: Kram and Zoo Keeper for some reason (protection?) leave the port A */
-	/* DDR set to 0xff, so they cannot read the player 1 controls. Here we force */
-	/* the DDR to 0, so the controls work correctly. */
-	if (offset == 0)
-		data = 0;
-	qix_pia_0_w(offset, data);
-}
-
-
-WRITE8_HANDLER( zookeep_pia_2_w )
-{
-	/* Hack: Zoo Keeper for some reason (protection?) leaves the port A */
-	/* DDR set to 0xff, so they cannot read the player 2 controls. Here we force */
-	/* the DDR to 0, so the controls work correctly. */
-	if (offset == 0)
-		data = 0;
-	pia_2_w(offset, data);
 }
 
 

@@ -591,9 +591,9 @@ WRITE16_HANDLER( segaic16_paletteram_w )
 	b = ((newval >> 14) & 0x01) | ((newval >> 7) & 0x1e);
 
 	/* normal colors */
-	palette_set_color(Machine, offset + 0 * palette.entries, palette.normal[r],  palette.normal[g],  palette.normal[b]);
-	palette_set_color(Machine, offset + 1 * palette.entries, palette.shadow[r],  palette.shadow[g],  palette.shadow[b]);
-	palette_set_color(Machine, offset + 2 * palette.entries, palette.hilight[r], palette.hilight[g], palette.hilight[b]);
+	palette_set_color_rgb(Machine, offset + 0 * palette.entries, palette.normal[r],  palette.normal[g],  palette.normal[b]);
+	palette_set_color_rgb(Machine, offset + 1 * palette.entries, palette.shadow[r],  palette.shadow[g],  palette.shadow[b]);
+	palette_set_color_rgb(Machine, offset + 2 * palette.entries, palette.hilight[r], palette.hilight[g], palette.hilight[b]);
 }
 
 
@@ -804,27 +804,27 @@ void segaic16_draw_virtual_tilemap(struct tilemap_info *info, mame_bitmap *bitma
  *
  *******************************************************************************************/
 
-static void segaic16_tilemap_16a_tile_info(int tile_index)
+static TILE_GET_INFO( segaic16_tilemap_16a_tile_info )
 {
-	const struct tilemap_callback_info *info = tile_info.user_data;
+	const struct tilemap_callback_info *info = tileinfo->user_data;
 	UINT16 data = info->rambase[tile_index];
 	int code = ((data >> 1) & 0x1000) | (data & 0xfff);
 	int color = (data >> 5) & 0x7f;
 
 	SET_TILE_INFO(0, code, color, 0);
-	tile_info.priority = (data >> 12) & 1;
+	tileinfo->priority = (data >> 12) & 1;
 }
 
 
-static void segaic16_tilemap_16a_text_info(int tile_index)
+static TILE_GET_INFO( segaic16_tilemap_16a_text_info )
 {
-	const struct tilemap_callback_info *info = tile_info.user_data;
+	const struct tilemap_callback_info *info = tileinfo->user_data;
 	UINT16 data = info->rambase[tile_index];
 	int color = (data >> 8) & 0x07;
 	int code = data & 0xff;
 
 	SET_TILE_INFO(0, code, color, 0);
-	tile_info.priority = (data >> 11) & 1;
+	tileinfo->priority = (data >> 11) & 1;
 }
 
 
@@ -1016,9 +1016,9 @@ static void segaic16_tilemap_16a_draw_layer(struct tilemap_info *info, mame_bitm
  *
  *******************************************************************************************/
 
-static void segaic16_tilemap_16b_tile_info(int tile_index)
+static TILE_GET_INFO( segaic16_tilemap_16b_tile_info )
 {
-	const struct tilemap_callback_info *info = tile_info.user_data;
+	const struct tilemap_callback_info *info = tileinfo->user_data;
 	UINT16 data = info->rambase[tile_index];
 	int color = (data >> 6) & 0x7f;
 	int code = data & 0x1fff;
@@ -1026,26 +1026,26 @@ static void segaic16_tilemap_16b_tile_info(int tile_index)
 	code = info->bank[code / info->banksize] * info->banksize + code % info->banksize;
 
 	SET_TILE_INFO(0, code, color, 0);
-	tile_info.priority = (data >> 15) & 1;
+	tileinfo->priority = (data >> 15) & 1;
 }
 
 
-static void segaic16_tilemap_16b_text_info(int tile_index)
+static TILE_GET_INFO( segaic16_tilemap_16b_text_info )
 {
-	const struct tilemap_callback_info *info = tile_info.user_data;
+	const struct tilemap_callback_info *info = tileinfo->user_data;
 	UINT16 data = info->rambase[tile_index];
 	int bank = info->bank[0];
 	int color = (data >> 9) & 0x07;
 	int code = data & 0x1ff;
 
 	SET_TILE_INFO(0, bank * info->banksize + code, color, 0);
-	tile_info.priority = (data >> 15) & 1;
+	tileinfo->priority = (data >> 15) & 1;
 }
 
 
-static void segaic16_tilemap_16b_alt_tile_info(int tile_index)
+static TILE_GET_INFO( segaic16_tilemap_16b_alt_tile_info )
 {
-	const struct tilemap_callback_info *info = tile_info.user_data;
+	const struct tilemap_callback_info *info = tileinfo->user_data;
 	UINT16 data = info->rambase[tile_index];
 	int color = (data >> 5) & 0x7f;
 	int code = data & 0x1fff;
@@ -1053,20 +1053,20 @@ static void segaic16_tilemap_16b_alt_tile_info(int tile_index)
 	code = info->bank[code / info->banksize] * info->banksize + code % info->banksize;
 
 	SET_TILE_INFO(0, code, color, 0);
-	tile_info.priority = (data >> 15) & 1;
+	tileinfo->priority = (data >> 15) & 1;
 }
 
 
-static void segaic16_tilemap_16b_alt_text_info(int tile_index)
+static TILE_GET_INFO( segaic16_tilemap_16b_alt_text_info )
 {
-	const struct tilemap_callback_info *info = tile_info.user_data;
+	const struct tilemap_callback_info *info = tileinfo->user_data;
 	UINT16 data = info->rambase[tile_index];
 	int bank = info->bank[0];
 	int color = (data >> 8) & 0x07;
 	int code = data & 0xff;
 
 	SET_TILE_INFO(0, bank * info->banksize + code, color, 0);
-	tile_info.priority = (data >> 15) & 1;
+	tileinfo->priority = (data >> 15) & 1;
 }
 
 
@@ -1197,11 +1197,11 @@ void segaic16_tilemap_16b_reset(struct tilemap_info *info)
  *
  *************************************/
 
-int segaic16_tilemap_init(int which, int type, int colorbase, int xoffs, int numbanks)
+void segaic16_tilemap_init(int which, int type, int colorbase, int xoffs, int numbanks)
 {
 	struct tilemap_info *info = &bg_tilemap[which];
-	void (*get_text_info)(int);
-	void (*get_tile_info)(int);
+	tile_get_info_fn get_text_info;
+	tile_get_info_fn get_tile_info;
 	int pagenum;
 	int i;
 
@@ -1294,7 +1294,6 @@ int segaic16_tilemap_init(int which, int type, int colorbase, int xoffs, int num
 		tilemap_set_scrolldx(info->tilemaps[pagenum], 0, 22);
 		tilemap_set_scrolldy(info->tilemaps[pagenum], 0, 38);
 	}
-	return 0;
 }
 
 
@@ -2648,7 +2647,7 @@ static void segaic16_sprites_yboard_draw(struct sprite_info *info, mame_bitmap *
  *
  *************************************/
 
-int segaic16_sprites_init(int which, int type, int colorbase, int xoffs)
+void segaic16_sprites_init(int which, int type, int colorbase, int xoffs)
 {
 	struct sprite_info *info = &sprites[which];
 	int i, buffer = 0;
@@ -2732,8 +2731,6 @@ int segaic16_sprites_init(int which, int type, int colorbase, int xoffs)
 	state_save_register_item("segaic16_sp", which, info->xoffs);
 	if (buffer)
 		state_save_register_item_pointer("segaic16_sp", which, ((UINT8 *) info->buffer), info->ramsize);
-
-	return 0;
 }
 
 
@@ -2929,11 +2926,11 @@ static void segaic16_road_hangon_draw(struct road_info *info, mame_bitmap *bitma
 
 		if (code_pressed(KEYCODE_D))
 		{
-			palette_set_color(Machine, 0, 0, 0, 255);
-			palette_set_color(Machine, 1, 0, 255, 0);
-			palette_set_color(Machine, 2, 255, 0, 0);
-			palette_set_color(Machine, 3, 255, 0, 255);
-			palette_set_color(Machine, 7, 255, 255, 255);
+			palette_set_color(Machine, 0, MAKE_RGB(0, 0, 255));
+			palette_set_color(Machine, 1, MAKE_RGB(0, 255, 0));
+			palette_set_color(Machine, 2, MAKE_RGB(255, 0, 0));
+			palette_set_color(Machine, 3, MAKE_RGB(255, 0, 255));
+			palette_set_color(Machine, 7, MAKE_RGB(255, 255, 255));
 
 			for (y = cliprect->min_y; y <= cliprect->max_y; y++)
 			{
@@ -3225,16 +3222,16 @@ static void segaic16_road_outrun_draw(struct road_info *info, mame_bitmap *bitma
 	{
 		if (code_pressed(KEYCODE_D))
 		{
-			palette_set_color(Machine, info->colorbase1 ^ 0, 0, 0, 255);
-			palette_set_color(Machine, info->colorbase1 ^ 1, 0, 0, 255);
-			palette_set_color(Machine, info->colorbase1 ^ 2, 0, 255, 0);
-			palette_set_color(Machine, info->colorbase1 ^ 3, 0, 255, 0);
-			palette_set_color(Machine, info->colorbase1 ^ 4, 255, 0, 0);
-			palette_set_color(Machine, info->colorbase1 ^ 5, 255, 0, 0);
-			palette_set_color(Machine, info->colorbase1 ^ 6, 255, 255, 255);
-			palette_set_color(Machine, info->colorbase1 ^ 7, 255, 255, 255);
+			palette_set_color(Machine, info->colorbase1 ^ 0, MAKE_RGB(0, 0, 255));
+			palette_set_color(Machine, info->colorbase1 ^ 1, MAKE_RGB(0, 0, 255));
+			palette_set_color(Machine, info->colorbase1 ^ 2, MAKE_RGB(0, 255, 0));
+			palette_set_color(Machine, info->colorbase1 ^ 3, MAKE_RGB(0, 255, 0));
+			palette_set_color(Machine, info->colorbase1 ^ 4, MAKE_RGB(255, 0, 0));
+			palette_set_color(Machine, info->colorbase1 ^ 5, MAKE_RGB(255, 0, 0));
+			palette_set_color(Machine, info->colorbase1 ^ 6, MAKE_RGB(255, 255, 255));
+			palette_set_color(Machine, info->colorbase1 ^ 7, MAKE_RGB(255, 255, 255));
 			for (x = 0; x < 16; x++)
-				palette_set_color(Machine, info->colorbase2 ^ x, 255, 0, 255);
+				palette_set_color(Machine, info->colorbase2 ^ x, MAKE_RGB(255, 0, 255));
 		}
 		else
 		{
@@ -3413,7 +3410,7 @@ static void segaic16_road_outrun_draw(struct road_info *info, mame_bitmap *bitma
  *
  *************************************/
 
-int segaic16_road_init(int which, int type, int colorbase1, int colorbase2, int colorbase3, int xoffs)
+void segaic16_road_init(int which, int type, int colorbase1, int colorbase2, int colorbase3, int xoffs)
 {
 	struct road_info *info = &road[which];
 
@@ -3456,7 +3453,6 @@ int segaic16_road_init(int which, int type, int colorbase1, int colorbase2, int 
 		default:
 			fatalerror("Invalid road system specified in segaic16_road_init");
 	}
-	return 0;
 }
 
 
@@ -3522,7 +3518,7 @@ WRITE16_HANDLER( segaic16_road_control_0_w )
  *
  *************************************/
 
-int segaic16_rotate_init(int which, int type, int colorbase)
+void segaic16_rotate_init(int which, int type, int colorbase)
 {
 	struct rotate_info *info = &rotate[which];
 
@@ -3559,8 +3555,6 @@ int segaic16_rotate_init(int which, int type, int colorbase)
 
 	state_save_register_item("segaic16_rot", which, info->colorbase);
 	state_save_register_item_pointer("segaic16_rot", which, ((UINT8 *) info->buffer), info->ramsize);
-
-	return 0;
 }
 
 

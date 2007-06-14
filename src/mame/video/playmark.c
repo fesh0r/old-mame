@@ -21,7 +21,7 @@ static UINT16 playmark_scroll[7];
 
 ***************************************************************************/
 
-static void bigtwin_get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( bigtwin_get_tx_tile_info )
 {
 	UINT16 code = wbeachvl_videoram1[2*tile_index];
 	UINT16 color = wbeachvl_videoram1[2*tile_index+1];
@@ -32,7 +32,7 @@ static void bigtwin_get_tx_tile_info(int tile_index)
 			0)
 }
 
-static void bigtwin_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( bigtwin_get_fg_tile_info )
 {
 	UINT16 code = wbeachvl_videoram2[2*tile_index];
 	UINT16 color = wbeachvl_videoram2[2*tile_index+1];
@@ -43,7 +43,7 @@ static void bigtwin_get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void wbeachvl_get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( wbeachvl_get_tx_tile_info )
 {
 	UINT16 code = wbeachvl_videoram1[2*tile_index];
 	UINT16 color = wbeachvl_videoram1[2*tile_index+1];
@@ -55,7 +55,7 @@ static void wbeachvl_get_tx_tile_info(int tile_index)
 			0)
 }
 
-static void wbeachvl_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( wbeachvl_get_fg_tile_info )
 {
 	UINT16 code = wbeachvl_videoram2[2*tile_index];
 	UINT16 color = wbeachvl_videoram2[2*tile_index+1];
@@ -67,7 +67,7 @@ static void wbeachvl_get_fg_tile_info(int tile_index)
 			(code & 0x8000) ? TILE_FLIPX : 0)
 }
 
-static void wbeachvl_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( wbeachvl_get_bg_tile_info )
 {
 	UINT16 code = wbeachvl_videoram3[2*tile_index];
 	UINT16 color = wbeachvl_videoram3[2*tile_index+1];
@@ -79,7 +79,7 @@ static void wbeachvl_get_bg_tile_info(int tile_index)
 			(code & 0x8000) ? TILE_FLIPX : 0)
 }
 
-static void hrdtimes_get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( hrdtimes_get_tx_tile_info )
 {
 	int code = wbeachvl_videoram1[tile_index] & 0x03ff;
 	int colr = wbeachvl_videoram1[tile_index] & 0xe000;
@@ -87,7 +87,7 @@ static void hrdtimes_get_tx_tile_info(int tile_index)
 	SET_TILE_INFO(2,code + txt_tile_offset,colr >> 13,0)
 }
 
-static void hrdtimes_get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( hrdtimes_get_fg_tile_info )
 {
 	int code = wbeachvl_videoram2[tile_index] & 0x1fff;
 	int colr = wbeachvl_videoram2[tile_index] & 0xe000;
@@ -95,7 +95,7 @@ static void hrdtimes_get_fg_tile_info(int tile_index)
 	SET_TILE_INFO(1,code + 0x2000,(colr >> 13) + 8,0)
 }
 
-static void hrdtimes_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( hrdtimes_get_bg_tile_info )
 {
 	int code = wbeachvl_videoram3[tile_index] & 0x1fff;
 	int colr = wbeachvl_videoram3[tile_index] & 0xe000;
@@ -119,8 +119,6 @@ VIDEO_START( bigtwin )
 	pri_masks[0] = 0;
 	pri_masks[1] = 0;
 	pri_masks[2] = 0;
-
-	return 0;
 }
 
 
@@ -136,8 +134,6 @@ VIDEO_START( wbeachvl )
 	pri_masks[0] = 0xfff0;
 	pri_masks[1] = 0xfffc;
 	pri_masks[2] = 0;
-
-	return 0;
 }
 
 VIDEO_START( excelsr )
@@ -150,8 +146,6 @@ VIDEO_START( excelsr )
 	pri_masks[0] = 0;
 	pri_masks[1] = 0xfffc;
 	pri_masks[2] = 0xfff0;
-
-	return 0;
 }
 
 VIDEO_START( hotmind )
@@ -174,8 +168,6 @@ VIDEO_START( hotmind )
 	pri_masks[0] = 0xfff0;
 	pri_masks[1] = 0xfffc;
 	pri_masks[2] = 0;
-
-	return 0;
 }
 
 VIDEO_START( hrdtimes )
@@ -198,8 +190,6 @@ VIDEO_START( hrdtimes )
 	pri_masks[0] = 0xfff0;
 	pri_masks[1] = 0xfffc;
 	pri_masks[2] = 0;
-
-	return 0;
 }
 
 /***************************************************************************
@@ -210,26 +200,20 @@ VIDEO_START( hrdtimes )
 
 WRITE16_HANDLER( wbeachvl_txvideoram_w )
 {
-	int oldword = wbeachvl_videoram1[offset];
 	COMBINE_DATA(&wbeachvl_videoram1[offset]);
-	if (oldword != wbeachvl_videoram1[offset])
-		tilemap_mark_tile_dirty(tx_tilemap,offset / 2);
+	tilemap_mark_tile_dirty(tx_tilemap,offset / 2);
 }
 
 WRITE16_HANDLER( wbeachvl_fgvideoram_w )
 {
-	int oldword = wbeachvl_videoram2[offset];
 	COMBINE_DATA(&wbeachvl_videoram2[offset]);
-	if (oldword != wbeachvl_videoram2[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset / 2);
+	tilemap_mark_tile_dirty(fg_tilemap,offset / 2);
 }
 
 WRITE16_HANDLER( wbeachvl_bgvideoram_w )
 {
-	int oldword = wbeachvl_videoram3[offset];
 	COMBINE_DATA(&wbeachvl_videoram3[offset]);
-	if (oldword != wbeachvl_videoram3[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset / 2);
+	tilemap_mark_tile_dirty(bg_tilemap,offset / 2);
 }
 
 WRITE16_HANDLER( hrdtimes_txvideoram_w )
@@ -266,7 +250,7 @@ WRITE16_HANDLER( bigtwin_paletteram_w )
 	g |= ((val & 0x04) >> 2);
 	b |= ((val & 0x02) >> 1);
 
-	palette_set_color(Machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(Machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 WRITE16_HANDLER( bigtwin_scroll_w )

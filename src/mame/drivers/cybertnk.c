@@ -180,7 +180,7 @@ static UINT16 *io_ram;
 #define LOG_UNKNOWN_WRITE logerror("unknown io write CPU%d:%08x  0x%08x 0x%04x & 0x%04x\n", cpu_getactivecpu(), activecpu_get_pc(), offset*2, data, mem_mask);
 #define IGNORE_MISSING_ROM 1
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int code = tx_vram[tile_index];
 	SET_TILE_INFO(
@@ -193,8 +193,6 @@ static void get_tx_tile_info(int tile_index)
 VIDEO_START( cybertnk )
 {
 	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,128,32);
-
-	return 0;
 }
 
 VIDEO_UPDATE( cybertnk )
@@ -218,15 +216,8 @@ DRIVER_INIT( cybertnk )
 
 static WRITE16_HANDLER( tx_vram_w )
 {
-	int oldword = tx_vram[offset];
-	int newword = oldword;
-	COMBINE_DATA(&newword);
-
-	if (oldword != newword)
-	{
-		tx_vram[offset] = newword;
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
-	}
+	COMBINE_DATA(&tx_vram[offset]);
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 static WRITE16_HANDLER( share_w )

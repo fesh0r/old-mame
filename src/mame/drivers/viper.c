@@ -42,10 +42,7 @@ static UINT8 backup_ram[0x2000];
 
 VIDEO_START(viper)
 {
-	if (voodoo_start(0, 0, VOODOO_3, 16, 16, 16))
-		return 1;
-
-	return 0;
+	voodoo_start(0, 0, VOODOO_3, 16, 16, 16);
 }
 
 VIDEO_UPDATE(viper)
@@ -698,7 +695,7 @@ static DRIVER_INIT(viper)
 
 static DRIVER_INIT(vipercf)
 {
-	init_viper(machine);
+	driver_init_viper(machine);
 
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff000fff, 0, 0, cf_card_data_r );
 	memory_install_write64_handler(0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff000fff, 0, 0, cf_card_data_w );
@@ -708,7 +705,7 @@ static DRIVER_INIT(vipercf)
 
 static DRIVER_INIT(ppp2nd)
 {
-	init_viper(machine);
+	driver_init_viper(machine);
 
 	/*
     backup_ram[0x0000] = 0x50;  // P

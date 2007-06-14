@@ -230,18 +230,14 @@ static UINT8 prot_val, input_data, priority_reg, gfx_bank;
 
 static WRITE16_HANDLER( fg_videoram_w )
 {
-	int oldword = fg_videoram[offset];
 	COMBINE_DATA(&fg_videoram[offset]);
-	if (oldword != fg_videoram[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 static WRITE16_HANDLER( bg_videoram_w )
 {
-	int oldword = bg_videoram[offset];
 	COMBINE_DATA(&bg_videoram[offset]);
-	if (oldword != bg_videoram[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 static WRITE16_HANDLER( nmg5_soundlatch_w )
@@ -792,13 +788,13 @@ INPUT_PORTS_START( wondstck )
 INPUT_PORTS_END
 
 
-INLINE void get_tile_info(int tile_index,UINT16 *vram,int color)
+INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT16 *vram,int color)
 {
 	SET_TILE_INFO(0,vram[tile_index] | (gfx_bank << 16),color,0)
 }
 
-static void fg_get_tile_info(int tile_index) { get_tile_info(tile_index,fg_videoram, 0); }
-static void bg_get_tile_info(int tile_index) { get_tile_info(tile_index,bg_videoram, 1); }
+static TILE_GET_INFO( fg_get_tile_info ) { get_tile_info(machine,tileinfo,tile_index,fg_videoram, 0); }
+static TILE_GET_INFO( bg_get_tile_info ) { get_tile_info(machine,tileinfo,tile_index,bg_videoram, 1); }
 
 VIDEO_START( nmg5 )
 {
@@ -806,8 +802,6 @@ VIDEO_START( nmg5 )
 	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,64);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
-
-	return 0;
 }
 
 static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
@@ -982,7 +976,6 @@ static MACHINE_START( nmg5 )
 	state_save_register_global(priority_reg);
 	state_save_register_global(input_data);
 	state_save_register_item_array("nmg5", 0, nmg5_bitmap);
-	return 0;
 }
 
 static MACHINE_RESET( nmg5 )

@@ -36,11 +36,11 @@ PALETTE_INIT( tryout )
 		bit2 = (color_prom[i] >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code, attr;
 
@@ -52,7 +52,7 @@ static void get_fg_tile_info(int tile_index)
 	SET_TILE_INFO(0, code, 6, 0)
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	SET_TILE_INFO(2, tryout_vram[tile_index] & 0x7f, 0, 0)
 }
@@ -64,11 +64,8 @@ READ8_HANDLER( tryout_vram_r )
 
 WRITE8_HANDLER( tryout_videoram_w )
 {
-	if( videoram[offset] != data )
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset & 0x3ff);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset & 0x3ff);
 }
 
 WRITE8_HANDLER( tryout_vram_w )
@@ -183,8 +180,6 @@ VIDEO_START( tryout )
 	tryout_vram_gfx=auto_malloc(0x6000);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
-
-	return 0;
 }
 
 static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)

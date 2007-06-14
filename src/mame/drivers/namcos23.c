@@ -339,7 +339,7 @@ static UINT16 nthword( const UINT32 *pSource, int offs )
 	return (pSource[0]<<((offs&1)*16))>>16;
 }
 
-static void TextTilemapGetInfo( int tile_index )
+static TILE_GET_INFO( TextTilemapGetInfo )
 {
 	UINT16 data = nthword( namcos23_textram,tile_index );
   /**
@@ -351,7 +351,7 @@ static void TextTilemapGetInfo( int tile_index )
 	SET_TILE_INFO( 0, data&0x03ff, data>>12, TILE_FLIPYX((data&0x0c00)>>10) );
 	if( data&0x8000 )
 	{
-		tile_info.priority = 1;
+		tileinfo->priority = 1;
 	}
 } /* TextTilemapGetInfo */
 
@@ -371,8 +371,6 @@ VIDEO_START( ss23 )
 {
 	bgtilemap = tilemap_create( TextTilemapGetInfo,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,64,64 );
 	tilemap_set_transparent_pen( bgtilemap, 0xf );
-
-	return 0;
 }
 
 #if 0
@@ -569,7 +567,7 @@ INLINE void UpdatePalette( int entry )
 		int r = nthbyte(paletteram32,which+0x00001);
 		int g = nthbyte(paletteram32,which+0x08001);
 		int b = nthbyte(paletteram32,which+0x18001);
-		palette_set_color( Machine,which,r,g,b );
+		palette_set_color( Machine,which,MAKE_RGB(r,g,b) );
 	}
 }
 

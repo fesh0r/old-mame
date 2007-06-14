@@ -478,7 +478,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0x00000, &sprites,     0, 4 },
 	{ REGION_GFX2, 0x00000, &tiles1,      0, 4 },
 	{ REGION_GFX2, 0x00000, &tiles2,      0, 4 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static const gfx_decode prosport_gfxdecodeinfo[] =
@@ -487,7 +487,7 @@ static const gfx_decode prosport_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0x00000, &sprites,     0, 4 },
 	{ REGION_GFX2, 0x00000, &pro_tiles,   0, 4 },
 	{ REGION_GFX2, 0x00800, &pro_tiles,   0, 4 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /*************************************
@@ -878,7 +878,7 @@ static void sound_cpu_decrypt(void)
 
 static DRIVER_INIT( prosport )
 {
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(REGION_CPU1);
 	int i;
 
 	/* Main cpu has the nibbles swapped */
@@ -890,7 +890,7 @@ static DRIVER_INIT( prosport )
 
 static DRIVER_INIT( yellowcb )
 {
-	init_prosport(machine);
+	driver_init_prosport(machine);
 
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, input_port_0_r);
 }

@@ -39,7 +39,7 @@ static UINT8 bins, gins;
  *
  *************************************/
 
-static void get_bg0_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg0_tile_info )
 {
 	int data = videoram16[tile_index];
 	int code;
@@ -53,7 +53,7 @@ static void get_bg0_tile_info(int tile_index)
 			0)
 }
 
-static void get_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg1_tile_info )
 {
 	int data = videoram16[videoram_size / 4 + tile_index];
 	int code;
@@ -96,7 +96,6 @@ VIDEO_START( rpunch )
 
 	/* reset the timer */
 	crtc_timer = mame_timer_alloc(crtc_interrupt_gen);
-	return 0;
 }
 
 
@@ -109,18 +108,10 @@ VIDEO_START( rpunch )
 
 WRITE16_HANDLER( rpunch_videoram_w )
 {
-	int oldword = videoram16[offset];
-	int newword = oldword;
-	COMBINE_DATA(&newword);
-
-	if (oldword != newword)
-	{
-		int tmap = offset >> 12;
-		int tile_index = offset & 0xfff;
-
-		videoram16[offset] = newword;
-		tilemap_mark_tile_dirty(background[tmap],tile_index);
-	}
+	int tmap = offset >> 12;
+	int tile_index = offset & 0xfff;
+	COMBINE_DATA(&videoram16[offset]);
+	tilemap_mark_tile_dirty(background[tmap],tile_index);
 }
 
 

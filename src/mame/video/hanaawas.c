@@ -44,7 +44,7 @@ PALETTE_INIT( hanaawas )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -70,23 +70,17 @@ PALETTE_INIT( hanaawas )
 
 WRITE8_HANDLER( hanaawas_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( hanaawas_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
+	colorram[offset] = data;
 
-		/* dirty both current and next offsets */
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-		tilemap_mark_tile_dirty(bg_tilemap, (offset + (flip_screen ? -1 : 1)) & 0x03ff);
-	}
+	/* dirty both current and next offsets */
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
+	tilemap_mark_tile_dirty(bg_tilemap, (offset + (flip_screen ? -1 : 1)) & 0x03ff);
 }
 
 WRITE8_HANDLER( hanaawas_portB_w )
@@ -99,7 +93,7 @@ WRITE8_HANDLER( hanaawas_portB_w )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	/* the color is determined by the current color byte, but the bank is via the previous one!!! */
 	int offset = (tile_index + (flip_screen ? 1 : -1)) & 0x3ff;
@@ -115,8 +109,6 @@ VIDEO_START( hanaawas )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 VIDEO_UPDATE( hanaawas )

@@ -24,11 +24,8 @@ static tilemap *bg_tilemap;
 
 WRITE8_HANDLER( tinvader_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( zac_s2636_w )
@@ -133,7 +130,7 @@ int SpriteCollision(int first,int second)
 	return Checksum;
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 
@@ -147,8 +144,6 @@ VIDEO_START( tinvader )
 
 	spritebitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
 	tmpbitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-
-	return 0;
 }
 
 static void tinvader_draw_sprites( mame_bitmap *bitmap )

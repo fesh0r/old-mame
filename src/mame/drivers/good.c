@@ -46,7 +46,7 @@ static WRITE16_HANDLER( fg_tilemapram_w )
 	tilemap_mark_tile_dirty(fg_tilemap,offset/2);
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int tileno, attr;
 	tileno = fg_tilemapram[tile_index*2];
@@ -60,7 +60,7 @@ static WRITE16_HANDLER( bg_tilemapram_w )
 	tilemap_mark_tile_dirty(bg_tilemap,offset/2);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tileno, attr;
 	tileno = bg_tilemapram[tile_index*2];
@@ -75,7 +75,6 @@ VIDEO_START( good )
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 16, 16, 32,32);
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 16, 16, 32,32);
 	tilemap_set_transparent_pen(fg_tilemap,0xf);
-	return 0;
 }
 
 VIDEO_UPDATE( good )
@@ -271,7 +270,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &good_layout2,  0x100, 16  }, /* fg tiles */
 	{ REGION_GFX1, 0, &good_layout2,  0x200, 16  }, /* fg tiles */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

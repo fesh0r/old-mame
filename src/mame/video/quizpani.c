@@ -19,7 +19,7 @@ static UINT32 bg_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 	return (row & 0x0f) + ((col & 0xff) << 4) + ((row & 0x70) << 8);
 }
 
-static void bg_tile_info(int tile_index)
+static TILE_GET_INFO( bg_tile_info )
 {
 	int code = quizpani_bg_videoram[tile_index];
 
@@ -30,7 +30,7 @@ static void bg_tile_info(int tile_index)
 			0)
 }
 
-static void txt_tile_info(int tile_index)
+static TILE_GET_INFO( txt_tile_info )
 {
 	int code = quizpani_txt_videoram[tile_index];
 
@@ -76,8 +76,6 @@ VIDEO_START( quizpani )
 	bg_tilemap  = tilemap_create(bg_tile_info, bg_scan,TILEMAP_OPAQUE,16,16,256,32);
 	txt_tilemap = tilemap_create(txt_tile_info,bg_scan,TILEMAP_TRANSPARENT,16,16,256,32);
 	tilemap_set_transparent_pen(txt_tilemap,15);
-
-	return 0;
 }
 
 VIDEO_UPDATE( quizpani )

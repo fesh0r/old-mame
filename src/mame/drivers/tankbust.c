@@ -55,7 +55,7 @@ static READ8_HANDLER( tankbust_soundlatch_r )
 }
 
 //port B of ay8910#0
-static unsigned int timer1=0;
+static UINT32 timer1=0;
 static READ8_HANDLER( tankbust_soundtimer_r )
 {
 	int ret;
@@ -173,7 +173,7 @@ PALETTE_INIT( tankbust )
 		r = 0x55 * bit0 + 0xaa * bit1;
 #endif
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -357,7 +357,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_GFX1, 0, &spritelayout,	0x00, 2 },	/* sprites 32x32  (2 * 16 colors) */
 	{ REGION_GFX2, 0, &charlayout,		0x20, 8 },	/* bg tilemap characters */
 	{ REGION_GFX3, 0, &charlayout2,		0x60, 16  },	/* txt tilemap characters*/
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static struct AY8910interface ay8910_interface =

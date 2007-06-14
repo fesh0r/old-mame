@@ -50,7 +50,7 @@ PALETTE_INIT( gberet )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -68,20 +68,14 @@ PALETTE_INIT( gberet )
 
 WRITE8_HANDLER( gberet_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( gberet_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( gberet_scroll_w )
@@ -99,14 +93,14 @@ WRITE8_HANDLER( gberet_sprite_bank_w )
 	gberet_spritebank = data;
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = colorram[tile_index];
 	int code = videoram[tile_index] + ((attr & 0x40) << 2);
 	int color = attr & 0x0f;
 	int flags = TILE_FLIPYX((attr & 0x30) >> 4);
 
-	tile_info.priority = (attr & 0x80) >> 7;
+	tileinfo->priority = (attr & 0x80) >> 7;
 
 	SET_TILE_INFO(0, code, color, flags);
 }
@@ -118,8 +112,6 @@ VIDEO_START( gberet )
 
 	tilemap_set_transparent_pen(bg_tilemap, 0x10);
 	tilemap_set_scroll_rows(bg_tilemap, 32);
-
-	return 0;
 }
 
 static void gberet_draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )

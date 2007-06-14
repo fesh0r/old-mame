@@ -963,19 +963,15 @@ if (code_pressed(KEYCODE_Z))
 
 WRITE16_HANDLER( cps1_gfxram_w )
 {
-	int oldword = cps1_gfxram[offset];
+	int page = (offset >> 7) & 0x3c0;
 	COMBINE_DATA(&cps1_gfxram[offset]);
-	if (oldword != cps1_gfxram[offset])
-	{
-		int page = (offset >> 7) & 0x3c0;
 
-		if (page == (cps1_port(CPS1_SCROLL1_BASE) & 0x3c0))
-			tilemap_mark_tile_dirty(cps1_bg_tilemap[0],offset/2 & 0x0fff);
-		if (page == (cps1_port(CPS1_SCROLL2_BASE) & 0x3c0))
-			tilemap_mark_tile_dirty(cps1_bg_tilemap[1],offset/2 & 0x0fff);
-		if (page == (cps1_port(CPS1_SCROLL3_BASE) & 0x3c0))
-			tilemap_mark_tile_dirty(cps1_bg_tilemap[2],offset/2 & 0x0fff);
-	}
+	if (page == (cps1_port(CPS1_SCROLL1_BASE) & 0x3c0))
+		tilemap_mark_tile_dirty(cps1_bg_tilemap[0],offset/2 & 0x0fff);
+	if (page == (cps1_port(CPS1_SCROLL2_BASE) & 0x3c0))
+		tilemap_mark_tile_dirty(cps1_bg_tilemap[1],offset/2 & 0x0fff);
+	if (page == (cps1_port(CPS1_SCROLL3_BASE) & 0x3c0))
+		tilemap_mark_tile_dirty(cps1_bg_tilemap[2],offset/2 & 0x0fff);
 }
 
 
@@ -1006,7 +1002,7 @@ static UINT32 tilemap2_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_row
 
 static UINT8 empty_tile[32*32/2];
 
-static void get_tile0_info(int tile_index)
+static TILE_GET_INFO( get_tile0_info )
 {
 	int base = cps1_game_config->bank_scroll1 * 0x08000;
 	int code = cps1_scroll1[2*tile_index];
@@ -1024,7 +1020,7 @@ static void get_tile0_info(int tile_index)
 		if (code == 0xf020) { gfxset = 4; code = 0; } // use a blank tile (see startup text..)
 
 	/* 0x0020 appears to never be drawn for CPS1 games (it is drawn for CPS2 games though, see gigawing '0' in score for example) */
-	if (cps_version == 1 && code == 0x0020) { gfxset = 4; code = 0; tile_info.pen_usage = 0x8000; }
+	if (cps_version == 1 && code == 0x0020) { gfxset = 4; code = 0; tileinfo->pen_usage = 0x8000; }
 
 	SET_TILE_INFO(
 			gfxset,
@@ -1033,7 +1029,7 @@ static void get_tile0_info(int tile_index)
 			TILE_FLIPYX((attr & 0x60) >> 5) | TILE_SPLIT((attr & 0x0180) >> 7))
 }
 
-static void get_tile1_info(int tile_index)
+static TILE_GET_INFO( get_tile1_info )
 {
 	int base = cps1_game_config->bank_scroll2 * 0x04000;
 	const int startcode = cps1_game_config->start_scroll2;
@@ -1054,12 +1050,12 @@ static void get_tile1_info(int tile_index)
 		|| (cps1_game_config->kludge == 4 && (code >= 0x1e00 && code < 0x5400))
 	)
 	{
-		tile_info.pen_data = empty_tile;
-		tile_info.pen_usage = 0x8000;
+		tileinfo->pen_data = empty_tile;
+		tileinfo->pen_usage = 0x8000;
 	}
 }
 
-static void get_tile2_info(int tile_index)
+static TILE_GET_INFO( get_tile2_info )
 {
 	int base = cps1_game_config->bank_scroll3 * 0x1000;
 	const int startcode = cps1_game_config->start_scroll3;
@@ -1088,8 +1084,8 @@ static void get_tile2_info(int tile_index)
 
 	if (code < startcode || code > endcode)
 	{
-		tile_info.pen_data = empty_tile;
-		tile_info.pen_usage = 0x8000;
+		tileinfo->pen_data = empty_tile;
+		tileinfo->pen_usage = 0x8000;
 	}
 }
 
@@ -1155,7 +1151,7 @@ static VIDEO_START( cps )
 	memset(cps1_old_palette, 0x00, cps1_palette_size);
 	for (i = 0;i < cps1_palette_entries*16;i++)
 	{
-		palette_set_color(machine,i,0,0,0);
+		palette_set_color(machine,i,MAKE_RGB(0,0,0));
 	}
 
     cps1_buffered_obj = auto_malloc (cps1_obj_size);
@@ -1183,12 +1179,7 @@ static VIDEO_START( cps )
 	cps1_output[CPS1_OTHER_BASE/2]   = 0x9100;
 	cps1_output[CPS1_PALETTE_BASE/2] = 0x90c0;
 
-	if (!cps1_game_config)
-	{
-		logerror("cps1_game_config hasn't been set up yet");
-		return -1;
-	}
-
+	assert_always(cps1_game_config, "cps1_game_config hasn't been set up yet");
 
 	/* Set up old base */
 	cps1_get_video_base();   /* Calculate base pointers */
@@ -1201,14 +1192,12 @@ static VIDEO_START( cps )
 	palette_basecolor[3] = 3*32;	/* scroll3 */
 	palette_basecolor[4] = 4*32;	/* stars1 */
 	palette_basecolor[5] = 5*32;	/* stars2 */
-
-	return 0;
 }
 
 VIDEO_START( cps1 )
 {
     cps_version=1;
-    return video_start_cps(machine);
+    video_start_cps(machine);
 }
 
 VIDEO_START( cps2 )
@@ -1217,7 +1206,7 @@ VIDEO_START( cps2 )
     {
         cps_version=2;
     }
-    return video_start_cps(machine);
+    video_start_cps(machine);
 }
 
 /***************************************************************************
@@ -1246,7 +1235,7 @@ void cps1_build_palette(void)
 			green = ((palette>>4)&0x0f) * bright * 0x11 / 0x1f;
 			blue  = ((palette>>0)&0x0f) * bright * 0x11 / 0x1f;
 
-			palette_set_color (Machine, offset, red, green, blue);
+			palette_set_color (Machine, offset, MAKE_RGB(red, green, blue));
 			cps1_old_palette[offset] = palette;
 		}
 	}

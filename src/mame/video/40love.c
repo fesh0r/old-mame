@@ -8,7 +8,7 @@
 *   variables
 */
 
-unsigned char *fortyl_video_ctrl;
+UINT8 *fortyl_video_ctrl;
 
 static UINT8 fortyl_flipscreen,fortyl_pix_redraw;
 static UINT8 fortyl_xoffset = 128;
@@ -56,7 +56,7 @@ PALETTE_INIT( fortyl )
 		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -78,7 +78,7 @@ colorram format (2 bytes per one tilemap character line, 8 pixels height):
     offset 1    xxxx xxxx   x scroll (8 LSB bits)
 */
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int tile_number = videoram[tile_index];
 	int tile_attrib = colorram[(tile_index/64)*2];
@@ -114,8 +114,6 @@ VIDEO_START( fortyl )
 
 	tilemap_set_scroll_rows(background,32);
 	tilemap_set_transparent_pen(background,0);
-
-	return 0;
 }
 
 
@@ -211,11 +209,8 @@ WRITE8_HANDLER( fortyl_pixram_w )
 
 WRITE8_HANDLER( fortyl_bg_videoram_w )
 {
-	if( videoram[offset]!=data )
-	{
-		videoram[offset]=data;
-		tilemap_mark_tile_dirty(background,offset);
-	}
+	videoram[offset]=data;
+	tilemap_mark_tile_dirty(background,offset);
 }
 READ8_HANDLER( fortyl_bg_videoram_r )
 {

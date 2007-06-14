@@ -114,7 +114,7 @@ static void g80_set_palette_entry(int entry, UINT8 data)
 	bit1 = (b >> 1) & 0x01;
 	b = combine_2_weights(bweights, bit0, bit1);
 
-	palette_set_color(Machine, entry, r, g, b);
+	palette_set_color(Machine, entry, MAKE_RGB(r, g, b));
 }
 
 
@@ -156,7 +156,7 @@ static void spaceod_bg_init_palette(running_machine *machine)
 		bit1 = (b >> 1) & 0x01;
 		b = combine_2_weights(tbweights, bit0, bit1);
 
-		palette_set_color(machine, 64 + i, r, g, b);
+		palette_set_color(machine, 64 + i, MAKE_RGB(r, g, b));
 	}
 }
 
@@ -168,7 +168,7 @@ static void spaceod_bg_init_palette(running_machine *machine)
  *
  *************************************/
 
-static void spaceod_get_tile_info(int tile_index)
+static TILE_GET_INFO( spaceod_get_tile_info )
 {
 	int code = memory_region(REGION_GFX2)[tile_index + 0x1000 * (spaceod_bg_control >> 6)];
 	SET_TILE_INFO(1, code + 0x100 * ((spaceod_bg_control >> 2) & 1), 0, 0)
@@ -183,7 +183,7 @@ static UINT32 spaceod_scan_rows(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 
 }
 
 
-static void bg_get_tile_info(int tile_index)
+static TILE_GET_INFO( bg_get_tile_info )
 {
 	int code = memory_region(REGION_GFX2)[tile_index];
 	SET_TILE_INFO(1, code + 0x100 * bg_char_bank, code >> 4, 0)
@@ -261,8 +261,6 @@ VIDEO_START( segag80r )
 	state_save_register_global(bg_scrolly);
 
 	state_save_register_global(pignewt_bg_color_offset);
-
-	return 0;
 }
 
 

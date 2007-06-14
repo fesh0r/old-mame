@@ -300,20 +300,20 @@ static const gfx_decode triplhnt_gfx_decode_info[] =
 	{ REGION_GFX1, 0, &triplhnt_small_sprite_layout, 0, 1 },
 	{ REGION_GFX1, 0, &triplhnt_large_sprite_layout, 0, 1 },
 	{ REGION_GFX2, 0, &triplhnt_tile_layout, 4, 2 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
 static PALETTE_INIT( triplhnt )
 {
-	palette_set_color(machine, 0, 0xAF, 0xAF, 0xAF);  /* sprites */
-	palette_set_color(machine, 1, 0x00, 0x00, 0x00);
-	palette_set_color(machine, 2, 0xFF, 0xFF, 0xFF);
-	palette_set_color(machine, 3, 0x50, 0x50, 0x50);
-	palette_set_color(machine, 4, 0x00, 0x00, 0x00);  /* tiles */
-	palette_set_color(machine, 5, 0x3F, 0x3F, 0x3F);
-	palette_set_color(machine, 6, 0x00, 0x00, 0x00);
-	palette_set_color(machine, 7, 0x3F, 0x3F, 0x3F);
+	palette_set_color(machine, 0, MAKE_RGB(0xAF, 0xAF, 0xAF));  /* sprites */
+	palette_set_color(machine, 1, MAKE_RGB(0x00, 0x00, 0x00));
+	palette_set_color(machine, 2, MAKE_RGB(0xFF, 0xFF, 0xFF));
+	palette_set_color(machine, 3, MAKE_RGB(0x50, 0x50, 0x50));
+	palette_set_color(machine, 4, MAKE_RGB(0x00, 0x00, 0x00));  /* tiles */
+	palette_set_color(machine, 5, MAKE_RGB(0x3F, 0x3F, 0x3F));
+	palette_set_color(machine, 6, MAKE_RGB(0x00, 0x00, 0x00));
+	palette_set_color(machine, 7, MAKE_RGB(0x3F, 0x3F, 0x3F));
 }
 
 

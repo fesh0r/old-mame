@@ -143,9 +143,8 @@ static VIDEO_START(firebeat)
 	gcu[1].vram = auto_malloc(0x2000000);
 	memset(gcu[0].vram, 0, 0x2000000);
 	memset(gcu[1].vram, 0, 0x2000000);
-
-	return 0;
 }
+
 
 static void gcu_draw_object(int chip, mame_bitmap *bitmap, const rectangle *cliprect, UINT32 *cmd)
 {
@@ -2164,7 +2163,7 @@ static void init_lights(write32_handler out1, write32_handler out2, write32_hand
 	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x7d000324, 0x7d000327, 0, 0, out3);
 }
 
-static DRIVER_INIT(firebeat)
+static void init_firebeat(running_machine *machine)
 {
 	UINT8 *rom = memory_region(REGION_USER2);
 

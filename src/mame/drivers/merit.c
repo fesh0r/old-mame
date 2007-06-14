@@ -136,7 +136,7 @@ static WRITE8_HANDLER( palette_w )
 //      int bit = (i & 0x300)>>8;
 		offset = ((i & 0x7f)<<3) | ((i & 0x80) >> 5);
 
-		palette_set_color(Machine,i,
+		palette_set_color_rgb(Machine,i,
 				pal4bit(BIT(paletteram[offset],0)*0x1 + BIT(paletteram[offset+1],0)*0x2 + BIT(paletteram[offset+2],0)*0x4 + BIT(paletteram[offset+3],0)*0x8),
 				pal4bit(BIT(paletteram[offset],1)*0x1 + BIT(paletteram[offset+1],1)*0x2 + BIT(paletteram[offset+2],1)*0x4 + BIT(paletteram[offset+3],1)*0x8),
 				pal4bit(BIT(paletteram[offset],2)*0x1 + BIT(paletteram[offset+1],2)*0x2 + BIT(paletteram[offset+2],2)*0x4 + BIT(paletteram[offset+3],2)*0x8));
@@ -601,7 +601,7 @@ INPUT_PORTS_END
 
 
 
-static void get_tile_info_bg(int tile_index)
+static TILE_GET_INFO( get_tile_info_bg )
 {
 	int attr = phrcraze_attr[tile_index];
 	int region = (attr & 0x40) >> 6;
@@ -617,8 +617,6 @@ static void get_tile_info_bg(int tile_index)
 VIDEO_START( merit )
 {
 	bg_tilemap = tilemap_create(get_tile_info_bg,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,64,32);
-
-	return 0;
 }
 
 VIDEO_UPDATE( merit )
@@ -655,7 +653,7 @@ gfx_decode merit_gfxdecodeinfo[] =
 	{ REGION_GFX2, 0, &tiles8x8x1_layout, 0, 128 },
 	{ REGION_GFX1, 8, &tiles8x8x3_layout, 0,  32 }, // flipped tiles
 	{ REGION_GFX2, 8, &tiles8x8x1_layout, 0, 128 }, // flipped tiles
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 static ppi8255_interface ppi8255_intf =

@@ -95,7 +95,7 @@ WRITE16_HANDLER( powerins_paletteram16_w )
 	int g = ((newword >>  7) & 0x1E ) | ((newword >> 2) & 0x01);
 	int b = ((newword >>  3) & 0x1E ) | ((newword >> 1) & 0x01);
 
-	palette_set_color( Machine,offset, pal5bit(r),pal5bit(g),pal5bit(b) );
+	palette_set_color_rgb( Machine,offset, pal5bit(r),pal5bit(g),pal5bit(b) );
 }
 
 
@@ -127,7 +127,7 @@ Offset:
 #define DIM_NY_0			(0x20)
 
 
-static void get_tile_info_0( int tile_index )
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	UINT16 code = powerins_vram_0[tile_index];
 	SET_TILE_INFO(
@@ -139,10 +139,8 @@ static void get_tile_info_0( int tile_index )
 
 WRITE16_HANDLER( powerins_vram_0_w )
 {
-	UINT16 oldword = powerins_vram_0[offset];
-	UINT16 newword = COMBINE_DATA(&powerins_vram_0[offset]);
-	if (oldword != newword)
-		tilemap_mark_tile_dirty(tilemap_0, offset);
+	COMBINE_DATA(&powerins_vram_0[offset]);
+	tilemap_mark_tile_dirty(tilemap_0, offset);
 }
 
 UINT32 powerins_get_memory_offset_0(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
@@ -169,7 +167,7 @@ Offset:
 #define DIM_NX_1	(0x40)
 #define DIM_NY_1	(0x20)
 
-static void get_tile_info_1( int tile_index )
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	UINT16 code = powerins_vram_1[tile_index];
 	SET_TILE_INFO(
@@ -181,10 +179,8 @@ static void get_tile_info_1( int tile_index )
 
 WRITE16_HANDLER( powerins_vram_1_w )
 {
-	UINT16 oldword = powerins_vram_1[offset];
-	UINT16 newword = COMBINE_DATA(&powerins_vram_1[offset]);
-	if (oldword != newword)
-		tilemap_mark_tile_dirty(tilemap_1, offset);
+	COMBINE_DATA(&powerins_vram_1[offset]);
+	tilemap_mark_tile_dirty(tilemap_1, offset);
 }
 
 
@@ -220,8 +216,6 @@ VIDEO_START( powerins )
 		tilemap_set_scroll_rows(tilemap_1,1);
 		tilemap_set_scroll_cols(tilemap_1,1);
 		tilemap_set_transparent_pen(tilemap_1,15);
-
-		return 0;
 }
 
 

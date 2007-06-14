@@ -165,7 +165,7 @@ static mame_bitmap *mosaicbitmap;
   Callbacks for the tilemap code
 ***************************************************************************/
 
-static void argus_get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( argus_get_tx_tile_info )
 {
 	int hi, lo;
 
@@ -179,7 +179,7 @@ static void argus_get_tx_tile_info(int tile_index)
 			TILE_FLIPYX((hi & 0x30) >> 4))
 }
 
-static void argus_get_bg0_tile_info(int tile_index)
+static TILE_GET_INFO( argus_get_bg0_tile_info )
 {
 	int hi, lo;
 
@@ -193,7 +193,7 @@ static void argus_get_bg0_tile_info(int tile_index)
 			TILE_FLIPYX((hi & 0x30) >> 4))
 }
 
-static void argus_get_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( argus_get_bg1_tile_info )
 {
 	int hi, lo;
 
@@ -207,7 +207,7 @@ static void argus_get_bg1_tile_info(int tile_index)
 			TILE_FLIPYX((hi & 0x30) >> 4))
 }
 
-static void valtric_get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( valtric_get_tx_tile_info )
 {
 	int hi, lo;
 
@@ -221,7 +221,7 @@ static void valtric_get_tx_tile_info(int tile_index)
 			TILE_FLIPYX((hi & 0x30) >> 4))
 }
 
-static void valtric_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( valtric_get_bg_tile_info )
 {
 	int hi, lo, color, tile;
 
@@ -238,7 +238,7 @@ static void valtric_get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void butasan_get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( butasan_get_tx_tile_info )
 {
 	int hi, lo;
 
@@ -254,7 +254,7 @@ static void butasan_get_tx_tile_info(int tile_index)
 			TILE_FLIPYX((hi & 0x30) >> 4))
 }
 
-static void butasan_get_bg0_tile_info(int tile_index)
+static TILE_GET_INFO( butasan_get_bg0_tile_info )
 {
 	int hi, lo;
 	int attrib;
@@ -278,7 +278,7 @@ static void butasan_get_bg0_tile_info(int tile_index)
 
 
 
-static void butasan_get_bg1_tile_info(int tile_index)
+static TILE_GET_INFO( butasan_get_bg1_tile_info )
 {
 	int bank, tile, attrib, color;
 
@@ -322,8 +322,6 @@ VIDEO_START( argus )
 
 	jal_blend_table = auto_malloc(0xc00);
 	memset(jal_blend_table,0,0xc00) ;
-
-	return 0;
 }
 
 VIDEO_START( valtric )
@@ -337,8 +335,6 @@ VIDEO_START( valtric )
 	mosaicbitmap=auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
 	jal_blend_table = auto_malloc(0xc00);
 	memset(jal_blend_table,0,0xc00) ;
-
-	return 0;
 }
 
 VIDEO_START( butasan )
@@ -362,12 +358,10 @@ VIDEO_START( butasan )
 
 	jal_blend_table = auto_malloc(0xc00);
 	memset(jal_blend_table,0,0xc00) ;
-
-	return 0;
 }
 
 #if 0
-static void bombsa_get_tx_alt_tile_info(int tile_index)
+static TILE_GET_INFO( bombsa_get_tx_alt_tile_info )
 {
 	int hi, lo;
 
@@ -382,7 +376,7 @@ static void bombsa_get_tx_alt_tile_info(int tile_index)
 }
 #endif
 
-static void bombsa_get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( bombsa_get_bg_tile_info )
 {
 	int tileno;
 	int col;
@@ -425,8 +419,6 @@ VIDEO_START( bombsa )
 //  memset(jal_blend_table,0,0xc00) ;
 
 	bomba_otherram = auto_malloc(0x1000);
-
-	return 0;
 }
 
 /***************************************************************************
@@ -461,7 +453,7 @@ static void argus_write_dummy_rams( int dramoffs, int vromoffs )
 
 static void bombsa_change_palette(int color, int data)
 {
-	palette_set_color(Machine, color, pal4bit(data >> 12), pal4bit(data >> 8), pal4bit(data >> 4));
+	palette_set_color_rgb(Machine, color, pal4bit(data >> 12), pal4bit(data >> 8), pal4bit(data >> 4));
 }
 
 
@@ -469,7 +461,7 @@ static void argus_change_palette(int color, int data)
 {
 	jal_blend_table[color] = data & 0x0f ;
 
-	palette_set_color(Machine, color, pal4bit(data >> 12), pal4bit(data >> 8), pal4bit(data >> 4));
+	palette_set_color_rgb(Machine, color, pal4bit(data >> 12), pal4bit(data >> 8), pal4bit(data >> 4));
 }
 
 static void argus_change_bg_palette(int color, int data)
@@ -497,7 +489,7 @@ static void argus_change_bg_palette(int color, int data)
 			g = 0;
 	}
 
-	palette_set_color(Machine, color, pal4bit(r), pal4bit(g), pal4bit(b));
+	palette_set_color_rgb(Machine, color, pal4bit(r), pal4bit(g), pal4bit(b));
 }
 
 
@@ -536,11 +528,8 @@ READ8_HANDLER( argus_txram_r )
 
 WRITE8_HANDLER( argus_txram_w )
 {
-	if (argus_txram[ offset ] != data)
-	{
-		argus_txram[ offset ] = data;
-		tilemap_mark_tile_dirty(tx_tilemap, offset >> 1);
-	}
+	argus_txram[ offset ] = data;
+	tilemap_mark_tile_dirty(tx_tilemap, offset >> 1);
 }
 
 READ8_HANDLER( bombsa_txram_r )
@@ -587,11 +576,8 @@ READ8_HANDLER( butasan_txram_r )
 
 WRITE8_HANDLER( butasan_txram_w )
 {
-	if (butasan_txram[ offset ] != data)
-	{
-		butasan_txram[ offset ] = data;
-		tilemap_mark_tile_dirty(tx_tilemap, (offset ^ 0x7c0) >> 1);
-	}
+	butasan_txram[ offset ] = data;
+	tilemap_mark_tile_dirty(tx_tilemap, (offset ^ 0x7c0) >> 1);
 }
 
 READ8_HANDLER( argus_bg1ram_r )
@@ -601,11 +587,8 @@ READ8_HANDLER( argus_bg1ram_r )
 
 WRITE8_HANDLER( argus_bg1ram_w )
 {
-	if (argus_bg1ram[ offset ] != data)
-	{
-		argus_bg1ram[ offset ] = data;
-		tilemap_mark_tile_dirty(bg1_tilemap, offset >> 1);
-	}
+	argus_bg1ram[ offset ] = data;
+	tilemap_mark_tile_dirty(bg1_tilemap, offset >> 1);
 }
 
 READ8_HANDLER( butasan_bg0ram_r )
@@ -615,17 +598,14 @@ READ8_HANDLER( butasan_bg0ram_r )
 
 WRITE8_HANDLER( butasan_bg0ram_w )
 {
-	if (butasan_bg0ram[ offset ] != data)
-	{
-		int idx;
+	int idx;
 
-		butasan_bg0ram[ offset ] = data;
+	butasan_bg0ram[ offset ] = data;
 
-		idx = ((offset & 0x01f) >> 1) | ((offset & 0x400) >> 6);
-		idx |= (offset & 0x3e0) ^ 0x1e0;
+	idx = ((offset & 0x01f) >> 1) | ((offset & 0x400) >> 6);
+	idx |= (offset & 0x3e0) ^ 0x1e0;
 
-		tilemap_mark_tile_dirty(bg0_tilemap, idx);
-	}
+	tilemap_mark_tile_dirty(bg0_tilemap, idx);
 }
 
 READ8_HANDLER( butasan_bg1ram_r )
@@ -635,17 +615,14 @@ READ8_HANDLER( butasan_bg1ram_r )
 
 WRITE8_HANDLER( butasan_bg1ram_w )
 {
-	if (butasan_bg1ram[ offset ] != data)
-	{
-		int idx;
+	int idx;
 
-		butasan_bg1ram[ offset ] = data;
+	butasan_bg1ram[ offset ] = data;
 
-		idx = (offset & 0x00f) | ((offset & 0x200) >> 5) | ((offset & 0x1f0) << 1);
-		idx ^= 0x0f0;
+	idx = (offset & 0x00f) | ((offset & 0x200) >> 5) | ((offset & 0x1f0) << 1);
+	idx ^= 0x0f0;
 
-		tilemap_mark_tile_dirty(bg1_tilemap, idx);
-	}
+	tilemap_mark_tile_dirty(bg1_tilemap, idx);
 }
 
 WRITE8_HANDLER ( argus_bg0_scrollx_w )

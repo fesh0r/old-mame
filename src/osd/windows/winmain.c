@@ -33,6 +33,7 @@
 #include "config.h"
 #include "osdepend.h"
 #include "strconv.h"
+#include "winutf8.h"
 #include "winutil.h"
 
 #define ENABLE_PROFILER		0
@@ -156,7 +157,7 @@ const options_entry mame_win_options[] =
 
 	// per-window options
 	{ NULL,                       NULL,       OPTION_HEADER,     "PER-WINDOW VIDEO OPTIONS" },
-	{ "screen",                   "auto",     0,                 "explicit name of the first screen; 'auto' here will try to make a best guess" },
+	{ "screen",                   "auto",     0,                 "explicit name of all screens; 'auto' here will try to make a best guess" },
 	{ "aspect;screen_aspect",     "auto",     0,                 "aspect ratio for all screens; 'auto' here will try to make a best guess" },
 	{ "resolution;r",             "auto",     0,                 "preferred resolution for all screens; format is <width>x<height>[@<refreshrate>] or 'auto'" },
 	{ "view",                     "auto",     0,                 "preferred view for all screens" },
@@ -745,8 +746,20 @@ static int CLIB_DECL compare_hits(const void *item1, const void *item2)
 
 
 //============================================================
+//  add_symbol_map_entry
 //  parse_map_file
 //============================================================
+
+static void add_symbol_map_entry(UINT32 start, const char *name)
+{
+	if (map_entries == MAX_SYMBOLS)
+		fatalerror("Symbol table full");
+	symbol_map[map_entries].start = start;
+	symbol_map[map_entries].name = core_strdup(name);
+	if (symbol_map[map_entries].name == NULL)
+		fatalerror("Out of memory");
+	map_entries++;
+}
 
 static void parse_map_file(void)
 {
@@ -770,12 +783,8 @@ static void parse_map_file(void)
 			UINT32 base, size;
 			if (sscanf(line, ".text           0x%08x 0x%x", &base, &size) == 2)
 			{
-				symbol_map[map_entries].start = base;
-				symbol_map[map_entries].name = strcpy(malloc(strlen("Code start") + 1), "Code start");
-				map_entries++;
-				symbol_map[map_entries].start = base + size;
-				symbol_map[map_entries].name = strcpy(malloc(strlen("Other") + 1), "Other");
-				map_entries++;
+				add_symbol_map_entry(base, "Code start");
+				add_symbol_map_entry(base+size, "Other");
 				got_text = 1;
 			}
 		}
@@ -787,16 +796,14 @@ static void parse_map_file(void)
 			UINT32 addr;
 			if (sscanf(line, "                0x%08x %s", &addr, symbol) == 2)
 			{
-				symbol_map[map_entries].start = addr;
-				symbol_map[map_entries].name = strcpy(malloc(strlen(symbol) + 1), symbol);
-				map_entries++;
+				add_symbol_map_entry(addr, symbol);
 			}
 		}
 	}
 
 	/* add a symbol for end-of-memory */
-	symbol_map[map_entries].start = ~0;
-	symbol_map[map_entries].name = strcpy(malloc(strlen("<end>") + 1), "<end>");
+	add_symbol_map_entry(~0, "<end>");
+	map_entries--;
 
 	/* close the file */
 	fclose(map);

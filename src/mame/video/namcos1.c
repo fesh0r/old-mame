@@ -60,32 +60,32 @@ static UINT8 *tilemap_maskdata;
 
 ***************************************************************************/
 
-INLINE void bg_get_info(int tile_index,UINT8 *info_vram)
+INLINE void bg_get_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT8 *info_vram)
 {
 	int code;
 
 	tile_index <<= 1;
 	code = info_vram[tile_index + 1] + ((info_vram[tile_index] & 0x3f) << 8);
 	SET_TILE_INFO(0,code,0,0);
-	tile_info.mask_data = &tilemap_maskdata[code << 3];
+	tileinfo->mask_data = &tilemap_maskdata[code << 3];
 }
 
-INLINE void fg_get_info(int tile_index,UINT8 *info_vram)
+INLINE void fg_get_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT8 *info_vram)
 {
 	int code;
 
 	tile_index <<= 1;
 	code = info_vram[tile_index + 1] + ((info_vram[tile_index] & 0x3f) << 8);
 	SET_TILE_INFO(0,code,0,0);
-	tile_info.mask_data = &tilemap_maskdata[code << 3];
+	tileinfo->mask_data = &tilemap_maskdata[code << 3];
 }
 
-static void bg_get_info0(int tile_index) { bg_get_info(tile_index,&namcos1_videoram[0x0000]); }
-static void bg_get_info1(int tile_index) { bg_get_info(tile_index,&namcos1_videoram[0x2000]); }
-static void bg_get_info2(int tile_index) { bg_get_info(tile_index,&namcos1_videoram[0x4000]); }
-static void bg_get_info3(int tile_index) { bg_get_info(tile_index,&namcos1_videoram[0x6000]); }
-static void fg_get_info4(int tile_index) { fg_get_info(tile_index,&namcos1_videoram[0x7010]); }
-static void fg_get_info5(int tile_index) { fg_get_info(tile_index,&namcos1_videoram[0x7810]); }
+static TILE_GET_INFO( bg_get_info0 ) { bg_get_info(machine,tileinfo,tile_index,&namcos1_videoram[0x0000]); }
+static TILE_GET_INFO( bg_get_info1 ) { bg_get_info(machine,tileinfo,tile_index,&namcos1_videoram[0x2000]); }
+static TILE_GET_INFO( bg_get_info2 ) { bg_get_info(machine,tileinfo,tile_index,&namcos1_videoram[0x4000]); }
+static TILE_GET_INFO( bg_get_info3 ) { bg_get_info(machine,tileinfo,tile_index,&namcos1_videoram[0x6000]); }
+static TILE_GET_INFO( fg_get_info4 ) { fg_get_info(machine,tileinfo,tile_index,&namcos1_videoram[0x7010]); }
+static TILE_GET_INFO( fg_get_info5 ) { fg_get_info(machine,tileinfo,tile_index,&namcos1_videoram[0x7810]); }
 
 
 
@@ -132,7 +132,7 @@ VIDEO_START( namcos1 )
 	memset(namcos1_paletteram, 0, 0x8000);
 	memset(namcos1_cus116, 0, 0x10);
 	for (i = 0; i < 0x2000; i++)
-		palette_set_color(machine, i, 0, 0, 0);
+		palette_set_color(machine, i, MAKE_RGB(0, 0, 0));
 
 	/* all palette entries are not affected by shadow sprites... */
 	for (i = 0;i < 0x2000;i++)
@@ -142,8 +142,6 @@ VIDEO_START( namcos1 )
 		machine->shadow_table[machine->pens[i]] = machine->pens[i + 0x0800];
 
 	spriteram = &namcos1_spriteram[0x800];
-
-	return 0;
 }
 
 
@@ -161,22 +159,19 @@ READ8_HANDLER( namcos1_videoram_r )
 
 WRITE8_HANDLER( namcos1_videoram_w )
 {
-	if (namcos1_videoram[offset] != data)
-	{
-		namcos1_videoram[offset] = data;
-		if (offset < 0x7000)
-		{   /* background 0-3 */
-			int layer = offset >> 13;
-			int num = (offset & 0x1fff) >> 1;
+	namcos1_videoram[offset] = data;
+	if (offset < 0x7000)
+	{   /* background 0-3 */
+		int layer = offset >> 13;
+		int num = (offset & 0x1fff) >> 1;
+		tilemap_mark_tile_dirty(bg_tilemap[layer],num);
+	}
+	else
+	{   /* foreground 4-5 */
+		int layer = (offset >> 11 & 1) + 4;
+		int num = ((offset & 0x7ff) - 0x10) >> 1;
+		if (num >= 0 && num < 0x3f0)
 			tilemap_mark_tile_dirty(bg_tilemap[layer],num);
-		}
-		else
-		{   /* foreground 4-5 */
-			int layer = (offset >> 11 & 1) + 4;
-			int num = ((offset & 0x7ff) - 0x10) >> 1;
-			if (num >= 0 && num < 0x3f0)
-				tilemap_mark_tile_dirty(bg_tilemap[layer],num);
-		}
 	}
 }
 
@@ -197,7 +192,7 @@ WRITE8_HANDLER( namcos1_paletteram_w )
 		r = namcos1_paletteram[offset];
 		g = namcos1_paletteram[offset + 0x0800];
 		b = namcos1_paletteram[offset + 0x1000];
-		palette_set_color(Machine,color,r,g,b);
+		palette_set_color(Machine,color,MAKE_RGB(r,g,b));
 	}
 	else
 	{

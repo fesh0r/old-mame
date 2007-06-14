@@ -47,7 +47,7 @@ PALETTE_INIT( crbaloon )
 		g = intensity * ((~i >> 1) & 1);
 		/* blue component */
 		b = intensity * ((~i >> 2) & 1);
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 	for (i = 0;i < TOTAL_COLORS(0);i += 2)
@@ -59,20 +59,14 @@ PALETTE_INIT( crbaloon )
 
 WRITE8_HANDLER( crbaloon_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( crbaloon_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( crbaloon_spritectrl_w )
@@ -89,7 +83,7 @@ WRITE8_HANDLER( crbaloon_flipscreen_w )
 	}
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 	int color = colorram[tile_index] & 0x0f;
@@ -106,8 +100,6 @@ VIDEO_START( crbaloon )
 
 	state_save_register_global_array(spritectrl);
 	state_save_register_global(crbaloon_collision);
-
-	return 0;
 }
 
 static void crbaloon_draw_sprites( mame_bitmap *bitmap )

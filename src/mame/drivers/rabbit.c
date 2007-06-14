@@ -105,7 +105,7 @@ UINT32 *rabbit_spriteram;
 static tilemap *rabbit_tilemap[4];
 
 /* call with tilesize = 0 for 8x8 or 1 for 16x16 */
-INLINE void get_rabbit_tilemap_info(int whichtilemap, int tilesize, int tile_index)
+INLINE void get_rabbit_tilemap_info(running_machine *machine, tile_data *tileinfo, int tile_index, int whichtilemap, int tilesize)
 {
 	int tileno,colour,flipxy, depth;
 	int bank;
@@ -147,26 +147,26 @@ INLINE void get_rabbit_tilemap_info(int whichtilemap, int tilesize, int tile_ind
 	}
 }
 
-static void get_rabbit_tilemap0_tile_info(int tile_index)
+static TILE_GET_INFO( get_rabbit_tilemap0_tile_info )
 {
-	get_rabbit_tilemap_info(0,1,tile_index);
+	get_rabbit_tilemap_info(machine,tileinfo,tile_index,0,1);
 }
 
-static void get_rabbit_tilemap1_tile_info(int tile_index)
+static TILE_GET_INFO( get_rabbit_tilemap1_tile_info )
 {
-	get_rabbit_tilemap_info(1,1,tile_index);
+	get_rabbit_tilemap_info(machine,tileinfo,tile_index,1,1);
 }
 
-static void get_rabbit_tilemap2_tile_info(int tile_index)
+static TILE_GET_INFO( get_rabbit_tilemap2_tile_info )
 {
-	get_rabbit_tilemap_info(2,1,tile_index);
+	get_rabbit_tilemap_info(machine,tileinfo,tile_index,2,1);
 }
 
 /* some bad colours on life bars for this layer .. fix them ..
     (needs mask of 0x3f but this breaks other gfx..) */
-static void get_rabbit_tilemap3_tile_info(int tile_index)
+static TILE_GET_INFO( get_rabbit_tilemap3_tile_info )
 {
-	get_rabbit_tilemap_info(3,0,tile_index);
+	get_rabbit_tilemap_info(machine,tileinfo,tile_index,3,0);
 }
 
 WRITE32_HANDLER( rabbit_tilemap0_w )
@@ -357,8 +357,6 @@ VIDEO_START(rabbit)
 	rabbit_sprite_clip.max_x = 0x1000-1;
 	rabbit_sprite_clip.min_y = 0;
 	rabbit_sprite_clip.max_y = 0x1000-1;
-
-	return 0;
 }
 
 /*
@@ -428,7 +426,7 @@ VIDEO_UPDATE(rabbit)
 	/* prio isnt certain but seems to work.. */
 	for (prilevel = 0xf; prilevel >0; prilevel--)
 	{
-		if (prilevel == ((rabbit_tilemap_regs[3][0]&0x0f000000)>>24)) rabbit_drawtilemap(bitmap,cliprect, 3);;
+		if (prilevel == ((rabbit_tilemap_regs[3][0]&0x0f000000)>>24)) rabbit_drawtilemap(bitmap,cliprect, 3);
 		if (prilevel == ((rabbit_tilemap_regs[2][0]&0x0f000000)>>24)) rabbit_drawtilemap(bitmap,cliprect, 2);
 		if (prilevel == ((rabbit_tilemap_regs[1][0]&0x0f000000)>>24)) rabbit_drawtilemap(bitmap,cliprect, 1);
 		if (prilevel == ((rabbit_tilemap_regs[0][0]&0x0f000000)>>24)) rabbit_drawtilemap(bitmap,cliprect, 0);
@@ -473,7 +471,7 @@ static WRITE32_HANDLER( rabbit_paletteram_dword_w )
 	r = ((paletteram32[offset] & 0x0000ff00) >>8);
 	g = ((paletteram32[offset] & 0x00ff0000) >>16);
 
-	palette_set_color(Machine,offset^0xff,r,g,b);
+	palette_set_color(Machine,offset^0xff,MAKE_RGB(r,g,b));
 }
 
 READ32_HANDLER( rabbit_tilemap0_r )
@@ -792,7 +790,7 @@ static WRITE32_HANDLER( tmmjprd_paletteram_dword_w )
 	r = ((paletteram32[offset] & 0x0000ff00) >>8);
 	g = ((paletteram32[offset] & 0x00ff0000) >>16);
 
-	palette_set_color(Machine,(offset^0xff)+0x2000,r,g,b);
+	palette_set_color(Machine,(offset^0xff)+0x2000,MAKE_RGB(r,g,b));
 }
 
 
@@ -1039,7 +1037,7 @@ static const gfx_decode gfxdecodeinfo[] =
 	{ REGION_USER2, 0, &rabbit_8x8x8_layout,   0x0, 0x1000  },
 	{ REGION_USER2, 0, &rabbit_16x16x8_layout, 0x0, 0x1000  },
 
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /* irq 6 = vblank
@@ -1103,24 +1101,24 @@ MACHINE_DRIVER_END
 
 
 
-static void get_tmmjprd_tilemap0_tile_info(int tile_index)
+static TILE_GET_INFO( get_tmmjprd_tilemap0_tile_info )
 {
-	get_rabbit_tilemap_info(0,0,tile_index);
+	get_rabbit_tilemap_info(machine,tileinfo,tile_index,0,0);
 }
 
-static void get_tmmjprd_tilemap1_tile_info(int tile_index)
+static TILE_GET_INFO( get_tmmjprd_tilemap1_tile_info )
 {
-	get_rabbit_tilemap_info(1,0,tile_index);
+	get_rabbit_tilemap_info(machine,tileinfo,tile_index,1,0);
 }
 
-static void get_tmmjprd_tilemap2_tile_info(int tile_index)
+static TILE_GET_INFO( get_tmmjprd_tilemap2_tile_info )
 {
-	get_rabbit_tilemap_info(2,0,tile_index);
+	get_rabbit_tilemap_info(machine,tileinfo,tile_index,2,0);
 }
 
-static void get_tmmjprd_tilemap3_tile_info(int tile_index)
+static TILE_GET_INFO( get_tmmjprd_tilemap3_tile_info )
 {
-	get_rabbit_tilemap_info(3,0,tile_index);
+	get_rabbit_tilemap_info(machine,tileinfo,tile_index,3,0);
 }
 
 VIDEO_START(tmmjprd)
@@ -1151,8 +1149,6 @@ VIDEO_START(tmmjprd)
 	rabbit_sprite_clip.max_x = 0x1000-1;
 	rabbit_sprite_clip.min_y = 0;
 	rabbit_sprite_clip.max_y = 0x1000-1;
-
-	return 0;
 }
 
 
@@ -1208,14 +1204,8 @@ static MACHINE_DRIVER_START( tmmjprd )
 MACHINE_DRIVER_END
 
 
-DRIVER_INIT( rabbit_common )
-{
-
-}
-
 DRIVER_INIT(rabbit)
 {
-	init_rabbit_common(machine);
 	rabbit_banking = 1;
 	rabbit_vblirqlevel = 6;
 	rabbit_bltirqlevel = 4;
@@ -1224,7 +1214,6 @@ DRIVER_INIT(rabbit)
 
 DRIVER_INIT(tmmjprd)
 {
-	init_rabbit_common(machine);
 	rabbit_banking = 0;
 	rabbit_vblirqlevel = 5;
 	rabbit_bltirqlevel = 3; // actually palette related?

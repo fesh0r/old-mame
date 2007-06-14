@@ -13,22 +13,16 @@ static tilemap *fg_tilemap;
 
 WRITE8_HANDLER( renegade_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		offset = offset % (64 * 16);
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	offset = offset % (64 * 16);
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( renegade_videoram2_w )
 {
-	if (renegade_videoram2[offset] != data)
-	{
-		renegade_videoram2[offset] = data;
-		offset = offset % (32 * 32);
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	renegade_videoram2[offset] = data;
+	offset = offset % (32 * 32);
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( renegade_flipscreen_w )
@@ -46,7 +40,7 @@ WRITE8_HANDLER( renegade_scroll1_w )
 	renegade_scrollx = (renegade_scrollx & 0xff) | (data << 8);
 }
 
-static void get_bg_tilemap_info(int tile_index)
+static TILE_GET_INFO( get_bg_tilemap_info )
 {
 	const UINT8 *source = &videoram[tile_index];
 	UINT8 attributes = source[0x400]; /* CCC??BBB */
@@ -57,7 +51,7 @@ static void get_bg_tilemap_info(int tile_index)
 		0)
 }
 
-static void get_fg_tilemap_info(int tile_index)
+static TILE_GET_INFO( get_fg_tilemap_info )
 {
 	const UINT8 *source = &renegade_videoram2[tile_index];
 	UINT8 attributes = source[0x400];
@@ -84,8 +78,6 @@ VIDEO_START( renegade )
 
 	state_save_register_global(renegade_scrollx);
 	state_save_register_func_postload(all_tiles_dirty);
-
-	return 0;
 }
 
 static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)

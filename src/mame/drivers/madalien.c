@@ -146,7 +146,7 @@ PALETTE_INIT( madalien )
 		bit1 = (color_prom[i] >> 5) & 0x01;
 		b = 0x40 * bit0 + 0x80 * bit1;
 
-		palette_set_color(machine, i, r, g, b);
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
 
 		/* Colors for bits 1 and 2 swapped */
 		j = i;
@@ -160,11 +160,11 @@ PALETTE_INIT( madalien )
 				j |= 0x02;
 				break;
 		};
-		palette_set_color(machine, j+n, r, g, b);
+		palette_set_color(machine, j+n, MAKE_RGB(r, g, b));
 	}
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code, color;
 
@@ -174,7 +174,7 @@ static void get_fg_tile_info(int tile_index)
 	SET_TILE_INFO(0, code, color, 0)
 }
 
-static void get_bg_tile_info_l(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info_l )
 {
 	int x, y, code, color, bg_base;
 
@@ -195,7 +195,7 @@ static void get_bg_tile_info_l(int tile_index)
 	SET_TILE_INFO(1, code, color, 0)
 }
 
-static void get_bg_tile_info_r(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info_r )
 {
 	int x, y, code, color, bg_base;
 
@@ -273,8 +273,6 @@ VIDEO_START( madalien )
 	for( x=0; x<64; x++ )
 		for( y=0; y<128; y++ )
 			madalien_headlight_source[y][64+x] = madalien_headlight_source[y][63-x];
-
-	return 0;
 }
 
 
@@ -494,11 +492,8 @@ WRITE8_HANDLER( madalien_shift_reg_w )
 
 WRITE8_HANDLER( madalien_videoram_w )
 {
-	if (madalien_videoram[offset] != data)
-	{
-		madalien_videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	madalien_videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( madalien_flip_screen_w )
@@ -555,7 +550,7 @@ static const gfx_decode madalien_gfxdecodeinfo[] =
 {
 	{ 0, 0, &charlayout_memory,	0, 8 }, /* characters (the game dynamically modifies them) */
 	{ REGION_GFX1, 0, &tilelayout,	0, 8 },	/* background tiles */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -679,7 +674,6 @@ static MACHINE_DRIVER_START( madalien )
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 	MDRV_GFXDECODE(madalien_gfxdecodeinfo)
 	MDRV_PALETTE_LENGTH(2*32)
-	MDRV_COLORTABLE_LENGTH(2*32)
 	MDRV_PALETTE_INIT(madalien)
 	MDRV_VIDEO_START(madalien)
 	MDRV_VIDEO_UPDATE(madalien)

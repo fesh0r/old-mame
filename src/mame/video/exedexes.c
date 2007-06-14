@@ -64,7 +64,7 @@ PALETTE_INIT( exedexes )
 		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
@@ -93,20 +93,14 @@ PALETTE_INIT( exedexes )
 
 WRITE8_HANDLER( exedexes_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap, offset);
 }
 
 WRITE8_HANDLER( exedexes_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap, offset);
 }
 
 WRITE8_HANDLER( exedexes_c804_w )
@@ -139,7 +133,7 @@ WRITE8_HANDLER( exedexes_gfxctrl_w )
 }
 
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	UINT8 *tilerom = memory_region(REGION_GFX5);
 
@@ -151,14 +145,14 @@ static void get_bg_tile_info(int tile_index)
 	SET_TILE_INFO(1, code, color, flags)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = memory_region(REGION_GFX5)[tile_index];
 
 	SET_TILE_INFO(2, code, 0, 0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int code = videoram[tile_index] + 2 * (colorram[tile_index] & 0x80);
 	int color = colorram[tile_index] & 0x3f;
@@ -191,8 +185,6 @@ VIDEO_START( exedexes )
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 	tilemap_set_transparent_pen(tx_tilemap, 207);
-
-	return 0;
 }
 
 static void exedexes_draw_sprites(mame_bitmap *bitmap, int priority)

@@ -32,27 +32,21 @@ PALETTE_INIT( kopunch )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 }
 
 WRITE8_HANDLER( kopunch_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( kopunch_videoram2_w )
 {
-	if (kopunch_videoram2[offset] != data)
-	{
-		kopunch_videoram2[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset);
-	}
+	kopunch_videoram2[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 WRITE8_HANDLER( kopunch_scroll_x_w )
@@ -80,14 +74,14 @@ WRITE8_HANDLER( kopunch_gfxbank_w )
 	tilemap_set_flip(fg_tilemap, (data & 0x08) ? TILEMAP_FLIPY : 0);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 
 	SET_TILE_INFO(0, code, 0, 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = (kopunch_videoram2[tile_index] & 0x7f) + 128 * gfxbank;
 
@@ -103,8 +97,6 @@ VIDEO_START( kopunch )
 		TILEMAP_TRANSPARENT, 8, 8, 16, 16);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-
-	return 0;
 }
 
 VIDEO_UPDATE( kopunch )

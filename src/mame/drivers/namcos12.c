@@ -1062,10 +1062,9 @@ static MACHINE_START( namcos12 )
 	state_save_register_global( m_n_bankoffset );
 	state_save_register_global( m_n_bankoffseth );
 	state_save_register_func_postload( s12_resetbank );
-	return 0;
 }
 
-static unsigned char kcram[ 12 ];
+static UINT8 kcram[ 12 ];
 
 static WRITE32_HANDLER( kcoff_w )
 {
@@ -1343,7 +1342,7 @@ static DRIVER_INIT( namcos12 )
 
 static DRIVER_INIT( ptblank2 )
 {
-	init_namcos12(machine);
+	driver_init_namcos12(machine);
 
 	/* patch out wait for dma 5 to complete */
 	*( (UINT32 *)( memory_region( REGION_USER1 ) + 0x331c4 ) ) = 0;
@@ -1353,14 +1352,14 @@ static DRIVER_INIT( ptblank2 )
 
 static DRIVER_INIT( ghlpanic )
 {
-	init_namcos12(machine);
+	driver_init_namcos12(machine);
 
 	system11gun_install();
 }
 
 static DRIVER_INIT( golgo13 )
 {
-	init_namcos12(machine);
+	driver_init_namcos12(machine);
 }
 
 static MACHINE_DRIVER_START( coh700 )

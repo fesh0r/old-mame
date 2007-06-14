@@ -28,7 +28,7 @@ PALETTE_INIT( tankbatt )
 	#define RES_2	0x3f /* this is a guess */
 
 	/* Stick black in there */
-	palette_set_color(machine,0,0,0,0);
+	palette_set_color(machine,0,MAKE_RGB(0,0,0));
 
 	/* ? Skip the first byte ? */
 	color_prom++;
@@ -54,7 +54,7 @@ PALETTE_INIT( tankbatt )
 		b = RES_1 * bit3;
 		if (bit3) b += RES_2 * bit0;
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 		color_prom += 4;
 	}
 
@@ -67,14 +67,11 @@ PALETTE_INIT( tankbatt )
 
 WRITE8_HANDLER( tankbatt_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 	int color = videoram[tile_index] >> 2;
@@ -86,8 +83,6 @@ VIDEO_START( tankbatt )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
-
-	return 0;
 }
 
 static void tankbatt_draw_bullets( mame_bitmap *bitmap )

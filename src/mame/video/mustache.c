@@ -40,17 +40,14 @@ PALETTE_INIT(mustache)
 	bit3 = (color_prom[i + 512] >> 3) & 0x01;
 	b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-	palette_set_color(machine,i,r,g,b);
+	palette_set_color(machine,i,MAKE_RGB(r,g,b));
   }
 }
 
 WRITE8_HANDLER( mustache_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
 }
 
 WRITE8_HANDLER (mustache_video_control_w)
@@ -78,7 +75,7 @@ WRITE8_HANDLER( mustache_scroll_w )
 	tilemap_set_scrollx(bg_tilemap, 3, 0x100);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int attr = videoram[2 * tile_index + 1];
 	int code = videoram[2 * tile_index] + ((attr & 0x60) << 3) + ((control_byte & 0x08) << 7);
@@ -95,8 +92,6 @@ VIDEO_START( mustache )
 		TILEMAP_OPAQUE, 8, 8, 64, 32);
 
 	tilemap_set_scroll_rows(bg_tilemap, 4);
-
-	return 0;
 }
 
 static void mustache_draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )

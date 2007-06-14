@@ -19,7 +19,7 @@ static tilemap *bg_tilemap,*fg_tilemap,*tx_tilemap;
 
 ***************************************************************************/
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = bloodbro_bgvideoram[tile_index];
 	SET_TILE_INFO(
@@ -29,7 +29,7 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = bloodbro_fgvideoram[tile_index];
 	SET_TILE_INFO(
@@ -39,7 +39,7 @@ static void get_fg_tile_info(int tile_index)
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int code = bloodbro_txvideoram[tile_index];
 	SET_TILE_INFO(
@@ -65,8 +65,6 @@ VIDEO_START( bloodbro )
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 	tilemap_set_transparent_pen(tx_tilemap,15);
-
-	return 0;
 }
 
 
@@ -79,26 +77,20 @@ VIDEO_START( bloodbro )
 
 WRITE16_HANDLER( bloodbro_bgvideoram_w )
 {
-	int oldword = bloodbro_bgvideoram[offset];
 	COMBINE_DATA(&bloodbro_bgvideoram[offset]);
-	if (oldword != bloodbro_bgvideoram[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 WRITE16_HANDLER( bloodbro_fgvideoram_w )
 {
-	int oldword = bloodbro_fgvideoram[offset];
 	COMBINE_DATA(&bloodbro_fgvideoram[offset]);
-	if (oldword != bloodbro_fgvideoram[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 WRITE16_HANDLER( bloodbro_txvideoram_w )
 {
-	int oldword = bloodbro_txvideoram[offset];
 	COMBINE_DATA(&bloodbro_txvideoram[offset]);
-	if (oldword != bloodbro_txvideoram[offset])
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 

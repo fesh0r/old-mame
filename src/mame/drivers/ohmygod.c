@@ -31,7 +31,7 @@ static int nosound_kludge_step;
 
 static MACHINE_RESET( ohmygod )
 {
-	unsigned char *rom = memory_region(REGION_SOUND1);
+	UINT8 *rom = memory_region(REGION_SOUND1);
 
 	sndbank = 0;
 	memcpy(rom + 0x20000,rom + 0x40000 + 0x20000 * sndbank,0x20000);
@@ -43,7 +43,7 @@ WRITE16_HANDLER( ohmygod_ctrl_w )
 {
 	if (ACCESSING_LSB)
 	{
-		unsigned char *rom = memory_region(REGION_SOUND1);
+		UINT8 *rom = memory_region(REGION_SOUND1);
 
 		/* ADPCM bank switch */
 		if (sndbank != ((data >> adpcm_bank_shift) & 0x0f))
@@ -324,7 +324,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout,     0, 16 },	/* colors   0-255 */
 	{ REGION_GFX2, 0, &spritelayout, 512, 16 },	/* colors 512-767 */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

@@ -99,7 +99,7 @@ static WRITE8_HANDLER( pokechmp_sound_w )
 
 INLINE void pokechmp_set_color(pen_t color, int rshift, int gshift, int bshift, UINT16 data)
 {
-	palette_set_color(Machine, color, pal5bit(data >> rshift), pal5bit(data >> gshift), pal5bit(data >> bshift));
+	palette_set_color_rgb(Machine, color, pal5bit(data >> rshift), pal5bit(data >> gshift), pal5bit(data >> bshift));
 }
 
 
@@ -240,7 +240,7 @@ static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0x00000, &pokechmp_charlayout,   0x100, 32 }, /* chars */
 	{ REGION_GFX2, 0x00000, &pokechmp_spritelayout,   0,  32 }, /* sprites */
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 

@@ -45,7 +45,7 @@ static UINT32 armedf_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 	}
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
 	int tile_number = terraf_text_videoram[tile_index]&0xff;
 	int attributes;
@@ -65,7 +65,7 @@ static void get_tx_tile_info(int tile_index)
 			0)
 }
 
-static void get_fg_tile_info( int tile_index )
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int data = armedf_fg_videoram[tile_index];
 	SET_TILE_INFO(
@@ -76,7 +76,7 @@ static void get_fg_tile_info( int tile_index )
 }
 
 
-static void get_bg_tile_info( int tile_index )
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int data = armedf_bg_videoram[tile_index];
 	SET_TILE_INFO(
@@ -120,8 +120,6 @@ VIDEO_START( armedf )
 	{
 		tilemap_set_scrollx(armedf_tx_tilemap,0,-128);
 	}
-
-	return 0;
 }
 
 /***************************************************************************
@@ -132,18 +130,14 @@ VIDEO_START( armedf )
 
 WRITE16_HANDLER( armedf_text_videoram_w )
 {
-	int oldword = terraf_text_videoram[offset];
 	COMBINE_DATA(&terraf_text_videoram[offset]);
-	if (oldword != terraf_text_videoram[offset])
+	if( scroll_type == 1 )
 	{
-		if( scroll_type == 1 )
-		{
-			tilemap_mark_tile_dirty(armedf_tx_tilemap,offset & 0x7ff);
-		}
-		else
-		{
-			tilemap_mark_tile_dirty(armedf_tx_tilemap,offset & 0xbff);
-		}
+		tilemap_mark_tile_dirty(armedf_tx_tilemap,offset & 0x7ff);
+	}
+	else
+	{
+		tilemap_mark_tile_dirty(armedf_tx_tilemap,offset & 0xbff);
 	}
 
 /*  if (offset<0x10)
@@ -159,18 +153,14 @@ WRITE16_HANDLER( armedf_text_videoram_w )
 
 WRITE16_HANDLER( armedf_fg_videoram_w )
 {
-	int oldword = armedf_fg_videoram[offset];
 	COMBINE_DATA(&armedf_fg_videoram[offset]);
-	if (oldword != armedf_fg_videoram[offset])
-		tilemap_mark_tile_dirty(fg_tilemap,offset);
+	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
 WRITE16_HANDLER( armedf_bg_videoram_w )
 {
-	int oldword = armedf_bg_videoram[offset];
 	COMBINE_DATA(&armedf_bg_videoram[offset]);
-	if (oldword != armedf_bg_videoram[offset])
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 static int waiting_msb;

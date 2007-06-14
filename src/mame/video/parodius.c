@@ -12,7 +12,7 @@ static int layerpri[3];
 
 ***************************************************************************/
 
-static void tile_callback(int layer,int bank,int *code,int *color)
+static void tile_callback(int layer,int bank,int *code,int *color,int *flags,int *priority)
 {
 	*code |= ((*color & 0x03) << 8) | ((*color & 0x10) << 6) | ((*color & 0x0c) << 9) | (bank << 13);
 	*color = layer_colorbase[layer] + ((*color & 0xe0) >> 5);
@@ -45,14 +45,8 @@ static void sprite_callback(int *code,int *color,int *priority_mask)
 VIDEO_START( parodius )
 {
 	K053251_vh_start();
-
-	if (K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tile_callback))
-		return 1;
-
-	if (K053245_vh_start(0,REGION_GFX2,NORMAL_PLANE_ORDER,sprite_callback))
-		return 1;
-
-	return 0;
+	K052109_vh_start(REGION_GFX1,NORMAL_PLANE_ORDER,tile_callback);
+	K053245_vh_start(0,REGION_GFX2,NORMAL_PLANE_ORDER,sprite_callback);
 }
 
 /* useful function to sort the three tile layers by priority order */

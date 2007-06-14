@@ -23,7 +23,7 @@ static UINT16 *spriteram_old, *vidregs_old;
 static int palette_bank1, palette_bank2;
 
 
-static void get_mcatadv_tile_info1(int tile_index)
+static TILE_GET_INFO( get_mcatadv_tile_info1 )
 {
 	int tileno, colour, pri;
 
@@ -32,19 +32,16 @@ static void get_mcatadv_tile_info1(int tile_index)
 	pri = (mcatadv_videoram1[tile_index*2] & 0xc000)>>14;
 
 	SET_TILE_INFO(0,tileno,colour + palette_bank1*0x40,0)
-	tile_info.priority = pri;
+	tileinfo->priority = pri;
 }
 
 WRITE16_HANDLER( mcatadv_videoram1_w )
 {
-	if (mcatadv_videoram1[offset] != data)
-	{
-		COMBINE_DATA(&mcatadv_videoram1[offset]);
-		tilemap_mark_tile_dirty(mcatadv_tilemap1,offset/2);
-	}
+	COMBINE_DATA(&mcatadv_videoram1[offset]);
+	tilemap_mark_tile_dirty(mcatadv_tilemap1,offset/2);
 }
 
-static void get_mcatadv_tile_info2(int tile_index)
+static TILE_GET_INFO( get_mcatadv_tile_info2 )
 {
 	int tileno, colour, pri;
 
@@ -53,16 +50,13 @@ static void get_mcatadv_tile_info2(int tile_index)
 	pri = (mcatadv_videoram2[tile_index*2] & 0xc000)>>14;
 
 	SET_TILE_INFO(1,tileno,colour + palette_bank2*0x40,0)
-	tile_info.priority = pri;
+	tileinfo->priority = pri;
 }
 
 WRITE16_HANDLER( mcatadv_videoram2_w )
 {
-	if (mcatadv_videoram2[offset] != data)
-	{
-		COMBINE_DATA(&mcatadv_videoram2[offset]);
-		tilemap_mark_tile_dirty(mcatadv_tilemap2,offset/2);
-	}
+	COMBINE_DATA(&mcatadv_videoram2[offset]);
+	tilemap_mark_tile_dirty(mcatadv_tilemap2,offset/2);
 }
 
 
@@ -165,7 +159,7 @@ static void mcatadv_drawsprites ( mame_bitmap *bitmap, const rectangle *cliprect
 void mcatadv_draw_tilemap_part(UINT16* current_scroll, UINT16* current_videoram1, int i, tilemap* current_tilemap, mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int flip;
-	unsigned int drawline;
+	UINT32 drawline;
 	rectangle clip;
 
 	clip.min_x = cliprect->min_x;
@@ -270,8 +264,6 @@ VIDEO_START( mcatadv )
 
 	palette_bank1 = 0;
 	palette_bank2 = 0;
-
-	return 0;
 }
 
 VIDEO_EOF( mcatadv )

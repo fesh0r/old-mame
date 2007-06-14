@@ -45,7 +45,7 @@ WRITE8_HANDLER( amspdwy_flipscreen_w )
 
 ***************************************************************************/
 
-static void get_tile_info( int tile_index )
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code	=	videoram[ tile_index ];
 	UINT8 color	=	colorram[ tile_index ];
@@ -58,20 +58,14 @@ static void get_tile_info( int tile_index )
 
 WRITE8_HANDLER( amspdwy_videoram_w )
 {
-	if (videoram[offset] != data)
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( amspdwy_colorram_w )
 {
-	if (colorram[offset] != data)
-	{
-		colorram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 
@@ -86,8 +80,6 @@ VIDEO_START( amspdwy )
 {
 	bg_tilemap	=	tilemap_create(	get_tile_info,	tilemap_scan_cols_back,
 								TILEMAP_OPAQUE,	8,8,	0x20, 0x20 );
-
-	return 0;
 }
 
 

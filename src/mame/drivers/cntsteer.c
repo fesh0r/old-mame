@@ -60,18 +60,18 @@ PALETTE_INIT( zerotrgt )
 		bit2 = (color_prom[i+256] >> 2) & 0x01;
 		b = /*255 - */(0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2);
 
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
 static int colo=0;
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram2[tile_index];
 
 	SET_TILE_INFO(2, code + bg_bank, 0/*colo*/, 0)
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = videoram[tile_index];
 	int attr = videoram[tile_index + 0x400];
@@ -87,8 +87,6 @@ VIDEO_START( zerotrgt )
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
 	tilemap_set_flip(bg_tilemap, TILEMAP_FLIPX|TILEMAP_FLIPY);
-
-	return 0;
 }
 
 static void drawsprites(mame_bitmap *bitmap, int pri)
@@ -269,20 +267,14 @@ ui_draw_text(buf,50,8*6);
 
 WRITE8_HANDLER( cntsteer_foreground_w )
 {
-	if( videoram[offset] != data )
-	{
-		videoram[offset] = data;
-		tilemap_mark_tile_dirty(fg_tilemap, offset & 0x3ff);
-	}
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset & 0x3ff);
 }
 
 WRITE8_HANDLER( cntsteer_background_w )
 {
-	if( videoram2[offset] != data )
-	{
-		videoram2[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	videoram2[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 #if 0
@@ -704,7 +696,7 @@ static const gfx_decode cntsteer_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0x00000, &cntsteer_charlayout, 0, 256 }, /* Only 1 used so far :/ */
 	{ REGION_GFX2, 0x00000, &sprites,			  0, 256 },
 	{ REGION_GFX3, 0x00000, &tilelayout,		  0, 256 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
@@ -713,7 +705,7 @@ static const gfx_decode zerotrgt_gfxdecodeinfo[] =
 	{ REGION_GFX1, 0x00000, &zerotrgt_charlayout, 0, 256 }, /* Only 1 used so far :/ */
 	{ REGION_GFX2, 0x00000, &sprites,			  0, 256 },
    	{ REGION_GFX3, 0x00000, &tilelayout,		  0, 256 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 /***************************************************************************/

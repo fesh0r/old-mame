@@ -9,10 +9,10 @@
 #include "driver.h"
 
 // Real stuff
-unsigned char *stfight_text_char_ram;
-unsigned char *stfight_text_attr_ram;
-unsigned char *stfight_vh_latch_ram;
-unsigned char *stfight_sprite_ram;
+UINT8 *stfight_text_char_ram;
+UINT8 *stfight_text_attr_ram;
+UINT8 *stfight_vh_latch_ram;
+UINT8 *stfight_sprite_ram;
 
 static tilemap *fg_tilemap,*bg_tilemap,*tx_tilemap;
 static int stfight_sprite_base = 0;
@@ -45,7 +45,7 @@ PALETTE_INIT( stfight )
 
 
 	/* unique color for transparency */
-	palette_set_color(machine,256,0x04,0x04,0x04);
+	palette_set_color(machine,256,MAKE_RGB(0x04,0x04,0x04));
 
 	/* text uses colors 192-207 */
 	for (i = 0;i < TOTAL_COLORS(0);i++)
@@ -93,9 +93,9 @@ static UINT32 fg_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 	return (col & 0x0f) + ((row & 0x0f) << 4) + ((col & 0x70) << 4) + ((row & 0xf0) << 7);
 }
 
-static void get_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_fg_tile_info )
 {
-	unsigned char   *fgMap = memory_region(REGION_GFX5);
+	UINT8   *fgMap = memory_region(REGION_GFX5);
 	int attr,tile_base;
 
 	attr = fgMap[0x8000+tile_index];
@@ -116,9 +116,9 @@ static UINT32 bg_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
 			((row & 0x60) << 8);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
-	unsigned char   *bgMap = memory_region(REGION_GFX6);
+	UINT8   *bgMap = memory_region(REGION_GFX6);
 	int attr,tile_bank,tile_base;
 
 	attr = bgMap[0x8000+tile_index];
@@ -132,9 +132,9 @@ static void get_bg_tile_info(int tile_index)
 			0)
 }
 
-static void get_tx_tile_info(int tile_index)
+static TILE_GET_INFO( get_tx_tile_info )
 {
-	unsigned char attr = stfight_text_attr_ram[tile_index];
+	UINT8 attr = stfight_text_attr_ram[tile_index];
 
 	SET_TILE_INFO(
 			0,
@@ -159,8 +159,6 @@ VIDEO_START( stfight )
 
 	tilemap_set_transparent_pen(fg_tilemap,0x0F);
 	tilemap_set_transparent_pen(tx_tilemap,256);
-
-	return 0;
 }
 
 
@@ -173,20 +171,14 @@ VIDEO_START( stfight )
 
 WRITE8_HANDLER( stfight_text_char_w )
 {
-	if (stfight_text_char_ram[offset] != data)
-	{
-		stfight_text_char_ram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
-	}
+	stfight_text_char_ram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 WRITE8_HANDLER( stfight_text_attr_w )
 {
-	if (stfight_text_attr_ram[offset] != data)
-	{
-		stfight_text_attr_ram[offset] = data;
-		tilemap_mark_tile_dirty(tx_tilemap,offset);
-	}
+	stfight_text_attr_ram[offset] = data;
+	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
 WRITE8_HANDLER( stfight_sprite_bank_w )

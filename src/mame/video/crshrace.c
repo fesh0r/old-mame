@@ -18,14 +18,14 @@ static tilemap *tilemap1,*tilemap2;
 
 ***************************************************************************/
 
-static void get_tile_info1(int tile_index)
+static TILE_GET_INFO( get_tile_info1 )
 {
 	int code = crshrace_videoram1[tile_index];
 
 	SET_TILE_INFO(1,(code & 0xfff) + (roz_bank << 12),code >> 12,0)
 }
 
-static void get_tile_info2(int tile_index)
+static TILE_GET_INFO( get_tile_info2 )
 {
 	int code = crshrace_videoram2[tile_index];
 
@@ -49,8 +49,6 @@ VIDEO_START( crshrace )
 
 	tilemap_set_transparent_pen(tilemap1,0x0f);
 	tilemap_set_transparent_pen(tilemap2,0xff);
-
-	return 0;
 }
 
 
@@ -62,18 +60,14 @@ VIDEO_START( crshrace )
 
 WRITE16_HANDLER( crshrace_videoram1_w )
 {
-	int oldword = crshrace_videoram1[offset];
 	COMBINE_DATA(&crshrace_videoram1[offset]);
-	if (oldword != crshrace_videoram1[offset])
-		tilemap_mark_tile_dirty(tilemap1,offset);
+	tilemap_mark_tile_dirty(tilemap1,offset);
 }
 
 WRITE16_HANDLER( crshrace_videoram2_w )
 {
-	int oldword = crshrace_videoram2[offset];
 	COMBINE_DATA(&crshrace_videoram2[offset]);
-	if (oldword != crshrace_videoram2[offset])
-		tilemap_mark_tile_dirty(tilemap2,offset);
+	tilemap_mark_tile_dirty(tilemap2,offset);
 }
 
 WRITE16_HANDLER( crshrace_roz_bank_w )

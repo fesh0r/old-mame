@@ -73,14 +73,14 @@ static tilemap *darkhors_tmap, *darkhors_tmap2;
 UINT32 *darkhors_tmapram,  *darkhors_tmapscroll;
 UINT32 *darkhors_tmapram2, *darkhors_tmapscroll2;
 
-static void get_tile_info_0(int tile_index)
+static TILE_GET_INFO( get_tile_info_0 )
 {
 	UINT16 tile		=	darkhors_tmapram[tile_index] >> 16;
 	UINT16 color	=	darkhors_tmapram[tile_index] & 0xffff;
 	SET_TILE_INFO(0, tile/2, (color & 0x200) ? (color & 0x1ff) : ((color & 0x0ff) * 4) , 0);
 }
 
-static void get_tile_info_1(int tile_index)
+static TILE_GET_INFO( get_tile_info_1 )
 {
 	UINT16 tile		=	darkhors_tmapram2[tile_index] >> 16;
 	UINT16 color	=	darkhors_tmapram2[tile_index] & 0xffff;
@@ -89,15 +89,13 @@ static void get_tile_info_1(int tile_index)
 
 WRITE32_HANDLER( darkhors_tmapram_w )
 {
-	UINT32 old_data	=	darkhors_tmapram[offset];
-	UINT32 new_data	=	COMBINE_DATA(&darkhors_tmapram[offset]);
-	if (old_data != new_data)	tilemap_mark_tile_dirty(darkhors_tmap, offset);
+	COMBINE_DATA(&darkhors_tmapram[offset]);
+	tilemap_mark_tile_dirty(darkhors_tmap, offset);
 }
 WRITE32_HANDLER( darkhors_tmapram2_w )
 {
-	UINT32 old_data	=	darkhors_tmapram2[offset];
-	UINT32 new_data	=	COMBINE_DATA(&darkhors_tmapram2[offset]);
-	if (old_data != new_data)	tilemap_mark_tile_dirty(darkhors_tmap2, offset);
+	COMBINE_DATA(&darkhors_tmapram2[offset]);
+	tilemap_mark_tile_dirty(darkhors_tmap2, offset);
 }
 
 static void darkhors_draw_sprites(mame_bitmap *bitmap)
@@ -147,8 +145,6 @@ VIDEO_START( darkhors )
 	tilemap_set_transparent_pen(darkhors_tmap2, 0);
 
 	machine->gfx[0]->color_granularity = 64; /* 256 colour sprites with palette selectable on 64 colour boundaries */
-
-	return 0;
 }
 
 VIDEO_UPDATE( darkhors )

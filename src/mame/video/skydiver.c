@@ -39,7 +39,7 @@ MACHINE_RESET( skydiver )
 
 ***************************************************************************/
 
-static void get_tile_info(int tile_index)
+static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code = skydiver_videoram[tile_index];
 	SET_TILE_INFO(0, code & 0x3f, code >> 6, 0)
@@ -56,8 +56,6 @@ static void get_tile_info(int tile_index)
 VIDEO_START( skydiver )
 {
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32,32);
-
-	return 0;
 }
 
 
@@ -69,11 +67,8 @@ VIDEO_START( skydiver )
 
 WRITE8_HANDLER( skydiver_videoram_w )
 {
-	if (skydiver_videoram[offset] != data)
-	{
-		skydiver_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap, offset);
-	}
+	skydiver_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
 

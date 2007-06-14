@@ -6,7 +6,7 @@ extern UINT16 *kickgoal_fgram, *kickgoal_bgram, *kickgoal_bg2ram, *kickgoal_scrr
 tilemap *kickgoal_fgtm, *kickgoal_bgtm, *kickgoal_bg2tm;
 
 /* FG */
-static void get_kickgoal_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_kickgoal_fg_tile_info )
 {
 	int tileno = kickgoal_fgram[tile_index*2] & 0x0fff;
 	int color = kickgoal_fgram[tile_index*2+1] & 0x000f;
@@ -15,7 +15,7 @@ static void get_kickgoal_fg_tile_info(int tile_index)
 }
 
 /* BG */
-static void get_kickgoal_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_kickgoal_bg_tile_info )
 {
 	int tileno = kickgoal_bgram[tile_index*2] & 0x0fff;
 	int color = kickgoal_bgram[tile_index*2+1] & 0x000f;
@@ -24,7 +24,7 @@ static void get_kickgoal_bg_tile_info(int tile_index)
 }
 
 /* BG 2 */
-static void get_kickgoal_bg2_tile_info(int tile_index)
+static TILE_GET_INFO( get_kickgoal_bg2_tile_info )
 {
 	int tileno = kickgoal_bg2ram[tile_index*2] & 0x07ff;
 	int color = kickgoal_bg2ram[tile_index*2+1] & 0x000f;
@@ -60,36 +60,26 @@ VIDEO_START( kickgoal )
 	kickgoal_bgtm = tilemap_create(get_kickgoal_bg_tile_info,tilemap_scan_kicksbg,TILEMAP_TRANSPARENT, 16, 32,64,64);
 		tilemap_set_transparent_pen(kickgoal_bgtm,15);
 	kickgoal_bg2tm = tilemap_create(get_kickgoal_bg2_tile_info,tilemap_scan_kicksbg2,TILEMAP_OPAQUE, 32, 64,64,64);
-	return 0;
 }
 
 
 
 WRITE16_HANDLER( kickgoal_fgram_w )
 {
-	if (kickgoal_fgram[offset] != data)
-	{
-		kickgoal_fgram[offset] = data;
-		tilemap_mark_tile_dirty(kickgoal_fgtm,offset/2);
-	}
+	kickgoal_fgram[offset] = data;
+	tilemap_mark_tile_dirty(kickgoal_fgtm,offset/2);
 }
 
 WRITE16_HANDLER( kickgoal_bgram_w )
 {
-	if (kickgoal_bgram[offset] != data)
-	{
-		kickgoal_bgram[offset] = data;
-		tilemap_mark_tile_dirty(kickgoal_bgtm,offset/2);
-	}
+	kickgoal_bgram[offset] = data;
+	tilemap_mark_tile_dirty(kickgoal_bgtm,offset/2);
 }
 
 WRITE16_HANDLER( kickgoal_bg2ram_w )
 {
-	if (kickgoal_bg2ram[offset] != data)
-	{
-		kickgoal_bg2ram[offset] = data;
-		tilemap_mark_tile_dirty(kickgoal_bg2tm,offset/2);
-	}
+	kickgoal_bg2ram[offset] = data;
+	tilemap_mark_tile_dirty(kickgoal_bg2tm,offset/2);
 }
 
 
@@ -158,7 +148,7 @@ VIDEO_UPDATE( kickgoal )
 /* Holywood Action */
 
 /* FG */
-static void get_actionhw_fg_tile_info(int tile_index)
+static TILE_GET_INFO( get_actionhw_fg_tile_info )
 {
 	int tileno = kickgoal_fgram[tile_index*2] & 0x0fff;
 	int color = kickgoal_fgram[tile_index*2+1] & 0x000f;
@@ -167,7 +157,7 @@ static void get_actionhw_fg_tile_info(int tile_index)
 }
 
 /* BG */
-static void get_actionhw_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_actionhw_bg_tile_info )
 {
 	int tileno = kickgoal_bgram[tile_index*2] & 0x1fff;
 	int color = kickgoal_bgram[tile_index*2+1] & 0x000f;
@@ -178,7 +168,7 @@ static void get_actionhw_bg_tile_info(int tile_index)
 }
 
 /* BG 2 */
-static void get_actionhw_bg2_tile_info(int tile_index)
+static TILE_GET_INFO( get_actionhw_bg2_tile_info )
 {
 	int tileno = kickgoal_bg2ram[tile_index*2] & 0x1fff;
 	int color = kickgoal_bg2ram[tile_index*2+1] & 0x000f;
@@ -216,8 +206,6 @@ VIDEO_START( actionhw )
 
 	tilemap_set_transparent_pen(kickgoal_fgtm,15);
 	tilemap_set_transparent_pen(kickgoal_bgtm,15);
-
-	return 0;
 }
 
 

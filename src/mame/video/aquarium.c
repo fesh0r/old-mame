@@ -94,7 +94,7 @@ static void aquarium_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect,
 
 /* TXT Layer */
 
-static void get_aquarium_txt_tile_info(int tile_index)
+static TILE_GET_INFO( get_aquarium_txt_tile_info )
 {
 	int tileno,colour;
 
@@ -105,16 +105,13 @@ static void get_aquarium_txt_tile_info(int tile_index)
 
 WRITE16_HANDLER( aquarium_txt_videoram_w )
 {
-	if (aquarium_txt_videoram[offset] != data)
-	{
-		aquarium_txt_videoram[offset] = data;
-		tilemap_mark_tile_dirty(aquarium_txt_tilemap,offset);
-	}
+	aquarium_txt_videoram[offset] = data;
+	tilemap_mark_tile_dirty(aquarium_txt_tilemap,offset);
 }
 
 /* MID Layer */
 
-static void get_aquarium_mid_tile_info(int tile_index)
+static TILE_GET_INFO( get_aquarium_mid_tile_info )
 {
 	int tileno,colour,flag;
 
@@ -124,20 +121,17 @@ static void get_aquarium_mid_tile_info(int tile_index)
 
 	SET_TILE_INFO(1,tileno,colour,flag)
 
-	tile_info.priority = (aquarium_mid_videoram[tile_index*2+1] & 0x20) >> 5;
+	tileinfo->priority = (aquarium_mid_videoram[tile_index*2+1] & 0x20) >> 5;
 }
 
 WRITE16_HANDLER( aquarium_mid_videoram_w )
 {
-	if (aquarium_mid_videoram[offset] != data)
-	{
-		aquarium_mid_videoram[offset] = data;
-		tilemap_mark_tile_dirty(aquarium_mid_tilemap,offset/2);
-	}
+	aquarium_mid_videoram[offset] = data;
+	tilemap_mark_tile_dirty(aquarium_mid_tilemap,offset/2);
 }
 
 /* BAK Layer */
-static void get_aquarium_bak_tile_info(int tile_index)
+static TILE_GET_INFO( get_aquarium_bak_tile_info )
 
 {
 	int tileno,colour,flag;
@@ -148,16 +142,13 @@ static void get_aquarium_bak_tile_info(int tile_index)
 
 	SET_TILE_INFO(3,tileno,colour,flag)
 
-	tile_info.priority = (aquarium_bak_videoram[tile_index*2+1] & 0x20) >> 5;
+	tileinfo->priority = (aquarium_bak_videoram[tile_index*2+1] & 0x20) >> 5;
 }
 
 WRITE16_HANDLER( aquarium_bak_videoram_w )
 {
-	if (aquarium_bak_videoram[offset] != data)
-	{
-		aquarium_bak_videoram[offset] = data;
-		tilemap_mark_tile_dirty(aquarium_bak_tilemap,offset/2);
-	}
+	aquarium_bak_videoram[offset] = data;
+	tilemap_mark_tile_dirty(aquarium_bak_tilemap,offset/2);
 }
 
 VIDEO_START(aquarium)
@@ -168,8 +159,6 @@ VIDEO_START(aquarium)
 	aquarium_bak_tilemap = tilemap_create(get_aquarium_bak_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 16, 16,32,32);
 	aquarium_mid_tilemap = tilemap_create(get_aquarium_mid_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 16, 16,32,32);
 	tilemap_set_transparent_pen(aquarium_mid_tilemap,0);
-
-	return 0;
 }
 
 VIDEO_UPDATE(aquarium)

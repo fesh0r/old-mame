@@ -13,9 +13,9 @@ int vb_scrollx_hi=0;
 int vb_scrollx_lo=0;
 int vb_scrolly_hi=0;
 
-unsigned char *vb_scrolly_lo;
-unsigned char *vb_videoram;
-unsigned char *vb_attribram;
+UINT8 *vb_scrolly_lo;
+UINT8 *vb_videoram;
+UINT8 *vb_attribram;
 int vball_gfxset=0;
 int vb_bgprombank=0xff;
 int vb_spprombank=0xff;
@@ -35,10 +35,10 @@ static UINT32 background_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_r
 	return (col & 0x1f) + ((row & 0x1f) << 5) + ((col & 0x20) << 5) + ((row & 0x20) <<6);
 }
 
-static void get_bg_tile_info(int tile_index)
+static TILE_GET_INFO( get_bg_tile_info )
 {
-	unsigned char code = vb_videoram[tile_index];
-	unsigned char attr = vb_attribram[tile_index];
+	UINT8 code = vb_videoram[tile_index];
+	UINT8 attr = vb_attribram[tile_index];
 	SET_TILE_INFO(
 			0,
 			code + ((attr & 0x1f) << 8) + (vball_gfxset<<8),
@@ -52,17 +52,12 @@ VIDEO_START( vb )
 	bg_tilemap = tilemap_create(get_bg_tile_info,background_scan,TILEMAP_OPAQUE, 8, 8,64,64);
 
 	tilemap_set_scroll_rows(bg_tilemap,32);
-
-	return 0;
 }
 
 WRITE8_HANDLER( vb_videoram_w )
 {
-	if (vb_videoram[offset] != data)
-	{
-		vb_videoram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	vb_videoram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 READ8_HANDLER( vb_attrib_r )
@@ -72,22 +67,20 @@ READ8_HANDLER( vb_attrib_r )
 
 WRITE8_HANDLER( vb_attrib_w )
 {
-	if( vb_attribram[offset] != data ){
-		vb_attribram[offset] = data;
-		tilemap_mark_tile_dirty(bg_tilemap,offset);
-	}
+	vb_attribram[offset] = data;
+	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
 void vb_bgprombank_w( int bank )
 {
 	int i;
-	unsigned char* color_prom;
+	UINT8* color_prom;
 
 	if (bank==vb_bgprombank) return;
 
 	color_prom = memory_region(REGION_PROMS) + bank*0x80;
 	for (i=0;i<128;i++, color_prom++) {
-		palette_set_color(Machine,i,pal4bit(color_prom[0] >> 0),pal4bit(color_prom[0] >> 4),
+		palette_set_color_rgb(Machine,i,pal4bit(color_prom[0] >> 0),pal4bit(color_prom[0] >> 4),
 				       pal4bit(color_prom[0x800] >> 0));
 	}
 	vb_bgprombank=bank;
@@ -97,13 +90,13 @@ void vb_spprombank_w( int bank )
 {
 
 	int i;
-	unsigned char* color_prom;
+	UINT8* color_prom;
 
 	if (bank==vb_spprombank) return;
 
 	color_prom = memory_region(REGION_PROMS)+0x400 + bank*0x80;
 	for (i=128;i<256;i++,color_prom++)	{
-		palette_set_color(Machine,i,pal4bit(color_prom[0] >> 0),pal4bit(color_prom[0] >> 4),
+		palette_set_color_rgb(Machine,i,pal4bit(color_prom[0] >> 0),pal4bit(color_prom[0] >> 4),
 				       pal4bit(color_prom[0x800] >> 0));
 	}
 	vb_spprombank=bank;
@@ -121,7 +114,7 @@ void vb_mark_all_dirty( void )
 static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	const gfx_element *gfx = Machine->gfx[1];
-	unsigned char *src = spriteram;
+	UINT8 *src = spriteram;
 	int i;
 
 /*  240-Y    S|X|CLR|WCH WHICH    240-X

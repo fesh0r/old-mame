@@ -28,7 +28,7 @@ extern int equites_id, equites_flip;
 
 static tilemap *charmap0, *charmap1, *activecharmap, *inactivecharmap;
 static UINT16 *defcharram, *charram0, *charram1, *activecharram, *inactivecharram;
-static unsigned char *dirtybuf;
+static UINT8 *dirtybuf;
 static int maskwidth, maskheight, maskcolor;
 static int scrollx, scrolly;
 static int bgcolor[4];
@@ -82,7 +82,7 @@ PALETTE_INIT( equites )
 
 	for (i=0; i<256; i++)
 	{
-		palette_set_color(machine, i, pal4bit(color_prom[i]), pal4bit(color_prom[i+0x100]), pal4bit(color_prom[i+0x200]));
+		palette_set_color_rgb(machine, i, pal4bit(color_prom[i]), pal4bit(color_prom[i+0x100]), pal4bit(color_prom[i+0x200]));
 		colortable[i] = i;
 	}
 
@@ -91,13 +91,13 @@ PALETTE_INIT( equites )
 		colortable[i+0x100] = clut_ptr[i];
 }
 
-static void equites_charinfo(int offset)
+static TILE_GET_INFO( equites_charinfo )
 {
 	int tile, color;
 
-	offset <<= 1;
-	tile = videoram16[offset];
-	color = videoram16[offset+1];
+	tile_index <<= 1;
+	tile = videoram16[tile_index];
+	color = videoram16[tile_index+1];
 	tile &= 0xff;
 	color &= 0x1f;
 
@@ -112,8 +112,6 @@ VIDEO_START( equites )
 	tilemap_set_scrolldy(charmap0, BMPAD, BMPAD);
 
 	video_init_common();
-
-	return (0);
 }
 
 // Splendor Blast Hardware
@@ -124,7 +122,7 @@ PALETTE_INIT( splndrbt )
 
 	for (i=0; i<0x100; i++)
 	{
-		palette_set_color(machine, i, pal4bit(color_prom[i]), pal4bit(color_prom[i+0x100]), pal4bit(color_prom[i+0x200]));
+		palette_set_color_rgb(machine, i, pal4bit(color_prom[i]), pal4bit(color_prom[i+0x100]), pal4bit(color_prom[i+0x200]));
 		colortable[i] = (i & 3 || (i > 0x3f && i < 0x80) || i > 0xbf) ? i : 0;
 
 	}
@@ -137,26 +135,26 @@ PALETTE_INIT( splndrbt )
 	for (i=0; i<0x400; i++) colortable[i] = prom_ptr[i];
 }
 
-static void splndrbt_char0info(int offset)
+static TILE_GET_INFO( splndrbt_char0info )
 {
 	int tile, color;
 
-	offset <<= 1;
-	tile = charram0[offset];
-	color = charram0[offset+1];
+	tile_index <<= 1;
+	tile = charram0[tile_index];
+	color = charram0[tile_index+1];
 	tile &= 0xff;
 	color &= 0x3f;
 
 	SET_TILE_INFO(0, tile, color, 0);
 }
 
-static void splndrbt_char1info(int offset)
+static TILE_GET_INFO( splndrbt_char1info )
 {
 	int tile, color;
 
-	offset <<= 1;
-	tile = charram1[offset];
-	color = charram1[offset+1];
+	tile_index <<= 1;
+	tile = charram1[tile_index];
+	color = charram1[tile_index+1];
 	tile &= 0xff;
 	color &= 0x3f;
 	tile += 0x100;
@@ -215,7 +213,7 @@ VIDEO_START( splndrbt )
 {
 #define BMW (1<<BMW_l2)
 
-	unsigned char *buf8ptr;
+	UINT8 *buf8ptr;
 	int i;
 
 	assert(machine->screen[0].format == BITMAP_FORMAT_INDEXED16);
@@ -250,8 +248,6 @@ VIDEO_START( splndrbt )
 
 	video_init_common();
 	splndrbt_video_reset();
-
-	return (0);
 }
 
 MACHINE_RESET( splndrbt )

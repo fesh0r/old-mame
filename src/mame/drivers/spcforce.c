@@ -37,7 +37,7 @@ a000-a3ff   R/W X/Y scroll position of each character (can be scrolled up
 #include "sound/sn76496.h"
 
 
-extern unsigned char *spcforce_scrollram;
+extern UINT8 *spcforce_scrollram;
 
 WRITE8_HANDLER( spcforce_flip_screen_w );
 VIDEO_UPDATE( spcforce );
@@ -225,12 +225,12 @@ static const gfx_layout charlayout =
 static const gfx_decode gfxdecodeinfo[] =
 {
 	{ REGION_GFX1, 0, &charlayout, 0, 8 },
-	{ -1 } /* end of array */
+	{ -1 }
 };
 
 
 /* 1-bit RGB palette */
-static unsigned short colortable_source[] =
+static UINT16 colortable_source[] =
 {
 	0, 1, 2, 3, 4, 5, 6, 7,
 	0, 0, 1, 2, 3, 4, 5, 6,	 /* not sure about these, but they are only used */
@@ -245,7 +245,7 @@ static PALETTE_INIT( spcforce )
 {
 	int i;
 	for (i = 0; i < 8; i++)
-		palette_set_color(machine, i, pal1bit(i >> 0), pal1bit(i >> 1), pal1bit(i >> 2));
+		palette_set_color_rgb(machine, i, pal1bit(i >> 0), pal1bit(i >> 1), pal1bit(i >> 2));
 	memcpy(colortable,colortable_source,sizeof(colortable_source));
 }
 
@@ -298,7 +298,7 @@ MACHINE_DRIVER_END
 
 ***************************************************************************/
 ROM_START( spcforce )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )       /* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "m1v4f.1a",  	  0x0000, 0x0800, CRC(7da0d1ed) SHA1(2ee145f590da557be057f181b4861014627872e7) )
 	ROM_LOAD( "m2v4f.1c",  	  0x0800, 0x0800, CRC(25605bff) SHA1(afda2884a00fdbc000191dd548fd8e34df3e2f49) )
 	ROM_LOAD( "m3v5f.2a",  	  0x1000, 0x0800, CRC(6f879366) SHA1(ef624619dbaad1f2adf4fab82e04bac117dbfac6) )
@@ -321,7 +321,7 @@ ROM_START( spcforce )
 ROM_END
 
 ROM_START( spcforc2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )       /* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "spacefor.1a",  0x0000, 0x0800, CRC(ef6fdccb) SHA1(2fff28437597958b39a821f93ac30f32c24f50aa) )
 	ROM_LOAD( "spacefor.1c",  0x0800, 0x0800, CRC(44bd1cdd) SHA1(6dd5ae7a64079c61b63667f06e0d34dec48eac7c) )
 	ROM_LOAD( "spacefor.2a",  0x1000, 0x0800, CRC(fcbc7df7) SHA1(b6e89dbfc80d5d9dcf889f618a8278c182773a14) )
@@ -344,7 +344,7 @@ ROM_START( spcforc2 )
 ROM_END
 
 ROM_START( meteor )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )       /* 64k for code */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "vm1", 	      0x0000, 0x0800, CRC(894fe9b1) SHA1(617e05523392e2ba2608ca13aa24d6601289fe87) )
 	ROM_LOAD( "vm2", 	      0x0800, 0x0800, CRC(28685a68) SHA1(f911a3ccb8d63cf82a6dc8f069f3f498e9081656) )
 	ROM_LOAD( "vm3", 	      0x1000, 0x0800, CRC(c88fb12a) SHA1(1eeb26caf7a1421ec2d570f71b8c4675ad7ea172) )

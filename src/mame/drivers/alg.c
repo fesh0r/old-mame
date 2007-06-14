@@ -76,13 +76,11 @@ static VIDEO_START( alg )
 	add_exit_callback(machine, video_cleanup);
 
 	/* standard video start */
-	if (video_start_amiga(machine))
-		return 1;
+	video_start_amiga(machine);
 
 	/* configure pen 4096 as transparent in the renderer and use it for the genlock color */
 	render_container_set_palette_alpha(render_container_get_screen(0), 4096, 0x00);
 	amiga_set_genlock_color(4096);
-	return 0;
 }
 
 
@@ -151,8 +149,6 @@ static MACHINE_START( alg )
 	discinfo = laserdisc_init(LASERDISC_TYPE_LDP1450, get_disk_handle(0), 1);
 	serial_timer = timer_alloc(response_timer);
 	serial_timer_active = FALSE;
-
-	return 0;
 }
 
 
@@ -234,7 +230,7 @@ static void alg_potgo_w(UINT16 data)
 
 static UINT32 lightgun_pos_r(void *param)
 {
-	int x, y;
+	int x = 0, y = 0;
 
 	/* get the position based on the input select */
 	get_lightgun_pos(input_select, &x, &y);
@@ -803,7 +799,7 @@ static DRIVER_INIT( palr6 )
 static DRIVER_INIT( aplatoon )
 {
 	/* NOT DONE TODO FIGURE OUT THE RIGHT ORDER!!!! */
-	char *rom = memory_region(REGION_USER2);
+	UINT8 *rom = memory_region(REGION_USER2);
 	char *decrypted = auto_malloc(0x40000);
 	int i;
 

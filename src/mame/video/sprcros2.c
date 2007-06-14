@@ -30,7 +30,7 @@ PALETTE_INIT( sprcros2 )
 		bit1 = (color_prom[i] >> 6) & 0x01;
 		bit2 = (color_prom[i] >> 7) & 0x01;
 		b = 0x47 * bit1 + 0xb8 * bit2;
-		palette_set_color(machine,i,r,g,b);
+		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 
 	//cluts
@@ -44,20 +44,14 @@ PALETTE_INIT( sprcros2 )
 
 WRITE8_HANDLER( sprcros2_fgvideoram_w )
 {
-	if (sprcros2_fgvideoram[offset] != data)
-	{
-		sprcros2_fgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(sprcros2_fgtilemap,offset&0x3ff);
-	}
+	sprcros2_fgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(sprcros2_fgtilemap,offset&0x3ff);
 }
 
 WRITE8_HANDLER( sprcros2_bgvideoram_w )
 {
-	if (sprcros2_bgvideoram[offset] != data)
-	{
-		sprcros2_bgvideoram[offset] = data;
-		tilemap_mark_tile_dirty(sprcros2_bgtilemap,offset&0x3ff);
-	}
+	sprcros2_bgvideoram[offset] = data;
+	tilemap_mark_tile_dirty(sprcros2_bgtilemap,offset&0x3ff);
 }
 
 WRITE8_HANDLER( sprcros2_bgscrollx_w )
@@ -73,10 +67,10 @@ WRITE8_HANDLER( sprcros2_bgscrolly_w )
 	tilemap_set_scrolly(sprcros2_bgtilemap,0,data);
 }
 
-static void get_sprcros2_bgtile_info(int tile_index)
+static TILE_GET_INFO( get_sprcros2_bgtile_info )
 {
-	unsigned int tile_number = sprcros2_bgvideoram[tile_index];
-	unsigned char attr = sprcros2_bgvideoram[tile_index+0x400];
+	UINT32 tile_number = sprcros2_bgvideoram[tile_index];
+	UINT8 attr = sprcros2_bgvideoram[tile_index+0x400];
 
 	//attr
 	//76543210
@@ -93,10 +87,10 @@ static void get_sprcros2_bgtile_info(int tile_index)
 			(attr&0x08)?TILE_FLIPX:0)
 }
 
-static void get_sprcros2_fgtile_info(int tile_index)
+static TILE_GET_INFO( get_sprcros2_fgtile_info )
 {
-	unsigned int tile_number = sprcros2_fgvideoram[tile_index];
-	unsigned char attr = sprcros2_fgvideoram[tile_index+0x400];
+	UINT32 tile_number = sprcros2_fgvideoram[tile_index];
+	UINT8 attr = sprcros2_fgvideoram[tile_index+0x400];
 
 	//attr
 	//76543210
@@ -118,8 +112,6 @@ VIDEO_START( sprcros2 )
 	sprcros2_fgtilemap = tilemap_create( get_sprcros2_fgtile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT_COLOR,8,8,32,32 );
 
 	tilemap_set_transparent_pen(sprcros2_fgtilemap,0);
-
-	return 0;
 }
 
 static void sprcros2_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)

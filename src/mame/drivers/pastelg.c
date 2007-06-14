@@ -47,13 +47,11 @@ extern int pastelg_blitter_src_addr_r(void);
 static DRIVER_INIT( pastelg )
 {
 	nb1413m3_type = NB1413M3_PASTELG;
-
-	init_nb1413m3(machine);
 }
 
 static READ8_HANDLER( pastelg_sndrom_r )
 {
-	unsigned char *ROM = memory_region(REGION_SOUND1);
+	UINT8 *ROM = memory_region(REGION_SOUND1);
 
 	return ROM[pastelg_blitter_src_addr_r() & 0x7fff];
 }

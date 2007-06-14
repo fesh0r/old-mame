@@ -183,7 +183,7 @@ static tilemap *pf1_tilemap, *pf2_tilemap, *pf3_tilemap, *pf4_tilemap;
 
 ***************************************************************************/
 
-static void get_pf1_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf1_tile_info )
 {
 	int color, tile_number, attrib;
 
@@ -195,11 +195,11 @@ static void get_pf1_tile_info(int tile_index)
 			tile_number,
 			color,
 			0)
-	if (pf1_tilevram16[2*tile_index+1] & 0x8000) tile_info.priority = 0;
-	else tile_info.priority = (attrib & 0xf000) >> 12;
+	if (pf1_tilevram16[2*tile_index+1] & 0x8000) tileinfo->priority = 0;
+	else tileinfo->priority = (attrib & 0xf000) >> 12;
 }
 
-static void get_pf2_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf2_tile_info )
 {
 	int color, tile_number, attrib;
 
@@ -211,11 +211,11 @@ static void get_pf2_tile_info(int tile_index)
 			tile_number,
 			color,
 			0)
-	if (pf2_tilevram16[2*tile_index+1] & 0x8000) tile_info.priority = 0;
-	else tile_info.priority = (attrib & 0xf000) >> 12;
+	if (pf2_tilevram16[2*tile_index+1] & 0x8000) tileinfo->priority = 0;
+	else tileinfo->priority = (attrib & 0xf000) >> 12;
 }
 
-static void get_pf3_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf3_tile_info )
 {
 	int color, tile_number, attrib;
 
@@ -227,11 +227,11 @@ static void get_pf3_tile_info(int tile_index)
 			tile_number,
 			color,
 			0)
-	if (pf3_tilevram16[2*tile_index+1] & 0x8000) tile_info.priority = 0;
-	else tile_info.priority = (attrib & 0xf000) >> 12;
+	if (pf3_tilevram16[2*tile_index+1] & 0x8000) tileinfo->priority = 0;
+	else tileinfo->priority = (attrib & 0xf000) >> 12;
 }
 
-static void get_pf4_tile_info(int tile_index)
+static TILE_GET_INFO( get_pf4_tile_info )
 {
 	int color, tile_number, attrib;
 
@@ -243,8 +243,8 @@ static void get_pf4_tile_info(int tile_index)
 			tile_number,
 			color,
 			0)
-	if (pf4_tilevram16[2*tile_index+1] & 0x8000) tile_info.priority = 0;
-	else tile_info.priority = (attrib & 0xf000) >> 12;
+	if (pf4_tilevram16[2*tile_index+1] & 0x8000) tileinfo->priority = 0;
+	else tileinfo->priority = (attrib & 0xf000) >> 12;
 }
 
 /***************************************************************************
@@ -253,7 +253,7 @@ static void get_pf4_tile_info(int tile_index)
 
 ***************************************************************************/
 
-static int toaplan1_create_tilemaps(void)
+static void toaplan1_create_tilemaps(void)
 {
 	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,64);
 	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,64);
@@ -264,18 +264,15 @@ static int toaplan1_create_tilemaps(void)
 	tilemap_set_transparent_pen(pf2_tilemap,0);
 	tilemap_set_transparent_pen(pf3_tilemap,0);
 	tilemap_set_transparent_pen(pf4_tilemap,0);
-
-	return 0;
 }
 
 
-static int toaplan1_paletteram_alloc(void)
+static void toaplan1_paletteram_alloc(void)
 {
 	paletteram16 = auto_malloc(toaplan1_colorram1_size + toaplan1_colorram2_size);
-	return 0;
 }
 
-static int toaplan1_vram_alloc(void)
+static void toaplan1_vram_alloc(void)
 {
 	pf1_tilevram16 = auto_malloc(TOAPLAN1_TILEVRAM_SIZE);
 	memset(pf1_tilevram16,0,TOAPLAN1_TILEVRAM_SIZE);
@@ -288,11 +285,9 @@ static int toaplan1_vram_alloc(void)
 
 	pf4_tilevram16 = auto_malloc(TOAPLAN1_TILEVRAM_SIZE);
 	memset(pf4_tilevram16,0,TOAPLAN1_TILEVRAM_SIZE);
-
-	return 0;
 }
 
-static int toaplan1_spritevram_alloc(void)
+static void toaplan1_spritevram_alloc(void)
 {
 	spriteram16 = auto_malloc(TOAPLAN1_SPRITERAM_SIZE);
 	memset(spriteram16,0,TOAPLAN1_SPRITERAM_SIZE);
@@ -307,7 +302,6 @@ static int toaplan1_spritevram_alloc(void)
 	memset(toaplan1_buffered_spritesizeram16,0,TOAPLAN1_SPRITESIZERAM_SIZE);
 
 	spriteram_size = TOAPLAN1_SPRITERAM_SIZE;
-	return 0;
 }
 
 void toaplan1_set_scrolls(void)
@@ -335,9 +329,9 @@ void toaplan1_flipscreen(void)
 
 VIDEO_START( rallybik )
 {
-	if (toaplan1_create_tilemaps())  return 1;
-	if (toaplan1_paletteram_alloc()) return 1;
-	if (toaplan1_vram_alloc())       return 1;
+	toaplan1_create_tilemaps();
+	toaplan1_paletteram_alloc();
+	toaplan1_vram_alloc();
 
 	scrollx_offs1 = 0x0d + 6;
 	scrollx_offs2 = 0x0d + 4;
@@ -374,16 +368,14 @@ VIDEO_START( rallybik )
 	state_save_register_global(spriteram_offs);
 
 	state_save_register_func_postload(rallybik_flipscreen);
-
-	return 0;
 }
 
 VIDEO_START( toaplan1 )
 {
-	if (toaplan1_create_tilemaps())  return 1;
-	if (toaplan1_paletteram_alloc()) return 1;
-	if (toaplan1_vram_alloc())       return 1;
-	if (toaplan1_spritevram_alloc()) return 1;
+	toaplan1_create_tilemaps();
+	toaplan1_paletteram_alloc();
+	toaplan1_vram_alloc();
+	toaplan1_spritevram_alloc();
 
 	scrollx_offs1 = 0x1ef + 6;
 	scrollx_offs2 = 0x1ef + 4;
@@ -426,8 +418,6 @@ VIDEO_START( toaplan1 )
 	state_save_register_global(spriteram_offs);
 
 	state_save_register_func_postload(toaplan1_flipscreen);
-
-	return 0;
 }
 
 
@@ -671,46 +661,29 @@ READ16_HANDLER( rallybik_tileram16_r )
 
 WRITE16_HANDLER( toaplan1_tileram16_w )
 {
-	UINT16 oldword = 0;
 	offs_t vram_offset;
 
 	switch (pf_voffs & 0xf000)	/* Locate Layer (PlayField) */
 	{
 		case 0x0000:
 				vram_offset = ((pf_voffs * 2) + offset) & ((TOAPLAN1_TILEVRAM_SIZE/2)-1);
-				oldword = pf1_tilevram16[vram_offset];
-				if (data != oldword)
-				{
-					COMBINE_DATA(&pf1_tilevram16[vram_offset]);
-					tilemap_mark_tile_dirty(pf1_tilemap,vram_offset/2);
-				}
+				COMBINE_DATA(&pf1_tilevram16[vram_offset]);
+				tilemap_mark_tile_dirty(pf1_tilemap,vram_offset/2);
 				break;
 		case 0x1000:
 				vram_offset = ((pf_voffs * 2) + offset) & ((TOAPLAN1_TILEVRAM_SIZE/2)-1);
-				oldword = pf2_tilevram16[vram_offset];
-				if (data != oldword)
-				{
-					COMBINE_DATA(&pf2_tilevram16[vram_offset]);
-					tilemap_mark_tile_dirty(pf2_tilemap,vram_offset/2);
-				}
+				COMBINE_DATA(&pf2_tilevram16[vram_offset]);
+				tilemap_mark_tile_dirty(pf2_tilemap,vram_offset/2);
 				break;
 		case 0x2000:
 				vram_offset = ((pf_voffs * 2) + offset) & ((TOAPLAN1_TILEVRAM_SIZE/2)-1);
-				oldword = pf3_tilevram16[vram_offset];
-				if (data != oldword)
-				{
-					COMBINE_DATA(&pf3_tilevram16[vram_offset]);
-					tilemap_mark_tile_dirty(pf3_tilemap,vram_offset/2);
-				}
+				COMBINE_DATA(&pf3_tilevram16[vram_offset]);
+				tilemap_mark_tile_dirty(pf3_tilemap,vram_offset/2);
 				break;
 		case 0x3000:
 				vram_offset = ((pf_voffs * 2) + offset) & ((TOAPLAN1_TILEVRAM_SIZE/2)-1);
-				oldword = pf4_tilevram16[vram_offset];
-				if (data != oldword)
-				{
-					COMBINE_DATA(&pf4_tilevram16[vram_offset]);
-					tilemap_mark_tile_dirty(pf4_tilemap,vram_offset/2);
-				}
+				COMBINE_DATA(&pf4_tilevram16[vram_offset]);
+				tilemap_mark_tile_dirty(pf4_tilemap,vram_offset/2);
 				break;
 		default:
 				logerror("Hmmm, writing %04x to unknown playfield layer address %06x  Offset:%01x\n",data,pf_voffs,offset);
@@ -969,7 +942,7 @@ void toaplan1_log_vram(void)
 
 // custom function to draw a single sprite. needed to keep correct sprites - sprites and sprites - tilemaps priorities
 static void toaplan1_draw_sprite_custom(mame_bitmap *dest_bmp,const gfx_element *gfx,
-		unsigned int code,unsigned int color,int flipx,int flipy,int sx,int sy,
+		UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
 		const rectangle *clip,int priority)
 {
 	const pen_t *pal = &gfx->colortable[gfx->color_granularity * (color % gfx->total_colors)]; /* ASG 980209 */
