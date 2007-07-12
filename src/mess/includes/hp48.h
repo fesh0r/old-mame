@@ -1,4 +1,4 @@
-// in systems/hp48.c
+// in drivers/hp48.c
 #define KEY_A input_port_0_r(0)&0x80
 #define KEY_B input_port_0_r(0)&0x40
 #define KEY_C input_port_0_r(0)&0x20
@@ -70,7 +70,7 @@ extern DRIVER_INIT( hp48s );
 extern DRIVER_INIT( hp48g );
 extern MACHINE_RESET( hp48 );
 
-/* in vidhrdw/hp48.c */
+/* in video/hp48.c */
 extern unsigned short hp48_colortable[0x20][2];
 
 extern PALETTE_INIT( hp48 );

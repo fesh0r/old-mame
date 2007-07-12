@@ -23,7 +23,7 @@
             C0-DF (W) = Set both controllers to joystick mode 
             C0-DF (R) = Not Connected
 
-            E0-FF (W) = Sound Chip (SN76496)
+            E0-FF (W) = Sound Chip (SN76489A)
             E0-FF (R) = Read Controller data, A1=0 -> read controller 1, A1=1 -> read controller 2
 
     - Modified paddle handler, now it is handled as on a real ColecoVision
@@ -228,7 +228,7 @@ static MACHINE_RESET(coleco)
 {
     cpunum_set_input_line_vector(0, 0, 0xff);
 	memset(&memory_region(REGION_CPU1)[0x6000], 0xff, 0x400);	// initialize RAM
-    timer_pulse(TIME_IN_MSEC(20), 0, paddle_callback);
+    mame_timer_pulse(MAME_TIME_IN_MSEC(20), 0, paddle_callback);
 }
 
 static MACHINE_DRIVER_START( coleco )
@@ -248,7 +248,7 @@ static MACHINE_DRIVER_START( coleco )
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SN76496, 7159090/2)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD(SN76489A, 7159090/2)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 

@@ -19,7 +19,7 @@
 
 #if VERBOSE
 #define LOG(N,M,A)	\
-	if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",timer_get_time(), (const char*)M ); logerror A; }
+	if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",mame_timer_get_time(), (const char*)M ); logerror A; }
 #else
 #define LOG(N,M,A)
 #endif
@@ -89,12 +89,12 @@ DRIVER_INIT(mz700)
 
 MACHINE_RESET(mz700)
 {
-	ne556_timer[0] = timer_alloc(ne556_callback);
-	timer_adjust(ne556_timer[0], TIME_IN_HZ(1.5), 0, TIME_IN_HZ(1.5));
-	/*timer_pulse(TIME_IN_HZ(1.5), 0, ne556_callback)*/
-	ne556_timer[1] = timer_alloc(ne556_callback);
-	timer_adjust(ne556_timer[1], TIME_IN_HZ(34.5), 1, TIME_IN_HZ(34.5));
-	/*timer_pulse(TIME_IN_HZ(34.5), 1, ne556_callback)*/
+	ne556_timer[0] = mame_timer_alloc(ne556_callback);
+	mame_timer_adjust(ne556_timer[0], MAME_TIME_IN_HZ(1.5), 0, MAME_TIME_IN_HZ(1.5));
+	/*mame_timer_pulse(MAME_TIME_IN_HZ(1.5), 0, ne556_callback)*/
+	ne556_timer[1] = mame_timer_alloc(ne556_callback);
+	mame_timer_adjust(ne556_timer[1], MAME_TIME_IN_HZ(34.5), 1, MAME_TIME_IN_HZ(34.5));
+	/*mame_timer_pulse(MAME_TIME_IN_HZ(34.5), 1, ne556_callback)*/
 }
 
 
@@ -190,7 +190,7 @@ static WRITE8_HANDLER ( pio_port_b_w )
 	LOG(2,"mz700_pio_port_b_w",("%02X\n", data));
 
 	/* enable/disable NE556 cursor flash timer */
-    timer_enable(ne556_timer[0], (data & 0x80) ? 0 : 1);
+    mame_timer_enable(ne556_timer[0], (data & 0x80) ? 0 : 1);
 }
 
 static WRITE8_HANDLER ( pio_port_c_w )

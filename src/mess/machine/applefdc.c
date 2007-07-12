@@ -101,7 +101,7 @@ void applefdc_init(const struct applefdc_interface *intf)
 {
 	applefdc_lines = 0;
 	iwm_mode = 0x1f;	/* default value needed by Lisa 2 - no, I don't know if it is true */
-	motor_timer = timer_alloc(iwm_turnmotor_onoff);
+	motor_timer = mame_timer_alloc(iwm_turnmotor_onoff);
 	if (intf)
 		iwm_intf = *intf;
 	else
@@ -307,15 +307,15 @@ static void iwm_access(int offset)
 	{
 		case 0x08:
 			/* Turn off motor */
-			timer_adjust(motor_timer,
-				(iwm_mode & IWM_MODE_MOTOROFFDELAY) ? 0.0 : TIME_IN_SEC(1),
+			mame_timer_adjust(motor_timer,
+				(iwm_mode & IWM_MODE_MOTOROFFDELAY) ? time_zero : MAME_TIME_IN_SEC(1),
 				0,
-				0.0);
+				time_zero);
 			break;
 
 		case 0x09:
 			/* Turn on motor */
-			timer_adjust(motor_timer, 0.0, 1, 0.0);
+			mame_timer_adjust(motor_timer, time_zero, 1, time_zero);
 			break;
 
 		case 0x0A:

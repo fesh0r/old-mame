@@ -197,7 +197,7 @@ void tms9901_init(int which, const tms9901reset_param *param)
 {
 	int i;
 
-	tms9901[which].timer = timer_alloc(decrementer_callback);
+	tms9901[which].timer = mame_timer_alloc(decrementer_callback);
 
 	tms9901[which].supported_int_mask = param->supported_int_mask;
 
@@ -223,7 +223,7 @@ void tms9901_cleanup(int which)
 {
 	if (tms9901[which].timer)
 	{
-		timer_reset(tms9901[which].timer, TIME_NEVER);	/* FIXME - timers should only be allocated once */
+		mame_timer_reset(tms9901[which].timer, time_never);	/* FIXME - timers should only be allocated once */
 		tms9901[which].timer = NULL;
 	}
 }
@@ -327,11 +327,11 @@ static void tms9901_timer_reload(int which)
 {
 	if (tms9901[which].clockinvl)
 	{	/* reset clock interval */
-		timer_adjust(tms9901[which].timer, (double) tms9901[which].clockinvl / (tms9901[which].clock_rate / 64.), which, (double) tms9901[which].clockinvl / (tms9901[which].clock_rate / 64.));
+		mame_timer_adjust(tms9901[which].timer, double_to_mame_time((double) tms9901[which].clockinvl / (tms9901[which].clock_rate / 64.)), which, double_to_mame_time((double) tms9901[which].clockinvl / (tms9901[which].clock_rate / 64.)));
 	}
 	else
 	{	/* clock interval == 0 -> no timer */
-		timer_enable(tms9901[which].timer, 0);
+		mame_timer_enable(tms9901[which].timer, 0);
 	}
 }
 
@@ -451,7 +451,7 @@ void tms9901_cru_w(int which, int offset, int data)
 				/* we are switching to clock mode: latch the current value of
 				the decrementer register */
 				if (tms9901[which].clockinvl)
-					tms9901[which].latchedtimer = ceil(timer_timeleft(tms9901[which].timer) * (tms9901[which].clock_rate / 64.));
+					tms9901[which].latchedtimer = ceil(mame_time_to_double(mame_timer_timeleft(tms9901[which].timer)) * (tms9901[which].clock_rate / 64.));
 				else
 					tms9901[which].latchedtimer = 0;		/* timer inactive... */
 			}

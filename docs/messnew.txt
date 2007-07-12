@@ -1,3 +1,87 @@
+0.117
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Data General/One (not working) (Joe)
+
+
+
+System Driver Changes:
+----------------------
+- [A2600] Add auto-banking detection for all known carts [Cowering]
+
+- [A2600] Add auto-controller detection for INDY500, KIDVID,
+  COMPUMATE, BOOSTERGRIP and other special controllers [Cowering]  
+
+- [A2600] Improved sound poly generation. Improved handling of sound
+  mode POLY5_DIV3.  [Wilbert Pol]
+
+- [A2600] Fixed reset behavior.  [Wilbert Pol]
+
+- [A2600] Added partial DPC support.  [Wilbert Pol]
+
+- [APPLE2GS] Line-by-line video engine.  Some border effects almost 
+  work, and the CPU requirements are now lower.  [R. Belmont]
+
+- [AIM65, SYM1] Updated drivers to use the MAME 6532 RIOT implementation. Also
+  cleaned the AIM65 machine driver and ran srcclean.exe on the files. [Dirk
+  Best]
+
+- [DGNBETA] Fixed up for new 6821PIA behavior, machine will now boot again.
+  (bug #1309) [Phill Harvey-Smith]
+
+- [JAGUAR] Added the .j64 file extension.  [Justin Kerk]
+
+- [NASCOM] Unified drivers using selectable BIOSes.  [Fabio Priuli]
+
+- [NC100] Unified drivers using selectable BIOSes.  [Fabio Priuli]
+
+- [NC100] Fixed assertion. (bug #1305)  [Nate Woods]
+
+- [SVI328] Unified drivers using selectable BIOSes.  [Fabio Priuli]
+
+- [X68000] Fix to mark tilemaps as dirty when written to.  [Barry Rodewald]
+
+- [ZX81] Unified drivers using selectable BIOSes.  [Fabio Priuli]
+
+
+
+User Interface Changes:
+-----------------------
+- Fixed changing of drives within the file manager.  (bug #1264) [Oliver
+  Stoeneberg]
+  
+- Removed usage of OS working directories within the file manager.  [Oliver
+  Stoeneberg]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.116u4.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Changed BBC, Coleco, MTX, Sord, and Tutor drivers to use the SN76489 or
+  SN76489A sound chips as appropriate instead of the SN76496.  [Justin Kerk]
+  
+- Various 64-bit fixes.  [Oliver Stoeneberg]
+
+- Converted some timer_*() calls to mame_timer_*().  [Oliver Stoeneberg]
+
+- Changed devices_allocate() to not use auto_malloc(); a consequence is that
+  a devices_free() call is now necessary.  (bug #1293) [Nate Woods]
+
+- Removed MESS implementation of the 6532 RIOT because we are now using the
+  implementation by MAME. [Dirk Best]
+
+
+
 0.116
 
 New System Drivers Supported (in no particular order):
@@ -30,7 +114,7 @@ System Driver Changes:
 - [A2600] Changed start up bank for 16KB cartridges (partially
   fixed bug #1170).  [Wilbert Pol]
 
-- [A2600] Recoded tia to support MDRV_SCREEN_RAW_PARAMS and
+- [A2600] Recoded TIA to support MDRV_SCREEN_RAW_PARAMS and
   adjusted screen sizes (partially fixes bug #1170).  [Wilbert Pol]
 
 - [A2600] Updated playfield reflect bit to only have effect when
@@ -3215,7 +3299,7 @@ System Driver Changes:
 ---------------------- 
 - [A2600] Complete driver rewrite, including emulation of the 6532 RIOT (RAM, 
   INPUT, OUTPUT, TIMER) chip, cycle count correction in the t6502 core (fixes 
-  games like Space Invaders) and a new tia core.  [Stefan Jokisch]
+  games like Space Invaders) and a new TIA core.  [Stefan Jokisch]
 
 - [APPLE2] Enhanced models now have the M65C02 processor specified; apple2c
   now boots.  Removed *.vid files from the BIOS set in favor of the proper
@@ -4967,7 +5051,7 @@ XTVGA, ATCGA (prelim) [Peter Trauner]
 System Driver Changes:
 ----------------------
 - MACPLUS: Keyboard support added.  Variable memory configurations used now (a variable 
-  named ram_size which can be initializzed to any value), and added variable ROM size, too.  
+  named ram_size which can be initialized to any value), and added variable ROM size, too.  
   Updated iwm.c to support Apple Diskcopy format : this will allow to exchange data with 
   real-world macintosh, and to use images from Mac sites.
   Fixed the RTC, and added a feature which initializes the Macintosh clock with the current 

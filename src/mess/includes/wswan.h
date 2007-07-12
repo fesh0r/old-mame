@@ -90,10 +90,10 @@ extern DEVICE_INIT(wswan_cart);
 extern DEVICE_LOAD(wswan_cart);
 extern INTERRUPT_GEN(wswan_scanline_interrupt);
 
-/* vidhrdw/wswan.c */
+/* video/wswan.c */
 extern void wswan_refresh_scanline(void);
 
-/* sndhrdw/wswan.c */
+/* audio/wswan.c */
 extern WRITE8_HANDLER( wswan_sound_port_w );
 extern void *wswan_sh_start(int clock, const struct CustomSound_interface *config);
 

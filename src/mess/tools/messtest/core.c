@@ -565,6 +565,8 @@ done:
 	if (saved_directory[0])
 		osd_setcurdir(saved_directory);
 	pile_delete(&pile);
+	if( file != NULL )
+		fclose(file);
 	return result;
 }
 
@@ -620,7 +622,7 @@ void report_message(messtest_messagetype_t msgtype, const char *fmt, ...)
 /*	if ((msgtype == MSG_FAILURE) && (state != STATE_ABORTED))
 	{
 		state = STATE_ABORTED;
-		final_time = timer_get_time();
+		final_time = mame_timer_get_time();
 		if (final_time > 0.0)
 			dump_screenshot(); 
 	}

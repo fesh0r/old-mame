@@ -65,8 +65,8 @@ sound generator (?), CD40105BE (RCA H 432) and a 74LS222A logic chip.
 static struct {
 	void *timer;
 
-	bool busy, endOfSample;
-	bool playing;
+	int busy, endOfSample;
+	int playing;
 	int rate;
 	struct {
 		UINT8 data;
@@ -101,7 +101,7 @@ static void c364_speech_timer(int arg)
 void c364_speech_init(void)
 {
 	memset(&speech, 0, sizeof(speech));
-	speech.timer = timer_alloc(c364_speech_timer);
+	speech.timer = mame_timer_alloc(c364_speech_timer);
 }
 
 WRITE8_HANDLER(c364_speech_w)
@@ -117,7 +117,7 @@ WRITE8_HANDLER(c364_speech_w)
 					speech.playing=FALSE;
 					break;
 				case 1: /* start */
-					timer_adjust(speech.timer, 0, 0, 1.0/8000);
+					mame_timer_adjust(speech.timer, time_zero, 0, MAME_TIME_IN_HZ(8000));
 					speech.playing=TRUE;
 					speech.endOfSample=FALSE;
 					speech.sampleindex=0;
@@ -125,7 +125,7 @@ WRITE8_HANDLER(c364_speech_w)
 				case 2:
 					speech.endOfSample=FALSE;
 					/*speech.busy=FALSE; */
-					timer_reset(speech.timer, TIME_NEVER);
+					mame_timer_reset(speech.timer, time_never);
 					speech.playing=FALSE;
 					break;
 				case 5: /* set rate (in next nibble) */

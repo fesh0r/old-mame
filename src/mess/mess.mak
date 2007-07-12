@@ -40,12 +40,6 @@ OBJDIRS += \
 	$(MESSOBJ)/tools/dat2html \
 	$(MESSOBJ)/tools/imgtool
 
-# this is a MESS build
-MESS = 1
-
-# core defines
-COREDEFS += -DMESS
-
 
 
 #-------------------------------------------------
@@ -459,7 +453,6 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/28f008sa.o \
 	$(MESS_MACHINE)/am29f080.o \
 	$(MESS_MACHINE)/rriot.o    \
-	$(MESS_MACHINE)/riot6532.o \
 	$(MAME_MACHINE)/pit8253.o  \
 	$(MAME_MACHINE)/mc146818.o \
 	$(MESS_MACHINE)/uart8250.o \
@@ -1088,7 +1081,10 @@ $(MESSOBJ)/tx0.a:				\
 
 $(MESSOBJ)/luxor.a:					\
 	$(MESS_DRIVERS)/abc80.o	\
+	$(MESS_VIDEO)/abc80.o	\
 	$(MESS_DRIVERS)/abc80x.o	\
+	$(MESS_VIDEO)/abc80x.o	\
+	$(MESS_MACHINE)/abcbus.o	\
 
 $(MESSOBJ)/sgi.a:						\
 	$(MESS_MACHINE)/sgi.o		\
@@ -1152,43 +1148,12 @@ $(MESS_DRIVERS)/mk2.o:	$(MESS_LAYOUT)/mk2.lh
 
 
 
-MESS_EMUSRC = $(SRC)/mess
-MESS_EMUOBJ = $(OBJ)/mess
-
-# MESS specific core $(OBJ)s
-EMUOBJS +=							\
-	$(MESS_EMUOBJ)/mess.o				\
-	$(MESS_EMUOBJ)/messopts.o			\
-	$(MESS_EMUOBJ)/configms.o			\
-	$(MESS_EMUOBJ)/mesvalid.o			\
-	$(MESS_EMUOBJ)/image.o				\
-	$(MESS_EMUOBJ)/device.o			\
-	$(MESS_EMUOBJ)/hashfile.o			\
-	$(MESS_EMUOBJ)/inputx.o			\
-	$(MESS_EMUOBJ)/artworkx.o			\
-	$(MESS_EMUOBJ)/uimess.o			\
-	$(MESS_EMUOBJ)/filemngr.o			\
-	$(MESS_EMUOBJ)/tapectrl.o			\
-	$(MESS_EMUOBJ)/compcfg.o			\
-	$(MESS_EMUOBJ)/utils.o				\
-	$(MESS_EMUOBJ)/eventlst.o			\
-	$(MESS_EMUOBJ)/mscommon.o			\
-	$(MESS_EMUOBJ)/tagpool.o			\
-	$(MESS_EMUOBJ)/cheatms.o			\
-	$(MESS_EMUOBJ)/opresolv.o			\
-	$(MESS_EMUOBJ)/muitext.o			\
-	$(MESS_EMUOBJ)/infomess.o			\
-	$(MESS_EMUOBJ)/climess.o			\
-
-$(LIBEMU): $(EMUOBJS)
-
 include src/mess/tools/imgtool/imgtool.mak
 include src/mess/tools/messtest/messtest.mak
 include src/mess/tools/messdocs/messdocs.mak
 
 # include OS-specific MESS stuff
-include $(SRC)/mess/osd/$(MAMEOS)/$(MAMEOS).mak
-ifeq ($(MAMEOS),windows)
+ifeq ($(OSD),windows)
 include $(SRC)/mess/tools/imgtool/windows/wimgtool.mak
 endif
 
@@ -1211,7 +1176,7 @@ sysinfo.htm: dat2html$(EXE)
 
 TOOLS += dat2html$(EXE) messtest$(EXE) messdocs$(EXE) imgtool$(EXE)
 
-ifeq ($(MAMEOS),windows)
+ifeq ($(OSD),windows)
 TOOLS += wimgtool$(EXE)
 endif
 

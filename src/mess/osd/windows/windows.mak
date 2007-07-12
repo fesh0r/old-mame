@@ -13,8 +13,8 @@ RCFLAGS += -DMESS
 LIBS += -lcomdlg32
 
 OBJDIRS += \
-	$(MESSOBJ)\osd \
-	$(MESSOBJ)\osd\windows
+	$(MESSOBJ)/osd \
+	$(MESSOBJ)/osd/windows
 
 MESS_WINSRC = src/mess/osd/windows
 MESS_WINOBJ = $(OBJ)/mess/osd/windows
@@ -47,7 +47,7 @@ $(LIBOCORE_NOMAIN): $(OSDCOREOBJS:$(WINOBJ)/main.o=)
 
 $(MESS_WINOBJ)/%.res: $(MESS_WINSRC)/%.rc
 	@echo Compiling resources $<...
-	$(RC) $(RCDEFS) $(RCFLAGS) --include-dir mess/$(MAMEOS) -o $@ -i $<
+	$(RC) $(RCDEFS) $(RCFLAGS) --include-dir mess/$(OSD) -o $@ -i $<
 
 $(OBJ)/ui/%.res: src/ui/%.rc
 	@echo Compiling resources $<...

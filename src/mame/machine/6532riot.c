@@ -57,16 +57,6 @@ static void r6532_counter_timer_callback(int n)
 	mame_timer_set( MAME_TIME_IN_HZ(r6532[n].intf->base_clock), n, r6532_irq_timer_callback );
 }
 
-static void r6532_timer_callback(int n)
-{
-	if ( r6532[n]->timer_irq_enable )
-	{
-		r6532[n]->timer_irq = 1;
-		if (r6532[n]->intf.irq_func != NULL)
-			(*r6532[n]->intf.irq_func)(ASSERT_LINE);
-	}
-}
-
 static UINT8 r6532_combineA(int n, UINT8 val)
 {
 	return (r6532[n].DDRA & r6532[n].DRA) | (~r6532[n].DDRA & val);

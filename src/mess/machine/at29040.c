@@ -89,7 +89,7 @@ static void at29c040a_programming_timer_callback(int id)
 		/* programming cycle start */
 		at29c040a[id].s_pgm = s_pgm_3;
 		/* max delay 10ms, typical delay 5 to 7 ms */
-		timer_adjust(at29c040a[id].programming_timer, TIME_IN_MSEC(5), id, 0.);
+		mame_timer_adjust(at29c040a[id].programming_timer, MAME_TIME_IN_MSEC(5), id, time_zero);
 		break;
 
 	case s_pgm_3:
@@ -129,7 +129,7 @@ void at29c040a_init_data_ptr(int id, UINT8 *data_ptr)
 */
 void at29c040a_init(int id)
 {
-	at29c040a[id].programming_timer = timer_alloc(at29c040a_programming_timer_callback);
+	at29c040a[id].programming_timer = mame_timer_alloc(at29c040a_programming_timer_callback);
 }
 
 /*
@@ -214,7 +214,7 @@ UINT8 at29c040a_r(int id, offs_t offset)
 		at29c040a[id].s_pgm = s_pgm_0;
 		at29c040a[id].s_enabling_sdb = FALSE;
 		at29c040a[id].s_disabling_sdb = FALSE;
-		timer_adjust(at29c040a[id].programming_timer, TIME_NEVER, id, 0.);
+		mame_timer_adjust(at29c040a[id].programming_timer, time_never, id, time_zero);
 	}
 
 
@@ -249,7 +249,7 @@ UINT8 at29c040a_r(int id, offs_t offset)
 		{	/* data polling starts the programming cycle (right???) */
 			at29c040a[id].s_pgm = s_pgm_3;
 			/* max delay 10ms, typical delay 5 to 7 ms */
-			timer_adjust(at29c040a[id].programming_timer, TIME_IN_MSEC(5), id, 0.);
+			mame_timer_adjust(at29c040a[id].programming_timer, MAME_TIME_IN_MSEC(5), id, time_zero);
 		}
 
 		reply = at29c040a[id].toggle_bit;
@@ -317,7 +317,7 @@ void at29c040a_w(int id, offs_t offset, UINT8 data)
 			at29c040a[id].s_pgm = s_pgm_0;
 			at29c040a[id].s_enabling_sdb = FALSE;
 			at29c040a[id].s_disabling_sdb = FALSE;
-			timer_adjust(at29c040a[id].programming_timer, TIME_NEVER, id, 0.);
+			mame_timer_adjust(at29c040a[id].programming_timer, time_never, id, time_zero);
 
 			/* process command */
 			switch (data)
@@ -343,7 +343,7 @@ void at29c040a_w(int id, offs_t offset, UINT8 data)
 					at29c040a[id].s_pgm = s_pgm_1;
 					at29c040a[id].s_disabling_sdb = TRUE;
 					/* set command timeout (right???) */
-					//timer_adjust(at29c040a[id].programming_timer, TIME_IN_USEC(150), id, 0.);
+					//mame_timer_adjust(at29c040a[id].programming_timer, MAME_TIME_IN_USEC(150), id, 0.);
 				}
 				break;
 
@@ -363,7 +363,7 @@ void at29c040a_w(int id, offs_t offset, UINT8 data)
 				at29c040a[id].s_pgm = s_pgm_1;
 				at29c040a[id].s_enabling_sdb = TRUE;
 				/* set command timeout (right???) */
-				//timer_adjust(at29c040a[id].programming_timer, TIME_IN_USEC(150), id, 0.);
+				//mame_timer_adjust(at29c040a[id].programming_timer, MAME_TIME_IN_USEC(150), id, 0.);
 				break;
 
 			case 0xf0:
@@ -392,7 +392,7 @@ void at29c040a_w(int id, offs_t offset, UINT8 data)
 		at29c040a[id].s_pgm = s_pgm_0;
 		at29c040a[id].s_enabling_sdb = FALSE;
 		at29c040a[id].s_disabling_sdb = FALSE;
-		timer_adjust(at29c040a[id].programming_timer, TIME_NEVER, id, 0.);
+		mame_timer_adjust(at29c040a[id].programming_timer, time_never, id, time_zero);
 	}
 
 	if (((at29c040a[id].s_pgm == s_pgm_0) && ! at29c040a[id].s_sdp)
@@ -418,7 +418,7 @@ void at29c040a_w(int id, offs_t offset, UINT8 data)
 		/* write data to programming buffer */
 		at29c040a[id].programming_buffer[offset & 0xff] = data;
 		at29c040a[id].programming_last_offset = offset;
-		timer_adjust(at29c040a[id].programming_timer, TIME_IN_USEC(150), id, 0.);
+		mame_timer_adjust(at29c040a[id].programming_timer, MAME_TIME_IN_USEC(150), id, time_zero);
 	}
 }
 

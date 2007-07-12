@@ -177,8 +177,8 @@ void x68k_crtc_refresh_mode()
 //	x68k_scanline = video_screen_get_vpos(0);
 	if(sys.crtc.reg[4] != 0)
 	{
-//		scantime = TIME_IN_HZ(55.45) / sys.crtc.reg[4];
-//		timer_adjust(scanline_timer,TIME_NOW,0,scantime);
+//		scantime = MAME_TIME_IN_HZ(55.45) / sys.crtc.reg[4];
+//		mame_timer_adjust(scanline_timer,time_zero,0,scantime);
 	}
 }
 /*
@@ -200,8 +200,8 @@ void x68k_scanline_check(int dummy)
 		// set scanline timer for current Vertical Total (CRTC reg 4)
 		if(sys.crtc.reg[4] != 0)
 		{
-			scantime = TIME_IN_HZ(55.45) / sys.crtc.reg[4];
-			timer_adjust(scanline_timer,TIME_NOW,0,scantime);
+			scantime = MAME_TIME_IN_HZ(55.45) / sys.crtc.reg[4];
+			mame_timer_adjust(scanline_timer,time_zero,0,scantime);
 		}
 	}
 	if(x68k_scanline == sys.crtc.reg[7] + 1)  // Vertical end
@@ -232,7 +232,7 @@ void x68k_crtc_raster_irq(int scan)
 
 	irq_time = video_screen_get_time_until_pos(0,scan,2);
 	if(mame_time_to_double(irq_time) > 0)
-		timer_adjust(raster_irq,mame_time_to_double(irq_time),scan,TIME_NEVER);
+		mame_timer_adjust(raster_irq,irq_time,scan,time_never);
 	logerror("GPIP6: Raster triggered at line %i (%i)\n",scan,video_screen_get_vpos(0));
 }
 
@@ -254,7 +254,7 @@ void x68k_crtc_vblank_irq(int val)
 			irq_time = video_screen_get_time_until_pos(0,vblank_line / 2,2);
 		else
 			irq_time = video_screen_get_time_until_pos(0,vblank_line,2);
-		timer_adjust(vblank_irq,mame_time_to_double(irq_time),0,TIME_NEVER);
+		mame_timer_adjust(vblank_irq,irq_time,0,time_never);
 		logerror("CRTC: VBlank on\n");
 	}
 	if(val == 0)  // VBlank off
@@ -266,7 +266,7 @@ void x68k_crtc_vblank_irq(int val)
 			irq_time = video_screen_get_time_until_pos(0,vblank_line / 2,2);
 		else
 			irq_time = video_screen_get_time_until_pos(0,vblank_line,2);
-		timer_adjust(vblank_irq,mame_time_to_double(irq_time),1,TIME_NEVER);
+		mame_timer_adjust(vblank_irq,irq_time,1,time_never);
 		logerror("CRTC: VBlank off\n");
 	}
 	
@@ -290,7 +290,7 @@ WRITE16_HANDLER( x68k_crtc_w )
 		x68k_crtc_refresh_mode();
 		break;
 	case 9:  // CRTC raster IRQ (GPIP6)
-		timer_adjust(raster_irq,TIME_NEVER,0,TIME_NEVER);  // disable timer
+		mame_timer_adjust(raster_irq,time_never,0,time_never);  // disable timer
 		if(sys.crtc.height == 256)  // adjust to visible area
 		{
 			data = data / 2;
@@ -311,7 +311,7 @@ WRITE16_HANDLER( x68k_crtc_w )
 			irq_time = video_screen_get_time_until_pos(0,data - 1,2);
 
 			if(mame_time_to_double(irq_time) > 0)
-				timer_adjust(raster_irq,mame_time_to_double(irq_time),data - 1,TIME_NEVER);
+				mame_timer_adjust(raster_irq,irq_time,data - 1,time_never);
 			logerror("CRTC: Time until next raster IRQ = %f\n",mame_time_to_double(irq_time));
 		}
 		logerror("CRTC: Write to raster IRQ register - %i\n",data);
@@ -359,7 +359,7 @@ WRITE16_HANDLER( x68k_crtc_w )
 		if(data & 0x08)  // text screen raster copy
 		{
 			x68k_crtc_text_copy((sys.crtc.reg[22] & 0xff00) >> 8,(sys.crtc.reg[22] & 0x00ff));
-			timer_set(TIME_IN_MSEC(1),0x02,x68k_crtc_operation_end);  // time taken to do operation is a complete guess.
+			mame_timer_set(MAME_TIME_IN_MSEC(1),0x02,x68k_crtc_operation_end);  // time taken to do operation is a complete guess.
 		}
 		if(data & 0x02)  // high-speed graphic screen clear
 		{
@@ -385,7 +385,7 @@ WRITE16_HANDLER( x68k_crtc_w )
 			{
 				fillbitmap(x68k_gfx_3_bitmap_16,0,&rect);
 			}
-			timer_set(TIME_IN_MSEC(10),0x02,x68k_crtc_operation_end);  // time taken to do operation is a complete guess.
+			mame_timer_set(MAME_TIME_IN_MSEC(10),0x02,x68k_crtc_operation_end);  // time taken to do operation is a complete guess.
 //			popmessage("CRTC: High-speed gfx screen clear [0x%02x]",sys.crtc.reg[21] & 0x0f);
 		}
 		break;
@@ -594,6 +594,13 @@ WRITE16_HANDLER( x68k_spriteram_w )
 	COMBINE_DATA(x68k_spriteram+offset);
 	sys.video.tile8_dirty[offset / 16] = 1;
 	sys.video.tile16_dirty[offset / 64] = 1;
+	if(offset < 0x2000)
+	{
+		tilemap_mark_all_tiles_dirty(x68k_bg1_8);
+		tilemap_mark_all_tiles_dirty(x68k_bg1_16);
+		tilemap_mark_all_tiles_dirty(x68k_bg0_8);
+		tilemap_mark_all_tiles_dirty(x68k_bg0_16);
+	}
 	if(offset >= 0x2000 && offset < 0x3000)
 	{
 		tilemap_mark_tile_dirty(x68k_bg1_8,offset & 0x0fff);
@@ -891,7 +898,7 @@ VIDEO_START( x68000 )
 	tilemap_set_transparent_pen(x68k_bg0_16,0);
 	tilemap_set_transparent_pen(x68k_bg1_16,0);
 
-//	timer_adjust(scanline_timer,TIME_NOW,0,TIME_IN_HZ(55.45)/568);
+//	mame_timer_adjust(scanline_timer,time_zero,0,MAME_TIME_IN_HZ(55.45)/568);
 }
 
 VIDEO_UPDATE( x68000 )

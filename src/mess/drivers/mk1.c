@@ -44,9 +44,8 @@ static  READ8_HANDLER(mk1_f8_r)
 {
     UINT8 data = mk1_f8[offset];
 
-#if VERBOSE
-	logerror ("f8 %.6f r %x %x\n", timer_get_time(), offset, data);
-#endif
+	if (VERBOSE)
+		logerror ("f8 %.6f r %x %x\n", mame_time_to_double(mame_timer_get_time()), offset, data);
 
     if (offset==0)
 	{
@@ -91,9 +90,8 @@ static WRITE8_HANDLER(mk1_f8_w)
 	/* 0 is high and allows also input */
 	mk1_f8[offset]=data;
 
-#if VERBOSE
-	logerror("f8 %.6f w %x %x\n", timer_get_time(), offset, data);
-#endif
+	if (VERBOSE)
+		logerror("f8 %.6f w %x %x\n", mame_time_to_double(mame_timer_get_time()), offset, data);
 
 	if (!(mk1_f8[1]&1)) mk1_led[0]=mk1_f8[0];
 	if (!(mk1_f8[1]&2)) mk1_led[1]=mk1_f8[0];
@@ -180,7 +178,7 @@ ROM_START(mk1)
 	ROM_LOAD("82c210-1", 0x0000, 0x800, CRC(278f7bf3) SHA1(b384c95ba691d52dfdddd35987a71e9746a46170))
 ROM_END
 
-static void mk1_interrupt(UINT16 addr, bool level)
+static void mk1_interrupt(UINT16 addr, int level)
 {
     cpunum_set_input_line_vector(0, 0, addr);
     cpunum_set_input_line(0, F8_INT_INTR, level);

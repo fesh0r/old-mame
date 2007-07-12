@@ -1,7 +1,7 @@
 #ifndef A7800_H
 #define A7800_H
 
-/* vidhrdw/a7800.c */
+/* video/a7800.c */
 VIDEO_START( a7800 );
 VIDEO_UPDATE( a7800 );
 void a7800_interrupt(void);
@@ -18,6 +18,7 @@ MACHINE_RESET( a7800 );
 void a7800_partialhash(char *dest, const unsigned char *data,
 	unsigned long length, unsigned int functions);
 
+DEVICE_INIT( a7800_cart );
 DEVICE_LOAD( a7800_cart );
 
  READ8_HANDLER  ( a7800_TIA_r );

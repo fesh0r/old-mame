@@ -14,11 +14,11 @@
 
 #define COCO_CPU_SPEED_HZ		894886	/* 0.894886 MHz */
 #define COCO_FRAMES_PER_SECOND	(COCO_CPU_SPEED_HZ / 57.0 / 263)
-#define COCO_CPU_SPEED			(TIME_IN_HZ(COCO_CPU_SPEED_HZ))
+#define COCO_CPU_SPEED			(MAME_TIME_IN_HZ(COCO_CPU_SPEED_HZ))
 #define COCO_TIMER_CMPCARRIER	(COCO_CPU_SPEED * 0.25)
 
 /* ----------------------------------------------------------------------- *
- * from vidhrdw/coco.c                                                     *
+ * from video/coco.c                                                     *
  * ----------------------------------------------------------------------- */
 
 ATTR_CONST UINT8 coco_get_attributes(UINT8 c);
@@ -28,7 +28,7 @@ VIDEO_START( coco );
 VIDEO_START( coco2b );
 
 /* ----------------------------------------------------------------------- *
- * from vidhrdw/coco3.c                                                    *
+ * from video/coco3.c                                                    *
  * ----------------------------------------------------------------------- */
 
 VIDEO_START( coco3 );

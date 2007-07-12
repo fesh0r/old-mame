@@ -22,7 +22,7 @@ rom/ram selection
 #include "cpu/z80/z80.h"
 #include "video/m6845.h"
 #include "includes/amstrad.h"
-//#include "systems/i8255.h"
+//#include "drivers/i8255.h"
 #include "machine/8255ppi.h"
 #include "machine/nec765.h"
 #include "devices/dsk.h"
@@ -224,7 +224,7 @@ DEVICE_LOAD(amstrad_plus_cartridge)
 		logerror("CPR: failed to read from cart image\n");
 		return INIT_FAIL;
 	}
-	if(strncmp(header,"RIFF",4) != 0)
+	if(strncmp((char *)header,"RIFF",4) != 0)
 	{
 		logerror("CPR: not an RIFF format file - header is '%s'\n",header);
 		return INIT_FAIL;

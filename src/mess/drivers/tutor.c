@@ -17,11 +17,11 @@
 	The Tomy Tutor features a TMS9995 CPU @10.7MHz (which includes a
 	timer/counter and 256 bytes of 16-bit RAM), 48kb of ROM (32kb on early
 	models that did not have the BASIC interpreter), a tms9918a/9929a VDP (or
-	equivalent?) with 16kb of VRAM, and a sn76496 sound generator (or
-	equivalent?).  There is a tape interface, a 56-key keyboard, an interface
-	for two joysticks, a cartridge port and an extension port.  The OS design
-	does not seem to be particularly expandable (I don't see any hook for
-	additional DSRs), but there were prototypes for a parallel port (emulated)
+	equivalent?) with 16kb of VRAM, and a sn76489an sound generator.
+	There is a tape interface, a 56-key keyboard, an interface for two
+	joysticks, a cartridge port and an extension port.  The OS design does not
+	seem to be particularly expandable (I don't see any hook for additional
+	DSRs), but there were prototypes for a parallel port (emulated)
 	and a speech synthesizer unit (not emulated).
 
 
@@ -102,7 +102,7 @@ enum
 
 static DRIVER_INIT(tutor)
 {
-	tape_interrupt_timer = timer_alloc(tape_interrupt_handler);
+	tape_interrupt_timer = mame_timer_alloc(tape_interrupt_handler);
 
 	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + basic_base, 0);
 	memory_configure_bank(1, 1, 1, memory_region(REGION_CPU1) + cartridge_base, 0);
@@ -289,10 +289,10 @@ static WRITE8_HANDLER(tutor_cassette_w)
 			{
 				tape_interrupt_enable = ! data;
 				if (tape_interrupt_enable)
-					timer_adjust(tape_interrupt_timer, /*TIME_IN_HZ(44100)*/0., 0, TIME_IN_HZ(44100));
+					mame_timer_adjust(tape_interrupt_timer, /*MAME_TIME_IN_HZ(44100)*/time_zero, 0, MAME_TIME_IN_HZ(44100));
 				else
 				{
-					timer_adjust(tape_interrupt_timer, TIME_NEVER, 0, 0.);
+					mame_timer_adjust(tape_interrupt_timer, time_never, 0, time_zero);
 					cpunum_set_input_line(0, 1, CLEAR_LINE);
 				}
 			}
@@ -585,7 +585,7 @@ static MACHINE_DRIVER_START(tutor)
 
 	/* sound */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SN76496, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD(SN76489A, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD(WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)

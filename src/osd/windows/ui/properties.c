@@ -2000,8 +2000,11 @@ static void DefaultInputPopulateControl(datamap *map, HWND dialog, HWND control,
 	index++;
 	
 	t_ctrldir = tstring_from_utf8(GetCtrlrDir());
-	if( !t_ctrldir )
+	if( !t_ctrldir ) {
+		if( buf )
+			free(buf);
 		return;
+	}
 
 	_stprintf (path, TEXT("%s\\*.*"), t_ctrldir);
 	
@@ -2818,7 +2821,7 @@ static void InitializeBIOSUI(HWND hwnd)
 	if (hCtrl)
 	{
 		const game_driver *gamedrv = drivers[g_nGame];
-		const bios_entry *thisbios;
+		const rom_entry *rom;
 
 		if (g_nGame == GLOBAL_OPTIONS)
 		{
@@ -2837,16 +2840,22 @@ static void InitializeBIOSUI(HWND hwnd)
 			}
 			ComboBox_InsertString(hCtrl, i, TEXT("Default"));
 			ComboBox_SetItemData( hCtrl, i++, "default");
-			thisbios = gamedrv->bios;
-			while (!BIOSENTRY_ISEND(thisbios))
+
+			if (gamedrv->rom != NULL)
 			{
-				t_s = tstring_from_utf8(thisbios->_description);
-				if( !t_s )
-					return;
-				ComboBox_InsertString(hCtrl, i, win_tstring_strdup(t_s));
-				ComboBox_SetItemData( hCtrl, i++, thisbios->_name);
-				thisbios++;
-				free(t_s);
+				for (rom = gamedrv->rom; !ROMENTRY_ISEND(rom); rom++)
+				{
+					if (ROMENTRY_ISSYSTEM_BIOS(rom))
+					{
+						const char *name = ROM_GETHASHDATA(rom);
+						t_s = tstring_from_utf8(name);
+						if( !t_s )
+							return;
+						ComboBox_InsertString(hCtrl, i, win_tstring_strdup(t_s));
+						ComboBox_SetItemData( hCtrl, i++, name);
+						free(t_s);
+					}
+				}
 			}
 			return;
 		}
@@ -2859,21 +2868,22 @@ static void InitializeBIOSUI(HWND hwnd)
 		}
 		ComboBox_InsertString(hCtrl, i, TEXT("Default"));
 		ComboBox_SetItemData( hCtrl, i++, "default");
-		thisbios = gamedrv->bios;
-		while (!BIOSENTRY_ISEND(thisbios))
+
+		if (gamedrv->rom != NULL)
 		{
-			t_s = tstring_from_utf8(thisbios->_description);
-			if( !t_s )
-				return;
-			ComboBox_InsertString(hCtrl, i, win_tstring_strdup(t_s));
-			ComboBox_SetItemData( hCtrl, i, thisbios->_name);
-			if( strcmp( thisbios->_name, options_get_string(pGameOpts, OPTION_BIOS) ) == 0 )
+			for (rom = gamedrv->rom; !ROMENTRY_ISEND(rom); rom++)
 			{
-				ComboBox_SetCurSel( hCtrl, i );
+				if (ROMENTRY_ISSYSTEM_BIOS(rom))
+				{
+					const char *name = ROM_GETHASHDATA(rom);
+					t_s = tstring_from_utf8(name);
+					if( !t_s )
+						return;
+					ComboBox_InsertString(hCtrl, i, win_tstring_strdup(t_s));
+					ComboBox_SetItemData( hCtrl, i++, name);
+					free(t_s);
+				}
 			}
-			i++;
-			thisbios++;
-			free(t_s);
 		}
 	}
 }

@@ -7,7 +7,7 @@
 #define MEMORY_WRITE_START18(name) MEMORY_WRITE32_START(name)
 
 
-/* From systems/pdp1.c */
+/* From drivers/pdp1.c */
 /* defines for input port numbers */
 enum
 {
@@ -157,7 +157,7 @@ typedef struct lightpen_t
 	short radius;
 } lightpen_t;
 
-/* From vidhrdw/pdp1.c */
+/* From video/pdp1.c */
 VIDEO_START( pdp1 );
 VIDEO_EOF( pdp1 );
 VIDEO_UPDATE( pdp1 );

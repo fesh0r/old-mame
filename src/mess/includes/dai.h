@@ -13,7 +13,7 @@ WRITE8_HANDLER( amd9511_w );
 extern UINT8 dai_noise_volume;
 extern UINT8 dai_osc_volume[3];
 
-/* vidhrdw/dai.c */
+/* video/dai.c */
 extern unsigned char dai_palette[16*3];
 extern unsigned short dai_colortable[1][16];
 VIDEO_START( dai );
@@ -21,7 +21,7 @@ VIDEO_UPDATE( dai );
 PALETTE_INIT( dai );
 void dai_update_palette (UINT8);
 
-/* sndhrdw/dai.c */
+/* audio/dai.c */
 extern struct CustomSound_interface dai_sound_interface;
 extern void dai_sh_change_clock(double);
 

@@ -251,10 +251,10 @@ INLINE void interrupt_check(z80dart *dart)
 }
 
 
-INLINE double compute_time_per_character(z80dart *dart, int which)
+INLINE mame_time compute_time_per_character(z80dart *dart, int which)
 {
 	/* fix me -- should compute properly and include data, stop, parity bits */
-	return TIME_IN_HZ(9600 / 10);
+	return MAME_TIME_IN_HZ(9600 / 10);
 }
 
 
@@ -275,8 +275,8 @@ void z80dart_init(int which, z80dart_interface *intf)
 
 	memset(dart, 0, sizeof(*dart));
 
-	dart->chan[0].receive_timer = timer_alloc(serial_callback);
-	dart->chan[1].receive_timer = timer_alloc(serial_callback);
+	dart->chan[0].receive_timer = mame_timer_alloc(serial_callback);
+	dart->chan[1].receive_timer = mame_timer_alloc(serial_callback);
 
 	dart->irq_cb = intf->irq_cb;
 	dart->dtr_changed_cb = intf->dtr_changed_cb;
@@ -295,7 +295,7 @@ void z80dart_init(int which, z80dart_interface *intf)
 
 static void reset_channel(z80dart *dart, int ch)
 {
-	double tpc = compute_time_per_character(dart, ch);
+	mame_time tpc = compute_time_per_character(dart, ch);
 	dart_channel *chan = &dart->chan[ch];
 
 	chan->status[0] = DART_RR0_TX_BUFFER_EMPTY;
@@ -312,7 +312,7 @@ static void reset_channel(z80dart *dart, int ch)
 	interrupt_check(dart);
 
 	/* start the receive timer running */
-	timer_adjust(chan->receive_timer, tpc, ((dart - darts) << 1) | ch, tpc);
+	mame_timer_adjust(chan->receive_timer, tpc, ((dart - darts) << 1) | ch, tpc);
 }
 
 
@@ -538,8 +538,21 @@ static void change_input_line(int param)
 	int state = (param >> 7) & 1;
 	int ch = param & 1;
 	UINT8 old;
-
-	VPRINTF(("dart_change_input_line(%c, %s) = %d\n", 'A' + ch, (line == DART_RR0_CTS) ? "CTS" : "DCD", state));
+	char linename[4];
+	
+	switch (line)
+	{
+	case DART_RR0_CTS:
+		sprintf(linename, "%s", "CTS");
+		break;
+	case DART_RR0_DCD:
+		sprintf(linename, "%s", "DCD");
+		break;
+	case DART_RR0_RI:
+		sprintf(linename, "%s", "RI");
+		break;
+	}
+	VPRINTF(("dart_change_input_line(%c, %s) = %d\n", 'A' + ch, linename, state));
 
 	/* remember the old value */
 	old = chan->status[0];
@@ -566,7 +579,7 @@ static void change_input_line(int param)
 void z80dart_set_cts(int which, int ch, int state)
 {
 	/* operate deferred */
-	timer_set(TIME_NOW, (DART_RR0_CTS << 8) + (state != 0) * 0x80 + which * 2 + ch, change_input_line);
+	mame_timer_set(time_zero, (DART_RR0_CTS << 8) + (state != 0) * 0x80 + which * 2 + ch, change_input_line);
 }
 
 
@@ -578,7 +591,19 @@ void z80dart_set_cts(int which, int ch, int state)
 void z80dart_set_dcd(int which, int ch, int state)
 {
 	/* operate deferred */
-	timer_set(TIME_NOW, (DART_RR0_DCD << 8) + (state != 0) * 0x80 + which * 2 + ch, change_input_line);
+	mame_timer_set(time_zero, (DART_RR0_DCD << 8) + (state != 0) * 0x80 + which * 2 + ch, change_input_line);
+}
+
+
+/*-------------------------------------------------
+    z80dart_set_ri - set the state of the RIA
+    line
+-------------------------------------------------*/
+
+void z80dart_set_ri(int which, int state)
+{
+	/* operate deferred */
+	mame_timer_set(time_zero, (DART_RR0_RI << 8) + (state != 0) * 0x80 + which * 2, change_input_line);
 }
 
 

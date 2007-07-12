@@ -14,7 +14,7 @@ extern "C" {
  * I will split this from the vc20 driver
  * peter.trauner@jk.uni-linz.ac.at
  * 16. november 1999
- * look at mess/systems/vc20.c and mess/machine/vc20.c
+ * look at mess/drivers/vc20.c and mess/machine/vc20.c
  * on how to use it
  */
 
@@ -66,7 +66,7 @@ extern void vic6560_init (int (*dma_read) (int), int (*dma_read_color) (int));
 extern void vic6561_init (int (*dma_read) (int), int (*dma_read_color) (int));
 
 /* internal */
-extern bool vic6560_pal;
+extern int vic6560_pal;
 
 /* to be inserted in MachineDriver-Structure */
 
@@ -126,7 +126,7 @@ extern  READ8_HANDLER ( vic6560_port_r );
 
 /* private area */
 
-/* from sndhrdw/pc.c */
+/* from audio/pc.c */
 void *vic6560_custom_start(int clock, const struct CustomSound_interface *config);
 void vic6560_soundport_w (int mode, int data);
 

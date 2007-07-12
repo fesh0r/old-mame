@@ -110,7 +110,7 @@ static void	flash_timer_callback(int index1)
 
 	/* stop timer from activating again, and do not let
 	MAME sub-system remove it from the list */
-	timer_reset(flash[index1].flash_timer, TIME_NEVER);
+	mame_timer_reset(flash[index1].flash_timer, time_never);
 }
 
 /* suspend erase operation */
@@ -127,7 +127,7 @@ static void flash_suspend_erase(int index1)
 		double time_elapsed;
 
 		/* get time passed */
-		time_elapsed = timer_timeelapsed(flash[index1].flash_timer);
+		time_elapsed = mame_time_to_double(mame_timer_timeelapsed(flash[index1].flash_timer));
 
 		/* at this point in time, I don't believe it is necessary to know number of bits that have
 		been erased*/
@@ -150,7 +150,7 @@ static void flash_suspend_erase(int index1)
 		flash[index1].flash_offset += num_bytes;
 
 		/* remove timer */
-		timer_reset(flash[index1].flash_timer, TIME_NEVER);
+		mame_timer_reset(flash[index1].flash_timer, time_never);
 
 		/* set erase state to suspended */
 		flash[index1].flash_erase_status = FLASH_ERASE_STATUS_SUSPENDED;
@@ -172,13 +172,13 @@ static void flash_resume_erase(int index1)
 	num_bytes_remaining = 65536-flash[index1].flash_offset;
 
 	/* issue a timer for this */
-	timer_adjust(flash[index1].flash_timer, TIME_IN_SEC((FLASH_TIME_PER_BYTE_IN_SECS*num_bytes_remaining)), index1, 0);
+	mame_timer_adjust(flash[index1].flash_timer, double_to_mame_time((FLASH_TIME_PER_BYTE_IN_SECS*num_bytes_remaining)), index1, time_zero);
 }
 
 
 void	flash_init(int index1)
 {
-	flash[index1].flash_timer = timer_alloc(flash_timer_callback);
+	flash[index1].flash_timer = mame_timer_alloc(flash_timer_callback);
 
 	/* 1mb ram */
 	flash[index1].base = (char *) auto_malloc(1024*1024);
@@ -238,7 +238,7 @@ void flash_reset(int index1)
 	flash[index1].flash_status = FLASH_STATUS_WRITE_STATE_MACHINE_STATUS_READY;
 	flash[index1].flash_command = FLASH_COMMAND_READ_ARRAY_OR_RESET;
 	flash[index1].flash_erase_status = FLASH_ERASE_STATUS_NONE;
-	timer_reset(flash[index1].flash_timer, TIME_NEVER);
+	mame_timer_reset(flash[index1].flash_timer, time_never);
 }
 	
 

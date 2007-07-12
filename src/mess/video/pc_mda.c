@@ -16,7 +16,7 @@
 
 #if VERBOSE_MDA
 #define MDA_LOG(N,M,A) \
-	if(VERBOSE_MDA>=N){ if( M )logerror("%11.6f: %-24s",timer_get_time(),(char*)M ); logerror A; }
+	if(VERBOSE_MDA>=N){ if( M )logerror("%11.6f: %-24s",mame_timer_get_time(),(char*)M ); logerror A; }
 #else
 #define MDA_LOG(n,m,a)
 #endif
@@ -211,7 +211,7 @@ VIDEO_START( pc_mda )
 	memory_set_bankptr(11, videoram);
 
 	pc_mda_init_video();
-	pc_video_start(&config, pc_mda_choosevideomode, videoram_size) ? INIT_PASS : INIT_FAIL;
+	pc_video_start(&config, pc_mda_choosevideomode, videoram_size);
 }
 
 /*

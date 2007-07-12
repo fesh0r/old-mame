@@ -178,7 +178,7 @@ int pc_hdc_setup(void)
 		status[i] = 0;
 		error[i] = 0;
 		dip[i] = 0xff;
-		timer[i] = timer_alloc(pc_hdc_command);
+		timer[i] = mame_timer_alloc(pc_hdc_command);
 		if (!timer[i])
 			return -1;
 	}
@@ -632,7 +632,7 @@ static void pc_hdc_data_w(int n, int data)
 			status[n] |= STA_INPUT;
 			
 			assert(timer[n]);
-			timer_adjust(timer[n], 0.001, n, 0);
+			mame_timer_adjust(timer[n], MAME_TIME_IN_MSEC(1), n, time_zero);
         }
 	}
 }

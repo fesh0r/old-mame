@@ -88,7 +88,7 @@ void acia_6551_init(void)
 	memset(&acia, 0, sizeof(struct acia6551));
 	/* transmit data reg is empty */
 	acia.status_register |= (1<<4);
-	acia.timer = timer_alloc(acia_6551_timer_callback);
+	acia.timer = mame_timer_alloc(acia_6551_timer_callback);
 
 	serial_connection_init(&acia.connection);
 	serial_connection_set_in_callback(&acia.connection, acia_6551_in_callback);
@@ -359,7 +359,7 @@ WRITE8_HANDLER(acia_6551_w)
                 rate = data & 0x07;
 
 				/* baud rate changed? */
-				timer_reset(acia.timer, TIME_NEVER);
+				mame_timer_reset(acia.timer, time_never);
 
 				if (rate==0)
 				{
@@ -465,7 +465,7 @@ WRITE8_HANDLER(acia_6551_w)
 						break;
 					}
 
-					timer_adjust(acia.timer, 0, 0, TIME_IN_HZ(baud_rate));
+					mame_timer_adjust(acia.timer, time_zero, 0, MAME_TIME_IN_HZ(baud_rate));
 				}
 			}
 

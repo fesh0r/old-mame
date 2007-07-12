@@ -6,7 +6,7 @@
  * I will split this from the c16 driver
  * peter.trauner@jk.uni-linz.ac.at
  * 16. november 1999
- * look at mess/systems/c16.c and mess/machine/c16.c
+ * look at mess/drivers/c16.c and mess/machine/c16.c
  * on how to use it
  */
 
@@ -63,12 +63,12 @@ extern void ted7360_raster_interrupt (void);
 
 /* private area */
 
-/* from sndhrdw/pc.c */
+/* from audio/pc.c */
 void *ted7360_custom_start (int clock, const struct CustomSound_interface *config);
 void ted7360_soundport_w (int mode, int data);
 
 extern UINT8 ted7360[0x20];
-extern bool ted7360_pal;
-extern bool ted7360_rom;
+extern int ted7360_pal;
+extern int ted7360_rom;
 
 #endif

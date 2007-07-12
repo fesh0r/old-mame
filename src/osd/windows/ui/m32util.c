@@ -63,18 +63,6 @@ static struct DriversInfo
 
 
 /***************************************************************************
-	Internal variables
- ***************************************************************************/
-#ifndef PATH_SEPARATOR
-#ifdef _MSC_VER
-#define PATH_SEPARATOR '\\'
-#else
-#define PATH_SEPARATOR '/'
-#endif
-#endif
-
-
-/***************************************************************************
 	External functions
  ***************************************************************************/
 
@@ -334,12 +322,22 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 			gameinfo->supportsSaveState = ((gamedrv->flags & GAME_SUPPORTS_SAVE) != 0);
 			gameinfo->isHarddisk = FALSE;
 			for (region = rom_first_region(gamedrv); region; region = rom_next_region(region))
+			{
 				if (ROMREGION_ISDISKDATA(region))
-				{
 					gameinfo->isHarddisk = TRUE;
-					break;
+			}
+			gameinfo->hasOptionalBIOS = FALSE;
+			if (gamedrv->rom != NULL)
+			{
+				for (rom = gamedrv->rom; !ROMENTRY_ISEND(rom); rom++)
+				{
+					if (ROMENTRY_ISSYSTEM_BIOS(rom))
+					{
+						gameinfo->hasOptionalBIOS = TRUE;
+						break;
+					}
 				}
-			gameinfo->hasOptionalBIOS = (gamedrv->bios != NULL);
+			}
 			expand_machine_driver(gamedrv->drv, &drv);
 
 			num_speakers = 0;

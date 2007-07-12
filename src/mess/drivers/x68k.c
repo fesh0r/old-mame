@@ -173,7 +173,22 @@ mame_timer* vblank_irq;
 mame_timer* mouse_timer;  // to set off the mouse interrupts via the SCC
 
 // MFP is clocked at 4MHz, so at /4 prescaler the timer is triggered after 1us (4 cycles)
-float prescale[8] = { 0.0, 1.0, 2.5, 4.0, 12.5, 16.0, 25.0, 50.0 };  
+static mame_time prescale(int val)
+{
+	switch(val)
+	{
+		case 0:	return MAME_TIME_IN_NSEC(0);
+		case 1:	return MAME_TIME_IN_NSEC(1000);
+		case 2:	return MAME_TIME_IN_NSEC(2500);
+		case 3:	return MAME_TIME_IN_NSEC(4000);
+		case 4:	return MAME_TIME_IN_NSEC(12500);
+		case 5:	return MAME_TIME_IN_NSEC(16000);
+		case 6:	return MAME_TIME_IN_NSEC(25000);
+		case 7:	return MAME_TIME_IN_NSEC(50000);
+		default:
+			fatalerror("out of range");
+	}
+}
 
 void mfp_init(void);
 void mfp_update_irq(int);
@@ -186,12 +201,12 @@ void mfp_init()
 	sys.mfp.irqline = 6;  // MFP is connected to 68000 IRQ line 6
 	sys.mfp.current_irq = -1;  // No current interrupt
 
-	mfp_timer[0] = timer_alloc(mfp_timer_a_callback);
-	mfp_timer[1] = timer_alloc(mfp_timer_b_callback);
-	mfp_timer[2] = timer_alloc(mfp_timer_c_callback);
-	mfp_timer[3] = timer_alloc(mfp_timer_d_callback);
-	mfp_irq = timer_alloc(mfp_update_irq);
-	timer_adjust(mfp_irq,TIME_NOW,0,TIME_IN_USEC(32));
+	mfp_timer[0] = mame_timer_alloc(mfp_timer_a_callback);
+	mfp_timer[1] = mame_timer_alloc(mfp_timer_b_callback);
+	mfp_timer[2] = mame_timer_alloc(mfp_timer_c_callback);
+	mfp_timer[3] = mame_timer_alloc(mfp_timer_d_callback);
+	mfp_irq = mame_timer_alloc(mfp_update_irq);
+	mame_timer_adjust(mfp_irq, time_zero, 0, MAME_TIME_IN_USEC(32));
 }
 
 void mfp_update_irq(int dummy)
@@ -311,13 +326,13 @@ void mfp_set_timer(int timer, unsigned char data)
 {
 	if((data & 0x07) == 0x0000)
 	{  // Timer stop
-		timer_adjust(mfp_timer[timer],TIME_NOW,0,0);
+		mame_timer_adjust(mfp_timer[timer],time_zero,0,time_zero);
 		logerror("MFP: Timer #%i stopped. \n",timer);
 		return;
 	}
 
-	timer_adjust(mfp_timer[timer],TIME_NOW,0,TIME_IN_USEC(prescale[data & 0x07]));
-	logerror("MFP: Timer #%i set to %2.1fus\n",timer,prescale[data & 0x07]);
+	mame_timer_adjust(mfp_timer[timer], time_zero, 0, prescale(data & 0x07));
+	logerror("MFP: Timer #%i set to %2.1fus\n",timer, mame_time_to_double(prescale(data & 0x07)) * 1000000);
 
 }
 
@@ -1295,7 +1310,7 @@ READ16_HANDLER( x68k_exp_r )
 		offset *= 2;
 		if(ACCESSING_LSB)
 			offset++;
-		timer_set(TIME_IN_CYCLES(16,0),0xeafa00+offset,x68k_fake_bus_error);
+		mame_timer_set(MAME_TIME_IN_CYCLES(16,0),0xeafa00+offset,x68k_fake_bus_error);
 //		cpunum_set_input_line_and_vector(0,2,ASSERT_LINE,current_vector[2]);
 	}
 	return 0xffff;
@@ -1311,7 +1326,7 @@ WRITE16_HANDLER( x68k_exp_w )
 		offset *= 2;
 		if(ACCESSING_LSB)
 			offset++;
-		timer_set(TIME_IN_CYCLES(16,0),0xeafa00+offset,x68k_fake_bus_error);
+		mame_timer_set(MAME_TIME_IN_CYCLES(16,0),0xeafa00+offset,x68k_fake_bus_error);
 //		cpunum_set_input_line_and_vector(0,2,ASSERT_LINE,current_vector[2]);
 	}
 }
@@ -1454,7 +1469,7 @@ static struct hd63450_interface dmac_interface =
 {
 	0,  // CPU - 68000
 	{TIME_IN_USEC(32),TIME_IN_USEC(32),TIME_IN_USEC(4),TIME_IN_USEC(32)},  // Cycle steal mode timing (guesstimate)
-	{TIME_IN_USEC(32),TIME_IN_NSEC(50),TIME_IN_NSEC(50),TIME_IN_NSEC(50)}, // Burst mode timing (guesstimate)
+	{TIME_IN_USEC(32),TIME_IN_USEC(50)/1000,TIME_IN_USEC(50)/1000,TIME_IN_USEC(50)/1000}, // Burst mode timing (guesstimate)
 	x68k_dma_end,
 	x68k_dma_error,
 	{ x68k_fdc_read_byte, 0, 0, 0 },
@@ -1807,7 +1822,7 @@ MACHINE_RESET( x68000 )
 	// start VBlank timer
 	sys.crtc.vblank = 1;
 	irq_time = video_screen_get_time_until_pos(0,sys.crtc.reg[6],2);
-	timer_adjust(vblank_irq,mame_time_to_double(irq_time),0,TIME_NEVER);
+	mame_timer_adjust(vblank_irq,irq_time,0,time_never);
 }
 
 MACHINE_START( x68000 )
@@ -1825,10 +1840,10 @@ MACHINE_START( x68000 )
 	memory_set_bankptr(3,tvram);  // so that code in VRAM is executable - needed for Terra Cresta
 
 	// start keyboard timer
-	timer_adjust(kb_timer,TIME_NOW,0,TIME_IN_MSEC(5));  // every 5ms
+	mame_timer_adjust(kb_timer,time_zero,0,MAME_TIME_IN_MSEC(5));  // every 5ms
 
 	// start mouse timer
-	timer_adjust(mouse_timer,TIME_NOW,0,TIME_IN_MSEC(2));  // a guess for now
+	mame_timer_adjust(mouse_timer,time_zero,0,MAME_TIME_IN_MSEC(2));  // a guess for now
 	sys.mouse.inputtype = 0;
 }
 
@@ -1863,11 +1878,11 @@ DRIVER_INIT( x68000 )
 	// init keyboard
 	sys.keyboard.delay = 500;  // 3*100+200 
 	sys.keyboard.repeat = 110;  // 4^2*5+30
-	kb_timer = timer_alloc(x68k_keyboard_poll);
-//	scanline_timer = timer_alloc(x68k_scanline_check);
-	raster_irq = timer_alloc(x68k_crtc_raster_irq);
-	vblank_irq = timer_alloc(x68k_crtc_vblank_irq);
-	mouse_timer = timer_alloc(x68k_scc_ack);
+	kb_timer = mame_timer_alloc(x68k_keyboard_poll);
+//	scanline_timer = mame_timer_alloc(x68k_scanline_check);
+	raster_irq = mame_timer_alloc(x68k_crtc_raster_irq);
+	vblank_irq = mame_timer_alloc(x68k_crtc_vblank_irq);
+	mouse_timer = mame_timer_alloc(x68k_scc_ack);
 }
 
 

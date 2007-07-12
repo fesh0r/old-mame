@@ -16,9 +16,9 @@
 
 #define CART memory_region(REGION_USER1)
 
-#define MASTER_CLOCK_NTSC	3579575
+#define MASTER_CLOCK_NTSC	3579545
 #define MASTER_CLOCK_PAL	3546894
-#define CATEGORY_SELECT		256
+#define CATEGORY_SELECT		16
 
 enum
 {
@@ -36,9 +36,30 @@ enum
 	modeDC,
 	modeCV,
 	mode3E,
-	modeSS
+	modeSS,
+	modeFV,
+	modeDPC
 };
 
+struct DPC_DF {
+	UINT8	top;
+	UINT8	bottom;
+	UINT8	low;
+	UINT8	high;
+	UINT8	flag;
+	UINT8	music_mode;		/* Only used by data fetchers 5,6, and 7 */
+	UINT8	osc_clk;		/* Only used by data fetchers 5,6, and 7 */
+};
+
+static struct DPC {
+	struct DPC_DF	df[8];
+	UINT8	movamt;
+	UINT8	latch_62;
+	UINT8	latch_64;
+	UINT8	dlc;
+	UINT8	shift_reg;
+	mame_timer	*oscillator;
+} dpc;
 
 static UINT8* extra_RAM;
 static UINT8* bank_base[5];
@@ -58,6 +79,7 @@ static unsigned modeSS_write_enabled;
 static unsigned modeSS_write_pending;
 static unsigned modeSS_high_ram_enabled;
 static unsigned modeSS_diff_adjust;
+static unsigned FVlocked;
 
 // try to detect 2600 controller setup. returns 32bits with left/right controller info
 
@@ -141,6 +163,24 @@ static int detect_modeDC(void)
 	// signature is also in 'video reflex'.. maybe figure out that controller port someday...
 	unsigned char signature[3] = { 0x8d, 0xf0, 0xff };
 	if (cart_size == 0x10000)
+	{
+		for (i = 0; i < cart_size - sizeof signature; i++)
+		{
+			if (!memcmp(&CART[i], signature,sizeof signature))
+			{
+				numfound = 1;
+			}
+		}
+	}
+	if (numfound) return 1;
+	return 0;
+}
+
+static int detect_modef6(void)
+{
+	int i,numfound = 0;
+	unsigned char signature[3] = { 0x8d, 0xf6, 0xff };
+	if (cart_size == 0x4000)
 	{
 		for (i = 0; i < cart_size - sizeof signature; i++)
 		{
@@ -269,13 +309,37 @@ static int detect_modeCV(void)
 	return 0;
 }
 
+static int detect_modeFV(void)
+{
+	int i,j,numfound = 0;
+	unsigned char signatures[][3] = {
+									{ 0x2c, 0xd0, 0xff }};
+	if (cart_size == 0x2000)
+	{
+		for (i = 0; i < cart_size - (sizeof signatures/sizeof signatures[0]); i++)
+		{
+			for (j = 0; j < (sizeof signatures/sizeof signatures[0]) && !numfound; j++)
+			{
+				if (!memcmp(&CART[i], &signatures[j],sizeof signatures[0]))
+				{
+					numfound = 1;
+				}
+			}
+		}
+		FVlocked = 0;
+	}
+	if (numfound) return 1;
+	return 0;
+}
+
+
 static int detect_modeMN(void)
 {
 	int i,j,numfound = 0;
 	unsigned char signatures[][3] = {
 									{ 0xad, 0xe5, 0xff },
 									{ 0x8d, 0xe7, 0xff }};
-	if (cart_size == 0x4000)
+	if (cart_size == 0x2000 || cart_size == 0x4000)
 	{
 		for (i = 0; i < cart_size - (sizeof signatures/sizeof signatures[0]); i++)
 		{
@@ -397,6 +461,8 @@ static DEVICE_LOAD( a2600_cart )
 	case 0x00800:
 	case 0x01000:
 	case 0x02000:
+	case 0x028FF:
+	case 0x02900:
 	case 0x03000:
 	case 0x04000:
 	case 0x08000:
@@ -412,6 +478,13 @@ static DEVICE_LOAD( a2600_cart )
 	current_bank = 0;
 
 	image_fread(image, CART, cart_size);
+
+	if (!(cart_size == 0x4000 && detect_modef6())) {
+		while (cart_size > 0x00800) {
+			if (!memcmp(CART, &CART[cart_size/2],cart_size/2)) cart_size /= 2;
+			else break;
+		}
+	}
 
 	return 0;
 }
@@ -485,6 +558,16 @@ void mode3E_RAM_switch(UINT16 offset, UINT8 data)
 	memory_set_bankptr(1, ram_base );
 	mode3E_ram_enabled = 1;
 }
+void modeFV_switch(UINT16 offset, UINT8 data)
+{
+	//printf("ModeFV %04x\n",offset);
+	if (!FVlocked) {
+		FVlocked = 1;
+		current_bank = current_bank ^ 0x01;
+		bank_base[1] = CART + 0x1000 * current_bank;
+		memory_set_bankptr(1, bank_base[1]);
+	}
+}
 
 
 /* These read handlers will return the byte from the new bank */
@@ -497,6 +580,7 @@ static  READ8_HANDLER(modeMN_switch_r) { modeMN_switch(offset, 0); return bank_b
 static  READ8_HANDLER(modeMN_RAM_switch_r) { modeMN_RAM_switch(offset, 0); return 0; }
 static  READ8_HANDLER(modeUA_switch_r) { modeUA_switch(offset, 0); return 0; }
 static  READ8_HANDLER(modeDC_switch_r) { modeDC_switch(offset, 0); return bank_base[1][0xff0 + offset]; }
+static  READ8_HANDLER(modeFV_switch_r) { modeFV_switch(offset, 0); return bank_base[1][0xfd0 + offset]; }
 
 
 static WRITE8_HANDLER(mode8K_switch_w) { mode8K_switch(offset, data); }
@@ -516,6 +600,8 @@ static WRITE8_HANDLER(mode3E_RAM_w) {
 		ram_base[offset] = data;
 	}
 }
+static WRITE8_HANDLER(modeFV_switch_w) { modeFV_switch(offset, data); }
+
 
 OPBASE_HANDLER( modeSS_opbase )
 {
@@ -634,6 +720,149 @@ static READ8_HANDLER(modeSS_r)
 	return data;
 }
 
+INLINE void modeDPC_decrement_counter(UINT8 data_fetcher) {
+	dpc.df[data_fetcher].low -= 1;
+	if ( dpc.df[data_fetcher].low == 0xFF ) {
+		dpc.df[data_fetcher].high -= 1;
+		if ( data_fetcher > 4 && dpc.df[data_fetcher].music_mode ) {
+			dpc.df[data_fetcher].low = dpc.df[data_fetcher].top;
+		}
+	}
+
+	/* Handle flag */
+	/* Set flag when low counter equals top */
+	if ( dpc.df[data_fetcher].low == dpc.df[data_fetcher].top ) {
+		dpc.df[data_fetcher].flag = 1;
+	}
+	/* Reset flag when low counter equals bottom */
+	if ( dpc.df[data_fetcher].low == dpc.df[data_fetcher].bottom ) {
+		dpc.df[data_fetcher].flag = 0;
+	}
+}
+
+static void modeDPC_timer_callback(int dummy) {
+	int data_fetcher;
+	for( data_fetcher = 5; data_fetcher < 8; data_fetcher++ ) {
+		if ( dpc.df[data_fetcher].osc_clk ) {
+			modeDPC_decrement_counter( data_fetcher );
+		}
+	}
+}
+
+static OPBASE_HANDLER(modeDPC_opbase_handler)
+{
+	UINT8	new_bit;
+	new_bit = ( dpc.shift_reg & 0x80 ) ^ ( ( dpc.shift_reg & 0x20 ) << 2 );
+	new_bit = new_bit ^ ( ( ( dpc.shift_reg & 0x10 ) << 3 ) ^ ( ( dpc.shift_reg & 0x08 ) << 4 ) );
+	new_bit = new_bit ^ 0x80;
+	dpc.shift_reg = new_bit | ( dpc.shift_reg >> 1 );
+	return address;
+}
+
+static READ8_HANDLER(modeDPC_r)
+{
+	static const UINT8 dpc_amplitude[8] = { 0x00, 0x04, 0x05, 0x09, 0x06, 0x0A, 0x0B, 0x0F };
+	UINT8	data_fetcher = offset & 0x07;
+	UINT8	data = 0xFF;
+
+	logerror("%04X: Read from DPC offset $%02X\n", activecpu_get_pc(), offset);
+	if ( offset < 0x08 ) {
+		switch( offset & 0x06 ) {
+		case 0x00:		/* Random number generator */
+		case 0x02:
+			return dpc.shift_reg;
+		case 0x04:		/* Sound value, MOVAMT value AND'd with Draw Line Carry; with Draw Line Add */
+			dpc.latch_62 = dpc.latch_64;
+		case 0x06:		/* Sound value, MOVAMT value AND'd with Draw Line Carry; without Draw Line Add */
+			dpc.latch_64 = dpc.latch_62 + dpc.df[4].top;
+			dpc.dlc = ( dpc.latch_62 + dpc.df[4].top > 0xFF ) ? 1 : 0;
+			data = 0;
+			if ( dpc.df[5].music_mode && dpc.df[5].flag ) {
+				data |= 0x01;
+			}
+			if ( dpc.df[6].music_mode && dpc.df[6].flag ) {
+				data |= 0x02;
+			}
+			if ( dpc.df[7].music_mode && dpc.df[7].flag ) {
+				data |= 0x04;
+			}
+			return ( dpc.dlc ? dpc.movamt & 0xF0 : 0 ) | dpc_amplitude[data];
+		}
+	} else {
+		UINT8	display_data = CART[0x2000 + ( ~ ( ( dpc.df[data_fetcher].low | ( dpc.df[data_fetcher].high << 8 ) ) ) & 0x7FF ) ];
+
+		switch( offset & 0x38 ) {
+		case 0x08:			/* display data */
+			data = display_data;
+			break;
+		case 0x10:			/* display data AND'd w/flag */
+			data = dpc.df[data_fetcher].flag ? display_data : 0x00;
+			break;
+		case 0x18:			/* display data AND'd w/flag, nibbles swapped */
+			data = dpc.df[data_fetcher].flag ? BITSWAP8(display_data,3,2,1,0,7,6,5,4) : 0x00;
+			break;
+		case 0x20:			/* display data AND'd w/flag, byte reversed */
+			data = dpc.df[data_fetcher].flag ? BITSWAP8(display_data,0,1,2,3,4,5,6,7) : 0x00;
+			break;
+		case 0x28:			/* display data AND'd w/flag, rotated right */
+			data = dpc.df[data_fetcher].flag ? ( display_data >> 1 ) : 0x00;
+			break;
+		case 0x30:			/* display data AND'd w/flag, rotated left */
+			data = dpc.df[data_fetcher].flag ? ( display_data << 1 ) : 0x00;
+			break;
+		case 0x38:			/* flag */
+			data = dpc.df[data_fetcher].flag ? 0xFF : 0x00;
+			break;
+		}
+
+		if ( data_fetcher < 5 || ! dpc.df[data_fetcher].osc_clk ) {
+			modeDPC_decrement_counter( data_fetcher );
+		}
+	}
+	return data;
+}
+
+static WRITE8_HANDLER(modeDPC_w)
+{
+	UINT8	data_fetcher = offset & 0x07;
+
+	switch( offset & 0x38 ) {
+	case 0x00:			/* Top count */
+		dpc.df[data_fetcher].top = data;
+		dpc.df[data_fetcher].flag = 0;
+		break;
+	case 0x08:			/* Bottom count */
+		dpc.df[data_fetcher].bottom = data;
+		break;
+	case 0x10:			/* Counter low */
+		dpc.df[data_fetcher].low = data;
+		if ( data_fetcher == 4 ) {
+			dpc.latch_64 = data;
+		}
+		if ( data_fetcher > 4 && dpc.df[data_fetcher].music_mode ) {
+			dpc.df[data_fetcher].low = dpc.df[data_fetcher].top;
+		}
+		break;
+	case 0x18:			/* Counter high */
+		dpc.df[data_fetcher].high = data;
+		dpc.df[data_fetcher].music_mode = data & 0x10;
+		dpc.df[data_fetcher].osc_clk = data & 0x20;
+		break;
+	case 0x20:			/* Draw line movement value / MOVAMT */
+		dpc.movamt = data;
+		break;
+	case 0x28:			/* Not used */
+		logerror("%04X: Write to unused DPC register $%02X, data $%02X\n", activecpu_get_pc(), offset, data);
+		break;
+	case 0x30:			/* Random number generator reset */
+		dpc.shift_reg = 0;
+		break;
+	case 0x38:			/* Not used */
+		logerror("%04X: Write to unused DPC register $%02X, data $%02X\n", activecpu_get_pc(), offset, data);
+		break;
+	}
+}
+
 /*
 
 There seems to be a kind of lag between the writing to address 0x1FE and the
@@ -707,16 +936,16 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( switch_A_w )
 {
 	/* Left controller port */
-	if ( readinputport(9) / CATEGORY_SELECT == 0x04 ) {
+	if ( readinputport(9) / CATEGORY_SELECT == 0x03 ) {
 		keypad_left_column = data / 16;
 	}
 
 	/* Right controller port */
 	switch( readinputport(9) % CATEGORY_SELECT ) {
-	case 0x04:	/* Keypad */
+	case 0x03:	/* Keypad */
 		keypad_right_column = data & 0x0F;
 		break;
-	case 0x20:	/* KidVid voice module */
+	case 0x0a:	/* KidVid voice module */
 		cassette_change_state( image_from_devtype_and_index( IO_CASSETTE, 0 ), ( data & 0x02 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED | CASSETTE_PLAY, CASSETTE_MOTOR_DISABLED );
 		break;
 	}
@@ -730,7 +959,7 @@ static  READ8_HANDLER( switch_A_r )
 	/* Left controller port */
 	switch( readinputport(9) / CATEGORY_SELECT ) {
 	case 0x00:  /* Joystick */
-	case 0x10:	/* Joystick w/Boostergrip */
+	case 0x05:	/* Joystick w/Boostergrip */
 		val |= readinputport(6) & 0xF0;
 		break;
 	case 0x01:  /* Paddle */
@@ -748,7 +977,7 @@ static  READ8_HANDLER( switch_A_r )
 	/* Right controller port */
 	switch( readinputport(9) % CATEGORY_SELECT ) {
 	case 0x00:	/* Joystick */
-	case 0x10:	/* Joystick w/Boostergrip */
+	case 0x05:	/* Joystick w/Boostergrip */
 		val |= readinputport(6) & 0x0F;
 		break;
 	case 0x01:	/* Paddle */
@@ -767,8 +996,20 @@ static  READ8_HANDLER( switch_A_r )
 }
 
 
-static struct R6532interface r6532_interface =
+static const struct R6532interface r6532_interface =
 {
+	MASTER_CLOCK_NTSC / 3,
+	0,
+	switch_A_r,
+	input_port_8_r,
+	switch_A_w,
+	NULL
+};
+
+static const struct R6532interface r6532_interface_pal =
+{
+	MASTER_CLOCK_PAL / 3,
+	0,
 	switch_A_r,
 	input_port_8_r,
 	switch_A_w,
@@ -809,7 +1050,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		case 0x01:	/* Paddle */
 			return readinputport(0);
-		case 0x04:	/* Keypad */
+		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_left_column >> i ) & 0x01 ) ) {
 					if ( ( readinputport(10) >> 3*i ) & 0x01 ) {
@@ -820,7 +1061,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 				}
 			}
 			return TIA_INPUT_PORT_ALWAYS_ON;
-		case 0x10:	/* Boostergrip joystick */
+		case 0x05:	/* Boostergrip joystick */
 			return ( readinputport(4) & 0x40 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
 		default:
 			return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -832,7 +1073,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		case 0x01:	/* Paddle */
 			return readinputport(1);
-		case 0x04:	/* Keypad */
+		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_left_column >> i ) & 0x01 ) ) {
 					if ( ( readinputport(10) >> 3*i ) & 0x02 ) {
@@ -843,7 +1084,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 				}
 			}
 			return TIA_INPUT_PORT_ALWAYS_ON;
-		case 0x10:	/* Joystick w/Boostergrip */
+		case 0x05:	/* Joystick w/Boostergrip */
 			return ( readinputport(4) & 0x20 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
 		default:
 			return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -855,7 +1096,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		case 0x01:	/* Paddle */
 			return readinputport(2);
-		case 0x04:	/* Keypad */
+		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_right_column >> i ) & 0x01 ) ) {
 					if ( ( readinputport(11) >> 3*i ) & 0x01 ) {
@@ -866,7 +1107,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 				}
 			}
 			return TIA_INPUT_PORT_ALWAYS_ON;
-		case 0x10:	/* Joystick w/Boostergrip */
+		case 0x05:	/* Joystick w/Boostergrip */
 			return ( readinputport(5) & 0x40 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
 		default:
 			return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -878,7 +1119,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		case 0x01:	/* Paddle */
 			return readinputport(3);
-		case 0x04:	/* Keypad */
+		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_right_column >> i ) & 0x01 ) ) {
 					if ( ( readinputport(11) >> 3*i ) & 0x02 ) {
@@ -889,7 +1130,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 				}
 			}
 			return TIA_INPUT_PORT_ALWAYS_ON;
-		case 0x10:	/* Joystick w/Boostergrip */
+		case 0x05:	/* Joystick w/Boostergrip */
 			return ( readinputport(5) & 0x20 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
 		default:
 			return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -898,13 +1139,13 @@ static READ16_HANDLER(a2600_read_input_port) {
 	case 4:
 		switch ( readinputport(9) / CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
-		case 0x10:	/* Joystick w/Boostergrip */
+		case 0x05:	/* Joystick w/Boostergrip */
 			return readinputport(4);
 		case 0x01:	/* Paddle */
 			return 0xff;
 		case 0x02:	/* Driving */
 			return readinputport(4) << 3;
-		case 0x04:	/* Keypad */
+		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_left_column >> i ) & 0x01 ) ) {
 					if ( ( readinputport(10) >> 3*i ) & 0x04 ) {
@@ -922,13 +1163,13 @@ static READ16_HANDLER(a2600_read_input_port) {
 	case 5:
 		switch ( readinputport(9) % CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
-		case 0x10:	/* Joystick w/Boostergrip */
+		case 0x05:	/* Joystick w/Boostergrip */
 			return readinputport(5);
 		case 0x01:	/* Paddle */
 			return 0xff;
 		case 0x02:	/* Driving */
 			return readinputport(5) << 3;
-		case 0x04:	/* Keypad */
+		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_right_column >> i ) & 0x01 ) ) {
 					if ( ( readinputport(11) >> 3*i ) & 0x04 ) {
@@ -986,21 +1227,26 @@ static struct tia_interface tia_interface =
 
 static MACHINE_START( a2600 )
 {
+	extra_RAM = new_memory_region( machine, REGION_USER2, 0x8600, ROM_REQUIRED );
+	tia_init( &tia_interface );
+	r6532_init( 0, &r6532_interface );
+}
+
+static MACHINE_START( a2600p )
+{
+	extra_RAM = new_memory_region( machine, REGION_USER2, 0x8600, ROM_REQUIRED );
+	tia_init( &tia_interface );
+	r6532_init( 0, &r6532_interface_pal );
+}
+
+static MACHINE_RESET( a2600 )
+{
 
 	int mode = 0xFF;
 	int chip = 0xFF;
 	unsigned long controltemp;
 	unsigned int controlleft,controlright;
-
-	extra_RAM = new_memory_region( machine, REGION_USER2, 0x8600, ROM_REQUIRED );
-
-	r6532_init(0, &r6532_interface);
-
-	if ( !strcmp( Machine->gamedrv->name, "a2600p" ) ) {
-		tia_init_pal( &tia_interface );
-	} else {
-		tia_init( &tia_interface );
-	}
+	unsigned char snowwhite[] = { 0x10, 0xd0, 0xff, 0xff }; // Snow White Proto
 
 	/* auto-detect special controllers */
 
@@ -1011,40 +1257,48 @@ static MACHINE_START( a2600 )
 
 	/* auto-detect bank mode */
 
-	switch (cart_size)
-	{
-	case 0x800:
-		mode = mode2K;
-		break;
-	case 0x1000:
-		mode = mode4K;
-		break;
-	case 0x2000:
-		mode = mode8K;
-		break;
-	case 0x3000:
-		mode = mode12;
-		break;
-	case 0x4000:
-		mode = mode16;
-		break;
-	case 0x8000:
-		mode = mode32;
-		break;
-	case 0x80000:
-		mode = modeTV;
-		break;
-	}
 	if (detect_modeDC()) mode = modeDC;
-	if (detect_mode3E()) mode = mode3E;
-	if (detect_modeAV()) mode = modeAV;
-	if (detect_modeSS()) mode = modeSS;
-	if (detect_modePB()) mode = modePB;
-	if (detect_modeCV()) mode = modeCV;
-	if (detect_modeMN()) mode = modeMN;
-	if (detect_modeUA()) mode = modeUA;
-	if (detect_8K_modeTV()) mode = modeTV;
-	if (detect_32K_modeTV()) mode = modeTV;
+	if (mode == 0xff) if (detect_mode3E()) mode = mode3E;
+	if (mode == 0xff) if (detect_modeAV()) mode = modeAV;
+	if (mode == 0xff) if (detect_modeSS()) mode = modeSS;
+	if (mode == 0xff) if (detect_modePB()) mode = modePB;
+	if (mode == 0xff) if (detect_modeCV()) mode = modeCV;
+	if (mode == 0xff) if (detect_modeFV()) mode = modeFV;
+	if (mode == 0xff) if (detect_modeUA()) mode = modeUA;
+	if (mode == 0xff) if (detect_8K_modeTV()) mode = modeTV;
+	if (mode == 0xff) if (detect_32K_modeTV()) mode = modeTV;
+	if (mode == 0xff) if (detect_modeMN()) mode = modeMN;
+
+	if (mode == 0xff) {
+		switch (cart_size)
+		{
+		case 0x800:
+			mode = mode2K;
+			break;
+		case 0x1000:
+			mode = mode4K;
+			break;
+		case 0x2000:
+			mode = mode8K;
+			break;
+		case 0x28FF:
+		case 0x2900:
+			mode = modeDPC;
+			break;
+		case 0x3000:
+			mode = mode12;
+			break;
+		case 0x4000:
+			mode = mode16;
+			break;
+		case 0x8000:
+			mode = mode32;
+			break;
+		case 0x80000:
+			mode = modeTV;
+			break;
+		}
+	}
 
 	/* auto-detect super chip */
 
@@ -1074,7 +1328,11 @@ static MACHINE_START( a2600 )
 		break;
 
 	case mode8K:
-		install_banks(1, 0x1000);
+		if (!memcmp(&CART[0x1ffc],snowwhite,sizeof(snowwhite))) {
+			install_banks(1, 0x0000);
+		} else {
+			install_banks(1, 0x1000);
+		}
 		break;
 
 	case mode12:
@@ -1126,6 +1384,15 @@ static MACHINE_START( a2600 )
 
 	case modeSS:
 		install_banks(2, 0x0000);
+		break;
+
+	case modeFV:
+		install_banks(1, 0x0000);
+		current_bank = 0;
+		break;
+
+	case modeDPC:
+		install_banks(1, 0x0000);
 		break;
 	}
 
@@ -1211,6 +1478,29 @@ static MACHINE_START( a2600 )
 		memory_set_opbase_handler( 0, modeSS_opbase );
 		/* Already start the motor of the cassette for the user */
 		cassette_change_state( image_from_devtype_and_index( IO_CASSETTE, 0 ), CASSETTE_MOTOR_ENABLED, CASSETTE_MOTOR_DISABLED );
+		break;
+
+	case modeFV:
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fd0, 0x1fd0, 0, 0, modeFV_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fd0, 0x1fd0, 0, 0, modeFV_switch_r);
+		break;
+
+	case modeDPC:
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x103f, 0, 0, modeDPC_r);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1040, 0x107f, 0, 0, modeDPC_w);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, mode8K_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, mode8K_switch_r);
+		memory_set_opbase_handler( 0, modeDPC_opbase_handler );
+		{
+			int	data_fetcher;
+			for( data_fetcher = 0; data_fetcher < 8; data_fetcher++ ) {
+				dpc.df[data_fetcher].osc_clk = 0;
+				dpc.df[data_fetcher].flag = 0;
+				dpc.df[data_fetcher].music_mode = 0;
+			}
+		}
+		dpc.oscillator = mame_timer_alloc( modeDPC_timer_callback );
+		mame_timer_adjust( dpc.oscillator, MAME_TIME_IN_HZ(42000), 0, MAME_TIME_IN_HZ(42000) );
 		break;
 	}
 
@@ -1302,21 +1592,30 @@ INPUT_PORTS_START( a2600 )
 	PORT_DIPSETTING(    0x00, "B" )
 
 	PORT_START /* [9] */
-	PORT_CATEGORY_CLASS( 0x3f00, 0x00, "Left Controller" )
-	PORT_CATEGORY_ITEM(    0x0000, DEF_STR( Joystick ), 10 )
-	PORT_CATEGORY_ITEM(    0x0100, "Paddles", 11 )
-	PORT_CATEGORY_ITEM(    0x0200, "Driving", 12 )
-	PORT_CATEGORY_ITEM(    0x0400, "Keypad", 13 )
-	PORT_CATEGORY_ITEM(    0x0800, "Lightgun", 14 )
-	PORT_CATEGORY_ITEM(    0x1000, "Booster Grip", 10 )
-	PORT_CATEGORY_CLASS( 0x003f, 0x00, "Right Controller" )
-	PORT_CATEGORY_ITEM(    0x0000, DEF_STR( Joystick ), 20 )
-	PORT_CATEGORY_ITEM(    0x0001, "Paddles", 21 )
-	PORT_CATEGORY_ITEM(    0x0002, "Driving", 22 )
-	PORT_CATEGORY_ITEM(    0x0004, "Keypad", 23 )
-	PORT_CATEGORY_ITEM(    0x0008, "Lightgun", 24 )
-	PORT_CATEGORY_ITEM(    0x0010, "Booster Grip", 20 )
-	PORT_CATEGORY_ITEM(    0x0020, "KidVid Voice Module", 26 )
+	PORT_CATEGORY_CLASS( 0xf0, 0x00, "Left Controller" )
+	PORT_CATEGORY_ITEM(    0x00, DEF_STR( Joystick ), 10 )
+	PORT_CATEGORY_ITEM(    0x10, "Paddles", 11 )
+	PORT_CATEGORY_ITEM(    0x20, "Driving", 12 )
+	PORT_CATEGORY_ITEM(    0x30, "Keypad", 13 )
+	//PORT_CATEGORY_ITEM(    0x40, "Lightgun", 14 )
+	PORT_CATEGORY_ITEM(    0x50, "Booster Grip", 10 )
+	//PORT_CATEGORY_ITEM(    0x60, "CX-22 Trak-Ball", 15 )
+	//PORT_CATEGORY_ITEM(    0x70, "CX-80 Trak-Ball (TB Mode) / AtariST Mouse", 16 )
+	//PORT_CATEGORY_ITEM(    0x80, "CX-80 Trak-Ball (JS Mode)", 17 )
+	//PORT_CATEGORY_ITEM(    0x90, "Amiga Mouse", 18 )
+	PORT_CATEGORY_CLASS( 0x0f, 0x00, "Right Controller" )
+	PORT_CATEGORY_ITEM(    0x00, DEF_STR( Joystick ), 20 )
+	PORT_CATEGORY_ITEM(    0x01, "Paddles", 21 )
+	PORT_CATEGORY_ITEM(    0x02, "Driving", 22 )
+	PORT_CATEGORY_ITEM(    0x03, "Keypad", 23 )
+	//PORT_CATEGORY_ITEM(    0x04, "Lightgun", 24 )
+	PORT_CATEGORY_ITEM(    0x05, "Booster Grip", 20 )
+	//PORT_CATEGORY_ITEM(    0x06, "CX-22 Trak-Ball", 25 )
+	//PORT_CATEGORY_ITEM(    0x07, "CX-80 Trak-Ball (TB Mode) / AtariST Mouse", 26 )
+	//PORT_CATEGORY_ITEM(    0x08, "CX-80 Trak-Ball (JS Mode)", 27 )
+	//PORT_CATEGORY_ITEM(    0x09, "Amiga Mouse", 28 )
+	PORT_CATEGORY_ITEM(    0x0a, "KidVid Voice Module", 30 )
+	//PORT_CATEGORY_ITEM(    0x0b, "Save Key", 31 )
 
 	PORT_START	/* [10] left keypad */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left 1") PORT_CODE(KEYCODE_7_PAD)
@@ -1372,13 +1671,14 @@ static MACHINE_DRIVER_START( a2600 )
 	MDRV_CPU_PROGRAM_MAP(a2600_mem, 0)
 
 	MDRV_MACHINE_START(a2600)
+	MDRV_MACHINE_RESET(a2600)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_ADD("main",0)
-	MDRV_SCREEN_RAW_PARAMS( MASTER_CLOCK_NTSC, 228, 26, 26 + 160 + 16, 262, 24 , 24 + 192 + 32 )
-	MDRV_PALETTE_LENGTH(128)
+	MDRV_SCREEN_RAW_PARAMS( MASTER_CLOCK_NTSC, 228, 26, 26 + 160 + 16, 262, 24 , 24 + 192 + 31 )
+	MDRV_PALETTE_LENGTH( TIA_PALETTE_LENGTH )
 	MDRV_PALETTE_INIT(tia_NTSC)
 
 	MDRV_VIDEO_START(tia)
@@ -1397,14 +1697,15 @@ static MACHINE_DRIVER_START( a2600p )
 	MDRV_CPU_ADD(M6502, MASTER_CLOCK_PAL / 3)    /* actually M6507 */
 	MDRV_CPU_PROGRAM_MAP(a2600_mem, 0)
 
-	MDRV_MACHINE_START(a2600)
+	MDRV_MACHINE_START(a2600p)
+	MDRV_MACHINE_RESET(a2600)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_ADD("main",0)
-	MDRV_SCREEN_RAW_PARAMS( MASTER_CLOCK_PAL, 228, 26, 26 + 160 + 16, 312, 32, 32 + 228 + 32 )
-	MDRV_PALETTE_LENGTH(128)
+	MDRV_SCREEN_RAW_PARAMS( MASTER_CLOCK_PAL, 228, 26, 26 + 160 + 16, 312, 32, 32 + 228 + 31 )
+	MDRV_PALETTE_LENGTH( TIA_PALETTE_LENGTH )
 	MDRV_PALETTE_INIT(tia_PAL)
 
 	MDRV_VIDEO_START(tia)

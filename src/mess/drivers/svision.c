@@ -31,13 +31,13 @@ static UINT8 *svision_reg;
 struct
 {
 	mame_timer *timer1;
-	bool timer_shot;
+	int timer_shot;
 } svision;
 
 struct
 {
 	int state;
-	bool on, clock, data;
+	int on, clock, data;
 	UINT8 input;
 	mame_timer *timer;
 } svision_pet;
@@ -45,7 +45,7 @@ struct
 struct
 {
 	UINT16 palette[4/*0x40?*/]; /* rgb8 */
-	bool palette_on;
+	int palette_on;
 } tvlink;
 
 void svision_pet_timer(int param)
@@ -76,7 +76,7 @@ void svision_pet_timer(int param)
 
 void svision_irq(void)
 {
-	bool irq = svision.timer_shot && (BANK & 2);
+	int irq = svision.timer_shot && (BANK & 2);
 	irq = irq || (svision_dma.finished && (BANK & 4));
 
 	cpunum_set_input_line(0, M6502_IRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
@@ -85,7 +85,7 @@ void svision_irq(void)
 static void svision_timer(int param)
 {
     svision.timer_shot = TRUE;
-    timer_enable(svision.timer1, FALSE);
+    mame_timer_enable(svision.timer1, FALSE);
     svision_irq();
 }
 
@@ -124,7 +124,7 @@ static READ8_HANDLER(svision_r)
 			svision_irq();
 			break;
 		default:
-			logerror("%.6f svision read %04x %02x\n",timer_get_time(),offset,data);
+			logerror("%.6f svision read %04x %02x\n", mame_time_to_double(mame_timer_get_time()),offset,data);
 			break;
 	}
 
@@ -144,7 +144,7 @@ static WRITE8_HANDLER(svision_w)
 		case 3:
 			break;
 		case 0x26: /* bits 5,6 memory management for a000? */
-			logerror("%.6f svision write %04x %02x\n",timer_get_time(),offset,data);
+			logerror("%.6f svision write %04x %02x\n", mame_time_to_double(mame_timer_get_time()),offset,data);
 			memory_set_bankptr(1, memory_region(REGION_USER1) + ((svision_reg[0x26] & 0xe0) << 9));
 			svision_irq();
 			break;
@@ -156,8 +156,8 @@ static WRITE8_HANDLER(svision_w)
 				delay = 16384;
 			else
 				delay = 256;
-			timer_enable(svision.timer1, TRUE);
-			timer_reset(svision.timer1, TIME_IN_CYCLES(value * delay, 0));
+			mame_timer_enable(svision.timer1, TRUE);
+			mame_timer_reset(svision.timer1, MAME_TIME_IN_CYCLES(value * delay, 0));
 			break;
 		case 0x10: case 0x11: case 0x12: case 0x13:
 			svision_soundport_w(svision_channel + 0, offset & 3, data);
@@ -172,7 +172,7 @@ static WRITE8_HANDLER(svision_w)
 			svision_noise_w(offset - 0x28, data);
 			break;
 		default:
-			logerror("%.6f svision write %04x %02x\n", timer_get_time(), offset, data);
+			logerror("%.6f svision write %04x %02x\n", mame_time_to_double(mame_timer_get_time()), offset, data);
 			break;
 	}
 }
@@ -431,19 +431,19 @@ static INTERRUPT_GEN( svision_frame_int )
 
 static DRIVER_INIT( svision )
 {
-	svision.timer1 = timer_alloc(svision_timer);
+	svision.timer1 = mame_timer_alloc(svision_timer);
 	svision_pet.on = FALSE;
 	memory_set_bankptr(2, memory_region(REGION_USER1) + 0x1c000);
 }
 
 static DRIVER_INIT( svisions )
 {
-	svision.timer1 = timer_alloc(svision_timer);
+	svision.timer1 = mame_timer_alloc(svision_timer);
 	memory_set_bankptr(2, memory_region(REGION_USER1) + 0x1c000);
-	svision.timer1 = timer_alloc(svision_timer);
+	svision.timer1 = mame_timer_alloc(svision_timer);
 	svision_pet.on = TRUE;
-	svision_pet.timer = timer_alloc(svision_pet_timer);
-	timer_pulse(8.0 * 256/Machine->drv->cpu[0].cpu_clock, 0, svision_pet_timer);  
+	svision_pet.timer = mame_timer_alloc(svision_pet_timer);
+	mame_timer_pulse(scale_up_mame_time(MAME_TIME_IN_SEC(8), 256/Machine->drv->cpu[0].cpu_clock), 0, svision_pet_timer);  
 }
 
 static MACHINE_RESET( svision )

@@ -62,12 +62,10 @@ Notes:
 	TODO:
 
 	- keyboard scanning is awkwardly slow
-	- graphics mode
 	- cassette interface
 	- floppy
 	- printer
 	- IEC
-	- accurate screen timings using the undumped PROMs
 
 */
 
@@ -81,82 +79,12 @@ Notes:
 #include "cpu/z80/z80daisy.h"
 #include "machine/z80pio.h"
 #include "sound/sn76477.h"
+#include "machine/abcbus.h"
+#include "video/abc80.h"
 
-#define XTAL 11980800.0
-
-static tilemap *bg_tilemap;
 static mame_timer *abc80_keyboard_timer;
 
-/* vidhrdw */
-
-static WRITE8_HANDLER( abc80_videoram_w )
-{
-	videoram[offset] = data;
-	tilemap_mark_tile_dirty(bg_tilemap, offset);
-}
-
-static TILE_GET_INFO(abc80_get_tile_info)
-{
-	int attr = videoram[tile_index];
-	int bank = 0;	// TODO: bank 1 is graphics mode, add a [40][25] array to support it, also to videoram_w
-	int code = attr & 0x7f;
-	int color = (attr & 0x80) ? 1 : 0;
-
-	SET_TILE_INFO(bank, code, color, 0)
-}
-
-static UINT32 abc80_tilemap_scan( UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows )
-{
-	/* logical (col,row) -> memory offset */
-	return ((row & 0x07) << 7) + (row >> 3) * num_cols + col;
-}
-
-VIDEO_START( abc80 )
-{
-	bg_tilemap = tilemap_create(abc80_get_tile_info, abc80_tilemap_scan, 
-		TILEMAP_OPAQUE, 6, 10, 40, 24);
-}
-
-VIDEO_UPDATE( abc80 )
-{
-	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	return 0;
-}
-
 /* Read/Write Handlers */
-
-// ABC Bus
-
-static int abcbus_strobe;
-
-static READ8_HANDLER( abcbus_data_r )
-{
-	return 0xff;
-}
-
-static WRITE8_HANDLER( abcbus_data_w )
-{
-}
-
-static READ8_HANDLER( abcbus_status_r )
-{
-	return 0x00;
-}
-
-static WRITE8_HANDLER( abcbus_select_w )
-{
-}
-
-static WRITE8_HANDLER( abcbus_command_w )
-{
-}
-
-static READ8_HANDLER( abcbus_reset_r )
-{
-	abcbus_strobe = CLEAR_LINE;
-
-	return 0xff;
-}
 
 // Sound
 
@@ -324,19 +252,19 @@ static ADDRESS_MAP_START( abc80_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6000, 0x6fff) AM_ROM
 	AM_RANGE(0x7000, 0x73ff) AM_ROM
 	AM_RANGE(0x7800, 0x7bff) AM_ROM
-	AM_RANGE(0x7c00, 0x7fff) AM_RAM AM_WRITE(abc80_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x7c00, 0x7fff) AM_RAM AM_BASE(&videoram)
 	AM_RANGE(0x8000, 0xbfff) AM_RAM	// Expanded
 	AM_RANGE(0xc000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( abc80_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
-	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READWRITE(abcbus_data_r, abcbus_data_w)
-	AM_RANGE(0x01, 0x01) AM_MIRROR(0xff00) AM_READWRITE(abcbus_status_r, abcbus_select_w)
-	AM_RANGE(0x02, 0x05) AM_MIRROR(0xff00) AM_WRITE(abcbus_command_w)
-	AM_RANGE(0x06, 0x06) AM_MIRROR(0xff00) AM_WRITE(abc80_sound_w)
-	AM_RANGE(0x07, 0x07) AM_MIRROR(0xff00) AM_READ(abcbus_reset_r)
-	AM_RANGE(0x38, 0x3b) AM_MIRROR(0xff00) AM_READWRITE(abc80_pio_r, abc80_pio_w)
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) | AMEF_UNMAP(1) )
+	AM_RANGE(0x00, 0x00) AM_READWRITE(abcbus_data_r, abcbus_data_w)
+	AM_RANGE(0x01, 0x01) AM_READWRITE(abcbus_status_r, abcbus_channel_w)
+	AM_RANGE(0x02, 0x05) AM_WRITE(abcbus_command_w)
+	AM_RANGE(0x06, 0x06) AM_WRITE(abc80_sound_w)
+	AM_RANGE(0x07, 0x07) AM_READ(abcbus_reset_r)
+	AM_RANGE(0x38, 0x3b) AM_READWRITE(abc80_pio_r, abc80_pio_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -373,7 +301,7 @@ INPUT_PORTS_START( abc80 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('Å')
 
 	PORT_START_TAG("ROW3")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR('U')
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR('Ü')
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("RETURN") PORT_CODE(KEYCODE_ENTER) PORT_CHAR('\r')
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A) PORT_CHAR('A')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_S) PORT_CHAR('S')
@@ -514,7 +442,6 @@ static void abc80_keyboard_tick(int ref)
 static MACHINE_START( abc80 )
 {
 	state_save_register_global(keylatch);
-	state_save_register_global(abcbus_strobe);
 
 	abc80_keyboard_timer = mame_timer_alloc(abc80_keyboard_tick);
 	mame_timer_adjust(abc80_keyboard_timer, time_zero, 0, MAME_TIME_IN_USEC(2500));
@@ -523,32 +450,34 @@ static MACHINE_START( abc80 )
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( abc80 )
+	
 	// basic machine hardware
-	MDRV_CPU_ADD(Z80, XTAL/2/2)	// 2.9952 MHz
+
+	MDRV_CPU_ADD(Z80, ABC80_XTAL/2/2)	// 2.9952 MHz
 	MDRV_CPU_CONFIG(abc80_daisy_chain)
 	MDRV_CPU_PROGRAM_MAP(abc80_map, 0)
 	MDRV_CPU_IO_MAP(abc80_io_map, 0)
-
-	MDRV_CPU_PERIODIC_INT(abc80_nmi_interrupt, 50)
-
-	MDRV_SCREEN_REFRESH_RATE(XTAL/2/6/64/312)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT(abc80_nmi_interrupt, 1)
 
 	MDRV_MACHINE_START(abc80)
 
 	// video hardware
+
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(40*6, 24*10)
-	MDRV_SCREEN_VISIBLE_AREA(0, 40*6-1, 0, 24*10-1)
 	MDRV_GFXDECODE(gfxdecodeinfo_abc80)
-	
+	MDRV_COLORTABLE_LENGTH(2*2)
 	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(black_and_white)
+
+	MDRV_PALETTE_INIT(abc80)
 	MDRV_VIDEO_START(abc80)
 	MDRV_VIDEO_UPDATE(abc80)
 
+	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_RAW_PARAMS(ABC80_XTAL/2, ABC80_HTOTAL, ABC80_HBEND, ABC80_HBSTART, ABC80_VTOTAL, ABC80_VBEND, ABC80_VBSTART)
+
 	// sound hardware
+
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(SN76477, 0)
 	MDRV_SOUND_CONFIG(sn76477_interface)
@@ -604,26 +533,24 @@ DEVICE_LOAD( abc80_floppy )
 
 /* ROMs */
 
-SYSTEM_BIOS_START( abc80 )
-	SYSTEM_BIOS_ADD( 0, "abcdos",		"ABC-DOS" )
-	SYSTEM_BIOS_ADD( 1, "abcdosdd",		"ABC-DOS DD" )
-	SYSTEM_BIOS_ADD( 2, "udf20",		"UDF-DOS v.20" )
-SYSTEM_BIOS_END
-
 ROM_START( abc80 )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "za3508.a2", 0x0000, 0x1000, CRC(e2afbf48) SHA1(9883396edd334835a844dcaa792d29599a8c67b9) )
 	ROM_LOAD( "za3509.a3", 0x1000, 0x1000, CRC(d224412a) SHA1(30968054bba7c2aecb4d54864b75a446c1b8fdb1) )
 	ROM_LOAD( "za3506.a4", 0x2000, 0x1000, CRC(1502ba5b) SHA1(5df45909c2c4296e5701c6c99dfaa9b10b3a729b) )
 	ROM_LOAD( "za3507.a5", 0x3000, 0x1000, CRC(bc8860b7) SHA1(28b6cf7f5a4f81e017c2af091c3719657f981710) )
+	ROM_SYSTEM_BIOS( 0, "abcdos",		"ABC-DOS" )
 	ROMX_LOAD("abcdos",    0x6000, 0x1000, CRC(2cb2192f) SHA1(a6b3a9587714f8db807c05bee6c71c0684363744), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "abcdosdd",		"ABC-DOS DD" )
 	ROMX_LOAD("abcdosdd",  0x6000, 0x1000, CRC(36db4c15) SHA1(ae462633f3a9c142bb029beb14749a84681377fa), ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS( 2, "udf20",		"UDF-DOS v.20" )
 	ROMX_LOAD("udfdos20",  0x6000, 0x1000, CRC(69b09c0b) SHA1(403997a06cf6495b8fa13dc74eff6a64ef7aa53e), ROM_BIOS(3) )
 	ROM_LOAD( "iec",	   0x7000, 0x0400, NO_DUMP )
 	ROM_LOAD( "printer",   0x7800, 0x0400, NO_DUMP )
 
 	ROM_REGION( 0x0a00, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "chargen", 0x0000, 0x0a00, BAD_DUMP CRC(9e064e91) SHA1(354783c8f2865f73dc55918c9810c66f3aca751f) )
+	ROM_LOAD( "sn74s262.h2", 0x0000, 0x0a00, NO_DUMP ) // UK charset
+	ROM_LOAD( "sn74s263.h2", 0x0000, 0x0a00, CRC(9e064e91) SHA1(354783c8f2865f73dc55918c9810c66f3aca751f) )
 
 	ROM_REGION( 0x400, REGION_PROMS, 0 )
 	ROM_LOAD( "abc8011.k5", 0x0000, 0x0080, NO_DUMP ) // 82S129 256x4 horizontal sync
@@ -673,7 +600,7 @@ static void abc80_floppy_getinfo(const device_class *devclass, UINT32 state, uni
 		case DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_abc80_floppy; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_abc_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
@@ -693,4 +620,4 @@ SYSTEM_CONFIG_END
 /* Drivers */
 
 //	   YEAR  NAME		PARENT		BIOS	COMPAT	MACHINE		INPUT		INIT	CONFIG		COMPANY				FULLNAME
-COMPB( 1978, abc80,		0,			abc80,	0,		abc80,		abc80,		0,		abc80,		"Luxor Datorer AB", "ABC 80", GAME_IMPERFECT_GRAPHICS )
+COMPB( 1978, abc80,		0,			abc80,	0,		abc80,		abc80,		0,		abc80,		"Luxor Datorer AB", "ABC 80", GAME_SUPPORTS_SAVE )

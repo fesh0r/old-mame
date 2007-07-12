@@ -13,20 +13,20 @@ void pc1251_outa(int data);
 void pc1251_outb(int data);
 void pc1251_outc(int data);
 
-bool pc1251_reset(void);
-bool pc1251_brk(void);
+int pc1251_reset(void);
+int pc1251_brk(void);
 int pc1251_ina(void);
 int pc1251_inb(void);
 
 DRIVER_INIT( pc1251 );
 NVRAM_HANDLER( pc1251 );
 
-/* in vidhrdw/pocketc.c */
+/* in video/pocketc.c */
 READ8_HANDLER(pc1251_lcd_read);
 WRITE8_HANDLER(pc1251_lcd_write);
 VIDEO_UPDATE( pc1251 );
 
-/* in systems/pocketc.c */
+/* in drivers/pocketc.c */
 #define PC1251_SWITCH_MODE (input_port_0_r(0)&7)
 
 #define PC1251_KEY_DEF input_port_0_r(0)&0x100

@@ -22,7 +22,7 @@ SVISION_CHANNEL svision_channel[2];
 
 WRITE8_HANDLER( svision_sounddma_w )
 {
-	logerror("%.6f svision snddma write %04x %02x\n",timer_get_time(),offset+0x18,data);
+	logerror("%.6f svision snddma write %04x %02x\n", mame_time_to_double(mame_timer_get_time()),offset+0x18,data);
 	svision_dma.reg[offset] = data;
 	switch (offset)
 	{
@@ -51,7 +51,7 @@ WRITE8_HANDLER( svision_sounddma_w )
 
 WRITE8_HANDLER( svision_noise_w )
 {
-	//  logerror("%.6f svision noise write %04x %02x\n",timer_get_time(),offset+0x28,data);
+	//  logerror("%.6f svision noise write %04x %02x\n",mame_timer_get_time(),offset+0x28,data);
 	svision_noise.reg[offset]=data;
 	switch (offset)
 	{
@@ -127,7 +127,7 @@ static void svision_update (void *param,stream_sample_t **inputs, stream_sample_
 			{
 				if (channel->on||channel->count)
 				{
-					bool on = FALSE;
+					int on = FALSE;
 					switch (channel->waveform)
 					{
 						case 0:
@@ -160,7 +160,7 @@ static void svision_update (void *param,stream_sample_t **inputs, stream_sample_
 		if (svision_noise.on && (svision_noise.play || svision_noise.count))
 		{
 			INT16 s = (svision_noise.value ? 1 << 8: 0) * svision_noise.volume;
-			bool b1, b2;
+			int b1, b2;
 			if (svision_noise.left)
 				*left += s;
 			if (svision_noise.right)

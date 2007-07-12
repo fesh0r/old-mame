@@ -727,31 +727,6 @@ LPCTSTR column_names[COLUMN_MAX] =
 	TEXT("Play Time")
 };
 
-/* a tiny compile is without Neogeo games */
-#if (defined(NEOFREE) || defined(TINY_COMPILE)) && !defined(NEOMAME)
-game_driver driver_neogeo =
-{
-	__FILE__,
-	0,
-	"Neo-Geo Fake driver",
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-#ifdef MESS
-	0,
-	0,
-	0,
-#endif
-	NOT_A_DRIVER,
-};
-#else
-extern game_driver driver_neogeo;
-#endif
-
 /***************************************************************************
     Message Macros
  ***************************************************************************/
@@ -1546,6 +1521,10 @@ static void RandomSelectBackground(void)
 
 	if (count)
 	{
+#ifdef rand
+#undef rand
+#endif
+
 		srand( (unsigned)time( NULL ) );
 		sprintf(szFile, "%s\\%s", szDir, buf + (rand() % count) * _MAX_FNAME);
 		ResetBackground(szFile);

@@ -28,12 +28,12 @@ static void electron_tape_start( void ) {
 	ula.high_tone_set = 0;
 	ula.bit_count = 0;
 	ula.tape_running = 1;
-	timer_adjust( electron_tape_timer, 0, 0, TIME_IN_HZ(4800) );
+	mame_timer_adjust( electron_tape_timer, time_zero, 0, MAME_TIME_IN_HZ(4800) );
 }
 
 static void electron_tape_stop( void ) {
 	ula.tape_running = 0;
-	timer_reset( electron_tape_timer, TIME_NEVER );
+	mame_timer_reset( electron_tape_timer, time_never );
 }
 
 #define TAPE_LOW	0x00;
@@ -290,8 +290,8 @@ MACHINE_START( electron )
 	
 	ula.interrupt_status = 0x82;
 	ula.interrupt_control = 0x00;
-	timer_set( 0.0, 0, setup_beep );
-	electron_tape_timer = timer_alloc( electron_tape_timer_handler );
+	mame_timer_set( time_zero, 0, setup_beep );
+	electron_tape_timer = mame_timer_alloc( electron_tape_timer_handler );
 	add_reset_callback(machine, electron_reset);
 }
 

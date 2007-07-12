@@ -205,10 +205,10 @@ void dma_transfer_start(int channel, int dir)
 	if((dmac.reg[channel].dcr & 0xc0) == 0x00)  // Burst transfer
 	{
 		cpunum_set_input_line(dmac.intf->cpu,INPUT_LINE_HALT,ASSERT_LINE);
-		timer_adjust(dmac.timer[channel],TIME_NOW,channel,dmac.intf->burst_clock[channel]);
+		mame_timer_adjust(dmac.timer[channel],time_zero,channel, double_to_mame_time(dmac.intf->burst_clock[channel]));
 	}
 	else
-		timer_adjust(dmac.timer[channel],TIME_IN_USEC(500),channel,dmac.intf->clock[channel]);
+		mame_timer_adjust(dmac.timer[channel],MAME_TIME_IN_USEC(500),channel, double_to_mame_time(dmac.intf->clock[channel]));
 
 
 	dmac.transfer_size[channel] = dmac.reg[channel].mtc;
@@ -225,7 +225,7 @@ void dma_transfer_timer(int param)
 void dma_transfer_abort(int channel)
 {
 	logerror("DMA#%i: Transfer aborted\n",channel);
-	timer_adjust(dmac.timer[channel],TIME_NOW,0,0);
+	mame_timer_adjust(dmac.timer[channel],time_zero,0,time_zero);
 	dmac.in_progress[channel] = 0;
 	dmac.reg[channel].mtc = dmac.transfer_size[channel];
 	dmac.reg[channel].csr |= 0xe0;  // channel operation complete, block transfer complete
@@ -235,7 +235,7 @@ void dma_transfer_abort(int channel)
 void dma_transfer_halt(int channel)
 {
 	dmac.halted[channel] = 1;
-	timer_adjust(dmac.timer[channel],TIME_NOW,0,0);
+	mame_timer_adjust(dmac.timer[channel],time_zero,0,time_zero);
 }
 
 void dma_transfer_continue(int channel)
@@ -243,7 +243,7 @@ void dma_transfer_continue(int channel)
 	if(dmac.halted[channel] != 0)
 	{
 		dmac.halted[channel] = 0;
-		timer_adjust(dmac.timer[channel],TIME_NOW,channel,dmac.intf->clock[channel]);
+		mame_timer_adjust(dmac.timer[channel],time_zero,channel, double_to_mame_time(dmac.intf->clock[channel]));
 	}
 }
 
@@ -361,7 +361,7 @@ void hd63450_single_transfer(int x)
 					dmac.reg[x].mtc = program_read_word(dmac.reg[x].bar+4);
 					return;
 				}
-				timer_adjust(dmac.timer[x],TIME_NOW,0,0);
+				mame_timer_adjust(dmac.timer[x],time_zero,0,time_zero);
 				dmac.in_progress[x] = 0;
 				dmac.reg[x].mtc = dmac.transfer_size[x];
 				dmac.reg[x].csr |= 0xe0;  // channel operation complete, block transfer complete

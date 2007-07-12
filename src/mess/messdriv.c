@@ -32,29 +32,8 @@ game_driver driver_0 =
 	0,
 	0,
 	0,
-	0,
 	NOT_A_DRIVER,
 };
-
-#endif
-
-#ifdef TINY_COMPILE
-extern const game_driver TINY_NAME;
-
-const game_driver * const drivers[] =
-{
-  TINY_POINTER,
-  0             /* end of array */
-};
-
-const game_driver *test_drivers[] =
-{
-	0	/* end of array */
-};
-
-#else
-
-#ifndef DRIVER_RECURSIVE
 
 #define DRIVER_RECURSIVE
 
@@ -240,7 +219,6 @@ TESTDRIVER( pcw9512 )	/* 198? PCW9512 (+)									*/
 TESTDRIVER( pcw10 ) 	/* 198? PCW10										*/
 TESTDRIVER( pcw16 )		/* 1995 PCW16										*/
 	DRIVER( nc100 )		/* 19?? NC100										*/
-	DRIVER( nc100a )	/* 19?? NC100										*/
 TESTDRIVER( nc200 )		/* 19?? NC200										*/
 
 	/* APPLE */
@@ -257,7 +235,7 @@ TESTDRIVER( nc200 )		/* 19?? NC200										*/
 	DRIVER( apple2c4 )	/* ??? 198? Apple //c (rev 4)						*/
 	DRIVER( apple2cp )	/* Sep 1988 Apple //c+								*/
 	DRIVER( apple2g0 )	/* Sep 1986 Apple IIgs ROM00						*/
-	DRIVER( apple2g1 )	/* ??? 1987 Apple IIgs ROM01						*/
+	DRIVER( apple2g1 )	/* Sep 1987 Apple IIgs ROM01						*/
 	DRIVER( apple2gs )	/* Aug 1989 Apple IIgs ROM03						*/
 	DRIVER( apple3 )	/* May 1980 Apple ///								*/
 						/* Dec 1983 Apple ///+								*/
@@ -385,6 +363,7 @@ TESTDRIVER( c128dita )	/* Commodore 128D - PAL (italian) cost reduced set	*/
 	/* IBM PC & Clones */
 	DRIVER( ibmpc )		/* 1982	IBM PC										*/
 	DRIVER( ibmpca )	/* 1982 IBM PC										*/
+	DRIVER( dgone )		/* 1984 Data General/One */
 	DRIVER( pcmda )		/* 1987 PC with MDA (MGA aka Hercules)				*/
 	DRIVER( pc )		/* 1987 PC with CGA									*/
 TESTDRIVER( bondwell )	/* 1985	Bondwell (CGA)								*/
@@ -420,8 +399,6 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	/* SINCLAIR RESEARCH */
 	DRIVER( zx80 )		/* 1980 Sinclair ZX-80								*/
 	DRIVER( zx81 )		/* 1981 Sinclair ZX-81								*/
-	DRIVER( zx81a )		/* Sinclair ZX-81 (2nd rev)							*/
-	DRIVER( zx81b )		/* Sinclair ZX-81 (3nd rev)							*/
 	DRIVER( ts1000 )	/* 1982 Timex Sinclair 1000							*/
 	DRIVER( aszmic )	/* ASZMIC ZX-81 ROM swap							*/
 	DRIVER( pc8300 )	/* Your Computer - PC8300							*/
@@ -701,10 +678,7 @@ TESTDRIVER( trs80m4 )
 
 	/* NASCOM MICROCOMPUTERS */
 	DRIVER( nascom1 )	/* 1978 Nascom 1									*/
-	DRIVER( nascom1a )	/*													*/
-	DRIVER( nascom1b )	/*													*/
 	DRIVER( nascom2 )	/* 1979 Nascom 2									*/
-	DRIVER( nascom2a )	/* 1979 Nascom 2									*/
 
 
 	/* MILES GORDON TECHNOLOGY */
@@ -757,7 +731,7 @@ TESTDRIVER( primob48 )	/* Primo B-48										*/
 	DRIVER( primob64 )	/* Primo B-64										*/
 
 	/* Team Concepts */
-	/* CPU not known, else should be easy, look into systems/comquest.c */
+	/* CPU not known, else should be easy, look into drivers/comquest.c */
 TESTDRIVER( comquest )	/* Comquest Plus German								*/
 
 	/* Hewlett Packard */
@@ -767,9 +741,7 @@ TESTDRIVER( hp48g )		/* HP48 G/GX										*/
 	/* SpectraVideo */
 	DRIVER( svi318 )	/* SVI-318 (SV BASIC v1.0)							*/
 	DRIVER( svi328 )	/* SVI-328 (SV BASIC v1.1)							*/
-	DRIVER( svi328a )	/* SVI-328 (SV BASIC v1.11)							*/
 TESTDRIVER( svi328b )	/* SVI-328 + 80 column card							*/
-TESTDRIVER( svi328c )	/* SVI-328 + 80 column card (Swedish)				*/
 
 	/* Andrew Donald Booth (this is the name of the designer, not a company) */
 	DRIVER( apexc )		/* 1951(?) APEXC: All-Purpose Electronic X-ray Computer */
@@ -842,5 +814,3 @@ TESTDRIVER( mk1 )		/* Chess Champion MK I								*/
 TESTDRIVER( ssystem3 )	/* Chess Champion Super System III / MK III			*/
 
 #endif /* DRIVER_RECURSIVE */
-
-#endif /* TINY_COMPILE */

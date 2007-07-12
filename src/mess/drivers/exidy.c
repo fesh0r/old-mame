@@ -256,8 +256,8 @@ static void cassette_serial_in(int id, unsigned long state)
 
 static MACHINE_START( exidy )
 {
-	serial_timer = timer_alloc(exidy_serial_timer_callback);
-	cassette_timer = timer_alloc(exidy_cassette_timer_callback);
+	serial_timer = mame_timer_alloc(exidy_serial_timer_callback);
+	cassette_timer = mame_timer_alloc(exidy_cassette_timer_callback);
 
 	wd17xx_init(WD_TYPE_179X, NULL, NULL);
 }
@@ -277,7 +277,7 @@ static MACHINE_RESET( exidy )
 	
 	exidy_fe_port_w(0,0);
 
-	timer_set(TIME_NOW, 0, exidy_reset_timer_callback);
+	mame_timer_set(time_zero, 0, exidy_reset_timer_callback);
 	
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
 
@@ -306,7 +306,7 @@ static MACHINE_RESET( exidyd )
 	
 	exidy_fe_port_w(0,0);
 
-	timer_set(TIME_NOW, 0, exidy_reset_timer_callback);
+	mame_timer_set(time_zero, 0, exidy_reset_timer_callback);
 	
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
 }
@@ -465,7 +465,7 @@ static WRITE8_HANDLER(exidy_fe_port_w)
 			/* both are now off */
 
 			/* stop timer */
-			timer_adjust(cassette_timer, 0, 0, 0);
+			mame_timer_adjust(cassette_timer, time_zero, 0, time_zero);
 		}
 		else
 		{
@@ -477,7 +477,7 @@ static WRITE8_HANDLER(exidy_fe_port_w)
 				cassette_clock_state = 0;
 				/* start timer */
 				/* the correct baud rate should be being used here (see bit 6 below) */
-				timer_adjust(cassette_timer, 0, 0, TIME_IN_HZ(4800));
+				mame_timer_adjust(cassette_timer, time_zero, 0, MAME_TIME_IN_HZ(4800));
 			}
 		}
 	}
@@ -514,7 +514,7 @@ static WRITE8_HANDLER(exidy_fe_port_w)
 			baud_rate = 1200;
 		}
 
-		timer_adjust(serial_timer, 0, 0, TIME_IN_HZ(baud_rate));
+		mame_timer_adjust(serial_timer, time_zero, 0, MAME_TIME_IN_HZ(baud_rate));
 	}
 
 	exidy_fe = data;

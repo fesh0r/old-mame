@@ -13,21 +13,21 @@ void pc1350_outa(int data);
 void pc1350_outb(int data);
 void pc1350_outc(int data);
 
-bool pc1350_brk(void);
+int pc1350_brk(void);
 int pc1350_ina(void);
 int pc1350_inb(void);
 
 MACHINE_START( pc1350 );
 NVRAM_HANDLER( pc1350 );
 
-/* in vidhrdw/pocketc.c */
+/* in video/pocketc.c */
 READ8_HANDLER(pc1350_lcd_read);
 WRITE8_HANDLER(pc1350_lcd_write);
 VIDEO_UPDATE( pc1350 );
 
 int pc1350_keyboard_line_r(void);
 
-/* in systems/pocketc.c */
+/* in drivers/pocketc.c */
 #define PC1350_KEY_OFF input_port_0_r(0)&0x80
 #define PC1350_KEY_DOWN input_port_0_r(0)&0x40
 #define PC1350_KEY_UP input_port_0_r(0)&0x20
