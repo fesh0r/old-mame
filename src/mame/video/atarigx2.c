@@ -117,7 +117,7 @@ VIDEO_START( atarigx2 )
 	int i;
 
 	/* blend the playfields and free the temporary one */
-	atarigen_blend_gfx(0, 2, 0x0f, 0x30);
+	atarigen_blend_gfx(machine, 0, 2, 0x0f, 0x30);
 
 	/* initialize the playfield */
 	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, atarigx2_playfield_scan, TILEMAP_OPAQUE, 8,8, 128,64);
@@ -157,7 +157,7 @@ WRITE16_HANDLER( atarigx2_mo_control_w )
 }
 
 
-void atarigx2_scanline_update(int scanline)
+void atarigx2_scanline_update(running_machine *machine, int scrnum, int scanline)
 {
 	UINT32 *base = &atarigen_alpha32[(scanline / 8) * 32 + 24];
 	int i;

@@ -256,7 +256,7 @@ spriteram format (4 bytes per sprite):
     offset  3   xxxxxxxx    x position
 */
 
-static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -279,9 +279,9 @@ static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 		color = (spriteram[offs+2] & 0x07) + 0x08;
 
 		if (spriteram[offs+2] & 0xe0)
-			color = rand()&0xf;
+			color = mame_rand(machine)&0xf;
 
-		drawgfx(bitmap,Machine->gfx[1],
+		drawgfx(bitmap,machine->gfx[1],
 				code,
 				color,
 				flipx,flipy,
@@ -308,9 +308,9 @@ static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 		color = (spriteram_2[offs+2] & 0x07) + 0x08;
 
 		if (spriteram_2[offs+2] & 0xe0)
-			color = rand()&0xf;
+			color = mame_rand(machine)&0xf;
 
-		drawgfx(bitmap,Machine->gfx[1],
+		drawgfx(bitmap,machine->gfx[1],
 				code,
 				color,
 				flipx,flipy,
@@ -345,6 +345,6 @@ VIDEO_UPDATE( fortyl )
 	tilemap_set_scrolldy(background,-fortyl_video_ctrl[1]+1,-fortyl_video_ctrl[1]-1 );
 	tilemap_draw(bitmap,cliprect,background,0,0);
 
-	draw_sprites(bitmap,cliprect);
+	draw_sprites(machine,bitmap,cliprect);
 	return 0;
 }

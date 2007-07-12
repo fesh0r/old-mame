@@ -197,12 +197,12 @@ static WRITE8_HANDLER( sub_cpu_halt_w )
 
 static UINT8 snd_data;
 
-READ8_HANDLER( from_snd_r )
+static READ8_HANDLER( from_snd_r )
 {
 	return snd_data;
 }
 
-WRITE8_HANDLER( to_main_w )
+static WRITE8_HANDLER( to_main_w )
 {
 	snd_data = data;
 }
@@ -271,7 +271,7 @@ static void nmi_callback(int param)
 static WRITE8_HANDLER( sound_command_w )
 {
 	soundlatch_w(0,data);
-	timer_set(TIME_NOW,data,nmi_callback);
+	mame_timer_set(time_zero,data,nmi_callback);
 }
 
 static WRITE8_HANDLER( nmi_disable_w )
@@ -454,7 +454,7 @@ static WRITE8_HANDLER(cyclshtg_mcu_w)
 
 static READ8_HANDLER(cyclshtg_mcu_status_r1)
 {
-  return rand();
+  return mame_rand(Machine);
 }
 
 static WRITE8_HANDLER( cyclshtg_generic_control_w )
@@ -532,7 +532,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER(unk_r)
 {
-  return rand();
+  return mame_rand(Machine);
 }
 
 static ADDRESS_MAP_START( bronx_readmem, ADDRESS_SPACE_PROGRAM, 8 )

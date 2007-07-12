@@ -81,7 +81,7 @@ WRITE16_HANDLER( apache3_irq_ack_w )
 	if ((tatsumi_last_irq&2) && (data&2)==0)
 	{
 		cpunum_set_input_line(3, INPUT_LINE_HALT, CLEAR_LINE);
-		cpunum_set_input_line_and_vector(3, 0, PULSE_LINE, 0xc7 | 0x10);
+		cpunum_set_input_line_and_vector(3, 0, HOLD_LINE, 0xc7 | 0x10);
 	}
 
 	tatsumi_last_irq=data;
@@ -144,7 +144,7 @@ WRITE8_HANDLER( apache3_adc_w )
 }
 
 UINT16 apache3_a0000[16]; // TODO
-int a3counter=0; // TODO
+static int a3counter=0; // TODO
 
 WRITE16_HANDLER( apache3_a0000_w )
 {

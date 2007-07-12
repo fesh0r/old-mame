@@ -1115,7 +1115,10 @@ UINT32 mame_rand(running_machine *machine)
 {
 	mame_private *mame = machine->mame_data;
 	mame->rand_seed = 1664525 * mame->rand_seed + 1013904223;
-	return mame->rand_seed;
+
+	/* return rotated by 16 bits; the low bits have a short period
+       and are frequently used */
+	return (mame->rand_seed >> 16) | (mame->rand_seed << 16);
 }
 
 
@@ -1269,7 +1272,7 @@ static void init_machine(running_machine *machine)
 	/* initialize the timers and allocate a soft_reset timer */
 	/* this must be done before cpu_init so that CPU's can allocate timers */
 	timer_init(machine);
-	mame->soft_reset_timer = timer_alloc(soft_reset);
+	mame->soft_reset_timer = mame_timer_alloc(soft_reset);
 
 	/* init the osd layer */
 	if (osd_init(machine) != 0)

@@ -107,15 +107,7 @@ WRITE8_HANDLER( citycon_background_w )
 
 
 
-/***************************************************************************
-
-  Draw the game screen in the given mame_bitmap.
-  Do NOT call osd_update_display() from this function, it will be called by
-  the main emulation engine.
-
-***************************************************************************/
-
-static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -134,7 +126,7 @@ static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 			flipx = !flipx;
 		}
 
-		drawgfx(bitmap,Machine->gfx[spriteram[offs + 1] & 0x80 ? 2 : 1],
+		drawgfx(bitmap,machine->gfx[spriteram[offs + 1] & 0x80 ? 2 : 1],
 				spriteram[offs + 1] & 0x7f,
 				spriteram[offs + 2] & 0x0f,
 				flipx,flip_screen,
@@ -173,6 +165,6 @@ VIDEO_UPDATE( citycon )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_sprites(bitmap,cliprect);
+	draw_sprites(machine,bitmap,cliprect);
 	return 0;
 }

@@ -111,7 +111,7 @@ VIDEO_START( atarig1 )
 	};
 
 	/* blend the playfields and free the temporary one */
-	atarigen_blend_gfx(0, 2, 0x0f, 0x10);
+	atarigen_blend_gfx(machine, 0, 2, 0x0f, 0x10);
 
 	/* initialize the playfield */
 	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 64,64);
@@ -148,7 +148,7 @@ WRITE16_HANDLER( atarig1_mo_control_w )
 }
 
 
-void atarig1_scanline_update(int scanline)
+void atarig1_scanline_update(running_machine *machine, int scrnum, int scanline)
 {
 	UINT16 *base = &atarigen_alpha[(scanline / 8) * 64 + 48];
 	int i;

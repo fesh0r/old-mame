@@ -226,8 +226,8 @@ static void run_collisions(int s0, int e0, int s1, int e1, int cm, int hm)
 			if (t0 >= b1)	continue;
 
 			// set flags
-			p0[0] = (p0[0] & 0x9f) | 0x10;
-			p1[0] = (p1[0] & 0x9b) | 0x10;
+			p0[0] = (p0[0] & 0x9f) | (p1[0] & 0x04) | 0x10;
+			p1[0] = (p1[0] & 0x9f) | 0x10;
 		}
 	}
 }
@@ -308,7 +308,7 @@ static WRITE8_HANDLER( thunderx_1f98_w )
 		calculate_collisions();
 
 		/* 100 cycle delay is arbitrary */
-		timer_set(TIME_IN_CYCLES(100,0),0, thunderx_firq_callback);
+		mame_timer_set(MAME_TIME_IN_CYCLES(100,0),0, thunderx_firq_callback);
 	}
 
 	thunderx_1f98_data = data;

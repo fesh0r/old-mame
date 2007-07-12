@@ -173,7 +173,7 @@ struct dss_inverter_osc_context
 #define DSS_COUNTER__INIT		(*(node->input[5]))
 #define DSS_COUNTER__CLOCK_TYPE	(*(node->input[6]))
 
-const int disc_7492_count[6] = {0x00, 0x01, 0x02, 0x04, 0x05, 0x06};
+static const int disc_7492_count[6] = {0x00, 0x01, 0x02, 0x04, 0x05, 0x06};
 
 void dss_counter_step(node_description *node)
 {
@@ -527,7 +527,7 @@ void dss_noise_step(node_description *node)
 		if(context->phase > (2.0*M_PI))
 		{
 			/* GCC's rand returns a RAND_MAX value of 0x7fff */
-			int newval = (rand() & 0x7fff) - 16384;
+			int newval = (mame_rand(Machine) & 0x7fff) - 16384;
 
 			/* make sure the peak to peak values are the amplitude */
 			node->output = DSS_NOISE__AMP / 2;

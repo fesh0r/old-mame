@@ -14,6 +14,7 @@ Tile/sprite priority system (for the Kung Fu Master M62 board):
 ***************************************************************************/
 
 #include "driver.h"
+#include "video/resnet.h"
 
 UINT8 *m62_tileram;
 UINT8 *m62_textram;
@@ -34,6 +35,8 @@ static INT32 kidniki_text_vscroll;
 
 static INT32 spelunkr_palbank;
 
+
+
 /***************************************************************************
 
   Convert the color PROMs into a more useable format.
@@ -49,178 +52,196 @@ static INT32 spelunkr_palbank;
   bit 0 -- 2.2kohm resistor  -- RED/GREEN/BLUE
 
 ***************************************************************************/
-PALETTE_INIT( irem )
+
+
+static const res_net_info m62_tile_net_info =
 {
-	int i;
-
-
-	for (i = 0;i < machine->drv->total_colors;i++)
+	RES_NET_VCC_5V | RES_NET_VIN_TTL_OUT,
 	{
-		int bit0,bit1,bit2,bit3,r,g,b;
-
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[machine->drv->total_colors] >> 3) & 0x01;
-		g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[2*machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[2*machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
-		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
-
-		color_prom++;
+		{ RES_NET_AMP_NONE, 0, 0, 4, { 22000, 1000, 470, 220 } },
+		{ RES_NET_AMP_NONE, 0, 0, 4, { 22000, 1000, 470, 220 } },
+		{ RES_NET_AMP_NONE, 0, 0, 4, { 22000, 1000, 470, 220 } }
 	}
+};
 
-	color_prom += 2*machine->drv->total_colors;
-	/* color_prom now points to the beginning of the sprite height table */
 
-	sprite_height_prom = color_prom;	/* we'll need this at run time */
+static const res_net_info m62_sprite_net_info =
+{
+	RES_NET_VCC_5V | RES_NET_VIN_TTL_OUT,
+	{
+		{ RES_NET_AMP_NONE, 0, 470, 4, { 22000, 1000, 470, 220 } },
+		{ RES_NET_AMP_NONE, 0, 470, 4, { 22000, 1000, 470, 220 } },
+		{ RES_NET_AMP_NONE, 0, 470, 4, { 22000, 1000, 470, 220 } }
+	}
+};
+
+
+/* this is a complete guess */
+static const res_net_info battroad_char_net_info =
+{
+	RES_NET_VCC_5V | RES_NET_VIN_TTL_OUT,
+	{
+		{ RES_NET_AMP_NONE, 0, 0, 3, { 1000, 470, 220 } },
+		{ RES_NET_AMP_NONE, 0, 0, 3, { 1000, 470, 220 } },
+		{ RES_NET_AMP_NONE, 0, 0, 2, {       470, 220 } }
+	}
+};
+
+
+
+static const res_net_decode_info m62_tile_decode_info =
+{
+	1,					/* single PROM per color */
+	0x000, 0x0ff,		/* start/end */
+	/*  R      G      B */
+	{ 0x000, 0x200, 0x400 }, /* offsets */
+	{     0,     0,     0 }, /* shifts */
+	{  0x0f,  0x0f,  0x0f }  /* masks */
+};
+
+
+static const res_net_decode_info m62_sprite_decode_info =
+{
+	1,					/* single PROM per color */
+	0x000, 0x0ff,		/* start/end */
+	/*  R      G      B */
+	{ 0x100, 0x300, 0x500 }, /* offsets */
+	{     0,     0,     0 }, /* shifts */
+	{  0x0f,  0x0f,  0x0f }  /* masks */
+};
+
+
+static const res_net_decode_info lotlot_tile_decode_info =
+{
+	1,					/* single PROM per color */
+	0x000, 0x17f,		/* start/end */
+	/*  R      G      B */
+	{ 0x000, 0x300, 0x600 }, /* offsets */
+	{     0,     0,     0 }, /* shifts */
+	{  0x0f,  0x0f,  0x0f }  /* masks */
+};
+
+
+static const res_net_decode_info lotlot_sprite_decode_info =
+{
+	1,					/* single PROM per color */
+	0x000, 0x17f,		/* start/end */
+	/*  R      G      B */
+	{ 0x180, 0x480, 0x780 }, /* offsets */
+	{     0,     0,     0 }, /* shifts */
+	{  0x0f,  0x0f,  0x0f }  /* masks */
+};
+
+
+static const res_net_decode_info battroad_char_decode_info =
+{
+	1,					/* single PROM per color */
+	0x000, 0x01f,		/* start/end */
+	/*  R      G      B */
+	{ 0x600, 0x600, 0x600 }, /* offsets */
+	{     0,     3,     6 }, /* shifts */
+	{  0x07,  0x07,  0x03 }  /* masks */
+};
+
+
+static const res_net_decode_info spelunk2_tile_decode_info =
+{
+	1,					/* single PROM per color */
+	0x000, 0x1ff,		/* start/end */
+	/*  R      G      B */
+	{ 0x000, 0x000, 0x200 }, /* offsets */
+	{     0,     4,     0 }, /* shifts */
+	{  0x0f,  0x0f,  0x0f }  /* masks */
+};
+
+
+static const res_net_decode_info spelunk2_sprite_decode_info =
+{
+	1,					/* single PROM per color */
+	0x000, 0x0ff,		/* start/end */
+	/*  R      G      B */
+	{ 0x400, 0x500, 0x600 }, /* offsets */
+	{     0,     0,     0 }, /* shifts */
+	{  0x0f,  0x0f,  0x0f }  /* masks */
+};
+
+
+PALETTE_INIT( m62 )
+{
+	rgb_t *rgb;
+
+	rgb = compute_res_net_all(color_prom, &m62_tile_decode_info, &m62_tile_net_info);
+	palette_set_colors(machine, 0x000, rgb, 0x100);
+	free(rgb);
+
+	rgb = compute_res_net_all(color_prom, &m62_sprite_decode_info, &m62_sprite_net_info);
+	palette_set_colors(machine, 0x100, rgb, 0x100);
+	free(rgb);
+
+	palette_normalize_range(machine, 0x000, 0x1ff, 0x00, 0xff);
+
+	/* we'll need this at run time */
+	sprite_height_prom = color_prom + 0x600;
 }
+
+
+PALETTE_INIT( lotlot )
+{
+	rgb_t *rgb;
+
+	rgb = compute_res_net_all(color_prom, &lotlot_tile_decode_info, &m62_tile_net_info);
+	palette_set_colors(machine, 0x000, rgb, 0x180);
+	free(rgb);
+
+	rgb = compute_res_net_all(color_prom, &lotlot_sprite_decode_info, &m62_sprite_net_info);
+	palette_set_colors(machine, 0x180, rgb, 0x180);
+	free(rgb);
+
+	palette_normalize_range(machine, 0x000, 0x2ff, 0x00, 0xff);
+
+	/* we'll need this at run time */
+	sprite_height_prom = color_prom + 0x900;
+}
+
 
 PALETTE_INIT( battroad )
 {
-	int i;
+	rgb_t *rgb;
 
+	rgb = compute_res_net_all(color_prom, &m62_tile_decode_info, &m62_tile_net_info);
+	palette_set_colors(machine, 0x000, rgb, 0x100);
+	free(rgb);
 
-	for (i = 0;i < 512;i++)
-	{
-		int bit0,bit1,bit2,bit3,r,g,b;
+	rgb = compute_res_net_all(color_prom, &m62_sprite_decode_info, &m62_sprite_net_info);
+	palette_set_colors(machine, 0x100, rgb, 0x100);
+	free(rgb);
 
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[512] >> 0) & 0x01;
-		bit1 = (color_prom[512] >> 1) & 0x01;
-		bit2 = (color_prom[512] >> 2) & 0x01;
-		bit3 = (color_prom[512] >> 3) & 0x01;
-		g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*512] >> 0) & 0x01;
-		bit1 = (color_prom[2*512] >> 1) & 0x01;
-		bit2 = (color_prom[2*512] >> 2) & 0x01;
-		bit3 = (color_prom[2*512] >> 3) & 0x01;
-		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+	rgb = compute_res_net_all(color_prom, &battroad_char_decode_info, &m62_tile_net_info);
+	palette_set_colors(machine, 0x200, rgb, 0x020);
+	free(rgb);
 
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
+	palette_normalize_range(machine, 0x000, 0x21f, 0x00, 0xff);
 
-		color_prom++;
-	}
-
-	color_prom += 2*512;
-	/* color_prom now points to the beginning of the character color prom */
-
-	for (i = 0;i < 32;i++)
-	{
-		int bit0,bit1,bit2,r,g,b;
-
-
-		bit0 = (color_prom[i] >> 0) & 0x01;
-		bit1 = (color_prom[i] >> 1) & 0x01;
-		bit2 = (color_prom[i] >> 2) & 0x01;
-		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-		bit0 = (color_prom[i] >> 3) & 0x01;
-		bit1 = (color_prom[i] >> 4) & 0x01;
-		bit2 = (color_prom[i] >> 5) & 0x01;
-		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-		bit0 = 0;
-		bit1 = (color_prom[i] >> 6) & 0x01;
-		bit2 = (color_prom[i] >> 7) & 0x01;
-		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-
-		palette_set_color(machine,i+512,MAKE_RGB(r,g,b));
-	}
-
-	color_prom += 32;
-	/* color_prom now points to the beginning of the sprite height table */
-
-	sprite_height_prom = color_prom;	/* we'll need this at run time */
+	sprite_height_prom = color_prom + 0x620;	/* we'll need this at run time */
 }
+
 
 PALETTE_INIT( spelunk2 )
 {
-	int i;
+	rgb_t *rgb;
 
+	rgb = compute_res_net_all(color_prom, &spelunk2_tile_decode_info, &m62_tile_net_info);
+	palette_set_colors(machine, 0x000, rgb, 0x200);
+	free(rgb);
 
-	/* chars */
-	for (i = 0;i < 512;i++)
-	{
-		int bit0,bit1,bit2,bit3,r,g,b;
+	rgb = compute_res_net_all(color_prom, &spelunk2_sprite_decode_info, &m62_sprite_net_info);
+	palette_set_colors(machine, 0x200, rgb, 0x100);
+	free(rgb);
 
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[0] >> 4) & 0x01;
-		bit1 = (color_prom[0] >> 5) & 0x01;
-		bit2 = (color_prom[0] >> 6) & 0x01;
-		bit3 = (color_prom[0] >> 7) & 0x01;
-		g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*256] >> 0) & 0x01;
-		bit1 = (color_prom[2*256] >> 1) & 0x01;
-		bit2 = (color_prom[2*256] >> 2) & 0x01;
-		bit3 = (color_prom[2*256] >> 3) & 0x01;
-		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
+	palette_normalize_range(machine, 0x000, 0x2ff, 0x00, 0xff);
 
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
-
-		color_prom++;
-	}
-
-	color_prom += 2*256;
-
-	/* sprites */
-	for (i = 0;i < 256;i++)
-	{
-		int bit0,bit1,bit2,bit3,r,g,b;
-
-		/* red component */
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		r =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* green component */
-		bit0 = (color_prom[256] >> 0) & 0x01;
-		bit1 = (color_prom[256] >> 1) & 0x01;
-		bit2 = (color_prom[256] >> 2) & 0x01;
-		bit3 = (color_prom[256] >> 3) & 0x01;
-		g =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		/* blue component */
-		bit0 = (color_prom[2*256] >> 0) & 0x01;
-		bit1 = (color_prom[2*256] >> 1) & 0x01;
-		bit2 = (color_prom[2*256] >> 2) & 0x01;
-		bit3 = (color_prom[2*256] >> 3) & 0x01;
-		b =  0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		palette_set_color(machine,i+512,MAKE_RGB(r,g,b));
-
-		color_prom++;
-	}
-
-	color_prom += 2*256;
-
-
-	/* color_prom now points to the beginning of the sprite height table */
-	sprite_height_prom = color_prom;	/* we'll need this at run time */
+	/* we'll need this at run time */
+	sprite_height_prom = color_prom + 0x700;
 }
 
 
@@ -283,14 +304,8 @@ WRITE8_HANDLER( m62_textram_w )
 	tilemap_mark_tile_dirty( m62_foreground, offset >> 1 );
 }
 
-/***************************************************************************
 
-  Draw the game screen in the given mame_bitmap.
-  Do NOT call osd_update_display() from this function, it will be called by
-  the main emulation engine.
-
-***************************************************************************/
-static void draw_sprites(mame_bitmap *bitmap, int colormask, int prioritymask, int priority)
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int colormask, int prioritymask, int priority)
 {
 	int offs;
 
@@ -337,11 +352,11 @@ static void draw_sprites(mame_bitmap *bitmap, int colormask, int prioritymask, i
 
 			do
 			{
-				drawgfx(bitmap,Machine->gfx[1],
+				drawgfx(bitmap,machine->gfx[1],
 						code + i * incr,col,
 						flipx,flipy,
 						sx,sy + 16 * i,
-						&Machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+						cliprect,TRANSPARENCY_PEN,0);
 
 				i--;
 			} while (i >= 0);
@@ -425,7 +440,7 @@ VIDEO_UPDATE( kungfum )
 		tilemap_set_scrollx( m62_background, i, m62_background_hscroll );
 	}
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( bitmap, 0x1f, 0x00, 0x00 );
+	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, 1, 0 );
 	return 0;
 }
@@ -465,9 +480,9 @@ VIDEO_UPDATE( ldrun )
 	tilemap_set_scrolly( m62_background, 0, m62_background_vscroll );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( bitmap, 0x0f, 0x10, 0x00 );
+	draw_sprites( machine, bitmap, cliprect, 0x0f, 0x10, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, 1, 0 );
-	draw_sprites( bitmap, 0x0f, 0x10, 0x10 );
+	draw_sprites( machine, bitmap, cliprect, 0x0f, 0x10, 0x10 );
 	return 0;
 }
 
@@ -545,9 +560,9 @@ VIDEO_UPDATE( battroad )
 	tilemap_set_transparent_pen( m62_foreground, 0 );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( bitmap, 0x0f, 0x10, 0x00 );
+	draw_sprites( machine, bitmap, cliprect, 0x0f, 0x10, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, 1, 0 );
-	draw_sprites( bitmap, 0x0f, 0x10, 0x10 );
+	draw_sprites( machine, bitmap, cliprect, 0x0f, 0x10, 0x10 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
 	return 0;
 }
@@ -575,7 +590,7 @@ VIDEO_UPDATE( ldrun4 )
 	tilemap_set_scrollx( m62_background, 0, m62_background_hscroll );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( bitmap, 0x1f, 0x00, 0x00 );
+	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	return 0;
 }
 
@@ -619,7 +634,7 @@ VIDEO_UPDATE( lotlot )
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
-	draw_sprites( bitmap, 0x1f, 0x00, 0x00 );
+	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	return 0;
 }
 
@@ -676,7 +691,7 @@ VIDEO_UPDATE( kidniki )
 	tilemap_set_transparent_pen( m62_foreground, 0 );
 
 	tilemap_draw( bitmap, cliprect, m62_background, TILEMAP_BACK, 0 );
-	draw_sprites( bitmap, 0x1f, 0x00, 0x00 );
+	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, TILEMAP_FRONT, 0 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
 	return 0;
@@ -723,6 +738,7 @@ static TILE_GET_INFO( get_spelunkr_fg_tile_info )
 	int color;
 	code = m62_textram[ tile_index << 1 ];
 	color = m62_textram[ ( tile_index << 1 ) | 1 ];
+if (color&0xe0) popmessage("fg tilemap %x %x",tile_index,color&0xe0);
 	SET_TILE_INFO( 2, code | ( ( color & 0x10 ) << 4 ), ( color & 0x0f ) | ( spelunkr_palbank << 4 ), 0 );
 }
 
@@ -735,7 +751,7 @@ VIDEO_UPDATE( spelunkr )
 	tilemap_set_transparent_pen( m62_foreground, 0 );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( bitmap, 0x1f, 0x00, 0x00 );
+	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
 	return 0;
 }
@@ -777,7 +793,7 @@ VIDEO_UPDATE( spelunk2 )
 	tilemap_set_transparent_pen( m62_foreground, 0 );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( bitmap, 0x1f, 0x00, 0x00 );
+	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
 	return 0;
 }
@@ -823,7 +839,7 @@ VIDEO_UPDATE( youjyudn )
 	tilemap_set_transparent_pen( m62_foreground, 0 );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( bitmap, 0x1f, 0x00, 0x00 );
+	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, 1, 0 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
 	return 0;
@@ -866,7 +882,7 @@ VIDEO_UPDATE( horizon )
 		tilemap_set_scrollx( m62_background, i, horizon_scrollram[ i << 1 ] | ( horizon_scrollram[ ( i << 1 ) | 1 ] << 8 ) );
 	}
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( bitmap, 0x1f, 0x00, 0x00 );
+	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, 1, 0 );
 	return 0;
 }

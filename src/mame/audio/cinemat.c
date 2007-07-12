@@ -160,11 +160,11 @@ static void spacewar_sound_w(UINT8 sound_val, UINT8 bits_changed)
 {
 	/* Explosion - rising edge */
 	if (SOUNDVAL_RISING_EDGE(0x01))
-		sample_start(0, (rand() & 1) ? 0 : 6, 0);
+		sample_start(0, (mame_rand(Machine) & 1) ? 0 : 6, 0);
 
 	/* Fire sound - rising edge */
 	if (SOUNDVAL_RISING_EDGE(0x02))
-		sample_start(1, (rand() & 1) ? 1 : 7, 0);
+		sample_start(1, (mame_rand(Machine) & 1) ? 1 : 7, 0);
 
 	/* Player 1 thrust - 0=on, 1=off */
 	if (SOUNDVAL_FALLING_EDGE(0x04))
@@ -1426,7 +1426,7 @@ static void demon_sound_w(UINT8 sound_val, UINT8 bits_changed)
 
 	/* watch for a 0->1 edge on bit 4 ("shift in") to clock in the new data */
 	if ((bits_changed & 0x10) && (sound_val & 0x10))
-		timer_set(TIME_NOW, sound_val & 0x0f, synced_sound_w);
+		mame_timer_set(time_zero, sound_val & 0x0f, synced_sound_w);
 }
 
 

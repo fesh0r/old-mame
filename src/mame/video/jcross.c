@@ -48,11 +48,11 @@ static void stuff_palette( running_machine *machine, int source_index, int dest_
 	}
 }
 
-static void update_palette( int type )
+static void update_palette(running_machine *machine, int type )
 {
 	if( fg_color!=old_fg_color )
 	{
-		stuff_palette( Machine, 128+16*(fg_color&0x7), (0x10+type)*16, 16 );
+		stuff_palette(machine, 128+16*(fg_color&0x7), (0x10+type)*16, 16 );
 		old_fg_color = fg_color;
 	}
 }
@@ -110,10 +110,10 @@ VIDEO_START( jcross )
 **
 ***************************************************************************/
 
-static void draw_status( mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_status(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	const UINT8 *base =  jcr_textram + 0x400;
-	const gfx_element *gfx = Machine->gfx[0];
+	const gfx_element *gfx = machine->gfx[0];
 	int row;
 	for( row=0; row<4; row++ )
 	{
@@ -137,9 +137,9 @@ static void draw_status( mame_bitmap *bitmap, const rectangle *cliprect )
 	}
 }
 
-static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect, int scrollx, int scrolly )
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int scrollx, int scrolly )
 {
-	const gfx_element *gfx = Machine->gfx[3];
+	const gfx_element *gfx = machine->gfx[3];
 	const UINT8 *source, *finish;
 	source = spriteram;
 	finish = spriteram + 0x64;
@@ -182,14 +182,14 @@ VIDEO_UPDATE( jcross )
 
 	if( scroll_attributes & 8 ) sprite_scrolly += 256;
 	if( scroll_attributes & 0x10 ) bg_scrolly += 256;
-	update_palette(1);
+	update_palette(machine, 1);
 
 
 	tilemap_set_scrollx( bg_tilemap, 0, bg_scrollx );
 	tilemap_set_scrolly( bg_tilemap, 0, bg_scrolly );
 	tilemap_draw( bitmap,cliprect,bg_tilemap,0 ,0);
-	draw_sprites( bitmap,cliprect, sprite_scrollx+23, sprite_scrolly+1 );
+	draw_sprites( machine, bitmap,cliprect, sprite_scrollx+23, sprite_scrolly+1 );
 	tilemap_draw( bitmap,cliprect,tx_tilemap,0 ,0);
-	draw_status( bitmap,cliprect );
+	draw_status( machine, bitmap,cliprect );
 	return 0;
 }

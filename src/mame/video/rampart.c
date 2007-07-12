@@ -78,10 +78,10 @@ VIDEO_START( rampart )
 	};
 
 	/* initialize the playfield */
-	rampart_bitmap_init(43*8, 30*8);
+	rampart_bitmap_init(machine, 43*8, 30*8);
 
 	/* initialize the motion objects */
-	atarimo_init(0, &modesc);
+	atarimo_init(machine, 0, &modesc);
 
 	/* set the intial scroll offset */
 	atarimo_set_xscroll(0, -4);
@@ -102,10 +102,10 @@ VIDEO_UPDATE( rampart )
 	int x, y, r;
 
 	/* draw the playfield */
-	rampart_bitmap_render(bitmap, cliprect);
+	rampart_bitmap_render(machine, bitmap, cliprect);
 
 	/* draw and merge the MO */
-	mobitmap = atarimo_render(0, cliprect, &rectlist);
+	mobitmap = atarimo_render(machine, 0, cliprect, &rectlist);
 	for (r = 0; r < rectlist.numrects; r++, rectlist.rect++)
 		for (y = rectlist.rect->min_y; y <= rectlist.rect->max_y; y++)
 		{
@@ -133,7 +133,7 @@ VIDEO_UPDATE( rampart )
  *
  *************************************/
 
-void rampart_bitmap_init(int _xdim, int _ydim)
+void rampart_bitmap_init(running_machine *machine, int _xdim, int _ydim)
 {
 	/* set the dimensions */
 	xdim = _xdim;
@@ -144,7 +144,7 @@ void rampart_bitmap_init(int _xdim, int _ydim)
 	memset(pfdirty, 1, sizeof(pfdirty[0]) * ydim);
 
 	/* allocate playfield bitmap */
-	pfbitmap = auto_bitmap_alloc(xdim, ydim, Machine->screen[0].format);
+	pfbitmap = auto_bitmap_alloc(xdim, ydim, machine->screen[0].format);
 }
 
 
@@ -182,7 +182,7 @@ WRITE16_HANDLER( rampart_bitmap_w )
  *
  *************************************/
 
-void rampart_bitmap_render(mame_bitmap *bitmap, const rectangle *cliprect)
+void rampart_bitmap_render(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int x, y;
 
@@ -204,7 +204,7 @@ void rampart_bitmap_render(mame_bitmap *bitmap, const rectangle *cliprect)
 			pfdirty[y] = 0;
 
 			/* draw it */
-			draw_scanline8(pfbitmap, 0, y, xdim, scanline, Machine->pens, -1);
+			draw_scanline8(pfbitmap, 0, y, xdim, scanline, machine->pens, -1);
 		}
 
 	/* copy the cached bitmap */

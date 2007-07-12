@@ -109,7 +109,7 @@ VIDEO_EOF( mlc );
 
 extern UINT32 *mlc_vram, *mlc_clip_ram;
 static UINT32 *mlc_ram, *irq_ram;
-static void *raster_irq_timer;
+static mame_timer *raster_irq_timer;
 static int mainCpuIsArm=1;
 int mlc_raster_table[9][256];
 
@@ -125,7 +125,7 @@ static READ32_HANDLER(test2_r)
 //  if (offset==0)
 //      return readinputport(0); //0xffffffff;
 //   logerror("%08x:  Test2_r %d\n",activecpu_get_pc(),offset);
-	return rand(); //0xffffffff;
+	return mame_rand(Machine); //0xffffffff;
 }
 
 static READ32_HANDLER(test3_r)
@@ -135,7 +135,7 @@ static READ32_HANDLER(test3_r)
 
 */
 //if (offset==0)
-//  return rand()|(rand()<<16);
+//  return mame_rand(Machine)|(mame_rand(Machine)<<16);
 //  logerror("%08x:  Test3_r %d\n",activecpu_get_pc(),offset);
 	return 0xffffffff;
 }

@@ -36,7 +36,7 @@ READ16_HANDLER( galpani2_bg8_regs_##_n_##_r ) \
 { \
 	switch (offset * 2) \
 	{ \
-		case 0x16:	return rand() & 1; \
+		case 0x16:	return mame_rand(Machine) & 1; \
 		default: \
 			logerror("CPU #0 PC %06X : Warning, bg8 #%d screen reg %04X read\n",activecpu_get_pc(),_n_,offset*2); \
 	} \
@@ -199,6 +199,6 @@ if (code_pressed(KEYCODE_Z))
 							cliprect,TRANSPARENCY_PEN,machine->pens[0x4000 + 0]);
 	}
 
-	if (layers_ctrl & 0x8)	kaneko16_draw_sprites(bitmap, cliprect, 0xf);
+	if (layers_ctrl & 0x8)	kaneko16_draw_sprites(machine, bitmap, cliprect, 0xf);
 	return 0;
 }

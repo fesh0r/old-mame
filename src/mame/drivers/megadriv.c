@@ -70,13 +70,13 @@ int megadrive_irq4_pending = 0;
 
 INLINE UINT16 get_hposition(void);
 
-UINT8* sprite_renderline;
-UINT8* highpri_renderline;
-UINT16* video_renderline;
+static UINT8* sprite_renderline;
+static UINT8* highpri_renderline;
+static UINT16* video_renderline;
 UINT16* megadrive_vdp_palette_lookup;
 UINT16* megadrive_vdp_palette_lookup_shadow;
 UINT16* megadrive_vdp_palette_lookup_highlight;
-UINT8 oldscreenwidth = 3;
+static UINT8 oldscreenwidth = 3;
 UINT16* megadrive_ram;
 UINT8 megadrive_vram_fill_pending = 0;
 UINT16 megadrive_vram_fill_length = 0;
@@ -87,17 +87,17 @@ int megadrive_region_pal;
 int megadrive_max_hposition;
 
 
-mame_timer* frame_timer;
-mame_timer* scanline_timer;
-mame_timer* irq6_on_timer;
-mame_timer* irq4_on_timer;
-mame_bitmap* render_bitmap;
+static mame_timer* frame_timer;
+static mame_timer* scanline_timer;
+static mame_timer* irq6_on_timer;
+static mame_timer* irq4_on_timer;
+static mame_bitmap* render_bitmap;
 //mame_timer* vblankirq_off_timer;
 
 
 /* taken from segaic16.c */
 /* doesn't seem to meet my needs, not used */
-UINT16 read_next_instruction(void)
+static UINT16 read_next_instruction(void)
 {
 	static UINT8 recurse = 0;
 	UINT16 result;
@@ -123,7 +123,7 @@ UINT16 read_next_instruction(void)
 
 
 
-struct genesis_z80_vars
+static struct genesis_z80_vars
 {
 	int z80_cpunum;
 	int z80_is_reset;
@@ -133,8 +133,6 @@ struct genesis_z80_vars
 	UINT32 z80_bank_addr;
 	UINT8* z80_prgram;
 } genz80;
-
-READ8_HANDLER( z80_read_68k_banked_data );
 
 void megadriv_z80_bank_w(UINT16 data)
 {
@@ -331,9 +329,7 @@ UINT16* megadrive_vdp_internal_sprite_attribute_table;
 #define MEGADRIVE_REG17_UNUSED          ((megadrive_vdp_register[0x17]&0x3f)>>0)
 
 
-void vdp_vram_write(UINT16 data);
-
-void vdp_vram_write(UINT16 data)
+static void vdp_vram_write(UINT16 data)
 {
 
 	UINT16 sprite_base_address = MEGADRIVE_REG0C_RS1?((MEGADRIVE_REG05_SPRITE_ADDR&0x7e)<<9):((MEGADRIVE_REG05_SPRITE_ADDR&0x7f)<<9);
@@ -361,7 +357,7 @@ void vdp_vram_write(UINT16 data)
 	megadrive_vdp_address &= 0xffff;
 }
 
-void vdp_vsram_write(UINT16 data)
+static void vdp_vsram_write(UINT16 data)
 {
 	megadrive_vdp_vsram[(megadrive_vdp_address&0x7e)>>1] = data;
 
@@ -372,7 +368,7 @@ void vdp_vsram_write(UINT16 data)
 	megadrive_vdp_address &=0xffff;
 }
 
-void write_cram_value(int offset, int data)
+static void write_cram_value(int offset, int data)
 {
 	megadrive_vdp_cram[offset] = data;
 
@@ -391,7 +387,7 @@ void write_cram_value(int offset, int data)
 	}
 }
 
-void vdp_cram_write(UINT16 data)
+static void vdp_cram_write(UINT16 data)
 {
 	int offset;
 	offset = (megadrive_vdp_address&0x7e)>>1;
@@ -567,7 +563,7 @@ void update_megadrive_vdp_code_and_address(void)
                             ((megadrive_vdp_command_part2 & 0x0003) << 14);
 }
 
-UINT16 get_word_from_68k_mem(UINT32 source)
+static UINT16 get_word_from_68k_mem(UINT32 source)
 {
 	if (( source >= 0x000000 ) && ( source <= 0x3fffff ))
 	{
@@ -725,7 +721,7 @@ void megadrive_do_insta_68k_to_vsram_dma(UINT32 source,UINT16 length)
 }
 
 /* This can be simplified quite a lot.. */
-void handle_dma_bits(void)
+static void handle_dma_bits(void)
 {
 
 	if (megadrive_vdp_code&0x20)
@@ -945,17 +941,17 @@ WRITE16_HANDLER( megadriv_vdp_w )
 	}
 }
 
-UINT16 vdp_vram_r(void)
+static UINT16 vdp_vram_r(void)
 {
 	return MEGADRIV_VDP_VRAM((megadrive_vdp_address&0xfffe)>>1);
 }
 
-UINT16 vdp_vsram_r(void)
+static UINT16 vdp_vsram_r(void)
 {
 	return megadrive_vdp_vsram[(megadrive_vdp_address&0x7e)>>1];
 }
 
-UINT16 vdp_cram_r(void)
+static UINT16 vdp_cram_r(void)
 {
 
 	return megadrive_vdp_cram[(megadrive_vdp_address&0x7e)>>1];
@@ -1194,7 +1190,7 @@ static UINT8 vc_ntsc_240[] =
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05
 };
 
-UINT8 vc_pal_224[] =
+static UINT8 vc_pal_224[] =
 {
     0x00, 0x01, 0x02,    0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12,    0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -1218,7 +1214,7 @@ UINT8 vc_pal_224[] =
     0xf7, 0xf8, 0xf9,    0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 };
 
-UINT8 vc_pal_240[] =
+static UINT8 vc_pal_240[] =
 {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,    0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a,    0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -1414,8 +1410,8 @@ WRITE8_HANDLER( megadriv_z80_YM2612_write )
 	}
 }
 
-mame_timer *io_timeout[2];
-int io_stage[2];
+static mame_timer *io_timeout[2];
+static int io_stage[2];
 
 static void io_timeout0_timer_callback(int num)
 {
@@ -1430,10 +1426,10 @@ static void io_timeout1_timer_callback(int num)
 
 void init_megadri6_io(void)
 {
-	io_timeout[0] = timer_alloc(io_timeout0_timer_callback);
+	io_timeout[0] = mame_timer_alloc(io_timeout0_timer_callback);
 	io_stage[0] = -1;
 
-	io_timeout[1] = timer_alloc(io_timeout1_timer_callback);
+	io_timeout[1] = mame_timer_alloc(io_timeout1_timer_callback);
 	io_stage[1] = -1;
 
 }
@@ -1673,7 +1669,7 @@ UINT8 megadrive_io_data_regs[3];
 UINT8 megadrive_io_ctrl_regs[3];
 UINT8 megadrive_io_tx_regs[3];
 
-void megadrive_init_io(void)
+void megadrive_init_io(running_machine *machine)
 {
 	megadrive_io_data_regs[0] = 0x7f;
 	megadrive_io_data_regs[1] = 0x7f;
@@ -1685,10 +1681,10 @@ void megadrive_init_io(void)
 	megadrive_io_tx_regs[1] = 0xff;
 	megadrive_io_tx_regs[2] = 0xff;
 
-	if (Machine->gamedrv->ipt==ipt_megadri6)
+	if (machine->gamedrv->ipt==ipt_megadri6)
 		init_megadri6_io();
 
-	if (Machine->gamedrv->ipt==ipt_ssf2ghw)
+	if (machine->gamedrv->ipt==ipt_ssf2ghw)
 		init_megadri6_io();
 }
 
@@ -1910,7 +1906,7 @@ void megadrive_io_write_data_port_6button(int portnum, UINT16 data)
 		if (((megadrive_io_data_regs[portnum]&0x40)==0x00) && ((data&0x40) == 0x40))
 		{
 			io_stage[portnum]++;
-			timer_adjust(io_timeout[portnum],  TIME_IN_CYCLES(8192,0), 0, 0);
+			mame_timer_adjust(io_timeout[portnum], MAME_TIME_IN_CYCLES(8192,0), 0, time_zero);
 		}
 
 	}
@@ -2233,7 +2229,7 @@ WRITE16_HANDLER ( megadriv_68k_req_z80_reset )
 	}
 }
 
-READ8_HANDLER( z80_read_68k_banked_data )
+static READ8_HANDLER( z80_read_68k_banked_data )
 {
 	// genz80.z80_bank_addr contains the address to read
 
@@ -2274,7 +2270,7 @@ WRITE8_HANDLER( megadriv_z80_vdp_write )
 
 }
 
-WRITE8_HANDLER( z80_write_68k_banked_data )
+static WRITE8_HANDLER( z80_write_68k_banked_data )
 {
 	UINT32 fulladdress;
 	fulladdress = genz80.z80_bank_addr + offset;
@@ -2443,8 +2439,7 @@ ADDRESS_MAP_END
 /****************************************** END 32X related *************************************/
 
 
-int g_counter;
-mame_time time_elapsed_since_crap;
+static mame_time time_elapsed_since_crap;
 
 
 VIDEO_START(megadriv)
@@ -2814,7 +2809,7 @@ void genesis_render_videoline_to_videobuffer(int scanline)
 
 	//mame_printf_debug("screenwidth %d\n",screenwidth);
 
-	//base_w = rand()&0xff;
+	//base_w = mame_rand(Machine)&0xff;
 
 	/* Calculate Exactly where we're going to draw the Window, and if the Window Bug applies */
 	window_is_bugged = 0;
@@ -3751,7 +3746,7 @@ void genesis_render_videoline_to_videobuffer(int scanline)
 }
 
 /* This converts our render buffer to real screen colours */
-void genesis_render_videobuffer_to_screenbuffer(int scanline)
+void genesis_render_videobuffer_to_screenbuffer(running_machine *machine, int scanline)
 {
 	UINT16*lineptr;
 	int x;
@@ -3806,12 +3801,12 @@ void genesis_render_videobuffer_to_screenbuffer(int scanline)
 
 }
 
-void genesis_render_scanline(int scanline)
+void genesis_render_scanline(running_machine *machine, int scanline)
 {
 	//if (MEGADRIVE_REG01_DMA_ENABLE==0) mame_printf_debug("off\n");
 	genesis_render_spriteline_to_spritebuffer(genesis_scanline_counter);
 	genesis_render_videoline_to_videobuffer(scanline);
-	genesis_render_videobuffer_to_screenbuffer(scanline);
+	genesis_render_videobuffer_to_screenbuffer(machine, scanline);
 }
 
 INLINE UINT16 get_hposition(void)
@@ -4108,15 +4103,15 @@ INLINE UINT16 get_hposition(void)
      ---------- cycles 127840, 003b363e ba41aaaa (End of frame / start of next)
 */
 
-int irq4counter = -1;
+static int irq4counter = -1;
 
-mame_timer* render_timer;
+static mame_timer* render_timer;
 
-static void render_timer_callback(int num)
+static void render_timer_callback(void *param)
 {
 	if (genesis_scanline_counter>=0 && genesis_scanline_counter<megadrive_visible_scanlines)
 	{
-		genesis_render_scanline(genesis_scanline_counter);
+		genesis_render_scanline((running_machine *)param, genesis_scanline_counter);
 	}
 }
 
@@ -4127,7 +4122,7 @@ static void scanline_timer_callback(int num)
        top-left of the screen.  The first scanline is scanline 0 (we set scanline to -1 in
        VIDEO_EOF) */
 
-	timer_set(TIME_NOW, 0, 0);
+	mame_timer_set(time_zero, 0, 0);
 	/* Compensate for some rounding errors
 
        When the counter reaches 261 we should have reached the end of the frame, however due
@@ -4139,16 +4134,13 @@ static void scanline_timer_callback(int num)
 	{
 		genesis_scanline_counter++;
 //      mame_printf_debug("scanline %d\n",genesis_scanline_counter);
-		timer_adjust(scanline_timer,  SUBSECONDS_TO_DOUBLE(MAX_SUBSECONDS/megadriv_framerate/megadrive_total_scanlines), 0, 0);
-
-		timer_adjust(render_timer,  TIME_IN_USEC(1), 0, 0);
-
-
+		mame_timer_adjust(scanline_timer, scale_down_mame_time(MAME_TIME_IN_HZ(megadriv_framerate), megadrive_total_scanlines), 0, time_zero);
+		mame_timer_adjust_ptr(render_timer,  MAME_TIME_IN_USEC(1), time_zero);
 
 		if (genesis_scanline_counter==megadrive_irq6_scanline )
 		{
 		//  mame_printf_debug("x %d",genesis_scanline_counter);
-			timer_adjust(irq6_on_timer,  TIME_IN_USEC(6), 0, 0);
+			mame_timer_adjust(irq6_on_timer,  MAME_TIME_IN_USEC(6), 0, time_zero);
 			megadrive_irq6_pending = 1;
 			megadrive_vblank_flag = 1;
 		}
@@ -4175,7 +4167,7 @@ static void scanline_timer_callback(int num)
 
 				if (MEGADRIVE_REG0_IRQ4_ENABLE)
 				{
-					timer_adjust(irq4_on_timer,  TIME_IN_USEC(1), 0, 0);
+					mame_timer_adjust(irq4_on_timer,  MAME_TIME_IN_USEC(1), 0, time_zero);
 					//mame_printf_debug("irq4 on scanline %d reload %d\n",genesis_scanline_counter,MEGADRIVE_REG0A_HINT_VALUE);
 				}
 			}
@@ -4186,7 +4178,7 @@ static void scanline_timer_callback(int num)
 			else irq4counter=MEGADRIVE_REG0A_HINT_VALUE;
 		}
 
-		//if (genesis_scanline_counter==0) timer_adjust(irq4_on_timer,  TIME_IN_USEC(2), 0, 0);
+		//if (genesis_scanline_counter==0) mame_timer_adjust(irq4_on_timer,  MAME_TIME_IN_USEC(2), 0, time_zero);
 
 
 
@@ -4280,17 +4272,17 @@ MACHINE_RESET( megadriv_reset )
 
 	megadrive_imode = 0;
 
-	megadrive_init_io();
+	megadrive_init_io(machine);
 
-	frame_timer = timer_alloc(frame_timer_callback);
-	scanline_timer = timer_alloc(scanline_timer_callback);
-	render_timer = timer_alloc(render_timer_callback);
+	frame_timer = mame_timer_alloc(frame_timer_callback);
+	scanline_timer = mame_timer_alloc(scanline_timer_callback);
+	render_timer = mame_timer_alloc_ptr(render_timer_callback, machine);
 
-	irq6_on_timer = timer_alloc(irq6_on_callback);
-	irq4_on_timer = timer_alloc(irq4_on_callback);
+	irq6_on_timer = mame_timer_alloc(irq6_on_callback);
+	irq4_on_timer = mame_timer_alloc(irq4_on_callback);
 
-	timer_adjust(frame_timer, TIME_NOW, 0, 0);
-	timer_adjust(scanline_timer,  TIME_NOW, 0, 0);
+	mame_timer_adjust(frame_timer, time_zero, 0, time_zero);
+	mame_timer_adjust(scanline_timer,  time_zero, 0, time_zero);
 
 //  set_refresh_rate(megadriv_framerate);
 	cpunum_set_clockscale(0, 0.9950f); /* Fatal Rewind is very fussy... */
@@ -4456,8 +4448,8 @@ int megadrive_z80irq_hpos = 320;
 		//mame_printf_debug("---------- framet %d, %08x %08x\n",xxx, (UINT32)(frametime>>32),(UINT32)(frametime&0xffffffff));
 	}
 
-	timer_adjust(frame_timer,  TIME_NOW, 0, 0);
-	timer_adjust(scanline_timer,  TIME_NOW, 0, 0);
+	mame_timer_adjust(frame_timer,  time_zero, 0, time_zero);
+	mame_timer_adjust(scanline_timer,  time_zero, 0, time_zero);
 
 }
 
@@ -4583,7 +4575,7 @@ static int megadriv_tas_callback(void)
 	return 0; // writeback not allowed
 }
 
-void megadriv_init_common(void)
+void megadriv_init_common(running_machine *machine)
 {
 	genz80.z80_cpunum = 1;
 	genz80.z80_prgram = auto_malloc(0x2000);
@@ -4595,7 +4587,7 @@ void megadriv_init_common(void)
 
 	cpunum_set_info_fct(0, CPUINFO_PTR_M68K_TAS_CALLBACK, (void *)megadriv_tas_callback);
 
-	if ((Machine->gamedrv->ipt==ipt_megadri6) || (Machine->gamedrv->ipt==ipt_ssf2ghw))
+	if ((machine->gamedrv->ipt==ipt_megadri6) || (machine->gamedrv->ipt==ipt_ssf2ghw))
 	{
 		megadrive_io_read_data_port_ptr	= megadrive_io_read_data_port_6button;
 		megadrive_io_write_data_port_ptr = megadrive_io_write_data_port_6button;
@@ -4631,7 +4623,7 @@ void megadriv_init_common(void)
 
 DRIVER_INIT( megadriv )
 {
-	megadriv_init_common();
+	megadriv_init_common(machine);
 	hazemdchoice_megadrive_region_export = 1;
 	hazemdchoice_megadrive_region_pal = 0;
 	hazemdchoice_megadriv_framerate = 60;
@@ -4639,7 +4631,7 @@ DRIVER_INIT( megadriv )
 
 DRIVER_INIT( megadrij )
 {
-	megadriv_init_common();
+	megadriv_init_common(machine);
 	hazemdchoice_megadrive_region_export = 0;
 	hazemdchoice_megadrive_region_pal = 0;
 	hazemdchoice_megadriv_framerate = 60;
@@ -4647,7 +4639,7 @@ DRIVER_INIT( megadrij )
 
 DRIVER_INIT( megadrie )
 {
-	megadriv_init_common();
+	megadriv_init_common(machine);
 	hazemdchoice_megadrive_region_export = 1;
 	hazemdchoice_megadrive_region_pal = 1;
 	hazemdchoice_megadriv_framerate = 50;

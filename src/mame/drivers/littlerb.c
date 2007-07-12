@@ -293,23 +293,16 @@ INPUT_PORTS_START( littlerb )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
+#if 0
 PALETTE_INIT( littlerb )
 {
 	int i;
 	for(i = 0; i < 256; i++)
 		palette_set_color(machine,i,MAKE_RGB(i,i,i));
 }
+#endif
 
-VIDEO_START(littlerb)
-{
-
-//  littlerb_region1 = auto_malloc(0x40000*2);
-//  littlerb_region2 = auto_malloc(0x800*2);
-//  littlerb_region3 = auto_malloc(0x20*2);
-//  littlerb_region4 = auto_malloc(0x40000*2);
-}
-
-void littlerb_drawsprite(mame_bitmap *bitmap, int xsize,int ysize, int offset, int xpos, int ypos )
+static void draw_sprite(mame_bitmap *bitmap, int xsize,int ysize, int offset, int xpos, int ypos )
 {
 	UINT16* spritegfx = littlerb_region4;
 	int x,y;
@@ -360,7 +353,7 @@ VIDEO_UPDATE(littlerb)
 		// e.g  ffc010000
 		code =  (spriteregion[offs+0] & 0xfff0)>>4;
 		code |=  (spriteregion[offs+1] & 0x003f)<<12;
-		littlerb_drawsprite(bitmap,xsize,ysize,code,x-8,y-16);
+		draw_sprite(bitmap,xsize,ysize,code,x-8,y-16);
 	}
 
 	return 0;
@@ -385,12 +378,6 @@ static MACHINE_DRIVER_START( littlerb )
 	MDRV_VIDEO_START(generic_bitmapped)
 	MDRV_VIDEO_UPDATE(littlerb)
 MACHINE_DRIVER_END
-
-DRIVER_INIT ( littlerb )
-{
-//  data_type38 = auto_malloc(0x100000);
-
-}
 
 ROM_START( littlerb )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */

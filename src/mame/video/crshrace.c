@@ -99,7 +99,7 @@ WRITE16_HANDLER( crshrace_gfxctrl_w )
 
 ***************************************************************************/
 
-static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -130,7 +130,7 @@ static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 		zoomx = 16 - zoomtable[zoomx]/8;
 		zoomy = 16 - zoomtable[zoomy]/8;
 
-		if (buffered_spriteram16[attr_start + 2] & 0x20ff) color = rand();
+		if (buffered_spriteram16[attr_start + 2] & 0x20ff) color = mame_rand(machine);
 
 		for (y = 0;y <= ysize;y++)
 		{
@@ -150,7 +150,7 @@ static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 				map_start++;
 
 				if (flipscreen)
-					drawgfxzoom(bitmap,Machine->gfx[2],
+					drawgfxzoom(bitmap,machine->gfx[2],
 							code,
 							color,
 							!flipx,!flipy,
@@ -158,7 +158,7 @@ static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 							cliprect,TRANSPARENCY_PEN,15,
 							0x1000 * zoomx,0x1000 * zoomy);
 				else
-					drawgfxzoom(bitmap,Machine->gfx[2],
+					drawgfxzoom(bitmap,machine->gfx[2],
 							code,
 							color,
 							flipx,flipy,
@@ -196,7 +196,7 @@ VIDEO_UPDATE( crshrace )
 	switch (gfxctrl & 0xfb)
 	{
 		case 0x00:	/* high score screen */
-			draw_sprites(bitmap,cliprect);
+			draw_sprites(machine,bitmap,cliprect);
 			draw_bg(bitmap,cliprect);
 			draw_fg(bitmap,cliprect);
 			break;
@@ -204,7 +204,7 @@ VIDEO_UPDATE( crshrace )
 		case 0x02:
 			draw_bg(bitmap,cliprect);
 			draw_fg(bitmap,cliprect);
-			draw_sprites(bitmap,cliprect);
+			draw_sprites(machine,bitmap,cliprect);
 			break;
 		default:
 popmessage("gfxctrl = %02x",gfxctrl);

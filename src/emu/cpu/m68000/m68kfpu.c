@@ -1,5 +1,4 @@
 #include "cpuintrf.h"
-#include <math.h>
 
 #define FPCC_N			0x08000000
 #define FPCC_Z			0x04000000
@@ -108,6 +107,8 @@ static UINT8 READ_EA_8(int ea)
 		}
 		default:	fatalerror("MC68040: READ_EA_8: unhandled mode %d, reg %d at %08X\n", mode, reg, REG_PC);
 	}
+
+	return 0;
 }
 
 static UINT16 READ_EA_16(int ea)
@@ -158,6 +159,8 @@ static UINT16 READ_EA_16(int ea)
 		}
 		default:	fatalerror("MC68040: READ_EA_16: unhandled mode %d, reg %d at %08X\n", mode, reg, REG_PC);
 	}
+
+	return 0;
 }
 
 static UINT32 READ_EA_32(int ea)
@@ -217,6 +220,7 @@ static UINT32 READ_EA_32(int ea)
 		}
 		default:	fatalerror("MC68040: READ_EA_32: unhandled mode %d, reg %d at %08X\n", mode, reg, REG_PC);
 	}
+	return 0;
 }
 
 static void WRITE_EA_32(int ea, UINT32 data)
@@ -340,6 +344,8 @@ static UINT64 READ_EA_64(int ea)
 		}
 		default:	fatalerror("MC68040: READ_EA_64: unhandled mode %d, reg %d at %08X\n", mode, reg, REG_PC);
 	}
+
+	return 0;
 }
 
 static void WRITE_EA_64(int ea, UINT64 data)

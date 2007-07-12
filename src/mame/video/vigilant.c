@@ -53,7 +53,7 @@ VIDEO_START( vigilant )
  There are three background ROMs, each one contains a 512x256 picture.
  Redraw them if the palette changes.
  **************************************************************************/
-static void update_background( void )
+static void update_background(running_machine *machine)
 {
 	int row,col,page;
 	int charcode;
@@ -69,7 +69,7 @@ static void update_background( void )
 			for( col=0; col<512; col+=32 )
 			{
 				drawgfx(bg_bitmap,
-						Machine->gfx[2],
+						machine->gfx[2],
 						charcode,
 						row < 128 ? 0 : 1,
 						0,0,
@@ -171,7 +171,7 @@ WRITE8_HANDLER( vigilant_rear_color_w )
  ???
  **************************************************************************/
 
-static void draw_foreground( mame_bitmap *bitmap, int priority, int opaque )
+static void draw_foreground(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority, int opaque )
 {
 	int offs;
 	int scroll = -(horiz_scroll_low + horiz_scroll_high);
@@ -193,7 +193,7 @@ static void draw_foreground( mame_bitmap *bitmap, int priority, int opaque )
 				{
 					sx = (sx + scroll) & 0x1ff;
 
-					drawgfx(bitmap,Machine->gfx[0],
+					drawgfx(bitmap,machine->gfx[0],
 							tile_number,
 							color,
 							0,0,
@@ -207,46 +207,34 @@ static void draw_foreground( mame_bitmap *bitmap, int priority, int opaque )
 			if (sy >= 48)
 				sx = (sx + scroll) & 0x1ff;
 
-			drawgfx(bitmap,Machine->gfx[0],
+			drawgfx(bitmap,machine->gfx[0],
 					tile_number,
 					color,
 					0,0,
 					sx,sy,
-					&Machine->screen[0].visarea,(opaque || color >= 4) ? TRANSPARENCY_NONE : TRANSPARENCY_PEN,0);
+					cliprect,(opaque || color >= 4) ? TRANSPARENCY_NONE : TRANSPARENCY_PEN,0);
 		}
 	}
 }
 
 
 
-/***************************************************************************
- draw_background
-
- ???
- **************************************************************************/
-static void draw_background( mame_bitmap *bitmap )
+static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int scrollx = 0x17a + 16*8 - (rear_horiz_scroll_low + rear_horiz_scroll_high);
 
 
 	if (rear_refresh)
 	{
-		update_background( );
+		update_background(machine);
 		rear_refresh=0;
 	}
 
 	copyscrollbitmap(bitmap,bg_bitmap,1,&scrollx,0,0,&bottomvisiblearea,TRANSPARENCY_NONE,0);
 }
 
-/***************************************************************************
 
-  Draw the game screen in the given mame_bitmap.
-  Do NOT call osd_update_display() from this function, it will be called by
-  the main emulation engine.
-
-***************************************************************************/
-
-static void draw_sprites(mame_bitmap *bitmap,const rectangle *clip)
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -272,12 +260,12 @@ static void draw_sprites(mame_bitmap *bitmap,const rectangle *clip)
 			if (flipy) c += h-1-y;
 			else c += y;
 
-			drawgfx(bitmap,Machine->gfx[1],
+			drawgfx(bitmap,machine->gfx[1],
 					c,
 					color,
 					flipx,flipy,
 					sx,sy + 16*y,
-					clip,TRANSPARENCY_PEN,0);
+					cliprect,TRANSPARENCY_PEN,0);
 		}
 	}
 }
@@ -307,16 +295,16 @@ VIDEO_UPDATE( vigilant )
 
 	if (rear_disable)	 /* opaque foreground */
 	{
-		draw_foreground(bitmap,0,1);
-		draw_sprites(bitmap,&bottomvisiblearea);
-		draw_foreground(bitmap,1,0);
+		draw_foreground(machine,bitmap,cliprect,0,1);
+		draw_sprites(machine,bitmap,&bottomvisiblearea);
+		draw_foreground(machine,bitmap,cliprect,1,0);
 	}
 	else
 	{
-		draw_background(bitmap);
-		draw_foreground(bitmap,0,0);
-		draw_sprites(bitmap,&bottomvisiblearea);
-		draw_foreground(bitmap,1,0); // priority tiles
+		draw_background(machine,bitmap,cliprect);
+		draw_foreground(machine,bitmap,cliprect,0,0);
+		draw_sprites(machine,bitmap,&bottomvisiblearea);
+		draw_foreground(machine,bitmap,cliprect,1,0); // priority tiles
 	}
 	return 0;
 }
@@ -347,8 +335,8 @@ VIDEO_UPDATE( kikcubic )
 		}
 	}
 
-	copybitmap(bitmap,tmpbitmap,0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+	copybitmap(bitmap,tmpbitmap,0,0,0,0,cliprect,TRANSPARENCY_NONE,0);
 
-	draw_sprites(bitmap,&machine->screen[0].visarea);
+	draw_sprites(machine,bitmap,cliprect);
 	return 0;
 }

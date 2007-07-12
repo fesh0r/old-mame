@@ -49,15 +49,7 @@ PALETTE_INIT( ambush )
 }
 
 
-/***************************************************************************
-
-  Draw the game screen in the given mame_bitmap.
-  Do NOT call osd_update_display() from this function, it will be called by
-  the main emulation engine.
-
-***************************************************************************/
-
-static void draw_chars(mame_bitmap *bitmap, int priority)
+static void draw_chars(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority)
 {
 	int offs, transparency;
 
@@ -88,12 +80,12 @@ static void draw_chars(mame_bitmap *bitmap, int priority)
 			scroll = ~scroll - 1;
 		}
 
-		drawgfx(bitmap,Machine->gfx[0],
+		drawgfx(bitmap,machine->gfx[0],
 				code,
 				(col & 0x0f) | ((*ambush_colorbank & 0x03) << 4),
 				flip_screen,flip_screen,
 				8*sx, (8*sy + scroll) & 0xff,
-				&Machine->screen[0].visarea,transparency,0);
+				cliprect,transparency,0);
 	}
 }
 
@@ -103,11 +95,11 @@ VIDEO_UPDATE( ambush )
 	int offs;
 
 
-	fillbitmap(bitmap,machine->pens[0],&machine->screen[0].visarea);
+	fillbitmap(bitmap,machine->pens[0],cliprect);
 
 
 	/* Draw the background priority characters */
-	draw_chars(bitmap, 0x00);
+	draw_chars(machine, bitmap, cliprect, 0x00);
 
 
 	/* Draw the sprites. */
@@ -171,11 +163,11 @@ VIDEO_UPDATE( ambush )
 				code, col | ((*ambush_colorbank & 0x03) << 4),
 				flipx, flipy,
 				sx,sy,
-				&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+				cliprect,TRANSPARENCY_PEN,0);
 	}
 
 
 	/* Draw the foreground priority characters */
-	draw_chars(bitmap, 0x10);
+	draw_chars(machine, bitmap, cliprect, 0x10);
 	return 0;
 }

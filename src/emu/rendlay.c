@@ -162,6 +162,23 @@ static void layout_element_free(layout_element *element);
 ***************************************************************************/
 
 /*-------------------------------------------------
+    gcd - compute the greatest common divisor (GCD)
+    of two integers using the Euclidean algorithm
+-------------------------------------------------*/
+
+INLINE int gcd(int a, int b)
+{
+	while (b != 0)
+	{
+		int t = b;
+		b = a % b;
+		a = t;
+	}
+	return a;
+}
+
+
+/*-------------------------------------------------
     reduce_fraction - reduce a fraction by
     dividing out common factors
 -------------------------------------------------*/
@@ -170,13 +187,15 @@ INLINE void reduce_fraction(int *num, int *den)
 {
 	int div;
 
-	/* keep trying to divide down the fraction as much as possible */
-	for (div = MAX(*num,*den) / 2; div > 1; div--)
-		if (((*num / div) * div) == *num && ((*den / div) * div) == *den)
-		{
-			*num /= div;
-			*den /= div;
-		}
+	/* search the greatest common divisor */
+	div = gcd(*num, *den);
+
+	/* reduce the fraction if a common divisor has been found */
+	if (div > 1)
+	{
+		*num /= div;
+		*den /= div;
+	}
 }
 
 

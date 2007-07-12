@@ -28,7 +28,7 @@
 // a:4067940.000 l:67940.0 e:68140.0  01  percussion
 // a:40aff36.000 l:aff36.0 e:b194d.0  20  Selection menu
 // a:40b5f26.000 l:b5f26.0 e:b63a5.0  20  Move up/down
-// a:4102772.000 l:02772.0 e:03a31.0  20  Voice test (fucked?)
+// a:4102772.000 l:02772.0 e:03a31.0  20  Voice test (screwed up?)
 
 // conf:
 //   10b6: 00
@@ -56,7 +56,7 @@ struct ics2115{
 	struct {
 		UINT8 scale, preset;
 		mame_timer *timer;
-		double period;
+		UINT64 period;	/* in nsec */
 	} timer[2];
 
 	UINT8 reg, osc;
@@ -180,12 +180,12 @@ static void timer_cb_1(void *param)
 
 static void recalc_timer(struct ics2115 *chip, int timer)
 {
-	double period = chip->timer[timer].scale*chip->timer[timer].preset / 33868800.0;
+	UINT64 period = 1000000000 * chip->timer[timer].scale*chip->timer[timer].preset / 33868800;
 	if(period)
-		period = 1/62.8206;
+		period = 1000000000/62.8206;
 	if(period)
 	{
-		if (ICS2115LOGERROR) logerror("ICS2115: timer %d freq=%gHz\n", timer, 1/period);
+		if (ICS2115LOGERROR) logerror("ICS2115: timer %d freq=%fHz\n", timer, 1.0/(period / 1000000000.0));
 	}
 	else
 	{
@@ -195,9 +195,9 @@ static void recalc_timer(struct ics2115 *chip, int timer)
 	if(chip->timer[timer].period != period) {
 		chip->timer[timer].period = period;
 		if(period)
-			timer_adjust_ptr(chip->timer[timer].timer, TIME_IN_SEC(period), TIME_IN_SEC(period));
+			mame_timer_adjust_ptr(chip->timer[timer].timer, MAME_TIME_IN_NSEC(period), MAME_TIME_IN_NSEC(period));
 		else
-			timer_adjust_ptr(chip->timer[timer].timer, TIME_NEVER, 0);
+			mame_timer_adjust_ptr(chip->timer[timer].timer, time_never, time_zero);
 	}
 }
 
@@ -458,13 +458,10 @@ static void *ics2115_start(int sndindex, int clock, const void *config)
 	chip->intf = config;
 	chip->index = sndindex;
 	chip->rom = memory_region(chip->intf->region);
-	chip->timer[0].timer = timer_alloc_ptr(timer_cb_0, chip);
-	chip->timer[1].timer = timer_alloc_ptr(timer_cb_1, chip);
+	chip->timer[0].timer = mame_timer_alloc_ptr(timer_cb_0, chip);
+	chip->timer[1].timer = mame_timer_alloc_ptr(timer_cb_1, chip);
 	chip->ulaw = auto_malloc(256*sizeof(INT16));
 	chip->stream = stream_create(0, 2, 33075, chip, update);
-
-	if(!chip->timer[0].timer || !chip->timer[1].timer)
-		return NULL;
 
 	for(i=0; i<256; i++) {
 		UINT8 c = ~i;
@@ -535,8 +532,8 @@ void ics2115_reset(void *_chip)
 	chip->irq_en = 0;
 	chip->irq_pend = 0;
 	memset(chip->voice, 0, sizeof(chip->voice));
-	timer_adjust_ptr(chip->timer[0].timer, TIME_NEVER, 0);
-	timer_adjust_ptr(chip->timer[1].timer, TIME_NEVER, 0);
+	mame_timer_adjust_ptr(chip->timer[0].timer, time_never, time_zero);
+	mame_timer_adjust_ptr(chip->timer[1].timer, time_never, time_zero);
 	chip->timer[0].period = 0;
 	chip->timer[1].period = 0;
 	recalc_irq(chip);
@@ -573,9 +570,9 @@ void ics2115_get_info(void *token, UINT32 state, sndinfo *info)
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case SNDINFO_STR_NAME:							info->s = "ICS2115";					break;
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "ICS";						break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
+		case SNDINFO_STR_CORE_VERSION:					info->s = "1.01";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004-2007, The MAME Team"; break;
 	}
 }
 

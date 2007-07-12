@@ -306,7 +306,7 @@
  *************************************/
 
 #define SYSTEM_CLOCK		100000000
-#define TIMER_CLOCK			TIME_IN_HZ(SYSTEM_CLOCK)
+#define TIMER_PERIOD		MAME_TIME_IN_HZ(SYSTEM_CLOCK)
 
 #define MAX_DYNAMIC_ADDRESSES	32
 
@@ -317,8 +317,6 @@
  *  NILE constants
  *
  *************************************/
-
-#define DMA_SECS_PER_BYTE	(TIME_IN_HZ(100000000))
 
 /* NILE 4 registers 0x000-0x0ff */
 #define NREG_SDRAM0			(0x000/4)
@@ -458,7 +456,7 @@ static UINT32 pci_bridge_regs[0x40];
 static UINT32 pci_ide_regs[0x40];
 static UINT32 pci_3dfx_regs[0x40];
 
-static void *timer[4];
+static mame_timer *timer[4];
 
 static UINT8 vblank_state;
 
@@ -951,10 +949,11 @@ static void timer_callback(int which)
 
 	/* adjust the timer to fire again */
 	{
-		double period = TIMER_CLOCK;
+		UINT32 scale = regs[0];
 		if (regs[1] & 2)
 			logerror("Unexpected value: timer %d is prescaled\n", which);
-		mame_timer_adjust(timer[which], double_to_mame_time(period * (regs[0] + 1)), which, time_never);
+		if (scale != 0)
+			mame_timer_adjust(timer[which], scale_up_mame_time(TIMER_PERIOD, scale), which, time_never);
 	}
 
 	/* trigger the interrupt */
@@ -1035,10 +1034,9 @@ static READ32_HANDLER( nile_r )
 			which = (offset - NREG_T0CTRL) / 4;
 			if (nile_regs[offset - 1] & 1)
 			{
-				double period = TIMER_CLOCK;
 				if (nile_regs[offset] & 2)
 					logerror("Unexpected value: timer %d is prescaled\n", which);
-				result = nile_regs[offset + 1] = mame_time_to_double(mame_timer_timeleft(timer[which])) / period;
+				result = nile_regs[offset + 1] = mame_time_to_double(mame_timer_timeleft(timer[which])) * (double)SYSTEM_CLOCK;
 			}
 
 			if (LOG_TIMERS) logerror("%08X:NILE READ: timer %d counter(%03X) = %08X\n", activecpu_get_pc(), which, offset*4, result);
@@ -1164,20 +1162,20 @@ static WRITE32_HANDLER( nile_w )
 			/* timer just enabled? */
 			if (!(olddata & 1) && (nile_regs[offset] & 1))
 			{
-				double period = TIMER_CLOCK;
+				UINT32 scale = nile_regs[offset + 1];
 				if (nile_regs[offset] & 2)
 					logerror("Unexpected value: timer %d is prescaled\n", which);
-				mame_timer_adjust(timer[which], double_to_mame_time(period + period * nile_regs[offset + 1]), which, time_never);
-				if (LOG_TIMERS) logerror("Starting timer %d at a rate of %d Hz\n", which, (int)(1.0 / (period + period * nile_regs[offset + 1])));
+				if (scale != 0)
+					mame_timer_adjust(timer[which], scale_up_mame_time(TIMER_PERIOD, scale), which, time_never);
+				if (LOG_TIMERS) logerror("Starting timer %d at a rate of %d Hz\n", which, (int)SUBSECONDS_TO_HZ(scale_up_mame_time(TIMER_PERIOD, nile_regs[offset + 1] + 1).subseconds));
 			}
 
 			/* timer disabled? */
 			else if ((olddata & 1) && !(nile_regs[offset] & 1))
 			{
-				double period = TIMER_CLOCK;
 				if (nile_regs[offset] & 2)
 					logerror("Unexpected value: timer %d is prescaled\n", which);
-				nile_regs[offset + 1] = mame_time_to_double(mame_timer_timeleft(timer[which])) / period;
+				nile_regs[offset + 1] = mame_time_to_double(mame_timer_timeleft(timer[which])) * SYSTEM_CLOCK;
 				mame_timer_adjust(timer[which], time_never, which, time_never);
 			}
 			break;
@@ -1192,11 +1190,9 @@ static WRITE32_HANDLER( nile_w )
 
 			if (nile_regs[offset - 1] & 1)
 			{
-				double period = TIMER_CLOCK;
 				if (nile_regs[offset - 1] & 2)
 					logerror("Unexpected value: timer %d is prescaled\n", which);
-				period *= nile_regs[offset];
-				mame_timer_adjust(timer[which], double_to_mame_time(period), which, time_never);
+				mame_timer_adjust(timer[which], scale_up_mame_time(TIMER_PERIOD, nile_regs[offset]), which, time_never);
 			}
 			break;
 

@@ -4797,8 +4797,8 @@ static raster_info *add_rasterizer(voodoo_state *v, const raster_info *cinfo)
 	v->raster_hash[hash] = info;
 
 	if (LOG_RASTERIZERS)
-		mame_printf_debug("Adding rasterizer @ %08X : %08X %08X %08X %08X %08X %08X (hash=%d)\n",
-				(UINT32)info->callback,
+		mame_printf_debug("Adding rasterizer @ %p : %08X %08X %08X %08X %08X %08X (hash=%d)\n",
+				info->callback,
 				info->eff_color_path, info->eff_alpha_mode, info->eff_fog_mode, info->eff_fbz_mode,
 				info->eff_tex_mode_0, info->eff_tex_mode_1, hash);
 
@@ -4854,6 +4854,10 @@ static raster_info *find_rasterizer(voodoo_state *v, int texcount)
 		curinfo.callback = (texcount == 0) ? raster_generic_0tmu : (texcount == 1) ? raster_generic_1tmu : raster_generic_2tmu;
 		curinfo.is_generic = TRUE;
 	}
+
+	curinfo.polys = 0;
+	curinfo.hits = 0;
+	curinfo.next = 0;
 
 	return add_rasterizer(v, &curinfo);
 }

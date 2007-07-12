@@ -45,8 +45,8 @@
 # object and source roots
 #-------------------------------------------------
 
-WINSRC = $(SRC)/osd/$(MAMEOS)
-WINOBJ = $(OBJ)/osd/$(MAMEOS)
+WINSRC = $(SRC)/osd/$(OSD)
+WINOBJ = $(OBJ)/osd/$(OSD)
 
 OBJDIRS += $(WINOBJ)
 
@@ -97,7 +97,7 @@ LD += /LTCG
 endif
 
 ifdef PTR64
-CC += /wd4267
+CC += /wd4267 /Wp64
 endif
 
 # add some VC++-specific defines

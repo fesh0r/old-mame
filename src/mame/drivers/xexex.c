@@ -1,6 +1,6 @@
 #define XE_DEBUG 0
 #define XE_SKIPIDLE 1
-#define XE_DMADELAY (256)
+#define XE_DMADELAY MAME_TIME_IN_USEC(256)
 
 /***************************************************************************
 
@@ -82,7 +82,7 @@ static UINT16 cur_control2;
 static int init_eeprom_count;
 static INT32 cur_sound_region, xexex_strip0x1a;
 static int suspension_active, resume_trigger;
-static void *dmadelay_timer;
+static mame_timer *dmadelay_timer;
 
 
 static struct EEPROM_interface eeprom_interface =
@@ -331,7 +331,7 @@ static INTERRUPT_GEN( xexex_interrupt )
 				xexex_objdma(0);
 
 				// schedule DMA end interrupt
-				timer_adjust(dmadelay_timer, TIME_IN_USEC(XE_DMADELAY), 0, 0);
+				mame_timer_adjust(dmadelay_timer, XE_DMADELAY, 0, time_zero);
 			}
 
 			// IRQ 4 is the V-blank interrupt. It controls color, sound and
@@ -633,7 +633,7 @@ MACHINE_START( xexex )
 
 	resume_trigger = 1000;
 
-	dmadelay_timer = timer_alloc(dmaend_callback);
+	dmadelay_timer = mame_timer_alloc(dmaend_callback);
 }
 
 

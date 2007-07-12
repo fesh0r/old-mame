@@ -47,7 +47,7 @@ static void update_interrupts(void)
 }
 
 
-static void scanline_update(int scanline)
+static void scanline_update(running_machine *machine, int scrnum, int scanline)
 {
 	/* generate 32V signals */
 	if ((scanline & 32) == 0)
@@ -143,8 +143,8 @@ static WRITE16_HANDLER( latch_w )
 	/* lower byte being modified? */
 	if (ACCESSING_LSB)
 	{
-		atarigen_set_ym2413_vol(((data >> 1) & 7) * 100 / 7);
-		atarigen_set_oki6295_vol((data & 0x0020) ? 100 : 0);
+		atarigen_set_ym2413_vol(Machine, ((data >> 1) & 7) * 100 / 7);
+		atarigen_set_oki6295_vol(Machine, (data & 0x0020) ? 100 : 0);
 	}
 }
 

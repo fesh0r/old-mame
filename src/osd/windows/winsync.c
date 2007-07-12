@@ -8,7 +8,9 @@
 //============================================================
 
 // standard windows headers
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0400
+#endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -76,7 +78,7 @@ void osd_lock_acquire(osd_lock *lock)
 #if DEBUG_SLOW_LOCKS
 	// log any locks that take more than 1ms
 	ticks = osd_ticks() - ticks;
-	if (ticks > osd_ticks_per_second() / 1000) printf("Blocked %d ticks on lock acquire\n", (int)ticks);
+	if (ticks > osd_ticks_per_second() / 1000) mame_printf_debug("Blocked %d ticks on lock acquire\n", (int)ticks);
 #endif
 }
 

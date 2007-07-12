@@ -36,7 +36,7 @@ struct MSM5205Voice
 	sound_stream * stream;  /* number of stream system      */
 	INT32 index;
 	INT32 clock;				/* clock rate */
-	void *timer;              /* VCLK callback timer          */
+	mame_timer *timer;        /* VCLK callback timer          */
 	INT32 data;               /* next adpcm data              */
 	INT32 vclk;               /* vclk signal (external mode)  */
 	INT32 reset;              /* reset pin signal             */
@@ -184,7 +184,7 @@ static void *msm5205_start(int sndindex, int clock, const void *config)
 
 	/* stream system initialize */
 	voice->stream = stream_create(0,1,clock,voice,MSM5205_update);
-	voice->timer = timer_alloc_ptr(MSM5205_vclk_callback, voice);
+	voice->timer = mame_timer_alloc_ptr(MSM5205_vclk_callback, voice);
 
 	/* initialize */
 	msm5205_reset(voice);
@@ -268,11 +268,11 @@ void MSM5205_playmode_w(int num,int select)
 		/* timer set */
 		if( prescaler )
 		{
-			double period = TIME_IN_HZ(voice->clock / prescaler);
-			timer_adjust_ptr(voice->timer, period, period);
+			mame_time period = scale_up_mame_time(MAME_TIME_IN_HZ(voice->clock), prescaler);
+			mame_timer_adjust_ptr(voice->timer, period, period);
 		}
 		else
-			timer_adjust_ptr(voice->timer, TIME_NEVER, 0);
+			mame_timer_adjust_ptr(voice->timer, time_never, time_zero);
 	}
 
 	if( voice->bitwidth != bitwidth )

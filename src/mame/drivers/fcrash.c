@@ -11,8 +11,6 @@ this driver depends heavily on cps1.c, but has been
 kept apart in an attempt to keep cps1.c clutter free
 
 todo:
-
-Fix GFX
 Add Sound (very different to CPS1)
 
 ---
@@ -67,12 +65,12 @@ void fcrash_update_transmasks(void)
 	}
 }
 
-void fcrash_render_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
+void fcrash_render_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	int pos;
 	int base=0x50c8/2; // and 10c8/2 for the buffer?
 
-	for (pos=0x1f9c;pos>=0x0000;pos-=4)
+	for (pos=0x1ffc;pos>=0x0000;pos-=4)
 	{
 		int tileno;
 		int xpos;
@@ -88,18 +86,18 @@ void fcrash_render_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 		colour = cps1_gfxram[base+pos+1]&0x1f;
 		ypos = 256-ypos;
 
-		pdrawgfx(bitmap,Machine->gfx[2],tileno,colour,flipx,flipy,xpos+48,ypos-16,cliprect,TRANSPARENCY_PEN,15,0x02);
+		pdrawgfx(bitmap,machine->gfx[2],tileno,colour,flipx,flipy,xpos+49,ypos-16,cliprect,TRANSPARENCY_PEN,15,0x02);
 
 	}
 
 }
 
-void fcrash_render_layer(mame_bitmap *bitmap,const rectangle *cliprect,int layer,int primask)
+void fcrash_render_layer(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int layer,int primask)
 {
 	switch (layer)
 	{
 		case 0:
-			fcrash_render_sprites(bitmap,cliprect);
+			fcrash_render_sprites(machine,bitmap,cliprect);
 			break;
 		case 1:
 		case 2:
@@ -138,11 +136,11 @@ VIDEO_UPDATE( fcrash )
 	cps1_get_video_base();
 
 	/* Build palette */
-	cps1_build_palette();
+	cps1_build_palette(machine);
 
 	fcrash_update_transmasks();
 
-	tilemap_set_scrollx(cps1_bg_tilemap[0],0,cps1_scroll1x-60);
+	tilemap_set_scrollx(cps1_bg_tilemap[0],0,cps1_scroll1x-62);
 	tilemap_set_scrolly(cps1_bg_tilemap[0],0,cps1_scroll1y);
 	if (videocontrol & 0x01)	/* linescroll enable */
 	{
@@ -182,13 +180,13 @@ VIDEO_UPDATE( fcrash )
 	l2 = (layercontrol >> 0x0a) & 03;
 	l3 = (layercontrol >> 0x0c) & 03;
 
-	fcrash_render_layer(bitmap,cliprect,l0,0);
+	fcrash_render_layer(machine,bitmap,cliprect,l0,0);
 	if (l1 == 0) fcrash_render_high_layer(bitmap,cliprect,l0);
-	fcrash_render_layer(bitmap,cliprect,l1,0);
+	fcrash_render_layer(machine,bitmap,cliprect,l1,0);
 	if (l2 == 0) fcrash_render_high_layer(bitmap,cliprect,l1);
-	fcrash_render_layer(bitmap,cliprect,l2,0);
+	fcrash_render_layer(machine,bitmap,cliprect,l2,0);
 	if (l3 == 0) fcrash_render_high_layer(bitmap,cliprect,l2);
-	fcrash_render_layer(bitmap,cliprect,l3,0);
+	fcrash_render_layer(machine,bitmap,cliprect,l3,0);
 
 
 	return 0;
@@ -386,4 +384,4 @@ ROM_START( fcrash )
 	ROM_RELOAD(          0x10000, 0x20000 )
 ROM_END
 
-GAME( 1990, fcrash,   ffight,  fcrash,     fcrash,   cps1,     ROT0,   "Playmark, bootleg [Capcom]", "Final Crash (World, bootleg)",GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 1990, fcrash,   ffight,  fcrash,     fcrash,   cps1,     ROT0,   "Playmark, bootleg [Capcom]", "Final Crash (World, bootleg)",GAME_NO_SOUND )

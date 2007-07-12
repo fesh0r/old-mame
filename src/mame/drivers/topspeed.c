@@ -268,14 +268,14 @@ void topspeed_cpub_interrupt6(int x)
 static INTERRUPT_GEN( topspeed_interrupt )
 {
 	/* Unsure how many int6's per frame */
-	timer_set(TIME_IN_CYCLES(200000-500,0),0, topspeed_interrupt6);
+	mame_timer_set(MAME_TIME_IN_CYCLES(200000-500,0),0, topspeed_interrupt6);
 	cpunum_set_input_line(0, 5, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( topspeed_cpub_interrupt )
 {
 	/* Unsure how many int6's per frame */
-	timer_set(TIME_IN_CYCLES(200000-500,0),0, topspeed_cpub_interrupt6);
+	mame_timer_set(MAME_TIME_IN_CYCLES(200000-500,0),0, topspeed_cpub_interrupt6);
 	cpunum_set_input_line(2, 5, HOLD_LINE);
 }
 
@@ -334,7 +334,7 @@ static READ16_HANDLER( topspeed_motor_r )
 	switch (offset)
 	{
 		case 0x0:
-			return (rand() &0xff);	/* motor status ?? */
+			return (mame_rand(Machine) &0xff);	/* motor status ?? */
 
 		case 0x101:
 			return 0x55;	/* motor cpu status ? */

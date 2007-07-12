@@ -213,10 +213,10 @@ sprites invisible at the end of a round in rabbit, why?
 
 */
 
-static void rabbit_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	int xpos,ypos,tileno,xflip,yflip, colr;
-	const gfx_element *gfx = Machine->gfx[1];
+	const gfx_element *gfx = machine->gfx[1];
 	int todraw = (rabbit_spriteregs[5]&0x0fff0000)>>16; // how many sprites to draw (start/end reg..) what is the other half?
 
 	UINT32 *source = (rabbit_spriteram+ (todraw*2))-2;
@@ -278,7 +278,7 @@ static void rabbit_clearspritebitmap( mame_bitmap *bitmap, const rectangle *clip
 }
 
 /* todo: fix zoom, its inaccurate and this code is ugly */
-static void rabbit_drawsprite_bitmap( mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprite_bitmap( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 
 	UINT32 x,y;
@@ -434,8 +434,8 @@ VIDEO_UPDATE(rabbit)
 		if (prilevel == 0x09) // should it be selectable?
 		{
 			rabbit_clearspritebitmap(bitmap,cliprect);
-			rabbit_drawsprites(bitmap,cliprect);  // render to bitmap
-			rabbit_drawsprite_bitmap(bitmap,cliprect); // copy bitmap to screen
+			draw_sprites(machine,bitmap,cliprect);  // render to bitmap
+			draw_sprite_bitmap(bitmap,cliprect); // copy bitmap to screen
 		}
 	}
 	return 0;
@@ -655,7 +655,7 @@ void rabbit_do_blit(void)
 				if (!blt_amount)
 				{
 					if(BLITLOG) mame_printf_debug("end of blit list\n");
-					timer_set(TIME_IN_USEC(500),0,rabbit_blit_done);
+					mame_timer_set(MAME_TIME_IN_USEC(500),0,rabbit_blit_done);
 					return;
 				}
 

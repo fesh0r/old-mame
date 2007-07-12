@@ -100,7 +100,7 @@ static WRITE32_HANDLER(IRQMSKA_w)
 
 static READ32_HANDLER(IRQRQB_r)
 {
-	return rand()&IRQMSKB; /* hack  0x20 - controls,  0x02 - ?sound? */
+	return mame_rand(Machine)&IRQMSKB; /* hack  0x20 - controls,  0x02 - ?sound? */
 }
 
 static READ32_HANDLER(IRQMSKB_r)
@@ -161,7 +161,7 @@ static void ertictacTimer(int val)
 
 static void startTimer(void)
 {
-	timer_set(TIME_IN_USEC( ((T1low&0xff)|((T1high&0xff)<<8))>>4), 0, ertictacTimer);
+	mame_timer_set(MAME_TIME_IN_USEC( ((T1low&0xff)|((T1high&0xff)<<8))>>4), 0, ertictacTimer);
 }
 
 static WRITE32_HANDLER(T1GO_w)

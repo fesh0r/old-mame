@@ -224,10 +224,8 @@ void cpuexec_init(running_machine *machine)
 		cpu[cpunum].localtime = time_zero;
 
 		/* compute the cycle times */
-		sec_to_cycles[cpunum] = cpu[cpunum].clockscale * cpu[cpunum].clock;
-		cycles_to_sec[cpunum] = 1.0 / sec_to_cycles[cpunum];
-		cycles_per_second[cpunum] = sec_to_cycles[cpunum];
-		subseconds_per_cycle[cpunum] = MAX_SUBSECONDS / sec_to_cycles[cpunum];
+		cycles_per_second[cpunum] = cpu[cpunum].clockscale * cpu[cpunum].clock;
+		subseconds_per_cycle[cpunum] = MAX_SUBSECONDS / (cpu[cpunum].clockscale * cpu[cpunum].clock);
 
 		/* register some of our variables for later */
 		state_save_register_item("cpu", cpunum, cpu[cpunum].suspend);
@@ -370,12 +368,12 @@ static void watchdog_setup(int alloc_new)
 			/* Start a vblank based watchdog. */
 			watchdog_counter = Machine->drv->watchdog_vblank_count;
 		}
-		else if (Machine->drv->watchdog_time != 0)
+		else if (compare_mame_times(Machine->drv->watchdog_time, time_zero) != 0)
 		{
 			/* Start a time based watchdog. */
 			if (alloc_new)
 				watchdog_timer = mame_timer_alloc(watchdog_callback);
-			mame_timer_adjust(watchdog_timer, double_to_mame_time(Machine->drv->watchdog_time), 0, time_zero);
+			mame_timer_adjust(watchdog_timer, Machine->drv->watchdog_time, 0, time_zero);
 			watchdog_counter = WATCHDOG_IS_TIMER_BASED;
 		}
 		else if (watchdog_counter == WATCHDOG_IS_INVALID)
@@ -413,7 +411,7 @@ void watchdog_reset(void)
 {
 	if (watchdog_counter == WATCHDOG_IS_TIMER_BASED)
 	{
-		mame_timer_reset(watchdog_timer, double_to_mame_time(Machine->drv->watchdog_time));
+		mame_timer_reset(watchdog_timer, Machine->drv->watchdog_time);
 	}
 	else
 	{
@@ -498,6 +496,9 @@ void cpuexec_timeslice(void)
 			if (cycles_running > 0)
 			{
 				profiler_mark(PROFILER_CPU1 + cpunum);
+
+				/* note that this global variable cycles_stolen can be modified */
+				/* via the call to the cpunum_execute */
 				cycles_stolen = 0;
 				ran = cpunum_execute(cpunum, cycles_running);
 
@@ -685,10 +686,8 @@ void cpunum_set_clock(int cpunum, int clock)
 	VERIFY_CPUNUM(cpunum_set_clock);
 
 	cpu[cpunum].clock = clock;
-	sec_to_cycles[cpunum] = (double)clock * cpu[cpunum].clockscale;
-	cycles_to_sec[cpunum] = 1.0 / sec_to_cycles[cpunum];
-	cycles_per_second[cpunum] = sec_to_cycles[cpunum];
-	subseconds_per_cycle[cpunum] = MAX_SUBSECONDS / sec_to_cycles[cpunum];
+	cycles_per_second[cpunum] = (double)clock * cpu[cpunum].clockscale;
+	subseconds_per_cycle[cpunum] = MAX_SUBSECONDS / ((double)clock * cpu[cpunum].clockscale);
 
 	/* re-compute the perfect interleave factor */
 	compute_perfect_interleave();
@@ -701,9 +700,7 @@ void cpunum_set_clock_period(int cpunum, subseconds_t clock_period)
 	VERIFY_CPUNUM(cpunum_set_clock);
 
 	cpu[cpunum].clock = MAX_SUBSECONDS / clock_period;
-	sec_to_cycles[cpunum] = (double) (MAX_SUBSECONDS / clock_period) * cpu[cpunum].clockscale;
-	cycles_to_sec[cpunum] = 1.0 / sec_to_cycles[cpunum];
-	cycles_per_second[cpunum] = sec_to_cycles[cpunum];
+	cycles_per_second[cpunum] = (double) (MAX_SUBSECONDS / clock_period) * cpu[cpunum].clockscale;
 	subseconds_per_cycle[cpunum] = clock_period;
 
 	/* re-compute the perfect interleave factor */
@@ -739,10 +736,8 @@ void cpunum_set_clockscale(int cpunum, double clockscale)
 	VERIFY_CPUNUM(cpunum_set_clockscale);
 
 	cpu[cpunum].clockscale = clockscale;
-	sec_to_cycles[cpunum] = (double)cpu[cpunum].clock * clockscale;
-	cycles_to_sec[cpunum] = 1.0 / sec_to_cycles[cpunum];
-	cycles_per_second[cpunum] = sec_to_cycles[cpunum];
-	subseconds_per_cycle[cpunum] = MAX_SUBSECONDS / sec_to_cycles[cpunum];
+	cycles_per_second[cpunum] = (double)cpu[cpunum].clock * clockscale;
+	subseconds_per_cycle[cpunum] = MAX_SUBSECONDS / ((double)cpu[cpunum].clock * clockscale);
 
 	/* re-compute the perfect interleave factor */
 	compute_perfect_interleave();

@@ -152,13 +152,7 @@ WRITE8_HANDLER( rockola_scrolly_w )
 	tilemap_set_scrolly(bg_tilemap, 0, data);
 }
 
-/***************************************************************************
 
-  Draw the game screen in the given mame_bitmap.
-  Do NOT call osd_update_display() from this function, it will be called by
-  the main emulation engine.
-
-***************************************************************************/
 static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] + 256 * charbank;
@@ -172,8 +166,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 	int code = rockola_videoram2[tile_index];
 	int color = colorram[tile_index] & 0x07;
 
-	decodechar(Machine->gfx[0], code, rockola_charram,
-		Machine->drv->gfxdecodeinfo[0].gfxlayout);
+	decodechar(machine->gfx[0], code, rockola_charram,
+		machine->drv->gfxdecodeinfo[0].gfxlayout);
 
 	SET_TILE_INFO(0, code, color, 0)
 }
@@ -301,8 +295,8 @@ static TILE_GET_INFO( satansat_get_fg_tile_info )
 	int code = rockola_videoram2[tile_index];
 	int color = colorram[tile_index] & 0x03;
 
-	decodechar(Machine->gfx[0], code, rockola_charram,
-		Machine->drv->gfxdecodeinfo[0].gfxlayout);
+	decodechar(machine->gfx[0], code, rockola_charram,
+		machine->drv->gfxdecodeinfo[0].gfxlayout);
 
 	SET_TILE_INFO(0, code, color, 0)
 }

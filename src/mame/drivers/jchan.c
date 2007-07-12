@@ -31,6 +31,7 @@ STILL TO DO:
 DONE:
   - almost figured out Main<->Sub 68k communication (read below)
   - started MCU simulation, following the existing implementation of kaneko16.c
+    MCU is the TBS0P01 ("TOYBOX") which is a NEC uPD78324 with 32K internal rom & 1024 byte ram
   - located (at least main) sprite RAM and format
   - inputs (coin, controls, dsw) - controls not understood! :/
 
@@ -161,7 +162,7 @@ FUJITSU CG24143 4181 9449 Z01 (x 2, square SMD)
 FUJITSU CG24173 6186 9447 Z01 (x 2, square SMD)
 KANEKO VIEW2-CHIP 1633F1208 (square, SMD)
 KANEKO BABY004 9511EX009 VT-171 (square, SMD)
-KANEKO TBS0P01 452 9430HK001 (square, SMD)
+KANEKO TBS0P01 452 9430HK001 (square, SMD "TOYBOX" NEC uPD78324 with 32K internal rom)
 
 
 Ram i can see...
@@ -434,14 +435,14 @@ VIDEO_START(jchan)
 	skns_spc_regs = auto_malloc (0x40);
 }
 
-extern void skns_drawsprites( mame_bitmap *bitmap, const rectangle *cliprect );
+extern void skns_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect );
 
 
 VIDEO_UPDATE(jchan)
 {
 	fillbitmap(bitmap, get_black_pen(machine), cliprect);
 
-	skns_drawsprites (bitmap,cliprect);
+	skns_draw_sprites(machine,bitmap,cliprect);
 	return 0;
 }
 

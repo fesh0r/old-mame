@@ -94,13 +94,7 @@ static const rectangle visible1 = { 14*8, (14+48)*8-1,  4*8,  (4+7)*8-1 };
 static const rectangle visible2 = { 14*8, (14+48)*8-1, 12*8, (12+7)*8-1 };
 static const rectangle visible3 = { 14*8, (14+48)*8-1, 20*8, (20+7)*8-1 };
 
-/***************************************************************************
 
-  Draw the game screen in the given mame_bitmap.
-  Do NOT call osd_update_display() from this function, it will be called by
-  the main emulation engine.
-
-***************************************************************************/
 VIDEO_UPDATE( goldstar )
 {
 	int offs;
@@ -135,7 +129,7 @@ VIDEO_UPDATE( goldstar )
 		}
 	}
 
-	copybitmap(bitmap,tmpbitmap,0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+	copybitmap(bitmap,tmpbitmap,0,0,0,0,cliprect,TRANSPARENCY_NONE,0);
 
 
 	for (offs = goldstar_video_size - 1;offs >= 0;offs--)

@@ -669,10 +669,10 @@ static MACHINE_DRIVER_START( lasso )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("sn76496.1", SN76496, 2000000)
+	MDRV_SOUND_ADD_TAG("sn76489.1", SN76489, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD_TAG("sn76496.2", SN76496, 2000000)
+	MDRV_SOUND_ADD_TAG("sn76489.2", SN76489, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -743,8 +743,8 @@ static MACHINE_DRIVER_START( pinbo )
 	MDRV_VIDEO_UPDATE(chameleo)
 
 	/* sound hardware */
-	MDRV_SOUND_REMOVE("sn76496.1")
-	MDRV_SOUND_REMOVE("sn76496.2")
+	MDRV_SOUND_REMOVE("sn76489.1")
+	MDRV_SOUND_REMOVE("sn76489.2")
 
 	MDRV_SOUND_ADD(AY8910, 1250000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
@@ -850,6 +850,47 @@ ROM_START( wwjgtin )
 	ROM_REGION( 0x4000, REGION_USER1, 0 )				/* tilemap */
 	ROM_LOAD( "ic48.2", 0x0000, 0x2000, CRC(a4a7df77) SHA1(476aab702346a402169ab404a8b06589e4932d37) )
 	ROM_LOAD( "ic49.1", 0x2000, 0x2000, CRC(e480fbba) SHA1(197c86747ef8477040169f90eb6e04d928aedbe5) )	// FIXED BITS (1111xxxx)
+
+	ROM_REGION( 0x40, REGION_PROMS, ROMREGION_DISPOSE )
+	ROM_LOAD( "2.bpr",  0x0000, 0x0020, CRC(79adda5d) SHA1(e54de3eb02f744d49f524cd81e1cf993338916e3) )
+	ROM_LOAD( "1.bpr",  0x0020, 0x0020, CRC(c1a93cc8) SHA1(805641ea2ce86589b968f1ff44e5d3ab9377769d) )
+ROM_END
+
+ROM_START( photof )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )		/* 6502 Code (Main CPU) */
+	ROM_LOAD( "ic2.bin", 0x4000, 0x4000, CRC(4d960b54) SHA1(fe6c4943cbf9a9c79a2fd1dd86bb6e1f414b3c8d) )
+	ROM_LOAD( "ic6.bin", 0x8000, 0x4000, CRC(a4ad21dc) SHA1(55b3ecdf80b4a384a0d9932756330fb3021502f8) )
+	ROM_RELOAD(        0xc000, 0x4000             )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )		/* 6502 Code (Sound CPU) */
+	ROM_LOAD( "ic59.bin", 0x4000, 0x4000, CRC(2ecb4d98) SHA1(d5b0d447b24f64fca452dc13e6ff95b090fce2d7) )
+	ROM_RELOAD(         0xc000, 0x4000             )
+
+	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "ic81.bin", 0x0000, 0x0800, CRC(0f170253) SHA1(e8b09cf4e9bae6c762ff325a559fb860a80133aa) )	/* Tiles   */
+	ROM_CONTINUE(       0x2000, 0x0800             )	/* Sprites */
+	ROM_CONTINUE(       0x0800, 0x0800             )
+	ROM_CONTINUE(       0x2800, 0x0800             )
+	ROM_CONTINUE(       0x1000, 0x0800             )
+	ROM_CONTINUE(       0x3000, 0x0800             )
+	ROM_CONTINUE(       0x1800, 0x0800             )
+	ROM_CONTINUE(       0x3800, 0x0800             )
+	ROM_LOAD( "ic82.bin", 0x4000, 0x0800, CRC(c4cadee9) SHA1(46cc0ecc3642c432625c0d131aa31fec2e060d2f) )	/* 2nd bitplane */
+	ROM_CONTINUE(       0x6000, 0x0800             )	/* Sprites */
+	ROM_CONTINUE(       0x4800, 0x0800             )
+	ROM_CONTINUE(       0x6800, 0x0800             )
+	ROM_CONTINUE(       0x5000, 0x0800             )
+	ROM_CONTINUE(       0x7000, 0x0800             )
+	ROM_CONTINUE(       0x5800, 0x0800             )
+	ROM_CONTINUE(       0x7800, 0x0800             )
+
+	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "3-ic47.bin", 0x0000, 0x2000, CRC(40594c59) SHA1(94533be8e267d9aa5bcdd52b45f6974436d3fed5) )	// 1xxxxxxxxxxxx = 0xFF
+	ROM_LOAD( "4-ic46.bin", 0x2000, 0x2000, CRC(d1921348) SHA1(8b5506ff80a31ce721aed515cad1b4a7e52e47a2) )
+
+	ROM_REGION( 0x4000, REGION_USER1, 0 )				/* tilemap */
+	ROM_LOAD( "2-ic48.bin", 0x0000, 0x2000, CRC(a4a7df77) SHA1(476aab702346a402169ab404a8b06589e4932d37) )
+	ROM_LOAD( "1-ic49.bin", 0x2000, 0x2000, CRC(e480fbba) SHA1(197c86747ef8477040169f90eb6e04d928aedbe5) )	// FIXED BITS (1111xxxx)
 
 	ROM_REGION( 0x40, REGION_PROMS, ROMREGION_DISPOSE )
 	ROM_LOAD( "2.bpr",  0x0000, 0x0020, CRC(79adda5d) SHA1(e54de3eb02f744d49f524cd81e1cf993338916e3) )
@@ -996,6 +1037,7 @@ ROM_END
 GAME( 1982, lasso,    0,     lasso,    lasso,    0, ROT90, "SNK",            "Lasso",                   GAME_SUPPORTS_SAVE )
 GAME( 1983, chameleo, 0,     chameleo, chameleo, 0, ROT0,  "Jaleco",         "Chameleon",               GAME_SUPPORTS_SAVE )
 GAME( 1984, wwjgtin,  0,     wwjgtin,  wwjgtin,  0, ROT0,  "Jaleco / Casio", "Wai Wai Jockey Gate-In!", GAME_SUPPORTS_SAVE )
+GAME( 1991, photof,   wwjgtin,wwjgtin,  wwjgtin,  0, ROT0,  "bootleg?",	     "Photo Finish", 		GAME_SUPPORTS_SAVE )
 GAME( 1984, pinbo,    0,     pinbo,    pinbo,    0, ROT90, "Jaleco",         "Pinbo (set 1)",           GAME_SUPPORTS_SAVE )
 GAME( 1984, pinboa,   pinbo, pinbo,    pinbo,    0, ROT90, "Jaleco",         "Pinbo (set 2)",           GAME_SUPPORTS_SAVE )
 GAME( 1985, pinbos,   pinbo, pinbo,    pinbo,    0, ROT90, "bootleg?",       "Pinbo (Strike)",          GAME_SUPPORTS_SAVE )

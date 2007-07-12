@@ -1421,14 +1421,19 @@ VIDEO_START(model1)
 	vxx=vyy=vzz=0;
 	ayy = 0;
 
-	sys24_tile_vh_start(0x3fff);
+	sys24_tile_vh_start(machine, 0x3fff);
 
 	poly_rom = (UINT32 *)memory_region(REGION_USER1);
 	poly_ram = auto_malloc(0x400000*4);
+	memset(poly_ram, 0, 0x400000*4);
 	tgp_ram = auto_malloc((0x100000-0x40000)*2);
+	memset(tgp_ram, 0, (0x100000-0x40000)*2);
 	pointdb = auto_malloc(1000000*2*sizeof(struct point));
+	memset(pointdb, 0, 1000000*2*sizeof(struct point));
 	quaddb  = auto_malloc(1000000*sizeof(struct quad));
+	memset(quaddb, 0, 1000000*sizeof(struct quad));
 	quadind = auto_malloc(1000000*sizeof(struct quad *));
+	memset(quadind, 0, 1000000*sizeof(struct quad *));
 
 	pointpt = pointdb;
 	quadpt = quaddb;
@@ -1441,7 +1446,7 @@ VIDEO_START(model1)
 
 VIDEO_UPDATE(model1)
 {
-	sys24_tile_update();
+	sys24_tile_update(machine);
 #if 0
 	{
 		int mod = 0;
@@ -1491,17 +1496,17 @@ VIDEO_UPDATE(model1)
 	fillbitmap(priority_bitmap, 0, 0);
 	fillbitmap(bitmap, machine->pens[0], &machine->screen[0].visarea);
 
-	sys24_tile_draw(bitmap, cliprect, 6, 0, 0);
-	sys24_tile_draw(bitmap, cliprect, 4, 0, 0);
-	sys24_tile_draw(bitmap, cliprect, 2, 0, 0);
-	sys24_tile_draw(bitmap, cliprect, 0, 0, 0);
+	sys24_tile_draw(machine, bitmap, cliprect, 6, 0, 0);
+	sys24_tile_draw(machine, bitmap, cliprect, 4, 0, 0);
+	sys24_tile_draw(machine, bitmap, cliprect, 2, 0, 0);
+	sys24_tile_draw(machine, bitmap, cliprect, 0, 0, 0);
 
 	tgp_render(bitmap, cliprect);
 
-	sys24_tile_draw(bitmap, cliprect, 7, 0, 0);
-	sys24_tile_draw(bitmap, cliprect, 5, 0, 0);
-	sys24_tile_draw(bitmap, cliprect, 3, 0, 0);
-	sys24_tile_draw(bitmap, cliprect, 1, 0, 0);
+	sys24_tile_draw(machine, bitmap, cliprect, 7, 0, 0);
+	sys24_tile_draw(machine, bitmap, cliprect, 5, 0, 0);
+	sys24_tile_draw(machine, bitmap, cliprect, 3, 0, 0);
+	sys24_tile_draw(machine, bitmap, cliprect, 1, 0, 0);
 
 	return 0;
 }

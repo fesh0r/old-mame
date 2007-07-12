@@ -90,7 +90,7 @@ static WRITE8_HANDLER( ddrible_coin_counter_w )
 
 static READ8_HANDLER( ddrible_vlm5030_busy_r )
 {
-	return rand(); /* patch */
+	return mame_rand(Machine); /* patch */
 	if (VLM5030_BSY()) return 1;
 	else return 0;
 }
@@ -115,9 +115,9 @@ static WRITE8_HANDLER( ddrible_vlm5030_ctrl_w )
 	/* b0 : SSG-A rc filter enable */
 	if (sndti_to_sndnum(SOUND_FILTER_RC, 2) >= 0)
 	{
-		filter_rc_set_RC(2,1000,2200,1000,data & 0x04 ? 150000 : 0); /* YM2203-SSG-C */
-		filter_rc_set_RC(1,1000,2200,1000,data & 0x02 ? 150000 : 0); /* YM2203-SSG-B */
-		filter_rc_set_RC(0,1000,2200,1000,data & 0x01 ? 150000 : 0); /* YM2203-SSG-A */
+		filter_rc_set_RC(2,FLT_RC_LOWPASS, 1000,2200,1000,data & 0x04 ? CAP_N(150) : 0); /* YM2203-SSG-C */
+		filter_rc_set_RC(1,FLT_RC_LOWPASS, 1000,2200,1000,data & 0x02 ? CAP_N(150) : 0); /* YM2203-SSG-B */
+		filter_rc_set_RC(0,FLT_RC_LOWPASS, 1000,2200,1000,data & 0x01 ? CAP_N(150) : 0); /* YM2203-SSG-A */
 	}
 }
 

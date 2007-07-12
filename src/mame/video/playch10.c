@@ -62,7 +62,7 @@ PALETTE_INIT( playch10 )
 		color_prom++;
 	}
 
-	ppu2c0x_init_palette( 256 );
+	ppu2c0x_init_palette(machine, 256 );
 }
 
 static void ppu_irq( int num, int *ppu_regs )
@@ -100,7 +100,7 @@ VIDEO_START( playch10 )
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
 
-	ppu2c0x_init( &ppu_interface );
+	ppu2c0x_init(machine, &ppu_interface );
 }
 
 /***************************************************************************
@@ -112,7 +112,7 @@ VIDEO_START( playch10 )
 VIDEO_UPDATE( playch10 )
 {
 	/* Dual monitor version */
-	if(system_bios == 0)
+	if(system_bios == 1)
 	{
 		/* On Playchoice 10 single monitor, this bit toggles    */
 		/* between PPU and BIOS display.                        */

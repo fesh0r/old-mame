@@ -1238,7 +1238,7 @@ static UINT8 *sharedram;
     timer(uPD71054) struct
 ------------------------------*/
 static struct st_chip {
-	void			*timer[3];			// Timer
+	mame_timer *timer[3];			// Timer
 	UINT16	max[3];				// Max counter
 	UINT16	write_select;		// Max counter write select
 	UINT8	reg[4];				//
@@ -1249,19 +1249,13 @@ static struct st_chip {
 ------------------------------*/
 void uPD71054_update_timer( int no )
 {
-	int		max = 0;
-	double	duration = 0;
-
-	timer_adjust( uPD71054.timer[no], TIME_NEVER, no, 0 );
-
-	max = (int)uPD71054.max[no]&0xffff;
+	UINT16 max = uPD71054.max[no]&0xffff;
 
 	if( max != 0 ) {
-		duration = (double)Machine->drv->cpu[0].cpu_clock/16/max;
-	}
-	if( duration != 0 ) {
-		timer_adjust( uPD71054.timer[no], TIME_IN_HZ(duration), no, 0 );
+		mame_time period = scale_up_mame_time(MAME_TIME_IN_HZ(Machine->drv->cpu[0].cpu_clock), 16 * max);
+		mame_timer_adjust( uPD71054.timer[no], period, no, time_zero );
 	} else {
+		mame_timer_adjust( uPD71054.timer[no], time_never, no, time_never);
 		logerror( "CPU #0 PC %06X: uPD71054 error, timer %d duration is 0\n",
 				activecpu_get_pc(), no );
 	}
@@ -1293,7 +1287,7 @@ void uPD71054_timer_init( void )
 		uPD71054.max[no] = 0xffff;
 	}
 	for( no = 0; no < USED_TIMER_NUM; no++ ) {
-		uPD71054.timer[no] = timer_alloc( uPD71054_timer_callback );
+		uPD71054.timer[no] = mame_timer_alloc( uPD71054_timer_callback );
 	}
 }
 
@@ -1302,7 +1296,7 @@ void uPD71054_timer_init( void )
 /*------------------------------
     timer write handler
 ------------------------------*/
-WRITE16_HANDLER( timer_regs_w )
+static WRITE16_HANDLER( timer_regs_w )
 {
 	data &= 0xff;
 
@@ -1380,12 +1374,12 @@ static struct YM3438interface utoukond_ym3438_intf =
 */
 static UINT16 *mirror_ram;
 
-READ16_HANDLER( mirror_ram_r )
+static READ16_HANDLER( mirror_ram_r )
 {
 	return mirror_ram[offset];
 }
 
-WRITE16_HANDLER( mirror_ram_w )
+static WRITE16_HANDLER( mirror_ram_w )
 {
 	COMBINE_DATA(&mirror_ram[offset]);
 //  logerror("PC %06X - Mirror RAM Written: %04X <- %04X\n", activecpu_get_pc(), offset*2, data);
@@ -1714,7 +1708,7 @@ INLINE void usc_changecolor_xRRRRRGGGGGBBBBB(pen_t color,int data)
 	else palette_set_color_rgb(Machine,color+0x200,pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
 }
 
-WRITE16_HANDLER( usc_paletteram16_xRRRRRGGGGGBBBBB_word_w )
+WRITE16_HANDLER( usclssic_paletteram16_xRRRRRGGGGGBBBBB_word_w )
 {
 	COMBINE_DATA(&paletteram16[offset]);
 	usc_changecolor_xRRRRRGGGGGBBBBB(offset,paletteram16[offset]);
@@ -1746,7 +1740,7 @@ static ADDRESS_MAP_START( usclssic_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x800607) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16		)	// Sprites Y
 	AM_RANGE(0x900000, 0x900001) AM_WRITE(MWA16_RAM						)	// ? $4000
 	AM_RANGE(0xa00000, 0xa00005) AM_WRITE(MWA16_RAM) AM_BASE(&seta_vctrl_0		)	// VRAM Ctrl
-	AM_RANGE(0xb00000, 0xb003ff) AM_WRITE(usc_paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16	)	// Palette
+	AM_RANGE(0xb00000, 0xb003ff) AM_WRITE(usclssic_paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16	)	// Palette
 	AM_RANGE(0xb40000, 0xb40001) AM_WRITE(usclssic_lockout_w			)	// Coin Lockout + Tiles Banking
 	AM_RANGE(0xb40010, 0xb40011) AM_WRITE(calibr50_soundlatch_w			)	// To Sub CPU
 	AM_RANGE(0xb40018, 0xb40019) AM_WRITE(watchdog_reset16_w			)	// Watchdog

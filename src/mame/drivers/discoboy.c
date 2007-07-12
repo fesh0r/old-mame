@@ -45,14 +45,14 @@ UINT8* discoboy_ram_part4;
 UINT8* discoboy_ram_att;
 
 UINT8 discoboy_ram_bank;
-UINT8 port_00;
+static UINT8 port_00;
 UINT8 discoboy_gfxbank;
 
 VIDEO_START( discoboy )
 {
 }
 
-static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	int flipscreen = 0;
 	int offs,sx,sy;
@@ -86,11 +86,11 @@ static void draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 			}
 			else
 			{
-				code = rand();
+				code = mame_rand(machine);
 			}
 		}
 
-		drawgfx(bitmap,Machine->gfx[0],
+		drawgfx(bitmap,machine->gfx[0],
 				 code,
 				 color,
 				 flipscreen,0,
@@ -118,7 +118,7 @@ VIDEO_UPDATE( discoboy )
 		g = ((pal >> 4) & 0xf) << 4;
 		r = ((pal >> 8) & 0xf) << 4;
 
-		palette_set_color(Machine, i/2, MAKE_RGB(r, g, b));
+		palette_set_color(machine, i/2, MAKE_RGB(r, g, b));
 	}
 
 	for (i=0;i<0x800;i+=2)
@@ -131,7 +131,7 @@ VIDEO_UPDATE( discoboy )
 		g = ((pal >> 4) & 0xf) << 4;
 		r = ((pal >> 8) & 0xf) << 4;
 
-		palette_set_color(Machine, (i/2)+0x400, MAKE_RGB(r, g, b));
+		palette_set_color(machine, (i/2)+0x400, MAKE_RGB(r, g, b));
 	}
 
 	fillbitmap(bitmap, 0x3ff, cliprect);
@@ -157,7 +157,7 @@ VIDEO_UPDATE( discoboy )
 		}
 	}
 
-	draw_sprites(bitmap,cliprect);
+	draw_sprites(machine,bitmap,cliprect);
 
 	return 0;
 }

@@ -156,11 +156,6 @@ PALETTE_INIT( stactics )
 {
     int i,j;
 
-    #define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
-    #define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs*sizeof(UINT16)])
-
-    /* Now make the palette */
-
     for (i=0;i<16;i++)
     {
         int bit0,bit1,bit2, bit3,r,g,b;
@@ -497,14 +492,6 @@ WRITE8_HANDLER( stactics_chardata_f_w )
 /* The rest is used for the score, etc. */
 
 static const rectangle visible_screen_area = {0*8, 32*8, 0*8, 30*8};
-
-/***************************************************************************
-
-  Draw the game screen in the given mame_bitmap.
-  Do NOT call osd_update_display() from this function, it will be called by
-  the main emulation engine.
-
-***************************************************************************/
 
 VIDEO_UPDATE( stactics )
 {

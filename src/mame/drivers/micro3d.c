@@ -23,7 +23,6 @@
 
 #include "driver.h"
 //#include "machine/ds1215.h"
-#include "includes/micro3d.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/tms34010/34010ops.h"
 #include "cpu/i8051/i8051.h"
@@ -57,8 +56,6 @@
 UINT16 *micro3d_sprite_vram;
 static UINT16 *m68681_base;
 static UINT16 *m68901_base;
-UINT16 dpyadr;
-int dpyadrscan;
 
 static struct {
     UINT16 MR1A;
@@ -96,7 +93,7 @@ static UINT8 ti_uart[9];
 static int ti_uart_mode_cycle=0;
 static int ti_uart_sync_cycle=0;
 
-void m68901_int_gen(int source);
+static void m68901_int_gen(int source);
 
 /* 68901 */
 enum{   TMRB=0,TXERR,TBE,RXERR,RBF,TMRA,GPIP6,GPIP7,     // A Registers
@@ -109,13 +106,13 @@ enum{   RX=0,TX,STATUS,SYN1,SYN2,DLE,MODE1,MODE2,COMMAND
 
 
 /* Probably wrong and a bit crap */
-int data_to_i8031(void)
+static int data_to_i8031(void)
 {
      mame_printf_debug("68k sent data: %x\n",M68681.TBB);
      return M68681.TBB;
 }
 
-void data_from_i8031(int data)
+static void data_from_i8031(int data)
 {
      M68681.RBB  = data<<8;                         // Put into receive buffer.
      M68681.SRB |= 0x0100;                          // Set Receiver B ready.
@@ -127,6 +124,43 @@ void data_from_i8031(int data)
    mame_printf_debug("8031 sent data: %x\n",data);
 }
 
+
+static void changecolor_BBBBBRRRRRGGGGGG(pen_t color,int data)
+{
+	palette_set_color_rgb(Machine,color,pal5bit(data >> 6),pal5bit(data >> 1),pal5bit(data >> 11));
+}
+
+static WRITE16_HANDLER( paletteram16_BBBBBRRRRRGGGGGG_word_w )
+{
+	COMBINE_DATA(&paletteram16[offset]);
+	changecolor_BBBBBRRRRRGGGGGG(offset,paletteram16[offset]);
+}
+
+
+static void micro3d_scanline_update(running_machine *machine, int screen, mame_bitmap *bitmap, int scanline, const tms34010_display_params *params)
+{
+	UINT16 *src = &micro3d_sprite_vram[(params->rowaddr << 8) & 0x7fe00];
+	UINT16 *dest = BITMAP_ADDR16(bitmap, scanline, 0);
+	int coladdr = params->coladdr;
+	int x;
+
+	/* copy the non-blanked portions of this scanline */
+	for (x = params->heblnk; x < params->hsblnk; x += 2)
+	{
+		UINT16 pix = src[coladdr++ & 0x1ff];
+
+		if (pix & 0x80)
+			dest[x + 0] = (pix & 0x7f) + 0xf00;
+		else
+			dest[x + 0] = 0;	/* 3D data */
+
+		pix >>= 8;
+		if (pix & 0x80)
+			dest[x + 1] = (pix & 0x7f) + 0xf00;
+		else
+			dest[x + 1] = 0;	/* 3D data */
+	}
+}
 
 static MACHINE_RESET( micro3d )
 {
@@ -356,7 +390,7 @@ INPUT_PORTS_START( f15se )
 INPUT_PORTS_END
 
 
-void tms_interrupt(int state)
+static void tms_interrupt(int state)
 {
    m68901_int_gen(GPIP4);
 }
@@ -371,20 +405,20 @@ void micro3d_vblank(void)
 
 static void timera_int(int param)
 {
-//      mame_timer_set(double_to_mame_time(TIME_IN_SEC(((m68901_base[0xf]>>8) & 0xff)* 200/M68901_CLK)),0,timera_int);     // Set the timer again.
+//      mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), ((m68901_base[0xf]>>8) & 0xff) * 200),0,timera_int);     // Set the timer again.
         mame_timer_set(MAME_TIME_IN_USEC(1000),0,timera_int);     // Set the timer again.
         m68901_int_gen(TMRA);           // Fire an interrupt.
 }
 
 static void timerb_int(int param)
 {
-        mame_timer_set(double_to_mame_time(TIME_IN_SEC(((m68901_base[0x10]>>8) & 0xff) * 200/M68901_CLK)),0,timerb_int);
+        mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), ((m68901_base[0x10]>>8) & 0xff) * 200),0,timera_int);
         m68901_int_gen(TMRB);           // Fire an interrupt.
 }
 
 static void timerc_int(int param)
 {
-        mame_timer_set(double_to_mame_time(TIME_IN_SEC(((m68901_base[0x11]>>8) & 0xff)* 200/M68901_CLK)),0,timerc_int);
+        mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), ((m68901_base[0x11]>>8) & 0xff) * 200),0,timera_int);
         m68901_int_gen(TMRC);           // Fire an interrupt.
 }
 
@@ -398,7 +432,7 @@ static void timerd_int(int param)
 /* Called by anything that generates a MFD interrupt */
 /* Requires: MFD line number */
 
-void m68901_int_gen(int source)
+static void m68901_int_gen(int source)
 {
 // logerror("M68901 interrupt %d requested.\n",source);
 
@@ -441,11 +475,11 @@ switch(offset)
                       break;
 
         case 0x10:    mame_printf_debug("Timer B Data:%4x\n",value);                                                           // Timer B Data Register
-//                    mame_timer_set(double_to_mame_time(TIME_IN_SEC(value * 200/M68901_CLK)),0,timerb_int);
+//                    mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), value * 200),0,timerb_int);
                       break;
 
         case 0x11:    mame_printf_debug("Timer C Data:%4x\n",value);                                                        // Timer C Data Register
-//                      mame_timer_set(double_to_mame_time(TIME_IN_SEC(value * 200/M68901_CLK)),0,timerc_int);
+//                    mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), value * 200),0,timerc_int);
                       break;
 
         case 0x12:    mame_printf_debug("Timer D Data:%4x\n",value);
@@ -842,7 +876,6 @@ static MACHINE_DRIVER_START( micro3d )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(40000000/8*4, 192*4, 0, 144*4, 434, 0, 400)
 
-	MDRV_VIDEO_START(micro3d)
 	MDRV_VIDEO_UPDATE(tms340x0)
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")

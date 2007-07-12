@@ -10,8 +10,8 @@
 #include "fastfred.h"
 
 extern UINT8 galaxian_stars_on;
-extern void galaxian_init_stars(int colors_offset);
-extern void galaxian_draw_stars(mame_bitmap *bitmap);
+void galaxian_init_stars(running_machine *machine, int colors_offset);
+void galaxian_draw_stars(running_machine *machine, mame_bitmap *bitmap);
 
 UINT8 *fastfred_videoram;
 UINT8 *fastfred_spriteram;
@@ -254,7 +254,7 @@ WRITE8_HANDLER( fastfred_flip_screen_y_w )
  *
  *************************************/
 
-static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -319,7 +319,7 @@ static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 			flipy = !flipy;
 		}
 
-		drawgfx(bitmap,Machine->gfx[1],
+		drawgfx(bitmap,machine->gfx[1],
 				code,
 				colorbank | (fastfred_spriteram[offs + 2] & 0x07),
 				flipx,flipy,
@@ -333,7 +333,7 @@ VIDEO_UPDATE( fastfred )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 
-	draw_sprites(bitmap, cliprect);
+	draw_sprites(machine, bitmap, cliprect);
 	return 0;
 }
 
@@ -384,7 +384,7 @@ VIDEO_START( imago )
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 
 	/* the game has a galaxian starfield */
-	galaxian_init_stars(256);
+	galaxian_init_stars(machine, 256);
 	galaxian_stars_on = 1;
 
 	/* web colors */
@@ -396,11 +396,11 @@ VIDEO_UPDATE( imago )
 {
 	tilemap_draw(bitmap,cliprect,web_tilemap,0,0);
 
-	galaxian_draw_stars(bitmap);
+	galaxian_draw_stars(machine, bitmap);
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 
-	draw_sprites(bitmap, cliprect);
+	draw_sprites(machine, bitmap, cliprect);
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	return 0;

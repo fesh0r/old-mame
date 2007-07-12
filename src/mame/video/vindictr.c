@@ -98,7 +98,7 @@ VIDEO_START( vindictr )
 	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols, TILEMAP_OPAQUE, 8,8, 64,64);
 
 	/* initialize the motion objects */
-	atarimo_init(0, &modesc);
+	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
 	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8,8, 64,32);
@@ -143,7 +143,7 @@ WRITE16_HANDLER( vindictr_paletteram_w )
  *
  *************************************/
 
-void vindictr_scanline_update(int scanline)
+void vindictr_scanline_update(running_machine *machine, int scrnum, int scanline)
 {
 	UINT16 *base = &atarigen_alpha[((scanline - 8) / 8) * 64 + 42];
 	int x;
@@ -198,8 +198,8 @@ void vindictr_scanline_update(int scanline)
 			{
 				/* a new vscroll latches the offset into a counter; we must adjust for this */
 				int offset = scanline;
-				if (offset > Machine->screen[0].visarea.max_y)
-					offset -= Machine->screen[0].visarea.max_y + 1;
+				if (offset > machine->screen[0].visarea.max_y)
+					offset -= machine->screen[0].visarea.max_y + 1;
 
 				if (playfield_yscroll != ((data - offset) & 0x1ff))
 				{
@@ -231,7 +231,7 @@ VIDEO_UPDATE( vindictr )
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 0, 0);
 
 	/* draw and merge the MO */
-	mobitmap = atarimo_render(0, cliprect, &rectlist);
+	mobitmap = atarimo_render(machine, 0, cliprect, &rectlist);
 	for (r = 0; r < rectlist.numrects; r++, rectlist.rect++)
 		for (y = rectlist.rect->min_y; y <= rectlist.rect->max_y; y++)
 		{

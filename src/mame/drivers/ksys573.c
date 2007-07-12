@@ -466,7 +466,7 @@ static WRITE32_HANDLER( control_w )
 #define ATAPI_DATA_SIZE ( 64 * 1024 )
 
 static UINT8 *atapi_regs;
-static void *atapi_timer;
+static mame_timer *atapi_timer;
 static pSCSIDispatch atapi_device;
 static void *atapi_device_data;
 static UINT16 *atapi_data;
@@ -479,7 +479,7 @@ static void atapi_xfer_end( int x )
 	int i, n_this;
 	UINT8 sector_buffer[ 4096 ];
 
-	timer_adjust(atapi_timer, TIME_NEVER, 0, 0);
+	mame_timer_adjust(atapi_timer, time_never, 0, time_never);
 
 //  verboselog( 2, "atapi_xfer_end( %d ) atapi_xferlen = %d, atapi_xfermod=%d\n", x, atapi_xfermod, atapi_xferlen );
 
@@ -524,7 +524,7 @@ static void atapi_xfer_end( int x )
 		atapi_regs[ATAPI_REG_COUNTLOW] = atapi_xferlen & 0xff;
 		atapi_regs[ATAPI_REG_COUNTHIGH] = (atapi_xferlen>>8)&0xff;
 
-		timer_adjust(atapi_timer, TIME_IN_CYCLES((ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048)), 0), 0, 0);
+		mame_timer_adjust(atapi_timer, MAME_TIME_IN_CYCLES((ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048)), 0), 0, time_zero);
 	}
 	else
 	{
@@ -771,7 +771,7 @@ static WRITE32_HANDLER( atapi_w )
 
 					case 0x45: // PLAY
 						atapi_regs[ATAPI_REG_CMDSTATUS] = ATAPI_STAT_BSY;
-						timer_adjust( atapi_timer, TIME_IN_CYCLES( ATAPI_CYCLES_PER_SECTOR, 0 ), 0, 0 );
+						mame_timer_adjust( atapi_timer, MAME_TIME_IN_CYCLES( ATAPI_CYCLES_PER_SECTOR, 0 ), 0, time_zero );
 						break;
 
 					case 0xbb: // SET CDROM SPEED
@@ -905,8 +905,8 @@ static void atapi_init(void)
 	atapi_data_len = 0;
 	atapi_cdata_wait = 0;
 
-	atapi_timer = timer_alloc( atapi_xfer_end );
-	timer_adjust(atapi_timer, TIME_NEVER, 0, 0);
+	atapi_timer = mame_timer_alloc( atapi_xfer_end );
+	mame_timer_adjust(atapi_timer, time_never, 0, time_never);
 
 	// allocate a SCSI CD-ROM device
 	atapi_device = SCSI_DEVICE_CDROM;
@@ -964,7 +964,7 @@ static void cdrom_dma_write( UINT32 n_address, INT32 n_size )
 	verboselog( 2, "atapi_xfer_end: %d %d\n", atapi_xferlen, atapi_xfermod );
 
 	// set a transfer complete timer (Note: CYCLES_PER_SECTOR can't be lower than 2000 or the BIOS ends up "out of order")
-	timer_adjust(atapi_timer, TIME_IN_CYCLES((ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048)), 0), 0, 0);
+	mame_timer_adjust(atapi_timer, MAME_TIME_IN_CYCLES((ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048)), 0), 0, time_zero);
 }
 
 static UINT32 m_n_security_control;
@@ -1103,7 +1103,7 @@ static WRITE32_HANDLER( flash_w )
 
 /* Root Counters */
 
-static void *m_p_timer_root[ 3 ];
+static mame_timer *m_p_timer_root[ 3 ];
 static UINT16 m_p_n_root_count[ 3 ];
 static UINT16 m_p_n_root_mode[ 3 ];
 static UINT16 m_p_n_root_target[ 3 ];
@@ -1178,7 +1178,7 @@ static void root_timer_adjust( int n_counter )
 {
 	if( ( m_p_n_root_mode[ n_counter ] & RC_STOP ) != 0 )
 	{
-		timer_adjust( m_p_timer_root[ n_counter ], TIME_NEVER, n_counter, 0 );
+		mame_timer_adjust( m_p_timer_root[ n_counter ], time_never, n_counter, time_zero);
 	}
 	else
 	{
@@ -1192,7 +1192,7 @@ static void root_timer_adjust( int n_counter )
 
 		n_duration *= root_divider( n_counter );
 
-		timer_adjust( m_p_timer_root[ n_counter ], TIME_IN_SEC( (double)n_duration / 33868800 ), n_counter, 0 );
+		mame_timer_adjust( m_p_timer_root[ n_counter ], scale_up_mame_time(MAME_TIME_IN_HZ(33868800), n_duration), n_counter, time_zero);
 	}
 }
 
@@ -1215,7 +1215,7 @@ static void root_finished( int n_counter )
 	}
 }
 
-WRITE32_HANDLER( k573_counter_w )
+static WRITE32_HANDLER( k573_counter_w )
 {
 	int n_counter;
 
@@ -1255,7 +1255,7 @@ WRITE32_HANDLER( k573_counter_w )
 	root_timer_adjust( n_counter );
 }
 
-READ32_HANDLER( k573_counter_r )
+static READ32_HANDLER( k573_counter_r )
 {
 	int n_counter;
 	UINT32 data;
@@ -1391,7 +1391,7 @@ static double analogue_inputs_callback( int input )
 	return 0;
 }
 
-void *atapi_get_device(void)
+static void *atapi_get_device(void)
 {
 	void *ret;
 	atapi_device(SCSIOP_GET_DEVICE, atapi_device_data, 0, (UINT8 *)&ret);
@@ -1488,7 +1488,7 @@ static DRIVER_INIT( konami573 )
 
 	for (i = 0; i < 3; i++)
 	{
-		m_p_timer_root[i] = timer_alloc(root_finished);
+		m_p_timer_root[i] = mame_timer_alloc(root_finished);
 	}
 
 	timekeeper_init( 0, TIMEKEEPER_M48T58, memory_region( REGION_USER11 ) );
@@ -1531,7 +1531,7 @@ static struct PSXSPUinterface konami573_psxspu_interface =
 	psx_dma_install_write_handler
 };
 
-INTERRUPT_GEN( sys573_vblank )
+static INTERRUPT_GEN( sys573_vblank )
 {
 	if( strcmp( Machine->gamedrv->name, "ddr2ml" ) == 0 )
 	{
@@ -2123,7 +2123,7 @@ static char *binary( UINT32 data )
 	return s;
 }
 
-UINT32 a,b,c,d;
+static UINT32 a,b,c,d;
 
 static UINT16 gx894pwbba_output_data[ 8 ];
 static void (*gx894pwbba_output_callback)( int offset, int data );
@@ -3963,6 +3963,46 @@ ROM_START( gtrfrk5m )
 	DISK_IMAGE_READONLY( "a26jaa02", 0, MD5(885b18ce273770330aefa0276911c046) SHA1(635aee062df45c83b080612d29101fe70c14979d) )
 ROM_END
 
+ROM_START( gtrfrk6m )
+	ROM_REGION32_LE( 0x080000, REGION_USER1, 0 )
+	SYS573_BIOS_A
+
+	ROM_REGION( 0x0001014, REGION_USER2, 0 ) /* install security cart eeprom */
+	ROM_LOAD( "gcb06ja.u1",   0x000000, 0x001014, BAD_DUMP CRC(673c98ab) SHA1(b1d889bf4fc5e425056acb6b72b2c563966fb7d7) )
+
+	ROM_REGION( 0x1000000, REGION_USER3, 0 ) /* onboard flash */
+	ROM_FILL( 0x0000000, 0x1000000, 0xff )
+
+	ROM_REGION( 0x2000000, REGION_USER4, 0 ) /* PCCARD1 */
+	ROM_FILL( 0x0000000, 0x2000000, 0xff )
+
+	ROM_REGION( 0x000008, REGION_USER9, 0 ) /* install security cart id */
+	ROM_LOAD( "gcb06ja.u6",   0x000000, 0x000008, BAD_DUMP CRC(ce84419e) SHA1(839e8ee080ecfc79021a06417d930e8b32dfc6a1) )
+
+	DISK_REGION( REGION_DISKS )
+	DISK_IMAGE_READONLY( "b06jaa02", 0, MD5(8191da2660bb645fcfee9fb60baef242) SHA1(e8be8bdc0cbfb95a0a56ab89f39de3089d31f305) )
+ROM_END
+
+ROM_START( gtfrk11m )
+	ROM_REGION32_LE( 0x080000, REGION_USER1, 0 )
+	SYS573_BIOS_A
+
+	ROM_REGION( 0x0001014, REGION_USER2, 0 ) /* security cart eeprom */
+	ROM_LOAD( "gcd39ja.u1",   0x000000, 0x001014, BAD_DUMP CRC(9bd81d0a) SHA1(c95f6d7317bf88177f7217de4ba4376485d5cdbf) )
+
+	ROM_REGION( 0x1000000, REGION_USER3, 0 ) /* onboard flash */
+	ROM_FILL( 0x0000000, 0x1000000, 0xff )
+
+	ROM_REGION( 0x2000000, REGION_USER4, 0 ) /* PCCARD1 */
+	ROM_FILL( 0x0000000, 0x2000000, 0xff )
+
+	ROM_REGION( 0x000008, REGION_USER9, 0 ) /* install security cart id */
+	ROM_LOAD( "gcd39ja.u6",   0x000000, 0x000008, BAD_DUMP CRC(ce84419e) SHA1(839e8ee080ecfc79021a06417d930e8b32dfc6a1) )
+
+	DISK_REGION( REGION_DISKS )
+	DISK_IMAGE_READONLY( "d39jaa02", 0, MD5(4730dd81132cdac6f0cb7cc4c9753329) SHA1(b9425ab6bc7305eac2fef9799b7d46b18462ea84) )
+ROM_END
+
 ROM_START( konam80a )
 	ROM_REGION32_LE( 0x080000, REGION_USER1, 0 )
 	SYS573_BIOS_A
@@ -4147,5 +4187,7 @@ GAME( 2000, dmx2m,    sys573,   konami573, dmx,       dmx,        ROT0, "Konami"
 GAME( 2001, gtrfrk5m, sys573,   konami573, gtrfrks,   gtrfrkdigital,ROT0, "Konami", "Guitar Freaks 5th Mix (G*A26 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.9 */
 GAME( 2001, ddr5m,    sys573,   konami573, ddr,       ddrdigital, ROT0, "Konami", "Dance Dance Revolution 5th Mix (G*A27 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.9 */
 GAME( 2001, dmx2majp, sys573,   konami573, dmx,       dmx,        ROT0, "Konami", "Dance Maniax 2nd Mix Append J-Paradise (G*A38 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.9 */
+GAME( 2001, gtrfrk6m, sys573,   konami573, gtrfrks,   gtrfrkdigital,ROT0, "Konami", "Guitar Freaks 6th Mix (G*B06 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.9 */
 GAME( 2001, ddrmax,   sys573,   konami573, ddr,       ddrdigital, ROT0, "Konami", "DDR Max - Dance Dance Revolution 6th Mix (G*B19 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.9 */
 GAME( 2002, ddrmax2,  sys573,   konami573, ddr,       ddrdigital, ROT0, "Konami", "DDR Max 2 - Dance Dance Revolution 7th Mix (G*B20 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.9 */
+GAME( 2004, gtfrk11m, sys573,   konami573, gtrfrks,   gtrfrkdigital,ROT0, "Konami", "Guitar Freaks 11th Mix (G*D39 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.95 */

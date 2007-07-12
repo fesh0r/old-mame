@@ -85,7 +85,7 @@ VIDEO_START( blstroid )
 	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 16,8, 64,64);
 
 	/* initialize the motion objects */
-	atarimo_init(0, &modesc);
+	atarimo_init(machine, 0, &modesc);
 }
 
 
@@ -111,7 +111,7 @@ static void irq_on(int param)
 }
 
 
-void blstroid_scanline_update(int scanline)
+void blstroid_scanline_update(running_machine *machine, int scrnum, int scanline)
 {
 	int offset = (scanline / 8) * 64 + 40;
 
@@ -119,6 +119,9 @@ void blstroid_scanline_update(int scanline)
 	if (offset < 0x1000)
 		if (atarigen_playfield[offset] & 0x8000)
 		{
+			mame_time period_on;
+			mame_time period_off;
+
 			/* fix me - the only thing this IRQ does it tweak the starting MO link */
 			/* unfortunately, it does it too early for the given MOs! */
 			/* perhaps it is not actually hooked up on the real PCB... */
@@ -126,8 +129,11 @@ void blstroid_scanline_update(int scanline)
 
 			/* set a timer to turn the interrupt on at HBLANK of the 7th scanline */
 			/* and another to turn it off one scanline later */
-			mame_timer_set(double_to_mame_time(mame_time_to_double(video_screen_get_scan_period(0)) * 7.9), 0, irq_on);
-			mame_timer_set(double_to_mame_time(mame_time_to_double(video_screen_get_scan_period(0)) * 8.9), 0, irq_off);
+			period_on  = video_screen_get_time_until_pos(scrnum, video_screen_get_vpos(scrnum) + 7, machine->screen[scrnum].width * 0.9);
+			period_off = video_screen_get_time_until_pos(scrnum, video_screen_get_vpos(scrnum) + 8, machine->screen[scrnum].width * 0.9);
+
+			mame_timer_set(period_on,  0, irq_on);
+			mame_timer_set(period_off, 0, irq_off);
 		}
 }
 
@@ -149,7 +155,7 @@ VIDEO_UPDATE( blstroid )
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 0, 0);
 
 	/* draw and merge the MO */
-	mobitmap = atarimo_render(0, cliprect, &rectlist);
+	mobitmap = atarimo_render(machine, 0, cliprect, &rectlist);
 	for (r = 0; r < rectlist.numrects; r++, rectlist.rect++)
 		for (y = rectlist.rect->min_y; y <= rectlist.rect->max_y; y++)
 		{

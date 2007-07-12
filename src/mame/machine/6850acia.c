@@ -37,9 +37,9 @@ enum parity_type
 	EVEN
 };
 
-const int div_type[3] = { 1, 16, 64 };
+static const int div_type[3] = { 1, 16, 64 };
 
-const int wordtype [8][3] =
+static const int wordtype [8][3] =
 {
 	{7, EVEN, 2},
 	{7, ODD, 2},
@@ -94,8 +94,8 @@ typedef struct _acia_6850_
 
 static acia_6850 acia[MAX_ACIA];
 
-void receive_event(int which);
-void transmit_event(int which);
+static void receive_event(int which);
+static void transmit_event(int which);
 
 /*
     Reset the chip
@@ -131,8 +131,8 @@ void acia6850_config(int which, const struct acia6850_interface *intf)
 	acia_p->tx_clock = intf->tx_clock;
 	acia_p->rx_pin = intf->rx_pin;
 	acia_p->tx_pin = intf->tx_pin;
-	acia_p->rx_timer = timer_alloc(receive_event);
-	acia_p->tx_timer = timer_alloc(transmit_event);
+	acia_p->rx_timer = mame_timer_alloc(receive_event);
+	acia_p->tx_timer = mame_timer_alloc(transmit_event);
 	acia_p->int_callback = intf->int_callback;
 
 	mame_timer_reset(acia_p->rx_timer, time_never);
@@ -203,22 +203,22 @@ void acia6850_ctrl_w(int which, UINT8 data)
 	/* After writing the word type, start receive clock */
 	if(!acia_p->reset)
 	{
-		int bitrate = acia_p->rx_clock / acia_p->divide;
+		mame_time period = scale_up_mame_time(MAME_TIME_IN_HZ(acia_p->rx_clock), acia_p->divide);
 		/* TODO! */
-		timer_adjust(acia_p->rx_timer, TIME_IN_HZ(bitrate), which, TIME_IN_HZ(bitrate));
+		mame_timer_adjust(acia_p->rx_timer, period, which, period);
 	}
 }
 
-void tdr_to_shift(int which)
+static void tdr_to_shift(int which)
 {
 		acia_6850 *acia_p = &acia[which];
-		int bitrate = acia_p->rx_clock / acia_p->divide;
+		mame_time period = scale_up_mame_time(MAME_TIME_IN_HZ(acia_p->tx_clock), acia_p->divide);
 
 		acia_p->tx_shift = acia[which].tdr;
 		acia_p->status &= ~STATUS_TDRE;
 
 		/* Start the transmit timer */
-		timer_adjust(acia_p->tx_timer, TIME_IN_HZ(bitrate), which, TIME_IN_HZ(bitrate));
+		mame_timer_adjust(acia_p->tx_timer, period, which, period);
 }
 
 
@@ -230,7 +230,7 @@ void acia6850_data_w(int which, UINT8 data)
 	if (!acia[which].reset)
 	{
 		acia[which].tdr = data;
-		timer_set(TIME_NOW, which, tdr_to_shift);
+		mame_timer_set(time_zero, which, tdr_to_shift);
 		//printf("ACIA %d Transmit: %x (%c)\n", which, data, data);
 	}
 	else
@@ -256,7 +256,7 @@ UINT8 acia6850_data_r(int which)
 /*
     Transmit a bit
 */
-void transmit_event(int which)
+static void transmit_event(int which)
 {
 	acia_6850 *acia_p = &acia[which];
 
@@ -322,7 +322,7 @@ void transmit_event(int which)
 }
 
 /* Called on receive timer event */
-void receive_event(int which)
+static void receive_event(int which)
 {
 	acia_6850 *acia_p = &acia[which];
 

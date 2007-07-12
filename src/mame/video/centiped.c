@@ -193,8 +193,8 @@ static void init_penmask(void)
 
 ***************************************************************************/
 
-#define TOTAL_COLORS(gfxn) (Machine->gfx[gfxn]->total_colors * Machine->gfx[gfxn]->color_granularity)
-#define COLOR(gfxn,offs) (colortable[Machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
+#define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
+#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
 
 PALETTE_INIT( centiped )
 {
@@ -508,6 +508,9 @@ VIDEO_UPDATE( milliped )
 		int flipy = (spriteram[offs] & 0x80);
 		int x = spriteram[offs + 0x20];
 		int y = 240 - spriteram[offs + 0x10];
+		if (flipx) {
+			flipy = !flipy;
+		}
 
 		drawgfx(bitmap, machine->gfx[1], code, color, flipx, flipy, x, y,
 				&spriteclip, TRANSPARENCY_PENS, penmask[color & 0x3f]);

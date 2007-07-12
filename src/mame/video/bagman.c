@@ -7,7 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "res_net.h"
+#include "video/resnet.h"
 
 
 UINT8 *bagman_video_enable;
@@ -94,7 +94,7 @@ WRITE8_HANDLER( bagman_flipscreen_w )
 
 static TILE_GET_INFO( get_bg_tile_info )
 {
-	int gfxbank = (Machine->gfx[2] && (colorram[tile_index] & 0x10)) ? 2 : 0;
+	int gfxbank = (machine->gfx[2] && (colorram[tile_index] & 0x10)) ? 2 : 0;
 	int code = videoram[tile_index] + 8 * (colorram[tile_index] & 0x20);
 	int color = colorram[tile_index] & 0x0f;
 
@@ -107,7 +107,7 @@ VIDEO_START( bagman )
 		TILEMAP_OPAQUE, 8, 8, 32, 32);
 }
 
-static void bagman_draw_sprites( mame_bitmap *bitmap )
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -132,28 +132,22 @@ static void bagman_draw_sprites( mame_bitmap *bitmap )
 		}
 
 		if (spriteram[offs + 2] && spriteram[offs + 3])
-			drawgfx(bitmap,Machine->gfx[1],
+			drawgfx(bitmap,machine->gfx[1],
 					(spriteram[offs] & 0x3f) + 2 * (spriteram[offs + 1] & 0x20),
 					spriteram[offs + 1] & 0x1f,
 					flipx,flipy,
 					sx,sy+1,	/* compensate misplacement */
-					&Machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+					cliprect,TRANSPARENCY_PEN,0);
 	}
 }
 
-/***************************************************************************
 
-  Draw the game screen in the given mame_bitmap.
-  Do NOT call osd_update_display() from this function, it will be called by
-  the main emulation engine.
-
-***************************************************************************/
 VIDEO_UPDATE( bagman )
 {
 	if (*bagman_video_enable == 0)
 		return 0;
 
-	tilemap_draw(bitmap, &machine->screen[0].visarea, bg_tilemap, 0, 0);
-	bagman_draw_sprites(bitmap);
+	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
+	draw_sprites(machine, bitmap, cliprect);
 	return 0;
 }

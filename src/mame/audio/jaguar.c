@@ -166,7 +166,7 @@ enum
 static UINT16 dsp_regs[DSP_REGS];
 
 static UINT16 serial_frequency;
-static void *serial_timer;
+static mame_timer *serial_timer;
 
 static UINT8 gpu_irq_state;
 
@@ -260,13 +260,13 @@ void cojag_sound_init(void)
 		jaguar_wave_rom[0x200 + i] = (int)(32767. * sin(2.0 * M_PI * (double)i / (double)0x80));
 
 		/* F1DA00 = traingle wave with noise */
-		jaguar_wave_rom[0x280 + i] = jaguar_wave_rom[0x000 + i] * (rand() % 32768) / 32768;
+		jaguar_wave_rom[0x280 + i] = jaguar_wave_rom[0x000 + i] * (mame_rand(Machine) % 32768) / 32768;
 
 		/* F1DC00 = spike */
 		jaguar_wave_rom[0x300 + i] = (i == 0x40) ? 32767 : 0;
 
 		/* F1DE00 = white noise */
-		jaguar_wave_rom[0x380 + i] = rand() % 32768;
+		jaguar_wave_rom[0x380 + i] = mame_rand(Machine) % 32768;
 	}
 
 #if ENABLE_SPEEDUP_HACKS
@@ -285,9 +285,9 @@ void cojag_sound_init(void)
 void cojag_sound_reset(void)
 {
 #if ENABLE_SPEEDUP_HACKS
-	serial_timer = timer_alloc(serial_chunky_callback);
+	serial_timer = mame_timer_alloc(serial_chunky_callback);
 #else
-	serial_timer = timer_alloc(serial_callback);
+	serial_timer = mame_timer_alloc(serial_callback);
 #endif
 }
 
@@ -461,8 +461,8 @@ WRITE32_HANDLER( jaguar_serial_w )
 				logerror("Unexpected write to SMODE = %X\n", data);
 			if ((data & 0x3f) == 0x15)
 			{
-				double rate = TIME_IN_HZ(26000000 / (32 * 2 * (serial_frequency + 1)));
-				timer_adjust(serial_timer, rate, 0, rate);
+				mame_time rate = scale_up_mame_time(MAME_TIME_IN_HZ(26000000), 32 * 2 * (serial_frequency + 1));
+				mame_timer_adjust(serial_timer, rate, 0, rate);
 			}
 			break;
 
