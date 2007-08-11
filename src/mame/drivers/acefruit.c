@@ -34,7 +34,7 @@ static void acefruit_update_irq( int vpos )
 
 static mame_timer *acefruit_refresh_timer;
 
-static void acefruit_refresh(int ref)
+static TIMER_CALLBACK( acefruit_refresh )
 {
 	int vpos = video_screen_get_vpos( 0 );
 
@@ -141,7 +141,7 @@ VIDEO_UPDATE( acefruit )
 
 static UINT32 sidewndr_payout_r(void *param)
 {
-	int bit_mask = (int)param;
+	int bit_mask = (FPTR)param;
 
 	switch (bit_mask)
 	{
@@ -157,7 +157,7 @@ static UINT32 sidewndr_payout_r(void *param)
 
 static UINT32 starspnr_coinage_r(void *param)
 {
-	int bit_mask = (int)param;
+	int bit_mask = (FPTR)param;
 
 	switch (bit_mask)
 	{
@@ -177,7 +177,7 @@ static UINT32 starspnr_coinage_r(void *param)
 
 static UINT32 starspnr_payout_r(void *param)
 {
-	int bit_mask = (int)param;
+	int bit_mask = (FPTR)param;
 
 	switch (bit_mask)
 	{

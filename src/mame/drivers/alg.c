@@ -35,7 +35,7 @@ static render_texture *video_texture;
 static render_texture *overlay_texture;
 
 static void video_cleanup(running_machine *machine);
-static void response_timer(int param);
+static TIMER_CALLBACK( response_timer );
 
 
 
@@ -113,15 +113,13 @@ static VIDEO_UPDATE( alg )
 		/* first lay down the video data */
 		laserdisc_get_video(discinfo, &vidbitmap);
 		if (video_texture == NULL)
-			video_texture = render_texture_alloc(vidbitmap, NULL, 0, TEXFORMAT_YUY16, NULL, NULL);
-		else
-			render_texture_set_bitmap(video_texture, vidbitmap, NULL, 0, TEXFORMAT_YUY16);
+			video_texture = render_texture_alloc(NULL, NULL);
+		render_texture_set_bitmap(video_texture, vidbitmap, NULL, 0, TEXFORMAT_YUY16);
 
 		/* then overlay the Amiga video */
 		if (overlay_texture == NULL)
-			overlay_texture = render_texture_alloc(tmpbitmap, &fixedvis, 0, TEXFORMAT_PALETTEA16, NULL, NULL);
-		else
-			render_texture_set_bitmap(overlay_texture, tmpbitmap, &fixedvis, 0, TEXFORMAT_PALETTEA16);
+			overlay_texture = render_texture_alloc(NULL, NULL);
+		render_texture_set_bitmap(overlay_texture, tmpbitmap, &fixedvis, 0, TEXFORMAT_PALETTEA16);
 
 		/* add both quads to the screen */
 		render_container_empty(render_container_get_screen(screen));
@@ -166,7 +164,7 @@ static MACHINE_RESET( alg )
  *
  *************************************/
 
-static void response_timer(int param)
+static TIMER_CALLBACK( response_timer )
 {
 	/* if we still have data to send, do it now */
 	if (laserdisc_line_r(discinfo, LASERDISC_LINE_DATA_AVAIL) == ASSERT_LINE)
@@ -828,7 +826,7 @@ static DRIVER_INIT( none )
  *************************************/
 
 /* BIOS */
-GAMEB( 199?, alg_bios, 0,        alg_bios, alg_r1,   alg,    none,     ROT0,  "American Laser Games", "American Laser Games BIOS", NOT_A_DRIVER )
+GAMEB( 199?, alg_bios, 0,        alg_bios, alg_r1,   alg,    none,     ROT0,  "American Laser Games", "American Laser Games BIOS", GAME_IS_BIOS_ROOT )
 
 /* Rev. A board */
 /* PAL R1 */

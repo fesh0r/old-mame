@@ -188,8 +188,8 @@ static void build_quarks(void)
 		add_quark(description_table, drivnum, quark_string_crc(driver->description));
 
 		/* only track actual driver ROM entries */
-		if (driver->rom && (driver->flags & NOT_A_DRIVER) == 0)
-			add_quark(roms_table,    drivnum, (UINT32)driver->rom);
+		if (driver->rom && (driver->flags & GAME_NO_STANDALONE) == 0)
+			add_quark(roms_table,    drivnum, (FPTR)driver->rom);
 	}
 
 	/* allocate memory for a quark table of strings */
@@ -226,7 +226,7 @@ static int validate_driver(int drivnum, const machine_config *drv)
 
 	/* if we have at least 100 drivers, validate the clone */
 	/* (100 is arbitrary, but tries to avoid tiny.mak dependencies) */
-	if (driver_get_count() > 100 && !clone_of && strcmp(driver->parent, "0"))
+	if (driver_list_get_count(drivers) > 100 && !clone_of && strcmp(driver->parent, "0"))
 	{
 		mame_printf_error("%s: %s is a non-existant clone\n", driver->source_file, driver->parent);
 		error = TRUE;
@@ -240,7 +240,7 @@ static int validate_driver(int drivnum, const machine_config *drv)
 	}
 
 	/* look for clones that are too deep */
-	if (clone_of != NULL && (clone_of = driver_get_clone(clone_of)) != NULL && (clone_of->flags & NOT_A_DRIVER) == 0)
+	if (clone_of != NULL && (clone_of = driver_get_clone(clone_of)) != NULL && (clone_of->flags & GAME_IS_BIOS_ROOT) == 0)
 	{
 		mame_printf_error("%s: %s is a clone of a clone\n", driver->source_file, driver->name);
 		error = TRUE;
@@ -264,7 +264,7 @@ static int validate_driver(int drivnum, const machine_config *drv)
 
 #ifndef MESS
 	/* make sure sound-less drivers are flagged */
-	if ((driver->flags & NOT_A_DRIVER) == 0 && drv->sound[0].sound_type == 0 && (driver->flags & GAME_NO_SOUND) == 0 && strcmp(driver->name, "minivadr"))
+	if ((driver->flags & GAME_IS_BIOS_ROOT) == 0 && drv->sound[0].sound_type == 0 && (driver->flags & GAME_NO_SOUND) == 0 && strcmp(driver->name, "minivadr"))
 	{
 		mame_printf_error("%s: %s missing GAME_NO_SOUND flag\n", driver->source_file, driver->name);
 		error = TRUE;
@@ -299,9 +299,9 @@ static int validate_driver(int drivnum, const machine_config *drv)
 
 	/* find shared ROM entries */
 #ifndef MESS
-	if (driver->rom && (driver->flags & NOT_A_DRIVER) == 0)
+	if (driver->rom && (driver->flags & GAME_IS_BIOS_ROOT) == 0)
 	{
-		crc = (UINT32)driver->rom;
+		crc = (FPTR)driver->rom;
 		for (entry = first_hash_entry(roms_table, crc); entry; entry = entry->next)
 			if (entry->crc == crc && entry != &roms_table->entry[drivnum])
 			{
@@ -776,17 +776,11 @@ static void display_valid_coin_order(int drivnum, const input_port_entry *memory
 
 	/* now display the proper coin entry list */
 	mame_printf_error( "%s: %s proper coin sort order should be:\n", driver->source_file, driver->name );
-	for( i = INPUT_STRING_9C_1C; i <= INPUT_STRING_1C_9C; i++ )
-	{
-		for( j = 0; j < coin_len; j++ )
-		{
+	for (i = INPUT_STRING_9C_1C; i <= INPUT_STRING_1C_9C; i++)
+		for (j = 0; j < coin_len; j++)
 			/* if it's on our list, display it */
-			if ( coin_list[j] == i )
-			{
-				mame_printf_error( "%s\n", input_port_string_from_token(INPUT_PORT_UINT32(i)) );
-			}
-		}
-	}
+			if (coin_list[j] == i)
+				mame_printf_error("%s\n", input_port_string_from_token(INPUT_PORT_UINT32(i)));
 }
 
 
@@ -798,9 +792,8 @@ static void display_valid_coin_order(int drivnum, const input_port_entry *memory
 
 static int validate_inputs(int drivnum, const machine_config *drv, input_port_entry **memory)
 {
-	const char *cabinet = input_port_string_from_token(INPUT_PORT_UINT32(INPUT_STRING_Cabinet));
 	const char *demo_sounds = input_port_string_from_token(INPUT_PORT_UINT32(INPUT_STRING_Demo_Sounds));
-	const char *flip_screen = input_port_string_from_token(INPUT_PORT_UINT32(INPUT_STRING_Flip_Screen));
+	const char *flipscreen = input_port_string_from_token(INPUT_PORT_UINT32(INPUT_STRING_Flip_Screen));
 	const input_port_entry *inp, *last_dipname_entry = NULL;
 	const game_driver *driver = drivers[drivnum];
 	int empty_string_found = FALSE;
@@ -815,7 +808,7 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 		return FALSE;
 
 	/* skip if we already validated these ports */
-	crc = (UINT32)driver->ipt;
+	crc = (FPTR)driver->ipt;
 	for (entry = first_hash_entry(inputs_table, crc); entry; entry = entry->next)
 		if (entry->crc == crc && driver->ipt == drivers[entry - inputs_table->entry]->ipt)
 			return FALSE;
@@ -829,9 +822,7 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 	/* iterate over the results */
 	for (inp = *memory; inp->type != IPT_END; inp++)
 	{
-		quark_entry *entry;
 		int strindex = 0;
-		UINT32 crc;
 
 		if (port_type_is_analog(inp->type))
 		{
@@ -1039,14 +1030,6 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 		/* check for invalid DIP switch entries */
 		if (last_dipname_entry && inp->type == IPT_DIPSWITCH_SETTING)
 		{
-			/* make sure cabinet selections default to upright */
-			if (last_dipname_entry->name == cabinet && strindex == INPUT_STRING_Upright &&
-				last_dipname_entry->default_value != inp->default_value)
-			{
-				mame_printf_error("%s: %s Cabinet must default to Upright\n", driver->source_file, driver->name);
-				error = TRUE;
-			}
-
 			/* make sure demo sounds default to on */
 			if (last_dipname_entry->name == demo_sounds && strindex == INPUT_STRING_On &&
 				last_dipname_entry->default_value != inp->default_value)
@@ -1056,7 +1039,7 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 			}
 
 			/* check for bad flip screen options */
-			if (last_dipname_entry->name == flip_screen && (strindex == INPUT_STRING_Yes || strindex == INPUT_STRING_No))
+			if (last_dipname_entry->name == flipscreen && (strindex == INPUT_STRING_Yes || strindex == INPUT_STRING_No))
 			{
 				mame_printf_error("%s: %s has wrong Flip Screen option %s (must be Off/On)\n", driver->source_file, driver->name, inp->name);
 				error = TRUE;

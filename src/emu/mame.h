@@ -65,6 +65,7 @@
 #define GAMENOUN				"game"
 #define GAMESNOUN				"games"
 #define HISTORYNAME				"History"
+#define COPYRIGHT				"Copyright 2007, Nicola Salmoria\nand the MAME team\nhttp://mamedev.org"
 #else
 #define APPNAME					"MESS"
 #define APPNAME_LOWER			"mess"
@@ -75,6 +76,7 @@
 #define GAMENOUN				"system"
 #define GAMESNOUN				"systems"
 #define HISTORYNAME				"System Info"
+#define COPYRIGHT				"Copyright 2007, the MESS team\nhttp://mess.org"
 #endif
 
 
@@ -246,19 +248,25 @@ extern char build_version[];
 /* ----- core system management ----- */
 
 /* execute as configured by the OPTION_GAMENAME option */
-int run_game(const game_driver *driver);
+int mame_execute(void);
 
 /* return the current phase */
 int mame_get_phase(running_machine *machine);
 
-/* request callback on termination */
-void add_exit_callback(running_machine *machine, void (*callback)(running_machine *));
+/* request callback on frame update */
+void add_frame_callback(running_machine *machine, void (*callback)(running_machine *));
 
 /* request callback on reset */
 void add_reset_callback(running_machine *machine, void (*callback)(running_machine *));
 
 /* request callback on pause */
 void add_pause_callback(running_machine *machine, void (*callback)(running_machine *, int));
+
+/* request callback on termination */
+void add_exit_callback(running_machine *machine, void (*callback)(running_machine *));
+
+/* handle update tasks for a frame boundary */
+void mame_frame_update(running_machine *machine);
 
 
 
@@ -272,6 +280,9 @@ void mame_schedule_hard_reset(running_machine *machine);
 
 /* schedule a soft reset */
 void mame_schedule_soft_reset(running_machine *machine);
+
+/* schedule a new driver */
+void mame_schedule_new_driver(running_machine *machine, const game_driver *driver);
 
 /* schedule a save */
 void mame_schedule_save(running_machine *machine, const char *filename);
@@ -346,6 +357,9 @@ void CLIB_DECL logerror(const char *text,...) ATTR_PRINTF(1,2);
 
 /* adds a callback to be called on logerror() */
 void add_logerror_callback(running_machine *machine, void (*callback)(running_machine *, const char *));
+
+/* parse the configured INI files */
+void mame_parse_ini_files(core_options *options, const game_driver *driver);
 
 /* standardized random number generator */
 UINT32 mame_rand(running_machine *machine);

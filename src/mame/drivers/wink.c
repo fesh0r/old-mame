@@ -57,7 +57,7 @@ static WRITE8_HANDLER( sound_irq_w )
 {
 	cpunum_set_input_line(1,0,HOLD_LINE);
 	//sync with sound cpu (but it still loses some soundlatches...)
-	//mame_timer_set(time_zero, 0, NULL);
+	//timer_call_after_resynch(0, NULL);
 }
 
 static ADDRESS_MAP_START( wink_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -269,7 +269,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( wink )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 8, 8, 32, 32);
 }
 
 VIDEO_UPDATE( wink )

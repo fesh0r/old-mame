@@ -87,7 +87,7 @@ static void get_resolution(const char *name, win_window_config *config, int repo
 //  winvideo_init
 //============================================================
 
-int winvideo_init(running_machine *machine)
+void winvideo_init(running_machine *machine)
 {
 	int index;
 
@@ -101,27 +101,19 @@ int winvideo_init(running_machine *machine)
 	init_monitors();
 
 	// initialize the window system so we can make windows
-	if (winwindow_init(machine))
-		goto error;
+	winwindow_init(machine);
 
 	// create the windows
 	for (index = 0; index < video_config.numscreens; index++)
-		if (winwindow_video_window_create(index, pick_monitor(index), &video_config.window[index]))
-			goto error;
+		winwindow_video_window_create(index, pick_monitor(index), &video_config.window[index]);
 	if (video_config.mode != VIDEO_MODE_NONE)
 		SetForegroundWindow(win_window_list->hwnd);
 
 	// possibly create the debug window, but don't show it yet
 #ifdef MAME_DEBUG
 	if (options_get_bool(mame_options(), OPTION_DEBUG))
-		if (debugwin_init_windows())
-			return 1;
+		debugwin_init_windows();
 #endif
-
-	return 0;
-
-error:
-	return 1;
 }
 
 
@@ -316,7 +308,7 @@ static win_monitor_info *pick_monitor(int index)
 	scrname2 = options_get_string(mame_options(), option);
 
 	// decide which one we want to use
-	if (scrname2 != NULL && strcmp(scrname2, "auto") != 0)
+	if (strcmp(scrname2, "auto") != 0)
 		scrname = scrname2;
 
 	// get the aspect ratio
@@ -324,7 +316,7 @@ static win_monitor_info *pick_monitor(int index)
 	aspect = get_aspect(option, TRUE);
 
 	// look for a match in the name first
-	if (scrname != NULL)
+	if (scrname[0] != 0)
 		for (monitor = win_monitor_list; monitor != NULL; monitor = monitor->next)
 		{
 			char *utf8_device;
@@ -397,7 +389,7 @@ static void extract_video_config(void)
 		video_config.windowed = TRUE;
 #endif
 	stemp                      = options_get_string(mame_options(), WINOPTION_EFFECT);
-	if (stemp != NULL && strcmp(stemp, "none") != 0)
+	if (strcmp(stemp, "none") != 0)
 		load_effect_overlay(stemp);
 
 	// per-window options: extract the data

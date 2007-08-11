@@ -243,8 +243,10 @@ static ADDRESS_MAP_START( tubep_sound_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x07, 0x07) AM_WRITE(tubep_sound_unknown)
 ADDRESS_MAP_END
 
-static void scanline_callback(int scanline)
+static TIMER_CALLBACK( scanline_callback )
 {
+	int scanline = param;
+
 	/* interrupt is generated whenever line V6 from video part goes lo->hi */
 	/* that is when scanline is 64 and 192 accordingly */
 
@@ -762,7 +764,7 @@ static MACHINE_DRIVER_START( tubep )
 
 	MDRV_PALETTE_INIT(tubep)
 	MDRV_VIDEO_START(tubep)
-	MDRV_VIDEO_EOF(tubep_eof)
+	MDRV_VIDEO_EOF(tubep)
 	MDRV_VIDEO_UPDATE(tubep)
 
 	/* sound hardware */
@@ -821,7 +823,7 @@ static MACHINE_DRIVER_START( rjammer )
 
 	MDRV_PALETTE_INIT(rjammer)
 	MDRV_VIDEO_START(tubep)
-	MDRV_VIDEO_EOF(tubep_eof)
+	MDRV_VIDEO_EOF(tubep)
 	MDRV_VIDEO_UPDATE(rjammer)
 
 	/* sound hardware */

@@ -12,6 +12,7 @@
 
 #include "driver.h"
 #include "profiler.h"
+#include "pool.h"
 #include <math.h>
 
 
@@ -46,11 +47,10 @@ struct _mame_timer
 {
 	mame_timer *	next;
 	mame_timer *	prev;
-	void 			(*callback)(int);
-	void			(*callback_ptr)(void *);
+	void 			(*callback)(running_machine *, int);
+	void			(*callback_ptr)(running_machine *, void *);
 	int 			callback_param;
 	void *			callback_ptr_param;
-	int 			tag;
 	const char *	file;
 	int 			line;
 	const char *	func;
@@ -96,7 +96,7 @@ mame_time time_never;
 
 static void timer_postload(void);
 static void timer_logtimers(void);
-static void mame_timer_remove(mame_timer *which);
+static void timer_remove(mame_timer *which);
 
 
 
@@ -270,35 +270,20 @@ void timer_init(running_machine *machine)
 	timer_head = NULL;
 	timer_free_head = &timers[0];
 	for (i = 0; i < MAX_TIMERS-1; i++)
-	{
-		timers[i].tag = -1;
 		timers[i].next = &timers[i+1];
-	}
 	timers[MAX_TIMERS-1].next = NULL;
 	timer_free_tail = &timers[MAX_TIMERS-1];
 }
 
 
 /*-------------------------------------------------
-    timer_free - remove all timers on the current
-    resource tag
+    timer_destructor - destruct a timer from a
+    pool callback
 -------------------------------------------------*/
 
-void timer_free(void)
+void timer_destructor(void *ptr, size_t size)
 {
-	int tag = get_resource_tag();
-	mame_timer *timer, *next;
-
-	/* scan the list */
-	for (timer = timer_head; timer != NULL; timer = next)
-	{
-		/* prefetch the next timer in case we remove this one */
-		next = timer->next;
-
-		/* if this tag matches, remove it */
-		if (timer->tag == tag)
-			mame_timer_remove(timer);
-	}
+	timer_remove(ptr);
 }
 
 
@@ -354,14 +339,14 @@ void mame_timer_set_global_time(mame_time newbase)
 			{
 				LOG(("Timer %s:%d[%s] fired (expire=%.9f)\n", timer->file, timer->line, timer->func, mame_time_to_double(timer->expire)));
 				profiler_mark(PROFILER_TIMER_CALLBACK);
-				(*timer->callback)(timer->callback_param);
+				(*timer->callback)(Machine, timer->callback_param);
 				profiler_mark(PROFILER_END);
 			}
 			else if (timer->ptr && timer->callback_ptr)
 			{
 				LOG(("Timer %s:%d[%s] fired (expire=%.9f)\n", timer->file, timer->line, timer->func, mame_time_to_double(timer->expire)));
 				profiler_mark(PROFILER_TIMER_CALLBACK);
-				(*timer->callback_ptr)(timer->callback_ptr_param);
+				(*timer->callback_ptr)(Machine, timer->callback_ptr_param);
 				profiler_mark(PROFILER_END);
 			}
 		}
@@ -374,7 +359,7 @@ void mame_timer_set_global_time(mame_time newbase)
 		{
 			/* if the timer is temporary, remove it now */
 			if (timer->temporary)
-				mame_timer_remove(timer);
+				timer_remove(timer);
 
 			/* otherwise, reschedule it */
 			else
@@ -444,7 +429,7 @@ static void timer_postload(void)
 
 		/* temporary timers go away entirely */
 		if (t->temporary)
-			mame_timer_remove(t);
+			timer_remove(t);
 
 		/* permanent ones get added to our private list */
 		else
@@ -498,7 +483,7 @@ int timer_count_anonymous(void)
     isn't primed yet
 -------------------------------------------------*/
 
-INLINE mame_timer *_mame_timer_alloc_common(void (*callback)(int), void (*callback_ptr)(void *), void *param, const char *file, int line, const char *func, int temp)
+INLINE mame_timer *_mame_timer_alloc_common(void (*callback)(running_machine *, int), void (*callback_ptr)(running_machine *, void *), void *param, const char *file, int line, const char *func, int temp)
 {
 	mame_time time = get_current_time();
 	mame_timer *timer = timer_new();
@@ -511,7 +496,6 @@ INLINE mame_timer *_mame_timer_alloc_common(void (*callback)(int), void (*callba
 	timer->enabled = FALSE;
 	timer->temporary = temp;
 	timer->ptr = (callback_ptr != NULL);
-	timer->tag = get_resource_tag();
 	timer->period = time_zero;
 	timer->file = file;
 	timer->line = line;
@@ -524,43 +508,39 @@ INLINE mame_timer *_mame_timer_alloc_common(void (*callback)(int), void (*callba
 
 	/* if we're not temporary, register ourselve with the save state system */
 	if (!temp)
+	{
 		timer_register_save(timer);
+		restrack_register_object(OBJTYPE_TIMER, timer, 0, file, line);
+	}
 
 	/* return a handle */
 	return timer;
 }
 
-mame_timer *_mame_timer_alloc(void (*callback)(int), const char *file, int line, const char *func)
+mame_timer *_mame_timer_alloc(void (*callback)(running_machine *, int), const char *file, int line, const char *func)
 {
 	return _mame_timer_alloc_common(callback, NULL, NULL, file, line, func, FALSE);
 }
 
-mame_timer *_mame_timer_alloc_ptr(void (*callback_ptr)(void *), void *param, const char *file, int line, const char *func)
+mame_timer *_mame_timer_alloc_ptr(void (*callback_ptr)(running_machine *, void *), void *param, const char *file, int line, const char *func)
 {
 	return _mame_timer_alloc_common(NULL, callback_ptr, param, file, line, func, FALSE);
 }
 
 
 /*-------------------------------------------------
-    mame_timer_remove - remove a timer from the
+    timer_remove - remove a timer from the
     system
 -------------------------------------------------*/
 
-static void mame_timer_remove(mame_timer *which)
+static void timer_remove(mame_timer *which)
 {
-	/* error if this is an inactive timer */
-	if (which->tag == -1)
-		fatalerror("timer_remove: removing an inactive timer! (%s from %s:%d)\n", which->func, which->file, which->line);
-
 	/* if this is a callback timer, note that */
 	if (which == callback_timer)
 		callback_timer_modified = TRUE;
 
 	/* remove it from the list */
 	timer_list_remove(which);
-
-	/* mark it as dead */
-	which->tag = -1;
 
 	/* free it up by adding it back to the free list */
 	if (timer_free_tail)
@@ -586,10 +566,6 @@ static void mame_timer_remove(mame_timer *which)
 INLINE void mame_timer_adjust_common(mame_timer *which, mame_time duration, INT32 param, mame_time period)
 {
 	mame_time time = get_current_time();
-
-	/* error if this is an inactive timer */
-	if (which->tag == -1)
-		fatalerror("mame_timer_adjust: adjusting an inactive timer!\n");
 
 	/* if this is the callback timer, mark it modified */
 	if (which == callback_timer)
@@ -644,7 +620,7 @@ void mame_timer_adjust_ptr(mame_timer *which, mame_time duration, mame_time peri
     period
 -------------------------------------------------*/
 
-void _mame_timer_pulse(mame_time period, INT32 param, void (*callback)(int), const char *file, int line, const char *func)
+void _mame_timer_pulse(mame_time period, INT32 param, void (*callback)(running_machine *, int), const char *file, int line, const char *func)
 {
 	mame_timer *timer = _mame_timer_alloc_common(callback, NULL, NULL, file, line, func, FALSE);
 
@@ -652,7 +628,7 @@ void _mame_timer_pulse(mame_time period, INT32 param, void (*callback)(int), con
 	mame_timer_adjust(timer, period, param, period);
 }
 
-void _mame_timer_pulse_ptr(mame_time period, void *param, void (*callback)(void *), const char *file, int line, const char *func)
+void _mame_timer_pulse_ptr(mame_time period, void *param, void (*callback)(running_machine *, void *), const char *file, int line, const char *func)
 {
 	mame_timer *timer = _mame_timer_alloc_common(NULL, callback, param, file, line, func, FALSE);
 
@@ -666,7 +642,7 @@ void _mame_timer_pulse_ptr(mame_time period, void *param, void (*callback)(void 
     calls the callback after the given duration
 -------------------------------------------------*/
 
-void _mame_timer_set(mame_time duration, INT32 param, void (*callback)(int), const char *file, int line, const char *func)
+void _mame_timer_set(mame_time duration, INT32 param, void (*callback)(running_machine *, int), const char *file, int line, const char *func)
 {
 	mame_timer *timer = _mame_timer_alloc_common(callback, NULL, NULL, file, line, func, TRUE);
 
@@ -674,7 +650,7 @@ void _mame_timer_set(mame_time duration, INT32 param, void (*callback)(int), con
 	mame_timer_adjust(timer, duration, param, time_zero);
 }
 
-void _mame_timer_set_ptr(mame_time duration, void *param, void (*callback)(void *), const char *file, int line, const char *func)
+void _mame_timer_set_ptr(mame_time duration, void *param, void (*callback)(running_machine *, void *), const char *file, int line, const char *func)
 {
 	mame_timer *timer = _mame_timer_alloc_common(NULL, callback, param, file, line, func, TRUE);
 
@@ -694,10 +670,6 @@ void _mame_timer_set_ptr(mame_time duration, void *param, void (*callback)(void 
 
 void mame_timer_reset(mame_timer *which, mame_time duration)
 {
-	/* error if this is an inactive timer */
-	if (which->tag == -1)
-		fatalerror("mame_timer_reset: resetting an inactive timer!\n");
-
 	/* adjust the timer */
 	if (!which->ptr)
 		mame_timer_adjust(which, duration, which->callback_param, which->period);

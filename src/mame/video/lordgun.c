@@ -123,16 +123,16 @@ WRITE16_HANDLER( lordgun_vram_3_w )
 VIDEO_START( lordgun )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 8,8, 0x100, 0x40 );
+								TILEMAP_TYPE_TRANSPARENT, 8,8, 0x100, 0x40 );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16,16, 0x80,0x20 );
+								TILEMAP_TYPE_TRANSPARENT, 16,16, 0x80,0x20 );
 
 	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 32,32, 0x40,0x40 );
+								TILEMAP_TYPE_TRANSPARENT, 32,32, 0x40,0x40 );
 
 	tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 8,8, 0x40,0x20 );
+								TILEMAP_TYPE_TRANSPARENT, 8,8, 0x40,0x20 );
 
 	tilemap_set_scroll_rows(tilemap_0,1);
 	tilemap_set_scroll_cols(tilemap_0,1);
@@ -262,15 +262,15 @@ VIDEO_UPDATE( lordgun )
 	int y;
 
 #ifdef MAME_DEBUG
-if (code_pressed(KEYCODE_Z))
+if (input_code_pressed(KEYCODE_Z))
 {
 	int msk = 0;
 
-	if (code_pressed(KEYCODE_Q))	msk |= 1;
-	if (code_pressed(KEYCODE_W))	msk |= 2;
-	if (code_pressed(KEYCODE_E))    msk |= 4;
-	if (code_pressed(KEYCODE_R))	msk |= 8;
-	if (code_pressed(KEYCODE_A))	msk |= 16;
+	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(KEYCODE_E))    msk |= 4;
+	if (input_code_pressed(KEYCODE_R))	msk |= 8;
+	if (input_code_pressed(KEYCODE_A))	msk |= 16;
 	if (msk != 0) layers_ctrl &= msk;
 }
 #endif

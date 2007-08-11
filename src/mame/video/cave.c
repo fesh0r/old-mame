@@ -410,28 +410,28 @@ static void cave_vh_start(running_machine *machine, int num)
 	{
 		case 4:
 			tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
-										TILEMAP_TRANSPARENT, 8,8, 512/8,512/8 );
+										TILEMAP_TYPE_TRANSPARENT, 8,8, 512/8,512/8 );
 			tilemap_set_transparent_pen(tilemap_3, 0);
 			tilemap_set_scroll_rows(tilemap_3, 1);
 			tilemap_set_scroll_cols(tilemap_3, 1);
 
 		case 3:
 			tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-										TILEMAP_TRANSPARENT, 8,8, 512/8,512/8 );
+										TILEMAP_TYPE_TRANSPARENT, 8,8, 512/8,512/8 );
 			tilemap_set_transparent_pen(tilemap_2, 0);
 			tilemap_set_scroll_rows(tilemap_2, 1);
 			tilemap_set_scroll_cols(tilemap_2, 1);
 
 		case 2:
 			tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-										TILEMAP_TRANSPARENT, 8,8, 512/8,512/8 );
+										TILEMAP_TYPE_TRANSPARENT, 8,8, 512/8,512/8 );
 			tilemap_set_transparent_pen(tilemap_1, 0);
 			tilemap_set_scroll_rows(tilemap_1, 1);
 			tilemap_set_scroll_cols(tilemap_1, 1);
 
 		case 1:
 			tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-										TILEMAP_TRANSPARENT, 8,8, 512/8,512/8 );
+										TILEMAP_TYPE_TRANSPARENT, 8,8, 512/8,512/8 );
 			tilemap_set_transparent_pen(tilemap_0, 0);
 			tilemap_set_scroll_rows(tilemap_0, 1);
 			tilemap_set_scroll_cols(tilemap_0, 1);
@@ -479,7 +479,7 @@ VIDEO_START( sailormn_3_layers )
 
 	/* Layer 2 (8x8) needs to be handled differently */
 	tilemap_2 = tilemap_create(	sailormn_get_tile_info_2, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 8,8, 512/8,512/8 );
+								TILEMAP_TYPE_TRANSPARENT, 8,8, 512/8,512/8 );
 	tilemap_set_transparent_pen(tilemap_2, 0);
 	tilemap_set_scroll_rows(tilemap_2, 1);
 	tilemap_set_scroll_cols(tilemap_2, 1);
@@ -1439,23 +1439,23 @@ VIDEO_UPDATE( cave )
 #ifdef MAME_DEBUG
 {
 	static int rasflag, old_rasflag;
-	if ( code_pressed(KEYCODE_Z) || code_pressed(KEYCODE_X) || code_pressed(KEYCODE_C) ||
-    	 code_pressed(KEYCODE_V) || code_pressed(KEYCODE_B) )
+	if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) || input_code_pressed(KEYCODE_C) ||
+    	 input_code_pressed(KEYCODE_V) || input_code_pressed(KEYCODE_B) )
 	{
 		int msk = 0, val = 0;
 
-		if (code_pressed(KEYCODE_X))	val = 1;	// priority 0 only
-		if (code_pressed(KEYCODE_C))	val = 2;	// ""       1
-		if (code_pressed(KEYCODE_V))	val = 4;	// ""       2
-		if (code_pressed(KEYCODE_B))	val = 8;	// ""       3
+		if (input_code_pressed(KEYCODE_X))	val = 1;	// priority 0 only
+		if (input_code_pressed(KEYCODE_C))	val = 2;	// ""       1
+		if (input_code_pressed(KEYCODE_V))	val = 4;	// ""       2
+		if (input_code_pressed(KEYCODE_B))	val = 8;	// ""       3
 
-		if (code_pressed(KEYCODE_Z))	val = 1|2|4|8;	// All of the above priorities
+		if (input_code_pressed(KEYCODE_Z))	val = 1|2|4|8;	// All of the above priorities
 
-		if (code_pressed(KEYCODE_Q))	msk |= val <<  0;	// for layer 0
-		if (code_pressed(KEYCODE_W))	msk |= val <<  4;	// for layer 1
-		if (code_pressed(KEYCODE_E))	msk |= val <<  8;	// for layer 2
-		if (code_pressed(KEYCODE_R))	msk |= val << 12;	// for layer 3
-		if (code_pressed(KEYCODE_A))	msk |= val << 16;	// for sprites
+		if (input_code_pressed(KEYCODE_Q))	msk |= val <<  0;	// for layer 0
+		if (input_code_pressed(KEYCODE_W))	msk |= val <<  4;	// for layer 1
+		if (input_code_pressed(KEYCODE_E))	msk |= val <<  8;	// for layer 2
+		if (input_code_pressed(KEYCODE_R))	msk |= val << 12;	// for layer 3
+		if (input_code_pressed(KEYCODE_A))	msk |= val << 16;	// for sprites
 		if (msk != 0) layers_ctrl &= msk;
 
 #if 1

@@ -583,9 +583,9 @@ VIDEO_START( decocass )
 	char_dirty = auto_malloc(1024);
 	tile_dirty = auto_malloc(16);
 
-	bg_tilemap_l = tilemap_create( get_bg_l_tile_info, bgvideoram_scan_cols, TILEMAP_TRANSPARENT, 16, 16, 32, 32 );
-	bg_tilemap_r = tilemap_create( get_bg_r_tile_info, bgvideoram_scan_cols, TILEMAP_TRANSPARENT, 16, 16, 32, 32 );
-	fg_tilemap = tilemap_create( get_fg_tile_info, fgvideoram_scan_cols, TILEMAP_TRANSPARENT,  8,  8, 32, 32 );
+	bg_tilemap_l = tilemap_create( get_bg_l_tile_info, bgvideoram_scan_cols, TILEMAP_TYPE_TRANSPARENT, 16, 16, 32, 32 );
+	bg_tilemap_r = tilemap_create( get_bg_r_tile_info, bgvideoram_scan_cols, TILEMAP_TYPE_TRANSPARENT, 16, 16, 32, 32 );
+	fg_tilemap = tilemap_create( get_fg_tile_info, fgvideoram_scan_cols, TILEMAP_TYPE_TRANSPARENT,  8,  8, 32, 32 );
 
 	tilemap_set_transparent_pen( bg_tilemap_l, 0 );
 	tilemap_set_transparent_pen( bg_tilemap_r, 0 );
@@ -630,7 +630,7 @@ VIDEO_UPDATE( decocass )
 #ifdef MAME_DEBUG
 	{
 		static int showmsg;
-		if (code_pressed_memory(KEYCODE_I))
+		if (input_code_pressed_once(KEYCODE_I))
 			showmsg ^= 1;
 		if (showmsg)
 			popmessage("mode:$%02x cm:$%02x ccb:$%02x h:$%02x vl:$%02x vr:$%02x ph:$%02x pv:$%02x ch:$%02x cv:$%02x",

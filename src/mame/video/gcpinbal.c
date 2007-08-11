@@ -69,9 +69,9 @@ void gcpinbal_core_vh_start (void)
 	int xoffs = 0;
 	int yoffs = 0;
 
-	gcpinbal_tilemap[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,32,32);
-	gcpinbal_tilemap[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,32,32);
-	gcpinbal_tilemap[2] = tilemap_create(get_fg_tile_info, tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,64);
+	gcpinbal_tilemap[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,32,32);
+	gcpinbal_tilemap[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,32,32);
+	gcpinbal_tilemap[2] = tilemap_create(get_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
 
 	tilemap_set_transparent_pen( gcpinbal_tilemap[0],0 );
 	tilemap_set_transparent_pen( gcpinbal_tilemap[1],0 );
@@ -281,19 +281,19 @@ VIDEO_UPDATE( gcpinbal )
 #endif
 
 #ifdef MAME_DEBUG
-	if (code_pressed_memory (KEYCODE_V))
+	if (input_code_pressed_once (KEYCODE_V))
 	{
 		dislayer[0] ^= 1;
 		popmessage("bg0: %01x",dislayer[0]);
 	}
 
-	if (code_pressed_memory (KEYCODE_B))
+	if (input_code_pressed_once (KEYCODE_B))
 	{
 		dislayer[1] ^= 1;
 		popmessage("bg1: %01x",dislayer[1]);
 	}
 
-	if (code_pressed_memory (KEYCODE_N))
+	if (input_code_pressed_once (KEYCODE_N))
 	{
 		dislayer[2] ^= 1;
 		popmessage("fg: %01x",dislayer[2]);

@@ -169,7 +169,7 @@ static UINT8 adsp_ireg;
 static offs_t adsp_ireg_base, adsp_incs, adsp_size;
 
 static void adsp_tx_callback(int port, INT32 data);
-static void adsp_autobuffer_irq(int state);
+static TIMER_CALLBACK( adsp_autobuffer_irq );
 
 
 /*************************************
@@ -243,8 +243,7 @@ static MACHINE_RESET( gaelco3d2 )
 static INTERRUPT_GEN( vblank_gen )
 {
 	gaelco3d_render();
-	if (framenum++ % 2 == 1)
-		cpunum_set_input_line(0, 2, ASSERT_LINE);
+	cpunum_set_input_line(0, 2, ASSERT_LINE);
 }
 
 
@@ -304,10 +303,10 @@ static WRITE32_HANDLER( eeprom_cs_020_w ) { if ((mem_mask & 0xffff) != 0xffff) e
  *
  *************************************/
 
-static void delayed_sound_w(int data)
+static TIMER_CALLBACK( delayed_sound_w )
 {
-	logerror("delayed_sound_w(%02X)\n", data);
-	sound_data = data;
+	logerror("delayed_sound_w(%02X)\n", param);
+	sound_data = param;
 	cpunum_set_input_line(2, ADSP2115_IRQ2, ASSERT_LINE);
 }
 
@@ -316,7 +315,7 @@ static WRITE16_HANDLER( sound_data_w )
 {
 	logerror("%06X:sound_data_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, ~mem_mask);
 	if (!(mem_mask & 0xff))
-		mame_timer_set(time_zero, data & 0xff, delayed_sound_w);
+		timer_call_after_resynch(data & 0xff, delayed_sound_w);
 }
 static WRITE32_HANDLER( sound_data_020_w ) { if ((mem_mask & 0xffff0000) != 0xffff0000) sound_data_w(offset, data >> 16, mem_mask >> 16); }
 
@@ -361,7 +360,7 @@ static READ32_HANDLER( input_port_3_020_r ) { return readinputport(3) << 16; }
 
 static UINT32 analog_bit_r(void *param)
 {
-	int which = (int)param;
+	int which = (FPTR)param;
 	return (analog_ports[which] >> 7) & 0x01;
 }
 
@@ -565,7 +564,7 @@ static WRITE16_HANDLER( adsp_rombank_w )
  *
  *************************************/
 
-static void adsp_autobuffer_irq(int state)
+static TIMER_CALLBACK( adsp_autobuffer_irq )
 {
 	/* get the index register */
 	int reg = cpunum_get_reg(2, ADSP2100_I0 + adsp_ireg);

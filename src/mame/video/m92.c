@@ -59,7 +59,7 @@ static int m92_palette_bank;
 
 /*****************************************************************************/
 
-static void spritebuffer_callback (int dummy)
+static TIMER_CALLBACK( spritebuffer_callback )
 {
 	m92_sprite_buffer_busy=0x80;
 	if (m92_game_kludge!=2) /* Major Title 2 doesn't like this interrupt!? */
@@ -349,35 +349,35 @@ VIDEO_START( m92 )
 {
 	pf1_layer = tilemap_create(
 		get_pf1_tile_info,tilemap_scan_rows,
-		TILEMAP_SPLIT,
+		TILEMAP_TYPE_SPLIT,
 		8,8,
 		64,64
 	);
 
 	pf2_layer = tilemap_create(
 		get_pf2_tile_info,tilemap_scan_rows,
-		TILEMAP_SPLIT,
+		TILEMAP_TYPE_SPLIT,
 		8,8,
 		64,64
 	);
 
 	pf3_layer = tilemap_create(
 		get_pf3_tile_info,tilemap_scan_rows,
-		TILEMAP_SPLIT,
+		TILEMAP_TYPE_SPLIT,
 		8,8,
 		64,64
 	);
 
 	pf1_wide_layer = tilemap_create(
 		get_pf1_wide_tile_info,tilemap_scan_rows,
-		TILEMAP_SPLIT,
+		TILEMAP_TYPE_SPLIT,
 		8,8,
 		128,64
 	);
 
 	pf3_wide_layer = tilemap_create(
 		get_pf3_wide_tile_info,tilemap_scan_rows,
-		TILEMAP_SPLIT,
+		TILEMAP_TYPE_SPLIT,
 		8,8,
 		128,64
 	);
@@ -626,7 +626,7 @@ VIDEO_UPDATE( m92 )
 	m92_screenrefresh(machine,bitmap,cliprect);
 
 	/* check the keyboard */
-	if (code_pressed_memory(KEYCODE_F1)) {
+	if (input_code_pressed_once(KEYCODE_F1)) {
 		m92_raster_enable ^= 1;
 		if (m92_raster_enable)
 			popmessage("Raster IRQ enabled");

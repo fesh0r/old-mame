@@ -31,7 +31,7 @@ static UINT8 flipscreen_old = -1;
 
 static tilemap *bg_tilemap, *fg_tilemap;
 
-static void crtc_interrupt_gen(int param);
+static TIMER_CALLBACK( crtc_interrupt_gen );
 
 
 /*************************************
@@ -76,8 +76,8 @@ static TILE_GET_INFO( get_nekkyoku_fg_tile_info ) { get_nekkyoku_tile_info(machi
 VIDEO_START( fromance )
 {
 	/* allocate tilemaps */
-	bg_tilemap = tilemap_create(get_fromance_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE,      8,4, 64,64);
-	fg_tilemap = tilemap_create(get_fromance_fg_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8,4, 64,64);
+	bg_tilemap = tilemap_create(get_fromance_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE,      8,4, 64,64);
+	fg_tilemap = tilemap_create(get_fromance_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8,4, 64,64);
 
 	/* allocate local videoram */
 	local_videoram[0] = auto_malloc(0x1000 * 3);
@@ -115,8 +115,8 @@ VIDEO_START( fromance )
 VIDEO_START( nekkyoku )
 {
 	/* allocate tilemaps */
-	bg_tilemap = tilemap_create(get_nekkyoku_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE,      8,4, 64,64);
-	fg_tilemap = tilemap_create(get_nekkyoku_fg_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8,4, 64,64);
+	bg_tilemap = tilemap_create(get_nekkyoku_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE,      8,4, 64,64);
+	fg_tilemap = tilemap_create(get_nekkyoku_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8,4, 64,64);
 
 	/* allocate local videoram */
 	local_videoram[0] = auto_malloc(0x1000 * 3);
@@ -290,11 +290,11 @@ WRITE8_HANDLER( fromance_scroll_w )
  *
  *************************************/
 
-static void crtc_interrupt_gen(int param)
+static TIMER_CALLBACK( crtc_interrupt_gen )
 {
 	cpunum_set_input_line(1, 0, HOLD_LINE);
 	if (param != 0)
-		mame_timer_adjust(crtc_timer, make_mame_time(0, Machine->screen[0].refresh / param), 0, make_mame_time(0, Machine->screen[0].refresh / param));
+		mame_timer_adjust(crtc_timer, make_mame_time(0, machine->screen[0].refresh / param), 0, make_mame_time(0, machine->screen[0].refresh / param));
 }
 
 

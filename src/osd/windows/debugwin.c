@@ -252,11 +252,11 @@ void osd_wait_for_debugger(void)
 	MSG message;
 
 	// create a console window
-	if (!main_console)
+	if (main_console == NULL)
 		console_create_window();
 
 	// update the views in the console to reflect the current CPU
-	if (main_console)
+	if (main_console != NULL)
 		console_set_cpunum(cpu_getactivecpu());
 
 	// make sure the debug windows are visible
@@ -299,7 +299,7 @@ void osd_wait_for_debugger(void)
 //  debugwin_init_windows
 //============================================================
 
-int debugwin_init_windows(void)
+void debugwin_init_windows(void)
 {
 	static int class_registered;
 
@@ -322,7 +322,7 @@ int debugwin_init_windows(void)
 
 		// register the class; fail if we can't
 		if (!RegisterClass(&wc))
-			return 1;
+			fatalerror("Unable to register debug window class");
 
 		// initialize the description of the view class
 		wc.lpszClassName 	= TEXT("MAMEDebugView");
@@ -330,13 +330,13 @@ int debugwin_init_windows(void)
 
 		// register the class; fail if we can't
 		if (!RegisterClass(&wc))
-			return 1;
+			fatalerror("Unable to register debug view class");
 
 		class_registered = TRUE;
 	}
 
 	// create the font
-	if (!debug_font)
+	if (debug_font == NULL)
 	{
 		// create a temporary DC
 		HDC temp_dc = GetDC(NULL);
@@ -348,8 +348,8 @@ int debugwin_init_windows(void)
 			// create a standard Lucida Console 8 font
 			debug_font = CreateFont(-MulDiv(8, GetDeviceCaps(temp_dc, LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, FALSE, FALSE, FALSE,
 						ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE, TEXT("Lucida Console"));
-			if (!debug_font)
-				return 1;
+			if (debug_font == NULL)
+				fatalerror("Unable to create debug font");
 
 			// get the metrics
 			old_font = SelectObject(temp_dc, debug_font);
@@ -367,8 +367,6 @@ int debugwin_init_windows(void)
 	// get other metrics
 	hscroll_height = GetSystemMetrics(SM_CYHSCROLL);
 	vscroll_width = GetSystemMetrics(SM_CXVSCROLL);
-
-	return 0;
 }
 
 
@@ -477,16 +475,14 @@ static debugwin_info *debug_window_create(LPCSTR title, WNDPROC handler)
 	RECT work_bounds;
 
 	// allocate memory
-	info = malloc(sizeof(*info));
-	if (!info)
-		return NULL;
+	info = malloc_or_die(sizeof(*info));
 	memset(info, 0, sizeof(*info));
 
 	// create the window
 	info->handler = handler;
 	info->wnd = win_create_window_ex_utf8(DEBUG_WINDOW_STYLE_EX, "MAMEDebugWindow", title, DEBUG_WINDOW_STYLE,
 			0, 0, 100, 100, win_window_list->hwnd, create_standard_menubar(), GetModuleHandle(NULL), info);
-	if (!info->wnd)
+	if (info->wnd == NULL)
 		goto cleanup;
 
 	// fill in some defaults
@@ -623,9 +619,9 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 		{
 			CREATESTRUCT *createinfo = (CREATESTRUCT *)lparam;
 			info = (debugwin_info *)createinfo->lpCreateParams;
-			SetWindowLongPtr(wnd, GWLP_USERDATA, (UINT32)createinfo->lpCreateParams);
+			SetWindowLongPtr(wnd, GWLP_USERDATA, (LONG_PTR)createinfo->lpCreateParams);
 			if (info->handler)
-				SetWindowLongPtr(wnd, GWLP_WNDPROC, (UINT32)info->handler);
+				SetWindowLongPtr(wnd, GWLP_WNDPROC, (LONG_PTR)info->handler);
 			break;
 		}
 
@@ -774,7 +770,7 @@ static int debug_view_create(debugwin_info *info, int which, int type)
 	// create the child view
 	view->wnd = CreateWindowEx(DEBUG_VIEW_STYLE_EX, TEXT("MAMEDebugView"), NULL, DEBUG_VIEW_STYLE,
 			0, 0, 100, 100, info->wnd, NULL, GetModuleHandle(NULL), view);
-	if (!view->wnd)
+	if (view->wnd == NULL)
 		goto cleanup;
 
 	// create the scroll bars
@@ -782,12 +778,12 @@ static int debug_view_create(debugwin_info *info, int which, int type)
 			0, 0, 100, CW_USEDEFAULT, view->wnd, NULL, GetModuleHandle(NULL), view);
 	view->vscroll = CreateWindowEx(VSCROLL_STYLE_EX, TEXT("SCROLLBAR"), NULL, VSCROLL_STYLE,
 			0, 0, CW_USEDEFAULT, 100, view->wnd, NULL, GetModuleHandle(NULL), view);
-	if (!view->hscroll || !view->vscroll)
+	if (view->hscroll == NULL || view->vscroll == NULL)
 		goto cleanup;
 
 	// create the debug view
 	view->view = debug_view_alloc(type);
-	if (!view->view)
+	if (view->view == NULL)
 		goto cleanup;
 
 	// set the update handler
@@ -847,10 +843,10 @@ static void debug_view_draw_contents(debugview_info *view, HDC windc)
 
 	// create a compatible DC and an offscreen bitmap
 	dc = CreateCompatibleDC(windc);
-	if (!dc)
+	if (dc == NULL)
 		return;
 	bitmap = CreateCompatibleBitmap(windc, client.right, client.bottom);
-	if (!bitmap)
+	if (bitmap == NULL)
 	{
 		DeleteDC(dc);
 		return;
@@ -1308,7 +1304,7 @@ static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, L
 		case WM_CREATE:
 		{
 			CREATESTRUCT *createinfo = (CREATESTRUCT *)lparam;
-			SetWindowLongPtr(wnd, GWLP_USERDATA, (UINT32)createinfo->lpCreateParams);
+			SetWindowLongPtr(wnd, GWLP_USERDATA, (LONG_PTR)createinfo->lpCreateParams);
 			break;
 		}
 
@@ -1620,7 +1616,7 @@ static void generic_create_window(int type)
 	// create the window
 	_snprintf(title, ARRAY_LENGTH(title), "Debug: %s [%s]", Machine->gamedrv->description, Machine->gamedrv->name);
 	info = debug_window_create(title, NULL);
-	if (!info || !debug_view_create(info, 0, type))
+	if (info == NULL || !debug_view_create(info, 0, type))
 		return;
 
 	// set the child function
@@ -1682,7 +1678,7 @@ static void log_create_window(void)
 	// create the window
 	_snprintf(title, ARRAY_LENGTH(title), "Errorlog: %s [%s]", Machine->gamedrv->description, Machine->gamedrv->name);
 	info = debug_window_create(title, NULL);
-	if (!info || !debug_view_create(info, 0, DVT_LOG))
+	if (info == NULL || !debug_view_create(info, 0, DVT_LOG))
 		return;
 	info->view->is_textbuf = TRUE;
 
@@ -1834,7 +1830,7 @@ static void memory_create_window(void)
 
 	// create the window
 	info = debug_window_create("Memory", NULL);
-	if (!info || !debug_view_create(info, 0, DVT_MEMORY))
+	if (info == NULL || !debug_view_create(info, 0, DVT_MEMORY))
 		return;
 
 	// set the handlers
@@ -1865,8 +1861,8 @@ static void memory_create_window(void)
 	info->editwnd = CreateWindowEx(EDIT_BOX_STYLE_EX, TEXT("EDIT"), NULL, EDIT_BOX_STYLE,
 			0, 0, 100, 100, info->wnd, NULL, GetModuleHandle(NULL), NULL);
 	info->original_editproc = (void *)(UINT32)GetWindowLongPtr(info->editwnd, GWLP_WNDPROC);
-	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (UINT32)info);
-	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (UINT32)debug_edit_proc);
+	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (LONG_PTR)info);
+	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debug_edit_proc);
 	SendMessage(info->editwnd, WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
 	SendMessage(info->editwnd, WM_SETTEXT, (WPARAM)0, (LPARAM)"0");
 	SendMessage(info->editwnd, EM_LIMITTEXT, (WPARAM)MAX_EDIT_STRING, (LPARAM)0);
@@ -1875,11 +1871,11 @@ static void memory_create_window(void)
 	// create a combo box
 	info->otherwnd[0] = CreateWindowEx(COMBO_BOX_STYLE_EX, TEXT("COMBOBOX"), NULL, COMBO_BOX_STYLE,
 			0, 0, 100, 1000, info->wnd, NULL, GetModuleHandle(NULL), NULL);
-	SetWindowLongPtr(info->otherwnd[0], GWLP_USERDATA, (UINT32)info);
+	SetWindowLongPtr(info->otherwnd[0], GWLP_USERDATA, (LONG_PTR)info);
 	SendMessage(info->otherwnd[0], WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
 
 	// populate the combobox
-	if (!memorycombo)
+	if (memorycombo == NULL)
 		memory_determine_combo_items();
 	for (ci = memorycombo; ci; ci = ci->next)
 	{
@@ -2133,7 +2129,7 @@ static void disasm_create_window(void)
 
 	// create the window
 	info = debug_window_create("Disassembly", NULL);
-	if (!info || !debug_view_create(info, 0, DVT_DISASSEMBLY))
+	if (info == NULL || !debug_view_create(info, 0, DVT_DISASSEMBLY))
 		return;
 
 	// create the options menu
@@ -2162,8 +2158,8 @@ static void disasm_create_window(void)
 	info->editwnd = CreateWindowEx(EDIT_BOX_STYLE_EX, TEXT("EDIT"), NULL, EDIT_BOX_STYLE,
 			0, 0, 100, 100, info->wnd, NULL, GetModuleHandle(NULL), NULL);
 	info->original_editproc = (void *)(UINT32)GetWindowLongPtr(info->editwnd, GWLP_WNDPROC);
-	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (UINT32)info);
-	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (UINT32)debug_edit_proc);
+	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (LONG_PTR)info);
+	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debug_edit_proc);
 	SendMessage(info->editwnd, WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
 	SendMessage(info->editwnd, WM_SETTEXT, (WPARAM)0, (LPARAM)"curpc");
 	SendMessage(info->editwnd, EM_LIMITTEXT, (WPARAM)MAX_EDIT_STRING, (LPARAM)0);
@@ -2172,7 +2168,7 @@ static void disasm_create_window(void)
 	// create a combo box
 	info->otherwnd[0] = CreateWindowEx(COMBO_BOX_STYLE_EX, TEXT("COMBOBOX"), NULL, COMBO_BOX_STYLE,
 			0, 0, 100, 100, info->wnd, NULL, GetModuleHandle(NULL), NULL);
-	SetWindowLongPtr(info->otherwnd[0], GWLP_USERDATA, (UINT32)info);
+	SetWindowLongPtr(info->otherwnd[0], GWLP_USERDATA, (LONG_PTR)info);
 	SendMessage(info->otherwnd[0], WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
 
 	// populate the combobox
@@ -2507,7 +2503,7 @@ void console_create_window(void)
 
 	// create the window
 	info = debug_window_create("Debug", NULL);
-	if (!info)
+	if (info == NULL)
 		return;
 	main_console = info;
 	console_set_cpunum(0);
@@ -2548,8 +2544,8 @@ void console_create_window(void)
 	info->editwnd = CreateWindowEx(EDIT_BOX_STYLE_EX, TEXT("EDIT"), NULL, EDIT_BOX_STYLE,
 			0, 0, 100, 100, info->wnd, NULL, GetModuleHandle(NULL), NULL);
 	info->original_editproc = (void *)(UINT32)GetWindowLongPtr(info->editwnd, GWLP_WNDPROC);
-	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (UINT32)info);
-	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (UINT32)debug_edit_proc);
+	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (LONG_PTR)info);
+	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debug_edit_proc);
 	SendMessage(info->editwnd, WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
 	SendMessage(info->editwnd, EM_LIMITTEXT, (WPARAM)MAX_EDIT_STRING, (LPARAM)0);
 
@@ -2729,7 +2725,7 @@ static HMENU create_standard_menubar(void)
 
 	// create the debug menu
 	debugmenu = CreatePopupMenu();
-	if (!debugmenu)
+	if (debugmenu == NULL)
 		return NULL;
 	AppendMenu(debugmenu, MF_ENABLED, ID_NEW_MEMORY_WND, TEXT("New Memory Window\tCtrl+M"));
 	AppendMenu(debugmenu, MF_ENABLED, ID_NEW_DISASM_WND, TEXT("New Disassembly Window\tCtrl+D"));
@@ -2751,7 +2747,7 @@ static HMENU create_standard_menubar(void)
 
 	// create the menu bar
 	menubar = CreateMenu();
-	if (!menubar)
+	if (menubar == NULL)
 	{
 		DestroyMenu(debugmenu);
 		return NULL;

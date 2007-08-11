@@ -131,14 +131,14 @@ WRITE16_HANDLER( esd16_tilemap0_color_w )
 VIDEO_START( esd16 )
 {
 	esdtilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_OPAQUE,			8,8,	0x80,0x40);
+								TILEMAP_TYPE_OPAQUE,			8,8,	0x80,0x40);
 
 	esdtilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT,	8,8,	0x80,0x40);
+								TILEMAP_TYPE_TRANSPARENT,	8,8,	0x80,0x40);
 
 	/* hedpanic changes tilemap 1 to 16x16 at various times */
 	esdtilemap_1_16x16 = tilemap_create(	get_tile_info_1_16x16, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT,	16,16,	0x40,0x40);
+								TILEMAP_TYPE_TRANSPARENT,	16,16,	0x40,0x40);
 
 	tilemap_set_scrolldx(esdtilemap_0, -0x60 + 2, -0x60     );
 	tilemap_set_scrolldx(esdtilemap_1, -0x60    , -0x60 + 2 );
@@ -315,11 +315,11 @@ VIDEO_UPDATE( esd16 )
 	tilemap_set_scrolly(esdtilemap_1, 0, esd16_scroll_1[1]);
 
 #ifdef MAME_DEBUG
-if ( code_pressed(KEYCODE_Z) )
+if ( input_code_pressed(KEYCODE_Z) )
 {	int msk = 0;
-	if (code_pressed(KEYCODE_Q))	msk |= 1;
-	if (code_pressed(KEYCODE_W))	msk |= 2;
-	if (code_pressed(KEYCODE_A))	msk |= 4;
+	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(KEYCODE_A))	msk |= 4;
 	if (msk != 0) layers_ctrl &= msk;	}
 #endif
 
@@ -343,11 +343,11 @@ VIDEO_UPDATE( hedpanic )
 	tilemap_set_scrolly(esdtilemap_0, 0, esd16_scroll_0[1]);
 
 #ifdef MAME_DEBUG
-if ( code_pressed(KEYCODE_Z) )
+if ( input_code_pressed(KEYCODE_Z) )
 {	int msk = 0;
-	if (code_pressed(KEYCODE_Q))	msk |= 1;
-	if (code_pressed(KEYCODE_W))	msk |= 2;
-	if (code_pressed(KEYCODE_A))	msk |= 4;
+	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(KEYCODE_A))	msk |= 4;
 	if (msk != 0) layers_ctrl &= msk;	}
 #endif
 

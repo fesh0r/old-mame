@@ -164,7 +164,9 @@ Clamp256( int v )
    return v;
 } /* Clamp256 */
 
+#ifdef MAME_DEBUG
 static void Dump( FILE *f, unsigned addr1, unsigned addr2, const char *name );
+#endif
 
 static struct
 {
@@ -2465,7 +2467,7 @@ SimulateSlaveDSP( mame_bitmap *bitmap )
 			break;
 
 		default:
-         logerror( "unk 3d data(%d) addr=0x%x!", len, pSource-(INT32*)namcos22_polygonram );
+         logerror( "unk 3d data(%d) addr=0x%x!", len, (int)(pSource-(INT32*)namcos22_polygonram) );
          {
             int i;
             for( i=0; i<len; i++ )
@@ -2540,7 +2542,7 @@ WRITE32_HANDLER( namcos22_paletteram_w )
 
 static void video_start_common(running_machine *machine)
 {
-	bgtilemap = tilemap_create( TextTilemapGetInfo,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,64,64 );
+	bgtilemap = tilemap_create( TextTilemapGetInfo,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,64 );
 		tilemap_set_transparent_pen( bgtilemap, 0xf );
 
 	mbDSPisActive = 0;
@@ -2586,7 +2588,7 @@ VIDEO_UPDATE( namcos22s )
 	ApplyGamma( bitmap );
 
 #ifdef MAME_DEBUG
-   if( code_pressed(KEYCODE_D) )
+   if( input_code_pressed(KEYCODE_D) )
    {
       FILE *f = fopen( "dump.txt", "wb" );
       if( f )
@@ -2616,7 +2618,7 @@ VIDEO_UPDATE( namcos22s )
          Dump(f,0xc00000, 0xc1ffff, "polygonram");
          fclose( f );
       }
-      while( code_pressed(KEYCODE_D) ){}
+      while( input_code_pressed(KEYCODE_D) ){}
    }
 #endif
 	return 0;
@@ -2634,7 +2636,7 @@ VIDEO_UPDATE( namcos22 )
 	ApplyGamma( bitmap );
 
 #ifdef MAME_DEBUG
-   if( code_pressed(KEYCODE_D) )
+   if( input_code_pressed(KEYCODE_D) )
    {
       FILE *f = fopen( "dump.txt", "wb" );
       if( f )
@@ -2647,7 +2649,7 @@ VIDEO_UPDATE( namcos22 )
 //         Dump(f,0x70000000, 0x7001ffff, "polygonram");
          fclose( f );
       }
-      while( code_pressed(KEYCODE_D) ){}
+      while( input_code_pressed(KEYCODE_D) ){}
    }
 #endif
 	return 0;
@@ -2708,6 +2710,7 @@ WRITE16_HANDLER( namcos22_dspram16_w )
 	namcos22_polygonram[offset] = (hi<<16)|lo;
 } /* namcos22_dspram16_w */
 
+#ifdef MAME_DEBUG
 static void
 Dump( FILE *f, unsigned addr1, unsigned addr2, const char *name )
 {
@@ -2742,6 +2745,7 @@ Dump( FILE *f, unsigned addr1, unsigned addr2, const char *name )
    }
    fprintf( f, "\n" );
 }
+#endif
 
 /**
  * 4038 spot enable?

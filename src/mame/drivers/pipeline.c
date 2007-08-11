@@ -90,8 +90,8 @@ static TILE_GET_INFO( get_tile_info2 )
 VIDEO_START ( pipeline )
 {
 	palram=auto_malloc(0x1000);
-	tilemap1 = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,64,32 );
-	tilemap2 = tilemap_create( get_tile_info2,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32 );
+	tilemap1 = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_OPAQUE,8,8,64,32 );
+	tilemap2 = tilemap_create( get_tile_info2,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,32 );
 	tilemap_set_transparent_pen(tilemap2,0);
 }
 
@@ -202,14 +202,14 @@ static READ8_HANDLER(protection_r)
 	return fromMCU;
 }
 
-static void protection_deferred_w(int data)
+static TIMER_CALLBACK( protection_deferred_w )
 {
-	toMCU=data;
+	toMCU = param;
 }
 
 static WRITE8_HANDLER(protection_w)
 {
-	mame_timer_set(time_zero, data, protection_deferred_w);
+	timer_call_after_resynch(data, protection_deferred_w);
 	cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(100));
 }
 

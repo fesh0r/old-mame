@@ -37,12 +37,13 @@ static UINT32 polydata_count;
 
 static int polygons;
 static int lastscan;
-static int video_changed=1;
+static int video_changed;
 
 static osd_work_queue *work_queue;
 
-static int last_skip = 0;
-static int this_skip = 0;
+static int this_skip;
+
+
 
 /*************************************
  *
@@ -164,7 +165,7 @@ static void *render_poly(void *param)
 	(void)xorigin;
 	(void)yorigin;
 
-	if (LOG_POLYGONS && code_pressed(KEYCODE_LSHIFT))
+	if (LOG_POLYGONS && input_code_pressed(KEYCODE_LSHIFT))
 	{
 		int t;
 		mame_printf_debug("poly: %12.2f %12.2f %12.2f %12.2f %12.2f %12.2f %12.2f %12.2f %12.2f %12.2f %08X %08X (%4d,%4d) %08X",
@@ -435,7 +436,6 @@ void gaelco3d_render(void)
 	osd_work_queue_wait(work_queue, 100 * osd_ticks_per_second());
 
 	/* Every 2nd frame video data is written. Only skip if two frames are skipped */
-	last_skip = this_skip;
 	this_skip = video_skip_this_frame();
 
 #if DISPLAY_STATS
@@ -466,7 +466,7 @@ WRITE32_HANDLER( gaelco3d_render_w )
 		fatalerror("Out of polygon buffer space!");
 
 	/* if we've accumulated a completed poly set of data, queue it */
-	if (!last_skip || !this_skip)
+	if (!this_skip)
 	{
 		int index = polydata_count - 1 - polydata_start;
 		if (index >= 17 && (index % 2) == 1 && IS_POLYEND(data))
@@ -474,7 +474,7 @@ WRITE32_HANDLER( gaelco3d_render_w )
 			osd_work_item_queue(work_queue, render_poly, &polydata_buffer[polydata_start], WORK_ITEM_FLAG_AUTO_RELEASE);
 			polydata_start += index + 2;
 		}
-		video_changed = 1;
+		video_changed = TRUE;
 	}
 
 #if DISPLAY_STATS
@@ -528,26 +528,26 @@ VIDEO_UPDATE( gaelco3d )
 {
 	int x, y, ret;
 
-	if (DISPLAY_TEXTURE && (code_pressed(KEYCODE_Z) || code_pressed(KEYCODE_X)))
+	if (DISPLAY_TEXTURE && (input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X)))
 	{
 		static int xv = 0, yv = 0x1000;
 		UINT8 *base = gaelco3d_texture;
 		int length = gaelco3d_texture_size;
 
-		if (code_pressed(KEYCODE_X))
+		if (input_code_pressed(KEYCODE_X))
 		{
 			base = gaelco3d_texmask;
 			length = gaelco3d_texmask_size;
 		}
 
-		if (code_pressed(KEYCODE_LEFT) && xv >= 4)
+		if (input_code_pressed(KEYCODE_LEFT) && xv >= 4)
 			xv -= 4;
-		if (code_pressed(KEYCODE_RIGHT) && xv < 4096 - 4)
+		if (input_code_pressed(KEYCODE_RIGHT) && xv < 4096 - 4)
 			xv += 4;
 
-		if (code_pressed(KEYCODE_UP) && yv >= 4)
+		if (input_code_pressed(KEYCODE_UP) && yv >= 4)
 			yv -= 4;
-		if (code_pressed(KEYCODE_DOWN) && yv < 0x40000)
+		if (input_code_pressed(KEYCODE_DOWN) && yv < 0x40000)
 			yv += 4;
 
 		for (y = cliprect->min_y; y <= cliprect->max_y; y++)
@@ -567,9 +567,9 @@ VIDEO_UPDATE( gaelco3d )
 	else
 	{
 		if (video_changed)
-		copybitmap(bitmap, screenbits, 0,0, 0,0, cliprect, TRANSPARENCY_NONE, 0);
+			copybitmap(bitmap, screenbits, 0,0, 0,0, cliprect, TRANSPARENCY_NONE, 0);
 		ret = video_changed;
-		video_changed = 0;
+		video_changed = FALSE;
 	}
 
 	logerror("---update---\n");

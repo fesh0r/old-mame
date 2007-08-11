@@ -172,12 +172,12 @@ WRITE16_HANDLER( afega_vram_1_w )
 VIDEO_START( afega )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0, afega_tilemap_scan_pages,
-								TILEMAP_OPAQUE,
+								TILEMAP_TYPE_OPAQUE,
 								16,16,
 								TILES_PER_PAGE_X*PAGES_PER_TMAP_X,TILES_PER_PAGE_Y*PAGES_PER_TMAP_Y);
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_cols,
-								TILEMAP_TRANSPARENT,
+								TILEMAP_TYPE_TRANSPARENT,
 								8,8,
 								32,32);
 
@@ -188,12 +188,12 @@ VIDEO_START( afega )
 VIDEO_START( twinactn )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0, afega_tilemap_scan_pages,
-								TILEMAP_OPAQUE,
+								TILEMAP_TYPE_OPAQUE,
 								16,16,
 								TWINACTN_TILES_PER_PAGE_X*TWINACTN_PAGES_PER_TMAP_X,TWINACTN_TILES_PER_PAGE_Y*TWINACTN_PAGES_PER_TMAP_Y);
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_cols,
-								TILEMAP_TRANSPARENT,
+								TILEMAP_TYPE_TRANSPARENT,
 								8,8,
 								32,32);
 
@@ -204,12 +204,12 @@ VIDEO_START( twinactn )
 VIDEO_START( firehawk )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0, firehawk_tilemap_scan_pages,
-								TILEMAP_OPAQUE,
+								TILEMAP_TYPE_OPAQUE,
 								16,16,
 								TILES_PER_PAGE_X*FIREHAWK_PAGES_PER_TMAP_X,TILES_PER_PAGE_Y*FIREHAWK_PAGES_PER_TMAP_Y);
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_cols,
-								TILEMAP_TRANSPARENT,
+								TILEMAP_TYPE_TRANSPARENT,
 								8,8,
 								32,32);
 
@@ -307,7 +307,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 #ifdef MAME_DEBUG
 #if 1
-if (code_pressed(KEYCODE_X))
+if (input_code_pressed(KEYCODE_X))
 {	/* Display some info on each sprite */
 	char buf[10];
 	sprintf(buf, "%X",(spriteram16[offs + 0x0/2]&6)/2);
@@ -350,11 +350,11 @@ static void video_update(running_machine *machine, mame_bitmap *bitmap, const re
 	tilemap_set_scrolly(tilemap_1, 0, afega_scroll_1[0]);
 
 #ifdef MAME_DEBUG
-if ( code_pressed(KEYCODE_Z) )
+if ( input_code_pressed(KEYCODE_Z) )
 {	int msk = 0;
-	if (code_pressed(KEYCODE_Q))	msk |= 1;
-	if (code_pressed(KEYCODE_W))	msk |= 2;
-	if (code_pressed(KEYCODE_A))	msk |= 4;
+	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(KEYCODE_A))	msk |= 4;
 	if (msk != 0) layers_ctrl &= msk;	}
 #endif
 

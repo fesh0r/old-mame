@@ -273,7 +273,7 @@ static void draw_sprites( mame_bitmap *bitmap )
 				flipx = !flipx;
 			}
 
-			//if( sprite_which==count || !code_pressed( KEYCODE_B ) )
+			//if( sprite_which==count || !input_code_pressed( KEYCODE_B ) )
 			draw_sprite( bitmap, pen_data, pal_data, xpos, ypos, width, height, flipx, flipy, (attributes&0x4000) );
 		}
 
@@ -503,7 +503,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( twin16 )
 {
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows_flip_y,
-		TILEMAP_TRANSPARENT, 8, 8, 64, 32);
+		TILEMAP_TYPE_TRANSPARENT, 8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
@@ -511,7 +511,7 @@ VIDEO_START( twin16 )
 VIDEO_START( fround )
 {
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TRANSPARENT, 8, 8, 64, 32);
+		TILEMAP_TYPE_TRANSPARENT, 8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }

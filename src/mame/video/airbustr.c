@@ -116,14 +116,14 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( airbustr )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_OPAQUE, 16, 16, 32, 32);
+		TILEMAP_TYPE_OPAQUE, 16, 16, 32, 32);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TRANSPARENT, 16, 16, 32, 32);
+		TILEMAP_TYPE_TRANSPARENT, 16, 16, 32, 32);
 
 	sprites_bitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-	pandora_start(1);
+	pandora_start(1,0,0);
 
 	tilemap_set_scrolldx(bg_tilemap, 0x094, 0x06a);
 	tilemap_set_scrolldy(bg_tilemap, 0x100, 0x1ff);
@@ -137,16 +137,15 @@ VIDEO_UPDATE( airbustr )
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 
-	if(airbustr_clear_sprites)
-	{
-		fillbitmap(sprites_bitmap,0,cliprect);
-		pandora_update(machine, bitmap, cliprect);
-	}
-	else
-	{
-		/* keep sprites on the bitmap without clearing them */
-		pandora_update(machine, sprites_bitmap, cliprect);
-		copybitmap(bitmap,sprites_bitmap,0,0,0,0,cliprect,TRANSPARENCY_PEN,0);
-	}
+	// copy the sprite bitmap to the screen
+	pandora_update(machine, bitmap, cliprect);
+
 	return 0;
 }
+
+VIDEO_EOF( airbustr )
+{
+	// update the sprite bitmap
+	pandora_eof(machine);
+}
+

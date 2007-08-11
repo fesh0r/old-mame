@@ -81,8 +81,8 @@ VIDEO_START( sprint8 )
 	helper1 = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
 	helper2 = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
 
-	tilemap1 = tilemap_create(get_tile_info1, tilemap_scan_rows, TILEMAP_OPAQUE, 16, 8, 32, 32);
-	tilemap2 = tilemap_create(get_tile_info2, tilemap_scan_rows, TILEMAP_OPAQUE, 16, 8, 32, 32);
+	tilemap1 = tilemap_create(get_tile_info1, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 16, 8, 32, 32);
+	tilemap2 = tilemap_create(get_tile_info2, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 16, 8, 32, 32);
 
 	tilemap_set_scrolly(tilemap1, 0, +24);
 	tilemap_set_scrolly(tilemap2, 0, +24);
@@ -112,6 +112,12 @@ static void draw_sprites(running_machine *machine, mame_bitmap* bitmap, const re
 			496 - x, y - 31,
 			cliprect, TRANSPARENCY_PEN, 0);
 	}
+}
+
+
+static TIMER_CALLBACK( sprint8_collision_callback )
+{
+	sprint8_set_collision(param);
 }
 
 

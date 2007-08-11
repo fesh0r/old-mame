@@ -75,15 +75,15 @@ static TILE_GET_INFO( get_fix_tile_info )
 
 VIDEO_START( perfrman )
 {
-	pf1_tilemap = tilemap_create(get_pf_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32);
+	pf1_tilemap = tilemap_create(get_pf_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,32);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 }
 
 VIDEO_START( slapfight )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,64,32);
-	fix_tilemap = tilemap_create(get_fix_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32);
+	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_OPAQUE,8,8,64,32);
+	fix_tilemap = tilemap_create(get_fix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
 }
@@ -134,7 +134,7 @@ WRITE8_HANDLER( slapfight_palette_bank_w )
 #ifdef MAME_DEBUG
 void slapfght_log_vram(void)
 {
-	if ( code_pressed_memory(KEYCODE_B) )
+	if ( input_code_pressed_once(KEYCODE_B) )
 	{
 		int i;
 		for (i=0; i<0x800; i++)

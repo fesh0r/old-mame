@@ -172,9 +172,9 @@ static void lgtnfght_sprite_callback(int *code,int *color,int *priority_mask)
 static void detatwin_sprite_callback(int *code,int *color,int *priority_mask)
 {
 #if 0
-if (code_pressed(KEYCODE_Q) && (*color & 0x20)) *color = rand();
-if (code_pressed(KEYCODE_W) && (*color & 0x40)) *color = rand();
-if (code_pressed(KEYCODE_E) && (*color & 0x80)) *color = rand();
+if (input_code_pressed(KEYCODE_Q) && (*color & 0x20)) *color = rand();
+if (input_code_pressed(KEYCODE_W) && (*color & 0x40)) *color = rand();
+if (input_code_pressed(KEYCODE_E) && (*color & 0x80)) *color = rand();
 #endif
 	int pri = 0x20 | ((*color & 0x60) >> 2);
 	if (pri <= layerpri[2])								*priority_mask = 0;
@@ -279,7 +279,7 @@ VIDEO_START( glfgreat )
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K053245_vh_start(machine,0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback);
 
-	roz_tilemap = tilemap_create(glfgreat_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,512,512);
+	roz_tilemap = tilemap_create(glfgreat_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,512,512);
 
 	tilemap_set_transparent_pen(roz_tilemap,0);
 
@@ -300,7 +300,7 @@ VIDEO_START( prmrsocr )
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K053245_vh_start(machine,0, REGION_GFX2,NORMAL_PLANE_ORDER,prmrsocr_sprite_callback);
 
-	roz_tilemap = tilemap_create(prmrsocr_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,512,256);
+	roz_tilemap = tilemap_create(prmrsocr_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,512,256);
 
 	tilemap_set_transparent_pen(roz_tilemap,0);
 

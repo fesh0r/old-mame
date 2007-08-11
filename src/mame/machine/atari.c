@@ -526,11 +526,11 @@ void a800_handle_keyboard(void)
     modifiers = 0;
 
     /* with shift ? */
-	if( code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT) )
+	if( input_code_pressed(KEYCODE_LSHIFT) || input_code_pressed(KEYCODE_RSHIFT) )
 		modifiers |= 1;
 
     /* with control ? */
-	if( code_pressed(KEYCODE_LCONTROL) || code_pressed(KEYCODE_RCONTROL) )
+	if( input_code_pressed(KEYCODE_LCONTROL) || input_code_pressed(KEYCODE_RCONTROL) )
 		modifiers |= 2;
 
 	for( i = 0; i < 64; i++ )
@@ -570,11 +570,11 @@ void a5200_handle_keypads(void)
     modifiers = 0;
 
     /* with shift ? */
-	if (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT))
+	if (input_code_pressed(KEYCODE_LSHIFT) || input_code_pressed(KEYCODE_RSHIFT))
 		modifiers |= 1;
 
     /* with control ? */
-	if (code_pressed(KEYCODE_LCONTROL) || code_pressed(KEYCODE_RCONTROL))
+	if (input_code_pressed(KEYCODE_LCONTROL) || input_code_pressed(KEYCODE_RCONTROL))
 		modifiers |= 2;
 
 	/* check keypad */
@@ -891,21 +891,21 @@ MACHINE_START( a800xl )
 DEVICE_LOAD( a800xl_cart )
 {
 	UINT8 *mem = memory_region(REGION_CPU1);
-	char *fname;
+	astring *fname;
 	mame_file *basic_fp;
 	file_error filerr;
 	unsigned size;
 
-	fname = assemble_3_strings(Machine->gamedrv->name, PATH_SEPARATOR, "basic.rom");
-	filerr = mame_fopen(SEARCHPATH_ROM, fname, OPEN_FLAG_READ, &basic_fp);
-	free(fname);
+	fname = astring_assemble_3(astring_alloc(), Machine->gamedrv->name, PATH_SEPARATOR, "basic.rom");
+	filerr = mame_fopen(SEARCHPATH_ROM, astring_c(fname), OPEN_FLAG_READ, &basic_fp);
+	astring_free(fname);
 
 	if (filerr != FILERR_NONE)
 	{
 		size = mame_fread(basic_fp, &mem[0x14000], 0x2000);
 		if( size < 0x2000 )
 		{
-			logerror("%s image '%s' load failed (less than 8K)\n", Machine->gamedrv->name, fname);
+			logerror("%s image '%s' load failed (less than 8K)\n", Machine->gamedrv->name, astring_c(fname));
 			mame_fclose(basic_fp);
 			return 2;
 		}

@@ -177,8 +177,8 @@ PALETTE_INIT (pitnrun)
 
 VIDEO_START(pitnrun)
 {
-	fg = tilemap_create( get_tile_info1,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,32,32 );
-	bg = tilemap_create( get_tile_info2,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,32*4,32 );
+	fg = tilemap_create( get_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,32,32 );
+	bg = tilemap_create( get_tile_info2,tilemap_scan_rows,TILEMAP_TYPE_OPAQUE,8,8,32*4,32 );
 	tilemap_set_transparent_pen( fg, 0 );
 	tmp_bitmap[0] = auto_bitmap_alloc(128,128,machine->screen[0].format);
 	tmp_bitmap[1] = auto_bitmap_alloc(128,128,machine->screen[0].format);
@@ -228,19 +228,19 @@ VIDEO_UPDATE( pitnrun )
 	rectangle myclip=*cliprect;
 
 #ifdef MAME_DEBUG
-	if (code_pressed_memory(KEYCODE_Q))
+	if (input_code_pressed_once(KEYCODE_Q))
 	{
 		UINT8 *ROM = memory_region(REGION_CPU1);
 		ROM[0x84f6]=0; /* lap 0 - normal */
 	}
 
-	if (code_pressed_memory(KEYCODE_W))
+	if (input_code_pressed_once(KEYCODE_W))
 	{
 		UINT8 *ROM = memory_region(REGION_CPU1);
 		ROM[0x84f6]=6; /* lap 6 = spotlight */
 	}
 
-	if (code_pressed_memory(KEYCODE_E))
+	if (input_code_pressed_once(KEYCODE_E))
 	{
 		UINT8 *ROM = memory_region(REGION_CPU1);
 		ROM[0x84f6]=2; /* lap 3 (trial 2)= lightnings */

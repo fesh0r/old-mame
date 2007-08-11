@@ -189,7 +189,7 @@ VIDEO_START( taitojc )
 
 	assert(taitojc_gfx_index != MAX_GFX_ELEMENTS);
 
-	taitojc_tilemap = tilemap_create(taitojc_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 16, 16, 64, 64);
+	taitojc_tilemap = tilemap_create(taitojc_tile_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 16, 16, 64, 64);
 	taitojc_dirty_map = auto_malloc(TAITOJC_NUM_TILES);
 
 	tilemap_set_transparent_pen(taitojc_tilemap, 0);
@@ -232,10 +232,10 @@ VIDEO_UPDATE( taitojc )
     if( tick >= 5 ) {
         tick = 0;
 
-        if( code_pressed(KEYCODE_O) )
+        if( input_code_pressed(KEYCODE_O) )
             debug_tex_pal++;
 
-        if( code_pressed(KEYCODE_I) )
+        if( input_code_pressed(KEYCODE_I) )
             debug_tex_pal--;
 
         debug_tex_pal &= 0x7f;

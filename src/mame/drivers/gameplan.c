@@ -204,7 +204,7 @@ static WRITE8_HANDLER( leprechn_video_command_w )
 }
 
 
-static void clear_screen_done_callback(int param)
+static TIMER_CALLBACK( clear_screen_done_callback )
 {
 	/* indicate that the we are done clearing the screen */
 	via_0_ca1_w(0, 0);
@@ -262,7 +262,7 @@ static WRITE8_HANDLER( video_command_trigger_w )
 			/* set a timer for an arbitrarily short period.
                The real time it takes to clear to screen is not
                important to the software */
-			mame_timer_set(time_zero, 0, clear_screen_done_callback);
+			timer_call_after_resynch(0, clear_screen_done_callback);
 
 			break;
 		}
@@ -270,9 +270,9 @@ static WRITE8_HANDLER( video_command_trigger_w )
 }
 
 
-static void via_irq_delayed(int state)
+static TIMER_CALLBACK( via_irq_delayed )
 {
-	cpunum_set_input_line(0, 0, state);
+	cpunum_set_input_line(0, 0, param);
 }
 
 
@@ -305,7 +305,7 @@ static struct via6522_interface leprechn_via_0_interface =
 };
 
 
-static void via_0_ca1_timer_callback(int param)
+static TIMER_CALLBACK( via_0_ca1_timer_callback )
 {
 	/* !VBLANK is connected to CA1 */
 	via_0_ca1_w(0, (UINT8)param);
@@ -402,7 +402,7 @@ static WRITE8_HANDLER( sound_trigger_w )
 	UINT8 cmd = (data << 7) | sound_cmd;
 
 	soundlatch_w(0, cmd);
-	r6532_0_PA7_w(0, cmd);
+	r6532_0_porta_w(0, cmd);
 }
 
 
@@ -429,10 +429,8 @@ static void r6532_irq(int state)
 }
 
 
-static const struct R6532interface r6532_interface =
+static const struct riot6532_interface r6532_interface =
 {
-	AUDIO_CPU_CLOCK,	/* input clock frequency */
-	0,					/* number of reset delay clock cycles */
 	soundlatch_r,		/* port A read handler */
 	0,					/* port B read handler */
 	0,					/* port A write handler */
@@ -454,7 +452,9 @@ static MACHINE_START( gameplan )
 	via_config(1, &via_1_interface);
 	via_config(2, &via_2_interface);
 
-	r6532_init(0, &r6532_interface);
+	r6532_config(0, &r6532_interface);
+	r6532_set_clock(0, AUDIO_CPU_CLOCK);
+	r6532_reset(0);
 
 	create_via_0_timer();
 }
@@ -466,7 +466,9 @@ static MACHINE_START( leprechn )
 	via_config(1, &via_1_interface);
 	via_config(2, &via_2_interface);
 
-	r6532_init(0, &r6532_interface);
+	r6532_config(0, &r6532_interface);
+	r6532_set_clock(0, AUDIO_CPU_CLOCK);
+	r6532_reset(0);
 
 	create_via_0_timer();
 }

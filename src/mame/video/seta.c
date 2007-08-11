@@ -445,18 +445,18 @@ VIDEO_START( seta_2_layers )
 
 	/* layer 0 */
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16,16, 64,32 );
+								TILEMAP_TYPE_TRANSPARENT, 16,16, 64,32 );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16,16, 64,32 );
+								TILEMAP_TYPE_TRANSPARENT, 16,16, 64,32 );
 
 
 	/* layer 1 */
 	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16,16, 64,32 );
+								TILEMAP_TYPE_TRANSPARENT, 16,16, 64,32 );
 
 	tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16,16, 64,32 );
+								TILEMAP_TYPE_TRANSPARENT, 16,16, 64,32 );
 
 		tilemaps_flip = 0;
 
@@ -478,10 +478,10 @@ VIDEO_START( seta_1_layer )
 
 	/* layer 0 */
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16,16, 64,32 );
+								TILEMAP_TYPE_TRANSPARENT, 16,16, 64,32 );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16,16, 64,32 );
+								TILEMAP_TYPE_TRANSPARENT, 16,16, 64,32 );
 
 
 	/* NO layer 1 */
@@ -504,10 +504,10 @@ VIDEO_START( twineagl_1_layer )
 
 	/* layer 0 */
 	tilemap_0 = tilemap_create(	twineagl_get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16,16, 64,32 );
+								TILEMAP_TYPE_TRANSPARENT, 16,16, 64,32 );
 
 	tilemap_1 = tilemap_create(	twineagl_get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16,16, 64,32 );
+								TILEMAP_TYPE_TRANSPARENT, 16,16, 64,32 );
 
 
 	/* NO layer 1 */
@@ -900,11 +900,11 @@ VIDEO_UPDATE( seta )
 
 
 #ifdef MAME_DEBUG
-if (code_pressed(KEYCODE_Z))
+if (input_code_pressed(KEYCODE_Z))
 {	int msk = 0;
-	if (code_pressed(KEYCODE_Q))	msk |= 1;
-	if (code_pressed(KEYCODE_W))	msk |= 2;
-	if (code_pressed(KEYCODE_A))	msk |= 8;
+	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(KEYCODE_A))	msk |= 8;
 	if (msk != 0) layers_ctrl &= msk;
 
 	if (tilemap_2)		popmessage("VR:%04X-%04X-%04X L0:%04X L1:%04X",seta_vregs[0],seta_vregs[1],seta_vregs[2],seta_vctrl_0[4/2],seta_vctrl_2[4/2]);

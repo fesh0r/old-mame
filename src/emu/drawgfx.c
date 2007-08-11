@@ -58,7 +58,7 @@ alpha_cache drawgfx_alpha_cache;
 
 INLINE void write_dword(void *address, UINT32 data)
 {
-  	if ((long)address & 3)
+  	if ((FPTR)address & 3)
 	{
 		*((UINT8 *)address)   = (data>>SHIFT0);
 		*((UINT8 *)address+1) = (data>>SHIFT1);
@@ -369,7 +369,7 @@ INLINE void blockmove_NtoN_transpen_noremap8(
 	while (srcheight)
 	{
 		end = dstdata + srcwidth;
-		while (((long)srcdata & 3) && dstdata < end)	/* longword align */
+		while (((FPTR)srcdata & 3) && dstdata < end)	/* longword align */
 		{
 			int col;
 
@@ -437,7 +437,7 @@ INLINE void blockmove_NtoN_transpen_noremap_flipx8(
 	while (srcheight)
 	{
 		end = dstdata + srcwidth;
-		while (((long)srcdata & 3) && dstdata < end)	/* longword align */
+		while (((FPTR)srcdata & 3) && dstdata < end)	/* longword align */
 		{
 			int col;
 
@@ -3585,7 +3585,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_transpen,(COMMON_ARGS,
 		while (dstheight)
 		{
 			end = dstdata - dstwidth*HMODULO;
-			while (((long)srcdata & 3) && dstdata > end)	/* longword align */
+			while (((FPTR)srcdata & 3) && dstdata > end)	/* longword align */
 			{
 				int col;
 
@@ -3636,7 +3636,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_transpen,(COMMON_ARGS,
 		while (dstheight)
 		{
 			end = dstdata + dstwidth*HMODULO;
-			while (((long)srcdata & 3) && dstdata < end)	/* longword align */
+			while (((FPTR)srcdata & 3) && dstdata < end)	/* longword align */
 			{
 				int col;
 
@@ -3773,7 +3773,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_transblend,(COMMON_ARGS,
 		while (dstheight)
 		{
 			end = dstdata - dstwidth*HMODULO;
-			while (((long)srcdata & 3) && dstdata > end)	/* longword align */
+			while (((FPTR)srcdata & 3) && dstdata > end)	/* longword align */
 			{
 				int col;
 
@@ -3824,7 +3824,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_transblend,(COMMON_ARGS,
 		while (dstheight)
 		{
 			end = dstdata + dstwidth*HMODULO;
-			while (((long)srcdata & 3) && dstdata < end)	/* longword align */
+			while (((FPTR)srcdata & 3) && dstdata < end)	/* longword align */
 			{
 				int col;
 
@@ -3885,7 +3885,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_transmask,(COMMON_ARGS,
 		while (dstheight)
 		{
 			end = dstdata - dstwidth*HMODULO;
-			while (((long)srcdata & 3) && dstdata > end)	/* longword align */
+			while (((FPTR)srcdata & 3) && dstdata > end)	/* longword align */
 			{
 				int col;
 
@@ -3933,7 +3933,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_transmask,(COMMON_ARGS,
 		while (dstheight)
 		{
 			end = dstdata + dstwidth*HMODULO;
-			while (((long)srcdata & 3) && dstdata < end)	/* longword align */
+			while (((FPTR)srcdata & 3) && dstdata < end)	/* longword align */
 			{
 				int col;
 
@@ -4224,7 +4224,6 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_pen_table,(COMMON_ARGS,
 	}
 	else
 	{
-		pen_t *palette_shadow_table = Machine->shadow_table;
 		DATA_TYPE *end;
 
 		while (dstheight)
@@ -4281,7 +4280,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_alphaone,(COMMON_ARGS,
 		while (dstheight)
 		{
 			end = dstdata - dstwidth*HMODULO;
-			while (((long)srcdata & 3) && dstdata > end)	/* longword align */
+			while (((FPTR)srcdata & 3) && dstdata > end)	/* longword align */
 			{
 				int col;
 
@@ -4369,7 +4368,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_alphaone,(COMMON_ARGS,
 		while (dstheight)
 		{
 			end = dstdata + dstwidth*HMODULO;
-			while (((long)srcdata & 3) && dstdata < end)	/* longword align */
+			while (((FPTR)srcdata & 3) && dstdata < end)	/* longword align */
 			{
 				int col;
 
@@ -4466,7 +4465,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_alpha,(COMMON_ARGS,
 		while (dstheight)
 		{
 			end = dstdata - dstwidth*HMODULO;
-			while (((long)srcdata & 3) && dstdata > end)	/* longword align */
+			while (((FPTR)srcdata & 3) && dstdata > end)	/* longword align */
 			{
 				int col;
 
@@ -4517,7 +4516,7 @@ DECLARE_SWAP_RAW_PRI(blockmove_8toN_alpha,(COMMON_ARGS,
 		while (dstheight)
 		{
 			end = dstdata + dstwidth*HMODULO;
-			while (((long)srcdata & 3) && dstdata < end)	/* longword align */
+			while (((FPTR)srcdata & 3) && dstdata < end)	/* longword align */
 			{
 				int col;
 

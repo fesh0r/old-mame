@@ -914,13 +914,13 @@ void cps1_get_video_base(void )
 	int enablemask;
 
 #if 0
-if (code_pressed(KEYCODE_Z))
+if (input_code_pressed(KEYCODE_Z))
 {
-	if (code_pressed(KEYCODE_Q)) cps1_layer_enabled[3]=0;
-	if (code_pressed(KEYCODE_W)) cps1_layer_enabled[2]=0;
-	if (code_pressed(KEYCODE_E)) cps1_layer_enabled[1]=0;
-	if (code_pressed(KEYCODE_R)) cps1_layer_enabled[0]=0;
-	if (code_pressed(KEYCODE_T))
+	if (input_code_pressed(KEYCODE_Q)) cps1_layer_enabled[3]=0;
+	if (input_code_pressed(KEYCODE_W)) cps1_layer_enabled[2]=0;
+	if (input_code_pressed(KEYCODE_E)) cps1_layer_enabled[1]=0;
+	if (input_code_pressed(KEYCODE_R)) cps1_layer_enabled[0]=0;
+	if (input_code_pressed(KEYCODE_T))
 	{
 		popmessage("%d %d %d %d layer %02x",
 			(layercontrol>>0x06)&03,
@@ -1020,7 +1020,7 @@ static TILE_GET_INFO( get_tile0_info )
 		if (code == 0xf020) { gfxset = 4; code = 0; } // use a blank tile (see startup text..)
 
 	/* 0x0020 appears to never be drawn for CPS1 games (it is drawn for CPS2 games though, see gigawing '0' in score for example) */
-	if (cps_version == 1 && code == 0x0020) { gfxset = 4; code = 0; tileinfo->pen_usage = 0x8000; }
+	if (cps_version == 1 && code == 0x0020) { gfxset = 4; code = 0; }
 
 	SET_TILE_INFO(
 			gfxset,
@@ -1051,7 +1051,6 @@ static TILE_GET_INFO( get_tile1_info )
 	)
 	{
 		tileinfo->pen_data = empty_tile;
-		tileinfo->pen_usage = 0x8000;
 	}
 }
 
@@ -1085,7 +1084,6 @@ static TILE_GET_INFO( get_tile2_info )
 	if (code < startcode || code > endcode)
 	{
 		tileinfo->pen_data = empty_tile;
-		tileinfo->pen_usage = 0x8000;
 	}
 }
 
@@ -1137,9 +1135,9 @@ static VIDEO_START( cps )
 
     machine_reset_cps(machine);
 
-	cps1_bg_tilemap[0] = tilemap_create(get_tile0_info,tilemap0_scan,TILEMAP_SPLIT, 8, 8,64,64);
-	cps1_bg_tilemap[1] = tilemap_create(get_tile1_info,tilemap1_scan,TILEMAP_SPLIT,16,16,64,64);
-	cps1_bg_tilemap[2] = tilemap_create(get_tile2_info,tilemap2_scan,TILEMAP_SPLIT,32,32,64,64);
+	cps1_bg_tilemap[0] = tilemap_create(get_tile0_info,tilemap0_scan,TILEMAP_TYPE_SPLIT, 8, 8,64,64);
+	cps1_bg_tilemap[1] = tilemap_create(get_tile1_info,tilemap1_scan,TILEMAP_TYPE_SPLIT,16,16,64,64);
+	cps1_bg_tilemap[2] = tilemap_create(get_tile2_info,tilemap2_scan,TILEMAP_TYPE_SPLIT,32,32,64,64);
 
 	/* front masks will change at runtime to handle sprite occluding */
 	cps1_update_transmasks();
@@ -1566,7 +1564,7 @@ static void cps2_render_sprites(running_machine *machine, mame_bitmap *bitmap,co
 	int yoffs = 16-cps2_port(CPS2_OBJ_YOFFS);
 
 #ifdef MAME_DEBUG
-	if (code_pressed(KEYCODE_Z) && code_pressed(KEYCODE_R))
+	if (input_code_pressed(KEYCODE_Z) && input_code_pressed(KEYCODE_R))
 	{
 		return;
 	}
@@ -1880,7 +1878,7 @@ if (	(cps2_port(CPS2_OBJ_BASE) != 0x7080 && cps2_port(CPS2_OBJ_BASE) != 0x7000) 
 			cps2_port(CPS2_OBJ_UK1),
 			cps2_port(CPS2_OBJ_UK2));
 
-if (0 && code_pressed(KEYCODE_Z))
+if (0 && input_code_pressed(KEYCODE_Z))
 	popmessage("order: %d (%d) %d (%d) %d (%d) %d (%d)",l0,l0pri,l1,l1pri,l2,l2pri,l3,l3pri);
 #endif
 
@@ -1918,7 +1916,7 @@ if (0 && code_pressed(KEYCODE_Z))
 	}
 
 #if CPS1_DUMP_VIDEO
-	if (code_pressed(KEYCODE_F))
+	if (input_code_pressed(KEYCODE_F))
 	{
 		cps1_dump_video();
 	}

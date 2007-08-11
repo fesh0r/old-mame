@@ -146,8 +146,7 @@ Adder hardware:
 //#include "video/awpvid.h"
 #include "machine/steppers.h" // stepper motor
 
-#include "machine/lamps.h"
-#include "machine/vacfdisp.h"  // vfd
+#include "machine/bfm_bd1.h"  // vfd
 #include "machine/mmtr.h"
 
 #include "bfm_sc2.lh"
@@ -206,7 +205,6 @@ static int volume_override;	  // 0 / 1
 
 static int sc2_show_door;			// flag <>0, show door state
 static int sc2_door_state;			// door switch strobe/data
-static int sc2_show_vfd_display;
 
 static int reel12_latch;
 static int reel34_latch;
@@ -328,8 +326,8 @@ static void on_scorpion2_reset(void)
 	watchdog_kicked = 0;
 
 
-	vfd_reset(0);	// reset display1
-	vfd_reset(1);	// reset display2
+	BFM_BD1_reset(0);	// reset display1
+	BFM_BD1_reset(1);	// reset display2
 
 	e2ram_reset();
 
@@ -441,7 +439,7 @@ static int Scorpion2_GetSwitchState(int strobe, int data)
 
 ///////////////////////////////////////////////////////////////////////////
 
-static NVRAM_HANDLER( nvram )
+static NVRAM_HANDLER( bfm_sc2 )
 {
 	if ( read_or_write )
 	{	// writing
@@ -506,11 +504,6 @@ static WRITE8_HANDLER( bankswitch_w )
 
 static INTERRUPT_GEN( timer_irq )
 {
-	timercnt++;
-
-
-	if ( (timercnt & 0x03) == 0 ) sc2_show_vfd_display = readinputportbytag_safe("DEBUGPORT",13) & 0x01;  // debug port
-
 	if ( watchdog_kicked )
 	{
 		watchdog_cnt    = 0;
@@ -707,6 +700,7 @@ static WRITE8_HANDLER( mmtr_w )
 
 static WRITE8_HANDLER( mux_output_w )
 {
+	int i;
 	int off = offset<<3;
 
 	Lamps[ off   ] = (data & 0x01) != 0;
@@ -718,7 +712,13 @@ static WRITE8_HANDLER( mux_output_w )
 	Lamps[ off+6 ] = (data & 0x40) != 0;
 	Lamps[ off+7 ] = (data & 0x80) != 0;
 
-	if ( offset == 0 ) Lamps_SetBrightness(0, 255, Lamps); // update all lamps after strobe 0 has been updated
+	if (offset == 0) // update all lamps after strobe 0 has been updated (HACK)
+	{
+		for ( i = 0; i < 256; i++ )
+		{
+			output_set_lamp_value(i, Lamps[i]);
+		}
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1084,7 +1084,8 @@ static WRITE8_HANDLER( payout_select_w )
 static WRITE8_HANDLER( vfd1_data_w )
 {
 	vfd1_latch = data;
-	vfd_newdata(0, data);
+	BFM_BD1_newdata(0, data);
+	BFM_BD1_draw(0);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1092,15 +1093,18 @@ static WRITE8_HANDLER( vfd1_data_w )
 static WRITE8_HANDLER( vfd2_data_w )
 {
 	vfd2_latch = data;
-	vfd_newdata(1, data);
+	BFM_BD1_newdata(1, data);
+	BFM_BD1_draw(1);
 }
 
 ///////////////////////////////////////////////////////////////////////////
 
 static WRITE8_HANDLER( vfd_reset_w )
 {
-	vfd_reset(0);	  // reset both VFD's
-	vfd_reset(1);
+	BFM_BD1_reset(0);	  // reset both VFD's
+	BFM_BD1_reset(1);
+	BFM_BD1_draw(0);
+	BFM_BD1_draw(1);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1584,41 +1588,9 @@ static MACHINE_RESET( init )
 	// reset the board //////////////////////////////////////////////////////
 
 	on_scorpion2_reset();
+	BFM_BD1_init(0);
+	BFM_BD1_init(1);
 	//BFM_dm01_reset(); No known video based game has a Matrix board
-}
-
-static void adder_lamp_draw(void)
-{
-	int i,nrlamps;
-
-	nrlamps = Lamps_GetNumberLamps();
-	for ( i = 0; i < (nrlamps+1); i++ )
-	{
-		output_set_lamp_value(i, Lamps_GetBrightness(i));
-	}
-}
-
-static VIDEO_UPDATE( addersc2 )
-{
-	adder_lamp_draw();
-
-	if ( sc2_show_door )
-	{
-		output_set_value("door",( Scorpion2_GetSwitchState(sc2_door_state>>4, sc2_door_state & 0x0F) ) );
-	}
-
-	if (screen == 1)
-	{
-		if ( sc2_show_vfd_display )//Configuration switch on, indicating VFD present
-		{
-			vfd_draw_14seg(bitmap,0,3,1);
-		}
-		else
-		{
-			vfd_draw_14seg(bitmap,0,0,0);//Keep receiving the data, but show nothing, like real h/w
-		}
-	}
-	return video_update_adder2(machine,screen,bitmap,cliprect);
 }
 
 // memory map for scorpion2 board video addon /////////////////////////////
@@ -1829,11 +1801,6 @@ static INPUT_PORTS_START( pyramid )
 	PORT_DIPSETTING(    0x10, "2 credit  per round" )
 	PORT_DIPSETTING(    0x18, "4 credits per round" )
 
-	PORT_START_TAG("DEBUGPORT")
-	PORT_CONFNAME( 0x01, 0x00, "Internal Alpha Display" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
-
 INPUT_PORTS_END
 
 // input ports for golden crown ///////////////////////////////////
@@ -1998,11 +1965,6 @@ static INPUT_PORTS_START( gldncrwn )
 	PORT_DIPSETTING(    0x10, "3" )
 	PORT_DIPSETTING(    0x18, "4 (slow)" )
 
-	PORT_START_TAG("DEBUGPORT")
-	PORT_CONFNAME( 0x01, 0x00, "Internal Alpha Display" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
-
 INPUT_PORTS_END
 
 // input ports for dutch quintoon /////////////////////////////////
@@ -2156,11 +2118,6 @@ static INPUT_PORTS_START( qntoond )
 	PORT_DIPNAME( 0x10, 0x00, "DIL15" ) PORT_DIPLOCATION("DIL:16")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( On  ) )
-
-	PORT_START_TAG("DEBUGPORT")
-	PORT_CONFNAME( 0x01, 0x00, "Internal Alpha Display" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
 
 INPUT_PORTS_END
 
@@ -2316,11 +2273,6 @@ static INPUT_PORTS_START( quintoon )
 	PORT_DIPSETTING(    0x04, "80%")
 	PORT_DIPSETTING(    0x14, "85%")
 
-	PORT_START_TAG("DEBUGPORT")
-	PORT_CONFNAME( 0x01, 0x00, "Internal Alpha Display" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
-
 INPUT_PORTS_END
 
 // input ports for slotsnl  ///////////////////////////////////////////////
@@ -2473,11 +2425,6 @@ static INPUT_PORTS_START( slotsnl )
 	PORT_DIPSETTING(    0x10, "2" )
 	PORT_DIPSETTING(    0x08, "3" )
 	PORT_DIPSETTING(    0x18, "4" )
-
-	PORT_START_TAG("DEBUGPORT")
-	PORT_CONFNAME( 0x01, 0x00, "Internal Alpha Display" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
 
 INPUT_PORTS_END
 
@@ -2634,11 +2581,6 @@ static INPUT_PORTS_START( sltblgtk )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( On  ) )
 
-	PORT_START_TAG("DEBUGPORT")
-	PORT_CONFNAME( 0x01, 0x00, "Internal Alpha Display" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
-
 INPUT_PORTS_END
 
 // input ports for sltblgpo  //////////////////////////////////////////////
@@ -2793,11 +2735,6 @@ static INPUT_PORTS_START( sltblgpo )
 	PORT_DIPSETTING(    0x18, "94%")
 	PORT_DIPSETTING(    0x08, "96%")
 
-	PORT_START_TAG("DEBUGPORT")
-	PORT_CONFNAME( 0x01, 0x00, "Internal Alpha Display" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
-
 INPUT_PORTS_END
 
 // input ports for paradice ///////////////////////////////////////////////
@@ -2949,11 +2886,6 @@ static INPUT_PORTS_START( paradice )
 	PORT_DIPSETTING(    0x08, "1" )
 	PORT_DIPSETTING(    0x10, "2" )
 	PORT_DIPSETTING(    0x18, "3" )
-
-	PORT_START_TAG("DEBUGPORT")
-	PORT_CONFNAME( 0x01, 0x00, "Internal Alpha Display" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
 
 INPUT_PORTS_END
 
@@ -3108,11 +3040,6 @@ static INPUT_PORTS_START( pokio )
 	PORT_DIPSETTING(    0x10, "2" )
 	PORT_DIPSETTING(    0x18, "3" )
 
-	PORT_START_TAG("DEBUGPORT")
-	PORT_CONFNAME( 0x01, 0x00, "Internal Alpha Display" )
-	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
-	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
-
 INPUT_PORTS_END
 
  static struct upd7759_interface upd7759_interface =
@@ -3132,7 +3059,7 @@ static MACHINE_DRIVER_START( scorpion2_vid )
 	MDRV_CPU_ADD_TAG("main", M6809, 2000000 )				// 6809 CPU at 2 Mhz
 	MDRV_CPU_PROGRAM_MAP(memmap_vid,0)					// setup scorpion2 board memorymap
 	MDRV_CPU_PERIODIC_INT(timer_irq, 1000)				// generate 1000 IRQ's per second
-	MDRV_NVRAM_HANDLER(nvram)
+	MDRV_NVRAM_HANDLER(bfm_sc2)
 	MDRV_DEFAULT_LAYOUT(layout_bfm_sc2)
 
 	MDRV_SCREEN_ADD("ADDER", 0x000)
@@ -3143,13 +3070,7 @@ static MACHINE_DRIVER_START( scorpion2_vid )
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_VIDEO_START( adder2)
 	MDRV_VIDEO_RESET( adder2)
-	MDRV_VIDEO_UPDATE(addersc2)
-
-	MDRV_SCREEN_ADD("VFD", 0x000)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_SIZE( 288, 34)
-	MDRV_SCREEN_VISIBLE_AREA(  0, 288-1, 0, 34-1)
+	MDRV_VIDEO_UPDATE(adder2)
 
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_COLORTABLE_LENGTH(16)
@@ -3182,8 +3103,6 @@ static void sc2_common_init(void)
 	}
 
 	memset(sc2_Inputs, 0, sizeof(sc2_Inputs));  // clear all inputs
-
-	Lamps_init(256);
 }
 
 static void adder2_common_init(void)
@@ -3498,7 +3417,7 @@ GAMEL( 1993, qntoond,  0,		  scorpion2_vid, qntoond,   adder_dutch,0,       "BFM
 GAMEL( 1994, pokio,    0,		  scorpion2_vid, pokio,     adder_dutch,0,       "BFM/ELAM", "Pokio (Dutch, Game Card 95-750-278)",			GAME_SUPPORTS_SAVE,layout_pokio )
 GAMEL( 1995, slotsnl,  0,		  scorpion2_vid, slotsnl,   adder_dutch,0,       "BFM/ELAM", "Slots (Dutch, Game Card 95-750-368)",			GAME_SUPPORTS_SAVE,layout_slots )
 GAMEL( 1995, paradice, 0,		  scorpion2_vid, paradice,  adder_dutch,0,       "BFM/ELAM", "Paradice (Dutch, Game Card 95-750-615)",		GAME_SUPPORTS_SAVE,layout_paradice )
-GAMEL( 1996, pyramid,  0,		  scorpion2_vid, pyramid,   pyramid,0,       "BFM/ELAM", "Pyramid (Dutch, Game Card 95-750-898)",		GAME_SUPPORTS_SAVE,layout_pyramid )
+GAMEL( 1996, pyramid,  0,		  scorpion2_vid, pyramid,   pyramid,	0,       "BFM/ELAM", "Pyramid (Dutch, Game Card 95-750-898)",		GAME_SUPPORTS_SAVE,layout_pyramid )
 
 GAMEL( 1996, sltblgtk, 0,		  scorpion2_vid, sltblgtk,  sltsbelg,   0,       "BFM/ELAM", "Slots (Belgian Token, Game Card 95-750-943)",	GAME_SUPPORTS_SAVE,layout_sltblgtk )
 GAMEL( 1996, sltblgpo, 0, 		  scorpion2_vid, sltblgpo,  sltsbelg,   0,       "BFM/ELAM", "Slots (Belgian Cash, Game Card 95-750-938)",	GAME_SUPPORTS_SAVE,layout_sltblgpo )

@@ -82,7 +82,7 @@ VIDEO_START( blstroid )
 	};
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 16,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 16,8, 64,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
@@ -96,14 +96,14 @@ VIDEO_START( blstroid )
  *
  *************************************/
 
-static void irq_off(int param)
+static TIMER_CALLBACK( irq_off )
 {
 	/* clear the interrupt */
 	atarigen_scanline_int_ack_w(0, 0, 0);
 }
 
 
-static void irq_on(int param)
+static TIMER_CALLBACK( irq_on )
 {
 	/* generate the interrupt */
 	atarigen_scanline_int_gen();

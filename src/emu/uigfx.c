@@ -700,7 +700,8 @@ static void gfxset_update_bitmap(ui_gfx_state *state, int xcells, int ycells, gf
 
 		/* allocate new stuff */
 		state->bitmap = bitmap_alloc(cellxpix * xcells, cellypix * ycells, BITMAP_FORMAT_ARGB32);
-		state->texture = render_texture_alloc(state->bitmap, NULL, 0, TEXFORMAT_ARGB32, NULL, NULL);
+		state->texture = render_texture_alloc(NULL, NULL);
+		render_texture_set_bitmap(state->texture, state->bitmap, NULL, 0, TEXFORMAT_ARGB32);
 
 		/* force a redraw */
 		state->bitmap_dirty = TRUE;
@@ -998,8 +999,8 @@ static void tilemap_handle_keys(ui_gfx_state *state, int viswidth, int visheight
 
 	/* handle navigation (up,down,left,right) */
 	step = 8;
-	if (code_pressed(KEYCODE_LSHIFT)) step = 1;
-	if (code_pressed(KEYCODE_LCONTROL)) step = 64;
+	if (input_code_pressed(KEYCODE_LSHIFT)) step = 1;
+	if (input_code_pressed(KEYCODE_LCONTROL)) step = 64;
 	if (input_ui_pressed_repeat(IPT_UI_UP, 4))
 		state->tilemap.yoffs -= step;
 	if (input_ui_pressed_repeat(IPT_UI_DOWN, 4))
@@ -1064,7 +1065,8 @@ static void tilemap_update_bitmap(ui_gfx_state *state, int width, int height)
 
 		/* allocate new stuff */
 		state->bitmap = bitmap_alloc(width, height, screen_format);
-		state->texture = render_texture_alloc(state->bitmap, NULL, 0, screen_texformat, NULL, NULL);
+		state->texture = render_texture_alloc(NULL, NULL);
+		render_texture_set_bitmap(state->texture, state->bitmap, NULL, 0, screen_texformat);
 
 		/* force a redraw */
 		state->bitmap_dirty = TRUE;

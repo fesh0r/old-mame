@@ -83,9 +83,8 @@ INLINE void set_status(audit_record *record, UINT8 status, UINT8 substatus)
     images for a game
 -------------------------------------------------*/
 
-int audit_images(int game, UINT32 validation, audit_record **audit)
+int audit_images(const game_driver *gamedrv, UINT32 validation, audit_record **audit)
 {
-	const game_driver *gamedrv = drivers[game];
 	const rom_entry *region, *rom;
 	audit_record *record;
 	int foundany = FALSE;
@@ -111,7 +110,7 @@ int audit_images(int game, UINT32 validation, audit_record **audit)
 		record = *audit;
 
 		/* iterate over regions and ROMs */
-		for (region = rom_first_region(drivers[game]); region; region = rom_next_region(region))
+		for (region = rom_first_region(gamedrv); region; region = rom_next_region(region))
 			for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
 			{
 				int shared = rom_used_by_parent(gamedrv, rom, NULL);
@@ -148,9 +147,8 @@ int audit_images(int game, UINT32 validation, audit_record **audit)
     game
 -------------------------------------------------*/
 
-int audit_samples(int game, audit_record **audit)
+int audit_samples(const game_driver *gamedrv, audit_record **audit)
 {
-	const game_driver *gamedrv = drivers[game];
 	machine_config config;
 	audit_record *record;
 	int sndnum, sampnum;
@@ -200,20 +198,19 @@ int audit_samples(int game, audit_record **audit)
 					{
 						file_error filerr;
 						mame_file *file;
-						char *fname;
+						astring *fname;
 
 						/* attempt to access the file from the game driver name */
-						fname = assemble_3_strings(gamedrv->name, PATH_SEPARATOR, intf->samplenames[sampnum]);
-						filerr = mame_fopen(SEARCHPATH_SAMPLE, fname, OPEN_FLAG_READ, &file);
-						free(fname);
+						fname = astring_assemble_3(astring_alloc(), gamedrv->name, PATH_SEPARATOR, intf->samplenames[sampnum]);
+						filerr = mame_fopen(SEARCHPATH_SAMPLE, astring_c(fname), OPEN_FLAG_READ, &file);
 
 						/* attempt to access the file from the shared driver name */
 						if (filerr != FILERR_NONE && sharedname != NULL)
 						{
-							fname = assemble_3_strings(sharedname, PATH_SEPARATOR, intf->samplenames[sampnum]);
-							filerr = mame_fopen(SEARCHPATH_SAMPLE, fname, OPEN_FLAG_READ, &file);
-							free(fname);
+							astring_assemble_3(fname, sharedname, PATH_SEPARATOR, intf->samplenames[sampnum]);
+							filerr = mame_fopen(SEARCHPATH_SAMPLE, astring_c(fname), OPEN_FLAG_READ, &file);
 						}
+						astring_free(fname);
 
 						/* fill in the record */
 						record->type = AUDIT_FILE_SAMPLE;
@@ -238,9 +235,8 @@ int audit_samples(int game, audit_record **audit)
     list of audit records
 -------------------------------------------------*/
 
-int audit_summary(int game, int count, const audit_record *records, int output)
+int audit_summary(const game_driver *gamedrv, int count, const audit_record *records, int output)
 {
-	const game_driver *gamedrv = drivers[game];
 	int overall_status = CORRECT;
 	int notfound = 0;
 	int recnum;
@@ -369,15 +365,15 @@ static int audit_one_rom(const rom_entry *rom, const game_driver *gamedrv, UINT3
 	{
 		file_error filerr;
 		mame_file *file;
-		char *fname;
+		astring *fname;
 
 		/* open the file if we can */
-		fname = assemble_3_strings(drv->name, PATH_SEPARATOR, ROM_GETNAME(rom));
+		fname = astring_assemble_3(astring_alloc(), drv->name, PATH_SEPARATOR, ROM_GETNAME(rom));
 	    if (has_crc)
-			filerr = mame_fopen_crc(SEARCHPATH_ROM, fname, crc, OPEN_FLAG_READ, &file);
+			filerr = mame_fopen_crc(SEARCHPATH_ROM, astring_c(fname), crc, OPEN_FLAG_READ, &file);
 		else
-			filerr = mame_fopen(SEARCHPATH_ROM, fname, OPEN_FLAG_READ, &file);
-		free(fname);
+			filerr = mame_fopen(SEARCHPATH_ROM, astring_c(fname), OPEN_FLAG_READ, &file);
+		astring_free(fname);
 
 		/* if we got it, extract the hash and length */
 		if (filerr == FILERR_NONE)
@@ -404,7 +400,7 @@ static int audit_one_rom(const rom_entry *rom, const game_driver *gamedrv, UINT3
 
 		/* not found and used by parent */
 		else if (rom_used_by_parent(gamedrv, rom, &parent))
-			set_status(record, AUDIT_STATUS_NOT_FOUND, (parent->flags & NOT_A_DRIVER) ? SUBSTATUS_NOT_FOUND_BIOS : SUBSTATUS_NOT_FOUND_PARENT);
+			set_status(record, AUDIT_STATUS_NOT_FOUND, (parent->flags & GAME_IS_BIOS_ROOT) ? SUBSTATUS_NOT_FOUND_BIOS : SUBSTATUS_NOT_FOUND_PARENT);
 
 		/* just plain old not found */
 		else
@@ -557,11 +553,11 @@ static chd_interface_file *audit_chd_open(const char *filename, const char *mode
 	{
 		file_error filerr;
 		mame_file *file;
-		char *fname;
+		astring *fname;
 
-		fname = assemble_3_strings(drv->name, PATH_SEPARATOR, filename);
-		filerr = mame_fopen(SEARCHPATH_IMAGE, fname, OPEN_FLAG_READ, &file);
-		free(fname);
+		fname = astring_assemble_3(astring_alloc(), drv->name, PATH_SEPARATOR, filename);
+		filerr = mame_fopen(SEARCHPATH_IMAGE, astring_c(fname), OPEN_FLAG_READ, &file);
+		astring_free(fname);
 
 		if (filerr == FILERR_NONE)
 			return (chd_interface_file *)file;

@@ -46,7 +46,6 @@ struct _romident_status
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static void parse_ini_file(const char *name);
 static int execute_simple_commands(const char *exename);
 static int execute_commands(const char *exename);
 static void display_help(void);
@@ -57,7 +56,6 @@ static int info_verifysamples(const char *gamename);
 static int info_romident(const char *gamename);
 
 /* utilities */
-static const char *extract_base_name(const char *name, int strip_extension);
 static void romident(const char *filename, romident_status *status);
 static void identify_file(const char *name, romident_status *status);
 static void identify_data(const char *name, const UINT8 *data, int length, romident_status *status);
@@ -98,52 +96,8 @@ const options_entry cli_options[] =
 	{ "listdevices",              "0",        OPTION_COMMAND,    "list available devices" },
 #endif
 
-	/* config options */
-	{ NULL,                       NULL,       OPTION_HEADER,     "CONFIGURATION OPTIONS" },
-	{ "readconfig;rc",            "1",        OPTION_BOOLEAN,    "enable loading of configuration files" },
-
 	{ NULL }
 };
-
-
-
-/***************************************************************************
-    INLINE FUNCTIONS
-***************************************************************************/
-
-/*-------------------------------------------------
-    is_directory_separator - is a given character
-    a directory separator? The following logic
-    works for most platforms
--------------------------------------------------*/
-
-INLINE int is_directory_separator(char c)
-{
-	return (c == '\\' || c == '/' || c == ':');
-}
-
-
-/*-------------------------------------------------
-    filename_ends_with - does the given
-    filename end with the specified extension?
--------------------------------------------------*/
-
-INLINE int filename_ends_with(const char *filename, const char *extension)
-{
-	int namelen = strlen(filename);
-	int extlen = strlen(extension);
-	int matches = TRUE;
-
-	/* work backwards checking for a match */
-	while (extlen > 0)
-		if (tolower(filename[--namelen]) != tolower(extension[--extlen]))
-		{
-			matches = FALSE;
-			break;
-		}
-
-	return matches;
-}
 
 
 
@@ -158,11 +112,9 @@ INLINE int filename_ends_with(const char *filename, const char *extension)
 
 int cli_execute(int argc, char **argv, const options_entry *osd_options)
 {
-	const char *exename = extract_base_name(argv[0], TRUE);
-	const char *sourcename = NULL;
-	const char *gamename = NULL;
-	const game_driver *driver = NULL;
-	machine_config drv;
+	astring *gamename = astring_alloc();
+	astring *exename = astring_alloc();
+	const game_driver *driver;
 	int result;
 
 	/* initialize the options manager and add the CLI-specific options */
@@ -170,84 +122,42 @@ int cli_execute(int argc, char **argv, const options_entry *osd_options)
 	options_add_entries(mame_options(), cli_options);
 
 	/* parse the command line first; if we fail here, we're screwed */
-	if (options_parse_command_line(mame_options(), argc, argv))
+	if (options_parse_command_line(mame_options(), argc, argv, OPTION_PRIORITY_CMDLINE))
 	{
 		result = MAMERR_INVALID_CONFIG;
 		goto error;
 	}
 
 	/* parse the simple commmands before we go any further */
-	result = execute_simple_commands(exename);
+	core_filename_extract_base(exename, argv[0], TRUE);
+	result = execute_simple_commands(astring_c(exename));
 	if (result != -1)
 		goto error;
 
 	/* find out what game we might be referring to */
-	gamename = options_get_string(mame_options(), OPTION_GAMENAME);
-	if (gamename != NULL)
-		gamename = extract_base_name(gamename, TRUE);
+	core_filename_extract_base(gamename, options_get_string(mame_options(), OPTION_GAMENAME), TRUE);
+	driver = driver_get_name(astring_c(gamename));
 
-	/* now parse the core set of INI files */
-	parse_ini_file(CONFIGNAME);
-	parse_ini_file(exename);
-#ifdef MAME_DEBUG
-	parse_ini_file("debug");
-#endif
-
-	/* if we have a valid game driver, parse game-specific INI files */
-	if (gamename != NULL)
-		driver = driver_get_name(gamename);
-	if (driver != NULL)
-	{
-		const game_driver *parent = driver_get_clone(driver);
-		const game_driver *gparent = (parent != NULL) ? driver_get_clone(parent) : NULL;
-
-		/* expand the machine driver to look at the info */
-		expand_machine_driver(driver->drv, &drv);
-
-		/* parse vector.ini for vector games */
-		if (drv.video_attributes & VIDEO_TYPE_VECTOR)
-			parse_ini_file("vector");
-
-		/* then parse sourcefile.ini */
-		sourcename = extract_base_name(driver->source_file, TRUE);
-		parse_ini_file(sourcename);
-
-		/* then parent the grandparent, parent, and game-specific INIs */
-		if (gparent != NULL)
-			parse_ini_file(gparent->name);
-		if (parent != NULL)
-			parse_ini_file(parent->name);
-		parse_ini_file(driver->name);
-	}
-
-	/* reparse the command line to ensure its options override all */
-	options_parse_command_line(mame_options(), argc, argv);
+	/* parse any relevant INI files */
+	mame_parse_ini_files(mame_options(), driver);
 
 	/* execute any commands specified */
-	result = execute_commands(exename);
+	result = execute_commands(astring_c(exename));
 	if (result != -1)
 		goto error;
 
-	/* if no driver specified, display help */
-	if (gamename == NULL)
-	{
-		result = MAMERR_INVALID_CONFIG;
-		display_help();
-		goto error;
-	}
-
 	/* if we don't have a valid driver selected, offer some suggestions */
-	if (driver == NULL)
+	if (astring_len(gamename) > 0 && driver == NULL)
 	{
 		const game_driver *matches[10];
 		int drvnum;
 
 		/* get the top 10 approximate matches */
-		driver_get_approx_matches(gamename, ARRAY_LENGTH(matches), matches);
+		driver_list_get_approx_matches(drivers, astring_c(gamename), ARRAY_LENGTH(matches), matches);
 
 		/* print them out */
 		fprintf(stderr, "\n\"%s\" approximately matches the following\n"
-				"supported " GAMESNOUN " (best match first):\n\n", gamename);
+				"supported " GAMESNOUN " (best match first):\n\n", astring_c(gamename));
 		for (drvnum = 0; drvnum < ARRAY_LENGTH(matches); drvnum++)
 			if (matches[drvnum] != NULL)
 				fprintf(stderr, "%-10s%s\n", matches[drvnum]->name, matches[drvnum]->description);
@@ -258,45 +168,14 @@ int cli_execute(int argc, char **argv, const options_entry *osd_options)
 	}
 
 	/* run the game */
-	result = run_game(driver);
+	result = mame_execute();
 
 error:
 	/* free our options and exit */
 	mame_options_exit();
-	if (exename != NULL)
-		free((void *)exename);
-	if (sourcename != NULL)
-		free((void *)sourcename);
-	if (gamename != NULL)
-		free((void *)gamename);
+	astring_free(gamename);
+	astring_free(exename);
 	return result;
-}
-
-
-/*-------------------------------------------------
-    parse_ini_file - parse a single INI file
--------------------------------------------------*/
-
-static void parse_ini_file(const char *name)
-{
-	file_error filerr;
-	mame_file *file;
-	char *fname;
-
-	/* don't parse if it has been disabled */
-	if (!options_get_bool(mame_options(), CLIOPTION_READCONFIG))
-		return;
-
-	/* open the file; if we fail, that's ok */
-	fname = assemble_2_strings(name, ".ini");
-	filerr = mame_fopen(SEARCHPATH_INI, fname, OPEN_FLAG_READ, &file);
-	free(fname);
-	if (filerr != FILERR_NONE)
-		return;
-
-	/* parse the file and close it */
-	options_parse_ini_file(mame_options(), mame_core_file(file));
-	mame_fclose(file);
 }
 
 
@@ -376,19 +255,16 @@ static int execute_commands(const char *exename)
 	/* createconfig? */
 	if (options_get_bool(mame_options(), CLIOPTION_CREATECONFIG))
 	{
-		const char *filename;
 		file_error filerr;
 		mame_file *file;
 
 		/* make the output filename */
-		filename = assemble_2_strings(exename, ".ini");
-		filerr = mame_fopen(NULL, filename, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
-		free((void *)filename);
+		filerr = mame_fopen(NULL, CONFIGNAME ".ini", OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
 
 		/* error if unable to create the file */
 		if (filerr != FILERR_NONE)
 		{
-			fprintf(stderr, "Unable to create file %s.ini\n", exename);
+			fprintf(stderr, "Unable to create file " CONFIGNAME ".ini\n");
 			return MAMERR_FATALERROR;
 		}
 
@@ -410,7 +286,7 @@ static int execute_commands(const char *exename)
 		if (options_get_bool(mame_options(), info_commands[i].option))
 		{
 			const char *gamename = options_get_string(mame_options(), OPTION_GAMENAME);
-			return (*info_commands[i].function)((gamename == NULL) ? "*" : gamename);
+			return (*info_commands[i].function)((gamename[0] == 0) ? "*" : gamename);
 		}
 
 	return -1;
@@ -426,12 +302,12 @@ static void display_help(void)
 {
 #ifndef MESS
 	mame_printf_info("M.A.M.E. v%s - Multiple Arcade Machine Emulator\n"
-		   "Copyright (C) 1997-2007 by Nicola Salmoria and the MAME Team\n\n",build_version);
+		   "Copyright (C) 1997-2007 by Nicola Salmoria and the MAME Team\n\n", build_version);
 	mame_printf_info("%s\n", mame_disclaimer);
 	mame_printf_info("Usage:  MAME gamename [options]\n\n"
 		   "        MAME -showusage    for a brief list of options\n"
 		   "        MAME -showconfig   for a list of configuration options\n"
-		   "        MAME -createconfig to create a mame.ini\n\n"
+		   "        MAME -createconfig to create a " CONFIGNAME ".ini\n\n"
 		   "For usage instructions, please consult the file windows.txt\n");
 #else
 	mess_display_help();
@@ -475,7 +351,7 @@ int cli_info_listfull(const char *gamename)
 
 	/* iterate over drivers */
 	for (drvindex = 0; drivers[drvindex]; drvindex++)
-		if ((drivers[drvindex]->flags & NOT_A_DRIVER) == 0 && mame_strwildcmp(gamename, drivers[drvindex]->name) == 0)
+		if ((drivers[drvindex]->flags & GAME_NO_STANDALONE) == 0 && mame_strwildcmp(gamename, drivers[drvindex]->name) == 0)
 		{
 			/* print the header on the first one */
 			if (count == 0)
@@ -498,6 +374,7 @@ int cli_info_listfull(const char *gamename)
 
 int cli_info_listsource(const char *gamename)
 {
+	astring *filename = astring_alloc();
 	int drvindex, count = 0;
 
 	/* iterate over drivers */
@@ -505,11 +382,12 @@ int cli_info_listsource(const char *gamename)
 		if (mame_strwildcmp(gamename, drivers[drvindex]->name) == 0)
 		{
 			/* output the remaining information */
-			mame_printf_info("%-8s %s\n", drivers[drvindex]->name, drivers[drvindex]->source_file);
+			mame_printf_info("%-8s %s\n", drivers[drvindex]->name, astring_c(core_filename_extract_base(filename, drivers[drvindex]->source_file, FALSE)));
 			count++;
 		}
 
 	/* return an error if none found */
+	astring_free(filename);
 	return (count > 0) ? MAMERR_NONE : MAMERR_NO_SUCH_GAME;
 }
 
@@ -529,7 +407,7 @@ int cli_info_listclones(const char *gamename)
 		const game_driver *clone_of = driver_get_clone(drivers[drvindex]);
 
 		/* if we are a clone, and either our name matches the gamename, or the clone's name matches, display us */
-		if (clone_of != NULL && (clone_of->flags & NOT_A_DRIVER) == 0)
+		if (clone_of != NULL && (clone_of->flags & GAME_IS_BIOS_ROOT) == 0)
 			if (mame_strwildcmp(gamename, drivers[drvindex]->name) == 0 || mame_strwildcmp(gamename, clone_of->name) == 0)
 			{
 				/* print the header on the first one */
@@ -725,8 +603,8 @@ static int info_verifyroms(const char *gamename)
 			int res;
 
 			/* audit the ROMs in this set */
-			audit_records = audit_images(drvindex, AUDIT_VALIDATE_FAST, &audit);
-			res = audit_summary(drvindex, audit_records, audit, TRUE);
+			audit_records = audit_images(drivers[drvindex], AUDIT_VALIDATE_FAST, &audit);
+			res = audit_summary(drivers[drvindex], audit_records, audit, TRUE);
 			if (audit_records > 0)
 				free(audit);
 
@@ -809,8 +687,8 @@ static int info_verifysamples(const char *gamename)
 			int res;
 
 			/* audit the samples in this set */
-			audit_records = audit_samples(drvindex, &audit);
-			res = audit_summary(drvindex, audit_records, audit, TRUE);
+			audit_records = audit_samples(drivers[drvindex], &audit);
+			res = audit_summary(drivers[drvindex], audit_records, audit, TRUE);
 			if (audit_records > 0)
 				free(audit);
 			else
@@ -902,37 +780,6 @@ static int info_romident(const char *gamename)
 ***************************************************************************/
 
 /*-------------------------------------------------
-    extract_base_name - extract the base name
-    from a filename; note that this makes
-    assumptions about path separators
--------------------------------------------------*/
-
-static const char *extract_base_name(const char *name, int strip_extension)
-{
-	char *result, *dest;
-	const char *start;
-
-	/* find the start of the name */
-	start = name + strlen(name);
-	while (start > name && !is_directory_separator(start[-1]))
-		start--;
-
-	/* allocate memory for the new string */
-	result = malloc(strlen(start) + 1);
-	if (result == NULL)
-		return NULL;
-
-	/* copy in the base name up to the extension */
-	dest = result;
-	while (*start != 0 && (!strip_extension || *start != '.'))
-		*dest++ = *start++;
-	*dest = 0;
-
-	return result;
-}
-
-
-/*-------------------------------------------------
     romident - identify files
 -------------------------------------------------*/
 
@@ -953,15 +800,15 @@ static void romident(const char *filename, romident_status *status)
 		while ((entry = osd_readdir(directory)) != NULL)
 			if (entry->type == ENTTYPE_FILE)
 			{
-				const char *curfile = assemble_3_strings(filename, PATH_SEPARATOR, entry->name);
-				identify_file(curfile, status);
-				free((void *)curfile);
+				astring *curfile = astring_assemble_3(astring_alloc(), filename, PATH_SEPARATOR, entry->name);
+				identify_file(astring_c(curfile), status);
+				astring_free(curfile);
 			}
 		osd_closedir(directory);
 	}
 
 	/* if that failed, and the filename ends with .zip, identify as a ZIP file */
-	else if (filename_ends_with(filename, ".zip"))
+	else if (core_filename_ends_with(filename, ".zip"))
 	{
 		/* first attempt to examine it as a valid ZIP file */
 		zip_file *zip = NULL;
@@ -1038,12 +885,12 @@ static void identify_data(const char *name, const UINT8 *data, int length, romid
 {
 	char hash[HASH_BUF_SIZE];
 	UINT8 *tempjed = NULL;
-	const char *basename;
+	astring *basename;
 	int found = 0;
 	jed_data jed;
 
 	/* if this is a '.jed' file, process it into raw bits first */
-	if (filename_ends_with(name, ".jed") && jed_parse(data, length, &jed) == JEDERR_NONE)
+	if (core_filename_ends_with(name, ".jed") && jed_parse(data, length, &jed) == JEDERR_NONE)
 	{
 		/* now determine the new data length and allocate temporary memory for it */
 		length = jedbin_output(&jed, NULL, 0);
@@ -1062,10 +909,9 @@ static void identify_data(const char *name, const UINT8 *data, int length, romid
 
 	/* output the name */
 	status->total++;
-	basename = extract_base_name(name, FALSE);
-	mame_printf_info("%-20s", (basename != NULL) ? basename : name);
-	if (basename != NULL)
-		free((void *)basename);
+	basename = core_filename_extract_base(astring_alloc(), name, FALSE);
+	mame_printf_info("%-20s", astring_c(basename));
+	astring_free(basename);
 
 	/* see if we can find a match in the ROMs */
 	match_roms(hash, length, &found);

@@ -9,10 +9,12 @@
 
 ***************************************************************************/
 
-#include <stdarg.h>
-
 #include "corefile.h"
 #include "unicode.h"
+
+#include <stdarg.h>
+#include <ctype.h>
+
 
 
 /***************************************************************************
@@ -77,6 +79,23 @@ struct _core_file
 
 /* misc helpers */
 static UINT32 safe_buffer_copy(const void *source, UINT32 sourceoffs, UINT32 sourcelen, void *dest, UINT32 destoffs, UINT32 destlen);
+
+
+
+/***************************************************************************
+    INLINE FUNCTIONS
+***************************************************************************/
+
+/*-------------------------------------------------
+    is_directory_separator - is a given character
+    a directory separator? The following logic
+    works for most platforms
+-------------------------------------------------*/
+
+INLINE int is_directory_separator(char c)
+{
+	return (c == '\\' || c == '/' || c == ':');
+}
 
 
 
@@ -563,9 +582,10 @@ int core_fputs(core_file *f, const char *s)
 {
 	char convbuf[1024];
 	char *pconvbuf = convbuf;
+	int count = 0;
 
 	/* is this the beginning of the file?  if so, write a byte order mark */
-	if (f->offset == 0)
+	if (f->offset == 0 && !(f->openflags & OPEN_FLAG_NO_BOM))
 	{
 		*pconvbuf++ = 0xef;
 		*pconvbuf++ = 0xbb;
@@ -590,10 +610,20 @@ int core_fputs(core_file *f, const char *s)
 		else
 			*pconvbuf++ = *s;
 		s++;
-	}
-	*pconvbuf++ = 0;
 
-	return core_fwrite(f, convbuf, (UINT32)strlen(convbuf));
+		/* if we overflow, break into chunks */
+		if (pconvbuf >= convbuf + ARRAY_LENGTH(convbuf) - 10)
+		{
+			count += core_fwrite(f, convbuf, pconvbuf - convbuf);
+			pconvbuf = convbuf;
+		}
+	}
+
+	/* final flush */
+	if (pconvbuf != convbuf)
+		count += core_fwrite(f, convbuf, pconvbuf - convbuf);
+
+	return count;
 }
 
 
@@ -621,6 +651,57 @@ int CLIB_DECL core_fprintf(core_file *f, const char *fmt, ...)
 	rc = core_vfprintf(f, fmt, va);
 	va_end(va);
 	return rc;
+}
+
+
+
+/***************************************************************************
+    FILENAME UTILITIES
+***************************************************************************/
+
+/*-------------------------------------------------
+    core_filename_extract_base - extract the base
+    name from a filename; note that this makes
+    assumptions about path separators
+-------------------------------------------------*/
+
+astring *core_filename_extract_base(astring *result, const char *name, int strip_extension)
+{
+	/* find the start of the name */
+	const char *start = name + strlen(name);
+	while (start > name && !is_directory_separator(start[-1]))
+		start--;
+
+	/* copy the rest into an astring */
+	astring_cpyc(result, start);
+
+	/* chop the extension if present */
+	if (strip_extension)
+		astring_substr(result, 0, astring_rchr(result, 0, '.'));
+	return result;
+}
+
+
+/*-------------------------------------------------
+    core_filename_ends_with - does the given
+    filename end with the specified extension?
+-------------------------------------------------*/
+
+int core_filename_ends_with(const char *filename, const char *extension)
+{
+	int namelen = strlen(filename);
+	int extlen = strlen(extension);
+	int matches = TRUE;
+
+	/* work backwards checking for a match */
+	while (extlen > 0)
+		if (tolower(filename[--namelen]) != tolower(extension[--extlen]))
+		{
+			matches = FALSE;
+			break;
+		}
+
+	return matches;
 }
 
 

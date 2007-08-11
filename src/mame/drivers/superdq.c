@@ -54,7 +54,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( superdq )
 {
-	superdq_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE, 8, 8, 32, 32);
+	superdq_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_OPAQUE, 8, 8, 32, 32);
 
 	add_exit_callback(machine, video_cleanup);
 }
@@ -74,17 +74,16 @@ VIDEO_UPDATE( superdq )
 
 		/* first lay down the video data */
 		if (video_texture == NULL)
-			video_texture = render_texture_alloc(vidbitmap, NULL, 0, TEXFORMAT_YUY16, NULL, NULL);
-		else if (vidbitmap != last_video_bitmap)
+			video_texture = render_texture_alloc(NULL, NULL);
+		if (vidbitmap != last_video_bitmap)
 			render_texture_set_bitmap(video_texture, vidbitmap, NULL, 0, TEXFORMAT_YUY16);
 
 		last_video_bitmap = vidbitmap;
 
 		/* then overlay the TMS9928A video */
 		if (overlay_texture == NULL)
-			overlay_texture = render_texture_alloc(bitmap, &fixedvis, 0, TEXFORMAT_PALETTEA16, NULL, NULL);
-		else
-			render_texture_set_bitmap(overlay_texture, bitmap, &fixedvis, 0, TEXFORMAT_PALETTEA16);
+			overlay_texture = render_texture_alloc(NULL, NULL);
+		render_texture_set_bitmap(overlay_texture, bitmap, &fixedvis, 0, TEXFORMAT_PALETTEA16);
 
 		/* add both quads to the screen */
 		render_container_empty(render_container_get_screen(screen));

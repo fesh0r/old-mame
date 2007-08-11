@@ -55,10 +55,10 @@ static TILE_GET_INFO( get_pf2w_tile_info ) { get_tile_info(machine,tileinfo,tile
 
 VIDEO_START( m90 )
 {
-	pf1_layer =      tilemap_create(get_pf1_tile_info, tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,64);
-	pf1_wide_layer = tilemap_create(get_pf1w_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,128,64);
-	pf2_layer =      tilemap_create(get_pf2_tile_info, tilemap_scan_rows,TILEMAP_OPAQUE,8,8,64,64);
-	pf2_wide_layer = tilemap_create(get_pf2w_tile_info,tilemap_scan_rows,TILEMAP_OPAQUE,8,8,128,64);
+	pf1_layer =      tilemap_create(get_pf1_tile_info, tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
+	pf1_wide_layer = tilemap_create(get_pf1w_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,128,64);
+	pf2_layer =      tilemap_create(get_pf2_tile_info, tilemap_scan_rows,TILEMAP_TYPE_OPAQUE,8,8,64,64);
+	pf2_wide_layer = tilemap_create(get_pf2w_tile_info,tilemap_scan_rows,TILEMAP_TYPE_OPAQUE,8,8,128,64);
 
 	tilemap_set_transparent_pen(pf1_layer,0);
 	tilemap_set_transparent_pen(pf1_wide_layer,0);
@@ -138,12 +138,12 @@ WRITE8_HANDLER( m90_video_control_w )
 }
 
 
-static void markdirty(tilemap *tilemap,int page,offs_t offset)
+static void markdirty(tilemap *tmap,int page,offs_t offset)
 {
 	offset -= page * 0x4000;
 
 	if (offset >= 0 && offset < 0x4000)
-		tilemap_mark_tile_dirty(tilemap,offset/4);
+		tilemap_mark_tile_dirty(tmap,offset/4);
 }
 
 

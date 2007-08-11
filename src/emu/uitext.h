@@ -89,7 +89,9 @@ enum
 	UI_gameinfo,
 	UI_history,
 	UI_resetgame,
+	UI_selectgame,
 	UI_returntogame,
+	UI_exit,
 	UI_cheat,
 	UI_memorycard,
 
@@ -222,8 +224,6 @@ struct _lang_struct
 	char author[255];
 };
 typedef struct _lang_struct lang_struct;
-
-extern lang_struct lang;
 
 int uistring_init (mame_file *language_file);
 

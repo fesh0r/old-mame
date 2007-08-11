@@ -92,10 +92,10 @@ static TILE_GET_INFO( get_tile_info2 )
 VIDEO_START(dunhuang)
 {
 	tmap = tilemap_create(	get_tile_info, tilemap_scan_rows,
-							TILEMAP_TRANSPARENT, 8,8, 0x40,0x20	);
+							TILEMAP_TYPE_TRANSPARENT, 8,8, 0x40,0x20	);
 
 	tmap2 = tilemap_create(	get_tile_info2, tilemap_scan_rows,
-							TILEMAP_TRANSPARENT, 8,32, 0x40,0x8	);
+							TILEMAP_TYPE_TRANSPARENT, 8,32, 0x40,0x8	);
 
 	tilemap_set_transparent_pen(tmap,   0);
 	tilemap_set_transparent_pen(tmap2,  0);
@@ -114,11 +114,11 @@ VIDEO_UPDATE( dunhuang )
 	int layers_ctrl = -1;
 
 #ifdef MAME_DEBUG
-if (code_pressed(KEYCODE_Z))
+if (input_code_pressed(KEYCODE_Z))
 {
 	int msk = 0;
-	if (code_pressed(KEYCODE_Q))	msk |= 1;
-	if (code_pressed(KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(KEYCODE_W))	msk |= 2;
 	if (msk != 0) layers_ctrl &= msk;
 }
 #endif

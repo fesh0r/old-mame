@@ -1253,7 +1253,7 @@ VIDEO_UPDATE( hng64 )
         tilemap2Offset = hng64_videoregs[0xc] ;
 
         tilemap_dispose(hng64_tilemap1) ;
-        hng64_tilemap1 = tilemap_create(get_hng64_tile2_info,tilemap_scan_rows,TILEMAP_TRANSPARENT, 16, 16, 128,128); // 128x128x4 = 0x10000
+        hng64_tilemap1 = tilemap_create(get_hng64_tile2_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT, 16, 16, 128,128); // 128x128x4 = 0x10000
     }
     */
 
@@ -1276,14 +1276,14 @@ VIDEO_UPDATE( hng64 )
 	draw3d(machine, bitmap, cliprect);
 
 	/* hack to enable 2nd cpu when key is pressed */
-	if ( code_pressed_memory(KEYCODE_L) )
+	if ( input_code_pressed_once(KEYCODE_L) )
 	{
 		cpunum_set_input_line(1, INPUT_LINE_HALT, CLEAR_LINE);
 		cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
 	}
 
 	/* AJG */
-	// if(code_pressed(KEYCODE_D))
+	// if(input_code_pressed(KEYCODE_D))
 
 	transition_control(machine, bitmap) ;
 
@@ -1296,10 +1296,10 @@ VIDEO_UPDATE( hng64 )
 
 VIDEO_START( hng64 )
 {
-	hng64_tilemap0 = tilemap_create(get_hng64_tile0_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8,   8, 128,128); /* 128x128x4 = 0x10000 */
-	hng64_tilemap1 = tilemap_create(get_hng64_tile1_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 16, 16, 128,128); /* 128x128x4 = 0x10000 */
-	hng64_tilemap2 = tilemap_create(get_hng64_tile2_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 16, 16, 128,128); /* 128x128x4 = 0x10000 */
-	hng64_tilemap3 = tilemap_create(get_hng64_tile3_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 16, 16, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap0 = tilemap_create(get_hng64_tile0_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8,   8, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap1 = tilemap_create(get_hng64_tile1_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 16, 16, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap2 = tilemap_create(get_hng64_tile2_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 16, 16, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap3 = tilemap_create(get_hng64_tile3_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 16, 16, 128,128); /* 128x128x4 = 0x10000 */
 	tilemap_set_transparent_pen(hng64_tilemap0,0);
 	tilemap_set_transparent_pen(hng64_tilemap1,0);
 	tilemap_set_transparent_pen(hng64_tilemap2,0);

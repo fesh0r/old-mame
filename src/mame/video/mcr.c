@@ -98,19 +98,19 @@ VIDEO_START( mcr )
 	switch (mcr_cpu_board)
 	{
 		case 90009:
-			bg_tilemap = tilemap_create(mcr_90009_get_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 16,16, 32,30);
+			bg_tilemap = tilemap_create(mcr_90009_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 16,16, 32,30);
 			break;
 
 		case 90010:
-			bg_tilemap = tilemap_create(mcr_90010_get_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 16,16, 32,30);
+			bg_tilemap = tilemap_create(mcr_90010_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 16,16, 32,30);
 			break;
 
 		case 91475:
-			bg_tilemap = tilemap_create(mcr_90010_get_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 16,16, 32,30);
+			bg_tilemap = tilemap_create(mcr_90010_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 16,16, 32,30);
 			break;
 
 		case 91490:
-			bg_tilemap = tilemap_create(mcr_91490_get_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 16,16, 32,30);
+			bg_tilemap = tilemap_create(mcr_91490_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 16,16, 32,30);
 			break;
 
 		default:
@@ -343,7 +343,7 @@ static void render_sprites_91464(running_machine *machine, mame_bitmap *bitmap, 
 
 		/* loop over lines in the sprite */
 		for (y = 0; y < 32; y++, sy = (sy + 1) & 0x1ff)
-			if (sy >= cliprect->min_y && sy <= cliprect->max_y)
+			if (sy >= 2 && sy >= cliprect->min_y && sy <= cliprect->max_y)
 			{
 				UINT8 *src = gfx->gfxdata + gfx->char_modulo * code + gfx->line_modulo * (y ^ vflip);
 				UINT16 *dst = BITMAP_ADDR16(bitmap, sy, 0);

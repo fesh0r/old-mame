@@ -648,7 +648,7 @@ static WRITE32_HANDLER( ccu_w )
     12Mhz dotclock: 42.7us(clear) / 341.3us(transfer)
 */
 
-static void dmaend_callback(int data)
+static TIMER_CALLBACK( dmaend_callback )
 {
 	// foul-proof (CPU0 could be deactivated while we wait)
 	if (resume_trigger && suspension_active) { suspension_active = 0; cpu_trigger(resume_trigger); }
@@ -2150,7 +2150,7 @@ INPUT_PORTS_END
 #define GX_BIOS ROM_LOAD("300a01.34k", 0x000000, 128*1024, CRC(d5fa95f5) SHA1(c483aa98ff8ef40cdac359c19ad23fea5ecc1906) )
 
 ROM_START(konamigx)
-	ROM_REGION( 0x800000, REGION_CPU1, 0)
+	ROM_REGION( 0x800000, REGION_CPU1, ROMREGION_ERASEFF )
 	GX_BIOS
 
 	/* sound program */
@@ -3617,7 +3617,7 @@ static DRIVER_INIT(konamigx)
 /*     year  ROM       parent    machine   inp       init */
 
 /* dummy parent for the BIOS */
-GAME( 1994, konamigx, 0, konamigx, konamigx, konamigx, ROT0, "Konami", "System GX", NOT_A_DRIVER )
+GAME( 1994, konamigx, 0, konamigx, konamigx, konamigx, ROT0, "Konami", "System GX", GAME_IS_BIOS_ROOT )
 
 
 /* Type 1: standard with an add-on 53936 on the ROM board, analog inputs, */

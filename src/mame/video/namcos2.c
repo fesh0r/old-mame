@@ -206,7 +206,7 @@ WRITE16_HANDLER( namcos2_68k_roz_ram_w )
 {
 	COMBINE_DATA(&namcos2_68k_roz_ram[offset]);
 	tilemap_mark_tile_dirty(tilemap_roz,offset);
-//      if( code_pressed(KEYCODE_Q) )
+//      if( input_code_pressed(KEYCODE_Q) )
 //      {
 //          DEBUGGER_BREAK;
 //      }
@@ -322,7 +322,7 @@ READ16_HANDLER( namcos2_sprite_ram_r )
 VIDEO_START( namcos2 )
 {
 	namco_tilemap_init(2,memory_region(REGION_GFX4),TilemapCB);
-	tilemap_roz = tilemap_create(get_tile_info_roz,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,256,256);
+	tilemap_roz = tilemap_create(get_tile_info_roz,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,256,256);
 	tilemap_set_transparent_pen(tilemap_roz,0xff);
 	DrawSpriteInit();
 }

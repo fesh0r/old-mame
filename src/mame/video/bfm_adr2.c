@@ -92,7 +92,7 @@ E000-FFFF  | R | D D D D D D D D | 8K ROM
 
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
-#include "machine/vacfdisp.h"  // vfd
+#include "machine/bfm_bd1.h"  // vfd
 #include "video/bfm_adr2.h"
 #include "rendlay.h"
 
@@ -179,7 +179,7 @@ VIDEO_RESET( adder2 )
 	adder2_c101              = 0;
 	adder2_rx                = 0;
 	adder_vbl_triggered      = 0;
-	adder2_acia_triggered     = 0;
+	adder2_acia_triggered    = 0;
 	adder2_data_from_sc2     = 0;
 	adder2_data_to_sc2       = 0;
 
@@ -206,9 +206,9 @@ VIDEO_START( adder2 )
 	state_save_register_item_array("Adder", 0, adder_ram);
 	state_save_register_item_2d_array("Adder", 0, adder_screen_ram);
 
-	tilemap0 = tilemap_create(get_tile0_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 50, 35);
+	tilemap0 = tilemap_create(get_tile0_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 8, 8, 50, 35);
 
-	tilemap1 = tilemap_create(get_tile1_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8, 8, 50, 35);
+	tilemap1 = tilemap_create(get_tile1_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 8, 8, 50, 35);
 }
 
 // video update ///////////////////////////////////////////////////////////
@@ -216,17 +216,10 @@ static rectangle visible1 = { 0, 400,  0,  280 };  //minx,maxx, miny,maxy
 
 VIDEO_UPDATE( adder2 )
 {
-	if (screen == 0)
-	{
-		adder2_update(bitmap);
-	}
-	return 0;
-}
-
-void adder2_update(mame_bitmap *bitmap)
-{
 	if (adder2_screen_page_reg & SL_DISPLAY) tilemap_draw(bitmap, &visible1, tilemap1, 0, 0);
 	else                                     tilemap_draw(bitmap, &visible1, tilemap0, 0, 0);
+
+	return 0;
 }
 
 // adder2 palette initialisation //////////////////////////////////////////
@@ -257,7 +250,7 @@ MACHINE_RESET( adder2 )
 {
 	// setup the standard bellfruit BD1 display /////////////////////////////
 
-	vfd_init(0, VFDTYPE_BFMBD1,0);
+	BFM_BD1_init(0);
 }
 
 ///////////////////////////////////////////////////////////////////////////

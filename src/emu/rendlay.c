@@ -98,6 +98,10 @@
 
 #define LAYOUT_VERSION			2
 
+#define LINE_CAP_NONE  0
+#define LINE_CAP_START 1
+#define LINE_CAP_END   2
+
 enum
 {
 	COMPONENT_TYPE_IMAGE = 0,
@@ -105,9 +109,12 @@ enum
 	COMPONENT_TYPE_DISK,
 	COMPONENT_TYPE_TEXT,
 	COMPONENT_TYPE_LED7SEG,
+	COMPONENT_TYPE_LED14SEG,
+	COMPONENT_TYPE_LED16SEG,
+	COMPONENT_TYPE_LED14SEGSC,
+	COMPONENT_TYPE_LED16SEGSC,
 	COMPONENT_TYPE_MAX
 };
-
 
 
 /***************************************************************************
@@ -142,6 +149,10 @@ static void layout_element_draw_rect(mame_bitmap *dest, const rectangle *bounds,
 static void layout_element_draw_disk(mame_bitmap *dest, const rectangle *bounds, const render_color *color);
 static void layout_element_draw_text(mame_bitmap *dest, const rectangle *bounds, const render_color *color, const char *string);
 static void layout_element_draw_led7seg(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int state);
+static void layout_element_draw_led14seg(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int state);
+static void layout_element_draw_led16seg(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int state);
+static void layout_element_draw_led14segsc(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int state);
+static void layout_element_draw_led16segsc(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int state);
 
 /* layout file parsing */
 static layout_element *load_layout_element(xml_data_node *elemnode, const char *dirname);
@@ -394,6 +405,22 @@ static void layout_element_scale(mame_bitmap *dest, const mame_bitmap *source, c
 				case COMPONENT_TYPE_LED7SEG:
 					layout_element_draw_led7seg(dest, &bounds, &component->color, elemtex->state);
 					break;
+
+				case COMPONENT_TYPE_LED14SEG:
+					layout_element_draw_led14seg(dest, &bounds, &component->color, elemtex->state);
+					break;
+
+				case COMPONENT_TYPE_LED16SEG:
+					layout_element_draw_led16seg(dest, &bounds, &component->color, elemtex->state);
+					break;
+
+				case COMPONENT_TYPE_LED14SEGSC:
+					layout_element_draw_led14segsc(dest, &bounds, &component->color, elemtex->state);
+					break;
+
+				case COMPONENT_TYPE_LED16SEGSC:
+					layout_element_draw_led16segsc(dest, &bounds, &component->color, elemtex->state);
+					break;
 			}
 		}
 }
@@ -580,11 +607,12 @@ static void layout_element_draw_text(mame_bitmap *dest, const rectangle *bounds,
 
 
 /*-------------------------------------------------
-    draw_segment_horizontal - draw a horizontal
-    LED segment
+    draw_segment_horizontal_caps - draw a
+    horizontal LED segment with definable end
+    and start points
 -------------------------------------------------*/
 
-static void draw_segment_horizontal(mame_bitmap *dest, int minx, int maxx, int midy, int width, rgb_t color)
+static void draw_segment_horizontal_caps(mame_bitmap *dest, int minx, int maxx, int midy, int width, int caps, rgb_t color)
 {
 	int x, y;
 
@@ -596,18 +624,30 @@ static void draw_segment_horizontal(mame_bitmap *dest, int minx, int maxx, int m
 		int ty = (y < width / 8) ? width / 8 : y;
 
 		/* loop over the length of the segment */
-		for (x = minx + ty; x < maxx - ty; x++)
+		for (x = minx + ((caps & LINE_CAP_START) ? ty : 0); x < maxx - ((caps & LINE_CAP_END) ? ty : 0); x++)
 			d0[x] = d1[x] = color;
 	}
 }
 
 
 /*-------------------------------------------------
-    draw_segment_horizontal - draw a vertical
+    draw_segment_horizontal - draw a horizontal
     LED segment
 -------------------------------------------------*/
 
-static void draw_segment_vertical(mame_bitmap *dest, int miny, int maxy, int midx, int width, rgb_t color)
+static void draw_segment_horizontal(mame_bitmap *dest, int minx, int maxx, int midy, int width, rgb_t color)
+{
+	draw_segment_horizontal_caps(dest, minx, maxx, midy, width, LINE_CAP_START | LINE_CAP_END, color);
+}
+
+
+/*-------------------------------------------------
+    draw_segment_vertical_caps - draw a
+    vertical LED segment with definable end
+    and start points
+-------------------------------------------------*/
+
+static void draw_segment_vertical_caps(mame_bitmap *dest, int miny, int maxy, int midx, int width, int caps, rgb_t color)
 {
 	int x, y;
 
@@ -619,8 +659,75 @@ static void draw_segment_vertical(mame_bitmap *dest, int miny, int maxy, int mid
 		int tx = (x < width / 8) ? width / 8 : x;
 
 		/* loop over the length of the segment */
-		for (y = miny + tx; y < maxy - tx; y++)
+		for (y = miny + ((caps & LINE_CAP_START) ? tx : 0); y < maxy - ((caps & LINE_CAP_END) ? tx : 0); y++)
 			d0[y * dest->rowpixels] = d1[y * dest->rowpixels] = color;
+	}
+}
+
+
+/*-------------------------------------------------
+    draw_segment_vertical - draw a vertical
+    LED segment
+-------------------------------------------------*/
+
+static void draw_segment_vertical(mame_bitmap *dest, int miny, int maxy, int midx, int width, rgb_t color)
+{
+	draw_segment_vertical_caps(dest, miny, maxy, midx, width, LINE_CAP_START | LINE_CAP_END, color);
+}
+
+
+/*-------------------------------------------------
+    draw_segment_diagonal_1 - draw a diagonal
+    LED segment that looks like this: /
+-------------------------------------------------*/
+
+static void draw_segment_diagonal_1(mame_bitmap *dest, int minx, int maxx, int miny, int maxy, int width, rgb_t color)
+{
+	int x, y;
+	float ratio;
+
+	/* compute parameters */
+	width *= 1.5;
+	ratio = (maxy - miny - width) / (float)(maxx - minx);
+
+	/* draw line */
+	for (x = minx; x < maxx; x++)
+	{
+		UINT32 *d = BITMAP_ADDR32(dest, 0, x);
+		int step = (x - minx) * ratio;
+
+		for (y = maxy - width - step; y < maxy - step; y++)
+		{
+			d[y * dest->rowpixels] = color;
+		}
+	}
+}
+
+
+/*-------------------------------------------------
+    draw_segment_diagonal_2 - draw a diagonal
+    LED segment that looks like this: \
+-------------------------------------------------*/
+
+static void draw_segment_diagonal_2(mame_bitmap *dest, int minx, int maxx, int miny, int maxy, int width, rgb_t color)
+{
+	int x, y;
+	float ratio;
+
+	/* compute parameters */
+	width *= 1.5;
+	ratio = (maxy - miny - width) / (float)(maxx - minx);
+
+	/* draw line */
+	for (x = minx; x < maxx; x++)
+	{
+		UINT32 *d = BITMAP_ADDR32(dest, 0, x);
+		int step = (x - minx) * ratio;
+
+		for (y = miny + step; y < miny + step + width; y++)
+		{
+			d[y * dest->rowpixels] = color;
+		}
 	}
 }
 
@@ -656,6 +763,53 @@ static void draw_segment_decimal(mame_bitmap *dest, int midx, int midy, int widt
 	}
 }
 
+/*-------------------------------------------------
+    draw_segment_comma - draw a comma tail
+-------------------------------------------------*/
+#if 0
+static void draw_segment_comma(mame_bitmap *dest, int minx, int maxx, int miny, int maxy, int width, rgb_t color)
+{
+	int x, y;
+	float ratio;
+
+	/* compute parameters */
+	width *= 1.5;
+	ratio = (maxy - miny - width) / (float)(maxx - minx);
+
+	/* draw line */
+	for (x = minx; x < maxx; x++)
+	{
+		UINT32 *d = BITMAP_ADDR32(dest, 0, x);
+		int step = (x - minx) * ratio;
+
+		for (y = maxy; y < maxy  - width - step; y--)
+		{
+			d[y * dest->rowpixels] = color;
+		}
+	}
+}
+#endif
+
+
+/*-------------------------------------------------
+    apply_skew - apply skew to a mame_bitmap
+-------------------------------------------------*/
+
+static void apply_skew(mame_bitmap *dest, int skewwidth)
+{
+	int x, y;
+
+	for (y = 0; y < dest->height; y++)
+	{
+		UINT32 *destrow = BITMAP_ADDR32(dest, y, 0);
+		int offs = skewwidth * (dest->height - y) / dest->height;
+		for (x = dest->width - skewwidth - 1; x >= 0; x--)
+			destrow[x + offs] = destrow[x];
+		for (x = 0; x < offs; x++)
+			destrow[x] = 0;
+	}
+}
+
 
 /*-------------------------------------------------
     layout_element_draw_led7seg - draw a
@@ -668,7 +822,6 @@ static void layout_element_draw_led7seg(mame_bitmap *dest, const rectangle *boun
 	const rgb_t offpen = MAKE_ARGB(0xff,0x20,0x20,0x20);
 	int bmwidth, bmheight, segwidth, skewwidth;
 	mame_bitmap *tempbitmap;
-	int x, y;
 
 	/* sizes for computation */
 	bmwidth = 250;
@@ -702,15 +855,7 @@ static void layout_element_draw_led7seg(mame_bitmap *dest, const rectangle *boun
 	draw_segment_horizontal(tempbitmap, 0 + 2*segwidth/3, bmwidth - 2*segwidth/3, bmheight/2, segwidth, (pattern & (1 << 6)) ? onpen : offpen);
 
 	/* apply skew */
-	for (y = 0; y < tempbitmap->height; y++)
-	{
-		UINT32 *destrow = BITMAP_ADDR32(tempbitmap, y, 0);
-		int offs = skewwidth * (tempbitmap->height - y) / tempbitmap->height;
-		for (x = bmwidth - 1; x >= 0; x--)
-			destrow[x + offs] = destrow[x];
-		for (x = 0; x < offs; x++)
-			destrow[x] = 0;
-	}
+	apply_skew(tempbitmap, 40);
 
 	/* decimal point */
 	draw_segment_decimal(tempbitmap, bmwidth + segwidth/2, bmheight - segwidth/2, segwidth, (pattern & (1 << 7)) ? onpen : offpen);
@@ -722,6 +867,463 @@ static void layout_element_draw_led7seg(mame_bitmap *dest, const rectangle *boun
 }
 
 
+/*-------------------------------------------------
+    layout_element_draw_led14seg - draw a
+    14-segment LCD
+-------------------------------------------------*/
+
+static void layout_element_draw_led14seg(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int pattern)
+{
+	const rgb_t onpen = MAKE_ARGB(0xff, 0xff, 0xff, 0xff);
+	const rgb_t offpen = MAKE_ARGB(0xff, 0x20, 0x20, 0x20);
+	int bmwidth, bmheight, segwidth, skewwidth;
+	mame_bitmap *tempbitmap;
+
+	/* sizes for computation */
+	bmwidth = 250;
+	bmheight = 400;
+	segwidth = 40;
+	skewwidth = 40;
+
+	/* allocate a temporary bitmap for drawing */
+	tempbitmap = bitmap_alloc(bmwidth + skewwidth, bmheight, BITMAP_FORMAT_ARGB32);
+	fillbitmap(tempbitmap, MAKE_ARGB(0xff, 0x00, 0x00, 0x00), NULL);
+
+	/* top bar */
+	draw_segment_horizontal(tempbitmap,
+		0 + 2*segwidth/3, bmwidth - 2*segwidth/3, 0 + segwidth/2,
+		segwidth, (pattern & (1 << 0)) ? onpen : offpen);
+
+	/* right-top bar */
+	draw_segment_vertical(tempbitmap,
+		0 + 2*segwidth/3, bmheight/2 - segwidth/3, bmwidth - segwidth/2,
+		segwidth, (pattern & (1 << 1)) ? onpen : offpen);
+
+	/* right-bottom bar */
+	draw_segment_vertical(tempbitmap,
+		bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, bmwidth - segwidth/2,
+		segwidth, (pattern & (1 << 2)) ? onpen : offpen);
+
+	/* bottom bar */
+	draw_segment_horizontal(tempbitmap,
+		0 + 2*segwidth/3, bmwidth - 2*segwidth/3, bmheight - segwidth/2,
+		segwidth, (pattern & (1 << 3)) ? onpen : offpen);
+
+	/* left-bottom bar */
+	draw_segment_vertical(tempbitmap,
+		bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, 0 + segwidth/2,
+		segwidth, (pattern & (1 << 4)) ? onpen : offpen);
+
+	/* left-top bar */
+	draw_segment_vertical(tempbitmap,
+		0 + 2*segwidth/3, bmheight/2 - segwidth/3, 0 + segwidth/2,
+		segwidth, (pattern & (1 << 5)) ? onpen : offpen);
+
+	/* horizontal-middle-left bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + 2*segwidth/3, bmwidth/2 - segwidth/10, bmheight/2,
+		segwidth, LINE_CAP_START, (pattern & (1 << 6)) ? onpen : offpen);
+
+	/* horizontal-middle-right bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + bmwidth/2 + segwidth/10, bmwidth - 2*segwidth/3, bmheight/2,
+		segwidth, LINE_CAP_END, (pattern & (1 << 7)) ? onpen : offpen);
+
+	/* vertical-middle-top bar */
+	draw_segment_vertical_caps(tempbitmap,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3, bmwidth/2,
+		segwidth, LINE_CAP_NONE, (pattern & (1 << 8)) ? onpen : offpen);
+
+	/* vertical-middle-bottom bar */
+	draw_segment_vertical_caps(tempbitmap,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3, bmwidth/2,
+		segwidth, LINE_CAP_NONE, (pattern & (1 << 9)) ? onpen : offpen);
+
+	/* diagonal-left-bottom bar */
+	draw_segment_diagonal_1(tempbitmap,
+		0 + segwidth + segwidth/5, bmwidth/2 - segwidth/2 - segwidth/5,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3,
+		segwidth, (pattern & (1 << 10)) ? onpen : offpen);
+
+	/* diagonal-left-top bar */
+	draw_segment_diagonal_2(tempbitmap,
+		0 + segwidth + segwidth/5, bmwidth/2 - segwidth/2 - segwidth/5,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3,
+		segwidth, (pattern & (1 << 11)) ? onpen : offpen);
+
+	/* diagonal-right-top bar */
+	draw_segment_diagonal_1(tempbitmap,
+		bmwidth/2 + segwidth/2 + segwidth/5, bmwidth - segwidth - segwidth/5,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3,
+		segwidth, (pattern & (1 << 12)) ? onpen : offpen);
+
+	/* diagonal-right-bottom bar */
+	draw_segment_diagonal_2(tempbitmap,
+		bmwidth/2 + segwidth/2 + segwidth/5, bmwidth - segwidth - segwidth/5,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3,
+		segwidth, (pattern & (1 << 13)) ? onpen : offpen);
+
+	/* apply skew */
+	apply_skew(tempbitmap, 40);
+
+	/* resample to the target size */
+	render_resample_argb_bitmap_hq(dest->base, dest->rowpixels, dest->width, dest->height, tempbitmap, NULL, color);
+
+	bitmap_free(tempbitmap);
+}
+
+/*-------------------------------------------------
+    layout_element_draw_led14segsc - draw a
+    14-segment LCD with semicolon (2 extra segments)
+-------------------------------------------------*/
+
+static void layout_element_draw_led14segsc(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int pattern)
+{
+	const rgb_t onpen = MAKE_ARGB(0xff, 0xff, 0xff, 0xff);
+	const rgb_t offpen = MAKE_ARGB(0xff, 0x20, 0x20, 0x20);
+	int bmwidth, bmheight, segwidth, skewwidth;
+	mame_bitmap *tempbitmap;
+
+	/* sizes for computation */
+	bmwidth = 250;
+	bmheight = 400;
+	segwidth = 40;
+	skewwidth = 40;
+
+	/* allocate a temporary bitmap for drawing, adding some extra space for the tail */
+	tempbitmap = bitmap_alloc(bmwidth + skewwidth, bmheight + segwidth, BITMAP_FORMAT_ARGB32);
+	fillbitmap(tempbitmap, MAKE_ARGB(0xff, 0x00, 0x00, 0x00), NULL);
+
+	/* top bar */
+	draw_segment_horizontal(tempbitmap,
+		0 + 2*segwidth/3, bmwidth - 2*segwidth/3, 0 + segwidth/2,
+		segwidth, (pattern & (1 << 0)) ? onpen : offpen);
+
+	/* right-top bar */
+	draw_segment_vertical(tempbitmap,
+		0 + 2*segwidth/3, bmheight/2 - segwidth/3, bmwidth - segwidth/2,
+		segwidth, (pattern & (1 << 1)) ? onpen : offpen);
+
+	/* right-bottom bar */
+	draw_segment_vertical(tempbitmap,
+		bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, bmwidth - segwidth/2,
+		segwidth, (pattern & (1 << 2)) ? onpen : offpen);
+
+	/* bottom bar */
+	draw_segment_horizontal(tempbitmap,
+		0 + 2*segwidth/3, bmwidth - 2*segwidth/3, bmheight - segwidth/2,
+		segwidth, (pattern & (1 << 3)) ? onpen : offpen);
+
+	/* left-bottom bar */
+	draw_segment_vertical(tempbitmap,
+		bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, 0 + segwidth/2,
+		segwidth, (pattern & (1 << 4)) ? onpen : offpen);
+
+	/* left-top bar */
+	draw_segment_vertical(tempbitmap,
+		0 + 2*segwidth/3, bmheight/2 - segwidth/3, 0 + segwidth/2,
+		segwidth, (pattern & (1 << 5)) ? onpen : offpen);
+
+	/* horizontal-middle-left bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + 2*segwidth/3, bmwidth/2 - segwidth/10, bmheight/2,
+		segwidth, LINE_CAP_START, (pattern & (1 << 6)) ? onpen : offpen);
+
+	/* horizontal-middle-right bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + bmwidth/2 + segwidth/10, bmwidth - 2*segwidth/3, bmheight/2,
+		segwidth, LINE_CAP_END, (pattern & (1 << 7)) ? onpen : offpen);
+
+	/* vertical-middle-top bar */
+	draw_segment_vertical_caps(tempbitmap,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3, bmwidth/2,
+		segwidth, LINE_CAP_NONE, (pattern & (1 << 8)) ? onpen : offpen);
+
+	/* vertical-middle-bottom bar */
+	draw_segment_vertical_caps(tempbitmap,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3, bmwidth/2,
+		segwidth, LINE_CAP_NONE, (pattern & (1 << 9)) ? onpen : offpen);
+
+	/* diagonal-left-bottom bar */
+	draw_segment_diagonal_1(tempbitmap,
+		0 + segwidth + segwidth/5, bmwidth/2 - segwidth/2 - segwidth/5,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3,
+		segwidth, (pattern & (1 << 10)) ? onpen : offpen);
+
+	/* diagonal-left-top bar */
+	draw_segment_diagonal_2(tempbitmap,
+		0 + segwidth + segwidth/5, bmwidth/2 - segwidth/2 - segwidth/5,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3,
+		segwidth, (pattern & (1 << 11)) ? onpen : offpen);
+
+	/* diagonal-right-top bar */
+	draw_segment_diagonal_1(tempbitmap,
+		bmwidth/2 + segwidth/2 + segwidth/5, bmwidth - segwidth - segwidth/5,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3,
+		segwidth, (pattern & (1 << 12)) ? onpen : offpen);
+
+	/* diagonal-right-bottom bar */
+	draw_segment_diagonal_2(tempbitmap,
+		bmwidth/2 + segwidth/2 + segwidth/5, bmwidth - segwidth - segwidth/5,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3,
+		segwidth, (pattern & (1 << 13)) ? onpen : offpen);
+
+	/* apply skew */
+	apply_skew(tempbitmap, 40);
+
+	/* decimal point */
+	draw_segment_decimal(tempbitmap, bmwidth + segwidth/2, bmheight - segwidth/2, segwidth, (pattern & (1 << 14)) ? onpen : offpen);
+
+	/* comma tail */
+	draw_segment_diagonal_1(tempbitmap,
+		bmwidth - (segwidth/2), bmwidth + segwidth,
+		bmheight - (segwidth), bmheight + segwidth*1.5,
+		segwidth/2, (pattern & (1 << 15)) ? onpen : offpen);
+
+	/* resample to the target size */
+	render_resample_argb_bitmap_hq(dest->base, dest->rowpixels, dest->width, dest->height, tempbitmap, NULL, color);
+
+	bitmap_free(tempbitmap);
+}
+
+
+/*-------------------------------------------------
+    layout_element_draw_led16seg - draw a
+    16-segment LCD
+-------------------------------------------------*/
+
+static void layout_element_draw_led16seg(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int pattern)
+{
+	const rgb_t onpen = MAKE_ARGB(0xff, 0xff, 0xff, 0xff);
+	const rgb_t offpen = MAKE_ARGB(0xff, 0x20, 0x20, 0x20);
+	int bmwidth, bmheight, segwidth, skewwidth;
+	mame_bitmap *tempbitmap;
+
+	/* sizes for computation */
+	bmwidth = 250;
+	bmheight = 400;
+	segwidth = 40;
+	skewwidth = 40;
+
+	/* allocate a temporary bitmap for drawing */
+	tempbitmap = bitmap_alloc(bmwidth + skewwidth, bmheight, BITMAP_FORMAT_ARGB32);
+	fillbitmap(tempbitmap, MAKE_ARGB(0xff, 0x00, 0x00, 0x00), NULL);
+
+	/* top-left bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + 2*segwidth/3, bmwidth/2 - segwidth/10, 0 + segwidth/2,
+		segwidth, LINE_CAP_START, (pattern & (1 << 0)) ? onpen : offpen);
+
+	/* top-right bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + bmwidth/2 + segwidth/10, bmwidth - 2*segwidth/3, 0 + segwidth/2,
+		segwidth, LINE_CAP_END, (pattern & (1 << 1)) ? onpen : offpen);
+
+	/* right-top bar */
+	draw_segment_vertical(tempbitmap,
+		0 + 2*segwidth/3, bmheight/2 - segwidth/3, bmwidth - segwidth/2,
+		segwidth, (pattern & (1 << 2)) ? onpen : offpen);
+
+	/* right-bottom bar */
+	draw_segment_vertical(tempbitmap,
+		bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, bmwidth - segwidth/2,
+		segwidth, (pattern & (1 << 3)) ? onpen : offpen);
+
+	/* bottom-right bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + bmwidth/2 + segwidth/10, bmwidth - 2*segwidth/3, bmheight - segwidth/2,
+		segwidth, LINE_CAP_END, (pattern & (1 << 4)) ? onpen : offpen);
+
+	/* bottom-left bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + 2*segwidth/3, bmwidth/2 - segwidth/10, bmheight - segwidth/2,
+		segwidth, LINE_CAP_START, (pattern & (1 << 5)) ? onpen : offpen);
+
+	/* left-bottom bar */
+	draw_segment_vertical(tempbitmap,
+		bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, 0 + segwidth/2,
+		segwidth, (pattern & (1 << 6)) ? onpen : offpen);
+
+	/* left-top bar */
+	draw_segment_vertical(tempbitmap,
+		0 + 2*segwidth/3, bmheight/2 - segwidth/3, 0 + segwidth/2,
+		segwidth, (pattern & (1 << 7)) ? onpen : offpen);
+
+	/* horizontal-middle-left bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + 2*segwidth/3, bmwidth/2 - segwidth/10, bmheight/2,
+		segwidth, LINE_CAP_START, (pattern & (1 << 8)) ? onpen : offpen);
+
+	/* horizontal-middle-right bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + bmwidth/2 + segwidth/10, bmwidth - 2*segwidth/3, bmheight/2,
+		segwidth, LINE_CAP_END, (pattern & (1 << 9)) ? onpen : offpen);
+
+	/* vertical-middle-top bar */
+	draw_segment_vertical_caps(tempbitmap,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3, bmwidth/2,
+		segwidth, LINE_CAP_NONE, (pattern & (1 << 10)) ? onpen : offpen);
+
+	/* vertical-middle-bottom bar */
+	draw_segment_vertical_caps(tempbitmap,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3, bmwidth/2,
+		segwidth, LINE_CAP_NONE, (pattern & (1 << 11)) ? onpen : offpen);
+
+	/* diagonal-left-bottom bar */
+	draw_segment_diagonal_1(tempbitmap,
+		0 + segwidth + segwidth/5, bmwidth/2 - segwidth/2 - segwidth/5,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3,
+		segwidth, (pattern & (1 << 12)) ? onpen : offpen);
+
+	/* diagonal-left-top bar */
+	draw_segment_diagonal_2(tempbitmap,
+		0 + segwidth + segwidth/5, bmwidth/2 - segwidth/2 - segwidth/5,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3,
+		segwidth, (pattern & (1 << 13)) ? onpen : offpen);
+
+	/* diagonal-right-top bar */
+	draw_segment_diagonal_1(tempbitmap,
+		bmwidth/2 + segwidth/2 + segwidth/5, bmwidth - segwidth - segwidth/5,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3,
+		segwidth, (pattern & (1 << 14)) ? onpen : offpen);
+
+	/* diagonal-right-bottom bar */
+	draw_segment_diagonal_2(tempbitmap,
+		bmwidth/2 + segwidth/2 + segwidth/5, bmwidth - segwidth - segwidth/5,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3,
+		segwidth, (pattern & (1 << 15)) ? onpen : offpen);
+
+	/* apply skew */
+	apply_skew(tempbitmap, 40);
+
+	/* resample to the target size */
+	render_resample_argb_bitmap_hq(dest->base, dest->rowpixels, dest->width, dest->height, tempbitmap, NULL, color);
+
+	bitmap_free(tempbitmap);
+}
+
+/*-------------------------------------------------
+    layout_element_draw_led16segsc - draw a
+    16-segment LCD with semicolon (2 extra segments)
+-------------------------------------------------*/
+static void layout_element_draw_led16segsc(mame_bitmap *dest, const rectangle *bounds, const render_color *color, int pattern)
+{
+	const rgb_t onpen = MAKE_ARGB(0xff, 0xff, 0xff, 0xff);
+	const rgb_t offpen = MAKE_ARGB(0xff, 0x20, 0x20, 0x20);
+	int bmwidth, bmheight, segwidth, skewwidth;
+	mame_bitmap *tempbitmap;
+
+	/* sizes for computation */
+	bmwidth = 250;
+	bmheight = 400;
+	segwidth = 40;
+	skewwidth = 40;
+
+	/* allocate a temporary bitmap for drawing */
+	tempbitmap = bitmap_alloc(bmwidth + skewwidth, bmheight + segwidth, BITMAP_FORMAT_ARGB32);
+	fillbitmap(tempbitmap, MAKE_ARGB(0xff, 0x00, 0x00, 0x00), NULL);
+
+	/* top-left bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + 2*segwidth/3, bmwidth/2 - segwidth/10, 0 + segwidth/2,
+		segwidth, LINE_CAP_START, (pattern & (1 << 0)) ? onpen : offpen);
+
+	/* top-right bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + bmwidth/2 + segwidth/10, bmwidth - 2*segwidth/3, 0 + segwidth/2,
+		segwidth, LINE_CAP_END, (pattern & (1 << 1)) ? onpen : offpen);
+
+	/* right-top bar */
+	draw_segment_vertical(tempbitmap,
+		0 + 2*segwidth/3, bmheight/2 - segwidth/3, bmwidth - segwidth/2,
+		segwidth, (pattern & (1 << 2)) ? onpen : offpen);
+
+	/* right-bottom bar */
+	draw_segment_vertical(tempbitmap,
+		bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, bmwidth - segwidth/2,
+		segwidth, (pattern & (1 << 3)) ? onpen : offpen);
+
+	/* bottom-right bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + bmwidth/2 + segwidth/10, bmwidth - 2*segwidth/3, bmheight - segwidth/2,
+		segwidth, LINE_CAP_END, (pattern & (1 << 4)) ? onpen : offpen);
+
+	/* bottom-left bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + 2*segwidth/3, bmwidth/2 - segwidth/10, bmheight - segwidth/2,
+		segwidth, LINE_CAP_START, (pattern & (1 << 5)) ? onpen : offpen);
+
+	/* left-bottom bar */
+	draw_segment_vertical(tempbitmap,
+		bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, 0 + segwidth/2,
+		segwidth, (pattern & (1 << 6)) ? onpen : offpen);
+
+	/* left-top bar */
+	draw_segment_vertical(tempbitmap,
+		0 + 2*segwidth/3, bmheight/2 - segwidth/3, 0 + segwidth/2,
+		segwidth, (pattern & (1 << 7)) ? onpen : offpen);
+
+	/* horizontal-middle-left bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + 2*segwidth/3, bmwidth/2 - segwidth/10, bmheight/2,
+		segwidth, LINE_CAP_START, (pattern & (1 << 8)) ? onpen : offpen);
+
+	/* horizontal-middle-right bar */
+	draw_segment_horizontal_caps(tempbitmap,
+		0 + bmwidth/2 + segwidth/10, bmwidth - 2*segwidth/3, bmheight/2,
+		segwidth, LINE_CAP_END, (pattern & (1 << 9)) ? onpen : offpen);
+
+	/* vertical-middle-top bar */
+	draw_segment_vertical_caps(tempbitmap,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3, bmwidth/2,
+		segwidth, LINE_CAP_NONE, (pattern & (1 << 10)) ? onpen : offpen);
+
+	/* vertical-middle-bottom bar */
+	draw_segment_vertical_caps(tempbitmap,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3, bmwidth/2,
+		segwidth, LINE_CAP_NONE, (pattern & (1 << 11)) ? onpen : offpen);
+
+	/* diagonal-left-bottom bar */
+	draw_segment_diagonal_1(tempbitmap,
+		0 + segwidth + segwidth/5, bmwidth/2 - segwidth/2 - segwidth/5,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3,
+		segwidth, (pattern & (1 << 12)) ? onpen : offpen);
+
+	/* diagonal-left-top bar */
+	draw_segment_diagonal_2(tempbitmap,
+		0 + segwidth + segwidth/5, bmwidth/2 - segwidth/2 - segwidth/5,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3,
+		segwidth, (pattern & (1 << 13)) ? onpen : offpen);
+
+	/* diagonal-right-top bar */
+	draw_segment_diagonal_1(tempbitmap,
+		bmwidth/2 + segwidth/2 + segwidth/5, bmwidth - segwidth - segwidth/5,
+		0 + segwidth + segwidth/3, bmheight/2 - segwidth/2 - segwidth/3,
+		segwidth, (pattern & (1 << 14)) ? onpen : offpen);
+
+	/* diagonal-right-bottom bar */
+	draw_segment_diagonal_2(tempbitmap,
+		bmwidth/2 + segwidth/2 + segwidth/5, bmwidth - segwidth - segwidth/5,
+		bmheight/2 + segwidth/2 + segwidth/3, bmheight - segwidth - segwidth/3,
+		segwidth, (pattern & (1 << 15)) ? onpen : offpen);
+
+	/* decimal point */
+	draw_segment_decimal(tempbitmap, bmwidth + segwidth/2, bmheight - segwidth/2, segwidth, (pattern & (1 << 16)) ? onpen : offpen);
+
+	/* comma tail */
+	draw_segment_diagonal_1(tempbitmap,
+		bmwidth - (segwidth/2), bmwidth + segwidth,
+		bmheight - (segwidth), bmheight + segwidth*1.5,
+		segwidth/2, (pattern & (1 << 17)) ? onpen : offpen);
+
+	/* apply skew */
+	apply_skew(tempbitmap, 40);
+
+	/* resample to the target size */
+	render_resample_argb_bitmap_hq(dest->base, dest->rowpixels, dest->width, dest->height, tempbitmap, NULL, color);
+
+	bitmap_free(tempbitmap);
+}
 
 /***************************************************************************
     LAYOUT FILE PARSING
@@ -879,14 +1481,16 @@ layout_file *layout_file_load(const char *dirname, const char *filename)
 	{
 		file_error filerr;
 		mame_file *layoutfile;
-		char *fname;
+		astring *fname;
 
+		fname = astring_assemble_2(astring_alloc(), filename, ".lay");
 		if (dirname != NULL)
-			fname = assemble_4_strings(dirname, PATH_SEPARATOR, filename, ".lay");
-		else
-			fname = assemble_2_strings(filename, ".lay");
-		filerr = mame_fopen(SEARCHPATH_ARTWORK, fname, OPEN_FLAG_READ, &layoutfile);
-		free(fname);
+		{
+			astring_insc(fname, 0, PATH_SEPARATOR);
+			astring_insc(fname, 0, dirname);
+		}
+		filerr = mame_fopen(SEARCHPATH_ARTWORK, astring_c(fname), OPEN_FLAG_READ, &layoutfile);
+		astring_free(fname);
 
 		if (filerr != FILERR_NONE)
 			return NULL;
@@ -1007,6 +1611,12 @@ static layout_element *load_layout_element(xml_data_node *elemnode, const char *
 			element->maxstate = component->state;
 		if (component->type == COMPONENT_TYPE_LED7SEG)
 			element->maxstate = 255;
+		if (component->type == COMPONENT_TYPE_LED14SEG)
+			element->maxstate = 16383;
+		if (component->type == COMPONENT_TYPE_LED14SEGSC || component->type == COMPONENT_TYPE_LED16SEG)
+			element->maxstate = 65535;
+		if (component->type == COMPONENT_TYPE_LED16SEGSC)
+			element->maxstate = 262143;
 	}
 
 	/* determine the scale/offset for normalization */
@@ -1024,26 +1634,15 @@ static layout_element *load_layout_element(xml_data_node *elemnode, const char *
 		component->bounds.y1 = (component->bounds.y1 - yoffs) * yscale;
 	}
 
-	/* allocate an array of textures for the states */
+	/* allocate an array of element textures for the states */
 	element->elemtex = malloc_or_die((element->maxstate + 1) * sizeof(element->elemtex[0]));
 	for (state = 0; state <= element->maxstate; state++)
 	{
-		element_component *component;
-
 		element->elemtex[state].element = element;
 		element->elemtex[state].state = state;
-
-		/* look for at least one visible component in this state */
-		for (component = element->complist; component != NULL; component = component->next)
-			if (component->state == -1 || component->state == state || component->type == COMPONENT_TYPE_LED7SEG)
-				break;
-
-		/* allocate a texture only if we have some visible components in this state */
-		if (component != NULL)
-			element->elemtex[state].texture = render_texture_alloc(NULL, NULL, 0, TEXFORMAT_ARGB32, layout_element_scale, &element->elemtex[state]);
-		else
-			element->elemtex[state].texture = NULL;
+		element->elemtex[state].texture = render_texture_alloc(layout_element_scale, &element->elemtex[state]);
 	}
+
 	return element;
 
 error:
@@ -1101,6 +1700,22 @@ static element_component *load_element_component(xml_data_node *compnode, const 
 	/* led7seg nodes */
 	else if (strcmp(compnode->name, "led7seg") == 0)
 		component->type = COMPONENT_TYPE_LED7SEG;
+
+	/* led14seg nodes */
+	else if (strcmp(compnode->name, "led14seg") == 0)
+		component->type = COMPONENT_TYPE_LED14SEG;
+
+	/* led14segsc nodes */
+	else if (strcmp(compnode->name, "led14segsc") == 0)
+		component->type = COMPONENT_TYPE_LED14SEGSC;
+
+	/* led16seg nodes */
+	else if (strcmp(compnode->name, "led16seg") == 0)
+		component->type = COMPONENT_TYPE_LED16SEG;
+
+	/* led16segsc nodes */
+	else if (strcmp(compnode->name, "led16segsc") == 0)
+		component->type = COMPONENT_TYPE_LED16SEGSC;
 
 	/* rect nodes */
 	else if (strcmp(compnode->name, "rect") == 0)
@@ -1491,6 +2106,7 @@ static void layout_element_free(layout_element *element)
 		for (state = 0; state <= element->maxstate; state++)
 			if (element->elemtex[state].texture != NULL)
 				render_texture_free(element->elemtex[state].texture);
+
 		free(element->elemtex);
 	}
 

@@ -95,7 +95,7 @@ PALETTE_INIT( exctsccr )
 
 }
 
-static void exctsccr_fm_callback( int param )
+static TIMER_CALLBACK( exctsccr_fm_callback )
 {
 	cpunum_set_input_line_and_vector( 1, 0, HOLD_LINE, 0xff );
 }
@@ -141,7 +141,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( exctsccr )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_OPAQUE, 8, 8, 32, 32);
+		TILEMAP_TYPE_OPAQUE, 8, 8, 32, 32);
 
 	mame_timer_pulse(MAME_TIME_IN_HZ(75), 0, exctsccr_fm_callback); /* updates fm */
 }

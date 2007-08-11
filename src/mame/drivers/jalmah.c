@@ -180,10 +180,10 @@ static TILE_GET_INFO( get_sc1_tile_info )
 
 VIDEO_START( jalmah )
 {
-	sc0_tilemap = tilemap_create(get_sc0_tile_info,bg_scan,TILEMAP_TRANSPARENT,16,16,256,32);
-	sc1_tilemap = tilemap_create(get_sc1_tile_info,bg_scan,TILEMAP_TRANSPARENT,16,16,256,32);
-	sc2_tilemap = tilemap_create(get_sc2_tile_info,bg_scan,TILEMAP_TRANSPARENT,16,16,256,32);
-	sc3_tilemap = tilemap_create(get_sc3_tile_info,tilemap_scan_cols,TILEMAP_TRANSPARENT,8,8,256,32);
+	sc0_tilemap = tilemap_create(get_sc0_tile_info,bg_scan,TILEMAP_TYPE_TRANSPARENT,16,16,256,32);
+	sc1_tilemap = tilemap_create(get_sc1_tile_info,bg_scan,TILEMAP_TYPE_TRANSPARENT,16,16,256,32);
+	sc2_tilemap = tilemap_create(get_sc2_tile_info,bg_scan,TILEMAP_TYPE_TRANSPARENT,16,16,256,32);
+	sc3_tilemap = tilemap_create(get_sc3_tile_info,tilemap_scan_cols,TILEMAP_TYPE_TRANSPARENT,8,8,256,32);
 
 	jm_scrollram = auto_malloc(0x80);
 	jm_vregs = auto_malloc(0x40);
@@ -364,9 +364,9 @@ VIDEO_UPDATE( jalmah )
 	tilemap_set_scrolly( sc3_tilemap, 0, jm_scrollram[7] & 0x1ff);
 
 	#ifdef MAME_DEBUG
-	if(code_pressed_memory(JOYCODE_1_UP))
+	if(input_code_pressed_once(JOYCODE_Y_UP_SWITCH))
 		sc_db++;
-	if(code_pressed_memory(JOYCODE_1_DOWN))
+	if(input_code_pressed_once(JOYCODE_Y_DOWN_SWITCH))
 		sc_db--;
 	if(sc_db > 3)
 		sc_db = 3;

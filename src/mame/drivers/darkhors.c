@@ -136,10 +136,10 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_START( darkhors )
 {
 	darkhors_tmap			=	tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-												TILEMAP_TRANSPARENT, 16,16, 0x40,0x40	);
+												TILEMAP_TYPE_TRANSPARENT, 16,16, 0x40,0x40	);
 
 	darkhors_tmap2			=	tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-												TILEMAP_TRANSPARENT, 16,16, 0x40,0x40	);
+												TILEMAP_TYPE_TRANSPARENT, 16,16, 0x40,0x40	);
 
 	tilemap_set_transparent_pen(darkhors_tmap, 0);
 	tilemap_set_transparent_pen(darkhors_tmap2, 0);
@@ -152,12 +152,12 @@ VIDEO_UPDATE( darkhors )
 	int layers_ctrl = -1;
 
 #ifdef MAME_DEBUG
-	if (code_pressed(KEYCODE_Z))
+	if (input_code_pressed(KEYCODE_Z))
 	{
 		int mask = 0;
-		if (code_pressed(KEYCODE_Q))	mask |= 1;
-		if (code_pressed(KEYCODE_W))	mask |= 2;
-		if (code_pressed(KEYCODE_A))	mask |= 4;
+		if (input_code_pressed(KEYCODE_Q))	mask |= 1;
+		if (input_code_pressed(KEYCODE_W))	mask |= 2;
+		if (input_code_pressed(KEYCODE_A))	mask |= 4;
 		if (mask != 0) layers_ctrl &= mask;
 	}
 #endif

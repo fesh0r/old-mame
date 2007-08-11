@@ -743,7 +743,7 @@ static const char * kWatchDisplayTypeStringList[] =
 ***************************************************************************/
 
 /********** MAIN **********/
-static void 	cheat_periodic(int param);
+static TIMER_CALLBACK( cheat_periodic );
 static void 	cheat_exit(running_machine *machine);
 
 /********** SPECIAL KEY HANDLING **********/
@@ -936,17 +936,17 @@ static void		BuildCPUInfoList(void);
 
 static int ShiftKeyPressed(void)
 {
-	return (code_pressed(KEYCODE_LSHIFT) || code_pressed(KEYCODE_RSHIFT));
+	return (input_code_pressed(KEYCODE_LSHIFT) || input_code_pressed(KEYCODE_RSHIFT));
 }
 
 static int ControlKeyPressed(void)
 {
-	return (code_pressed(KEYCODE_LCONTROL) || code_pressed(KEYCODE_RCONTROL));
+	return (input_code_pressed(KEYCODE_LCONTROL) || input_code_pressed(KEYCODE_RCONTROL));
 }
 
 static int AltKeyPressed(void)
 {
-	return (code_pressed(KEYCODE_LALT) || code_pressed(KEYCODE_RALT));
+	return (input_code_pressed(KEYCODE_LALT) || input_code_pressed(KEYCODE_RALT));
 }
 
 /*---------------------------------------------------------------------------------------------------------------------
@@ -963,16 +963,16 @@ static int ReadKeyAsync(int flush)
 
 	if(flush)		// check key input
 	{
-		while(code_read_async() != CODE_NONE) ;
+		while(input_code_poll_switches(TRUE) != INPUT_CODE_INVALID) ;
 
 		return 0;
 	}
 
 	while(1)		// check pressed key
 	{
-		code = code_read_async();
+		code = input_code_poll_switches(FALSE);
 
-		if(code == CODE_NONE)
+		if(code == INPUT_CODE_INVALID)
 		{
 			return 0;
 		}
@@ -1240,19 +1240,19 @@ static int ReadHexInput(void)
 
 	for(i = 0; i < 10; i++)
 	{
-		if(code_pressed_memory(KEYCODE_0 + i))
+		if(input_code_pressed_once(KEYCODE_0 + i))
 			return i;
 	}
 
 	for(i = 0; i < 10; i++)
 	{
-		if(code_pressed_memory(KEYCODE_0_PAD + i))
+		if(input_code_pressed_once(KEYCODE_0_PAD + i))
 			return i;
 	}
 
 	for(i = 0; i < 6; i++)
 	{
-		if(code_pressed_memory(KEYCODE_A + i))
+		if(input_code_pressed_once(KEYCODE_A + i))
 			return i + 10;
 	}
 
@@ -1354,7 +1354,7 @@ static UINT32 DoEditHexField(UINT32 data)
 {
 	INT8	key;
 
-	if(code_pressed_memory(KEYCODE_BACKSPACE))
+	if(input_code_pressed_once(KEYCODE_BACKSPACE))
 	{
 		/* ----- backspace ----- */
 		data >>= 4;
@@ -1409,7 +1409,7 @@ static UINT32 DoEditHexFieldSigned(UINT32 data, UINT32 mask)
 	}
 	else
 	{
-		if(code_pressed_memory(KEYCODE_MINUS))
+		if(input_code_pressed_once(KEYCODE_MINUS))
 			data = (~data) + 1;
 	}
 
@@ -1857,18 +1857,18 @@ static void RebuildStringTables(void)
 					"	numStrings =		%.8X\n"
 					"	mainStringLength =	%.8X\n"
 					"	subStringLength =	%.8X\n"
-					"%.8X %.8X %.8X %.8X %.8X %.8X\n",
+					"%p %p %p %p %p %p\n",
 					menuStrings.length,
 					menuStrings.numStrings,
 					menuStrings.mainStringLength,
 					menuStrings.subStringLength,
 
-					(int)menuStrings.mainList,
-					(int)menuStrings.subList,
-					(int)menuStrings.flagList,
-					(int)menuStrings.mainStrings,
-					(int)menuStrings.subStrings,
-					(int)menuStrings.buf);
+					menuStrings.mainList,
+					menuStrings.subList,
+					menuStrings.flagList,
+					menuStrings.mainStrings,
+					menuStrings.subStrings,
+					menuStrings.buf);
 	}
 
 	traverse = menuStrings.buf;
@@ -3053,6 +3053,9 @@ static int EditCheatMenu(CheatEntry * entry, int index, int selection)
 	UINT8				dirty = 0;
 	static INT32      currentNameTemplate = 0;
 
+	astring *			temp_string_1 = astring_alloc();
+	astring *			temp_string_2 = astring_alloc();
+
 	if(!entry)
 		return 0;
 
@@ -3143,7 +3146,7 @@ static int EditCheatMenu(CheatEntry * entry, int index, int selection)
 				menuItem[total] = "Activation Key (1st)";
 
 				if((entry->flags & kCheatFlag_HasActivationKey1))
-					menuSubItem[total++] = code_name(entry->activationKey1);
+					menuSubItem[total++] = astring_c(input_code_name(temp_string_1, entry->activationKey1));
 				else
 					menuSubItem[total++] = "(none)";
 			}
@@ -3155,7 +3158,7 @@ static int EditCheatMenu(CheatEntry * entry, int index, int selection)
 				menuItem[total] = "Activation Key (2nd)";
 
 				if((entry->flags & kCheatFlag_HasActivationKey2))
-					menuSubItem[total++] = code_name(entry->activationKey2);
+					menuSubItem[total++] = astring_c(input_code_name(temp_string_2, entry->activationKey2));
 				else
 					menuSubItem[total++] = "(none)";
 			}
@@ -3731,33 +3734,33 @@ static int EditCheatMenu(CheatEntry * entry, int index, int selection)
 	            entry->name = realloc(entry->name, strlen(kCheatNameTemplates[currentNameTemplate]) + 1);
     	        strcpy(entry->name, kCheatNameTemplates[currentNameTemplate]);
         	    break;
+/*
+            case kType_ActivationKey1:
+            case kType_ActivationKey2:
+                if(info->fieldType == kType_ActivationKey1)
+                {
+                    entry->activationKey1--;
 
-			case kType_ActivationKey1:
-			case kType_ActivationKey2:
-				if(info->fieldType == kType_ActivationKey1)
-				{
-					entry->activationKey1--;
+                    if(entry->activationKey1 < 0)
+                        entry->activationKey1 = __code_max - 1;
+                    if(entry->activationKey1 >= __code_max)
+                        entry->activationKey1 = 0;
 
-					if(entry->activationKey1 < 0)
-						entry->activationKey1 = __code_max - 1;
-					if(entry->activationKey1 >= __code_max)
-						entry->activationKey1 = 0;
+                    entry->flags |= kCheatFlag_HasActivationKey1;
+                }
+                else
+                {
+                    entry->activationKey2--;
 
-					entry->flags |= kCheatFlag_HasActivationKey1;
-				}
-				else
-				{
-					entry->activationKey2--;
+                    if(entry->activationKey2 < 0)
+                        entry->activationKey2 = __code_max - 1;
+                    if(entry->activationKey2 >= __code_max)
+                        entry->activationKey2 = 0;
 
-					if(entry->activationKey2 < 0)
-						entry->activationKey2 = __code_max - 1;
-					if(entry->activationKey2 >= __code_max)
-						entry->activationKey2 = 0;
-
-					entry->flags |= kCheatFlag_HasActivationKey2;
-				}
-				break;
-
+                    entry->flags |= kCheatFlag_HasActivationKey2;
+                }
+                break;
+*/
 			case kType_LinkExtension:
 				TOGGLE_MASK_FIELD(action->type, LinkExtension);
 				break;
@@ -4046,33 +4049,33 @@ static int EditCheatMenu(CheatEntry * entry, int index, int selection)
 	            entry->name = realloc(entry->name, strlen(kCheatNameTemplates[currentNameTemplate]) + 1);
     	        strcpy(entry->name, kCheatNameTemplates[currentNameTemplate]);
         	    break;
+/*
+            case kType_ActivationKey1:
+            case kType_ActivationKey2:
+                if(info->fieldType == kType_ActivationKey1)
+                {
+                    entry->activationKey1++;
 
-			case kType_ActivationKey1:
-			case kType_ActivationKey2:
-				if(info->fieldType == kType_ActivationKey1)
-				{
-					entry->activationKey1++;
+                    if(entry->activationKey1 < 0)
+                        entry->activationKey1 = __code_max - 1;
+                    if(entry->activationKey1 >= __code_max)
+                        entry->activationKey1 = 0;
 
-					if(entry->activationKey1 < 0)
-						entry->activationKey1 = __code_max - 1;
-					if(entry->activationKey1 >= __code_max)
-						entry->activationKey1 = 0;
+                    entry->flags |= kCheatFlag_HasActivationKey1;
+                }
+                else
+                {
+                    entry->activationKey2++;
 
-					entry->flags |= kCheatFlag_HasActivationKey1;
-				}
-				else
-				{
-					entry->activationKey2++;
+                    if(entry->activationKey2 < 0)
+                        entry->activationKey2 = __code_max - 1;
+                    if(entry->activationKey2 >= __code_max)
+                        entry->activationKey2 = 0;
 
-					if(entry->activationKey2 < 0)
-						entry->activationKey2 = __code_max - 1;
-					if(entry->activationKey2 >= __code_max)
-						entry->activationKey2 = 0;
-
-					entry->flags |= kCheatFlag_HasActivationKey2;
-				}
-				break;
-
+                    entry->flags |= kCheatFlag_HasActivationKey2;
+                }
+                break;
+*/
 			case kType_LinkExtension:
 				TOGGLE_MASK_FIELD(action->type, LinkExtension);
 				break;
@@ -4466,7 +4469,7 @@ static int EditCheatMenu(CheatEntry * entry, int index, int selection)
 				}
 				else
 				{
-					int	code = code_read_async();
+					int	code = input_code_poll_switches(FALSE);
 
 					if(code == KEYCODE_ESC)
 					{
@@ -4485,7 +4488,7 @@ static int EditCheatMenu(CheatEntry * entry, int index, int selection)
 					}
 					else
 					{
-						if((code != CODE_NONE) && !input_ui_pressed(IPT_UI_SELECT))
+						if((code != INPUT_CODE_INVALID) && !input_ui_pressed(IPT_UI_SELECT))
 						{
 							if(info->fieldType == kType_ActivationKey1)
 							{
@@ -4674,6 +4677,9 @@ static int EditCheatMenu(CheatEntry * entry, int index, int selection)
 
 		entry->flags |= kCheatFlag_Dirty;
 	}
+
+	astring_free(temp_string_1);
+	astring_free(temp_string_2);
 
 	return sel + 1;
 }
@@ -6683,10 +6689,10 @@ static int ViewSearchResults(int selection, int firstTime)
 			sel = total - 1;
 	}
 
-	if(code_pressed_memory(KEYCODE_END))
+	if(input_code_pressed_once(KEYCODE_END))
 		search->currentResultsPage = numPages - 1;				// go to last PAGE
 
-	if(code_pressed_memory(KEYCODE_HOME))
+	if(input_code_pressed_once(KEYCODE_HOME))
 		search->currentResultsPage = 0;							// go to first PAGE
 
 	if(UIPressedRepeatThrottle(IPT_UI_PREV_GROUP, kVerticalKeyRepeatRate))
@@ -7877,7 +7883,7 @@ static int SelectSearch(int selection)
   cheate_periodic
 ------------------*/
 
-void cheat_periodic(int param)
+static TIMER_CALLBACK( cheat_periodic )
 {
 	int	i;
 
@@ -8923,7 +8929,7 @@ static void RestoreRegionBackup(SearchRegion * region)
 static UINT8 DefaultEnableRegion(SearchRegion * region, SearchInfo * info)
 {
 	write8_handler		handler = region->writeHandler->write.handler8;
-	UINT32				handlerAddress = (UINT32)handler;
+	FPTR				handlerAddress = (FPTR)handler;
 
 	switch(info->searchSpeed)
 	{
@@ -8969,7 +8975,7 @@ static UINT8 DefaultEnableRegion(SearchRegion * region, SearchInfo * info)
 			return 0;
 
 		case kSearchSpeed_Medium:
-			if(	(handlerAddress >= ((UINT32)MWA8_BANK1)) && (handlerAddress <= ((UINT32)MWA8_BANK24)))
+			if(	(handlerAddress >= ((FPTR)MWA8_BANK1)) && (handlerAddress <= ((FPTR)MWA8_BANK24)))
 				return 1;
 
 			if(handler == MWA8_RAM)
@@ -9011,17 +9017,17 @@ static void SetSearchRegionDefaultName(SearchRegion * region)
 			if(region->writeHandler)
 			{
 				genf *				handler = region->writeHandler->write.handler;
-				UINT32				handlerAddress = (UINT32)handler;
+				FPTR				handlerAddress = (FPTR)handler;
 
-				if(	(handlerAddress >= ((UINT32)MWA8_BANK1)) && (handlerAddress <= ((UINT32)MWA8_BANK24)))
-					sprintf(desc, "BANK%.2d", (handlerAddress - ((UINT32)MWA8_BANK1)) + 1);
+				if(	(handlerAddress >= ((FPTR)MWA8_BANK1)) && (handlerAddress <= ((FPTR)MWA8_BANK24)))
+					sprintf(desc, "BANK%.2d", (int)(handlerAddress - (FPTR)MWA8_BANK1) + 1);
 				else
 				{
 					switch(handlerAddress)
 					{
-						case (UINT32)MWA8_NOP:		strcpy(desc, "NOP   ");	break;
-						case (UINT32)MWA8_RAM:		strcpy(desc, "RAM   ");	break;
-						case (UINT32)MWA8_ROM:		strcpy(desc, "ROM   ");	break;
+						case (FPTR)MWA8_NOP:		strcpy(desc, "NOP   ");	break;
+						case (FPTR)MWA8_RAM:		strcpy(desc, "RAM   ");	break;
+						case (FPTR)MWA8_ROM:		strcpy(desc, "ROM   ");	break;
 						default:					strcpy(desc, "CUSTOM");	break;
 					}
 				}
@@ -9645,7 +9651,7 @@ static void LoadCheatDatabase(void)
 	cheatfile = options_get_string(mame_options(), OPTION_CHEAT_FILE);
 
 	/* ----- set default database name as "cheat.dat" ----- */
-	if(!cheatfile)
+	if (cheatfile[0] == 0)
 		cheatfile = "cheat.dat";
 
 	inTraverse = cheatfile;
@@ -9875,18 +9881,22 @@ static void SaveCheat(CheatEntry * entry, int selection, int saveCode)
 				if(!i)
 				{
 					/* ----- 1st key ----- */
-					if(entry->name)
-						bufTraverse += sprintf(bufTraverse, ":1st Activation Key for %s (%s)\n", entry->name, code_name(entry->activationKey1));
+					astring *name = input_code_name(astring_alloc(), entry->activationKey1);
+					if (entry->name)
+						bufTraverse += sprintf(bufTraverse, ":1st Activation Key for %s (%s)\n", entry->name, astring_c(name));
 					else
-						bufTraverse += sprintf(bufTraverse, ":1st Activation Key (%s)\n", code_name(entry->activationKey1));
+						bufTraverse += sprintf(bufTraverse, ":1st Activation Key (%s)\n", astring_c(name));
+					astring_free(name);
 				}
 				else
 				{
 					/* ----- 2nd key ----- */
-					if(entry->name)
-						bufTraverse += sprintf(bufTraverse, ":2nd Activation Key for %s (%s)\n", entry->name, code_name(entry->activationKey2));
+					astring *name = input_code_name(astring_alloc(), entry->activationKey2);
+					if (entry->name)
+						bufTraverse += sprintf(bufTraverse, ":2nd Activation Key for %s (%s)\n", entry->name, astring_c(name));
 					else
-						bufTraverse += sprintf(bufTraverse, ":2nd Activation Key (%s)\n", code_name(entry->activationKey2));
+						bufTraverse += sprintf(bufTraverse, ":2nd Activation Key (%s)\n", astring_c(name));
+					astring_free(name);
 				}
 
 				/* ----- write the activation key code ----- */
@@ -11492,14 +11502,14 @@ static void cheat_periodicEntry(CheatEntry * entry)
 		/* ----- special handling for activation key ----- */
 		if((entry->flags & kCheatFlag_HasActivationKey1) || (entry->flags & kCheatFlag_HasActivationKey2))
 		{
-			if(code_pressed(entry->activationKey1) || code_pressed(entry->activationKey2))
+			if(input_code_pressed(entry->activationKey1) || input_code_pressed(entry->activationKey2))
 			{
 				if(!(entry->flags & kCheatFlag_ActivationKeyPressed))
 				{
 					/* ----- move current position until find OFF or no link extension code ----- */
 					do{
 						/* ----- 1st activation key pressed ----- */
-						if(code_pressed(entry->activationKey1))
+						if(input_code_pressed(entry->activationKey1))
 						{
 							entry->selection++;
 
@@ -11610,7 +11620,7 @@ static void cheat_periodicEntry(CheatEntry * entry)
 			!(entry->flags & kCheatFlag_UserSelect))
 		{
 			/* ----- special handling for activation key ----- */
-			if(code_pressed(entry->activationKey1) || code_pressed(entry->activationKey2))
+			if(input_code_pressed(entry->activationKey1) || input_code_pressed(entry->activationKey2))
 			{
 				if(!(entry->flags & kCheatFlag_ActivationKeyPressed))
 				{

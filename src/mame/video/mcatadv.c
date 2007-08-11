@@ -230,19 +230,19 @@ VIDEO_UPDATE( mcatadv )
 	for (i=0; i<=3; i++)
 	{
 	#ifdef MAME_DEBUG
-			if (!code_pressed(KEYCODE_Q))
+			if (!input_code_pressed(KEYCODE_Q))
 	#endif
 			mcatadv_draw_tilemap_part(mcatadv_scroll,  mcatadv_videoram1, i, mcatadv_tilemap1, bitmap, cliprect);
 
 	#ifdef MAME_DEBUG
-			if (!code_pressed(KEYCODE_W))
+			if (!input_code_pressed(KEYCODE_W))
 	#endif
 				mcatadv_draw_tilemap_part(mcatadv_scroll2, mcatadv_videoram2, i, mcatadv_tilemap2, bitmap, cliprect);
 	}
 
 	profiler_mark(PROFILER_USER1);
 #ifdef MAME_DEBUG
-	if (!code_pressed(KEYCODE_E))
+	if (!input_code_pressed(KEYCODE_E))
 #endif
 		draw_sprites (bitmap, cliprect);
 	profiler_mark(PROFILER_END);
@@ -251,10 +251,10 @@ VIDEO_UPDATE( mcatadv )
 
 VIDEO_START( mcatadv )
 {
-	mcatadv_tilemap1 = tilemap_create(get_mcatadv_tile_info1,tilemap_scan_rows,TILEMAP_TRANSPARENT, 16, 16,32,32);
+	mcatadv_tilemap1 = tilemap_create(get_mcatadv_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT, 16, 16,32,32);
 	tilemap_set_transparent_pen(mcatadv_tilemap1,0);
 
-	mcatadv_tilemap2 = tilemap_create(get_mcatadv_tile_info2,tilemap_scan_rows,TILEMAP_TRANSPARENT, 16, 16,32,32);
+	mcatadv_tilemap2 = tilemap_create(get_mcatadv_tile_info2,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT, 16, 16,32,32);
 	tilemap_set_transparent_pen(mcatadv_tilemap2,0);
 
 	spriteram_old = auto_malloc(spriteram_size);

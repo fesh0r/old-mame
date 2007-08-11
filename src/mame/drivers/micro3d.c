@@ -403,26 +403,26 @@ void micro3d_vblank(void)
 
 /* 68901 related gubbins. Re-write me please */
 
-static void timera_int(int param)
+static TIMER_CALLBACK( timera_int )
 {
 //      mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), ((m68901_base[0xf]>>8) & 0xff) * 200),0,timera_int);     // Set the timer again.
         mame_timer_set(MAME_TIME_IN_USEC(1000),0,timera_int);     // Set the timer again.
         m68901_int_gen(TMRA);           // Fire an interrupt.
 }
 
-static void timerb_int(int param)
+static TIMER_CALLBACK( timerb_int )
 {
         mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), ((m68901_base[0x10]>>8) & 0xff) * 200),0,timera_int);
         m68901_int_gen(TMRB);           // Fire an interrupt.
 }
 
-static void timerc_int(int param)
+static TIMER_CALLBACK( timerc_int )
 {
         mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), ((m68901_base[0x11]>>8) & 0xff) * 200),0,timera_int);
         m68901_int_gen(TMRC);           // Fire an interrupt.
 }
 
-static void timerd_int(int param)
+static TIMER_CALLBACK( timerd_int )
 {
         mame_timer_set(MAME_TIME_IN_USEC(250),0,timerd_int);
         m68901_int_gen(TMRD);           // Fire an interrupt.
@@ -806,7 +806,7 @@ static READ8_HANDLER(sound_io_r)
 switch(offset)
 {
         case 0x01:  return readinputport(3);                           /* Test push switch */
-        case 0x03:  return (int)(upd7759_0_busy_r)<<3;
+        case 0x03:  return (int)(upd7759_0_busy_r(0))<<3;
         default:    return 0;
 }
 

@@ -265,11 +265,11 @@ mame_file *nvram_fopen(running_machine *machine, UINT32 openflags)
 {
 	file_error filerr;
 	mame_file *file;
-	char *fname;
+	astring *fname;
 
-	fname = assemble_2_strings(machine->basename, ".nv");
-	filerr = mame_fopen(SEARCHPATH_NVRAM, fname, openflags, &file);
-	free(fname);
+	fname = astring_assemble_2(astring_alloc(), machine->basename, ".nv");
+	filerr = mame_fopen(SEARCHPATH_NVRAM, astring_c(fname), openflags, &file);
+	astring_free(fname);
 
 	return (filerr == FILERR_NONE) ? file : NULL;
 }
@@ -388,28 +388,28 @@ int memcard_create(int index, int overwrite)
 {
 	file_error filerr;
 	mame_file *file;
-	char *fname;
+	astring *fname;
 	char name[16];
 
 	/* create a name */
 	memcard_name(index, name);
 
 	/* if we can't overwrite, fail if the file already exists */
-	fname = assemble_3_strings(Machine->basename, PATH_SEPARATOR, name);
+	fname = astring_assemble_3(astring_alloc(), Machine->basename, PATH_SEPARATOR, name);
 	if (!overwrite)
 	{
-		filerr = mame_fopen(SEARCHPATH_MEMCARD, fname, OPEN_FLAG_READ, &file);
+		filerr = mame_fopen(SEARCHPATH_MEMCARD, astring_c(fname), OPEN_FLAG_READ, &file);
 		if (filerr == FILERR_NONE)
 		{
 			mame_fclose(file);
-			free(fname);
+			astring_free(fname);
 			return 1;
 		}
 	}
 
 	/* create a new file */
-	filerr = mame_fopen(SEARCHPATH_MEMCARD, fname, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
-	free(fname);
+	filerr = mame_fopen(SEARCHPATH_MEMCARD, astring_c(fname), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
+	astring_free(fname);
 	if (filerr != FILERR_NONE)
 		return 1;
 
@@ -433,7 +433,7 @@ int memcard_insert(int index)
 	file_error filerr;
 	mame_file *file;
 	char name[16];
-	char *fname;
+	astring *fname;
 
 	/* if a card is already inserted, eject it first */
 	if (memcard_inserted != -1)
@@ -442,11 +442,11 @@ int memcard_insert(int index)
 
 	/* create a name */
 	memcard_name(index, name);
-	fname = assemble_3_strings(Machine->basename, PATH_SEPARATOR, name);
+	fname = astring_assemble_3(astring_alloc(), Machine->basename, PATH_SEPARATOR, name);
 
 	/* open the file; if we can't, it's an error */
-	filerr = mame_fopen(SEARCHPATH_MEMCARD, fname, OPEN_FLAG_READ, &file);
-	free(fname);
+	filerr = mame_fopen(SEARCHPATH_MEMCARD, astring_c(fname), OPEN_FLAG_READ, &file);
+	astring_free(fname);
 	if (filerr != FILERR_NONE)
 		return 1;
 
@@ -471,7 +471,7 @@ void memcard_eject(running_machine *machine)
 	file_error filerr;
 	mame_file *file;
 	char name[16];
-	char *fname;
+	astring *fname;
 
 	/* if no card is preset, just ignore */
 	if (memcard_inserted == -1)
@@ -479,11 +479,11 @@ void memcard_eject(running_machine *machine)
 
 	/* create a name */
 	memcard_name(memcard_inserted, name);
-	fname = assemble_3_strings(Machine->basename, PATH_SEPARATOR, name);
+	fname = astring_assemble_3(astring_alloc(), Machine->basename, PATH_SEPARATOR, name);
 
 	/* open the file; if we can't, it's an error */
-	filerr = mame_fopen(SEARCHPATH_MEMCARD, fname, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
-	free(fname);
+	filerr = mame_fopen(SEARCHPATH_MEMCARD, astring_c(fname), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
+	astring_free(fname);
 	if (filerr != FILERR_NONE)
 	{
 		mame_fclose(file);
@@ -551,8 +551,9 @@ static void interrupt_reset(running_machine *machine)
     lines and the NMI line to clear
 -------------------------------------------------*/
 
-static void clear_all_lines(int cpunum)
+static TIMER_CALLBACK( clear_all_lines )
 {
+	int cpunum = param;
 	int inputcount = cpunum_input_lines(cpunum);
 	int line;
 
@@ -577,7 +578,7 @@ void cpu_interrupt_enable(int cpunum, int enabled)
 
 	/* make sure there are no queued interrupts */
 	if (enabled == 0)
-		mame_timer_set(time_zero, cpunum, clear_all_lines);
+		timer_call_after_resynch(cpunum, clear_all_lines);
 }
 
 

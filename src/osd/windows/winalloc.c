@@ -299,8 +299,8 @@ void *realloc_file_line(void *memory, size_t size, const char *file, int line)
 			{
 				if (winalloc_in_main_code)
 				{
-					fprintf(stderr, "Error: realloc a non-existant block\n");
-					osd_break_into_debugger("Error: realloc a non-existant block");
+					fprintf(stderr, "Error: realloc a non-existant block (%s:%d)\n", file, line);
+					osd_break_into_debugger("Error: realloc a non-existant block\n");
 				}
 			}
 			else
@@ -345,7 +345,7 @@ void CLIB_DECL free(void *memory)
 
 	// free the memory
 	if (USE_GUARD_PAGES)
-		VirtualFree((UINT8 *)memory - ((UINT32)memory & (PAGE_SIZE-1)) - PAGE_SIZE, 0, MEM_RELEASE);
+		VirtualFree((UINT8 *)memory - ((size_t)memory & (PAGE_SIZE-1)) - PAGE_SIZE, 0, MEM_RELEASE);
 	else
 		GlobalFree(memory);
 

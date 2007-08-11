@@ -40,7 +40,7 @@ static UINT16 *vram;
  *
  *************************************/
 
-static void reset_yscroll_callback(int param);
+static TIMER_CALLBACK( reset_yscroll_callback );
 
 
 
@@ -123,13 +123,13 @@ VIDEO_START( atarisy2 )
 	atarigen_playfield = &vram[0x2000];
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE, 8,8, 128,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 8,8, 128,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8,8, 64,48);
+	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8,8, 64,48);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 
 	/* reset the statics */
@@ -170,9 +170,9 @@ WRITE16_HANDLER( atarisy2_xscroll_w )
 }
 
 
-static void reset_yscroll_callback(int newscroll)
+static TIMER_CALLBACK( reset_yscroll_callback )
 {
-	tilemap_set_scrolly(atarigen_playfield_tilemap, 0, newscroll);
+	tilemap_set_scrolly(atarigen_playfield_tilemap, 0, param);
 }
 
 

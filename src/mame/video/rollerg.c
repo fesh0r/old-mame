@@ -15,10 +15,10 @@ static int bg_colorbase,sprite_colorbase,zoom_colorbase;
 static void sprite_callback(int *code,int *color,int *priority_mask)
 {
 #if 0
-if (code_pressed(KEYCODE_Q) && (*color & 0x80)) *color = rand();
-if (code_pressed(KEYCODE_W) && (*color & 0x40)) *color = rand();
-if (code_pressed(KEYCODE_E) && (*color & 0x20)) *color = rand();
-if (code_pressed(KEYCODE_R) && (*color & 0x10)) *color = rand();
+if (input_code_pressed(KEYCODE_Q) && (*color & 0x80)) *color = rand();
+if (input_code_pressed(KEYCODE_W) && (*color & 0x40)) *color = rand();
+if (input_code_pressed(KEYCODE_E) && (*color & 0x20)) *color = rand();
+if (input_code_pressed(KEYCODE_R) && (*color & 0x10)) *color = rand();
 #endif
 	*priority_mask = (*color & 0x10) ? 0 : 0x02;
 	*color = sprite_colorbase + (*color & 0x0f);
@@ -53,7 +53,7 @@ VIDEO_START( rollerg )
 	zoom_colorbase = 0;
 
 	K053245_vh_start(machine,0,REGION_GFX1,NORMAL_PLANE_ORDER,sprite_callback);
-	K051316_vh_start_0(machine,REGION_GFX2,4,TILEMAP_TRANSPARENT,0,zoom_callback);
+	K051316_vh_start_0(machine,REGION_GFX2,4,TILEMAP_TYPE_TRANSPARENT,0,zoom_callback);
 
 	K051316_set_offset(0, 22, 1);
 }

@@ -82,6 +82,7 @@
 #include "profiler.h"
 #include "render.h"
 #include "ui.h"
+#include "uimenu.h"
 
 #ifdef MAME_DEBUG
 #include "debug/debugcon.h"
@@ -123,6 +124,7 @@ struct _callback_item
 	{
 		void		(*exit)(running_machine *);
 		void		(*reset)(running_machine *);
+		void		(*frame)(running_machine *);
 		void		(*pause)(running_machine *, int);
 		void		(*log)(running_machine *, const char *);
 	} func;
@@ -137,11 +139,13 @@ struct _mame_private
 	UINT8			paused;
 	UINT8			hard_reset_pending;
 	UINT8			exit_pending;
-	char *			saveload_pending_file;
+	const game_driver *new_driver_pending;
+	astring *		saveload_pending_file;
 	mame_timer *	soft_reset_timer;
 	mame_file *		logfile;
 
 	/* callbacks */
+	callback_item *	frame_callback_list;
 	callback_item *	reset_callback_list;
 	callback_item *	pause_callback_list;
 	callback_item *	exit_callback_list;
@@ -173,6 +177,9 @@ struct _mame_private
 
 /* the active machine */
 running_machine *Machine;
+
+/* started empty? */
+static UINT8 started_empty;
 
 /* output channels */
 static output_callback output_cb[OUTPUT_CHANNEL_COUNT];
@@ -237,11 +244,13 @@ const char *memory_region_names[REGION_MAX] =
 
 extern int mame_validitychecks(const game_driver *driver);
 
+static void parse_ini_file(const char *name);
+
 static running_machine *create_machine(const game_driver *driver);
 static void reset_machine(running_machine *machine);
 static void destroy_machine(running_machine *machine);
 static void init_machine(running_machine *machine);
-static void soft_reset(int param);
+static TIMER_CALLBACK( soft_reset );
 static void free_callback_list(callback_item **cb);
 
 static void saveload_init(running_machine *machine);
@@ -257,42 +266,59 @@ static void logfile_callback(running_machine *machine, const char *buffer);
 ***************************************************************************/
 
 /*-------------------------------------------------
-    run_game - run the given game in a session
+    mame_execute - run the core emulation
 -------------------------------------------------*/
 
-int run_game(const game_driver *driver)
+int mame_execute(void)
 {
-	running_machine *machine;
+	int exit_pending = FALSE;
 	int error = MAMERR_NONE;
+	int firstgame = TRUE;
 	int firstrun = TRUE;
-	mame_private *mame;
-	callback_item *cb;
-
-	/* perform validity checks before anything else */
-	if (mame_validitychecks(driver) != 0)
-		return MAMERR_FAILED_VALIDITY;
-
-	/* create the machine structure and driver */
-	machine = create_machine(driver);
-	reset_machine(machine);
-	mame = machine->mame_data;
-
-	/* looooong term: remove this */
-	Machine = machine;
-
-	/* start in the "pre-init phase" */
-	mame->current_phase = MAME_PHASE_PREINIT;
 
 	/* loop across multiple hard resets */
-	mame->exit_pending = FALSE;
-	while (error == 0 && !mame->exit_pending)
+	while (error == MAMERR_NONE && !exit_pending)
 	{
-		/* reset the global machine state first */
+		const game_driver *driver;
+		running_machine *machine;
+		mame_private *mame;
+		callback_item *cb;
+		astring *gamename;
+
+		/* convert the specified gamename to a driver */
+		gamename = core_filename_extract_base(astring_alloc(), options_get_string(mame_options(), OPTION_GAMENAME), TRUE);
+		driver = driver_get_name(astring_c(gamename));
+		astring_free(gamename);
+
+		/* if no driver, use the internal empty driver */
+		if (driver == NULL)
+		{
+			driver = &driver_empty;
+			if (firstgame)
+				started_empty = TRUE;
+		}
+
+		/* otherwise, perform validity checks before anything else */
+		else if (mame_validitychecks(driver) != 0)
+			return MAMERR_FAILED_VALIDITY;
+		firstgame = FALSE;
+
+		/* parse any INI files as the first thing */
+		options_revert(mame_options(), OPTION_PRIORITY_INI);
+		mame_parse_ini_files(mame_options(), driver);
+
+		/* create the machine structure and driver */
+		machine = create_machine(driver);
 		reset_machine(machine);
+		mame = machine->mame_data;
+
+		/* start in the "pre-init phase" */
+		mame->current_phase = MAME_PHASE_PREINIT;
+
+		/* looooong term: remove this */
+		Machine = machine;
 
 		init_resource_tracking();
-		add_free_resources_callback(timer_free);
-		add_free_resources_callback(state_save_free);
 
 		/* use setjmp/longjmp for deep error recovery */
 		mame->fatal_error_jmpbuf_valid = TRUE;
@@ -333,7 +359,7 @@ int run_game(const game_driver *driver)
 			begin_resource_tracking();
 
 			/* perform a soft reset -- this takes us to the running phase */
-			soft_reset(0);
+			soft_reset(machine, 0);
 
 			/* run the CPUs until a reset or exit */
 			mame->hard_reset_pending = FALSE;
@@ -381,12 +407,21 @@ int run_game(const game_driver *driver)
 
 		/* free our callback lists */
 		free_callback_list(&mame->exit_callback_list);
-		free_callback_list(&mame->reset_callback_list);
 		free_callback_list(&mame->pause_callback_list);
-	}
+		free_callback_list(&mame->reset_callback_list);
+		free_callback_list(&mame->frame_callback_list);
 
-	/* destroy the machine */
-	destroy_machine(machine);
+		/* grab data from the MAME structure before it goes away */
+		if (mame->new_driver_pending != NULL)
+		{
+			options_set_string(mame_options(), OPTION_GAMENAME, mame->new_driver_pending->name, OPTION_PRIORITY_CMDLINE);
+			firstrun = TRUE;
+		}
+		exit_pending = mame->exit_pending;
+
+		/* destroy the machine */
+		destroy_machine(machine);
+	}
 
 	/* return an error */
 	return error;
@@ -406,24 +441,25 @@ int mame_get_phase(running_machine *machine)
 
 
 /*-------------------------------------------------
-    add_exit_callback - request a callback on
-    termination
+    add_frame_callback - request a callback on
+    frame update
 -------------------------------------------------*/
 
-void add_exit_callback(running_machine *machine, void (*callback)(running_machine *))
+void add_frame_callback(running_machine *machine, void (*callback)(running_machine *))
 {
 	mame_private *mame = machine->mame_data;
-	callback_item *cb;
+	callback_item *cb, **cur;
 
-	assert_always(mame_get_phase(machine) == MAME_PHASE_INIT, "Can only call add_exit_callback at init time!");
+	assert_always(mame_get_phase(machine) == MAME_PHASE_INIT, "Can only call add_frame_callback at init time!");
 
 	/* allocate memory */
 	cb = malloc_or_die(sizeof(*cb));
 
-	/* add us to the head of the list */
-	cb->func.exit = callback;
-	cb->next = mame->exit_callback_list;
-	mame->exit_callback_list = cb;
+	/* add us to the end of the list */
+	cb->func.frame = callback;
+	cb->next = NULL;
+	for (cur = &mame->frame_callback_list; *cur; cur = &(*cur)->next) ;
+	*cur = cb;
 }
 
 
@@ -473,6 +509,43 @@ void add_pause_callback(running_machine *machine, void (*callback)(running_machi
 }
 
 
+/*-------------------------------------------------
+    add_exit_callback - request a callback on
+    termination
+-------------------------------------------------*/
+
+void add_exit_callback(running_machine *machine, void (*callback)(running_machine *))
+{
+	mame_private *mame = machine->mame_data;
+	callback_item *cb;
+
+	assert_always(mame_get_phase(machine) == MAME_PHASE_INIT, "Can only call add_exit_callback at init time!");
+
+	/* allocate memory */
+	cb = malloc_or_die(sizeof(*cb));
+
+	/* add us to the head of the list */
+	cb->func.exit = callback;
+	cb->next = mame->exit_callback_list;
+	mame->exit_callback_list = cb;
+}
+
+
+/*-------------------------------------------------
+    mame_frame_update - handle update tasks for a
+    frame boundary
+-------------------------------------------------*/
+
+void mame_frame_update(running_machine *machine)
+{
+	callback_item *cb;
+
+	/* call all registered reset callbacks */
+	for (cb = machine->mame_data->frame_callback_list; cb; cb = cb->next)
+		(*cb->func.frame)(machine);
+}
+
+
 
 /***************************************************************************
     GLOBAL SYSTEM STATES
@@ -485,7 +558,17 @@ void add_pause_callback(running_machine *machine, void (*callback)(running_machi
 void mame_schedule_exit(running_machine *machine)
 {
 	mame_private *mame = machine->mame_data;
-	mame->exit_pending = TRUE;
+
+	/* if we are in-game but we started with the select game menu, return to that instead */
+	if (started_empty && options_get_string(mame_options(), OPTION_GAMENAME)[0] != 0)
+	{
+		options_set_string(mame_options(), OPTION_GAMENAME, "", OPTION_PRIORITY_CMDLINE);
+		ui_menu_force_game_select();
+	}
+
+	/* otherwise, exit for real */
+	else
+		mame->exit_pending = TRUE;
 
 	/* if we're autosaving on exit, schedule a save as well */
 	if (options_get_bool(mame_options(), OPTION_AUTOSAVE) && (machine->gamedrv->flags & GAME_SUPPORTS_SAVE))
@@ -522,6 +605,19 @@ void mame_schedule_soft_reset(running_machine *machine)
 
 
 /*-------------------------------------------------
+    mame_schedule_new_driver - schedule a new game
+    to be loaded
+-------------------------------------------------*/
+
+void mame_schedule_new_driver(running_machine *machine, const game_driver *driver)
+{
+	mame_private *mame = machine->mame_data;
+	mame->hard_reset_pending = TRUE;
+	mame->new_driver_pending = driver;
+}
+
+
+/*-------------------------------------------------
     mame_schedule_save - schedule a save to
     occur as soon as possible
 -------------------------------------------------*/
@@ -532,8 +628,8 @@ void mame_schedule_save(running_machine *machine, const char *filename)
 
 	/* free any existing request and allocate a copy of the requested name */
 	if (mame->saveload_pending_file != NULL)
-		free(mame->saveload_pending_file);
-	mame->saveload_pending_file = assemble_4_strings(machine->basename, PATH_SEPARATOR, filename, ".sta");
+		astring_free(mame->saveload_pending_file);
+	mame->saveload_pending_file = astring_assemble_4(astring_alloc(), machine->basename, PATH_SEPARATOR, filename, ".sta");
 
 	/* note the start time and set a timer for the next timeslice to actually schedule it */
 	mame->saveload_schedule_callback = handle_save;
@@ -555,8 +651,8 @@ void mame_schedule_load(running_machine *machine, const char *filename)
 
 	/* free any existing request and allocate a copy of the requested name */
 	if (mame->saveload_pending_file != NULL)
-		free(mame->saveload_pending_file);
-	mame->saveload_pending_file = assemble_4_strings(machine->basename, PATH_SEPARATOR, filename, ".sta");
+		astring_free(mame->saveload_pending_file);
+	mame->saveload_pending_file = astring_assemble_4(astring_alloc(), machine->basename, PATH_SEPARATOR, filename, ".sta");
 
 	/* note the start time and set a timer for the next timeslice to actually schedule it */
 	mame->saveload_schedule_callback = handle_load;
@@ -1128,6 +1224,80 @@ UINT32 mame_rand(running_machine *machine)
 ***************************************************************************/
 
 /*-------------------------------------------------
+    mame_parse_ini_files - parse the relevant INI
+    files and apply their options
+-------------------------------------------------*/
+
+void mame_parse_ini_files(core_options *options, const game_driver *driver)
+{
+	/* parse the INI file defined by the platform (e.g., "mame.ini") */
+	/* we do this twice so that the first file can change the INI path */
+	parse_ini_file(CONFIGNAME);
+	parse_ini_file(CONFIGNAME);
+
+	/* debug builds: parse "debug.ini" as well */
+#ifdef MAME_DEBUG
+	parse_ini_file("debug");
+#endif
+
+	/* if we have a valid game driver, parse game-specific INI files */
+	if (driver != NULL)
+	{
+		const game_driver *parent = driver_get_clone(driver);
+		const game_driver *gparent = (parent != NULL) ? driver_get_clone(parent) : NULL;
+		astring *sourcename;
+		machine_config drv;
+
+		/* expand the machine driver to look at the info */
+		expand_machine_driver(driver->drv, &drv);
+
+		/* parse "vector.ini" for vector games */
+		if (drv.video_attributes & VIDEO_TYPE_VECTOR)
+			parse_ini_file("vector");
+
+		/* then parse "<sourcefile>.ini" */
+		sourcename = core_filename_extract_base(astring_alloc(), driver->source_file, TRUE);
+		parse_ini_file(astring_c(sourcename));
+		astring_free(sourcename);
+
+		/* then parent the grandparent, parent, and game-specific INIs */
+		if (gparent != NULL)
+			parse_ini_file(gparent->name);
+		if (parent != NULL)
+			parse_ini_file(parent->name);
+		parse_ini_file(driver->name);
+	}
+}
+
+
+/*-------------------------------------------------
+    parse_ini_file - parse a single INI file
+-------------------------------------------------*/
+
+static void parse_ini_file(const char *name)
+{
+	file_error filerr;
+	mame_file *file;
+	astring *fname;
+
+	/* don't parse if it has been disabled */
+	if (!options_get_bool(mame_options(), OPTION_READCONFIG))
+		return;
+
+	/* open the file; if we fail, that's ok */
+	fname = astring_assemble_2(astring_alloc(), name, ".ini");
+	filerr = mame_fopen(SEARCHPATH_INI, astring_c(fname), OPEN_FLAG_READ, &file);
+	astring_free(fname);
+	if (filerr != FILERR_NONE)
+		return;
+
+	/* parse the file and close it */
+	options_parse_ini_file(mame_options(), mame_core_file(file), OPTION_PRIORITY_INI);
+	mame_fclose(file);
+}
+
+
+/*-------------------------------------------------
     create_machine - create the running machine
     object and initialize it based on options
 -------------------------------------------------*/
@@ -1258,6 +1428,7 @@ static void init_machine(running_machine *machine)
 	sndintrf_init(machine);
 	fileio_init(machine);
 	config_init(machine);
+	input_init(machine);
 	output_init(machine);
 	state_init(machine);
 	state_save_allow_registration(TRUE);
@@ -1275,13 +1446,11 @@ static void init_machine(running_machine *machine)
 	mame->soft_reset_timer = mame_timer_alloc(soft_reset);
 
 	/* init the osd layer */
-	if (osd_init(machine) != 0)
-		fatalerror("osd_init failed");
+	osd_init(machine);
 
 	/* initialize the input system and input ports for the game */
 	/* this must be done before memory_init in order to allow specifying */
 	/* callbacks based on input port tags */
-	code_init(machine);
 	input_port_init(machine, machine->gamedrv->ipt);
 
 	/* initialize the base time (if not doing record/playback) */
@@ -1341,9 +1510,8 @@ static void init_machine(running_machine *machine)
     of the system
 -------------------------------------------------*/
 
-static void soft_reset(int param)
+static TIMER_CALLBACK( soft_reset )
 {
-	running_machine *machine = Machine;
 	mame_private *mame = machine->mame_data;
 	callback_item *cb;
 
@@ -1418,7 +1586,7 @@ static void saveload_init(running_machine *machine)
 	const char *savegame = options_get_string(mame_options(), OPTION_STATE);
 
 	/* if we're coming in with a savegame request, process it now */
-	if (savegame != NULL && savegame[0] != 0)
+	if (savegame[0] != 0)
 		mame_schedule_load(machine, savegame);
 
 	/* if we're in autosave mode, schedule a load */
@@ -1457,7 +1625,7 @@ static void handle_save(running_machine *machine)
 	}
 
 	/* open the file */
-	filerr = mame_fopen(SEARCHPATH_STATE, mame->saveload_pending_file, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
+	filerr = mame_fopen(SEARCHPATH_STATE, astring_c(mame->saveload_pending_file), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
 	if (filerr == FILERR_NONE)
 	{
 		int cpunum;
@@ -1506,7 +1674,7 @@ static void handle_save(running_machine *machine)
 
 cancel:
 	/* unschedule the save */
-	free(mame->saveload_pending_file);
+	astring_free(mame->saveload_pending_file);
 	mame->saveload_pending_file = NULL;
 	mame->saveload_schedule_callback = NULL;
 }
@@ -1543,7 +1711,7 @@ static void handle_load(running_machine *machine)
 	}
 
 	/* open the file */
-	filerr = mame_fopen(SEARCHPATH_STATE, mame->saveload_pending_file, OPEN_FLAG_READ, &file);
+	filerr = mame_fopen(SEARCHPATH_STATE, astring_c(mame->saveload_pending_file), OPEN_FLAG_READ, &file);
 	if (filerr == FILERR_NONE)
 	{
 		/* start loading */
@@ -1588,7 +1756,7 @@ static void handle_load(running_machine *machine)
 
 cancel:
 	/* unschedule the load */
-	free(mame->saveload_pending_file);
+	astring_free(mame->saveload_pending_file);
 	mame->saveload_pending_file = NULL;
 	mame->saveload_schedule_callback = NULL;
 }

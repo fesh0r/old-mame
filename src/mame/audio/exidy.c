@@ -10,6 +10,7 @@
 #include "machine/6821pia.h"
 #include "sound/hc55516.h"
 #include "sound/5220intf.h"
+#include "sound/discrete.h"
 #include "exidy.h"
 
 
@@ -24,7 +25,7 @@
 #define SH8253_CLOCK		(CRYSTAL_OSC/2)
 #define SH6840_CLOCK		(CRYSTAL_OSC/4)
 #define SH6532_CLOCK		(CRYSTAL_OSC/4)
-#define CVSD_CLOCK_FREQ 	(1000000.0 / 34.0)
+#define CVSD_CLOCK_FREQ 	(1.0 / (0.693 * (RES_K(2.4) + 2.0 * RES_K(20)) * CAP_P(2200)))
 #define BASE_VOLUME			(32767 / 6)
 
 enum
@@ -387,7 +388,7 @@ static void exidy_stream_update(void *param, stream_sample_t **inputs, stream_sa
  *
  *************************************/
 
-static void riot_interrupt(int parm);
+static TIMER_CALLBACK( riot_interrupt );
 
 static void *common_start(void)
 {
@@ -478,7 +479,7 @@ void *berzerk_sh_start(int clock, const struct CustomSound_interface *config)
  *
  *************************************/
 
-static void riot_interrupt(int parm)
+static TIMER_CALLBACK( riot_interrupt )
 {
 	/* if we're doing the initial interval counting... */
 	if (riot_state == RIOT_COUNT)
@@ -842,7 +843,8 @@ READ8_HANDLER( mtrap_voiceio_r )
 	}
     if (!(offset & 0x40))
     {
-    	int clock_pulse = mame_time_to_double(scale_up_mame_time(mame_timer_get_time(), 2 * CVSD_CLOCK_FREQ));
+    	mame_time curtime = mame_timer_get_time();
+    	int clock_pulse = curtime.subseconds / HZ_TO_SUBSECONDS(2 * CVSD_CLOCK_FREQ);
     	return (clock_pulse & 1) << 7;
 	}
 	return 0;

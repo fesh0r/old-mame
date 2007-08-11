@@ -329,11 +329,10 @@ Notes:
 */
 
 #include "driver.h"
-#include "machine/intelfsh.h"
-#include "cpu/sh2/sh2.h"
-#include "sound/custom.h"
-#include "cps3.h"
 #include "cdrom.h"
+#include "cpu/sh2/sh2.h"
+#include "machine/intelfsh.h"
+#include "includes/cps3.h"
 
 /* load extracted cd content? */
 #define LOAD_CD_CONTENT 1
@@ -2712,9 +2711,9 @@ static struct CustomSound_interface custom_interface =
 };
 
 
-mame_timer* fastboot_timer;
+static mame_timer* fastboot_timer;
 
-static void fastboot_timer_callback(int num)
+static TIMER_CALLBACK( fastboot_timer_callback )
 {
 	UINT32 *rom =  (UINT32*)decrypted_gamerom;//memory_region ( REGION_USER4 );
 	if (cps3_isSpecial) rom = (UINT32*)memory_region(REGION_USER4);
@@ -2725,7 +2724,7 @@ static void fastboot_timer_callback(int num)
 	cpunum_set_reg(0,SH2_VBR, 0x6000000);
 }
 
-MACHINE_RESET(cps3_reset)
+MACHINE_RESET( cps3 )
 {
 	scsi_init();
 
@@ -2950,7 +2949,7 @@ static MACHINE_DRIVER_START( cps3 )
 	MDRV_SCREEN_SIZE(512*2, 224*2)
 	MDRV_SCREEN_VISIBLE_AREA(0, (384*1)-1, 0, 223/*511*/)
 
-	MDRV_MACHINE_RESET(cps3_reset)
+	MDRV_MACHINE_RESET(cps3)
 	MDRV_NVRAM_HANDLER( cps3 )
 	MDRV_PALETTE_LENGTH(0x10000) // actually 0x20000 ...
 

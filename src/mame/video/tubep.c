@@ -507,7 +507,7 @@ WRITE8_HANDLER( tubep_background_c000_w )
 }
 
 
-static void sprite_timer_callback(int n)
+static TIMER_CALLBACK( sprite_timer_callback )
 {
 	cpunum_set_input_line(3,0,ASSERT_LINE);
 }
@@ -650,7 +650,7 @@ WRITE8_HANDLER( tubep_sprite_control_w )
 	}
 }
 
-VIDEO_EOF( tubep_eof )
+VIDEO_EOF( tubep )
 {
 	/* clear displayed frame */
 	memset(spritemap+DISP*256*256, 0x0f, 256*256);

@@ -81,11 +81,13 @@ endif
 
 ifdef MSVC_BUILD
 
+VCONV = $(WINOBJ)/vconv$(EXE)
+
 # replace the various compilers with vconv.exe prefixes
-CC = @$(OBJ)/vconv.exe gcc -I.
-LD = @$(OBJ)/vconv.exe ld /profile
-AR = @$(OBJ)/vconv.exe ar
-RC = @$(OBJ)/vconv.exe windres
+CC = @$(VCONV) gcc -I.
+LD = @$(VCONV) ld /profile
+AR = @$(VCONV) ar
+RC = @$(VCONV) windres
 
 # make sure we use the multithreaded runtime
 CC += /MT
@@ -97,16 +99,19 @@ LD += /LTCG
 endif
 
 ifdef PTR64
-CC += /wd4267 /Wp64
+CC += /wd4267 /wd4312 /Wp64
 endif
 
 # add some VC++-specific defines
 DEFS += -D_CRT_SECURE_NO_DEPRECATE -DXML_STATIC -D__inline__=__inline -Dsnprintf=_snprintf -Dvsnprintf=_vsnprintf
 
 # make msvcprep into a pre-build step
-OSPREBUILD = $(OBJ)/vconv.exe
+# OSPREBUILD = $(VCONV)
 
-$(OBJ)/vconv.exe: $(WINOBJ)/vconv.o
+# add VCONV to the build tools
+BUILD += $(VCONV)
+
+$(VCONV): $(WINOBJ)/vconv.o
 	@echo Linking $@...
 ifdef PTR64
 	@link.exe /nologo $^ version.lib bufferoverflowu.lib /out:$@
@@ -135,12 +140,18 @@ CURPATH = ./
 # Windows-specific debug objects and flags
 #-------------------------------------------------
 
+# map all instances of "main" to "utf8_main"
+DEFS += -Dmain=utf8_main
+
 # debug build: enable guard pages on all memory allocations
 ifdef DEBUG
+ifndef WINUI
 DEFS += -DMALLOC_DEBUG
 LDFLAGS += -Wl,--allow-multiple-definition
 endif
+endif
 
+# enable UNICODE flags for unicode builds
 ifdef UNICODE
 DEFS += -DUNICODE -D_UNICODE
 endif
@@ -152,7 +163,7 @@ endif
 #-------------------------------------------------
 
 # add our prefix files to the mix
-CFLAGS += -mwindows -include $(WINSRC)/winprefix.h
+CFLAGS += -include $(WINSRC)/winprefix.h
 
 ifdef WIN95_MULTIMON
 CFLAGS += -DWIN95_MULTIMON
@@ -189,8 +200,6 @@ OSDCOREOBJS += \
 	$(WINOBJ)/winalloc.o
 endif
 
-$(LIBOCORE): $(OSDCOREOBJS)
-
 
 
 #-------------------------------------------------
@@ -221,28 +230,32 @@ OSDOBJS += \
 	$(WINOBJ)/debugwin.o
 endif
 
-# non-UI builds need a stub resource file
-ifeq ($(WINUI),)
+# add a stub resource file
 ifdef PTR64
-OSDOBJS += $(WINOBJ)/mamex64.res
+RESFILE = $(WINOBJ)/mamex64.res
 else
-OSDOBJS += $(WINOBJ)/mame.res
+RESFILE = $(WINOBJ)/mame.res
 endif
-endif
-
-$(LIBOSD): $(OSDOBJS)
 
 
 
 #-------------------------------------------------
-# if building with a UI, set the C flags and
-# include the ui.mak
+# if building with a UI, include the ui.mak
 #-------------------------------------------------
 
-ifneq ($(WINUI),)
-CFLAGS += -DWINUI=1
+ifdef WINUI
 include $(WINSRC)/ui/ui.mak
 endif
+
+
+
+#-------------------------------------------------
+# rules for building the libaries
+#-------------------------------------------------
+
+$(LIBOCORE): $(OSDCOREOBJS)
+
+$(LIBOSD): $(OSDOBJS)
 
 
 
@@ -252,7 +265,7 @@ endif
 
 ledutil$(EXE): $(WINOBJ)/ledutil.o $(LIBOCORE)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) -mwindows $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
 
 TOOLS += ledutil$(EXE)
 

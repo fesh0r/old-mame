@@ -103,9 +103,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 static void twincobr_create_tilemaps(void)
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,64);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
@@ -414,11 +414,11 @@ static void wardner_sprite_priority_hack(void)
 #ifdef MAME_DEBUG
 void twincobr_log_vram(void)
 {
-	if ( code_pressed(KEYCODE_M) )
+	if ( input_code_pressed(KEYCODE_M) )
 	{
 		offs_t tile_voffs;
 		int tcode[3];
-		while (code_pressed(KEYCODE_M)) ;
+		while (input_code_pressed(KEYCODE_M)) ;
 		logerror("Scrolls             BG-X BG-Y  FG-X FG-Y  TX-X  TX-Y\n");
 		logerror("------>             %04x %04x  %04x %04x  %04x  %04x\n",bgscrollx,bgscrolly,fgscrollx,fgscrolly,txscrollx,txscrolly);
 		for ( tile_voffs = 0; tile_voffs < (twincobr_txvideoram_size/2); tile_voffs++ )

@@ -305,6 +305,7 @@ DRVLIBS = \
 	$(MAMEOBJ)/amiga.a \
 	$(MAMEOBJ)/atari.a \
 	$(MAMEOBJ)/atlus.a \
+	$(MAMEOBJ)/barcrest.a \
 	$(MAMEOBJ)/bfm.a \
 	$(MAMEOBJ)/capcom.a \
 	$(MAMEOBJ)/cinemat.a \
@@ -568,14 +569,16 @@ $(MAMEOBJ)/atlus.a: \
 	$(DRIVERS)/ohmygod.o $(VIDEO)/ohmygod.o \
 	$(DRIVERS)/powerins.o $(VIDEO)/powerins.o \
 
+$(MAMEOBJ)/barcrest.a: \
+	$(MACHINE)/mmtr.o \
+	$(DRIVERS)/mpu4.o \
+	$(MACHINE)/roc10937.o \
+	$(MACHINE)/steppers.o \
+
 $(MAMEOBJ)/bfm.a: \
 	$(DRIVERS)/bfcobra.o \
 	$(DRIVERS)/bfm_sc2.o $(VIDEO)/bfm_adr2.o \
-	$(DRIVERS)/mpu4.o \
-	$(MACHINE)/lamps.o \
-	$(MACHINE)/mmtr.o \
-	$(MACHINE)/steppers.o \
-	$(MACHINE)/vacfdisp.o \
+	$(MACHINE)/bfm_bd1.o \
 
 $(MAMEOBJ)/capcom.a: \
 	$(DRIVERS)/1942.o $(VIDEO)/1942.o \
@@ -705,6 +708,7 @@ $(MAMEOBJ)/eolith.a: \
 	$(DRIVERS)/eolith.o $(VIDEO)/eolith.o \
 	$(DRIVERS)/eolith16.o \
 	$(DRIVERS)/eolithsp.o \
+	$(DRIVERS)/ghosteo.o \
 	$(DRIVERS)/vegaeo.o \
 
 $(MAMEOBJ)/excelent.a: \
@@ -832,6 +836,8 @@ $(MAMEOBJ)/kaneko.a: \
 	$(DRIVERS)/galpani3.o \
 	$(DRIVERS)/jchan.o \
 	$(DRIVERS)/kaneko16.o $(MACHINE)/kaneko16.o $(VIDEO)/kaneko16.o \
+	$(DRIVERS)/expro02.o \
+	$(DRIVERS)/sandscrp.o \
 	$(DRIVERS)/suprnova.o $(VIDEO)/suprnova.o \
 
 $(MAMEOBJ)/konami.a: \
@@ -1166,12 +1172,13 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/model1.o $(MACHINE)/model1.o $(VIDEO)/model1.o \
 	$(DRIVERS)/model2.o $(VIDEO)/model2.o \
 	$(DRIVERS)/model3.o $(VIDEO)/model3.o $(MACHINE)/model3.o \
-	$(DRIVERS)/naomi.o \
+	$(DRIVERS)/naomi.o $(MACHINE)/dc.o $(VIDEO)/dc.o \
 	$(DRIVERS)/puckpkmn.o \
 	$(DRIVERS)/segac2.o \
 	$(DRIVERS)/segag80r.o $(MACHINE)/segag80.o $(AUDIO)/segag80r.o $(VIDEO)/segag80r.o \
 	$(DRIVERS)/segag80v.o $(AUDIO)/segag80v.o $(VIDEO)/segag80v.o \
 	$(DRIVERS)/segahang.o $(VIDEO)/segahang.o \
+	$(DRIVERS)/segald.o \
 	$(DRIVERS)/segaorun.o $(VIDEO)/segaorun.o \
 	$(DRIVERS)/segas16a.o $(VIDEO)/segas16a.o \
 	$(DRIVERS)/segas16b.o $(VIDEO)/segas16b.o \
@@ -1556,9 +1563,11 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/hexa.o $(VIDEO)/hexa.o \
 	$(DRIVERS)/homedata.o $(VIDEO)/homedata.o \
 	$(DRIVERS)/hotblock.o \
+	$(DRIVERS)/imolagp.o \
 	$(DRIVERS)/intrscti.o \
 	$(DRIVERS)/jackpool.o \
 	$(DRIVERS)/jpmimpct.o $(VIDEO)/jpmimpct.o \
+	$(DRIVERS)/kingpin.o \
 	$(DRIVERS)/koikoi.o \
 	$(DRIVERS)/kyugo.o $(VIDEO)/kyugo.o \
 	$(DRIVERS)/ladyfrog.o $(VIDEO)/ladyfrog.o \
@@ -1578,7 +1587,6 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/mirax.o \
 	$(DRIVERS)/mjsiyoub.o \
 	$(DRIVERS)/mole.o $(VIDEO)/mole.o \
-	$(DRIVERS)/monzagp.o \
 	$(DRIVERS)/mosaic.o $(VIDEO)/mosaic.o \
 	$(DRIVERS)/mrjong.o $(VIDEO)/mrjong.o \
 	$(DRIVERS)/murogem.o \

@@ -110,16 +110,16 @@ VIDEO_START( fuuki32 )
 	buffered_spriteram32_2 = auto_malloc(spriteram_size);
 
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16, 16, 64,32);
+								TILEMAP_TYPE_TRANSPARENT, 16, 16, 64,32);
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16, 16, 64,32);
+								TILEMAP_TYPE_TRANSPARENT, 16, 16, 64,32);
 
 	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT,  8,  8, 64,32);
+								TILEMAP_TYPE_TRANSPARENT,  8,  8, 64,32);
 
 	tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT,  8,  8, 64,32);
+								TILEMAP_TYPE_TRANSPARENT,  8,  8, 64,32);
 
 	tilemap_set_transparent_pen(tilemap_0,0xff);	// 8 bits
 	tilemap_set_transparent_pen(tilemap_1,0xff);	// 8 bits
@@ -221,10 +221,10 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		else		{ ystart = 0;       yend = ynum;  yinc = +1; }
 
 #if 0
-		if(!( (code_pressed(KEYCODE_V) && (((attr >> 6)&3) == 0))
-		   || (code_pressed(KEYCODE_B) && (((attr >> 6)&3) == 1))
-		   || (code_pressed(KEYCODE_N) && (((attr >> 6)&3) == 2))
-		   || (code_pressed(KEYCODE_M) && (((attr >> 6)&3) == 3))
+		if(!( (input_code_pressed(KEYCODE_V) && (((attr >> 6)&3) == 0))
+		   || (input_code_pressed(KEYCODE_B) && (((attr >> 6)&3) == 1))
+		   || (input_code_pressed(KEYCODE_N) && (((attr >> 6)&3) == 2))
+		   || (input_code_pressed(KEYCODE_M) && (((attr >> 6)&3) == 3))
 		   ))
 #endif
 
@@ -254,7 +254,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 #ifdef MAME_DEBUG
 #if 0
-if (code_pressed(KEYCODE_X))
+if (input_code_pressed(KEYCODE_X))
 {	/* Display some info on each sprite */
 	char buf[10];
 	sprintf(buf, "%Xx%X %X",xnum,ynum,(attr>>6)&3);

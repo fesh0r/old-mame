@@ -155,13 +155,13 @@ WRITE8_HANDLER( paradise_pixmap_w )
 VIDEO_START( paradise )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 8,8, 0x20,0x20 );
+								TILEMAP_TYPE_TRANSPARENT, 8,8, 0x20,0x20 );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 8,8, 0x20,0x20 );
+								TILEMAP_TYPE_TRANSPARENT, 8,8, 0x20,0x20 );
 
 	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 8,8, 0x20,0x20 );
+								TILEMAP_TYPE_TRANSPARENT, 8,8, 0x20,0x20 );
 
 	/* pixmap */
 	tmpbitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
@@ -241,14 +241,14 @@ VIDEO_UPDATE( paradise )
 	int layers_ctrl = -1;
 
 #ifdef MAME_DEBUG
-if (code_pressed(KEYCODE_Z))
+if (input_code_pressed(KEYCODE_Z))
 {
 	int mask = 0;
-	if (code_pressed(KEYCODE_Q))	mask |= 1;
-	if (code_pressed(KEYCODE_W))	mask |= 2;
-	if (code_pressed(KEYCODE_E))	mask |= 4;
-	if (code_pressed(KEYCODE_R))	mask |= 8;
-	if (code_pressed(KEYCODE_A))	mask |= 16;
+	if (input_code_pressed(KEYCODE_Q))	mask |= 1;
+	if (input_code_pressed(KEYCODE_W))	mask |= 2;
+	if (input_code_pressed(KEYCODE_E))	mask |= 4;
+	if (input_code_pressed(KEYCODE_R))	mask |= 8;
+	if (input_code_pressed(KEYCODE_A))	mask |= 16;
 	if (mask != 0) layers_ctrl &= mask;
 }
 #endif

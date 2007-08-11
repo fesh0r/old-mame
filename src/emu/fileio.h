@@ -59,6 +59,14 @@
 
 
 /***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
+
+typedef struct _mame_path mame_path;
+
+
+
+/***************************************************************************
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
@@ -134,6 +142,19 @@ int CLIB_DECL mame_fprintf(mame_file *f, const char *fmt, ...);
 
 
 
+/* ----- file enumeration ----- */
+
+/* open a search path (multiple directories) for iteration */
+mame_path *mame_openpath(core_options *opts, const char *searchpath);
+
+/* return information about the next file in the search path */
+const osd_directory_entry *mame_readpath(mame_path *path);
+
+/* close an open seach path */
+void mame_closepath(mame_path *path);
+
+
+
 /* ----- file misc ----- */
 
 /* return the core_file underneath the mame_file */
@@ -141,77 +162,6 @@ core_file *mame_core_file(mame_file *file);
 
 /* return a hash string for the file with the given functions */
 const char *mame_fhash(mame_file *file, UINT32 functions);
-
-
-
-/***************************************************************************
-    INLINE FUNCTIONS
-***************************************************************************/
-
-/*-------------------------------------------------
-    assemble_2_strings - allocate space for two
-    strings and concatenate them into the new
-    buffer
--------------------------------------------------*/
-
-INLINE char *assemble_2_strings(const char *s1, const char *s2)
-{
-	char *tempbuf = (char *) malloc_or_die(strlen(s1) + strlen(s2) + 1);
-	strcpy(tempbuf, s1);
-	strcat(tempbuf, s2);
-	return tempbuf;
-}
-
-
-/*-------------------------------------------------
-    assemble_3_strings - allocate space for three
-    strings and concatenate them into the new
-    buffer
--------------------------------------------------*/
-
-INLINE char *assemble_3_strings(const char *s1, const char *s2, const char *s3)
-{
-	char *tempbuf = (char *) malloc_or_die(strlen(s1) + strlen(s2) + strlen(s3) + 1);
-	strcpy(tempbuf, s1);
-	strcat(tempbuf, s2);
-	strcat(tempbuf, s3);
-	return tempbuf;
-}
-
-
-/*-------------------------------------------------
-    assemble_4_strings - allocate space for four
-    strings and concatenate them into the new
-    buffer
--------------------------------------------------*/
-
-INLINE char *assemble_4_strings(const char *s1, const char *s2, const char *s3, const char *s4)
-{
-	char *tempbuf = (char *) malloc_or_die(strlen(s1) + strlen(s2) + strlen(s3) + strlen(s4) + 1);
-	strcpy(tempbuf, s1);
-	strcat(tempbuf, s2);
-	strcat(tempbuf, s3);
-	strcat(tempbuf, s4);
-	return tempbuf;
-}
-
-
-/*-------------------------------------------------
-    assemble_5_strings - allocate space for four
-    strings and concatenate them into the new
-    buffer
--------------------------------------------------*/
-
-INLINE char *assemble_5_strings(const char *s1, const char *s2, const char *s3, const char *s4, const char *s5)
-{
-	char *tempbuf = (char *) malloc_or_die(strlen(s1) + strlen(s2) + strlen(s3) + strlen(s4) + strlen(s5) + 1);
-	strcpy(tempbuf, s1);
-	strcat(tempbuf, s2);
-	strcat(tempbuf, s3);
-	strcat(tempbuf, s4);
-	strcat(tempbuf, s5);
-	return tempbuf;
-}
 
 
 #endif	/* __FILEIO_H__ */

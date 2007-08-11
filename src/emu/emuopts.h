@@ -23,8 +23,16 @@
     CONSTANTS
 ***************************************************************************/
 
+/* option priorities */
+#define OPTION_PRIORITY_CMDLINE		OPTION_PRIORITY_HIGH
+#define OPTION_PRIORITY_INI			OPTION_PRIORITY_NORMAL
+
+
 /* core options */
 #define OPTION_GAMENAME				OPTION_UNADORNED(0)
+
+/* core configuration options */
+#define OPTION_READCONFIG			"readconfig"
 
 /* core search path options */
 #define OPTION_ROMPATH				"rompath"
@@ -99,6 +107,24 @@
 
 /* core input options */
 #define OPTION_CTRLR				"ctrlr"
+#define OPTION_MOUSE				"mouse"
+#define OPTION_JOYSTICK				"joystick"
+#define OPTION_LIGHTGUN				"lightgun"
+#define OPTION_MULTIKEYBOARD		"multikeyboard"
+#define OPTION_MULTIMOUSE			"multimouse"
+#define OPTION_PADDLE_DEVICE		"paddle_device"
+#define OPTION_ADSTICK_DEVICE		"adstick_device"
+#define OPTION_PEDAL_DEVICE			"pedal_device"
+#define OPTION_DIAL_DEVICE			"dial_device"
+#define OPTION_TRACKBALL_DEVICE		"trackball_device"
+#define OPTION_LIGHTGUN_DEVICE		"lightgun_device"
+#define OPTION_POSITIONAL_DEVICE	"positional_device"
+#define OPTION_MOUSE_DEVICE			"mouse_device"
+#define OPTION_JOYSTICK_MAP			"joystick_map"
+#define OPTION_JOYSTICK_DEADZONE	"joystick_deadzone"
+#define OPTION_JOYSTICK_SATURATION	"joystick_saturation"
+#define OPTION_STEADYKEY			"steadykey"
+#define OPTION_OFFSCREEN_RELOAD		"offscreen_reload"
 
 /* core debugging options */
 #define OPTION_VERBOSE				"verbose"

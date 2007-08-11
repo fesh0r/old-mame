@@ -35,7 +35,7 @@ static int gear[4];
 
 static UINT32 get_lever(void* param)
 {
-	int n = (int) param;
+	int n = (FPTR) param;
 
 	return 4 * gear[n] > da_latch;
 }
@@ -43,7 +43,7 @@ static UINT32 get_lever(void* param)
 
 static UINT32 get_wheel(void* param)
 {
-	int n = (int) param;
+	int n = (FPTR) param;
 
 	return 8 * steer_FF1[n] + 8 * steer_FF2[n] > da_latch;
 }
@@ -51,14 +51,15 @@ static UINT32 get_wheel(void* param)
 
 static UINT32 get_collision(void *param)
 {
-	int n = (int) param;
+	int n = (FPTR) param;
 
 	return sprint4_collision[n];
 }
 
 
-static void nmi_callback(int scanline)
+static TIMER_CALLBACK( nmi_callback	)
 {
+	int scanline = param;
 	static UINT8 last_wheel[4];
 
 	/* MAME updates controls only once per frame but the game checks them on every NMI */

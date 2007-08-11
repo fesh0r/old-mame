@@ -126,10 +126,10 @@ WRITE16_HANDLER( blmbycar_vram_1_w )
 VIDEO_START( blmbycar )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_OPAQUE, 16,16, DIM_NX, DIM_NY );
+								TILEMAP_TYPE_OPAQUE, 16,16, DIM_NX, DIM_NY );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TRANSPARENT, 16,16, DIM_NX, DIM_NY );
+								TILEMAP_TYPE_TRANSPARENT, 16,16, DIM_NX, DIM_NY );
 
 		tilemap_set_scroll_rows(tilemap_0,1);
 		tilemap_set_scroll_cols(tilemap_0,1);
@@ -231,14 +231,14 @@ VIDEO_UPDATE( blmbycar )
 	tilemap_set_scrollx( tilemap_1, 0, blmbycar_scroll_1[ 1 ]+5);
 
 #ifdef MAME_DEBUG
-if (code_pressed(KEYCODE_Z))
+if (input_code_pressed(KEYCODE_Z))
 {
 	int msk = 0;
 
-	if (code_pressed(KEYCODE_Q))	msk |= 1;
-	if (code_pressed(KEYCODE_W))	msk |= 2;
-//  if (code_pressed(KEYCODE_E))    msk |= 4;
-	if (code_pressed(KEYCODE_A))	msk |= 8;
+	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(KEYCODE_W))	msk |= 2;
+//  if (input_code_pressed(KEYCODE_E))    msk |= 4;
+	if (input_code_pressed(KEYCODE_A))	msk |= 8;
 	if (msk != 0) layers_ctrl &= msk;
 }
 #endif

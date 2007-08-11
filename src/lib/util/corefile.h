@@ -15,6 +15,15 @@
 #define __COREFILE_H__
 
 #include "osdcore.h"
+#include "astring.h"
+
+
+
+/***************************************************************************
+    ADDITIONAL OPEN FLAGS
+***************************************************************************/
+
+#define OPEN_FLAG_NO_BOM		0x0100		/* don't output BOM */
 
 
 
@@ -90,6 +99,16 @@ int core_fputs(core_file *f, const char *s);
 
 /* printf-style text write to a file */
 int CLIB_DECL core_fprintf(core_file *f, const char *fmt, ...);
+
+
+
+/* ----- filename utilities ----- */
+
+/* extract the base part of a filename (remove extensions and paths) */
+astring *core_filename_extract_base(astring *result, const char *name, int strip_extension);
+
+/* true if the given filename ends with a particular extension */
+int core_filename_ends_with(const char *filename, const char *extension);
 
 
 #endif	/* __COREFILE_H__ */

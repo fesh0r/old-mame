@@ -1,6 +1,7 @@
 #include "driver.h"
 #include "sound/es5506.h"
 #include "includes/taito_f3.h"
+#include "taito_en.h"
 
 static int counter,vector_reg,imr_status;
 static UINT16 es5510_dsp_ram[0x200];
@@ -67,7 +68,7 @@ WRITE16_HANDLER( f3_volume_w )
 	/* Channels 0, 1, 2, 3 - Unused */
 }
 
-static void timer_callback(int param)
+static TIMER_CALLBACK( timer_callback )
 {
 	/* Only cause IRQ if the mask is set to allow it */
 	if (m68681_imr&8) {

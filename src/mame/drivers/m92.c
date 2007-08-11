@@ -5,7 +5,8 @@
     Gunforce (World)                M92-A   (c) 1991 Irem Corp
     Gunforce (USA)                  M92-A   (c) 1991 Irem America Corp
     Gunforce (Japan)                M92-A   (c) 1991 Irem Corp
-    Blademaster (World)                     (c) 1991 Irem Corp
+    Blade Master (World)                    (c) 1991 Irem Corp
+    Cross Blades! (Japan)                   (c) 1991 Irem Corp
     Lethal Thunder (World)                  (c) 1991 Irem Corp
     Thunder Blaster (Japan)                 (c) 1991 Irem Corp
     Undercover Cops (World)                 (c) 1992 Irem Corp
@@ -290,7 +291,7 @@ static READ8_HANDLER( m92_port_4_r )
 
 enum { VECTOR_INIT, YM2151_ASSERT, YM2151_CLEAR, V30_ASSERT, V30_CLEAR };
 
-static void setvector_callback(int param)
+static TIMER_CALLBACK( setvector_callback )
 {
 	switch(param)
 	{
@@ -316,7 +317,7 @@ static WRITE8_HANDLER( m92_soundlatch_w )
 {
 	if (offset==0)
 	{
-		mame_timer_set(time_zero,V30_ASSERT,setvector_callback);
+		timer_call_after_resynch(V30_ASSERT,setvector_callback);
 		soundlatch_w(0,data);
 //      logerror("soundlatch_w %02x\n",data);
 	}
@@ -344,7 +345,7 @@ static READ8_HANDLER( m92_soundlatch_r )
 static WRITE8_HANDLER( m92_sound_irq_ack_w )
 {
 	if (offset == 0)
-		mame_timer_set(time_zero,V30_CLEAR,setvector_callback);
+		timer_call_after_resynch(V30_CLEAR,setvector_callback);
 }
 
 static WRITE8_HANDLER( m92_sound_status_w )
@@ -1092,9 +1093,9 @@ static const gfx_decode gfxdecodeinfo2[] =
 static void sound_irq(int state)
 {
 	if (state)
-		mame_timer_set(time_zero,YM2151_ASSERT,setvector_callback);
+		timer_call_after_resynch(YM2151_ASSERT,setvector_callback);
 	else
-		mame_timer_set(time_zero,YM2151_CLEAR,setvector_callback);
+		timer_call_after_resynch(YM2151_CLEAR,setvector_callback);
 }
 
 static struct YM2151interface ym2151_interface =
@@ -1301,12 +1302,39 @@ MACHINE_DRIVER_END
 
 /***************************************************************************/
 
-ROM_START( bmaster )
+ROM_START( bmaster ) /* M92-B-B PCB used for program rom locations */
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )
-	ROM_LOAD16_BYTE( "bm_d-h0.rom", 0x000001, 0x40000, CRC(49b257c7) SHA1(cb4917ef6c5f959094f95b8535ea12e6b9b0bcc2) )
-	ROM_LOAD16_BYTE( "bm_d-l0.rom", 0x000000, 0x40000, CRC(a873523e) SHA1(9aee134c299e12064842e16db296f4259eccdf5b) )
-	ROM_LOAD16_BYTE( "bm_d-h1.rom", 0x080001, 0x10000, CRC(082b7158) SHA1(ca2cfcb3ecd1f130d3fb893f08d53521e7d443d4) )
-	ROM_LOAD16_BYTE( "bm_d-l1.rom", 0x080000, 0x10000, CRC(6ff0c04e) SHA1(7293a50445053101d22bc596d13e1a7ed67a65c6) )
+	ROM_LOAD16_BYTE( "bm_d-h0-b.5m", 0x000001, 0x40000, CRC(49b257c7) SHA1(cb4917ef6c5f959094f95b8535ea12e6b9b0bcc2) )
+	ROM_LOAD16_BYTE( "bm_d-l0-b.5f", 0x000000, 0x40000, CRC(a873523e) SHA1(9aee134c299e12064842e16db296f4259eccdf5b) )
+	ROM_LOAD16_BYTE( "bm_d-h1-b.5l", 0x080001, 0x10000, CRC(082b7158) SHA1(ca2cfcb3ecd1f130d3fb893f08d53521e7d443d4) )
+	ROM_LOAD16_BYTE( "bm_d-l1-b.5j", 0x080000, 0x10000, CRC(6ff0c04e) SHA1(7293a50445053101d22bc596d13e1a7ed67a65c6) )
+
+	ROM_REGION( 0x100000, REGION_CPU2, 0 )
+	ROM_LOAD16_BYTE( "bm_d-sh0.rom", 0x000001, 0x10000, CRC(9f7c075b) SHA1(1dd3fb4dc41d3adea9ca8d1b4363dadebea49bda) )
+	ROM_LOAD16_BYTE( "bm_d-sl0.rom", 0x000000, 0x10000, CRC(1fa87c89) SHA1(971eae7dd2591191ed7a948a444387896735e149) )
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE ) /* Tiles */
+	ROM_LOAD( "bm_c0.rom", 0x000000, 0x40000, CRC(2cc966b8) SHA1(4d55954813efe975b7e644448effc61b22896e0b) )
+	ROM_LOAD( "bm_c1.rom", 0x040000, 0x40000, CRC(46df773e) SHA1(6f075492c06768f7d2315906ec1349fe09def22f) )
+	ROM_LOAD( "bm_c2.rom", 0x080000, 0x40000, CRC(05b867bd) SHA1(d44667f3f4908bacb6e10becc431b0f213c20407) )
+	ROM_LOAD( "bm_c3.rom", 0x0c0000, 0x40000, CRC(0a2227a4) SHA1(30499e99f3731993607e04c77637f6bbe641c05c) )
+
+	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE ) /* Sprites */
+	ROM_LOAD( "bm_000.rom", 0x000000, 0x80000, CRC(339fc9f3) SHA1(36be0f3b5add2ecf3f602933f5456091daaeb1f6) )
+	ROM_LOAD( "bm_010.rom", 0x080000, 0x80000, CRC(6a14377d) SHA1(699e5b1984810ee9e504f9ddaec604671c0cb0b7) )
+	ROM_LOAD( "bm_020.rom", 0x100000, 0x80000, CRC(31532198) SHA1(7a285e003a7c359f5b1afe4da3b44069f716f7b5) )
+	ROM_LOAD( "bm_030.rom", 0x180000, 0x80000, CRC(d1a041d3) SHA1(84a8cf5911426ed785cb678395f52da0a9199546) )
+
+	ROM_REGION( 0x80000, REGION_SOUND1, 0 )
+	ROM_LOAD( "bm_da.rom", 0x000000, 0x80000, CRC(62ce5798) SHA1(f7bf7706f71ce36d85c99e531d4789c4d7a095a0) )
+ROM_END
+
+ROM_START( crossbld ) /* M92-D-A PCB used for program rom locations */
+	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_LOAD16_BYTE( "bm_d-h0.3h", 0x000001, 0x40000, CRC(a28a5821) SHA1(2e79ec82dd79697f4a6b4082d49400d39cc3bad9) )
+	ROM_LOAD16_BYTE( "bm_d-l0.5h", 0x000000, 0x40000, CRC(a504f1a0) SHA1(33ccc944b08b89e6a975a164c72b36aa79b99392) )
+	ROM_LOAD16_BYTE( "bm_d-h1.3e", 0x080001, 0x10000, CRC(18da6c47) SHA1(7b8cf82cf0c94d1ec64e77e15b877b5ffd307bc3) )
+	ROM_LOAD16_BYTE( "bm_d-l1.5e", 0x080000, 0x10000, CRC(a65c1b42) SHA1(beb4131d045158231ba999b72f21c97c014672d0) )
 
 	ROM_REGION( 0x100000, REGION_CPU2, 0 )
 	ROM_LOAD16_BYTE( "bm_d-sh0.rom", 0x000001, 0x10000, CRC(9f7c075b) SHA1(1dd3fb4dc41d3adea9ca8d1b4363dadebea49bda) )
@@ -2161,53 +2189,53 @@ static void m92_startup(int hasbanks)
 	m92_sprite_buffer_busy=0x80;
 }
 
-static void init_m92(const UINT8 *decryption_table, int hasbanks)
+static void init_m92(running_machine *machine, const UINT8 *decryption_table, int hasbanks)
 {
 	m92_startup(hasbanks);
-	setvector_callback(VECTOR_INIT);
+	setvector_callback(machine, VECTOR_INIT);
 	irem_cpu_decrypt(1,decryption_table);
 }
 
 static DRIVER_INIT( bmaster )
 {
-	init_m92(bomberman_decryption_table, 1);
+	init_m92(machine, bomberman_decryption_table, 1);
 }
 
 static DRIVER_INIT( gunforce )
 {
-	init_m92(gunforce_decryption_table, 1);
+	init_m92(machine, gunforce_decryption_table, 1);
 }
 
 static DRIVER_INIT( hook )
 {
-	init_m92(hook_decryption_table, 1);
+	init_m92(machine, hook_decryption_table, 1);
 }
 
 static DRIVER_INIT( mysticri )
 {
-	init_m92(mysticri_decryption_table, 1);
+	init_m92(machine, mysticri_decryption_table, 1);
 }
 
 static DRIVER_INIT( uccops )
 {
-	init_m92(dynablaster_decryption_table, 1);
+	init_m92(machine, dynablaster_decryption_table, 1);
 }
 
 static DRIVER_INIT( rtypeleo )
 {
-	init_m92(rtypeleo_decryption_table, 1);
+	init_m92(machine, rtypeleo_decryption_table, 1);
 	m92_irq_vectorbase=0x20;
 }
 
 static DRIVER_INIT( rtypelej )
 {
-	init_m92(rtypeleo_decryption_table, 1);
+	init_m92(machine, rtypeleo_decryption_table, 1);
 	m92_irq_vectorbase=0x20;
 }
 
 static DRIVER_INIT( majtitl2 )
 {
-	init_m92(majtitl2_decryption_table, 1);
+	init_m92(machine, majtitl2_decryption_table, 1);
 
 	/* This game has an eprom on the game board */
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0000, 0xf3fff, 0, 0, m92_eeprom_r);
@@ -2218,18 +2246,18 @@ static DRIVER_INIT( majtitl2 )
 
 static DRIVER_INIT( kaiteids )
 {
-	init_m92(inthunt_decryption_table, 1);
+	init_m92(machine, inthunt_decryption_table, 1);
 }
 
 static DRIVER_INIT( inthunt )
 {
-	init_m92(inthunt_decryption_table, 1);
+	init_m92(machine, inthunt_decryption_table, 1);
 }
 
 
 static DRIVER_INIT( lethalth )
 {
-	init_m92(lethalth_decryption_table, 0);
+	init_m92(machine, lethalth_decryption_table, 0);
 	m92_irq_vectorbase=0x20;
 
 	/* NOP out the bankswitcher */
@@ -2245,14 +2273,14 @@ static DRIVER_INIT( nbbatman )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 
-	init_m92(leagueman_decryption_table, 1);
+	init_m92(machine, leagueman_decryption_table, 1);
 
 	memcpy(RAM+0x80000,RAM+0x100000,0x20000);
 }
 
 static DRIVER_INIT( ssoldier )
 {
-	init_m92(psoldier_decryption_table, 1);
+	init_m92(machine, psoldier_decryption_table, 1);
 	m92_irq_vectorbase=0x20;
 	/* main CPU expects an answer even before writing the first command */
 	sound_status = 0x80;
@@ -2260,7 +2288,7 @@ static DRIVER_INIT( ssoldier )
 
 static DRIVER_INIT( psoldier )
 {
-	init_m92(psoldier_decryption_table, 1);
+	init_m92(machine, psoldier_decryption_table, 1);
 	m92_irq_vectorbase=0x20;
 	/* main CPU expects an answer even before writing the first command */
 	sound_status = 0x80;
@@ -2268,13 +2296,13 @@ static DRIVER_INIT( psoldier )
 
 static DRIVER_INIT( dsccr94j )
 {
-	init_m92(dsoccr94_decryption_table, 1);
+	init_m92(machine, dsoccr94_decryption_table, 1);
 }
 
 static DRIVER_INIT( gunforc2 )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
-	init_m92(lethalth_decryption_table, 1);
+	init_m92(machine, lethalth_decryption_table, 1);
 	memcpy(RAM+0x80000,RAM+0x100000,0x20000);
 }
 
@@ -2285,6 +2313,7 @@ GAME( 1991, gunforce, 0,        raster,    gunforce, gunforce, ROT0,   "Irem",  
 GAME( 1991, gunforcj, gunforce, raster,    gunforce, gunforce, ROT0,   "Irem",         "Gunforce - Battle Fire Engulfed Terror Island (Japan)", 0 )
 GAME( 1991, gunforcu, gunforce, raster,    gunforce, gunforce, ROT0,   "Irem America", "Gunforce - Battle Fire Engulfed Terror Island (US)", 0 )
 GAME( 1991, bmaster,  0,        nonraster, bmaster,  bmaster,  ROT0,   "Irem",         "Blade Master (World)", 0 )
+GAME( 1991, crossbld, bmaster,  nonraster, bmaster,  bmaster,  ROT0,   "Irem",         "Cross Blades! (Japan)", 0 )
 GAME( 1991, lethalth, 0,        lethalth,  lethalth, lethalth, ROT270, "Irem",         "Lethal Thunder (World)", 0 )
 GAME( 1991, thndblst, lethalth, lethalth,  lethalth, lethalth, ROT270, "Irem",         "Thunder Blaster (Japan)", 0 )
 GAME( 1992, uccops,   0,        raster,    uccops,   uccops,   ROT0,   "Irem",         "Undercover Cops (World)", 0 )
@@ -2302,7 +2331,7 @@ GAME( 1992, rtypeleo, 0,        raster,    rtypeleo, rtypeleo, ROT0,   "Irem",  
 GAME( 1992, rtypelej, rtypeleo, raster,    rtypeleo, rtypelej, ROT0,   "Irem",         "R-Type Leo (Japan)", 0 )
 GAME( 1993, inthunt,  0,        raster,    inthunt,  inthunt,  ROT0,   "Irem",         "In The Hunt (World)", 0 )
 GAME( 1993, inthuntu, inthunt,  raster,    inthunt,  inthunt,  ROT0,   "Irem America", "In The Hunt (US)", 0 )
-GAME( 1993, kaiteids, inthunt,  raster,    inthunt,  kaiteids,  ROT0,   "Irem",         "Kaitei Daisensou (Japan)", 0 )
+GAME( 1993, kaiteids, inthunt,  raster,    inthunt,  kaiteids, ROT0,   "Irem",         "Kaitei Daisensou (Japan)", 0 )
 GAME( 1993, nbbatman, 0,        raster,    nbbatman, nbbatman, ROT0,   "Irem America", "Ninja Baseball Batman (US)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1993, leaguemn, nbbatman, raster,    nbbatman, nbbatman, ROT0,   "Irem",         "Yakyuu Kakutou League-Man (Japan)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1993, ssoldier, 0,        psoldier,  psoldier, ssoldier, ROT0,   "Irem America", "Superior Soldiers (US)", GAME_IMPERFECT_SOUND )

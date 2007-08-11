@@ -56,9 +56,9 @@ static void dirty_piv_tilemaps(void)
 
 static void wgp_core_vh_start(running_machine *machine, int x_offs,int y_offs,int piv_xoffs,int piv_yoffs)
 {
-	wgp_piv_tilemap[0] = tilemap_create(get_piv0_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,64,64);
-	wgp_piv_tilemap[1] = tilemap_create(get_piv1_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,64,64);
-	wgp_piv_tilemap[2] = tilemap_create(get_piv2_tile_info,tilemap_scan_rows,TILEMAP_TRANSPARENT,16,16,64,64);
+	wgp_piv_tilemap[0] = tilemap_create(get_piv0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,64);
+	wgp_piv_tilemap[1] = tilemap_create(get_piv1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,64);
+	wgp_piv_tilemap[2] = tilemap_create(get_piv2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,64);
 
 	TC0100SCN_vh_start(machine,1,TC0100SCN_GFX_NUM,x_offs,y_offs,0,0,0,0,0);
 
@@ -668,25 +668,25 @@ VIDEO_UPDATE( wgp )
 #endif
 
 #ifdef MAME_DEBUG
-	if (code_pressed_memory (KEYCODE_V))
+	if (input_code_pressed_once (KEYCODE_V))
 	{
 		dislayer[0] ^= 1;
 		popmessage("piv0: %01x",dislayer[0]);
 	}
 
-	if (code_pressed_memory (KEYCODE_B))
+	if (input_code_pressed_once (KEYCODE_B))
 	{
 		dislayer[1] ^= 1;
 		popmessage("piv1: %01x",dislayer[1]);
 	}
 
-	if (code_pressed_memory (KEYCODE_N))
+	if (input_code_pressed_once (KEYCODE_N))
 	{
 		dislayer[2] ^= 1;
 		popmessage("piv2: %01x",dislayer[2]);
 	}
 
-	if (code_pressed_memory (KEYCODE_M))
+	if (input_code_pressed_once (KEYCODE_M))
 	{
 		dislayer[3] ^= 1;
 		popmessage("TC0100SCN top bg layer: %01x",dislayer[3]);

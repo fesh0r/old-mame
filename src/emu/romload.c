@@ -159,8 +159,8 @@ void CLIB_DECL debugload(const char *string, ...)
 
 int determine_bios_rom(const rom_entry *romp)
 {
-	const rom_entry *rom;
 	const char *specbios = options_get_string(mame_options(), OPTION_BIOS);
+	const rom_entry *rom;
 	int bios_count = 0;
 
 	/* set to default */
@@ -175,7 +175,7 @@ int determine_bios_rom(const rom_entry *romp)
 
 			/* Allow '-bios n' to still be used */
 			sprintf(bios_number, "%d", bios_flags-1);
-			if (specbios && (!strcmp(bios_number, specbios) || !strcmp(biosname, specbios)))
+			if (strcmp(bios_number, specbios) == 0 || strcmp(biosname, specbios) == 0)
 				bios_no = bios_flags;
 			bios_count++;
 		}
@@ -481,17 +481,17 @@ static int open_rom_file(rom_load_data *romdata, const rom_entry *romp)
 		if (drv->name && *drv->name)
 		{
 			UINT8 crcs[4];
-			char *fname;
+			astring *fname;
 
-			fname = assemble_3_strings(drv->name, PATH_SEPARATOR, ROM_GETNAME(romp));
+			fname = astring_assemble_3(astring_alloc(), drv->name, PATH_SEPARATOR, ROM_GETNAME(romp));
 			if (hash_data_extract_binary_checksum(ROM_GETHASHDATA(romp), HASH_CRC, crcs))
 			{
 				UINT32 crc = (crcs[0] << 24) | (crcs[1] << 16) | (crcs[2] << 8) | crcs[3];
-				filerr = mame_fopen_crc(SEARCHPATH_ROM, fname, crc, OPEN_FLAG_READ, &romdata->file);
+				filerr = mame_fopen_crc(SEARCHPATH_ROM, astring_c(fname), crc, OPEN_FLAG_READ, &romdata->file);
 			}
 			else
-				filerr = mame_fopen(SEARCHPATH_ROM, fname, OPEN_FLAG_READ, &romdata->file);
-			free(fname);
+				filerr = mame_fopen(SEARCHPATH_ROM, astring_c(fname), OPEN_FLAG_READ, &romdata->file);
+			astring_free(fname);
 		}
 
 	/* return the result */
@@ -646,7 +646,7 @@ static void fill_rom_data(rom_load_data *romdata, const rom_entry *romp)
 		fatalerror("Error in RomModule definition: FILL has an invalid length\n");
 
 	/* fill the data (filling value is stored in place of the hashdata) */
-	memset(base, (UINT32)ROM_GETHASHDATA(romp) & 0xff, numbytes);
+	memset(base, (FPTR)ROM_GETHASHDATA(romp) & 0xff, numbytes);
 }
 
 
@@ -659,7 +659,7 @@ static void copy_rom_data(rom_load_data *romdata, const rom_entry *romp)
 	UINT8 *base = romdata->regionbase + ROM_GETOFFSET(romp);
 	int srcregion = ROM_GETFLAGS(romp) >> 24;
 	UINT32 numbytes = ROM_GETLENGTH(romp);
-	UINT32 srcoffs = (UINT32)ROM_GETHASHDATA(romp);  /* srcoffset in place of hashdata */
+	UINT32 srcoffs = (FPTR)ROM_GETHASHDATA(romp);  /* srcoffset in place of hashdata */
 	UINT8 *srcbase;
 
 	/* make sure we copy within the region space */
@@ -799,13 +799,13 @@ chd_error open_disk_image(const game_driver *gamedrv, const rom_entry *romp, chd
 {
 	const game_driver *drv;
 	const rom_entry *region, *rom;
-	const char *fname;
+	astring *fname;
 	chd_error err;
 
 	/* attempt to open the properly named file */
-	fname = assemble_2_strings(ROM_GETNAME(romp), ".chd");
-	err = chd_open(fname, CHD_OPEN_READ, NULL, image);
-	free((void *)fname);
+	fname = astring_assemble_2(astring_alloc(), ROM_GETNAME(romp), ".chd");
+	err = chd_open(astring_c(fname), CHD_OPEN_READ, NULL, image);
+	astring_free(fname);
 
 	/* if that worked, we're done */
 	if (err == CHDERR_NONE)
@@ -822,9 +822,9 @@ chd_error open_disk_image(const game_driver *gamedrv, const rom_entry *romp, chd
 					if (strcmp(ROM_GETNAME(romp), ROM_GETNAME(rom)) != 0 &&
 						hash_data_is_equal(ROM_GETHASHDATA(romp), ROM_GETHASHDATA(rom), 0))
 					{
-						fname = assemble_2_strings(ROM_GETNAME(rom), ".chd");
-						err = chd_open(fname, CHD_OPEN_READ, NULL, image);
-						free((void *)fname);
+						fname = astring_assemble_2(astring_alloc(), ROM_GETNAME(rom), ".chd");
+						err = chd_open(astring_c(fname), CHD_OPEN_READ, NULL, image);
+						astring_free(fname);
 
 						/* if that worked, we're done */
 						if (err == CHDERR_NONE)

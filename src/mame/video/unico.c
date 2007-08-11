@@ -141,13 +141,13 @@ static int sprites_scrolldx, sprites_scrolldy;
 VIDEO_START( unico )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0,tilemap_scan_rows,
-								TILEMAP_TRANSPARENT,	16,16,	0x40, 0x40);
+								TILEMAP_TYPE_TRANSPARENT,	16,16,	0x40, 0x40);
 
 	tilemap_1 = tilemap_create(	get_tile_info_1,tilemap_scan_rows,
-								TILEMAP_TRANSPARENT,	16,16,	0x40, 0x40);
+								TILEMAP_TYPE_TRANSPARENT,	16,16,	0x40, 0x40);
 
 	tilemap_2 = tilemap_create(	get_tile_info_2,tilemap_scan_rows,
-								TILEMAP_TRANSPARENT,	16,16,	0x40, 0x40);
+								TILEMAP_TYPE_TRANSPARENT,	16,16,	0x40, 0x40);
 
 	sprites_scrolldx = -0x3f;
 	sprites_scrolldy = -0x0e;
@@ -168,13 +168,13 @@ VIDEO_START( unico )
 VIDEO_START( zeropnt2 )
 {
 	tilemap_0 = tilemap_create(	get_tile_info32_0,tilemap_scan_rows,
-								TILEMAP_TRANSPARENT,	16,16,	0x40, 0x40);
+								TILEMAP_TYPE_TRANSPARENT,	16,16,	0x40, 0x40);
 
 	tilemap_1 = tilemap_create(	get_tile_info32_1,tilemap_scan_rows,
-								TILEMAP_TRANSPARENT,	16,16,	0x40, 0x40);
+								TILEMAP_TYPE_TRANSPARENT,	16,16,	0x40, 0x40);
 
 	tilemap_2 = tilemap_create(	get_tile_info32_2,tilemap_scan_rows,
-								TILEMAP_TRANSPARENT,	16,16,	0x40, 0x40);
+								TILEMAP_TYPE_TRANSPARENT,	16,16,	0x40, 0x40);
 
 	sprites_scrolldx = -0x3f;
 	sprites_scrolldy = -0x0e;
@@ -346,13 +346,13 @@ VIDEO_UPDATE( unico )
 	tilemap_set_scrollx(tilemap_2, 0, *unico_scrollx_2);
 
 #ifdef MAME_DEBUG
-if ( code_pressed(KEYCODE_Z) || code_pressed(KEYCODE_X) )
+if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 {
 	int msk = 0;
-	if (code_pressed(KEYCODE_Q))	msk |= 1;
-	if (code_pressed(KEYCODE_W))	msk |= 2;
-	if (code_pressed(KEYCODE_E))	msk |= 4;
-	if (code_pressed(KEYCODE_A))	msk |= 8;
+	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(KEYCODE_E))	msk |= 4;
+	if (input_code_pressed(KEYCODE_A))	msk |= 8;
 	if (msk != 0) layers_ctrl &= msk;
 }
 #endif
@@ -385,13 +385,13 @@ VIDEO_UPDATE( zeropnt2 )
 	tilemap_set_scrolly(tilemap_2, 0, unico_scroll32[1] >> 16);
 
 #ifdef MAME_DEBUG
-if ( code_pressed(KEYCODE_Z) || code_pressed(KEYCODE_X) )
+if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 {
 	int msk = 0;
-	if (code_pressed(KEYCODE_Q))	msk |= 1;
-	if (code_pressed(KEYCODE_W))	msk |= 2;
-	if (code_pressed(KEYCODE_E))	msk |= 4;
-	if (code_pressed(KEYCODE_A))	msk |= 8;
+	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(KEYCODE_E))	msk |= 4;
+	if (input_code_pressed(KEYCODE_A))	msk |= 8;
 	if (msk != 0) layers_ctrl &= msk;
 }
 #endif

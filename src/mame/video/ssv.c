@@ -229,7 +229,7 @@ VIDEO_START( gdfs )
 	eaglshot_dirty_tile	=	(char*)auto_malloc(4 * 0x100000 / (16*8));
 
 	gdfs_tmap			=	tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-											TILEMAP_TRANSPARENT, 16,16, 0x100,0x100	);
+											TILEMAP_TYPE_TRANSPARENT, 16,16, 0x100,0x100	);
 
 	tilemap_set_transparent_pen(gdfs_tmap, 0);
 }
@@ -892,7 +892,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 				}
 
 				#ifdef MAME_DEBUG
-				if (code_pressed(KEYCODE_Z))	/* Display some info on each sprite */
+				if (input_code_pressed(KEYCODE_Z))	/* Display some info on each sprite */
 				{	char buf[10];
 					sprintf(buf, "%02X",/*(s2[2] & ~0x3ff)>>8*/mode>>8);
 					ui_draw_text(buf, sx, sy);
@@ -1091,7 +1091,7 @@ static void gdfs_draw_zooming_sprites(running_machine *machine, mame_bitmap *bit
 			}
 
 			#ifdef MAME_DEBUG
-			if (code_pressed(KEYCODE_Z))	/* Display some info on each sprite */
+			if (input_code_pressed(KEYCODE_Z))	/* Display some info on each sprite */
 			{
 				char buf[10];
 				sprintf(buf, "%X",size);

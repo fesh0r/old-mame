@@ -206,7 +206,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 	SET_TILE_INFO(0,tile,color,0)
 }
 
-static void scanline_callback(int param)
+static TIMER_CALLBACK( scanline_callback )
 {
 	if (param==interrupt_scanline)
 	{
@@ -226,9 +226,9 @@ static void scanline_callback(int param)
 
 VIDEO_START( pkscramble )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_OPAQUE,      8, 8,32,32);
-	md_tilemap = tilemap_create(get_md_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8, 8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, TILEMAP_TRANSPARENT, 8, 8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE,      8, 8,32,32);
+	md_tilemap = tilemap_create(get_md_tile_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8, 8,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(md_tilemap,15);
 	tilemap_set_transparent_pen(fg_tilemap,15);

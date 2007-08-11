@@ -169,7 +169,7 @@ static void allocate_graphics(const gfx_decode *gfxdecodeinfo);
 static void decode_graphics(const gfx_decode *gfxdecodeinfo);
 
 /* global rendering */
-static void scanline0_callback(int scrnum);
+static TIMER_CALLBACK( scanline0_callback );
 static void finish_screen_updates(running_machine *machine);
 
 /* throttling/frameskipping/performance */
@@ -359,7 +359,7 @@ void video_init(running_machine *machine)
 
 	/* start recording movie if specified */
 	filename = options_get_string(mame_options(), OPTION_MNGWRITE);
-	if (filename != NULL)
+	if (filename[0] != 0)
 		video_movie_begin_recording(machine, 0, filename);
 }
 
@@ -695,8 +695,10 @@ void video_screen_configure(int scrnum, int width, int height, const rectangle *
 			/* allocate new stuff */
 			info->bitmap[0] = bitmap_alloc(curwidth, curheight, screen_format);
 			info->bitmap[1] = bitmap_alloc(curwidth, curheight, screen_format);
-			info->texture[0] = render_texture_alloc(info->bitmap[0], visarea, info->config->palette_base, info->format, NULL, NULL);
-			info->texture[1] = render_texture_alloc(info->bitmap[1], visarea, info->config->palette_base, info->format, NULL, NULL);
+			info->texture[0] = render_texture_alloc(NULL, NULL);
+			render_texture_set_bitmap(info->texture[0], info->bitmap[0], visarea, info->config->palette_base, info->format);
+			info->texture[1] = render_texture_alloc(NULL, NULL);
+			render_texture_set_bitmap(info->texture[1], info->bitmap[1], visarea, info->config->palette_base, info->format);
 		}
 	}
 
@@ -812,12 +814,13 @@ void video_screen_update_partial(int scrnum, int scanline)
 	/* render if necessary */
 	if (clip.min_y <= clip.max_y)
 	{
-		UINT32 flags;
+		UINT32 flags = UPDATE_HAS_NOT_CHANGED;
 
 		profiler_mark(PROFILER_VIDEO);
 		LOG_PARTIAL_UPDATES(("updating %d-%d\n", clip.min_y, clip.max_y));
 
-		flags = (*Machine->drv->video_update)(Machine, scrnum, info->bitmap[info->curbitmap], &clip);
+		if (Machine->drv->video_update != NULL)
+			flags = (*Machine->drv->video_update)(Machine, scrnum, info->bitmap[info->curbitmap], &clip);
 		global.partial_updates_this_frame++;
 		profiler_mark(PROFILER_END);
 
@@ -970,9 +973,10 @@ mame_time video_screen_get_frame_period(int scrnum)
     for a screen
 -------------------------------------------------*/
 
-static void scanline0_callback(int scrnum)
+static TIMER_CALLBACK( scanline0_callback )
 {
-	video_private *viddata = Machine->video_data;
+	video_private *viddata = machine->video_data;
+	int scrnum = param;
 
 	/* reset partial updates */
 	viddata->scrinfo[scrnum].last_partial_scan = 0;
@@ -1014,6 +1018,9 @@ void video_frame_update(void)
 	osd_update(global.skipping_this_frame);
 	profiler_mark(PROFILER_END);
 
+	/* perform tasks for this frame */
+	mame_frame_update(Machine);
+
 	/* update frameskipping */
 	update_frameskip();
 
@@ -1026,7 +1033,7 @@ void video_frame_update(void)
 	{
 		/* reset partial updates if we're paused or if the debugger is active */
 		if (video_screen_exists(0) && (mame_is_paused(Machine) || mame_debug_is_active()))
-			scanline0_callback(0);
+			scanline0_callback(Machine, 0);
 
 		/* otherwise, call the video EOF callback */
 		else if (Machine->drv->video_eof != NULL)
@@ -1549,18 +1556,18 @@ static void recompute_speed(mame_time emutime)
 	/* if we're past the "time-to-execute" requested, signal an exit */
 	if (global.seconds_to_run != 0 && emutime.seconds >= global.seconds_to_run)
 	{
-		const char *fname = assemble_2_strings(Machine->basename, PATH_SEPARATOR "final.png");
+		astring *fname = astring_assemble_2(astring_alloc(), Machine->basename, PATH_SEPARATOR "final.png");
 		file_error filerr;
 		mame_file *file;
 
 		/* create a final screenshot */
-		filerr = mame_fopen(SEARCHPATH_SCREENSHOT, fname, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
+		filerr = mame_fopen(SEARCHPATH_SCREENSHOT, astring_c(fname), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
 		if (filerr == FILERR_NONE)
 		{
 			video_screen_save_snapshot(Machine, file, 0);
 			mame_fclose(file);
 		}
-		free((void *)fname);
+		astring_free(fname);
 
 		/* schedule our demise */
 		mame_schedule_exit(Machine);
@@ -1961,7 +1968,8 @@ static void crosshair_init(video_private *viddata)
 			}
 
 			/* create a texture to reference the bitmap */
-			viddata->crosshair_texture[player] = render_texture_alloc(viddata->crosshair_bitmap[player], NULL, 0, TEXFORMAT_ARGB32, render_texture_hq_scale, NULL);
+			viddata->crosshair_texture[player] = render_texture_alloc(render_texture_hq_scale, NULL);
+			render_texture_set_bitmap(viddata->crosshair_texture[player], viddata->crosshair_bitmap[player], NULL, 0, TEXFORMAT_ARGB32);
 		}
 }
 

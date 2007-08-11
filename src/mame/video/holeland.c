@@ -23,10 +23,10 @@ static TILE_GET_INFO( holeland_get_tile_info )
 	int attr = colorram[tile_index];
 	int tile_number = videoram[tile_index] | ((attr & 0x03) << 8);
 
-/*if (code_pressed(KEYCODE_Q) && (attr & 0x10)) tile_number = rand(); */
-/*if (code_pressed(KEYCODE_W) && (attr & 0x20)) tile_number = rand(); */
-/*if (code_pressed(KEYCODE_E) && (attr & 0x40)) tile_number = rand(); */
-/*if (code_pressed(KEYCODE_R) && (attr & 0x80)) tile_number = rand(); */
+/*if (input_code_pressed(KEYCODE_Q) && (attr & 0x10)) tile_number = rand(); */
+/*if (input_code_pressed(KEYCODE_W) && (attr & 0x20)) tile_number = rand(); */
+/*if (input_code_pressed(KEYCODE_E) && (attr & 0x40)) tile_number = rand(); */
+/*if (input_code_pressed(KEYCODE_R) && (attr & 0x80)) tile_number = rand(); */
 	SET_TILE_INFO(
 			0,
 			tile_number,
@@ -54,7 +54,7 @@ static TILE_GET_INFO( crzrally_get_tile_info )
 
 VIDEO_START( holeland )
 {
-	bg_tilemap = tilemap_create(holeland_get_tile_info,tilemap_scan_rows,TILEMAP_SPLIT,16,16,32,32);
+	bg_tilemap = tilemap_create(holeland_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_SPLIT,16,16,32,32);
 
 	tilemap_set_transmask(bg_tilemap,0,0xff,0x00); /* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(bg_tilemap,1,0x01,0xfe); /* split type 1 has pen 0? transparent in front half */
@@ -62,7 +62,7 @@ VIDEO_START( holeland )
 
 VIDEO_START( crzrally )
 {
-	bg_tilemap = tilemap_create(crzrally_get_tile_info,tilemap_scan_cols,TILEMAP_SPLIT,8,8,32,32);
+	bg_tilemap = tilemap_create(crzrally_get_tile_info,tilemap_scan_cols,TILEMAP_TYPE_SPLIT,8,8,32,32);
 }
 
 WRITE8_HANDLER( holeland_videoram_w )

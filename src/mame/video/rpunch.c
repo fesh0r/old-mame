@@ -74,19 +74,19 @@ static TILE_GET_INFO( get_bg1_tile_info )
  *
  *************************************/
 
-static void crtc_interrupt_gen(int param)
+static TIMER_CALLBACK( crtc_interrupt_gen )
 {
 	cpunum_set_input_line(0, 1, HOLD_LINE);
 	if (param != 0)
-		mame_timer_adjust(crtc_timer, make_mame_time(0, Machine->screen[0].refresh / param), 0, make_mame_time(0, Machine->screen[0].refresh / param));
+		mame_timer_adjust(crtc_timer, make_mame_time(0, machine->screen[0].refresh / param), 0, make_mame_time(0, machine->screen[0].refresh / param));
 }
 
 
 VIDEO_START( rpunch )
 {
 	/* allocate tilemaps for the backgrounds */
-	background[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_cols,TILEMAP_OPAQUE,     8,8,64,64);
-	background[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_cols,TILEMAP_TRANSPARENT,8,8,64,64);
+	background[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_cols,TILEMAP_TYPE_OPAQUE,     8,8,64,64);
+	background[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_cols,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
 
 	/* configure the tilemaps */
 	tilemap_set_transparent_pen(background[1],15);
