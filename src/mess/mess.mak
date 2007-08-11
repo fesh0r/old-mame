@@ -88,7 +88,7 @@ CPUS += M6800
 #CPUS += M6802
 CPUS += M6803
 #CPUS += M6808
-#CPUS += HD63701
+CPUS += HD63701
 #CPUS += NSC8105
 CPUS += M6805
 #CPUS += M68705
@@ -132,7 +132,7 @@ CPUS += PSXCPU
 #CPUS += UPD7810
 #CPUS += UPD7807
 CPUS += ARM
-#CPUS += ARM7
+CPUS += ARM7
 CPUS += JAGUAR
 #CPUS += R3000
 CPUS += R4600
@@ -142,7 +142,7 @@ CPUS += R5000
 #CPUS += QED5271
 #CPUS += RM7000
 CPUS += SH2
-#CPUS += SH4
+CPUS += SH4
 #CPUS += DSP32C
 #CPUS += PIC16C54
 #CPUS += PIC16C55
@@ -321,7 +321,6 @@ DRVLIBS = \
 	$(MESSOBJ)/messdriv.o \
 	$(MESSOBJ)/acorn.a \
 	$(MESSOBJ)/advision.a \
-	$(MESSOBJ)/aim65.a \
 	$(MESSOBJ)/amiga.a \
 	$(MESSOBJ)/amstrad.a \
 	$(MESSOBJ)/apexc.a \
@@ -378,6 +377,7 @@ DRVLIBS = \
 	$(MESSOBJ)/pmd85.a \
 	$(MESSOBJ)/primo.a \
 	$(MESSOBJ)/rca.a \
+	$(MESSOBJ)/rockwell.a \
 	$(MESSOBJ)/samcoupe.a \
 	$(MESSOBJ)/sega.a \
 	$(MESSOBJ)/sgi.a \
@@ -469,7 +469,8 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_FORMATS)/coco_cas.o	\
 	$(MESS_FORMATS)/coco_dsk.o	\
 	$(MESS_MACHINE)/mm58274c.o \
-	$(MESS_MACHINE)/z80dart.o
+	$(MESS_MACHINE)/z80dart.o	\
+	$(MAME_MACHINE)/6850acia.o
 
 
 
@@ -506,7 +507,10 @@ $(MESSOBJ)/sega.a:						\
 	$(MESS_MACHINE)/sms.o		\
 	$(MESS_DRIVERS)/sms.o		\
 	$(MAME_DRIVERS)/megadriv.o  \
-	$(MESS_DRIVERS)/sg1000.o
+	$(MESS_DRIVERS)/sg1000.o	\
+	$(MESS_DRIVERS)/dc.o	\
+	$(MAME_MACHINE)/dc.o 	\
+	$(MAME_VIDEO)/dc.o	\
 
 $(MESSOBJ)/atari.a:						\
 	$(MAME_VIDEO)/tia.o			\
@@ -524,7 +528,9 @@ $(MESSOBJ)/atari.a:						\
 	$(MAME_AUDIO)/jaguar.o			\
 	$(MAME_VIDEO)/jaguar.o			\
 	$(MESS_FORMATS)/a26_cas.o	\
-#	$(MESS_DRIVERS)/atarist.o
+	$(MESS_DRIVERS)/atarist.o \
+	$(MESS_VIDEO)/atarist.o \
+	$(MESS_MACHINE)/68901mfp.o
 
 $(MESSOBJ)/gce.a:	                     \
 	$(MESS_DRIVERS)/vectrex.o	\
@@ -557,6 +563,7 @@ $(MESSOBJ)/amiga.a: \
 	$(MAME_AUDIO)/amiga.o			\
 	$(MESS_MACHINE)/amigafdc.o	\
 	$(MESS_MACHINE)/amigakbd.o	\
+	$(MAME_MACHINE)/msm6242.o	\
 	$(MESS_DRIVERS)/amiga.o		\
 
 $(MESSOBJ)/cbmshare.a: \
@@ -837,8 +844,9 @@ $(MESSOBJ)/sym1.a :    \
 	$(MESS_MACHINE)/sym1.o	 \
 	$(MESS_DRIVERS)/sym1.o
 
-$(MESSOBJ)/aim65.a :    \
-	$(MESS_VIDEO)/aim65.o	 \
+$(MESSOBJ)/rockwell.a :    \
+	$(MESS_VIDEO)/dl1416.o \
+	$(MESS_VIDEO)/aim65.o \
 	$(MESS_MACHINE)/aim65.o	 \
 	$(MESS_DRIVERS)/aim65.o
 
@@ -937,6 +945,7 @@ $(MESSOBJ)/sharp.a:    \
 	$(MESS_DRIVERS)/x68k.o	\
 	$(MESS_VIDEO)/x68k.o	\
 	$(MESS_MACHINE)/hd63450.o   \
+	$(MESS_MACHINE)/rp5c15.o	\
 
 $(MESSOBJ)/hp48.a:     \
 	$(MESS_MACHINE)/hp48.o     \
@@ -1111,16 +1120,16 @@ $(MESSOBJ)/be.a:						\
 	$(MAME_MACHINE)/53c810.o
 
 $(MESSOBJ)/thomson.a:			\
-	$(MESS_MACHINE)/mc6854.o    \
+	$(MESS_MACHINE)/mc6843.o    \
 	$(MESS_MACHINE)/mc6846.o	\
+	$(MESS_MACHINE)/mc6854.o    \
 	$(MESS_DRIVERS)/thomson.o   \
 	$(MESS_MACHINE)/thomson.o   \
 	$(MESS_VIDEO)/thomson.o   \
 	$(MESS_DEVICES)/thomflop.o \
 	$(MESS_FORMATS)/thom_dsk.o \
 	$(MESS_FORMATS)/thom_cas.o \
-	$(MESS_AUDIO)/mea8000.o		\
-	$(MAME_MACHINE)/6850acia.o
+	$(MESS_AUDIO)/mea8000.o
 
 $(MESSOBJ)/tiger.a:				\
 	$(MESS_DRIVERS)/gamecom.o	\
@@ -1128,7 +1137,8 @@ $(MESSOBJ)/tiger.a:				\
 	$(MESS_VIDEO)/gamecom.o
 
 $(MESSOBJ)/3do.a:			\
-	$(MESS_DRIVERS)/3do.o
+	$(MESS_DRIVERS)/3do.o	\
+	$(MESS_MACHINE)/3do.o
 
 #-------------------------------------------------
 # layout dependencies
@@ -1146,6 +1156,7 @@ $(MESS_DRIVERS)/gb.o:	$(MESS_LAYOUT)/gb.lh
 
 $(MESS_DRIVERS)/mk2.o:	$(MESS_LAYOUT)/mk2.lh
 
+$(MESS_DRIVERS)/aim65.o:	$(MESS_LAYOUT)/aim65.lh
 
 
 include src/mess/tools/imgtool/imgtool.mak

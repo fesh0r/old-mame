@@ -135,6 +135,7 @@
 #include "sound/okim6295.h"
 #include "machine/8530scc.h"
 #include "machine/hd63450.h"
+#include "machine/rp5c15.h"
 #include "devices/basicdsk.h"
 #include "includes/x68k.h"
 
@@ -191,8 +192,7 @@ static mame_time prescale(int val)
 }
 
 void mfp_init(void);
-void mfp_update_irq(int);
-void x68k_scc_ack(int);
+static TIMER_CALLBACK(mfp_update_irq);
 
 void mfp_init()
 {
@@ -209,7 +209,7 @@ void mfp_init()
 	mame_timer_adjust(mfp_irq, time_zero, 0, MAME_TIME_IN_USEC(32));
 }
 
-void mfp_update_irq(int dummy)
+TIMER_CALLBACK(mfp_update_irq)
 {
 	int x;
 
@@ -282,7 +282,7 @@ void mfp_trigger_irq(int irq)
 
 }
 
-void mfp_timer_a_callback(int unused)
+TIMER_CALLBACK(mfp_timer_a_callback)
 {
 	sys.mfp.timer[0].counter--;
 	if(sys.mfp.timer[0].counter == 0)
@@ -292,7 +292,7 @@ void mfp_timer_a_callback(int unused)
 	}
 }
 
-void mfp_timer_b_callback(int unused)
+TIMER_CALLBACK(mfp_timer_b_callback)
 {
 	sys.mfp.timer[1].counter--;
 	if(sys.mfp.timer[1].counter == 0)
@@ -302,7 +302,7 @@ void mfp_timer_b_callback(int unused)
 	}
 }
 
-void mfp_timer_c_callback(int unused)
+TIMER_CALLBACK(mfp_timer_c_callback)
 {
 	sys.mfp.timer[2].counter--;
 	if(sys.mfp.timer[2].counter == 0)
@@ -312,7 +312,7 @@ void mfp_timer_c_callback(int unused)
 	}
 }
 
-void mfp_timer_d_callback(int unused)
+TIMER_CALLBACK(mfp_timer_d_callback)
 {
 	sys.mfp.timer[3].counter--;
 	if(sys.mfp.timer[3].counter == 0)
@@ -447,7 +447,7 @@ void x68k_keyboard_push_scancode(unsigned char code)
 	}
 }
 
-void x68k_keyboard_poll(int unused)
+static TIMER_CALLBACK(x68k_keyboard_poll)
 {
 	int x;
 	int port = port_tag_to_index("key1");
@@ -591,7 +591,7 @@ WRITE16_HANDLER( x68k_scc_w )
 	prev = scc_get_reg_b(5) & 0x02;
 }
 
-void x68k_scc_ack(int val)
+static TIMER_CALLBACK(x68k_scc_ack)
 {
 	if(sys.mouse.bufferempty != 0)  // nothing to do if the mouse data buffer is empty
 		return;
@@ -1110,49 +1110,25 @@ READ16_HANDLER( x68k_ppi_r )
 
 READ16_HANDLER( x68k_rtc_r )
 {
-	if(offset < 13)
-	{
-		if(sys.rtc.mode & 0x01)
-			return sys.rtc.regbank1[offset];
-		else
-			return sys.rtc.regbank0[offset];
-	}
-	else
-	{
-		if(offset == 0x13)
-			return sys.rtc.mode & 0x0f;
-//		logerror("RTC: [%08x] read from offset %i\n",activecpu_get_pc(),offset);
-		return 0xff;
-	}
+	return rp5c15_r(offset,mem_mask);
 }
 
 WRITE16_HANDLER( x68k_rtc_w )
 {
-	if(offset < 13)
+	rp5c15_w(offset,data,mem_mask);
+}
+
+void x68k_rtc_alarm_irq(int state)
+{
+	if(sys.mfp.aer & 0x01)
 	{
-		if(sys.rtc.mode & 0x01)
-			sys.rtc.regbank1[offset] = data;
-		else
-			sys.rtc.regbank0[offset] = data;
+		if(state == 1)
+			mfp_trigger_irq(MFP_IRQ_GPIP0);  // RTC ALARM
 	}
 	else
 	{
-		switch(offset)
-		{
-		case 14:  // MODE
-			sys.rtc.mode = data & 0x0f;
-			break;
-		case 15:  // TEST  (will usually always be all 0)
-			sys.rtc.test = data & 0x0f;
-			break;
-		case 16:  // RESET
-			sys.rtc.reset = data & 0x0f;
-			// TODO:  clocking up the RTC counter.
-			break;
-		default:
-//			logerror("RTC: [%08x] write to invalid offset %i\n",activecpu_get_pc(),offset);
-			break;
-		}
+		if(state == 0)
+			mfp_trigger_irq(MFP_IRQ_GPIP0);  // RTC ALARM
 	}
 }
 
@@ -1255,8 +1231,10 @@ WRITE16_HANDLER( x68k_adpcm_w )
 {
 }
 
-void x68k_fake_bus_error(int val)
+static TIMER_CALLBACK(x68k_fake_bus_error)
 {
+	int val = param;
+
 	// rather hacky, but this generally works for programs that check for MIDI hardware
 	if(mess_ram[0x09] != 0x02)  // normal vector for bus errors points to 02FF0540 
 	{
@@ -1495,22 +1473,27 @@ static struct scc8530_interface scc_interface =
 	NULL//x68k_scc_ack
 };
 
+static struct rp5c15_interface rtc_intf = 
+{
+	x68k_rtc_alarm_irq
+};
+
 INPUT_PORTS_START( x68000 )
 	PORT_START_TAG( "joy1" )
-	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CODE(JOYCODE_1_UP)	 PORT_PLAYER(1)
-	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CODE(JOYCODE_1_DOWN)	 PORT_PLAYER(1)
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CODE(JOYCODE_1_LEFT)	 PORT_PLAYER(1)
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_CODE(JOYCODE_1_RIGHT)	 PORT_PLAYER(1)
-	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CODE(JOYCODE_1_BUTTON1)	 PORT_PLAYER(1)
-	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CODE(JOYCODE_1_BUTTON2)	 PORT_PLAYER(1)
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CODE(JOYCODE_Y_UP_SWITCH)	 PORT_PLAYER(1)
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)	 PORT_PLAYER(1)
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CODE(JOYCODE_X_LEFT_SWITCH)	 PORT_PLAYER(1)
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_CODE(JOYCODE_X_RIGHT_SWITCH)	 PORT_PLAYER(1)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CODE(JOYCODE_BUTTON1)	 PORT_PLAYER(1)
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CODE(JOYCODE_BUTTON2)	 PORT_PLAYER(1)
 
 	PORT_START_TAG( "joy2" )
-	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CODE(JOYCODE_2_UP)	 PORT_PLAYER(2)
-	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CODE(JOYCODE_2_DOWN)	 PORT_PLAYER(2)
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CODE(JOYCODE_2_LEFT)	 PORT_PLAYER(2)
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_CODE(JOYCODE_2_RIGHT)	 PORT_PLAYER(2)
-	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CODE(JOYCODE_2_BUTTON1)	 PORT_PLAYER(2)
-	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CODE(JOYCODE_2_BUTTON2)	 PORT_PLAYER(2)
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CODE(JOYCODE_Y_UP_SWITCH)	 PORT_PLAYER(2)
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)	 PORT_PLAYER(2)
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CODE(JOYCODE_X_LEFT_SWITCH)	 PORT_PLAYER(2)
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_CODE(JOYCODE_X_RIGHT_SWITCH)	 PORT_PLAYER(2)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CODE(JOYCODE_BUTTON1)	 PORT_PLAYER(2)
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CODE(JOYCODE_BUTTON2)	 PORT_PLAYER(2)
 
 	PORT_START_TAG( "key1" )
 	PORT_BIT(0x00000001, IP_ACTIVE_HIGH, IPT_UNUSED) // unused
@@ -1645,8 +1628,8 @@ INPUT_PORTS_START( x68000 )
 	PORT_CONFSETTING( 0x02, DEF_STR( On ))
 
 	PORT_START_TAG("mouse1")  // mouse buttons
-	PORT_BIT(0x00000001, IP_ACTIVE_HIGH, IPT_BUTTON9) PORT_NAME("Left mouse button") PORT_CODE(MOUSECODE_1_BUTTON1)
-	PORT_BIT(0x00000002, IP_ACTIVE_HIGH, IPT_BUTTON10) PORT_NAME("Right mouse button") PORT_CODE(MOUSECODE_1_BUTTON2)
+	PORT_BIT(0x00000001, IP_ACTIVE_HIGH, IPT_BUTTON9) PORT_NAME("Left mouse button") PORT_CODE(MOUSECODE_BUTTON1)
+	PORT_BIT(0x00000002, IP_ACTIVE_HIGH, IPT_BUTTON10) PORT_NAME("Right mouse button") PORT_CODE(MOUSECODE_BUTTON2)
 
 	PORT_START_TAG("mouse2")  // X-axis
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
@@ -1767,7 +1750,7 @@ static void x68k_floppy_getinfo(const device_class *devclass, UINT32 state, unio
 		info->unload = device_unload_x68k_floppy;
 		break;
 	case DEVINFO_STR_FILE_EXTENSIONS:				
-		strcpy(info->s = device_temp_str(), "xdf,hdm,dim"); 
+		strcpy(info->s = device_temp_str(), "xdf,hdm,2hd,dim"); 
 		break;
 	default:
 		legacybasicdsk_device_getinfo(devclass, state, info); 
@@ -1872,6 +1855,7 @@ DRIVER_INIT( x68000 )
 	nec765_reset(0);
 	mfp_init();
 	scc_init(&scc_interface);
+	rp5c15_init(&rtc_intf);
 
 	cpunum_set_irq_callback(0, x68k_int_ack);
 
@@ -1926,7 +1910,11 @@ MACHINE_DRIVER_END
 
 SYSTEM_CONFIG_START(x68000)
 	CONFIG_DEVICE(x68k_floppy_getinfo)
+	CONFIG_RAM(0x100000)
+	CONFIG_RAM(0x200000)
 	CONFIG_RAM_DEFAULT(0x400000)  // 4MB - should be enough for most things
+	CONFIG_RAM(0x800000)
+	CONFIG_RAM(0xc00000)  // 12MB - maximum possible
 SYSTEM_CONFIG_END
 
 ROM_START( x68000 )

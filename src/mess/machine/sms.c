@@ -30,6 +30,30 @@ UINT8 *sms_banking_none[5]; /* we are going to use 1-4, same as bank numbers */
 UINT8 ggSIO[5] = { 0x7F, 0xFF, 0x00, 0xFF, 0x00 };
 UINT8 sms_store_control = 0;
 
+UINT8 sms_input_port0;
+UINT8 sms_input_port1;
+
+/* Data needed for Rapid Fire Unit support */
+mame_timer	*rapid_fire_timer;
+UINT8 rapid_fire_state_1;
+UINT8 rapid_fire_state_2;
+
+/* Data needed for Paddle Control controller */
+UINT32 last_paddle_read_time;
+UINT8 paddle_read_state;
+
+/* Data needed for Sports Pad controller */
+UINT32 last_sports_pad_time_1;
+UINT32 last_sports_pad_time_2;
+UINT8 sports_pad_state_1;
+UINT8 sports_pad_state_2;
+UINT8 sports_pad_last_data_1;
+UINT8 sports_pad_last_data_2;
+UINT8 sports_pad_1_x;
+UINT8 sports_pad_1_y;
+UINT8 sports_pad_2_x;
+UINT8 sports_pad_2_y;
+
 struct {
 	UINT8	*ROM;			/* Pointer to ROM image data */
 	UINT32	size;			/* Size of the ROM image */
@@ -41,6 +65,154 @@ struct {
 	UINT8	ram_page;		/* currently swapped in cartridge RAM */
 } sms_cartridge[MAX_CARTRIDGES];
 UINT8	sms_current_cartridge;
+
+static TIMER_CALLBACK( rapid_fire_callback ) {
+	rapid_fire_state_1 ^= 0xFF;
+	rapid_fire_state_2 ^= 0xFF;
+}
+
+static WRITE8_HANDLER( sms_input_write ) {
+	switch( offset ) {
+	case 0:
+		switch( readinputport(11) & 0x0F ) {
+		case 0x03:	/* Sports Pad */
+			if ( data != sports_pad_last_data_1 ) {
+				UINT32 cpu_cycles = activecpu_gettotalcycles();
+
+				sports_pad_last_data_1 = data;
+				if ( cpu_cycles - last_sports_pad_time_1 > 512 ) {
+					sports_pad_state_1 = 3;
+					sports_pad_1_x = readinputport(12);
+					sports_pad_1_y = readinputport(13);
+				}
+				last_sports_pad_time_1 = cpu_cycles;
+				sports_pad_state_1 = ( sports_pad_state_1 + 1 ) & 3;
+			}
+			break;
+		}
+		break;
+	case 1:
+		switch( readinputport(11) >> 4 ) {
+		case 0x03:	/* Sports Pad */
+			if ( data != sports_pad_last_data_2 ) {
+				UINT32 cpu_cycles = activecpu_gettotalcycles();
+
+				sports_pad_last_data_2 = data;
+				if ( cpu_cycles - last_sports_pad_time_2 > 2048 ) {
+					sports_pad_state_2 = 3;
+					sports_pad_2_x = readinputport(14);
+					sports_pad_2_y = readinputport(15);
+				}
+				last_sports_pad_time_2 = cpu_cycles;
+				sports_pad_state_2 = ( sports_pad_state_2 + 1 ) & 3;
+			}
+			break;
+		}
+		break;
+	}
+}
+
+static void sms_get_inputs(void) {
+	UINT8 data = 0x00;
+	UINT32 cpu_cycles = activecpu_gettotalcycles();
+
+	sms_input_port0 = 0xFF;
+	sms_input_port1 = 0xFF;
+
+	if ( cpu_cycles - last_paddle_read_time > 256 ) {
+		paddle_read_state ^= 0xFF;
+		last_paddle_read_time = cpu_cycles;
+	}
+
+	/* Player 1 */
+	switch( readinputport(11) & 0x0F ) {
+	case 0x00:  /* Joystick */
+		data = readinputport(0);
+		/* Rapid Fire setting for Button A */
+		if ( readinputport(7) & 0x01 ) {
+			data = ( data & 0xEF ) | ( rapid_fire_state_1 & 0x10 );
+		}
+		/* Check Rapid Fire setting for Button B */
+		if ( readinputport(7) & 0x02 ) {
+			data = ( data & 0xDF ) | ( rapid_fire_state_1 & 0x20 );
+		}
+		sms_input_port0 = ( sms_input_port0 & 0xC0 ) | ( data & 0x3F );
+		break;
+	case 0x01:  /* Light Phaser */
+		break;
+	case 0x02:  /* Paddle Control */
+		/* Get button A state */
+		data = readinputport(8);
+		if ( paddle_read_state ) {
+			data = data >> 4;
+		}
+		sms_input_port0 = ( sms_input_port0 & 0xC0 ) | ( data & 0x0F ) | ( paddle_read_state & 0x20 )
+		                | ( ( readinputport(10) & 0x02 ) << 3 );
+		break;
+	case 0x03:	/* Sega Sports Pad */
+		switch( sports_pad_state_1 ) {
+		case 0:
+			data = ( sports_pad_1_x >> 4 ) & 0x0F;
+			break;
+		case 1:
+			data = sports_pad_1_x & 0x0F;
+			break;
+		case 2:
+			data = ( sports_pad_1_y >> 4 ) & 0x0F;
+			break;
+		case 3:
+			data = sports_pad_1_y & 0x0F;
+			break;
+		}
+		sms_input_port0 = ( sms_input_port0 & 0xC0 ) | data | ( ( readinputport(10) & 0x0C ) << 2 );
+		break;
+	}
+
+	/* Player 2 */
+	switch( readinputport(11) >> 4 ) {
+	case 0x00:	/* Joystick */
+		data = readinputport(0);
+		sms_input_port0 = ( sms_input_port0 & 0x3F ) | ( data & 0xC0 );
+		data = readinputport(1);
+		if ( readinputport(7) & 0x04 ) {
+			data = ( data & 0xFB ) | ( rapid_fire_state_2 & 0x04 );
+		}
+		if ( readinputport(7) & 0x08 ) {
+			data = ( data & 0xF7 ) | ( rapid_fire_state_2 & 0x08 );
+		}
+		sms_input_port1 = ( sms_input_port1 & 0xF0 ) | ( data & 0x0F );
+		break;
+	case 0x01:	/* Light Phaser */
+		break;
+	case 0x02:	/* Paddle Control */
+		/* Get button A state */
+		data = readinputport(9);
+		if ( paddle_read_state ) {
+			data = data >> 4;
+		}
+		sms_input_port0 = ( sms_input_port0 & 0x3F ) | ( ( data & 0x03 ) << 6 );
+		sms_input_port1 = ( sms_input_port1 & 0xF0 ) | ( ( data & 0x0C ) >> 2 ) | ( paddle_read_state & 0x08 )
+		                | ( ( readinputport(10) & 0x20 ) >> 3 );
+		break;
+	case 0x03:	/* Sega Sports Pad */
+		switch( sports_pad_state_2 ) {
+		case 0:
+			data = sports_pad_2_x & 0x0F;
+			break;
+		case 1:
+			data = ( sports_pad_2_x >> 4 ) & 0x0F;
+		case 2:
+			data = sports_pad_2_y & 0x0F;
+			break;
+		case 3:
+			data = ( sports_pad_2_y >> 4 ) & 0x0F;
+			break;
+		}
+		sms_input_port0 = ( sms_input_port0 & 0x3F ) | ( ( data & 0x03 ) << 6 );
+		sms_input_port1 = ( sms_input_port1 & 0xF0 ) | ( data >> 2 ) | ( ( readinputport(10) & 0xC0 ) >> 4 );
+		break;
+	}
+}
 
 WRITE8_HANDLER(sms_fm_detect_w) {
 	if ( HAS_FM ) {
@@ -55,7 +227,8 @@ READ8_HANDLER(sms_fm_detect_r) {
 		if ( biosPort & IO_CHIP ) {
 			return 0xFF;
 		} else {
-			return readinputport(0);
+			sms_get_inputs();
+			return sms_input_port0;
 		}
 	}
 }
@@ -63,6 +236,12 @@ READ8_HANDLER(sms_fm_detect_r) {
 WRITE8_HANDLER(sms_version_w) {
 	if ((data & 0x01) && (data & 0x04)) {
 		smsVersion = (data & 0xA0);
+	}
+	if ( data & 0x08 ) {
+		sms_input_write( 0, ( data & 0x20 ) >> 5 );
+	}
+	if ( data & 0x02 ) {
+		sms_input_write( 1, ( data & 0x80 ) >> 7 );
 	}
 }
 
@@ -82,7 +261,8 @@ WRITE8_HANDLER(sms_version_w) {
 	}
 
 	/* Merge version data with input port #2 data */
-	temp = (temp & 0xC0) | (readinputport(1) & 0x3F);
+	sms_get_inputs();
+	temp = (temp & 0xC0) | (sms_input_port1 & 0x3F);
 
 	return (temp);
 }
@@ -114,7 +294,8 @@ void check_pause_button( void ) {
 	if (biosPort & IO_CHIP) {
 		return (0xFF);
 	} else {
-		return readinputport(0);
+		sms_get_inputs();
+		return sms_input_port0;
 	}
 }
 
@@ -311,6 +492,18 @@ WRITE8_HANDLER(sms_cartram2_w) {
 	if ( sms_cartridge[sms_current_cartridge].features & CF_CODEMASTERS_MAPPER ) {
 		sms_cartridge[sms_current_cartridge].cartRAM[sms_cartridge[sms_current_cartridge].ram_page * 0x2000 + offset] = data;
 	}
+	if ( sms_cartridge[sms_current_cartridge].features & CF_KOREAN_MAPPER && offset == 0 ) { /* Dodgeball King mapper */
+		UINT8	rom_page_count = sms_cartridge[sms_current_cartridge].size / 0x4000;
+		int		page = (rom_page_count > 0) ? data % rom_page_count : 0;
+		if ( ! sms_cartridge[sms_current_cartridge].ROM )
+			return;
+		sms_banking_cart[4] = sms_cartridge[sms_current_cartridge].ROM + page * 0x4000;
+		memory_set_bankptr( 4, sms_banking_cart[4] );
+		memory_set_bankptr( 5, sms_banking_cart[4] + 0x2000 );
+#ifdef LOG_PAGING
+		logerror("rom 2 paged in %x dodgeball king.\n", page);
+#endif
+	}
 }
 
 WRITE8_HANDLER(sms_cartram_w) {
@@ -334,17 +527,6 @@ WRITE8_HANDLER(sms_cartram_w) {
 			memory_set_bankptr( 5, sms_banking_cart[4] + 0x2000 );
 #ifdef LOG_PAGING
 			logerror("rom 2 paged in %x codemasters.\n", page);
-#endif
-		} else if ( sms_cartridge[sms_current_cartridge].features & CF_KOREAN_MAPPER && offset == 0x2000 ) { /* Dodgeball King mapper */
-			UINT8	rom_page_count = sms_cartridge[sms_current_cartridge].size / 0x4000;
-			page = (rom_page_count > 0) ? data % rom_page_count : 0;
-			if ( ! sms_cartridge[sms_current_cartridge].ROM )
-				return;
-			sms_banking_cart[4] = sms_cartridge[sms_current_cartridge].ROM + page * 0x4000;
-			memory_set_bankptr( 4, sms_banking_cart[4] );
-			memory_set_bankptr( 5, sms_banking_cart[4] + 0x2000 );
-#ifdef LOG_PAGING
-			logerror("rom 2 paged in %x dodgeball king.\n", page);
 #endif
 		} else if ( sms_cartridge[sms_current_cartridge].features & CF_ONCART_RAM ) {
 			sms_cartridge[sms_current_cartridge].cartRAM[offset & ( sms_cartridge[sms_current_cartridge].ram_size - 1 ) ] = data;
@@ -520,6 +702,53 @@ static int sms_verify_cart(UINT8 *magic, int size) {
 	return retval;
 }
 
+/* Check for Codemasters mapper
+  0x7FE3 - 93 - sms Cosmis Spacehead
+              - sms Dinobasher
+              - sms The Excellent Dizzy Collection
+              - sms Fantastic Dizzy
+              - sms Micro Machines
+              - gamegear Cosmic Spacehead
+              - gamegear Micro Machines
+         - 94 - gamegear Dropzone
+              - gamegear Ernie Els Golf (also has 64KB additional RAM on the cartridge)
+              - gamegear Pete Sampras Tennis
+              - gamegear S.S. Lucifer
+         - 95 - gamegear Micro Machines 2 - Turbo Tournament
+
+The Korean game Jang Pung II also seems to use a codemasters style mapper.
+ */
+static int detect_codemasters_mapper( UINT8 *rom ) {
+	UINT8	jang_pung2[16] = { 0x00, 0xBA, 0x38, 0x0D, 0x00, 0xB8, 0x38, 0x0C, 0x00, 0xB6, 0x38, 0x0B, 0x00, 0xB4, 0x38, 0x0A };
+
+	if ( ( ( rom[0x7fe0] & 0x0F ) <= 9 ) &&
+	     ( rom[0x7fe3] == 0x93 || rom[0x7fe3] == 0x94 || rom[0x7fe3] == 0x95 ) &&
+	     rom[0x7fef] == 0x00 ) {
+		return 1;
+	}
+
+	if ( ! memcmp( &rom[0x7ff0], jang_pung2, 16 ) ) {
+		return 1;
+	}
+
+	return 0;
+}
+
+static int detect_korean_mapper( UINT8 *rom ) {
+	UINT8	signatures[2][16] = {
+		{ 0x3E, 0x11, 0x32, 0x00, 0xA0, 0x78, 0xCD, 0x84, 0x85, 0x3E, 0x02, 0x32, 0x00, 0xA0, 0xC9, 0xFF }, /* Dodgeball King */
+		{ 0x41, 0x48, 0x37, 0x37, 0x44, 0x37, 0x4E, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x20 },	/* Sangokushi 3 */
+	};
+	int i;
+
+	for( i = 0; i < 2; i++ ) {
+		if ( !memcmp( &rom[0x7ff0], signatures[i], 16 ) ) {
+			return 1;
+		}
+	} 
+	return 0;
+}
+
 DEVICE_INIT( sms_cart ) {
 	int i;
 
@@ -618,31 +847,11 @@ DEVICE_LOAD( sms_cart )
 		/* If no extrainfo information is available try to find special information out on our own */
 		/* Check for special cartridge features */
 		if ( size >= 0x8000 ) {
-			/* Check for Codemasters mapper
-			  0x7FE3 - 93 - sms Cosmis Spacehead
-			              - sms Dinobasher
-			              - sms The Excellent Dizzy Collection
-			              - sms Fantastic Dizzy
-			              - sms Micro Machines
-			              - gamegear Cosmic Spacehead
-			              - gamegear Micro Machines
-			         - 94 - gamegear Dropzone
-			              - gamegear Ernie Els Golf (also has 64KB additional RAM on the cartridge)
-			              - gamegear Pete Sampras Tennis
-			              - gamegear S.S. Lucifer
-			         - 95 - gamegear Micro Machines 2 - Turbo Tournament
-			 */
-			if ( ( ( sms_cartridge[index].ROM[0x7fe0] & 0x0F ) <= 9 ) &&
-			     ( sms_cartridge[index].ROM[0x7fe3] == 0x93 || sms_cartridge[index].ROM[0x7fe3] == 0x94 || sms_cartridge[index].ROM[0x7fe3] == 0x95 ) &&
-			     sms_cartridge[index].ROM[0x7fef] == 0x00 ) {
+			/* Check for special mappers */
+			if ( detect_codemasters_mapper( sms_cartridge[index].ROM ) ) {
 				sms_cartridge[index].features |= CF_CODEMASTERS_MAPPER;
 			}
-			/* Check for special Korean games mapper used by:
-			   - Dodgeball King/Dallyeora Pigu-Wang
-			   - Sangokushi 3
-			 */
-			if ( ( sms_cartridge[index].ROM[0x7ff0] == 0x3e && sms_cartridge[index].ROM[0x7ff1] == 0x11 ) ||  /* Dodgeball King */
-			     ( sms_cartridge[index].ROM[0x7ff0] == 0x41 && sms_cartridge[index].ROM[0x7ff1] == 0x48 ) ) { /* Sangokushi 3 */
+			if ( detect_korean_mapper( sms_cartridge[index].ROM ) ) {
 				sms_cartridge[index].features |= CF_KOREAN_MAPPER;
 			}
 		}
@@ -743,6 +952,25 @@ MACHINE_RESET(sms)
 	setup_banks();
 
 	setup_rom();
+
+	rapid_fire_state_1 = 0;
+	rapid_fire_state_2 = 0;
+	rapid_fire_timer = mame_timer_alloc( rapid_fire_callback );
+	mame_timer_adjust( rapid_fire_timer, MAME_TIME_IN_HZ(10), 0, MAME_TIME_IN_HZ(10) );
+
+	last_paddle_read_time = 0;
+	paddle_read_state = 0;
+
+	last_sports_pad_time_1 = 0;
+	last_sports_pad_time_2 = 0;
+	sports_pad_state_1 = 0;
+	sports_pad_state_2 = 0;
+	sports_pad_last_data_1 = 0;
+	sports_pad_last_data_2 = 0;
+	sports_pad_1_x = 0;
+	sports_pad_1_y = 0;
+	sports_pad_2_x = 0;
+	sports_pad_2_y = 0;
 }
 
 READ8_HANDLER(sms_store_cart_select_r) {

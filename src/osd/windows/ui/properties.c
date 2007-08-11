@@ -109,7 +109,6 @@ static void UpdateSelectScreenUI(HWND hwnd);
 static void InitializeSelectScreenUI(HWND hwnd);
 static void InitializeD3DVersionUI(HWND hwnd);
 static void InitializeVideoUI(HWND hwnd);
-static void InitializeAnalogAxesUI(HWND hWnd);
 static void InitializeEffectUI(HWND hWnd);
 static void InitializeBIOSUI(HWND hwnd);
 static void InitializeControllerMappingUI(HWND hwnd);
@@ -143,7 +142,6 @@ static int  g_nPropertyMode    = 0;
 static BOOL g_bUseDefaults     = FALSE;
 static BOOL g_bReset           = FALSE;
 static BOOL  g_bAutoAspect[MAX_SCREENS] = {FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE};
-static BOOL g_bAnalogCheckState[65]; // 8 Joysticks  * 8 Axes each
 static HICON g_hIcon = NULL;
 
 /* Property sheets */
@@ -236,7 +234,6 @@ static DWORD dwHelpIDs[] =
 	IDC_BIOS,               HIDC_BIOS,
 	IDC_STRETCH_SCREENSHOT_LARGER, HIDC_STRETCH_SCREENSHOT_LARGER,
 	IDC_SCREEN,             HIDC_SCREEN,
-	IDC_ANALOG_AXES,		HIDC_ANALOG_AXES,
 	IDC_PADDLE,				HIDC_PADDLE,
 	IDC_ADSTICK,			HIDC_ADSTICK,
 	IDC_PEDAL,				HIDC_PEDAL,
@@ -1229,28 +1226,6 @@ INT_PTR CALLBACK GameOptionsProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 			{
 				//We'll need to use a CheckState Table 
 				//Because this one gets called for all kinds of other things too, and not only if a check is set
-			case LVN_ITEMCHANGED: 
-				{
-					if ( ((NMLISTVIEW *) lParam)->hdr.idFrom == IDC_ANALOG_AXES )
-					{
-						HWND hList = ((NMLISTVIEW *) lParam)->hdr.hwndFrom;
-						int iItem = ((NMLISTVIEW *) lParam)->iItem;
-						BOOL bCheckState = ListView_GetCheckState(hList, iItem );
-						
-						if( bCheckState != g_bAnalogCheckState[iItem] )
-						{
-							// enable the apply button
-							if (g_nGame > -1)
-								SetGameUsesDefaults(g_nGame,FALSE);
-							g_bUseDefaults = FALSE;
-							PropSheet_Changed(GetParent(hDlg), hDlg);
-							g_bReset = TRUE;
-							EnableWindow(GetDlgItem(hDlg, IDC_USE_DEFAULT), (g_bUseDefaults) ? FALSE : TRUE);
-							g_bAnalogCheckState[iItem] = ! g_bAnalogCheckState[iItem];
-						}
-					}
-				}
-				break;
 			case PSN_SETACTIVE:
 				/* Initialize the controls. */
 				datamap_populate_all_controls(properties_datamap, hDlg, pGameOpts);
@@ -1428,7 +1403,7 @@ static void PropToOptions(HWND hWnd, core_options *o)
 
 		if (Button_GetCheck(hCtrl3))
 		{
-			options_set_string(o, aspect_option, "auto");
+			options_set_string(o, aspect_option, "auto", OPTION_PRIORITY_CMDLINE);
 		}
 		else
 		{
@@ -1450,62 +1425,8 @@ static void PropToOptions(HWND hWnd, core_options *o)
 			}
 
 			snprintf(buffer2,sizeof(buffer2),"%d:%d",n,d);
-			options_set_string(o, aspect_option, buffer2);
+			options_set_string(o, aspect_option, buffer2, OPTION_PRIORITY_CMDLINE);
 		}
-	}
-	/*analog axes*/
-	hCtrl = GetDlgItem(hWnd, IDC_ANALOG_AXES);	
-	if (hCtrl)
-	{
-		int nCount;
-		TCHAR buffer[200];
-		TCHAR digital[200];
-		int oldJoyId = -1;
-		int joyId = 0;
-		int axisId = 0;
-		BOOL bFirst = TRUE;
-		char* utf8_digital;
-		memset(digital,0,ARRAY_LENGTH(digital));
-		// Get the number of items in the control
-		for(nCount=0;nCount < ListView_GetItemCount(hCtrl);nCount++)
-		{
-			if( ListView_GetCheckState(hCtrl,nCount) )
-			{
-				//Get The JoyId
-				ListView_GetItemText(hCtrl, nCount,2, buffer, ARRAY_LENGTH(buffer));
-				joyId = _ttoi(buffer);
-				if( oldJoyId != joyId) 
-				{
-					oldJoyId = joyId;
-					//add new JoyId
-					if( bFirst )
-					{
-						_tcscat(digital, TEXT("j"));
-						bFirst = FALSE;
-					}
-					else
-					{
-						_tcscat(digital, TEXT(",j"));
-					}
-					_tcscat(digital, buffer);
-				}
-				//Get The AxisId
-				ListView_GetItemText(hCtrl, nCount,3, buffer, ARRAY_LENGTH(buffer));
-				axisId = _ttoi(buffer);
-				_tcscat(digital, TEXT("a"));
-				_tcscat(digital, buffer);
-			}
-		}
-		utf8_digital = utf8_from_tstring(digital);
-		if( !utf8_digital )
-			return;
-		
-		if (mame_stricmp (utf8_digital, options_get_string(o, WINOPTION_DIGITAL)) != 0)
-		{
-			// save the new setting
-			options_set_string(o, WINOPTION_DIGITAL, utf8_digital);
-		}
-		free(utf8_digital);
 	}
 }
 
@@ -1599,93 +1520,6 @@ static void OptionsToProp(HWND hWnd, core_options* o)
 			Edit_SetText(hCtrl2, TEXT("3"));
 		}
 	}
-
-	/* core video */
-	hCtrl = GetDlgItem(hWnd, IDC_ANALOG_AXES);	
-	if (hCtrl)
-	{
-		int nCount;
-
-		/* Get the number of items in the control */
-		TCHAR buffer[200];
-		TCHAR digital[200];
-		TCHAR *pDest = NULL;
-		TCHAR *pDest2 = NULL;
-		TCHAR *pDest3 = NULL;
-		int result = 0;
-		int result2 = 0;
-		int result3 = 0;
-		int joyId = 0;
-		int axisId = 0;
-		TCHAR* t_digital_option = tstring_from_utf8(options_get_string(o, WINOPTION_DIGITAL));
-		if( !t_digital_option )
-			return;
-
-		memset(digital,0,sizeof(digital));
-		// Get the number of items in the control
-		for(nCount=0;nCount < ListView_GetItemCount(hCtrl);nCount++)
-		{
-			//Get The JoyId
-			ListView_GetItemText(hCtrl, nCount,2, buffer, ARRAY_LENGTH(buffer));
-			joyId = _ttoi(buffer);
-			_stprintf(digital,TEXT("j%s"),buffer);
-			//First find the JoyId in the saved String
-			pDest = _tcsstr (t_digital_option, digital);
-			result = pDest - t_digital_option + 1;
-			if ( pDest != NULL)
-			{
-				//TrimRight pDest to the first Comma, as there starts a new Joystick
-				pDest2 = _tcschr(pDest,',');
-				if( pDest2 != NULL )
-				{
-					result2 = pDest2 - pDest + 1;
-				}
-				//Get The AxisId
-				ListView_GetItemText(hCtrl, nCount,3, buffer, ARRAY_LENGTH(buffer));
-				axisId = _ttoi(buffer);
-				_stprintf(digital,TEXT("a%s"),buffer);
-				//Now find the AxisId in the saved String
-				pDest3 = _tcsstr (pDest,digital);
-				result3 = pDest3 - pDest + 1;
-				if ( pDest3 != NULL)
-				{
-					//if this is after the comma result3 is bigger than result2
-					// show the setting in the Control
-					if( result2 == 0 )
-					{
-						//The Table variable needs to be set before we send the message to the Listview,
-						//this is true for all below cases, otherwise we get false positives
-						g_bAnalogCheckState[nCount] = TRUE;
-						ListView_SetCheckState(hCtrl, nCount, TRUE );
-					}
-					else
-					{
-						if( result3 < result2)
-						{
-							g_bAnalogCheckState[nCount] = TRUE;
-							ListView_SetCheckState(hCtrl, nCount, TRUE );
-						}
-						else
-						{
-							g_bAnalogCheckState[nCount] = FALSE;
-							ListView_SetCheckState(hCtrl, nCount, FALSE );
-						}
-					}
-				}
-				else
-				{
-					g_bAnalogCheckState[nCount] = FALSE;
-					ListView_SetCheckState(hCtrl, nCount, FALSE );
-				}
-			}
-			else
-			{
-				g_bAnalogCheckState[nCount] = FALSE;
-				ListView_SetCheckState(hCtrl, nCount, FALSE );
-			}
-		}		
-		free(t_digital_option);
-	}
 }
 
 /* Adjust controls - tune them to the currently selected game */
@@ -1760,8 +1594,6 @@ static void SetPropEnabledControls(HWND hWnd)
 	EnableWindow(GetDlgItem(hWnd, IDC_JSATTEXT),			joystick_attached);
 	EnableWindow(GetDlgItem(hWnd, IDC_JSATDISP),			joystick_attached);
 	EnableWindow(GetDlgItem(hWnd, IDC_JSAT),				joystick_attached);
-	EnableWindow(GetDlgItem(hWnd, IDC_ANALOG_AXES),		joystick_attached);
-	EnableWindow(GetDlgItem(hWnd, IDC_ANALOG_AXES_TEXT),joystick_attached);
 	/* Trackball / Mouse options */
 	if (nIndex <= -1 || DriverUsesTrackball(nIndex) || DriverUsesLightGun(nIndex))
 		Button_Enable(GetDlgItem(hWnd,IDC_USE_MOUSE),TRUE);
@@ -1850,11 +1682,11 @@ static void SetPropEnabledControls(HWND hWnd)
 static void RotateReadControl(datamap *map, HWND dialog, HWND control, core_options *opts, const char *option_name)
 {
 	int selected_index = ComboBox_GetCurSel(control);
-	options_set_bool(opts, OPTION_ROR,		selected_index == 1);
-	options_set_bool(opts, OPTION_ROL,		selected_index == 2);
-	options_set_bool(opts, OPTION_ROTATE,	selected_index != 3);
-	options_set_bool(opts, OPTION_AUTOROR,	selected_index == 4);
-	options_set_bool(opts, OPTION_AUTOROL,	selected_index == 5);
+	options_set_bool(opts, OPTION_ROR,		selected_index == 1, OPTION_PRIORITY_CMDLINE);
+	options_set_bool(opts, OPTION_ROL,		selected_index == 2, OPTION_PRIORITY_CMDLINE);
+	options_set_bool(opts, OPTION_ROTATE,	selected_index != 3, OPTION_PRIORITY_CMDLINE);
+	options_set_bool(opts, OPTION_AUTOROR,	selected_index == 4, OPTION_PRIORITY_CMDLINE);
+	options_set_bool(opts, OPTION_AUTOROL,	selected_index == 5, OPTION_PRIORITY_CMDLINE);
 }
 
 
@@ -1889,7 +1721,7 @@ static void ScreenReadControl(datamap *map, HWND dialog, HWND control, core_opti
 	screen_option_index = ComboBox_GetCurSel(control);
 	screen_option_value = (const char *) ComboBox_GetItemData(control, screen_option_index);
 	snprintf(screen_option_name, ARRAY_LENGTH(screen_option_name), "screen%d", selected_screen);
-	options_set_string(opts, screen_option_name, screen_option_value);
+	options_set_string(opts, screen_option_name, screen_option_value, OPTION_PRIORITY_CMDLINE);
 }
 
 
@@ -1982,7 +1814,7 @@ static void DefaultInputPopulateControl(datamap *map, HWND dialog, HWND control,
 	TCHAR* t_ctrldir;
 
 	// determine the ctrlr option
-	ctrlr_option = options_get_string(opts, WINOPTION_CTRLR);
+	ctrlr_option = options_get_string(opts, OPTION_CTRLR);
 	if( ctrlr_option != NULL ) {
 		buf = tstring_from_utf8(ctrlr_option);
 		if( !buf )
@@ -2081,7 +1913,7 @@ static void ResolutionReadControl(datamap *map, HWND dialog, HWND control, core_
 		{
 			snprintf(option_value, ARRAY_LENGTH(option_value), "auto");
 		}
-		options_set_string(opts, option_name, option_value);
+		options_set_string(opts, option_name, option_value, OPTION_PRIORITY_CMDLINE);
 	}
 }
 
@@ -2196,7 +2028,7 @@ static void ResetDataMap(HWND hWnd)
 		|| (mame_stricmp(options_get_string(pGameOpts, screen_option), "") == 0 )
 		|| (mame_stricmp(options_get_string(pGameOpts, screen_option), "auto") == 0 ) )
 	{
-		options_set_string(pGameOpts, screen_option, "auto");
+		options_set_string(pGameOpts, screen_option, "auto", OPTION_PRIORITY_CMDLINE);
 	}
 }
 
@@ -2239,25 +2071,27 @@ static void BuildDataMap(void)
 	datamap_add(properties_datamap, IDC_D3D_FILTER,				DM_BOOL,	WINOPTION_FILTER);
 
 	// input
-	datamap_add(properties_datamap, IDC_DEFAULT_INPUT,			DM_STRING,	WINOPTION_CTRLR);
-	datamap_add(properties_datamap, IDC_USE_MOUSE,				DM_BOOL,	WINOPTION_MOUSE);
-	datamap_add(properties_datamap, IDC_JOYSTICK,				DM_BOOL,	WINOPTION_JOYSTICK);
-	datamap_add(properties_datamap, IDC_JDZ,					DM_FLOAT,	WINOPTION_JOY_DEADZONE);
-	datamap_add(properties_datamap, IDC_JDZDISP,				DM_FLOAT,	WINOPTION_JOY_DEADZONE);
-	datamap_add(properties_datamap, IDC_JSAT,					DM_FLOAT,	WINOPTION_JOY_SATURATION);
-	datamap_add(properties_datamap, IDC_JSATDISP,				DM_FLOAT,	WINOPTION_JOY_SATURATION);
-	datamap_add(properties_datamap, IDC_STEADYKEY,				DM_BOOL,	WINOPTION_STEADYKEY);
-	datamap_add(properties_datamap, IDC_LIGHTGUN,				DM_BOOL,	WINOPTION_LIGHTGUN);
+	datamap_add(properties_datamap, IDC_DEFAULT_INPUT,			DM_STRING,	OPTION_CTRLR);
+	datamap_add(properties_datamap, IDC_USE_MOUSE,				DM_BOOL,	OPTION_MOUSE);
+	datamap_add(properties_datamap, IDC_JOYSTICK,				DM_BOOL,	OPTION_JOYSTICK);
+	datamap_add(properties_datamap, IDC_JDZ,					DM_FLOAT,	OPTION_JOYSTICK_DEADZONE);
+	datamap_add(properties_datamap, IDC_JDZDISP,				DM_FLOAT,	OPTION_JOYSTICK_DEADZONE);
+	datamap_add(properties_datamap, IDC_JSAT,					DM_FLOAT,	OPTION_JOYSTICK_SATURATION);
+	datamap_add(properties_datamap, IDC_JSATDISP,				DM_FLOAT,	OPTION_JOYSTICK_SATURATION);
+	datamap_add(properties_datamap, IDC_STEADYKEY,				DM_BOOL,	OPTION_STEADYKEY);
+	datamap_add(properties_datamap, IDC_LIGHTGUN,				DM_BOOL,	OPTION_LIGHTGUN);
 	datamap_add(properties_datamap, IDC_DUAL_LIGHTGUN,			DM_BOOL,	WINOPTION_DUAL_LIGHTGUN);
-	datamap_add(properties_datamap, IDC_RELOAD,					DM_BOOL,	WINOPTION_OFFSCREEN_RELOAD);
+	datamap_add(properties_datamap, IDC_RELOAD,					DM_BOOL,	OPTION_OFFSCREEN_RELOAD);
+	datamap_add(properties_datamap, IDC_MULTIKEYBOARD,			DM_BOOL,	OPTION_MULTIKEYBOARD);
+	datamap_add(properties_datamap, IDC_MULTIMOUSE,				DM_BOOL,	OPTION_MULTIMOUSE);
 
 	// controller mapping
-	datamap_add(properties_datamap, IDC_PADDLE,					DM_STRING,	WINOPTION_PADDLE_DEVICE);
-	datamap_add(properties_datamap, IDC_ADSTICK,				DM_STRING,	WINOPTION_ADSTICK_DEVICE);
-	datamap_add(properties_datamap, IDC_PEDAL,					DM_STRING,	WINOPTION_PEDAL_DEVICE);
-	datamap_add(properties_datamap, IDC_DIAL,					DM_STRING,	WINOPTION_DIAL_DEVICE);
-	datamap_add(properties_datamap, IDC_TRACKBALL,				DM_STRING,	WINOPTION_TRACKBALL_DEVICE);
-	datamap_add(properties_datamap, IDC_LIGHTGUNDEVICE,			DM_STRING,	WINOPTION_LIGHTGUN_DEVICE);
+	datamap_add(properties_datamap, IDC_PADDLE,					DM_STRING,	OPTION_PADDLE_DEVICE);
+	datamap_add(properties_datamap, IDC_ADSTICK,				DM_STRING,	OPTION_ADSTICK_DEVICE);
+	datamap_add(properties_datamap, IDC_PEDAL,					DM_STRING,	OPTION_PEDAL_DEVICE);
+	datamap_add(properties_datamap, IDC_DIAL,					DM_STRING,	OPTION_DIAL_DEVICE);
+	datamap_add(properties_datamap, IDC_TRACKBALL,				DM_STRING,	OPTION_TRACKBALL_DEVICE);
+	datamap_add(properties_datamap, IDC_LIGHTGUNDEVICE,			DM_STRING,	OPTION_LIGHTGUN_DEVICE);
 
 	// core video
 	datamap_add(properties_datamap, IDC_BRIGHTCORRECT,			DM_FLOAT,	OPTION_BRIGHTNESS);
@@ -2516,7 +2350,6 @@ static void InitializeOptions(HWND hDlg)
 	InitializeSkippingUI(hDlg);
 	InitializeRotateUI(hDlg);
 	InitializeSelectScreenUI(hDlg);
-	InitializeAnalogAxesUI(hDlg);
 	InitializeEffectUI(hDlg);
 	InitializeBIOSUI(hDlg);
 	InitializeControllerMappingUI(hDlg);
@@ -2690,64 +2523,6 @@ static void InitializeSelectScreenUI(HWND hwnd)
 	UpdateSelectScreenUI(hwnd);
 }
 
-/*Populate the Analog axes Listview*/
-static void InitializeAnalogAxesUI(HWND hwnd)
-{
-	int i=0, j=0, res = 0;
-	int iEntryCounter = 0;
-	TCHAR buf[256];
-	LVITEM item;
-	LVCOLUMN column;
-	HWND hCtrl = GetDlgItem(hwnd, IDC_ANALOG_AXES);
-	if( hCtrl )
-	{
-		//Enumerate the Joystick axes, and add them to the Listview...
-		ListView_SetExtendedListViewStyle(hCtrl,LVS_EX_CHECKBOXES );
-		//add two Columns...
-		column.mask = LVCF_TEXT | LVCF_WIDTH |LVCF_SUBITEM;
-		column.pszText = (TCHAR *)TEXT("Joystick");
-		column.cchTextMax = _tcslen(column.pszText);
-		column.iSubItem = 0;
-		column.cx = 100;
-		res = ListView_InsertColumn(hCtrl,0, &column );
-		column.pszText = (TCHAR *)TEXT("Axis");
-		column.cchTextMax = _tcslen(column.pszText);
-		column.iSubItem = 1;
-		column.cx = 100;
-		res = ListView_InsertColumn(hCtrl,1, &column );
-		column.pszText = (TCHAR *)TEXT("JoystickId");
-		column.cchTextMax = _tcslen(column.pszText);
-		column.iSubItem = 2;
-		column.cx = 70;
-		res = ListView_InsertColumn(hCtrl,2, &column );
-		column.pszText = (TCHAR *)TEXT("AxisId");
-		column.cchTextMax = _tcslen(column.pszText);
-		column.iSubItem = 3;
-		column.cx = 50;
-		res = ListView_InsertColumn(hCtrl,3, &column );
-		DIJoystick.init();
-		memset(&item,0,sizeof(item) );
-		item.mask = LVIF_TEXT;
-		for( i=0;i<DIJoystick_GetNumPhysicalJoysticks();i++)
-		{
-			item.iItem = iEntryCounter;
-			item.pszText = DIJoystick_GetPhysicalJoystickName(i);
-			item.cchTextMax = _tcslen(item.pszText);
-
-			for( j=0;j<DIJoystick_GetNumPhysicalJoystickAxes(i);j++)
-			{
-				ListView_InsertItem(hCtrl,&item );
-				ListView_SetItemText(hCtrl,iEntryCounter,1, DIJoystick_GetPhysicalJoystickAxisName(i,j));
-				_stprintf(buf, TEXT("%d"), i);
-				ListView_SetItemText(hCtrl,iEntryCounter,2, buf);
-				_stprintf(buf, TEXT("%d"), j);
-				ListView_SetItemText(hCtrl,iEntryCounter++,3, buf);
-				item.iItem = iEntryCounter;
-			}
-		}
-	}
-}
-
 static void InitializeEffectUI(HWND hwnd)
 {
 }
@@ -2914,7 +2689,7 @@ static BOOL SelectEffect(HWND hWnd)
 
 		if (strcmp(buff, options_get_string(pGameOpts, WINOPTION_EFFECT)))
 		{
-			options_set_string(pGameOpts, WINOPTION_EFFECT, buff);
+			options_set_string(pGameOpts, WINOPTION_EFFECT, buff, OPTION_PRIORITY_CMDLINE);
 			datamap_populate_control(properties_datamap, hWnd, pGameOpts, IDC_EFFECT);
 			changed = TRUE;
 		}
@@ -2929,7 +2704,7 @@ static BOOL ResetEffect(HWND hWnd)
 
 	if (strcmp(new_value, options_get_string(pGameOpts, WINOPTION_EFFECT)))
 	{
-		options_set_string(pGameOpts, WINOPTION_EFFECT, new_value);
+		options_set_string(pGameOpts, WINOPTION_EFFECT, new_value, OPTION_PRIORITY_CMDLINE);
 		datamap_populate_control(properties_datamap, hWnd, pGameOpts, IDC_EFFECT);
 		changed = TRUE;
 	}

@@ -17,24 +17,6 @@
 
 #ifndef DRIVER_RECURSIVE
 
-/* The "root" driver, defined so we can have &driver_##NAME in macros. */
-game_driver driver_0 =
-{
-	__FILE__,
-	0,
-	"root",
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	NOT_A_DRIVER,
-};
-
 #define DRIVER_RECURSIVE
 
 /* step 1: declare all external references */
@@ -86,6 +68,14 @@ TESTDRIVER( 3do_pal )
 	DRIVER( lynx )		/* Atari Lynx Handheld								*/
 	DRIVER( lynx2 )		/* Atari Lynx II Handheld redesigned, no additions	*/
 	DRIVER( jaguar )	/* Atari Jaguar										*/
+	DRIVER( atarist )	/* Atari ST											*/
+	DRIVER( megast )	/* Atari Mega ST									*/
+//	DRIVER( atariste )	/* Atari STe										*/
+//	DRIVER( megaste )	/* Atari Mega STe									*/
+//	DRIVER( stacy )		/* Atari STacy										*/
+//	DRIVER( stbook )	/* Atari ST Book									*/
+//	DRIVER( tt030 )		/* Atari TT030										*/
+//	DRIVER( falcon )	/* Atari Falcon030									*/
 
 	/* NINTENDO */
 	DRIVER( nes )		/* Nintendo Entertainment System					*/
@@ -129,6 +119,10 @@ TESTDRIVER( 3do_pal )
 	DRIVER( saturneu )	/* 1995 Sega Saturn (Europe)						*/
 	DRIVER( vsaturn )	/* JVC V-Saturn										*/
 	DRIVER( hisaturn )	/* Hitachi HiSaturn									*/
+
+	DRIVER( dcjp )		/* 1998 Sega Dreamcast (Japan) */
+	DRIVER( dc )		/* 1999 Sega Dreamcast (USA) */
+	DRIVER( dceu )		/* 1999 Sega Dreamcast (Europe) */
 
 	/* BALLY */
 	DRIVER( astrocde )	/* Bally Astrocade									*/

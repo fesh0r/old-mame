@@ -1,3 +1,120 @@
+0.118
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Amiga 1000 PAL-OCS [Ernesto Corvi]
+- Atari ST (not working) [Curt Coder]
+- Atari Mega ST (not working) [Curt Coder]
+- Sega Dreamcast (not working)  [R. Belmont]
+
+
+
+System Driver Changes:
+----------------------
+- [A2600] Fixed behavior of missile positioning outside active
+  scanline. (bug #1204)  [Wilbert Pol]
+
+- [A2600] Added support for hardware oddity with certain NUSIZx
+  player size updates. (bug #1231)  [Wilbert Pol]
+
+- [A2600] Fixed player-missile reset behavior. (bug #1310)
+  [Wilbert Pol]
+
+- [A2600] Improved SuperCharger support. (bugs #1232 & #1313)  [Wilbert Pol]
+
+- [A2600] Added support for 32in1 mapper.  [Wilbert Pol]
+
+- [AIM65] Added natural keyboard support.  [Dirk Best]
+
+- [AIM65] Started to rewrite the driver. For now, the display emulation has
+  been completely rewritten and artwork has been added. Also, configurable
+  RAM sizes have been added and the system was converted to a screenless
+  system.  [Dirk Best]
+
+- [AIM65] Rewrote keyboard emulation, it now behaves like the real hardware
+  and the code is much cleaner.  [Dirk Best]
+
+- [AIM65] Updated the driver to use cartridges instead of hard-coded ROMs.
+  This means you can now use the Forth and PL/65 ROMs.  [Dirk Best] 
+
+- [AMIGA] RTC support, added buffered keyboard support, properly implemented
+  a fix for the slow-memory detection bug in Kickstart 1.2.  [Ernesto Corvi]
+
+- [CDTV] Added NVRAM support.  [Ernesto Corvi]
+
+- [COCO] Fixed PIA regression that prevented OS-9 level 1 from working.  (bug
+  #1314) [Nate Woods]
+
+- [COCO] Fixed writing when extending the lengths of a VHD file.  (bug #1320)
+  [Nate Woods]
+  
+- [COCO3] Fixed bug in how the Coco 3 GIME performed a soft reset.  [Nate
+  Woods]
+
+- [GAMEBOY] Fixed hard reset from crashing the driver.  (bug #1138) [Wilbert Pol]
+
+- [SMS/GG] Updated sms drivers to use the SMSIII sound core. Updated gamegear
+  drivers to use the GAMEGEAR sound core.  (bug #1272)
+
+- [SMS/GG] Made sure an interrupt is triggered when the 'trigger vint' bit of
+  VDP register gets set and the VINT bit of the status register is set.  (bug
+  #1162) [Wilbert Pol]
+
+- [SMS/GG] Fixed video code to prevent the video code from crashing during
+  a hard reset.  (bug #1304) [Wilbert Pol]
+
+- [SMS] Added support for Sega Rapid Fire Unit.  (bug #1317) [Wilbert Pol]
+
+- [SMS] Added support for Sega Paddle Controller.  (part of bug #1318)
+  [Wilbert Pol]
+
+- [SMS] Added support for Sega Sports Pad.  (bug #1316) [Wilbert Pol]
+
+- [THOMSON] Fixed regressions introduced with 6821 changes.  [Antoine Mine]
+
+- [THOMSON] Fixed TO8/TO9+ ram bank handler (fixes BASIC 1.0 bug).  [Antoine
+  Mine]
+
+- [THOMSON] Added support for MC6843-based CD 90-015 floppy controller (5"
+  1/4 single density)  [Antoine Mine]
+  
+- [THOMSON] Added support for TO8/TO9/TO9+ external floppy controllers.
+  [Antoine Mine]
+
+- [THOMSON] Reworked memory handling and added support for RAM size
+  configuration (w, w/o RAM extension).  [Antoine Mine]
+  
+- [X68K] Added support for the Ricoh RP5C15 RTC, a few more memory size
+  options, and the .2HD file extension for disk images.  [Barry Rodewald]
+
+
+
+User Interface Changes:
+-----------------------
+(none)
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.118.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Removed use of helper macros to declare input ports.  [Nate Woods]
+
+- Generic emulation of the DL1416 "4-Digit 16-Segment Alphanumeric Intelligent
+  Display" device has been added. Currently supported is the DL1416T and
+  partially the DL1416B. This kind of display is used by the Rockwell AIM 65.
+    [Dirk Best]
+
+
+
 0.117
 
 New System Drivers Supported (in no particular order):
@@ -64,7 +181,7 @@ Imgtool Changes:
 
 Source Changes:
 ----------------
-- The core is based on MAME 0.116u4.  This incorporates all features of the
+- The core is based on MAME 0.117.  This incorporates all features of the
   update to this core.  [MAME team]
 
 - Changed BBC, Coleco, MTX, Sord, and Tutor drivers to use the SN76489 or

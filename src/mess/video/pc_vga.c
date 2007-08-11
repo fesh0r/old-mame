@@ -564,8 +564,8 @@ static void vga_cpu_interface(void)
 			case 0x00:
 				if (vga.vga_intf.vga_memory_bank != 0)
 				{
-					read_handler = (read8_handler) vga.vga_intf.vga_memory_bank;
-					write_handler = (write8_handler) vga.vga_intf.vga_memory_bank;
+					read_handler = (read8_handler) (FPTR)vga.vga_intf.vga_memory_bank;
+					write_handler = (write8_handler) (FPTR)vga.vga_intf.vga_memory_bank;
 				}
 				else
 				{
@@ -1131,7 +1131,7 @@ void pc_vga_init(const struct pc_vga_interface *vga_intf, const struct pc_svga_i
 	pc_vga_reset();
 }
 
-static void vga_timer(int param)
+static TIMER_CALLBACK(vga_timer)
 {
 	vga.monitor.retrace=1;
 }

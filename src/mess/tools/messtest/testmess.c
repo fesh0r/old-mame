@@ -141,7 +141,7 @@ static render_target *target;
 
 /* command list */
 static mess_pile command_pile;
-static memory_pool *command_pool;
+static object_pool *command_pool;
 static int command_count;
 static struct messtest_command new_command;
 
@@ -157,14 +157,13 @@ static const options_entry win_mess_opts[] =
 
 
 
-static char *assemble_software_path(const game_driver *gamedrv, const char *filename)
+static astring *assemble_software_path(astring *str, const game_driver *gamedrv, const char *filename)
 {
-	char *result;
 	if (osd_is_absolute_path(filename))
-		result = mame_strdup(filename);
+		astring_cpyc(str, filename);
 	else
-		result = assemble_5_strings("software", PATH_SEPARATOR, gamedrv->name, PATH_SEPARATOR, filename);
-	return result;
+		astring_assemble_5(str, "software", PATH_SEPARATOR, gamedrv->name, PATH_SEPARATOR, filename);
+	return str;
 }
 
 
@@ -274,7 +273,7 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	messtest_result_t rc;
 	clock_t begin_time;
 	double real_run_time;
-	char *fullpath = NULL;
+	astring *fullpath = NULL;
 	const char *device_opt;
 	const char *fake_argv[2];
 
@@ -302,33 +301,34 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 
 	/* set up options */
 	mame_options_init(win_mess_opts);
-	options_set_bool(mame_options(), OPTION_SKIP_GAMEINFO, TRUE);
-	options_set_bool(mame_options(), OPTION_THROTTLE, FALSE);
-	options_set_bool(mame_options(), OPTION_SKIP_WARNINGS, TRUE);
+	options_set_string(mame_options(), OPTION_GAMENAME, driver->name, OPTION_PRIORITY_CMDLINE);
+	options_set_bool(mame_options(), OPTION_SKIP_GAMEINFO, TRUE, OPTION_PRIORITY_CMDLINE);
+	options_set_bool(mame_options(), OPTION_THROTTLE, FALSE, OPTION_PRIORITY_CMDLINE);
+	options_set_bool(mame_options(), OPTION_SKIP_WARNINGS, TRUE, OPTION_PRIORITY_CMDLINE);
 	if (current_testcase.ram != 0)
 	{
-		options_set_int(mame_options(), OPTION_RAMSIZE, current_testcase.ram);
+		options_set_int(mame_options(), OPTION_RAMSIZE, current_testcase.ram, OPTION_PRIORITY_CMDLINE);
 	}
 
 	/* ugh... hideous ugly fake arguments */
 	fake_argv[0] = "MESSTEST";
 	fake_argv[1] = driver->name;
-	options_parse_command_line(mame_options(), ARRAY_LENGTH(fake_argv), (char **) fake_argv);
+	options_parse_command_line(mame_options(), ARRAY_LENGTH(fake_argv), (char **) fake_argv, OPTION_PRIORITY_CMDLINE);
 
 	/* preload any needed images */
 	while(current_command->command_type == MESSTEST_COMMAND_IMAGE_PRELOAD)
 	{
 		/* get the path */
-		fullpath = assemble_software_path(driver, current_command->u.image_args.filename);
+		fullpath = assemble_software_path(astring_alloc(), driver, current_command->u.image_args.filename);
 
 		/* get the option name */
 		device_opt = device_typename(current_command->u.image_args.device_type);
 
 		/* set the option */
-		options_set_string(mame_options(), device_opt, fullpath);
+		options_set_string(mame_options(), device_opt, astring_c(fullpath), OPTION_PRIORITY_CMDLINE);
 
 		/* cleanup */
-		free(fullpath);
+		astring_free(fullpath);
 		fullpath = NULL;
 
 		/* next command */
@@ -343,7 +343,7 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	mame_set_output_channel(OUTPUT_CHANNEL_INFO, mame_null_output_callback, NULL, NULL, NULL);
 	mame_set_output_channel(OUTPUT_CHANNEL_DEBUG, mame_null_output_callback, NULL, NULL, NULL);
 	mame_set_output_channel(OUTPUT_CHANNEL_LOG, mame_null_output_callback, NULL, NULL, NULL);
-	run_game(driver);
+	mame_execute();
 	real_run_time = ((double) (clock() - begin_time)) / CLOCKS_PER_SEC;
 
 	/* what happened? */
@@ -388,11 +388,10 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 
 
 
-int osd_init(running_machine *machine)
+void osd_init(running_machine *machine)
 {
 	target = render_target_alloc(NULL, 0);
 	render_target_set_orientation(target, 0);
-	return 0;
 }
 
 
@@ -659,7 +658,7 @@ static void command_image_loadcreate(void)
 	char buf[128];
 	const struct IODevice *dev;
 	const char *file_extensions;
-	char *filepath;
+	astring *filepath;
 	int success;
 	const game_driver *gamedrv;
 
@@ -729,24 +728,24 @@ static void command_image_loadcreate(void)
 	for (gamedrv = Machine->gamedrv; !success && gamedrv; gamedrv = mess_next_compatible_driver(gamedrv))
 	{
 		/* assemble the full path */
-		filepath = assemble_software_path(gamedrv, filename);
+		filepath = assemble_software_path(astring_alloc(), gamedrv, filename);
 
 		/* actually create or load the image */
 		switch(current_command->command_type)
 		{
 			case MESSTEST_COMMAND_IMAGE_CREATE:
-				success = (image_create(image, filepath, format_index, NULL) == INIT_PASS);
+				success = (image_create(image, astring_c(filepath), format_index, NULL) == INIT_PASS);
 				break;
 			
 			case MESSTEST_COMMAND_IMAGE_LOAD:
-				success = (image_load(image, filepath) == INIT_PASS);
+				success = (image_load(image, astring_c(filepath)) == INIT_PASS);
 				break;
 
 			default:
 				fatalerror("Unexpected error");
 				break;
 		}
-		free(filepath);
+		astring_free(filepath);
 	}
 	if (!success)
 	{
@@ -1495,7 +1494,7 @@ void node_testmess(xml_data_node *node)
 	int result;
 
 	pile_init(&command_pile);
-	command_pool = pool_create(NULL);
+	command_pool = pool_alloc(NULL);
 
 	memset(&new_command, 0, sizeof(new_command));
 	command_count = 0;

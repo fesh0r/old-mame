@@ -1421,7 +1421,6 @@ void win_toggle_menubar(void)
 		AdjustWindowRectEx(&before_rect, style, menu ? TRUE : FALSE, exstyle);
 
 		// toggle the menu
-		win_pause_input(Machine, 1);
 		if (menu)
 		{
 			SetProp(hwnd, TEXT("menu"), (HANDLE) menu);
@@ -1432,7 +1431,6 @@ void win_toggle_menubar(void)
 			menu = (HMENU) GetProp(hwnd, TEXT("menu"));
 		}
 		SetMenu(hwnd, menu);
-		win_pause_input(Machine, 0);
 
 		// get after rect, and width/height diff
 		AdjustWindowRectEx(&after_rect, style, menu ? TRUE : FALSE, exstyle);
@@ -1738,8 +1736,9 @@ static int invoke_command(HWND wnd, UINT command)
 
 		case ID_OPTIONS_USEMOUSE:
 			{
-				extern int win_use_mouse;
-				win_use_mouse = !win_use_mouse;
+				// FIXME
+//				extern int win_use_mouse;
+//				win_use_mouse = !win_use_mouse;
 			}
 			break;
 
@@ -1937,7 +1936,11 @@ HMODULE win_resource_module(void)
 #ifdef _MSC_VER
 	// doing this because of lame build problems with EMULATORDLL, and how
 	// vconv is invoked
+#ifdef PTR64
+	return (HMODULE) 0x180000000;
+#else
 	return (HMODULE) 0x10000000;
+#endif
 #else // !_MSC_VER
 	static HMODULE module;
 	if (!module)

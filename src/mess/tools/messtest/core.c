@@ -106,7 +106,7 @@ void messtest_get_data(xml_data_node *node, mess_pile *pile)
 	blobparse_state_t blobstate = BLOBSTATE_INITIAL;
 	const char *s;
 	size_t len;
-	int multiple = 0;
+	size_t multiple = 0;
 
 	s = node->value ? node->value : "";
 	len = strlen(s);
@@ -130,7 +130,7 @@ void messtest_get_data(xml_data_node *node, mess_pile *pile)
 				else if (c == '*')
 				{
 					blobstate = BLOBSTATE_AFTER_STAR;
-					multiple = (size_t) -1;
+					multiple = -1;
 				}
 				else if (c == '\'')
 				{
@@ -157,13 +157,13 @@ void messtest_get_data(xml_data_node *node, mess_pile *pile)
 				if (isdigit(c))
 				{
 					/* add this digit to the multiple */
-					if (multiple == (size_t) -1)
+					if (multiple == -1)
 						multiple = 0;
 					else
 						multiple *= 10;
 					multiple += c - '0';
 				}
-				else if ((c != '\0') && isspace(c) && (multiple == (size_t) -1))
+				else if ((c != '\0') && isspace(c) && (multiple == -1))
 				{
 					/* ignore whitespace */
 				}
@@ -358,7 +358,7 @@ static input_code messtest_token_to_code(const char *token)
 			return standard_code_strings[i].code;
 	}
 
-	return CODE_NONE;
+	return INPUT_CODE_INVALID;
 }
 
 
@@ -399,7 +399,7 @@ static int external_entity_handler(XML_Parser parser,
 		context += strlen(mamekey_prefix);
 		c = messtest_token_to_code(context);
 
-		if (c != CODE_NONE)
+		if (c != INPUT_CODE_INVALID)
 		{
 			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "<%s%s>&#%d;</%s%s>",
 				mamekey_prefix, context,

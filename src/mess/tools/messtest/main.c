@@ -100,6 +100,9 @@ int CLIB_DECL main(int argc, char *argv[])
 	double elapsed_time;
 	core_options *messtest_options = NULL;
 
+	/* test case for memory allocation system */
+	test_memory_pools();
+	
 #ifdef WIN32
 	/* expand wildcards so '*' can be used; this is not UNIX */
 	win_expand_wildcards(&argc, &argv);
@@ -117,7 +120,7 @@ int CLIB_DECL main(int argc, char *argv[])
 	/* register options */
 	messtest_options = options_create(messtest_fail);
 	options_add_entries(messtest_options, messtest_option_entries);
-	options_set_option_callback(messtest_options, OPTION_UNADORNED(0), handle_arg);
+	options_set_option_callback(messtest_options, OPTION_GAMENAME, handle_arg);
 
 	/* run MAME's validity checks; if these fail cop out now */
 	/* NPW 16-Sep-2006 - commenting this out because this cannot be run outside of MAME */
@@ -130,7 +133,7 @@ int CLIB_DECL main(int argc, char *argv[])
 	begin_time = clock();
 
 	/* parse the commandline */
-	if (options_parse_command_line(messtest_options, argc, argv))
+	if (options_parse_command_line(messtest_options, argc, argv, OPTION_PRIORITY_CMDLINE))
 	{
 		fprintf(stderr, "Error while parsing cmdline\n");
 		goto done;

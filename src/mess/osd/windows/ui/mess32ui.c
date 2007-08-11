@@ -231,10 +231,10 @@ BOOL CreateMessIcons(void)
 	// create the icon index, if we havn't already
     if (!mess_icon_index)
 	{
-		mess_icon_index = pool_malloc(GetMame32MemoryPool(), driver_get_count() * IO_COUNT * sizeof(*mess_icon_index));
+		mess_icon_index = pool_malloc(GetMame32MemoryPool(), driver_list_get_count(drivers) * IO_COUNT * sizeof(*mess_icon_index));
     }
 
-    for (i = 0; i < (driver_get_count() * IO_COUNT); i++)
+    for (i = 0; i < (driver_list_get_count(drivers) * IO_COUNT); i++)
         mess_icon_index[i] = 0;
 
 	// Associate the image lists with the list view control.
@@ -258,7 +258,7 @@ static int GetMessIcon(int nGame, int nSoftwareType)
 	const char *iconname;
 
 	assert(nGame >= 0);
-	assert(nGame < driver_get_count());
+	assert(nGame < driver_list_get_count(drivers));
 
     if ((nSoftwareType >= 0) && (nSoftwareType < IO_COUNT))
 	{
@@ -742,17 +742,14 @@ static BOOL CommonFileImageDialog(LPTSTR the_last_directory, common_file_dialog_
         //GetDirectory(filename,last_directory,sizeof(last_directory));
     }
     
-    free(t_filter);
-
     return success;
 }
 
 
 
 /* Specify IO_COUNT for type if you want all types */
-static void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL bZip, int type)
+static void SetupImageTypes(const struct IODevice *devices, mess_image_type *types, int count, BOOL bZip, int type)
 {
-    const struct IODevice *devices;
     int num_extensions = 0;
 	int devindex;
 
@@ -766,7 +763,6 @@ static void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL
 		num_extensions++;
     }
 
-	devices = devices_allocate(drivers[nDriver]);
 	if (devices != NULL)
 	{
 		for (devindex = 0; devices[devindex].type < IO_COUNT; devindex++)
@@ -792,7 +788,6 @@ static void SetupImageTypes(int nDriver, mess_image_type *types, int count, BOOL
 				}
 			}
 		}
-		devices_free(devices);
 	}
 }
 
@@ -805,12 +800,14 @@ static void MessSetupDevice(common_file_dialog_proc cfd, int iDevice)
 	int nGame;
 	HWND hwndList;
 	char* utf8_filename;
+	const struct IODevice *devices;
 
 	begin_resource_tracking();
 
 	hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
 	nGame = Picker_GetSelectedItem(hwndList);
-	SetupImageTypes(nGame, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, iDevice);
+	devices = devices_allocate(drivers[nGame]);
+	SetupImageTypes(devices, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, iDevice);
 
 	if (CommonFileImageDialog(last_directory, cfd, filename, imagetypes))
 	{
@@ -821,7 +818,9 @@ static void MessSetupDevice(common_file_dialog_proc cfd, int iDevice)
 		SoftwarePicker_AddFile(GetDlgItem(GetMainWindow(), IDC_SWLIST), utf8_filename);
 		free(utf8_filename);
 	}
-	end_resource_tracking();
+
+	if (devices != NULL)
+		devices_free(devices);
 }
 
 
@@ -845,14 +844,17 @@ static BOOL DevView_GetOpenFileName(HWND hwndDevView, const struct IODevice *dev
 	BOOL bResult;
 	mess_image_type imagetypes[64];
 	HWND hwndList;
-
-	begin_resource_tracking();
+	int gamenum;
+	const struct IODevice *devices;
 
 	hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
-	SetupImageTypes(Picker_GetSelectedItem(hwndList), imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, dev->type);
+	gamenum = Picker_GetSelectedItem(hwndList);
+	devices = devices_allocate(drivers[gamenum]);
+	SetupImageTypes(devices, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, dev->type);
 	bResult = CommonFileImageDialog(last_directory, GetOpenFileName, pszFilename, imagetypes);
 
-	end_resource_tracking();
+	if (devices != NULL)
+		devices_free(devices);
 	return bResult;
 }
 
@@ -863,14 +865,17 @@ static BOOL DevView_GetCreateFileName(HWND hwndDevView, const struct IODevice *d
 	BOOL bResult;
 	mess_image_type imagetypes[64];
 	HWND hwndList;
-
-	begin_resource_tracking();
+	int gamenum;
+	const struct IODevice *devices;
 
 	hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
-	SetupImageTypes(Picker_GetSelectedItem(hwndList), imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, dev->type);
+	gamenum = Picker_GetSelectedItem(hwndList);
+	devices = devices_allocate(drivers[gamenum]);
+	SetupImageTypes(devices, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, dev->type);
 	bResult = CommonFileImageDialog(last_directory, GetSaveFileName, pszFilename, imagetypes);
 
-	end_resource_tracking();
+	if (devices != NULL)
+		devices_free(devices);
 	return bResult;
 }
 
@@ -1270,7 +1275,7 @@ void MessCopyDeviceOption(core_options *opts, const game_driver *gamedrv, const 
 
 	dev_name = device_instancename(devclass, device_index);
 	opt_value = options_get_string(opts, dev_name);
-	options_set_string(mame_options(), dev_name, opt_value);
+	options_set_string(mame_options(), dev_name, opt_value, OPTION_PRIORITY_CMDLINE);
 }
 
 
@@ -1324,7 +1329,7 @@ static void CALLBACK MessTestsTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, 
 
 	nNewGame = GetSelectedPick() + 1;
 
-	if (nNewGame >= driver_get_count())
+	if (nNewGame >= driver_list_get_count(drivers))
 	{
 		/* We are done */
 		Picker_SetSelectedPick(hwndList, s_nOriginalPick);

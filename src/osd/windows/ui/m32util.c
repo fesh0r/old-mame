@@ -195,13 +195,13 @@ void DisplayTextFile(HWND hWnd, const char *cName)
 		return;
 
 	hErr = ShellExecute(hWnd, NULL, tName, NULL, NULL, SW_SHOWNORMAL);
-	if ((int)hErr > 32) 
+	if ((FPTR)hErr > 32) 
 	{
 		free(tName);
 		return;
 	}
 
-	switch((int)hErr)
+	switch((FPTR)hErr)
 	{
 	case 0:
 		msg = TEXT("The operating system is out of memory or resources.");
@@ -308,8 +308,8 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 	if (drivers_info == NULL)
 	{
 		int ndriver, i;
-		drivers_info = malloc(sizeof(struct DriversInfo) * driver_get_count());
-		for (ndriver = 0; ndriver < driver_get_count(); ndriver++)
+		drivers_info = malloc(sizeof(struct DriversInfo) * driver_list_get_count(drivers));
+		for (ndriver = 0; ndriver < driver_list_get_count(drivers); ndriver++)
 		{
 			const game_driver *gamedrv = drivers[ndriver];
 			struct DriversInfo *gameinfo = &drivers_info[ndriver];
@@ -427,7 +427,7 @@ BOOL DriverIsHarddisk(int driver_index)
 BOOL DriverIsBios(int driver_index)
 {
 	BOOL bBios = FALSE;
-	if( !( (drivers[driver_index]->flags & NOT_A_DRIVER ) == 0)   )
+	if( !( (drivers[driver_index]->flags & GAME_IS_BIOS_ROOT ) == 0)   )
 		bBios = TRUE;
 	return bBios;
 }
