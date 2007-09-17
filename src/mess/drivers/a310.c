@@ -33,6 +33,8 @@
 #include "machine/wd17xx.h"
 #include "video/generic.h"
 #include "devices/basicdsk.h"
+#include "cpu/arm/arm.h"
+#include "sound/dac.h"
 #include "image.h"
 
 #ifndef VERBOSE
@@ -45,13 +47,43 @@
 #define LOG(x)	/* x */
 #endif
 
+// interrupt register stuff
+#define A310_IRQA_PRINTER_BUSY (0x01)
+#define A310_IRQA_SERIAL_RING  (0x02)
+#define A310_IRQA_PRINTER_ACK  (0x04)
+#define A310_IRQA_VBL	       (0x08)
+#define A310_IRQA_RESET        (0x10)
+#define A310_IRQA_TIMER0       (0x20)
+#define A310_IRQA_TIMER1       (0x40)
+#define A310_IRQA_ALWAYS       (0x80)
+
+#define A310_IRQB_PODULE_FIQ   (0x01)
+#define A310_IRQB_SOUND_EMPTY  (0x02)
+#define A310_IRQB_SERIAL       (0x04)
+#define A310_IRQB_HDD	       (0x08)
+#define A310_IRQB_DISC_CHANGE  (0x10)
+#define A310_IRQB_PODULE_IRQ   (0x20)
+#define A310_IRQB_KBD_XMIT_EMPTY  (0x40)
+#define A310_IRQB_KBD_RECV_FULL   (0x80)
+
+#define A310_FIQ_FLOPPY_DRQ    (0x01)
+#define A310_FIQ_FLOPPY        (0x02)
+#define A310_FIQ_ECONET        (0x04)
+#define A310_FIQ_PODULE        (0x40)
+#define A310_FIQ_FORCE         (0x80)
+
 static int page_sizes[4] = { 4096, 8192, 16384, 32768 };
 
 static UINT32 *a310_physmem;
 static UINT32 a310_pagesize;
 static int a310_latchrom;
 static INT16 a310_pages[(32*1024*1024)/(4096)];	// the logical RAM area is 32 megs, and the smallest page size is 4k
-UINT32 a310_vidregs[256];
+static UINT32 a310_vidregs[256];
+static UINT8 a310_iocregs[0x80/4];
+static UINT32 a310_timercnt[4], a310_timerout[4];
+static UINT32 a310_sndstart, a310_sndend, a310_sndcur;
+
+static mame_timer *vbl_timer, *timer[4], *snd_timer;
 
 VIDEO_START( a310 )
 {
@@ -60,6 +92,82 @@ VIDEO_START( a310 )
 VIDEO_UPDATE( a310 )
 {
 	return 0;
+}
+
+static void a310_request_irq_a(int mask)
+{
+	a310_iocregs[4] |= mask;
+
+	if (a310_iocregs[6] & mask)
+	{
+		cpunum_set_input_line(0, ARM_IRQ_LINE, ASSERT_LINE);
+	}
+}
+
+static void a310_request_irq_b(int mask)
+{
+	a310_iocregs[8] |= mask;
+
+	if (a310_iocregs[10] & mask)
+	{
+		cpunum_set_input_line(0, ARM_IRQ_LINE, PULSE_LINE);
+	}
+}
+
+static void a310_request_fiq(int mask)
+{
+	a310_iocregs[12] |= mask;
+
+	if (a310_iocregs[14] & mask)
+	{
+		cpunum_set_input_line(0, ARM_FIRQ_LINE, PULSE_LINE);
+	}
+}
+
+static TIMER_CALLBACK( a310_audio_tick )
+{
+	a310_sndcur++;
+
+	if (a310_sndcur >= a310_sndend)
+	{
+		a310_request_irq_b(A310_IRQB_SOUND_EMPTY);
+	}	
+}
+
+static TIMER_CALLBACK( a310_vblank )
+{
+	a310_request_irq_a(A310_IRQA_VBL);
+
+	// set up for next vbl
+	mame_timer_adjust(vbl_timer, video_screen_get_time_until_pos(0, a310_vidregs[0xb4], 0), 0, time_never);
+}
+
+static void a310_set_timer(int tmr)
+{
+	double freq = 2000000.0 / (double)a310_timercnt[tmr];
+
+//	logerror("IOC: starting timer %d, %d ticks, freq %f Hz\n", tmr, a310_timercnt[tmr], freq);
+
+	mame_timer_adjust(timer[tmr], MAME_TIME_IN_HZ(freq), tmr, time_never);
+}
+
+// param
+static TIMER_CALLBACK( a310_timer )
+{
+	// all timers always run
+	a310_set_timer(param);
+
+	// but only timers 0 and 1 generate IRQs	
+	switch (param)
+	{
+		case 0:
+			a310_request_irq_a(A310_IRQA_TIMER0);
+			break;
+
+		case 1:
+			a310_request_irq_a(A310_IRQA_TIMER1);
+			break;
+	}	
 }
 
 static void a310_memc_reset(void)
@@ -82,12 +190,49 @@ static MACHINE_RESET( a310 )
 
 static void a310_wd177x_callback(wd17xx_state_t event, void *param)
 {
+	switch (event)
+	{
+		case WD17XX_IRQ_CLR:
+			a310_iocregs[12] &= ~A310_FIQ_FLOPPY;
+			break;
+
+		case WD17XX_IRQ_SET:
+			a310_request_fiq(A310_FIQ_FLOPPY);
+			break;
+			 
+		case WD17XX_DRQ_CLR:
+			a310_iocregs[12] &= ~A310_FIQ_FLOPPY_DRQ;
+			break;
+
+		case WD17XX_DRQ_SET:
+			a310_request_fiq(A310_FIQ_FLOPPY_DRQ);
+			break;
+	}
 }
+
 
 static MACHINE_START( a310 )
 {
 	a310_pagesize = 0;
-	wd17xx_init(WD_TYPE_177X, a310_wd177x_callback, NULL);
+	wd17xx_init(WD_TYPE_1772, a310_wd177x_callback, NULL);
+
+	vbl_timer = mame_timer_alloc(a310_vblank);
+	mame_timer_adjust(vbl_timer, time_never, 0, time_never);
+
+	timer[0] = mame_timer_alloc(a310_timer);
+	timer[1] = mame_timer_alloc(a310_timer);
+	timer[2] = mame_timer_alloc(a310_timer);
+	timer[3] = mame_timer_alloc(a310_timer);
+	mame_timer_adjust(timer[0], time_never, 0, time_never);
+	mame_timer_adjust(timer[1], time_never, 0, time_never);
+	mame_timer_adjust(timer[2], time_never, 0, time_never);
+	mame_timer_adjust(timer[3], time_never, 0, time_never);
+
+	snd_timer = mame_timer_alloc(a310_audio_tick);
+	mame_timer_adjust(snd_timer, time_never, 0, time_never);
+
+	// reset the DAC to centerline
+	DAC_signed_data_w(0, 0x80);
 }
 
 static READ32_HANDLER(logical_r)
@@ -109,7 +254,7 @@ static READ32_HANDLER(logical_r)
 		page = (offset<<2) / page_sizes[a310_pagesize]; 
 		poffs = (offset<<2) % page_sizes[a310_pagesize];
 
-		printf("Reading offset %x (addr %x): page %x (size %d %d) offset %x ==> %x %x\n", offset, offset<<2, page, a310_pagesize, page_sizes[a310_pagesize], poffs, a310_pages[page], a310_pages[page]*page_sizes[a310_pagesize]);
+//		printf("Reading offset %x (addr %x): page %x (size %d %d) offset %x ==> %x %x\n", offset, offset<<2, page, a310_pagesize, page_sizes[a310_pagesize], poffs, a310_pages[page], a310_pages[page]*page_sizes[a310_pagesize]);
 
 		if (a310_pages[page] != -1)
 		{
@@ -139,7 +284,7 @@ static WRITE32_HANDLER(logical_w)
 		page = (offset<<2) / page_sizes[a310_pagesize]; 
 		poffs = (offset<<2) % page_sizes[a310_pagesize];
 
-		printf("Writing offset %x (addr %x): page %x (size %d %d) offset %x ==> %x %x\n", offset, offset<<2, page, a310_pagesize, page_sizes[a310_pagesize], poffs, a310_pages[page], a310_pages[page]*page_sizes[a310_pagesize]);
+//		printf("Writing offset %x (addr %x): page %x (size %d %d) offset %x ==> %x %x\n", offset, offset<<2, page, a310_pagesize, page_sizes[a310_pagesize], poffs, a310_pages[page], a310_pages[page]*page_sizes[a310_pagesize]);
 
 		if (a310_pages[page] != -1)
 		{
@@ -186,14 +331,224 @@ static DRIVER_INIT(a310)
 	memory_set_opbase_handler(0, a310_setopbase);
 }
 
+static const char *ioc_regnames[] = 
+{
+	"(rw) Control",					// 0
+	"(read) Keyboard receive (write) keyboard send",	// 1
+	"?",
+	"?",
+	"(read) IRQ status A",			   	// 4
+	"(read) IRQ request A (write) IRQ clear",	// 5
+	"(rw) IRQ mask A",				// 6
+	"?",
+	"(read) IRQ status B",		// 8
+	"(read) IRQ request B",		// 9
+	"(rw) IRQ mask B",		// 10
+	"?",
+	"(read) FIQ status",		// 12
+	"(read) FIQ request",		// 13
+	"(rw) FIQ mask",		// 14
+	"?",
+	"(read) Timer 0 count low (write) Timer 0 latch low",		// 16
+	"(read) Timer 0 count high (write) Timer 0 latch high",		// 17
+	"(write) Timer 0 go command",					// 18
+	"(write) Timer 0 latch command",				// 19
+	"(read) Timer 1 count low (write) Timer 1 latch low",		// 20
+	"(read) Timer 1 count high (write) Timer 1 latch high",		// 21
+	"(write) Timer 1 go command",					// 22
+	"(write) Timer 1 latch command",				// 23
+	"(read) Timer 2 count low (write) Timer 2 latch low",		// 24
+	"(read) Timer 2 count high (write) Timer 2 latch high",		// 25
+	"(write) Timer 2 go command",					// 26
+	"(write) Timer 2 latch command",				// 27
+	"(read) Timer 3 count low (write) Timer 3 latch low",		// 28
+	"(read) Timer 3 count high (write) Timer 3 latch high",		// 29
+	"(write) Timer 3 go command",					// 30
+	"(write) Timer 3 latch command"					// 31
+};
+
+static void latch_timer_cnt(int tmr)
+{
+	double time;
+
+	time = mame_time_to_double(mame_timer_timeelapsed(timer[tmr]));
+	time *= 2000000.0;	// find out how many 2 MHz ticks have gone by
+	a310_timerout[tmr] = a310_timercnt[tmr] - (UINT32)time; 
+}
+
 static READ32_HANDLER(ioc_r)
 {
+	if (offset >= 0x80000 && offset < 0xc0000)
+	{
+		switch (offset & 0x1f)
+		{
+			case 1:	// keyboard read
+				a310_request_irq_b(A310_IRQB_KBD_XMIT_EMPTY);
+				break;
+
+			case 16:	// timer 0 read
+				return a310_timerout[0]&0xff;
+				break;
+			case 17:
+				return (a310_timerout[0]>>8)&0xff;
+				break;
+			case 20:	// timer 1 read
+				return a310_timerout[1]&0xff;
+				break;
+			case 21:
+				return (a310_timerout[1]>>8)&0xff;
+				break;
+			case 24:	// timer 2 read
+				return a310_timerout[2]&0xff;
+				break;
+			case 25:
+				return (a310_timerout[2]>>8)&0xff;
+				break;
+			case 28:	// timer 3 read
+				return a310_timerout[3]&0xff;
+				break;
+			case 29:
+				return (a310_timerout[3]>>8)&0xff;
+				break;
+		}
+
+		logerror("IOC: R %s = %02x (PC=%x)\n", ioc_regnames[offset&0x1f], a310_iocregs[offset&0x1f], activecpu_get_pc());
+		return a310_iocregs[offset&0x1f];
+	}
+	else if (offset >= 0xc4000 && offset <= 0xc4010)
+	{
+		logerror("17XX: R @ addr %x mask %08x\n", offset*4, mem_mask);
+		return wd17xx_data_r(offset&0xf);
+	}
+	else
+	{
+		logerror("I/O: R @ %x (mask %08x)\n", (offset*4)+0x3000000, mem_mask);
+	}
+
+
 	return 0;
 }
 
 static WRITE32_HANDLER(ioc_w)
 {
-	logerror("IOC: W %x @ %x (mask %08x)\n", data, offset, mem_mask);
+	if (offset >= 0x80000 && offset < 0xc0000)
+	{
+//		logerror("IOC: W %02x @ reg %s (PC=%x)\n", data&0xff, ioc_regnames[offset&0x1f], activecpu_get_pc());
+
+		switch (offset&0x1f)
+		{
+			case 0:	// control
+				logerror("IOC I2C: CLK %d DAT %d\n", (data>>1)&1, data&1);
+				break;
+
+			case 5: 	// IRQ clear A
+				a310_iocregs[4] &= ~(data&0xff);
+
+				// if that did it, clear the IRQ
+				if (a310_iocregs[4] == 0)
+				{
+					cpunum_set_input_line(0, ARM_IRQ_LINE, CLEAR_LINE);
+				}
+				break;
+
+			case 16:
+			case 17:
+				a310_iocregs[offset&0x1f] = data & 0xff;
+				break;
+
+			case 20:
+			case 21:
+				a310_iocregs[offset&0x1f] = data & 0xff;
+				break;
+
+			case 24:
+			case 25:
+				a310_iocregs[offset&0x1f] = data & 0xff;
+				break;
+
+			case 28:
+			case 29:
+				a310_iocregs[offset&0x1f] = data & 0xff;
+				break;
+
+			case 19:	// Timer 0 latch
+				latch_timer_cnt(0);
+				break;
+
+			case 23:	// Timer 1 latch
+				latch_timer_cnt(1);
+				break;
+
+			case 27:	// Timer 2 latch
+				latch_timer_cnt(2);
+				break;
+
+			case 31:	// Timer 3 latch
+				latch_timer_cnt(3);
+				break;
+
+			case 18:	// Timer 0 start
+				a310_timercnt[0] = a310_iocregs[17]<<8 | a310_iocregs[16];
+				a310_set_timer(0);
+				break;
+
+			case 22:	// Timer 1 start
+				a310_timercnt[1] = a310_iocregs[21]<<8 | a310_iocregs[20];
+				a310_set_timer(1);
+				break;
+
+			case 26:	// Timer 2 start
+				a310_timercnt[2] = a310_iocregs[25]<<8 | a310_iocregs[24];
+				a310_set_timer(2);
+				break;
+
+			case 30:	// Timer 3 start
+				a310_timercnt[3] = a310_iocregs[29]<<8 | a310_iocregs[28];
+				a310_set_timer(3);
+				break;
+
+			default:
+				a310_iocregs[offset&0x1f] = data & 0xff;
+				break;
+		}
+	}
+	else if (offset >= 0xc4000 && offset <= 0xc4010)
+	{
+		logerror("17XX: %x to addr %x mask %08x\n", data, offset*4, mem_mask);
+		wd17xx_data_w(offset&0xf, data&0xff);
+	}
+	else if (offset == 0xd40006)
+	{
+		// latch A
+		if (data & 1)
+		{
+			wd17xx_set_drive(0);
+		}
+		if (data & 2)
+		{
+			wd17xx_set_drive(1);
+		}
+		if (data & 4)
+		{
+			wd17xx_set_drive(2);
+		}
+		if (data & 8)
+		{
+			wd17xx_set_drive(3);
+		}
+
+		wd17xx_set_side((data & 0x10)>>4);
+
+	}
+	else if (offset == 0xd40010)
+	{
+		// latch B
+		wd17xx_set_density((data & 2) ? DEN_MFM_LO : DEN_MFM_HI);
+	}
+	else
+	{
+		logerror("I/O: W %x @ %x (mask %08x)\n", data, (offset*4)+0x3000000, mem_mask);
+	}
 }
 
 static READ32_HANDLER(vidc_r)
@@ -203,9 +558,58 @@ static READ32_HANDLER(vidc_r)
 
 static WRITE32_HANDLER(vidc_w)
 {
-	logerror("VIDC: %x to register %x\n", data & 0xffffff, data>>24);
+	UINT32 reg = data>>24;
+	UINT32 val = data & 0xffffff;
+	static const char *vrnames[] = 
+	{
+		"horizontal total",
+		"horizontal sync width",
+		"horizontal border start",
+		"horizontal display start",
+		"horizontal display end",
+		"horizontal border end",
+		"horizontal cursor start",
+		"horizontal interlace",
+		"vertical total",
+		"vertical sync width",
+		"vertical border start",
+		"vertical display start",
+		"vertical display end",
+		"vertical border end",
+		"vertical cursor start",
+		"vertical cursor end",
+	};
 
-	a310_vidregs[data>>24] = data & 0xffffff;
+	if (reg >= 0x80 && reg <= 0xbc)
+	{
+		logerror("VIDC: %s = %d\n", vrnames[(reg-0x80)/4], val>>12);
+
+		if ((reg == 0xb0) & ((val>>12) != 0))
+		{
+			rectangle visarea;
+
+			visarea.min_x = 0;
+			visarea.min_y = 0;
+			visarea.max_x = a310_vidregs[0x94] - a310_vidregs[0x88];
+			visarea.max_y = a310_vidregs[0xb4] - a310_vidregs[0xa8];
+
+			logerror("Configuring: htotal %d vtotal %d vis %d,%d\n",
+				a310_vidregs[0x80], a310_vidregs[0xa0],
+				visarea.max_x, visarea.max_y);
+
+			video_screen_configure(0, a310_vidregs[0x80], a310_vidregs[0xa0], &visarea, Machine->screen[0].refresh);
+
+			// slightly hacky: fire off a VBL right now.  the BIOS doesn't wait long enough otherwise.
+			mame_timer_adjust(vbl_timer, time_zero, 0, time_never);
+		}
+	
+		a310_vidregs[reg] = val>>12;
+	}
+	else
+	{
+		logerror("VIDC: %x to register %x\n", val, reg);
+		a310_vidregs[reg] = val&0xffff;
+	}
 }
 
 static READ32_HANDLER(memc_r)
@@ -220,10 +624,36 @@ static WRITE32_HANDLER(memc_w)
 	{
 		switch ((data >> 17) & 7)
 		{
+			case 4:	/* sound start */
+				a310_sndstart = ((data>>2)&0x7fff)*16;
+				break;
+
+			case 5: /* sound end */
+				a310_sndend = ((data>>2)&0x7fff)*16;
+				break;
+
 			case 7:	/* Control */
 				a310_pagesize = ((data>>2) & 3);
 
-				logerror("MEMC: %x to Control (page size %d)\n", data & 0x1ffc, page_sizes[a310_pagesize]);
+				logerror("MEMC: %x to Control (page size %d, %s, %s)\n", data & 0x1ffc, page_sizes[a310_pagesize], ((data>>10)&1) ? "Video DMA on" : "Video DMA off", ((data>>11)&1) ? "Sound DMA on" : "Sound DMA off");
+
+				if ((data>>11)&1)
+				{
+					double sndhz;
+
+					sndhz = 250000.0 / (double)((a310_vidregs[0xc0]&0xff)+2);
+
+					logerror("MEMC: Starting audio DMA at %f Hz, buffer from %x to %x\n", sndhz, a310_sndstart, a310_sndend);
+
+					a310_sndcur = a310_sndstart;
+
+					mame_timer_adjust(snd_timer, MAME_TIME_IN_HZ(sndhz), 0, MAME_TIME_IN_HZ(sndhz));
+				}
+				else
+				{
+					mame_timer_adjust(snd_timer, time_never, 0, time_never);
+					DAC_signed_data_w(0, 0x80);
+				}
 				break;
 
 			default:
@@ -261,16 +691,11 @@ The physical page is encoded differently depending on the page size :
 16k page:   bits 6-2 being bits 4-0, bits 1-0 being bits 6-5
 32k page:   bits 6-3 being bits 4-0, bit 0 being bit 4, bit 2 being bit 5, bit
             1 being bit 6
-
-
-
-
 */
+
 static WRITE32_HANDLER(memc_page_w)
 {
 	UINT32 log, phys, memc, perms;
-
-//	logerror("MEMC_PAGE: W %x @ %x (mask %08x)\n", data, offset, mem_mask);
 
 	perms = (data & 0x300)>>8;
 	log = phys = memc = 0;
@@ -318,7 +743,7 @@ static WRITE32_HANDLER(memc_page_w)
 	// now go ahead and set the mapping in the page table
 	a310_pages[log] = phys * memc;
 
-	printf("MEMC_PAGE(%d): W %08x: log %x to phys %x, MEMC %d, perms %d\n", a310_pagesize, data, log, phys, memc, perms);
+//	printf("MEMC_PAGE(%d): W %08x: log %x to phys %x, MEMC %d, perms %d\n", a310_pagesize, data, log, phys, memc, perms);
 }
 
 static ADDRESS_MAP_START( a310_mem, ADDRESS_SPACE_PROGRAM, 32 )
@@ -462,6 +887,10 @@ static MACHINE_DRIVER_START( a310 )
 
 	MDRV_VIDEO_START(a310)
 	MDRV_VIDEO_UPDATE(a310)
+
+	MDRV_SPEAKER_STANDARD_MONO("a310")
+	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ROUTE(0, "a310", 1.00)
 MACHINE_DRIVER_END
 
 
@@ -471,12 +900,9 @@ ROM_START(a310)
 	ROM_LOAD("ic25.rom", 0x080000, 0x80000, CRC(15d89664) SHA1(78f5d0e6f1e8ee603317807f53ff8fe65a3b3518))
 	ROM_LOAD("ic26.rom", 0x100000, 0x80000, CRC(a81ceb7c) SHA1(46b870876bc1f68f242726415f0c49fef7be0c72))
 	ROM_LOAD("ic27.rom", 0x180000, 0x80000, CRC(707b0c6c) SHA1(345199a33fed23996374b9db8170a52ab63f0380))
-
 	ROM_REGION(0x00800, REGION_GFX1, 0)
 ROM_END
 
-/*    YEAR  NAME  PARENT COMPAT	 MACHINE  INPUT	 INIT  CONFIG  COMPANY	FULLNAME */
-COMP( 1988, a310, 0,     0,      a310,    a310,  a310, NULL,   "Acorn", "Archimedes 310", GAME_NOT_WORKING)
-
-
+/*    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT	 INIT  CONFIG  COMPANY	FULLNAME */
+COMP( 1988, a310, 0,      0,      a310,    a310,  a310, NULL,   "Acorn", "Archimedes 310 (Risc OS 3.11)", GAME_NOT_WORKING)
 

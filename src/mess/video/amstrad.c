@@ -105,38 +105,38 @@ The hardware allows selection of 32 colours, but these extra colours are copies 
 
 static const rgb_t amstrad_palette[32] =
 {
-	MAKE_RGB(0x080, 0x080, 0x080),			   /* white */
-	MAKE_RGB(0x080, 0x080, 0x080),			   /* white */
-	MAKE_RGB(0x000, 0x0ff, 0x080),			   /* sea green */
-	MAKE_RGB(0x0ff, 0x0ff, 0x080),			   /* pastel yellow */
-	MAKE_RGB(0x000, 0x000, 0x080),			   /* blue */
-	MAKE_RGB(0x0ff, 0x000, 0x080),			   /* purple */
-	MAKE_RGB(0x000, 0x080, 0x080),			   /* cyan */
-	MAKE_RGB(0x0ff, 0x080, 0x080),			   /* pink */
-	MAKE_RGB(0x0ff, 0x000, 0x080),			   /* purple */
-	MAKE_RGB(0x0ff, 0x0ff, 0x080),			   /* pastel yellow */
+	MAKE_RGB(0x060, 0x060, 0x060),			   /* white */
+	MAKE_RGB(0x060, 0x060, 0x060),			   /* white */
+	MAKE_RGB(0x000, 0x0ff, 0x060),			   /* sea green */
+	MAKE_RGB(0x0ff, 0x0ff, 0x060),			   /* pastel yellow */
+	MAKE_RGB(0x000, 0x000, 0x060),			   /* blue */
+	MAKE_RGB(0x0ff, 0x000, 0x060),			   /* purple */
+	MAKE_RGB(0x000, 0x060, 0x060),			   /* cyan */
+	MAKE_RGB(0x0ff, 0x060, 0x060),			   /* pink */
+	MAKE_RGB(0x0ff, 0x000, 0x060),			   /* purple */
+	MAKE_RGB(0x0ff, 0x0ff, 0x060),			   /* pastel yellow */
 	MAKE_RGB(0x0ff, 0x0ff, 0x000),			   /* bright yellow */
 	MAKE_RGB(0x0ff, 0x0ff, 0x0ff),			   /* bright white */
 	MAKE_RGB(0x0ff, 0x000, 0x000),			   /* bright red */
 	MAKE_RGB(0x0ff, 0x000, 0x0ff),			   /* bright magenta */
-	MAKE_RGB(0x0ff, 0x080, 0x000),			   /* orange */
-	MAKE_RGB(0x0ff, 0x080, 0x0ff),			   /* pastel magenta */
-	MAKE_RGB(0x000, 0x000, 0x080),			   /* blue */
-	MAKE_RGB(0x000, 0x0ff, 0x080),			   /* sea green */
+	MAKE_RGB(0x0ff, 0x060, 0x000),			   /* orange */
+	MAKE_RGB(0x0ff, 0x060, 0x0ff),			   /* pastel magenta */
+	MAKE_RGB(0x000, 0x000, 0x060),			   /* blue */
+	MAKE_RGB(0x000, 0x0ff, 0x060),			   /* sea green */
 	MAKE_RGB(0x000, 0x0ff, 0x000),			   /* bright green */
 	MAKE_RGB(0x000, 0x0ff, 0x0ff),			   /* bright cyan */
 	MAKE_RGB(0x000, 0x000, 0x000),			   /* black */
 	MAKE_RGB(0x000, 0x000, 0x0ff),			   /* bright blue */
-	MAKE_RGB(0x000, 0x080, 0x000),			   /* green */
-	MAKE_RGB(0x000, 0x080, 0x0ff),			   /* sky blue */
-	MAKE_RGB(0x080, 0x000, 0x080),			   /* magenta */
-	MAKE_RGB(0x080, 0x0ff, 0x080),			   /* pastel green */
-	MAKE_RGB(0x080, 0x0ff, 0x080),			   /* lime */
-	MAKE_RGB(0x080, 0x0ff, 0x0ff),			   /* pastel cyan */
-	MAKE_RGB(0x080, 0x000, 0x000),			   /* Red */
-	MAKE_RGB(0x080, 0x000, 0x0ff),			   /* mauve */
-	MAKE_RGB(0x080, 0x080, 0x000),			   /* yellow */
-	MAKE_RGB(0x080, 0x080, 0x0ff)	  		   /* pastel blue */
+	MAKE_RGB(0x000, 0x060, 0x000),			   /* green */
+	MAKE_RGB(0x000, 0x060, 0x0ff),			   /* sky blue */
+	MAKE_RGB(0x060, 0x000, 0x060),			   /* magenta */
+	MAKE_RGB(0x060, 0x0ff, 0x060),			   /* pastel green */
+	MAKE_RGB(0x060, 0x0ff, 0x060),			   /* lime */
+	MAKE_RGB(0x060, 0x0ff, 0x0ff),			   /* pastel cyan */
+	MAKE_RGB(0x060, 0x000, 0x000),			   /* Red */
+	MAKE_RGB(0x060, 0x000, 0x0ff),			   /* mauve */
+	MAKE_RGB(0x060, 0x060, 0x000),			   /* yellow */
+	MAKE_RGB(0x060, 0x060, 0x0ff)	  		   /* pastel blue */
 };
 
 /* the green brightness is equal to the firmware colour index */
@@ -324,10 +324,10 @@ void amstrad_vh_update_colour(int PenIndex, int hw_colour_index)
 	amstrad_GateArray_render_colours[PenIndex] = Machine->pens[hw_colour_index];
 	if(amstrad_system_type != 0)
 	{  // CPC+/GX4000 - normal palette changes through the Gate Array also makes the corresponding change in the ASIC palette
-		val = amstrad_palette[hw_colour_index*3+2] >> 4;
-		val += amstrad_palette[hw_colour_index*3] & 0xf0;
+		val = (amstrad_palette[hw_colour_index] & 0xf00000) >> 16; // red
+		val |= (amstrad_palette[hw_colour_index] & 0x0000f0) >> 4; // blue
 		amstrad_plus_asic_ram[0x2400+PenIndex*2] = val;
-		val = amstrad_palette[hw_colour_index*3+1] >> 4;
+		val = (amstrad_palette[hw_colour_index] & 0x00f000) >> 12; // green
 		amstrad_plus_asic_ram[0x2401+PenIndex*2] = val;
 	}
 }
@@ -674,7 +674,8 @@ static void amstrad_draw_screen_enabled_mode_2(void)
 	{
 		cpcpen = (data>>15) & 0x01;
 		messpen = amstrad_GateArray_render_colours[cpcpen];
-		*BITMAP_ADDR16(bitmap, y, x) = messpen;
+		if ((x >= 0) && (x < bitmap->width) && (y >= 0) && (y < bitmap->height))
+			*BITMAP_ADDR16(bitmap, y, x) = messpen;
 		x++;        
 		data = data<<1;
 	}

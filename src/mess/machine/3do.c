@@ -11,7 +11,7 @@ typedef struct {
 	UINT32	dummy;
 } CLIO;
 
-static UINT32	unk_318_data_0 = 0;
+//static UINT32	unk_318_data_0 = 0;
 static MADAM	madam;
 static CLIO		clio;
 
@@ -70,18 +70,27 @@ WRITE32_HANDLER( nvarea_w ) {
 */
 READ32_HANDLER( unk_318_r ) {
 	logerror( "%08X: UNK_318 read offset = %08X\n", activecpu_get_pc(), offset );
+#if 0
 	switch( offset ) {
 	case 0:		/* Boot ROM checks here and expects to read 1, 0, 1, 0 in the lowest bit */
 		unk_318_data_0 ^= 1;
 		return unk_318_data_0;
 	}
+#endif
 	return 0;
 }
 
-WRITE32_HANDLER( unk_318_w ) {
+WRITE32_HANDLER( unk_318_w )
+{
 	logerror( "%08X: UNK_318 write offset = %08X, data = %08X, mask = %08X\n", activecpu_get_pc(), offset, data, mem_mask );
-	switch( offset ) {
-	case 0:		/* Boot ROM writes 03180000 here and then starts reading some things */
+
+	switch( offset )
+	{
+		case 0:		/* Boot ROM writes 03180000 here and then starts reading some things */
+		{
+			/* disable ROM overlay */
+			memory_set_bank(1, 0);
+		}
 		break;
 	}
 }
@@ -135,28 +144,52 @@ WRITE32_HANDLER( madam_w ) {
 	}
 }
 
-void madam_init( void ) {
+void madam_init( void )
+{
 	memset( &madam, 0, sizeof(MADAM) );
 	madam.revision = 0x00000001;
 }
 
 
-READ32_HANDLER( clio_r ) {
+READ32_HANDLER( clio_r )
+{
 	logerror( "%08X: CLIO read offset = %08X\n", activecpu_get_pc(), offset );
+	
+	switch( offset )
+	{
+		case 0x0a: return 0x40; break;
+		case 0x0d:
+		{
+			static UINT32 irq_sequence[3] = { 0, 4, 12 };
+			static int counter = 0;
+			
+			return irq_sequence[(counter++)%3];
+		}
+		break;
+	}
 	return 0;
 }
 
-WRITE32_HANDLER( clio_w ) {
+WRITE32_HANDLER( clio_w )
+{
 	logerror( "%08X: CLIO write offset = %08X, data = %08X, mask = %08X\n", activecpu_get_pc(), offset, data, mem_mask );
-	switch( offset ) {
-	case 0x0A:	/* 03400028 - bits 0,1, and 6 are tested (irq sources?) */
+	
+	switch( offset )
+	{
+		case 0x0A:	/* 03400028 - bits 0,1, and 6 are tested (irq sources?) */
 		break;
-	case 0x0B:	/* 0340002C - ?? during boot 0000000B is written here counter reload related?? */
+		
+		case 0x0B:	/* 0340002C - ?? during boot 0000000B is written here counter reload related?? */
+		break;
+		
+		case 0x88:	/* set timer frequency */
+			
 		break;
 	}
 }
 
-void clio_init( void ) {
+void clio_init( void )
+{
 	memset( &clio, 0, sizeof(CLIO) );
 }
 

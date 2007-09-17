@@ -70,8 +70,8 @@ TESTDRIVER( 3do_pal )
 	DRIVER( jaguar )	/* Atari Jaguar										*/
 	DRIVER( atarist )	/* Atari ST											*/
 	DRIVER( megast )	/* Atari Mega ST									*/
-//	DRIVER( atariste )	/* Atari STe										*/
-//	DRIVER( megaste )	/* Atari Mega STe									*/
+	DRIVER( atariste )	/* Atari STe										*/
+	DRIVER( megaste )	/* Atari Mega STe									*/
 //	DRIVER( stacy )		/* Atari STacy										*/
 //	DRIVER( stbook )	/* Atari ST Book									*/
 //	DRIVER( tt030 )		/* Atari TT030										*/
@@ -555,7 +555,8 @@ TESTDRIVER( trs80m4 )
 	DRIVER( tanodr64 )	/* Tano Dragon 64 (NTSC)							*/
 	DRIVER( cp400 )		/* Prologica CP400									*/
 	DRIVER( mc10 )		/* MC-10											*/
-
+	DRIVER( alice )		/* Matra & Hachette Ordinateur Alice				*/
+	
 	/* EACA */
 	DRIVER( cgenie )	/* Colour Genie EG2000								*/
 	/* system 80 trs80 compatible */
@@ -741,10 +742,10 @@ TESTDRIVER( svi328b )	/* SVI-328 + 80 column card							*/
 	DRIVER( apexc )		/* 1951(?) APEXC: All-Purpose Electronic X-ray Computer */
 
 	/* Sony */
-	DRIVER( psxj )		/* 1994 Sony PlayStation (Japan)					*/
-	DRIVER( psxu )		/* 1995 Sony PlayStation (USA)						*/
-	DRIVER( psxe )		/* 1995 Sony PlayStation (Europe)					*/
-	DRIVER( psxa )		/* 1995 Sony PlayStation (Asia-Pacific)				*/
+	DRIVER( psj )		/* 1994 Sony PlayStation (Japan)					*/
+	DRIVER( psu )		/* 1995 Sony PlayStation (USA)						*/
+	DRIVER( pse )		/* 1995 Sony PlayStation (Europe)					*/
+	DRIVER( psa )		/* 1995 Sony PlayStation (Asia-Pacific)				*/
 
 	/* Corvus */
 	DRIVER(concept)		/* 1982 Corvus Concept								*/
@@ -801,10 +802,16 @@ TESTDRIVER(tmc600s1)	/* 1982 Telmac TMC-600 (Series I)					*/
 
 /****************Games*******************************************************/
 	/* Computer Electronic */
-TESTDRIVER( mk1 )		/* Chess Champion MK I								*/
+	DRIVER( mk1 )		/* Chess Champion MK I								*/
 	/* Quelle International */
 	DRIVER( mk2 )		/* Chess Champion MK II								*/
-	/* NOVAG Industries Ltd. */
-TESTDRIVER( ssystem3 )	/* Chess Champion Super System III / MK III			*/
+	/* Hegener & Glaser Munich */
+        DRIVER( mm4 )		/* Mephisto 4								*/
+ 	/* NOVAG Industries Ltd. */
+        DRIVER( mm5 )		/* Mephisto 5								*/
+ 	/* NOVAG Industries Ltd. */
+	 DRIVER( rebel5 )		/* Mephisto 5								*/
+ 	/* H&G München */
+        TESTDRIVER( ssystem3 )	/* Chess Champion Super System III / MK III			*/
 
 #endif /* DRIVER_RECURSIVE */

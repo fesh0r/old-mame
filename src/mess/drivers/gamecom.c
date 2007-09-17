@@ -99,7 +99,7 @@ static MACHINE_DRIVER_START( gamecom )
 	MDRV_CPU_VBLANK_INT( gamecom_scanline, 200 )
 
 	MDRV_SCREEN_REFRESH_RATE( 59.732155 )
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(0))
+	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( gamecom )
@@ -137,7 +137,7 @@ static void gamecom_cartslot_getinfo( const device_class *devclass, UINT32 state
 		info->load = device_load_gamecom_cart;
 		break;
 	case DEVINFO_STR_FILE_EXTENSIONS:
-		strcpy(info->s = device_temp_str(), "bin");
+		strcpy(info->s = device_temp_str(), "bin,tgc");
 		break;
 	default:
 		cartslot_device_getinfo( devclass, state, info );

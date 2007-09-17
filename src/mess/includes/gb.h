@@ -57,6 +57,12 @@ WRITE8_HANDLER( gbc_vram_w );
 extern UINT8 *gb_oam;
 extern UINT8 *gb_vram;
 
+PALETTE_INIT( gb );
+PALETTE_INIT( gbp );
+PALETTE_INIT( sgb );
+PALETTE_INIT( gbc );
+PALETTE_INIT( megaduck );
+
 READ8_HANDLER( gb_video_r );
 WRITE8_HANDLER( gb_video_w );
 int gb_video_oam_locked( void );
@@ -82,6 +88,7 @@ void *gameboy_sh_start(int clock, const struct CustomSound_interface *config);
 
 EXTERN UINT16 sgb_pal_data[4096];	/* 512 palettes of 4 colours			*/
 EXTERN UINT8 sgb_pal_map[20][18];	/* Palette tile map						*/
+extern UINT16 sgb_pal[128];			/* SGB palette remapping				*/
 extern UINT8 *sgb_tile_data;		/* 256 tiles of 32 bytes each			*/
 EXTERN UINT8 sgb_tile_map[2048];	/* 32x32 tile map data (0-tile,1-attribute)	*/
 EXTERN UINT8 sgb_window_mask;		/* Current GB screen mask				*/
@@ -93,7 +100,6 @@ extern WRITE8_HANDLER ( sgb_io_w );
 /* -- GameBoy Color specific -- */
 #define GBC_MODE_GBC		1		/* GBC is in colour mode				*/
 #define GBC_MODE_MONO		2		/* GBC is in mono mode					*/
-#define GBC_PAL_OBJ_OFFSET	32		/* Object palette offset				*/
 
 extern UINT8 *GBC_VRAMMap[2];		/* Addressses of GBC video RAM banks	*/
 EXTERN UINT8 gbc_mode;				/* is the GBC in mono/colour mode?		*/

@@ -2077,8 +2077,8 @@ void video_crosshair_toggle(void)
 
 /*-------------------------------------------------
     video_crosshair_set_screenmask_callback -
-	install a callback to determine to which screen
-	crosshairs should be rendered
+    install a callback to determine to which screen
+    crosshairs should be rendered
 -------------------------------------------------*/
 
 void video_crosshair_set_screenmask_callback(running_machine *machine, UINT32 (*get_screen_mask)(int player))

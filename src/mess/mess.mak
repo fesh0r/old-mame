@@ -64,14 +64,16 @@ CPUS += N2A03
 #CPUS += DECO16
 CPUS += M4510
 CPUS += H6280
-CPUS += I86
-CPUS += I88
-CPUS += I186
-#CPUS += I188
-CPUS += I286
+CPUS += I8086
+CPUS += I8088
+CPUS += I80186
+#CPUS += I80188
+CPUS += I80286
 CPUS += V20
+#CPUS += V25
 #CPUS += V30
 #CPUS += V33
+#CPUS += V35
 #CPUS += V60
 #CPUS += V70
 CPUS += I8035
@@ -175,6 +177,7 @@ CPUS += PENTIUM
 #CPUS += M37702
 #CPUS += M37710
 #CPUS += PPC403
+#CPUS += PPC601
 #CPUS += PPC602
 CPUS += PPC603
 #CPUS += MPC8240
@@ -360,6 +363,7 @@ DRVLIBS = \
 	$(MESSOBJ)/mc10.a \
 	$(MESSOBJ)/mk1.a \
 	$(MESSOBJ)/mk2.a \
+	$(MESSOBJ)/mephisto.a \
 	$(MESSOBJ)/luxor.a \
 	$(MESSOBJ)/lviv.a \
 	$(MESSOBJ)/lynx.a \
@@ -530,7 +534,8 @@ $(MESSOBJ)/atari.a:						\
 	$(MESS_FORMATS)/a26_cas.o	\
 	$(MESS_DRIVERS)/atarist.o \
 	$(MESS_VIDEO)/atarist.o \
-	$(MESS_MACHINE)/68901mfp.o
+	$(MESS_MACHINE)/68901mfp.o \
+	$(MESS_AUDIO)/lmc1992.o
 
 $(MESSOBJ)/gce.a:	                     \
 	$(MESS_DRIVERS)/vectrex.o	\
@@ -562,6 +567,9 @@ $(MESSOBJ)/amiga.a: \
 	$(MAME_MACHINE)/amiga.o			\
 	$(MAME_AUDIO)/amiga.o			\
 	$(MESS_MACHINE)/amigafdc.o	\
+	$(MESS_MACHINE)/amigacrt.o	\
+	$(MESS_MACHINE)/amigacd.o	\
+	$(MESS_MACHINE)/matsucd.o	\
 	$(MESS_MACHINE)/amigakbd.o	\
 	$(MAME_MACHINE)/msm6242.o	\
 	$(MESS_DRIVERS)/amiga.o		\
@@ -1000,11 +1008,13 @@ $(MESSOBJ)/lynx.a:     \
 
 $(MESSOBJ)/mk1.a:      \
 	$(OBJ)/emu/cpu/f8/f3853.o	\
-	$(MESS_VIDEO)/mk1.o      \
 	$(MESS_DRIVERS)/mk1.o
 
 $(MESSOBJ)/mk2.a:      \
 	$(MESS_DRIVERS)/mk2.o
+
+$(MESSOBJ)/mephisto.a:      \
+	$(MESS_DRIVERS)/mephisto.o
 
 $(MESSOBJ)/ssystem3.a: \
 	$(MESS_VIDEO)/ssystem3.o \
@@ -1140,6 +1150,14 @@ $(MESSOBJ)/3do.a:			\
 	$(MESS_DRIVERS)/3do.o	\
 	$(MESS_MACHINE)/3do.o
 
+$(MESSOBJ)/cybiko.a:			\
+	$(MESS_DRIVERS)/cybiko.o	\
+	$(MESS_MACHINE)/cybiko.o	\
+	$(MESS_MACHINE)/pcf8593.o	\
+	$(MESS_VIDEO)/hd66421.o		\
+	$(MESS_MACHINE)/at45dbxx.o	\
+	$(MESS_MACHINE)/sst39vfx.o
+
 #-------------------------------------------------
 # layout dependencies
 #-------------------------------------------------
@@ -1154,10 +1172,15 @@ $(MESS_DRIVERS)/svision.o:	$(MESS_LAYOUT)/svision.lh
 
 $(MESS_DRIVERS)/gb.o:	$(MESS_LAYOUT)/gb.lh
 
+$(MESS_DRIVERS)/mk1.o:	$(MESS_LAYOUT)/mk1.lh
+
 $(MESS_DRIVERS)/mk2.o:	$(MESS_LAYOUT)/mk2.lh
+
+$(MESS_DRIVERS)/mephisto.o:	$(MESS_LAYOUT)/mephisto.lh
 
 $(MESS_DRIVERS)/aim65.o:	$(MESS_LAYOUT)/aim65.lh
 
+$(MESS_DRIVERS)/cybiko.o:	$(MESS_LAYOUT)/cybiko.lh
 
 include src/mess/tools/imgtool/imgtool.mak
 include src/mess/tools/messtest/messtest.mak

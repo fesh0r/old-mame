@@ -10,6 +10,7 @@
 
 /* system RAM */
 unsigned char *pce_user_ram;    /* scratch RAM at F8 */
+UINT8	*pce_nvram;
 
 struct pce_struct pce;
 
@@ -21,6 +22,10 @@ struct pce_struct pce;
 static int joystick_port_select;        /* internal index of joystick ports */
 static int joystick_data_select;        /* which nibble of joystick data we want */
 
+static WRITE8_HANDLER( pce_sf2_banking_w ) {
+	memory_set_bankptr( 2, memory_region(REGION_USER1) + ( offset + 1 ) * 0x080000 );
+}
+
 DEVICE_LOAD(pce_cart)
 {
 	int size;
@@ -30,8 +35,8 @@ DEVICE_LOAD(pce_cart)
 	logerror("*** DEVICE_LOAD(pce_cart) : %s\n", image_filename(image));
 
 	/* open file to get size */
-	new_memory_region(Machine, REGION_CPU1,PCE_ROM_MAXSIZE,0);
-	ROM = memory_region(REGION_CPU1);
+	new_memory_region(Machine, REGION_USER1,PCE_ROM_MAXSIZE,0);
+	ROM = memory_region(REGION_USER1);
 
 	size = image_length( image );
 
@@ -103,28 +108,29 @@ DEVICE_LOAD(pce_cart)
 			memcpy( ROM + 0x080000, ROM, 0x080000 );
 	}
 
-	/* install the actual bank handlers */
-	memory_install_read_handler(0, ADDRESS_SPACE_PROGRAM, 0, PCE_ROM_MAXSIZE-1, 0, 0, STATIC_BANK1);
-	memory_install_write_handler(0, ADDRESS_SPACE_PROGRAM, 0, PCE_ROM_MAXSIZE-1, 0, 0, STATIC_BANK1);
-	memory_set_bankptr(1, ROM);
+	memory_set_bankptr( 1, ROM );
+	memory_set_bankptr( 2, ROM + 0x080000 );
+	memory_set_bankptr( 3, ROM + 0x100000 );
 
+	/* Check for Street fighter 2 */
+	if ( size == PCE_ROM_MAXSIZE ) {
+		memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x01ff0, 0x01ff3, 0, 0, pce_sf2_banking_w );
+	}
 	return 0;
 }
 
 NVRAM_HANDLER( pce )
 {
-	void *pce_save_ram = &memory_region(REGION_CPU1)[0x1EE000];
-
 	if (read_or_write)
 	{
-		mame_fwrite(file, pce_save_ram, 0x2000);
+		mame_fwrite(file, pce_nvram, 0x2000);
 	}
 	else
 	{
 	    /* load battery backed memory from disk */
-		memset(pce_save_ram, 0, 0x2000);
+		memset(pce_nvram, 0, 0x2000);
 		if (file)
-			mame_fread(file, pce_save_ram, 0x2000);
+			mame_fread(file, pce_nvram, 0x2000);
 	}
 }
 
@@ -136,6 +142,10 @@ DRIVER_INIT( pce )
 DRIVER_INIT( tg16 )
 {
 	pce.io_port_options = NO_CD_SIG | TG_16_JOY_SIG | CONST_SIG;
+}
+
+DRIVER_INIT( sgx ) {
+	pce.io_port_options = NO_CD_SIG | PCE_JOY_SIG | CONST_SIG;
 }
 
 /* todo: how many input ports does the PCE have? */
@@ -169,3 +179,52 @@ READ8_HANDLER ( pce_joystick_r )
 #endif
 	return (ret);
 }
+
+WRITE8_HANDLER( pce_cd_intf_w ) {
+	switch( offset & 0x0F ) {
+	case 0x00:	/* CDC status */
+	case 0x01:	/* CDC command / status / data */
+	case 0x02:	/* ADPCM / CD control */
+	case 0x03:	/* BRAM lock / CD status */
+	case 0x04:	/* CD reset */
+	case 0x05:	/* Convert PCM data / PCM data */
+	case 0x06:	/* PCM data */
+	case 0x07:	/* BRAM unlock / CD status */
+	case 0x08:	/* ADPCM address (LSB) / CD data */
+	case 0x09:	/* ADPCM address (MSB) */
+	case 0x0A:	/* ADPCM RAM data port */
+	case 0x0B:	/* ADPCM DMA control */
+	case 0x0C:	/* ADPCM status */
+	case 0x0D:	/* ADPCM address control */
+	case 0x0E:	/* ADPCM playback rate */
+	case 0x0F:	/* ADPCM and CD audio fade timer */
+		break;
+	}
+}
+
+READ8_HANDLER( pce_cd_intf_r ) {
+	UINT8 data = 0xFF;
+
+	switch( offset & 0x0F ) {
+	case 0x00:	/* CDC status */
+	case 0x01:	/* CDC command / status / data */
+	case 0x02:	/* ADPCM / CD control */
+	case 0x03:	/* BRAM lock / CD status */
+	case 0x04:	/* CD reset */
+	case 0x05:	/* Convert PCM data / PCM data */
+	case 0x06:	/* PCM data */
+	case 0x07:	/* BRAM unlock / CD status */
+	case 0x08:	/* ADPCM address (LSB) / CD data */
+	case 0x09:	/* ADPCM address (MSB) */
+	case 0x0A:	/* ADPCM RAM data port */
+	case 0x0B:	/* ADPCM DMA control */
+	case 0x0C:	/* ADPCM status */
+	case 0x0D:	/* ADPCM address control */
+	case 0x0E:	/* ADPCM playback rate */
+	case 0x0F:	/* ADPCM and CD audio fade timer */
+		break;
+	}
+
+	return data;
+}
+

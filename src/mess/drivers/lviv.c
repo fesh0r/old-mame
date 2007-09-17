@@ -105,9 +105,9 @@ Keyboard:
 	Reset - connected to CPU reset line
 
 				     Port D0 				
-	--------T-------T-------T-------T-------T-------T-------T-------ª        
+	--------T-------T-------T-------T-------T-------T-------T-------Â¬        
 	|   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   | 
-	+-------+-------+-------+-------+-------+-------+-------+-------+---ª
+	+-------+-------+-------+-------+-------+-------+-------+-------+---Â¬
 	| Shift |   ;   |       |  CLS  | Space |   R   |   G   |   6   | 0 |
 	+-------+-------+-------+-------+-------+-------+-------+-------+---+
 	|   Q   |Russian|       |  (G)  |   B   |   O   |   [   |   7   | 1 |
@@ -126,9 +126,9 @@ Keyboard:
 	L-------+-------+-------+-------+-------+-------+-------+-------+----
 
 		     Port D2
-	--------T-------T-------T-------ª
+	--------T-------T-------T-------Â¬
 	|   3   |   2   |   1   |   0   |
-	+-------+-------+-------+-------+-----ª
+	+-------+-------+-------+-------+-----Â¬
 	| Right | Home  |ScrPrn |PrnLock|  4  |
 	+-------+-------+-------+-------+-----+
 	|  Up   |  F5   |  F0   |ScrLock|  5  |
@@ -426,7 +426,7 @@ static MACHINE_DRIVER_START( lviv )
 	MDRV_CPU_PROGRAM_MAP(lviv_mem, 0)
 	MDRV_CPU_IO_MAP(lviv_readport, lviv_writeport)
 	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(0))
+	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( lviv )

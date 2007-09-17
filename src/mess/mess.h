@@ -16,6 +16,7 @@ struct SystemConfigurationParamBlock;
 #include "device.h"
 #include "image.h"
 #include "artworkx.h"
+#include "memory.h"
 
 
 
@@ -48,7 +49,7 @@ struct SystemConfigurationParamBlock;
 
 /***************************************************************************/
 
-void mess_options_init(void);
+void mess_options_init(core_options *opts);
 
 extern char mess_disclaimer[];
 
@@ -116,26 +117,11 @@ UINT8 *memory_install_ram8_handler(int cpunum, int spacenum, offs_t start, offs_
 
 /* --------------------------------------------------------------------------------------------- */
 
-/* phase this out - this call is only here so that I can get 0.116 out */
-INLINE void palette_set_colors_rgb(running_machine *machine, pen_t color_base, const UINT8 *colors, int color_count)
-{
-	while (color_count--)
-	{
-		UINT8 r = *colors++;
-		UINT8 g = *colors++;
-		UINT8 b = *colors++;
-		palette_set_color_rgb(machine, color_base++, r, g, b);
-	}
-}
-
-
-
-/* --------------------------------------------------------------------------------------------- */
-
 /* dummy read handlers */
- READ8_HANDLER(return8_00);
- READ8_HANDLER(return8_FE);
- READ8_HANDLER(return8_FF);
+READ8_HANDLER(return8_00);
+READ8_HANDLER(return8_FE);
+READ8_HANDLER(return8_FF);
+READ16_HANDLER(return16_FFFF);
 
 /* gets the path to the MESS executable */
 extern const char *mess_path;

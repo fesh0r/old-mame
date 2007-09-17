@@ -182,46 +182,28 @@ void x68k_crtc_refresh_mode()
 //		mame_timer_adjust(scanline_timer,time_zero,0,scantime);
 	}
 }
-/*
-void x68k_scanline_check(int dummy)
-{
-	double scantime;
 
-	x68k_scanline++;
-	if(x68k_scanline >= sys.crtc.reg[4] + 1)
+TIMER_CALLBACK(x68k_hsync)
+{
+	int state = param;
+	mame_time irq_time = video_screen_get_scan_period(0);
+	mame_time hsync_time = MAME_TIME_IN_CYCLES(0,32);
+	
+	if(state == 1)
 	{
-		if(sys.crtc.reg[7] > sys.crtc.reg[4])
-		{  //  Rygar appears to set the vertical total to be less than the vertical end.
-			sys.crtc.vblank = 1;
-			mfp_timer_a_callback(0);
-			mfp_trigger_irq(MFP_IRQ_GPIP4);  // V-DISP
-//			logerror("VBLANK start: Scanline %i\n",x68k_scanline);
-		}
-		x68k_scanline = 0;	
-		// set scanline timer for current Vertical Total (CRTC reg 4)
-		if(sys.crtc.reg[4] != 0)
-		{
-			scantime = MAME_TIME_IN_HZ(55.45) / sys.crtc.reg[4];
-			mame_timer_adjust(scanline_timer,time_zero,0,scantime);
-		}
+		sys.crtc.hblank = 1;
+		mfp_trigger_irq(MFP_IRQ_GPIP7);  // HSync
+		mame_timer_adjust(scanline_timer,hsync_time,0,time_never);
 	}
-	if(x68k_scanline == sys.crtc.reg[7] + 1)  // Vertical end
+	if(state == 0)
 	{
-		sys.crtc.vblank = 1;
-		mfp_timer_a_callback(0);
-		if(!(sys.mfp.aer & 0x10))
-			mfp_trigger_irq(MFP_IRQ_GPIP4);  // V-DISP
-//		logerror("VBLANK start: Scanline %i\n",x68k_scanline);
-	}
-	if(x68k_scanline == sys.crtc.reg[6] + 1)  // Vertical beginning
-	{
-		sys.crtc.vblank = 0;
-		if(sys.mfp.aer & 0x10)
-			mfp_trigger_irq(MFP_IRQ_GPIP4);  // V-DISP
-//		logerror("VBLANK end: Scanline %i\n",x68k_scanline);
+		double time_to_irq = mame_time_to_double(irq_time) - mame_time_to_double(hsync_time);
+		sys.crtc.hblank = 0;
+		mame_timer_adjust(scanline_timer,double_to_mame_time(time_to_irq),1,time_never);
 	}
 }
-*/
+
+
 TIMER_CALLBACK(x68k_crtc_raster_irq)
 {
 	int scan = param;
@@ -248,7 +230,7 @@ TIMER_CALLBACK(x68k_crtc_vblank_irq)
 	if(val == 1)  // VBlank on
 	{
 		mfp_timer_a_callback(machine, 0);
-		if(!(sys.mfp.aer & 0x10))
+//		if(!(sys.mfp.aer & 0x10))
 			mfp_trigger_irq(MFP_IRQ_GPIP4);  // V-DISP
 		vblank_line = sys.crtc.reg[6];
 		if(vblank_line > sys.crtc.reg[4])
@@ -262,8 +244,8 @@ TIMER_CALLBACK(x68k_crtc_vblank_irq)
 	}
 	if(val == 0)  // VBlank off
 	{
-		if(sys.mfp.aer & 0x10)
-			mfp_trigger_irq(MFP_IRQ_GPIP4);  // V-DISP
+//		if(sys.mfp.aer & 0x10)
+//			mfp_trigger_irq(MFP_IRQ_GPIP4);  // V-DISP
 		vblank_line = sys.crtc.reg[7];
 		if(sys.crtc.height == 256)
 			irq_time = video_screen_get_time_until_pos(0,vblank_line / 2,2);
@@ -777,7 +759,7 @@ void x68k_draw_sprites(mame_bitmap* bitmap, int priority)
 
 			sx += sprite_shift;
 
-			drawgfx(bitmap,Machine->gfx[1],code,colour,xflip,yflip,sys.crtc.hshift+sx,sys.crtc.vshift+sy,&rect,TRANSPARENCY_PEN,0x00);
+			drawgfx(bitmap,Machine->gfx[1],code,colour+0x10,xflip,yflip,sys.crtc.hshift+sx,sys.crtc.vshift+sy,&rect,TRANSPARENCY_PEN,0x00);
 		}
 	}
 }
@@ -833,7 +815,7 @@ static TILE_GET_INFO(x68k_get_bg0_tile)
 	int code = x68k_spriteram[0x3000+tile_index] & 0x00ff;
 	int colour = (x68k_spriteram[0x3000+tile_index] & 0x0f00) >> 8;
 	int flags = (x68k_spriteram[0x3000+tile_index] & 0xc000) >> 14;
-	SET_TILE_INFO(0,code,colour,flags)
+	SET_TILE_INFO(0,code,colour+16,flags);
 }
 
 static TILE_GET_INFO(x68k_get_bg1_tile)
@@ -841,7 +823,7 @@ static TILE_GET_INFO(x68k_get_bg1_tile)
 	int code = x68k_spriteram[0x2000+tile_index] & 0x00ff;
 	int colour = (x68k_spriteram[0x2000+tile_index] & 0x0f00) >> 8;
 	int flags = (x68k_spriteram[0x2000+tile_index] & 0xc000) >> 14;
-	SET_TILE_INFO(0,code,colour,flags)
+	SET_TILE_INFO(0,code,colour+16,flags);
 }
 
 static TILE_GET_INFO(x68k_get_bg0_tile_16)
@@ -849,7 +831,7 @@ static TILE_GET_INFO(x68k_get_bg0_tile_16)
 	int code = x68k_spriteram[0x3000+tile_index] & 0x00ff;
 	int colour = (x68k_spriteram[0x3000+tile_index] & 0x0f00) >> 8;
 	int flags = (x68k_spriteram[0x3000+tile_index] & 0xc000) >> 14;
-	SET_TILE_INFO(1,code,colour,flags)
+	SET_TILE_INFO(1,code,colour+16,flags);
 }
 
 static TILE_GET_INFO(x68k_get_bg1_tile_16)
@@ -857,7 +839,7 @@ static TILE_GET_INFO(x68k_get_bg1_tile_16)
 	int code = x68k_spriteram[0x2000+tile_index] & 0x00ff;
 	int colour = (x68k_spriteram[0x2000+tile_index] & 0x0f00) >> 8;
 	int flags = (x68k_spriteram[0x2000+tile_index] & 0xc000) >> 14;
-	SET_TILE_INFO(1,code,colour,flags)
+	SET_TILE_INFO(1,code,colour+16,flags);
 }
 
 VIDEO_START( x68000 )
@@ -880,21 +862,23 @@ VIDEO_START( x68000 )
 	/* create the char set (gfx will then be updated dynamically from RAM) */
 	Machine->gfx[gfx_index] = allocgfx(&x68k_pcg_8);
 	decodegfx(Machine->gfx[gfx_index] , memory_region(REGION_USER1), 0, 256);
-	Machine->gfx[gfx_index]->colortable = (Machine->remapped_colortable+0x100);
-	Machine->gfx[gfx_index]->total_colors = 16;
+	/* 7-Sep-2007 - After 0.118u5, you cannot change the colortable */
+	/* Machine->gfx[gfx_index]->colortable = (Machine->remapped_colortable+0x100); */
+	Machine->gfx[gfx_index]->total_colors = 32;
 
 	gfx_index++;
 
 	Machine->gfx[gfx_index] = allocgfx(&x68k_pcg_16);
 	decodegfx(Machine->gfx[gfx_index] , memory_region(REGION_USER1), 0, 256);
-	Machine->gfx[gfx_index]->colortable = (Machine->remapped_colortable+0x100);
-	Machine->gfx[gfx_index]->total_colors = 16;
+	/* 7-Sep-2007 - After 0.118u5, you cannot change the colortable */
+	/* Machine->gfx[gfx_index]->colortable = (Machine->remapped_colortable+0x100); */
+	Machine->gfx[gfx_index]->total_colors = 32;
 
 	/* Tilemaps */
-	x68k_bg0_8 = tilemap_create(x68k_get_bg0_tile,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
-	x68k_bg1_8 = tilemap_create(x68k_get_bg1_tile,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
-	x68k_bg0_16 = tilemap_create(x68k_get_bg0_tile_16,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,64);
-	x68k_bg1_16 = tilemap_create(x68k_get_bg1_tile_16,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,64);
+	x68k_bg0_8 = tilemap_create(x68k_get_bg0_tile,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	x68k_bg1_8 = tilemap_create(x68k_get_bg1_tile,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	x68k_bg0_16 = tilemap_create(x68k_get_bg0_tile_16,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
+	x68k_bg1_16 = tilemap_create(x68k_get_bg1_tile_16,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
 
 	tilemap_set_transparent_pen(x68k_bg0_8,0);
 	tilemap_set_transparent_pen(x68k_bg1_8,0);
@@ -954,7 +938,7 @@ VIDEO_UPDATE( x68000 )
 			x68k_draw_gfx(bitmap);
 
 		// Sprite / BG Tiles
-		if(priority == sys.video.sprite_pri && (x68k_spritereg[0x404] & 0x0200) && (sys.video.reg[2] & 0x0040))
+		if(priority == sys.video.sprite_pri /*&& (x68k_spritereg[0x404] & 0x0200)*/ && (sys.video.reg[2] & 0x0040))
 		{
 			x68k_draw_sprites(bitmap,1);
 			if((x68k_spritereg[0x404] & 0x0008))
@@ -973,7 +957,7 @@ VIDEO_UPDATE( x68000 )
 				}
 			}
 			x68k_draw_sprites(bitmap,2);
-			if(x68k_spritereg[0x404] & 0x0001)
+			if((x68k_spritereg[0x404] & 0x0001))
 			{
 				if((x68k_spritereg[0x404] & 0x0006) == 0x02)  // BG0 TXSEL
 				{

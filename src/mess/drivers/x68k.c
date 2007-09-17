@@ -75,7 +75,7 @@
 	...plus a number of custom chips for video and other stuff...
 
 
-	*** Current status (16/01/07)
+	*** Current status (12/08/07)
 	FDC/FDD : Uses the uPD765A code with a small patch to handle Sense Interrupt Status being invalid if not in seek mode
 	          Extra uPD72065 commands not yet implemented, although I have yet to see them used.
 
@@ -86,14 +86,14 @@
 
 	HDC/HDD : SASI and SCSI are not implemented, not a requirement at this point.
 
-	RTC : Needs a lot of work, but relatively unimportant at this point.
+	RTC : Seems to work. (Tested using SX-Windows' Timer application)
 
 	DMA : FDD reading mostly works, other channels should work for effective memory copying (channel 2, often 
 	      used to copy data to video RAM or the palette in the background).
 
 	Sound : FM works, ADPCM is unimplemented as yet.
 
-	SCC : Unimplemented as yet.
+	SCC : Works enough to get the mouse running
 
 	Video : Text mode works, but is rather slow, especially scrolling up (uses multple "raster copy" commands).
 	        16 and 256 graphic layers work, but colours on a 65,536 colour layer are wrong.
@@ -106,10 +106,9 @@
 	  Keyboard doesn't work well for games.
 	  Supervisor area set isn't implemented.
 
-    Some minor game-specific issues (at 17/04/07):
+    Some minor game-specific issues (at 19/06/07):
 	  Pacmania:      Black squares on the maze (transparency?).
-	  Nemesis '94:   MSX 68k intro isn't correct, menu system doesn't work except for start buttons, Konami logo and
-	                 menu display aren't correct.
+	  Nemesis '94:   Menu system doesn't work except for start buttons.
 	  Flying Shark:  Appears to lock up at main menu.
 	  Salamander:    System error when using keys in-game.  No error if a joystick is used.
 	  Kyukyoku Tiger:Sprites offset by a looooong way.
@@ -117,7 +116,7 @@
 	  Baraduke:      Corrupt background, locks up on demo mode.
 	  Viewpoint:     Corrupt graphics on title screen, phantom movements on title screen, corrupt sprites, locks up.
 	  Mr. Do:        Locks up or resets after some time.  Happens on Mr Do vs. Unicorns, as well.
-	  Tetris:        Black dots over screen.
+	  Tetris:        Black dots over screen (text layer).
 	  Parodius Da!:  Water isn't animated (beginning of stage 1), black squares (raster effects?)
 
 
@@ -138,6 +137,7 @@
 #include "machine/rp5c15.h"
 #include "devices/basicdsk.h"
 #include "includes/x68k.h"
+#include "mslegacy.h"
 
 struct x68k_system sys;
 
@@ -532,8 +532,11 @@ int x68k_read_mouse(void)
 	sys.mouse.inputtype++;
 	if(sys.mouse.inputtype > 2)
 	{
+		int val = scc_get_reg_b(0);
 		sys.mouse.inputtype = 0;
 		sys.mouse.bufferempty = 1;
+		val &= ~0x01;
+		scc_set_reg_b(0,val);
 	}
 
 	return ipt;
@@ -575,7 +578,12 @@ WRITE16_HANDLER( x68k_scc_w )
 		if((scc_get_reg_b(5) & 0x02) != prev)
 		{
 			if(scc_get_reg_b(5) & 0x02)
+			{
+				int val = scc_get_reg_b(0);
 				sys.mouse.bufferempty = 0;
+				val |= 0x01;
+				scc_set_reg_b(0,val);
+			}
 		}
 		break;
 	case 1:
@@ -783,7 +791,7 @@ WRITE16_HANDLER( x68k_hdc_w )
 
 READ16_HANDLER( x68k_hdc_r )
 {
-//	logerror("SASI: [%08x] read from HDC, offset %04x\n",activecpu_get_pc(),offset);
+	logerror("SASI: [%08x] read from HDC, offset %04x\n",activecpu_get_pc(),offset);
 	switch(offset)
 	{
 	case 0x01:
@@ -1013,6 +1021,12 @@ WRITE16_HANDLER( x68k_mfp_w )
 		break;
 	case 4:  // IERB
 		sys.mfp.ierb = data;
+		break;
+	case 5:  // IPRA
+		sys.mfp.ipra = data;
+		break;
+	case 6:  // IPRB
+		sys.mfp.iprb = data;
 		break;
 	case 7:
 		sys.mfp.isra = data;
@@ -1427,7 +1441,8 @@ static ADDRESS_MAP_START(x68k_map, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xeb0000, 0xeb7fff) AM_READWRITE(x68k_spritereg_r, x68k_spritereg_w)
 	AM_RANGE(0xeb8000, 0xebffff) AM_READWRITE(x68k_spriteram_r, x68k_spriteram_w)
 	AM_RANGE(0xec0000, 0xecffff) AM_NOP  // User I/O
-	AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE(x68k_sram_r, x68k_sram_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+//	AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE(x68k_sram_r, x68k_sram_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0xed0000, 0xed3fff) AM_RAMBANK(4) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xed4000, 0xefffff) AM_NOP
 	AM_RANGE(0xf00000, 0xffffff) AM_ROM
 ADDRESS_MAP_END
@@ -1696,7 +1711,7 @@ void dimdsk_set_geometry(mess_image* image)
 	// TODO: expand on this basic implementation
 
 	logerror("FDD: DIM image loaded - type %i, %i tracks, %i sectors per track, %i bytes per sector\n", format,tracks, sectors,sectorlen);
-	basicdsk_set_geometry(image, 77, heads, sectors, sectorlen, firstsector, 0x100, FALSE);
+	basicdsk_set_geometry(image, tracks+1, heads, sectors, sectorlen, firstsector, 0x100, FALSE);
 }
 
 DEVICE_LOAD( x68k_floppy )
@@ -1771,8 +1786,6 @@ MACHINE_RESET( x68000 )
 	memset(mess_ram,0,mess_ram_size);
 	memcpy(mess_ram,romdata,8);
 
-	memset(&sys,0,sizeof(sys));
-
 	// init keyboard
 	sys.keyboard.delay = 500;  // 3*100+200 
 	sys.keyboard.repeat = 110;  // 4^2*5+30
@@ -1806,6 +1819,9 @@ MACHINE_RESET( x68000 )
 	sys.crtc.vblank = 1;
 	irq_time = video_screen_get_time_until_pos(0,sys.crtc.reg[6],2);
 	mame_timer_adjust(vblank_irq,irq_time,0,time_never);
+	
+	// start HBlank timer
+	mame_timer_adjust(scanline_timer,video_screen_get_scan_period(0),1,time_never);
 }
 
 MACHINE_START( x68000 )
@@ -1821,6 +1837,9 @@ MACHINE_START( x68000 )
 	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xe00000,0xe7ffff,0x07ffff,0,(read16_handler)x68k_tvram_r);
 	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xe00000,0xe7ffff,0x07ffff,0,(write16_handler)x68k_tvram_w);
 	memory_set_bankptr(3,tvram);  // so that code in VRAM is executable - needed for Terra Cresta
+	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xed0000,0xed3fff,0x003fff,0,(read16_handler)x68k_sram_r);
+	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xed0000,0xed3fff,0x003fff,0,(write16_handler)x68k_sram_w);
+	memory_set_bankptr(4,generic_nvram16);  // so that code in SRAM is executable, there is an option for booting from SRAM
 
 	// start keyboard timer
 	mame_timer_adjust(kb_timer,time_zero,0,MAME_TIME_IN_MSEC(5));  // every 5ms
@@ -1832,6 +1851,8 @@ MACHINE_START( x68000 )
 
 DRIVER_INIT( x68000 )
 {
+	unsigned char* rom = memory_region(REGION_CPU1);
+	unsigned char* user2 = memory_region(REGION_USER2);
 	gvram = auto_malloc(0x200000);
 	memset(gvram,0,0x200000);
 	tvram = auto_malloc(0x080000);
@@ -1849,6 +1870,9 @@ DRIVER_INIT( x68000 )
 	}
 #endif
 
+	// copy last half of BIOS to a user region, to use for inital startup
+	memcpy(user2,(rom+0xff0000),0x10000);
+
 	ppi8255_init(&ppi_interface);
 	nec765_init(&fdc_interface,NEC72065);
 	hd63450_init(&dmac_interface);
@@ -1857,13 +1881,15 @@ DRIVER_INIT( x68000 )
 	scc_init(&scc_interface);
 	rp5c15_init(&rtc_intf);
 
+	memset(&sys,0,sizeof(sys));
+
 	cpunum_set_irq_callback(0, x68k_int_ack);
 
 	// init keyboard
 	sys.keyboard.delay = 500;  // 3*100+200 
 	sys.keyboard.repeat = 110;  // 4^2*5+30
 	kb_timer = mame_timer_alloc(x68k_keyboard_poll);
-//	scanline_timer = mame_timer_alloc(x68k_scanline_check);
+	scanline_timer = mame_timer_alloc(x68k_hsync);
 	raster_irq = mame_timer_alloc(x68k_crtc_raster_irq);
 	vblank_irq = mame_timer_alloc(x68k_crtc_vblank_irq);
 	mouse_timer = mame_timer_alloc(x68k_scc_ack);
@@ -1905,29 +1931,42 @@ static MACHINE_DRIVER_START( x68000 )
 //	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER( generic_0fill )
-
 MACHINE_DRIVER_END
+
 
 SYSTEM_CONFIG_START(x68000)
 	CONFIG_DEVICE(x68k_floppy_getinfo)
 	CONFIG_RAM(0x100000)
 	CONFIG_RAM(0x200000)
+	CONFIG_RAM(0x300000)
 	CONFIG_RAM_DEFAULT(0x400000)  // 4MB - should be enough for most things
+	CONFIG_RAM(0x500000)
+	CONFIG_RAM(0x600000)
+	CONFIG_RAM(0x700000)
 	CONFIG_RAM(0x800000)
+	CONFIG_RAM(0x900000)
+	CONFIG_RAM(0xa00000)
+	CONFIG_RAM(0xb00000)
 	CONFIG_RAM(0xc00000)  // 12MB - maximum possible
 SYSTEM_CONFIG_END
 
 ROM_START( x68000 )
 	ROM_REGION16_BE(0x1000000, REGION_CPU1, 0)  // 16MB address space
 	ROM_LOAD( "cgrom.dat",  0xf00000, 0xc0000, CRC(9f3195f1) SHA1(8d72c5b4d63bb14c5dbdac495244d659aa1498b6) )
-	ROM_LOAD( "iplrom.dat", 0xfe0000, 0x20000, CRC(72bdf532) SHA1(0ed038ed2133b9f78c6e37256807424e0d927560) )
+	ROM_SYSTEM_BIOS(0, "ipl10",  "IPL-ROM V1.0")
+	ROMX_LOAD( "iplrom.dat", 0xfe0000, 0x20000, CRC(72bdf532) SHA1(0ed038ed2133b9f78c6e37256807424e0d927560), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS(1, "ipl11",  "IPL-ROM V1.1")
+	ROMX_LOAD( "iplromxv.dat", 0xfe0000, 0x020000, CRC(00eeb408) SHA1(e33cdcdb69cd257b0b211ef46e7a8b144637db57), ROM_BIOS(2) ) 
+	ROM_SYSTEM_BIOS(2, "ipl12",  "IPL-ROM V1.2")
+	ROMX_LOAD( "iplromco.dat", 0xfe0000, 0x020000, CRC(6c7ef608) SHA1(77511fc58798404701f66b6bbc9cbde06596eba7), ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS(3, "ipl13",  "IPL-ROM V1.3 (92/11/27)")
+	ROMX_LOAD( "iplrom30.dat", 0xfe0000, 0x020000, CRC(e8f8fdad) SHA1(239e9124568c862c31d9ec0605e32373ea74b86a), ROM_BIOS(4) )
 	ROM_REGION(0x8000, REGION_USER1,0)  // For Background/Sprite decoding
 	ROM_FILL(0x0000,0x8000,0x00)
-	ROM_REGION(0x20000, REGION_USER2, 0)  
-	ROM_LOAD16_WORD_SWAP( "iplrom.dat", 0x0000, 0x10000, CRC(72bdf532) SHA1(0ed038ed2133b9f78c6e37256807424e0d927560) )
-	ROM_CONTINUE (0x0000, 0x10000)
+	ROM_REGION(0x20000, REGION_USER2, 0)
+	ROM_FILL(0x000,0x20000,0x00)  
 ROM_END
 
 
-/*	   YEAR		NAME	  PARENT	COMPAT	MACHINE		INPUT	INIT		CONFIG		COMPANY				FULLNAME */
-COMP( 1987,	    x68000,   0,		0,		x68000,		x68000,	x68000,	    x68000,		"Sharp",			"Sharp X68000",  GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+/*	   YEAR		NAME	PARENT	BIOS		COMPAT	MACHINE		INPUT	INIT		CONFIG		COMPANY				FULLNAME */
+COMPB( 1987,    x68000,	0,		x68000,		0,		x68000,		x68000,	x68000,	    x68000,		"Sharp",			"Sharp X68000",  GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )

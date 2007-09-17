@@ -13,12 +13,14 @@
 
 /* from machine\pce.c */
 extern unsigned char *pce_user_ram; /* scratch RAM at F8 */
+extern UINT8 *pce_nvram;
 DEVICE_LOAD(pce_cart);
 NVRAM_HANDLER( pce );
 WRITE8_HANDLER ( pce_joystick_w );
  READ8_HANDLER ( pce_joystick_r );
 
-#define PCE_FAST_CLOCK		7195090
+WRITE8_HANDLER( pce_cd_intf_w );
+READ8_HANDLER( pce_cd_intf_r );
 
 #define TG_16_JOY_SIG		0x00
 #define PCE_JOY_SIG			0x40
@@ -34,4 +36,5 @@ struct pce_struct
 extern struct pce_struct pce;
 DRIVER_INIT( pce );
 DRIVER_INIT( tg16 );
+DRIVER_INIT( sgx );
 #endif

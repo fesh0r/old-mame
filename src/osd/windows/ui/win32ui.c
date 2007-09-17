@@ -911,11 +911,12 @@ static DWORD RunMAME(int nGameIndex, const play_options *playopts)
 {
 	DWORD dwExitCode = 0;
 	core_options *pOpts;
+	core_options *opts;
 	LPTREEFOLDER folder;
 	int i;
 
 	// set up MAME options
-	mame_options_init(mame_win_options);
+	opts = mame_options_init(mame_win_options);
 
 	// retrieve the options we're going to pass
 	folder = GetFolderByName(FOLDER_SOURCE, GetDriverFilename(nGameIndex));
@@ -926,26 +927,26 @@ static DWORD RunMAME(int nGameIndex, const play_options *playopts)
 
 #ifdef MESS
 	// add MESS specific device options
-	mess_add_device_options(mame_options(), drivers[nGameIndex]);
+	mess_add_device_options(opts, drivers[nGameIndex]);
 #endif // MESS
 
 	// load MAME options
-	CopyOptions(mame_options(), Mame32Global());
-	CopyOptions(mame_options(), pOpts);
+	CopyOptions(opts, Mame32Global());
+	CopyOptions(opts, pOpts);
 
 	// load specified play options
 	if (playopts != NULL)
 	{
 		if (playopts->record != NULL)
-			options_set_string(mame_options(), OPTION_RECORD, playopts->record, OPTION_PRIORITY_CMDLINE);
+			options_set_string(opts, OPTION_RECORD, playopts->record, OPTION_PRIORITY_CMDLINE);
 		if (playopts->playback != NULL)
-			options_set_string(mame_options(), OPTION_PLAYBACK, playopts->playback, OPTION_PRIORITY_CMDLINE);
+			options_set_string(opts, OPTION_PLAYBACK, playopts->playback, OPTION_PRIORITY_CMDLINE);
 		if (playopts->state != NULL)
-			options_set_string(mame_options(), OPTION_STATE, playopts->state, OPTION_PRIORITY_CMDLINE);
+			options_set_string(opts, OPTION_STATE, playopts->state, OPTION_PRIORITY_CMDLINE);
 		if (playopts->wavwrite != NULL)
-			options_set_string(mame_options(), OPTION_WAVWRITE, playopts->wavwrite, OPTION_PRIORITY_CMDLINE);
+			options_set_string(opts, OPTION_WAVWRITE, playopts->wavwrite, OPTION_PRIORITY_CMDLINE);
 		if (playopts->mngwrite != NULL)
-			options_set_string(mame_options(), OPTION_MNGWRITE, playopts->mngwrite, OPTION_PRIORITY_CMDLINE);
+			options_set_string(opts, OPTION_MNGWRITE, playopts->mngwrite, OPTION_PRIORITY_CMDLINE);
 	}
 
 	// prepare MAME32 to run the game
@@ -954,8 +955,8 @@ static DWORD RunMAME(int nGameIndex, const play_options *playopts)
 		Picker_ClearIdle(GetDlgItem(hMain, s_nPickers[i]));
 
 	// run the emulation
-	options_set_string(mame_options(), OPTION_GAMENAME, drivers[nGameIndex]->name, OPTION_PRIORITY_CMDLINE);
-	mame_execute();
+	options_set_string(opts, OPTION_GAMENAME, drivers[nGameIndex]->name, OPTION_PRIORITY_CMDLINE);
+	mame_execute(opts);
 
 	// the emulation is complete; continue
 	for (i = 0; i < ARRAY_LENGTH(s_nPickers); i++)
@@ -964,7 +965,7 @@ static DWORD RunMAME(int nGameIndex, const play_options *playopts)
 	SetForegroundWindow(hMain);
 
 	// close out MAME options
-	mame_options_exit();
+	options_free(opts);
 
 	// NPW 16-Apr-2007 - God I hate this hack
 	if (GetGameUsesDefaults(nGameIndex))
@@ -4996,8 +4997,8 @@ static void CreateIcons(void)
 	ReloadIcons();
 
 	// Associate the image lists with the list view control.
-	ListView_SetImageList(hwndList, hSmall, LVSIL_SMALL);
-	ListView_SetImageList(hwndList, hLarge, LVSIL_NORMAL);
+	(void)ListView_SetImageList(hwndList, hSmall, LVSIL_SMALL);
+	(void)ListView_SetImageList(hwndList, hLarge, LVSIL_NORMAL);
 
 	// restore our view
 	SetWindowLong(hwndList,GWL_STYLE,dwStyle);
@@ -5938,7 +5939,7 @@ static BOOL HandleTreeContextMenu(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	/* select the item that was right clicked or shift-F10'ed */
 	hti.pt = pt;
 	ScreenToClient(hTreeView,&hti.pt);
-	TreeView_HitTest(hTreeView,&hti);
+	(void)TreeView_HitTest(hTreeView,&hti);
 	if ((hti.flags & TVHT_ONITEM) != 0)
 		TreeView_SelectItem(hTreeView,hti.hItem);
 

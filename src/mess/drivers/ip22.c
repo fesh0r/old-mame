@@ -342,11 +342,19 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 		{
 			cpunum_set_input_line(0, MIPS3_IRQ0, CLEAR_LINE);
 		}
+		else
+		{
+			cpunum_set_input_line(0, MIPS3_IRQ0, ASSERT_LINE);
+		}
 
 		// if no local1 interrupts now, clear the input to the CPU
 		if ((int3_regs[2] & int3_regs[3]) == 0)
 		{
 			cpunum_set_input_line(0, MIPS3_IRQ1, CLEAR_LINE);
+		}
+		else
+		{
+			cpunum_set_input_line(0, MIPS3_IRQ1, ASSERT_LINE);
 		}
 		break;
 	case 0xb0/4:
@@ -1097,7 +1105,7 @@ static TIMER_CALLBACK(ip22_dma)
 	{
 		INT16 temp16;
 //		mame_printf_info( "nPBUS_DMA_CurPtr - 0x08000000/4 = %08x\n", (nPBUS_DMA_CurPtr - 0x08000000)/4 );
-		verboselog( 0, "nPBUS_DMA_CurPtr - 0x08000000/4 = %08x\n", (nPBUS_DMA_CurPtr - 0x08000000)/4 );
+//		verboselog( 0, "nPBUS_DMA_CurPtr - 0x08000000/4 = %08x\n", (nPBUS_DMA_CurPtr - 0x08000000)/4 );
 		temp16 = ( ip22_mainram[(nPBUS_DMA_CurPtr - 0x08000000)/4] & 0xffff0000 ) >> 16;
 		temp16 = ( ( temp16 & 0xff00 ) >> 8 ) | ( ( temp16 & 0x00ff ) << 8 );
 		dmadac_transfer(0, 1, 1, 1, 1, &temp16);
@@ -1347,7 +1355,7 @@ static void scsi_irq(int state)
 				if (words <= (1024/4))
 				{
 					// one-shot
-					wd33c93_read_data(wd33c93_get_dma_count(), dma_buffer);
+					wd33c93_get_dma_data(wd33c93_get_dma_count(), dma_buffer);
 
 					while (words)
 					{
@@ -1359,6 +1367,7 @@ static void scsi_irq(int state)
 						{
 							tmpword = dma_buffer[sptr]<<24 | dma_buffer[sptr+1]<<16 | dma_buffer[sptr+2]<<8 | dma_buffer[sptr+3];
 						}
+					
 						program_write_dword(wptr, tmpword);
 						wptr += 4;
 						sptr += 4;
@@ -1369,7 +1378,7 @@ static void scsi_irq(int state)
 				{
 					while (words)
 					{
-						wd33c93_read_data(512, dma_buffer);
+						wd33c93_get_dma_data(512, dma_buffer);
 						twords = 512/4;
 						sptr = 0;
 
@@ -1413,7 +1422,7 @@ static void scsi_irq(int state)
 
 static SCSIConfigTable dev_table =
 {
-        2,                                      /* 1 SCSI device */
+        1,                                      /* 1 SCSI device */
         { { SCSI_ID_4, 0, SCSI_DEVICE_CDROM },  /* SCSI ID 4, using CD 0, and it's a CD-ROM */ 
 	  { SCSI_ID_2, 0, SCSI_DEVICE_CDROM } } /* SCSI ID 2, using HD 0, and it's a CD-ROM */ 
 };
@@ -1538,7 +1547,7 @@ static void ip22_chdcd_getinfo(const device_class *devclass, UINT32 state, union
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default: cdrom_device_getinfo(devclass, state, info); break;
 	}
@@ -1612,7 +1621,7 @@ ROM_END
 
 SYSTEM_CONFIG_START( ip225015 )
 	CONFIG_DEVICE(ip22_chdcd_getinfo)
-	CONFIG_DEVICE(ip22_harddisk_getinfo)
+//	CONFIG_DEVICE(ip22_harddisk_getinfo)
 SYSTEM_CONFIG_END
 
 /*     YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */

@@ -43,9 +43,12 @@
 
 static UINT8 bg_zbuf[160];
 UINT8 gb_vid_regs[_NR_GB_VID_REGS];
-UINT8 gb_bpal[4];	/* Background palette		*/
-UINT8 gb_spal0[4];	/* Sprite 0 palette		*/
-UINT8 gb_spal1[4];	/* Sprite 1 palette		*/
+static UINT16 cgb_bpal[32];	/* CGB current background palette table */
+static UINT16 cgb_spal[32];	/* CGB current background palette table */
+UINT16 sgb_pal[128];	/* SGB palette remapping */
+static UINT8 gb_bpal[4];	/* Background palette		*/
+static UINT8 gb_spal0[4];	/* Sprite 0 palette		*/
+static UINT8 gb_spal1[4];	/* Sprite 1 palette		*/
 UINT8 *gb_oam = NULL;
 UINT8 *gb_vram = NULL;
 int gbc_hdma_enabled;
@@ -93,6 +96,92 @@ static TIMER_CALLBACK(gb_lcd_timer_proc);
 static TIMER_CALLBACK(gb_vblank_delay_proc);
 static void gb_lcd_switch_on( void );
 static void gb_lcd_int_check( void );
+
+static unsigned char palette[] =
+{
+/* Simple black and white palette */
+/*	0xFF,0xFF,0xFF,
+	0xB0,0xB0,0xB0,
+	0x60,0x60,0x60,
+	0x00,0x00,0x00 */
+
+/* Possibly needs a little more green in it */
+	0xFF,0xFB,0x87,		/* Background */
+	0xB1,0xAE,0x4E,		/* Light */
+	0x84,0x80,0x4E,		/* Medium */
+	0x4E,0x4E,0x4E,		/* Dark */
+
+/* Palette for GameBoy Pocket/Light */
+	0xC4,0xCF,0xA1,		/* Background */
+	0x8B,0x95,0x6D,		/* Light      */
+	0x6B,0x73,0x53,		/* Medium     */
+	0x41,0x41,0x41,		/* Dark       */
+};
+
+static unsigned char palette_megaduck[] = {
+	0x6B, 0xA6, 0x4A, 0x43, 0x7A, 0x63, 0x25, 0x59, 0x55, 0x12, 0x42, 0x4C
+};
+
+/* Initialise the palettes */
+PALETTE_INIT( gb ) {
+	int ii;
+	for( ii = 0; ii < 4; ii++) {
+		palette_set_color_rgb(machine, ii, palette[ii*3+0], palette[ii*3+1], palette[ii*3+2]);
+	}
+}
+
+PALETTE_INIT( gbp ) {
+	int ii;
+	for( ii = 0; ii < 4; ii++) {
+		palette_set_color_rgb(machine, ii, palette[(ii + 4)*3+0], palette[(ii + 4)*3+1], palette[(ii + 4)*3+2]);
+	}
+}
+
+PALETTE_INIT( sgb ) {
+	int ii, r, g, b;
+
+	for( ii = 0; ii < 32768; ii++ ) {
+		r = (ii & 0x1F) << 3;
+		g = ((ii >> 5) & 0x1F) << 3;
+		b = ((ii >> 10) & 0x1F) << 3;
+		palette_set_color_rgb(machine,  ii, r, g, b );
+	}
+
+	/* Some default colours for non-SGB games */
+	sgb_pal[0] = 32767;
+	sgb_pal[1] = 21140;
+	sgb_pal[2] = 10570;
+	sgb_pal[3] = 0;
+	/* The rest of the colortable can be black */
+	for( ii = 4; ii < 8*16; ii++ )
+		sgb_pal[ii] = 0;
+}
+
+PALETTE_INIT( gbc ) {
+	int ii, r, g, b;
+
+	for( ii = 0; ii < 32768; ii++ ) {
+		r = (ii & 0x1F) << 3;
+		g = ((ii >> 5) & 0x1F) << 3;
+		b = ((ii >> 10) & 0x1F) << 3;
+		palette_set_color_rgb( machine, ii, r, g, b );
+	}
+
+	/* Background is initialised as white */
+	for( ii = 0; ii < 32; ii++ )
+		cgb_bpal[ii] = 32767;
+	/* Sprites are supposed to be uninitialized, but we'll make them black */
+	for( ii = 0; ii < 32; ii++ )
+		cgb_spal[ii] = 0;
+}
+
+PALETTE_INIT( megaduck ) {
+	int ii;
+	for( ii = 0; ii < 4; ii++) {
+		palette_set_color_rgb(machine, ii, palette_megaduck[ii*3+0], palette_megaduck[ii*3+1], palette_megaduck[ii*3+2]);
+	}
+}
+
 
 INLINE void gb_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
 {
@@ -407,7 +496,7 @@ INLINE void sgb_update_sprites (void)
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if ((xindex >= SGB_XOFFSET && xindex <= SGB_XOFFSET + 160) && colour && !bg_zbuf[xindex - SGB_XOFFSET])
-						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, sgb_pal[pal + spal[colour]]);
 					data >>= 1;
 				}
 				break;
@@ -416,7 +505,7 @@ INLINE void sgb_update_sprites (void)
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if ((xindex >= SGB_XOFFSET && xindex <= SGB_XOFFSET + 160) && colour)
-						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, sgb_pal[pal + spal[colour]]);
 					data >>= 1;
 				}
 				break;
@@ -425,7 +514,7 @@ INLINE void sgb_update_sprites (void)
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if ((xindex >= SGB_XOFFSET && xindex <= SGB_XOFFSET + 160) && colour && !bg_zbuf[xindex - SGB_XOFFSET])
-						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, sgb_pal[pal + spal[colour]]);
 					data <<= 1;
 				}
 				break;
@@ -434,7 +523,7 @@ INLINE void sgb_update_sprites (void)
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if ((xindex >= SGB_XOFFSET && xindex <= SGB_XOFFSET + 160) && colour)
-						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, sgb_pal[pal + spal[colour]]);
 					data <<= 1;
 				}
 				break;
@@ -498,7 +587,7 @@ void sgb_refresh_border(void) {
 				 */
 				if( !((yidx >= SGB_YOFFSET && yidx < SGB_YOFFSET + 144) &&
 					(xindex >= SGB_XOFFSET && xindex < SGB_XOFFSET + 160)) ) {
-					gb_plot_pixel(bitmap, xindex, yidx, Machine->remapped_colortable[pal + colour]);
+					gb_plot_pixel(bitmap, xindex, yidx, sgb_pal[pal + colour]);
 				}
 				xindex++;
 			}
@@ -602,7 +691,7 @@ void sgb_update_scanline (void) {
 				fillbitmap( bitmap, Machine->pens[0], &r );
 			}
 			while( l < 2 ) {
-				UINT8	xindex, sgb_pal, *map, *tiles;
+				UINT8	xindex, sgb_palette, *map, *tiles;
 				UINT16	data;
 				int	i, tile_index;
 
@@ -625,12 +714,12 @@ void sgb_update_scanline (void) {
 				data <<= gb_lcd.layer[l].xshift;
 
 				/* Figure out which palette we're using */
-				sgb_pal = sgb_pal_map[ ( gb_lcd.end_x - i ) >> 3 ][ gb_lcd.current_line >> 3 ] << 2;
+				sgb_palette = sgb_pal_map[ ( gb_lcd.end_x - i ) >> 3 ][ gb_lcd.current_line >> 3 ] << 2;
 
 				while( i > 0 ) {
 					while( ( gb_lcd.layer[l].xshift < 8 ) && i ) {
 						register int colour = ( ( data & 0x8000 ) ? 2 : 0 ) | ( ( data & 0x0080 ) ? 1 : 0 );
-						gb_plot_pixel( bitmap, xindex + SGB_XOFFSET, gb_lcd.current_line + SGB_YOFFSET, Machine->remapped_colortable[ sgb_pal + gb_bpal[colour]] );
+						gb_plot_pixel( bitmap, xindex + SGB_XOFFSET, gb_lcd.current_line + SGB_YOFFSET, sgb_pal[ sgb_palette + gb_bpal[colour]] );
 						bg_zbuf[xindex] = colour;
 						xindex++;
 						data <<= 1;
@@ -642,7 +731,7 @@ void sgb_update_scanline (void) {
 						gb_lcd.layer[l].xshift = 0;
 						tile_index = ( map[ gb_lcd.layer[l].xindex ] ^ gb_tile_no_mod ) * 16;
 						data = tiles[ tile_index ] | ( tiles[ tile_index + 1 ] << 8 );
-						sgb_pal = sgb_pal_map[ ( gb_lcd.end_x - i ) >> 3 ][ gb_lcd.current_line >> 3 ] << 2;
+						sgb_palette = sgb_pal_map[ ( gb_lcd.end_x - i ) >> 3 ][ gb_lcd.current_line >> 3 ] << 2;
 					}
 				}
 				l++;
@@ -704,9 +793,9 @@ INLINE void cgb_update_sprites (void) {
 
 			/* Handle mono mode for GB games */
 			if( gbc_mode == GBC_MODE_MONO )
-				pal = (oam[3] & 0x10) ? 8 : 4;
+				pal = (oam[3] & 0x10) ? 4 : 0;
 			else
-				pal = GBC_PAL_OBJ_OFFSET + ((oam[3] & 0x7) * 4);
+				pal = ((oam[3] & 0x7) * 4);
 
 			xindex = oam[1] - 8;
 			if (oam[3] & 0x40)		   /* flip y ? */
@@ -728,7 +817,7 @@ INLINE void cgb_update_sprites (void) {
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if (colour && !bg_zbuf[xindex])
-						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->pens[cgb_spal[pal + colour]]);
 					data >>= 1;
 				}
 				break;
@@ -739,7 +828,7 @@ INLINE void cgb_update_sprites (void) {
 					if((bg_zbuf[xindex] & 0x80) && (bg_zbuf[xindex] & 0x7f) && (LCDCONT & 0x1))
 						colour = 0;
 					if (colour)
-						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->pens[cgb_spal[pal + colour]]);
 					data >>= 1;
 				}
 				break;
@@ -748,7 +837,7 @@ INLINE void cgb_update_sprites (void) {
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if (colour && !bg_zbuf[xindex])
-						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->pens[cgb_spal[pal + colour]]);
 					data <<= 1;
 				}
 				break;
@@ -759,7 +848,7 @@ INLINE void cgb_update_sprites (void) {
 					if((bg_zbuf[xindex] & 0x80) && (bg_zbuf[xindex] & 0x7f) && (LCDCONT & 0x1))
 						colour = 0;
 					if (colour)
-						gb_plot_pixel(bitmap, xindex, yindex, Machine->remapped_colortable[pal + colour]);
+						gb_plot_pixel(bitmap, xindex, yindex, Machine->pens[cgb_spal[pal + colour]]);
 					data <<= 1;
 				}
 				break;
@@ -833,7 +922,7 @@ void cgb_update_scanline (void) {
 				r.min_y = r.max_y = gb_lcd.current_line;
 				r.min_x = gb_lcd.start_x;
 				r.max_x = gb_lcd.end_x - 1;
-				fillbitmap( bitmap, Machine->pens[0], &r );
+				fillbitmap( bitmap, Machine->pens[ ( gbc_mode == GBC_MODE_MONO ) ? 0 : 32767 ], &r );
 			}
 			while ( l < 2 ) {
 				UINT8	xindex, *map, *tiles, *gbcmap;
@@ -882,7 +971,7 @@ void cgb_update_scanline (void) {
 							colour = ( ( data & 0x8000 ) ? 2 : 0 ) | ( ( data & 0x0080 ) ? 1 : 0 );
 							data <<= 1;
 						}
-						gb_plot_pixel( bitmap, xindex, gb_lcd.current_line, Machine->remapped_colortable[ ( ( gbcmap[ gb_lcd.layer[l].xindex ] & 0x07 ) * 4 ) + colour ] );
+						gb_plot_pixel( bitmap, xindex, gb_lcd.current_line, Machine->pens[ cgb_bpal[ ( ( gbcmap[ gb_lcd.layer[l].xindex ] & 0x07 ) * 4 ) + colour ] ] );
 						bg_zbuf[ xindex ] = colour + ( gbcmap[ gb_lcd.layer[l].xindex ] & 0x80 );
 						xindex++;
 						gb_lcd.layer[l].xshift++;
@@ -917,7 +1006,7 @@ void cgb_update_scanline (void) {
 				if ( gb_lcd.current_line < 144 ) {
 					rectangle r = Machine->screen[0].visarea;
 					r.min_y = r.max_y = gb_lcd.current_line;
-					fillbitmap( bitmap, Machine->pens[0], &r );
+					fillbitmap( bitmap, Machine->pens[ ( gbc_mode == GBC_MODE_MONO ) ? 0 : 32767 ], &r );
 				}
 				gb_lcd.previous_line = gb_lcd.current_line;
 			}
@@ -1319,28 +1408,28 @@ WRITE8_HANDLER ( gbc_video_w ) {
 		/* Some GBC games are lazy and still call this */
 		if( gbc_mode == GBC_MODE_MONO ) {
 			update_scanline();
-			Machine->remapped_colortable[0] = gbc_to_gb_pal[(data & 0x03)];
-			Machine->remapped_colortable[1] = gbc_to_gb_pal[(data & 0x0C) >> 2];
-			Machine->remapped_colortable[2] = gbc_to_gb_pal[(data & 0x30) >> 4];
-			Machine->remapped_colortable[3] = gbc_to_gb_pal[(data & 0xC0) >> 6];
+			cgb_bpal[0] = gbc_to_gb_pal[(data & 0x03)];
+			cgb_bpal[1] = gbc_to_gb_pal[(data & 0x0C) >> 2];
+			cgb_bpal[2] = gbc_to_gb_pal[(data & 0x30) >> 4];
+			cgb_bpal[3] = gbc_to_gb_pal[(data & 0xC0) >> 6];
 		}
 		break;
 	case 0x08:      /* OBP0 - GB Object 0 palette */
 		if( gbc_mode == GBC_MODE_MONO ) /* Some GBC games are lazy and still call this */
 		{
-			Machine->remapped_colortable[4] = gbc_to_gb_pal[(data & 0x03)];
-			Machine->remapped_colortable[5] = gbc_to_gb_pal[(data & 0x0C) >> 2];
-			Machine->remapped_colortable[6] = gbc_to_gb_pal[(data & 0x30) >> 4];
-			Machine->remapped_colortable[7] = gbc_to_gb_pal[(data & 0xC0) >> 6];
+			cgb_spal[0] = gbc_to_gb_pal[(data & 0x03)];
+			cgb_spal[1] = gbc_to_gb_pal[(data & 0x0C) >> 2];
+			cgb_spal[2] = gbc_to_gb_pal[(data & 0x30) >> 4];
+			cgb_spal[3] = gbc_to_gb_pal[(data & 0xC0) >> 6];
 		}
 		break;
 	case 0x09:      /* OBP1 - GB Object 1 palette */
 		if( gbc_mode == GBC_MODE_MONO ) /* Some GBC games are lazy and still call this */
 		{
-			Machine->remapped_colortable[8] = gbc_to_gb_pal[(data & 0x03)];
-			Machine->remapped_colortable[9] = gbc_to_gb_pal[(data & 0x0C) >> 2];
-			Machine->remapped_colortable[10] = gbc_to_gb_pal[(data & 0x30) >> 4];
-			Machine->remapped_colortable[11] = gbc_to_gb_pal[(data & 0xC0) >> 6];
+			cgb_spal[4] = gbc_to_gb_pal[(data & 0x03)];
+			cgb_spal[5] = gbc_to_gb_pal[(data & 0x0C) >> 2];
+			cgb_spal[6] = gbc_to_gb_pal[(data & 0x30) >> 4];
+			cgb_spal[7] = gbc_to_gb_pal[(data & 0xC0) >> 6];
 		}
 		break;
 	case 0x11:      /* HDMA1 - HBL General DMA - Source High */
@@ -1381,7 +1470,9 @@ WRITE8_HANDLER ( gbc_video_w ) {
 		break;
 	case 0x29:      /* BCPD - background palette data */
 		if( GBCBCPS & 0x1 )
-			Machine->remapped_colortable[(GBCBCPS & 0x3e) >> 1] = ((UINT16)(data & 0x7f) << 8) | BP;
+		{
+			cgb_bpal[ ( GBCBCPS >> 1 ) & 0x1F ] = ( ( data & 0x7F ) << 8 ) | BP;
+		}
 		else
 			BP = data;
 		if( GBCBCPS & 0x80 )
@@ -1394,7 +1485,9 @@ WRITE8_HANDLER ( gbc_video_w ) {
 		break;
 	case 0x2B:      /* OCPD - Object palette data */
 		if( GBCOCPS & 0x1 )
-			Machine->remapped_colortable[GBC_PAL_OBJ_OFFSET + ((GBCOCPS & 0x3e) >> 1)] = ((UINT16)(data & 0x7f) << 8) | OP;
+		{
+			cgb_spal[ ( GBCOCPS >> 1 ) & 0x1F ] = ( ( data & 0x7F ) << 8 ) | OP;
+		}
 		else
 			OP = data;
 		if( GBCOCPS & 0x80 )

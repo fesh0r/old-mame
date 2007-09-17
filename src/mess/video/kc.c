@@ -10,6 +10,7 @@
 #include "video/generic.h"
 #include "includes/kc.h"
 #include "eventlst.h"
+#include "mslegacy.h"
 
 /* KC85/4 and KC85/3 common graphics hardware */
 
@@ -153,7 +154,11 @@ static void kc85_draw_8_pixels(mame_bitmap *bitmap,int x,int y, unsigned char co
 		
 		pen = pens[(gfx_byte>>7) & 0x01];
 
-        *BITMAP_ADDR16(bitmap, y, px) = pen;
+		if ((px >= 0) && (px < bitmap->width)
+			&& (y >= 0) && (y < bitmap->height))
+		{
+	        *BITMAP_ADDR16(bitmap, y, px) = pen;
+		}
 		px++;
 	    gfx_byte = gfx_byte<<1;
 	}

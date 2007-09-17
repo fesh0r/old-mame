@@ -20,19 +20,32 @@
 #define MASTER_CLOCK_PAL	3546894
 #define CATEGORY_SELECT		16
 
+/* Some defines for the naming of the controller ports and the controllers */
+#define	STR_LEFT_CONTROLLER		"Left Controller"
+#define STR_RIGHT_CONTROLLER	"Right Controller"
+#define STR_PADDLES				"Paddles"
+#define STR_DRIVING				"Driving"
+#define STR_KEYPAD				"Keypad"
+#define STR_LIGHTGUN			"Lightgun"
+#define STR_BOOSTERGRIP			"Booster Grip"
+#define STR_CX22TRAKBALL		"CX-22 Trak-Ball"
+#define STR_CX80TRAKBALL		"CX-80 Trak-Ball (TB Mode) / AtariST Mouse"
+#define STR_AMIGAMOUSE			"Amiga Mouse"
+#define STR_KIDVID				"KidVid Voice Module"
+
 enum
 {
 	mode2K,
 	mode4K,
-	mode8K,
-	mode12,
-	mode16,
-	mode32,
-	modeAV,
-	modePB,
-	modeTV,
+	modeF8,
+	modeFA,
+	modeF6,
+	modeF4,
+	modeFE,
+	modeE0,
+	mode3F,
 	modeUA,
-	modeMN,
+	modeE7,
 	modeDC,
 	modeCV,
 	mode3E,
@@ -41,6 +54,35 @@ enum
 	modeDPC,
 	mode32in1,
 	modeJVP
+};
+
+struct _extrainfo_banking_def {
+	char	extrainfo[5];
+	int		bank_mode;
+};
+
+static const struct _extrainfo_banking_def extrainfo_banking_defs[] = {
+	/* banking schemes */
+	{ "F8",	modeF8 },
+	{ "FA", modeFA },
+	{ "F6", modeF6 },
+	{ "F4", modeF4 },
+	{ "FE", modeFE },
+	{ "E0", modeE0 },
+	{ "3F", mode3F },
+	{ "UA", modeUA },
+	{ "E7", modeE7 },
+	{ "DC", modeDC },
+	{ "CV", modeCV },
+	{ "3E", mode3E },
+	{ "SS", modeSS },
+	{ "FV", modeFV },
+	{ "DPC", modeDPC },
+	{ "32in1", mode32in1 },
+	{ "JVP", modeJVP },
+
+	/* end of list - do not remove */
+	{ "\0", 0 },
 };
 
 struct DPC_DF {
@@ -68,6 +110,7 @@ static UINT8* bank_base[5];
 static UINT8* ram_base;
 static UINT8* riot_ram;
 
+static UINT8 banking_mode;
 static UINT8 keypad_left_column;
 static UINT8 keypad_right_column;
 
@@ -240,7 +283,7 @@ static int detect_modeSS(void)
 	return 0;
 }
 
-static int detect_modeAV(void)
+static int detect_modeFE(void)
 {
 	int i,j,numfound = 0;
 	unsigned char signatures[][5] =  {
@@ -265,7 +308,7 @@ static int detect_modeAV(void)
 	return 0;
 }
 
-static int detect_modePB(void)
+static int detect_modeE0(void)
 {
 	int i,j,numfound = 0;
 	unsigned char signatures[][3] =  {
@@ -361,7 +404,7 @@ static int detect_modeJVP(void)
 	return 0;
 }
 
-static int detect_modeMN(void)
+static int detect_modeE7(void)
 {
 	int i,j,numfound = 0;
 	unsigned char signatures[][3] = {
@@ -402,7 +445,7 @@ static int detect_modeUA(void)
 	return 0;
 }
 
-static int detect_8K_modeTV(void)
+static int detect_8K_mode3F(void)
 {
 	int i,numfound = 0;
 	unsigned char signature1[4] = { 0xa9, 0x01, 0x85, 0x3f };
@@ -426,7 +469,7 @@ static int detect_8K_modeTV(void)
 	return 0;
 }
 
-static int detect_32K_modeTV(void)
+static int detect_32K_mode3F(void)
 {
 	int i,numfound = 0;
 	unsigned char signature[4] = { 0xa9, 0x0e, 0x85, 0x3f };
@@ -480,8 +523,17 @@ static int detect_super_chip(void)
 }
 
 
+static DEVICE_INIT( a2600_cart ) {
+	banking_mode = 0xFF;
+	return 0;
+}
+
+
 static DEVICE_LOAD( a2600_cart )
 {
+	const struct _extrainfo_banking_def *eibd;
+	const char	*extrainfo;
+
 	cart_size = image_length(image);
 
 	switch (cart_size)
@@ -514,6 +566,15 @@ static DEVICE_LOAD( a2600_cart )
 		}
 	}
 
+	extrainfo = image_extrainfo( image );
+
+	if ( extrainfo && extrainfo[0] ) {
+		for ( eibd = extrainfo_banking_defs; eibd->extrainfo[0]; eibd++ ) {
+			if ( ! mame_stricmp( eibd->extrainfo, extrainfo ) ) {
+				banking_mode = eibd->bank_mode;
+			}
+		}
+	}
 	return 0;
 }
 
@@ -524,27 +585,27 @@ static int next_bank(void)
 }
 
 
-void mode8K_switch(UINT16 offset, UINT8 data)
+void modeF8_switch(UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x1000 * offset;
 	memory_set_bankptr(1, bank_base[1]);
 }
-void mode12_switch(UINT16 offset, UINT8 data)
+void modeFA_switch(UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x1000 * offset;
 	memory_set_bankptr(1, bank_base[1]);
 }
-void mode16_switch(UINT16 offset, UINT8 data)
+void modeF6_switch(UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x1000 * offset;
 	memory_set_bankptr(1, bank_base[1]);
 }
-void mode32_switch(UINT16 offset, UINT8 data)
+void modeF4_switch(UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x1000 * offset;
 	memory_set_bankptr(1, bank_base[1]);
 }
-void modeTV_switch(UINT16 offset, UINT8 data)
+void mode3F_switch(UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x800 * (data & (number_banks - 1));
 	memory_set_bankptr(1, bank_base[1]);
@@ -554,18 +615,18 @@ void modeUA_switch(UINT16 offset, UINT8 data)
 	bank_base[1] = CART + (offset >> 6) * 0x1000;
 	memory_set_bankptr(1, bank_base[1]);
 }
-void modePB_switch(UINT16 offset, UINT8 data)
+void modeE0_switch(UINT16 offset, UINT8 data)
 {
 	int bank = 1 + (offset >> 3);
 	bank_base[bank] = CART + 0x400 * (offset & 7);
 	memory_set_bankptr(bank, bank_base[bank]);
 }
-void modeMN_switch(UINT16 offset, UINT8 data)
+void modeE7_switch(UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x800 * offset;
 	memory_set_bankptr(1, bank_base[1]);
 }
-void modeMN_RAM_switch(UINT16 offset, UINT8 data)
+void modeE7_RAM_switch(UINT16 offset, UINT8 data)
 {
 	memory_set_bankptr(9, extra_RAM + (4 + offset) * 256 );
 }
@@ -613,27 +674,27 @@ void modeJVP_switch(UINT16 offset, UINT8 data)
 
 
 /* These read handlers will return the byte from the new bank */
-static  READ8_HANDLER(mode8K_switch_r) { mode8K_switch(offset, 0); return bank_base[1][0xff8 + offset]; }
-static  READ8_HANDLER(mode12_switch_r) { mode12_switch(offset, 0); return bank_base[1][0xff8 + offset]; }
-static  READ8_HANDLER(mode16_switch_r) { mode16_switch(offset, 0); return bank_base[1][0xff6 + offset]; }
-static  READ8_HANDLER(mode32_switch_r) { mode32_switch(offset, 0); return bank_base[1][0xff4 + offset]; }
-static  READ8_HANDLER(modePB_switch_r) { modePB_switch(offset, 0); return bank_base[4][0x3e0 + offset]; }
-static  READ8_HANDLER(modeMN_switch_r) { modeMN_switch(offset, 0); return bank_base[1][0xfe0 + offset]; }
-static  READ8_HANDLER(modeMN_RAM_switch_r) { modeMN_RAM_switch(offset, 0); return 0; }
+static  READ8_HANDLER(modeF8_switch_r) { modeF8_switch(offset, 0); return bank_base[1][0xff8 + offset]; }
+static  READ8_HANDLER(modeFA_switch_r) { modeFA_switch(offset, 0); return bank_base[1][0xff8 + offset]; }
+static  READ8_HANDLER(modeF6_switch_r) { modeF6_switch(offset, 0); return bank_base[1][0xff6 + offset]; }
+static  READ8_HANDLER(modeF4_switch_r) { modeF4_switch(offset, 0); return bank_base[1][0xff4 + offset]; }
+static  READ8_HANDLER(modeE0_switch_r) { modeE0_switch(offset, 0); return bank_base[4][0x3e0 + offset]; }
+static  READ8_HANDLER(modeE7_switch_r) { modeE7_switch(offset, 0); return bank_base[1][0xfe0 + offset]; }
+static  READ8_HANDLER(modeE7_RAM_switch_r) { modeE7_RAM_switch(offset, 0); return 0; }
 static  READ8_HANDLER(modeUA_switch_r) { modeUA_switch(offset, 0); return 0; }
 static  READ8_HANDLER(modeDC_switch_r) { modeDC_switch(offset, 0); return bank_base[1][0xff0 + offset]; }
 static  READ8_HANDLER(modeFV_switch_r) { modeFV_switch(offset, 0); return bank_base[1][0xfd0 + offset]; }
 static  READ8_HANDLER(modeJVP_switch_r) { modeJVP_switch(offset, 0); return riot_ram[ 0x20 + offset ]; }
 
 
-static WRITE8_HANDLER(mode8K_switch_w) { mode8K_switch(offset, data); }
-static WRITE8_HANDLER(mode12_switch_w) { mode12_switch(offset, data); }
-static WRITE8_HANDLER(mode16_switch_w) { mode16_switch(offset, data); }
-static WRITE8_HANDLER(mode32_switch_w) { mode32_switch(offset, data); }
-static WRITE8_HANDLER(modePB_switch_w) { modePB_switch(offset, data); }
-static WRITE8_HANDLER(modeMN_switch_w) { modeMN_switch(offset, data); }
-static WRITE8_HANDLER(modeMN_RAM_switch_w) { modeMN_RAM_switch(offset, data); }
-static WRITE8_HANDLER(modeTV_switch_w) { modeTV_switch(offset, data); }
+static WRITE8_HANDLER(modeF8_switch_w) { modeF8_switch(offset, data); }
+static WRITE8_HANDLER(modeFA_switch_w) { modeFA_switch(offset, data); }
+static WRITE8_HANDLER(modeF6_switch_w) { modeF6_switch(offset, data); }
+static WRITE8_HANDLER(modeF4_switch_w) { modeF4_switch(offset, data); }
+static WRITE8_HANDLER(modeE0_switch_w) { modeE0_switch(offset, data); }
+static WRITE8_HANDLER(modeE7_switch_w) { modeE7_switch(offset, data); }
+static WRITE8_HANDLER(modeE7_RAM_switch_w) { modeE7_RAM_switch(offset, data); }
+static WRITE8_HANDLER(mode3F_switch_w) { mode3F_switch(offset, data); }
 static WRITE8_HANDLER(modeUA_switch_w) { modeUA_switch(offset, data); }
 static WRITE8_HANDLER(modeDC_switch_w) { modeDC_switch(offset, data); }
 static WRITE8_HANDLER(mode3E_switch_w) { mode3E_switch(offset, data); }
@@ -646,6 +707,14 @@ static WRITE8_HANDLER(mode3E_RAM_w) {
 static WRITE8_HANDLER(modeFV_switch_w) { modeFV_switch(offset, data); }
 static WRITE8_HANDLER(modeJVP_switch_w) { modeJVP_switch(offset, data); riot_ram[ 0x20 + offset ] = data; }
 
+
+OPBASE_HANDLER( modeF6_opbase )
+{
+	if ( ( address & 0x1FFF ) >= 0x1FF6 && ( address & 0x1FFF ) <= 0x1FF9 ) {
+		modeF6_switch_w( ( address & 0x1FFF ) - 0x1FF6, 0 );
+	}
+	return address;
+}
 
 OPBASE_HANDLER( modeSS_opbase )
 {
@@ -719,6 +788,14 @@ static READ8_HANDLER(modeSS_r)
 		}
 		memory_set_bankptr( 1, bank_base[1] );
 		memory_set_bankptr( 2, bank_base[2] );
+
+		/* Check if we should stop the tape */
+		if ( cpu_getactivecpu() >= 0 && activecpu_get_pc() == 0x00FD ) {
+			mess_image *img = image_from_devtype_and_index(IO_CASSETTE, 0);
+			if ( img ) {
+				cassette_change_state(img, CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+			}
+		}
 	} else if ( offset == 0xFF9 ) {
 		/* Cassette port read */
 		double tap_val = cassette_input( image_from_devtype_and_index( IO_CASSETTE, 0 ) );
@@ -933,12 +1010,12 @@ depending on last byte & 0x20 -> 0x00 -> switch to bank #1
 
  */
 
-static opbase_handler AV_old_opbase_handler;
-static int AVTimer;
+static opbase_handler FE_old_opbase_handler;
+static int FETimer;
 
-OPBASE_HANDLER(modeAV_opbase_handler)
+OPBASE_HANDLER(modeFE_opbase_handler)
 {
-	if ( ! AVTimer )
+	if ( ! FETimer )
 	{
 		/* Still cheating a bit here by looking bit 13 of the address..., but the high byte of the
 		   cpu should be the last byte that was on the data bus and so should determine the bank
@@ -946,36 +1023,36 @@ OPBASE_HANDLER(modeAV_opbase_handler)
 		bank_base[1] = CART + 0x1000 * ( ( address & 0x2000 ) ? 0 : 1 );
 		memory_set_bankptr( 1, bank_base[1] );
 		/* and restore old opbase handler */
-		memory_set_opbase_handler(0, AV_old_opbase_handler);
+		memory_set_opbase_handler(0, FE_old_opbase_handler);
 	}
 	else
 	{
 		/* Wait for one memory access to have passed (reading of new PCH either from code or from stack) */
-		AVTimer--;
+		FETimer--;
 	}
 	return address;
 }
 
-void modeAV_switch(UINT16 offset, UINT8 data)
+void modeFE_switch(UINT16 offset, UINT8 data)
 {
 	/* Retrieve last byte read by the cpu (for this mapping scheme this
 	   should be the last byte that was on the data bus
 	*/
-	AVTimer = 1;
-	AV_old_opbase_handler = memory_set_opbase_handler(0, modeAV_opbase_handler);
+	FETimer = 1;
+	FE_old_opbase_handler = memory_set_opbase_handler(0, modeFE_opbase_handler);
 	catch_nextBranch();
 }
 
-static READ8_HANDLER(modeAV_switch_r)
+static READ8_HANDLER(modeFE_switch_r)
 {
-	modeAV_switch(offset, 0 );
+	modeFE_switch(offset, 0 );
 	return program_read_byte_8( 0xFE );
 }
 
-static WRITE8_HANDLER(modeAV_switch_w)
+static WRITE8_HANDLER(modeFE_switch_w)
 {
 	program_write_byte_8( 0xFE, data );
-	modeAV_switch(offset, 0 );
+	modeFE_switch(offset, 0 );
 }
 
 static  READ8_HANDLER(current_bank_r)
@@ -1014,7 +1091,7 @@ static  READ8_HANDLER( switch_A_r )
 	static const UINT8 driving_lookup[4] = { 0x00, 0x02, 0x03, 0x01 };
 	UINT8 val = 0;
 
-	/* Left controller port */
+	/* Left controller port PINs 1-4 ( 4321 ) */
 	switch( readinputport(9) / CATEGORY_SELECT ) {
 	case 0x00:  /* Joystick */
 	case 0x05:	/* Joystick w/Boostergrip */
@@ -1027,12 +1104,15 @@ static  READ8_HANDLER( switch_A_r )
 		val |= 0xC0;
 		val |= ( driving_lookup[ ( readinputport(12) & 0x18 ) >> 3 ] << 4 );
 		break;
+	case 0x06:	/* Trakball CX-22 */
+	case 0x07:	/* Trakball CX-80 / ST mouse */
+	case 0x09:	/* Amiga mouse */
 	default:
 		val |= 0xF0;
 		break;
 	}
 
-	/* Right controller port */
+	/* Right controller port PINs 1-4 ( 4321 ) */
 	switch( readinputport(9) % CATEGORY_SELECT ) {
 	case 0x00:	/* Joystick */
 	case 0x05:	/* Joystick w/Boostergrip */
@@ -1045,6 +1125,9 @@ static  READ8_HANDLER( switch_A_r )
 		val |= 0x0C;
 		val |= ( driving_lookup[ ( readinputport(13) & 0x18 ) >> 3 ] );
 		break;
+	case 0x06:	/* Trakball CX-22 */
+	case 0x07:	/* Trakball CX-80 / ST mouse */
+	case 0x09:	/* Amiga mouse */
 	default:
 		val |= 0x0F;
 		break;
@@ -1096,7 +1179,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 	int i;
 
 	switch( offset ) {
-	case 0:
+	case 0:	/* Left controller port PIN 5 */
 		switch ( readinputport(9) / CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 			return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -1119,7 +1202,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		}
 		break;
-	case 1:
+	case 1:	/* Right controller port PIN 5 */
 		switch ( readinputport(9) / CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 			return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -1142,7 +1225,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		}
 		break;
-	case 2:
+	case 2:	/* Left controller port PIN 9 */
 		switch ( readinputport(9) % CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 			return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -1165,7 +1248,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		}
 		break;
-	case 3:
+	case 3:	/* Right controller port PIN 9 */
 		switch ( readinputport(9) % CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 			return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -1188,7 +1271,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		}
 		break;
-	case 4:
+	case 4:	/* Left controller port PIN 6 */
 		switch ( readinputport(9) / CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 		case 0x05:	/* Joystick w/Boostergrip */
@@ -1208,11 +1291,13 @@ static READ16_HANDLER(a2600_read_input_port) {
 				}
 			}
 			return 0xff;
+		case 0x06:	/* Trakball CX-22 */
+			return readinputport(4) << 4;
 		default:
 			return 0xff;
 		}
 		break;
-	case 5:
+	case 5:	/* Right controller port PIN 6 */
 		switch ( readinputport(9) % CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 		case 0x05:	/* Joystick w/Boostergrip */
@@ -1232,6 +1317,8 @@ static READ16_HANDLER(a2600_read_input_port) {
 				}
 			}
 			return 0xff;
+		case 0x06:	/* Trakball CX-22 */
+			return readinputport(5) << 4;
 		default:
 			return 0xff;
 		}
@@ -1342,69 +1429,101 @@ static MACHINE_START( a2600p )
 	current_reset_bank_counter = 0xFF;
 }
 
+static void set_category_value( const char* cat, const char *cat_selection ) {
+	input_port_entry	*cat_in = NULL;
+	input_port_entry	*in;
+
+	for( in = Machine->input_ports; in->type != IPT_END; in++ ) {
+		if ( in->type == IPT_CATEGORY_NAME && ! mame_stricmp( cat, input_port_name(in) ) ) {
+			cat_in = in;
+		}
+		if ( cat_in && in->type == IPT_CATEGORY_SETTING && ! mame_stricmp( cat_selection, input_port_name(in) ) ) {
+			cat_in->default_value = in->default_value;
+			return;
+		}
+	}
+}
+
+static void set_controller( const char *controller, unsigned int selection ) {
+	/* Defaulting to only joystick when joysstick and paddle are set for now... */
+	if ( selection == JOYS + PADD )
+		selection = JOYS;
+
+	switch( selection ) {
+	case JOYS:	set_category_value( controller, "Joystick" ); break;
+	case PADD:	set_category_value( controller, STR_PADDLES ); break;
+	case KEYP:	set_category_value( controller, STR_KEYPAD ); break;
+	case LGUN:	set_category_value( controller, STR_LIGHTGUN ); break;
+	case INDY:	set_category_value( controller, STR_DRIVING ); break;
+	case BOOS:	set_category_value( controller, STR_BOOSTERGRIP ); break;
+	case KVID:	set_category_value( controller, STR_KIDVID ); break;
+	case CMTE:	break;
+	case MLNK:	break;
+	case AMSE:	set_category_value( controller, STR_AMIGAMOUSE ); break;
+	case CX22:	set_category_value( controller, STR_CX22TRAKBALL ); break;
+	case CX80:	set_category_value( controller, STR_CX80TRAKBALL ); break;
+	}
+}
+
 static MACHINE_RESET( a2600 )
 {
 
-	int mode = 0xFF;
 	int chip = 0xFF;
 	unsigned long controltemp;
-	unsigned int controlleft,controlright;
 	unsigned char snowwhite[] = { 0x10, 0xd0, 0xff, 0xff }; // Snow White Proto
 
 	current_reset_bank_counter++;
 
 	/* auto-detect special controllers */
-
 	controltemp = detect_2600controllers();
-	controlleft = controltemp >> 16;
-	controlright = controltemp & 0xffff;
-	// todo setup all the PORT_ stuff here
+	set_controller( STR_LEFT_CONTROLLER, controltemp >> 16 );
+	set_controller( STR_RIGHT_CONTROLLER, controltemp & 0xFFFF );
 
 	/* auto-detect bank mode */
 
-	if (detect_modeDC()) mode = modeDC;
-	if (mode == 0xff) if (detect_mode3E()) mode = mode3E;
-	if (mode == 0xff) if (detect_modeAV()) mode = modeAV;
-	if (mode == 0xff) if (detect_modeSS()) mode = modeSS;
-	if (mode == 0xff) if (detect_modePB()) mode = modePB;
-	if (mode == 0xff) if (detect_modeCV()) mode = modeCV;
-	if (mode == 0xff) if (detect_modeFV()) mode = modeFV;
-	if (mode == 0xff) if (detect_modeJVP()) mode = modeJVP;
-	if (mode == 0xff) if (detect_modeUA()) mode = modeUA;
-	if (mode == 0xff) if (detect_8K_modeTV()) mode = modeTV;
-	if (mode == 0xff) if (detect_32K_modeTV()) mode = modeTV;
-	if (mode == 0xff) if (detect_modeMN()) mode = modeMN;
+	if (banking_mode == 0xff) if (detect_modeDC()) banking_mode = modeDC;
+	if (banking_mode == 0xff) if (detect_mode3E()) banking_mode = mode3E;
+	if (banking_mode == 0xff) if (detect_modeFE()) banking_mode = modeFE;
+	if (banking_mode == 0xff) if (detect_modeSS()) banking_mode = modeSS;
+	if (banking_mode == 0xff) if (detect_modeE0()) banking_mode = modeE0;
+	if (banking_mode == 0xff) if (detect_modeCV()) banking_mode = modeCV;
+	if (banking_mode == 0xff) if (detect_modeFV()) banking_mode = modeFV;
+	if (banking_mode == 0xff) if (detect_modeJVP()) banking_mode = modeJVP;
+	if (banking_mode == 0xff) if (detect_modeUA()) banking_mode = modeUA;
+	if (banking_mode == 0xff) if (detect_8K_mode3F()) banking_mode = mode3F;
+	if (banking_mode == 0xff) if (detect_32K_mode3F()) banking_mode = mode3F;
+	if (banking_mode == 0xff) if (detect_modeE7()) banking_mode = modeE7;
 
-	if (mode == 0xff) {
+	if (banking_mode == 0xff) {
 		switch (cart_size)
 		{
 		case 0x800:
-			mode = mode2K;
+			banking_mode = mode2K;
 			break;
 		case 0x1000:
-			mode = mode4K;
+			banking_mode = mode4K;
 			break;
 		case 0x2000:
-			mode = mode8K;
+			banking_mode = modeF8;
 			break;
 		case 0x28FF:
 		case 0x2900:
-			mode = modeDPC;
+			banking_mode = modeDPC;
 			break;
 		case 0x3000:
-			mode = mode12;
+			banking_mode = modeFA;
 			break;
 		case 0x4000:
-			mode = mode16;
+			banking_mode = modeF6;
 			break;
 		case 0x8000:
-			mode = mode32;
+			banking_mode = modeF4;
 			break;
 		case 0x10000:
-			mode = mode32in1;
+			banking_mode = mode32in1;
 			break;
 		case 0x80000:
-			mode = modeTV;
+			banking_mode = mode3F;
 			break;
 		}
 	}
@@ -1426,7 +1545,7 @@ static MACHINE_RESET( a2600 )
 
 	/* set up ROM banks */
 
-	switch (mode)
+	switch (banking_mode)
 	{
 	case mode2K:
 		install_banks(2, 0x0000);
@@ -1436,7 +1555,7 @@ static MACHINE_RESET( a2600 )
 		install_banks(1, 0x0000);
 		break;
 
-	case mode8K:
+	case modeF8:
 		if (!memcmp(&CART[0x1ffc],snowwhite,sizeof(snowwhite))) {
 			install_banks(1, 0x0000);
 		} else {
@@ -1444,27 +1563,27 @@ static MACHINE_RESET( a2600 )
 		}
 		break;
 
-	case mode12:
+	case modeFA:
 		install_banks(1, 0x2000);
 		break;
 
-	case mode16:
+	case modeF6:
 		install_banks(1, 0x0000);
 		break;
 
-	case mode32:
+	case modeF4:
 		install_banks(1, 0x7000);
 		break;
 
-	case modeAV:
+	case modeFE:
 		install_banks(1, 0x0000);
 		break;
 
-	case modePB:
+	case modeE0:
 		install_banks(4, 0x1c00);
 		break;
 
-	case modeTV:
+	case mode3F:
 		install_banks(2, cart_size - 0x800);
 		number_banks = cart_size / 0x800;
 		break;
@@ -1473,7 +1592,7 @@ static MACHINE_RESET( a2600 )
 		install_banks(1, 0x1000);
 		break;
 
-	case modeMN:
+	case modeE7:
 		install_banks(2, 0x3800);
 		break;
 
@@ -1520,42 +1639,43 @@ static MACHINE_RESET( a2600 )
 
 	/* set up bank counter */
 
-	if (mode == modeDC)
+	if (banking_mode == modeDC)
 	{
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fec, 0x1fec, 0, 0, current_bank_r);
 	}
 
 	/* set up bank switch registers */
 
-	switch (mode)
+	switch (banking_mode)
 	{
-	case mode8K:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, mode8K_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, mode8K_switch_r);
+	case modeF8:
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_r);
 		break;
 
-	case mode12:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ffa, 0, 0, mode12_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ffa, 0, 0, mode12_switch_r);
+	case modeFA:
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ffa, 0, 0, modeFA_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ffa, 0, 0, modeFA_switch_r);
 		break;
 
-	case mode16:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff6, 0x1ff9, 0, 0, mode16_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff6, 0x1ff9, 0, 0, mode16_switch_r);
+	case modeF6:
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff6, 0x1ff9, 0, 0, modeF6_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff6, 0x1ff9, 0, 0, modeF6_switch_r);
+		memory_set_opbase_handler( 0, modeF6_opbase );
 		break;
 
-	case mode32:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff4, 0x1ffb, 0, 0, mode32_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff4, 0x1ffb, 0, 0, mode32_switch_r);
+	case modeF4:
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff4, 0x1ffb, 0, 0, modeF4_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff4, 0x1ffb, 0, 0, modeF4_switch_r);
 		break;
 
-	case modePB:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1ff8, 0, 0, modePB_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1ff8, 0, 0, modePB_switch_r);
+	case modeE0:
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1ff8, 0, 0, modeE0_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1ff8, 0, 0, modeE0_switch_r);
 		break;
 
-	case modeTV:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x00, 0x3f, 0, 0, modeTV_switch_w);
+	case mode3F:
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x00, 0x3f, 0, 0, mode3F_switch_w);
 		break;
 
 	case modeUA:
@@ -1563,11 +1683,11 @@ static MACHINE_RESET( a2600 )
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x200, 0x27f, 0, 0, modeUA_switch_r);
 		break;
 
-	case modeMN:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1fe7, 0, 0, modeMN_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1fe7, 0, 0, modeMN_switch_r);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe8, 0x1feb, 0, 0, modeMN_RAM_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe8, 0x1feb, 0, 0, modeMN_RAM_switch_r);
+	case modeE7:
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1fe7, 0, 0, modeE7_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1fe7, 0, 0, modeE7_switch_r);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe8, 0x1feb, 0, 0, modeE7_RAM_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe8, 0x1feb, 0, 0, modeE7_RAM_switch_r);
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x18ff, 0, 0, MWA8_BANK9);
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1900, 0x19ff, 0, 0, MRA8_BANK9);
 		memory_set_bankptr( 9, extra_RAM + 4 * 256 );
@@ -1578,9 +1698,9 @@ static MACHINE_RESET( a2600 )
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff0, 0x1ff0, 0, 0, modeDC_switch_r);
 		break;
 
-	case modeAV:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01fe, 0x01fe, 0, 0, modeAV_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01fe, 0x01fe, 0, 0, modeAV_switch_r);
+	case modeFE:
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01fe, 0x01fe, 0, 0, modeFE_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01fe, 0x01fe, 0, 0, modeFE_switch_r);
 		break;
 
 	case mode3E:
@@ -1610,8 +1730,8 @@ static MACHINE_RESET( a2600 )
 	case modeDPC:
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x103f, 0, 0, modeDPC_r);
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1040, 0x107f, 0, 0, modeDPC_w);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, mode8K_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, mode8K_switch_r);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_w);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_r);
 		memory_set_opbase_handler( 0, modeDPC_opbase_handler );
 		{
 			int	data_fetcher;
@@ -1638,7 +1758,7 @@ static MACHINE_RESET( a2600 )
 
 	/* set up extra RAM */
 
-	if (mode == mode12)
+	if (banking_mode == modeFA)
 	{
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x10ff, 0, 0, MWA8_BANK9);
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1100, 0x11ff, 0, 0, MRA8_BANK9);
@@ -1646,7 +1766,7 @@ static MACHINE_RESET( a2600 )
 		memory_set_bankptr(9, extra_RAM);
 	}
 
-	if (mode == modeCV)
+	if (banking_mode == modeCV)
 	{
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1400, 0x17ff, 0, 0, MWA8_BANK9);
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x13ff, 0, 0, MRA8_BANK9);
@@ -1675,13 +1795,19 @@ INPUT_PORTS_START( a2600 )
 	PORT_START /* [3] */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(21) PORT_PLAYER(4) PORT_REVERSE PORT_CODE_DEC(KEYCODE_4_PAD) PORT_CODE_INC(KEYCODE_6_PAD)
 
-	PORT_START /* [4] */
+	PORT_START /* [4] left port button(s) */
+//	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(15) PORT_PLAYER(1)
+//	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(15) PORT_PLAYER(1)
+	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(15) PORT_PLAYER(1)
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(12) PORT_PLAYER(1)
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(10) PORT_PLAYER(1)
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(10) PORT_PLAYER(1)
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(10) PORT_PLAYER(1)
 
-	PORT_START /* [5] */
+	PORT_START /* [5] right port button(s) */
+//	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(25) PORT_PLAYER(2)
+//	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(25) PORT_PLAYER(2)
+	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(25) PORT_PLAYER(2)
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(22) PORT_PLAYER(2)
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(20) PORT_PLAYER(2)
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(20) PORT_PLAYER(2)
@@ -1724,29 +1850,29 @@ INPUT_PORTS_START( a2600 )
 	PORT_DIPSETTING(    0x00, "B" )
 
 	PORT_START /* [9] */
-	PORT_CATEGORY_CLASS( 0xf0, 0x00, "Left Controller" )
+	PORT_CATEGORY_CLASS( 0xf0, 0x00, STR_LEFT_CONTROLLER )
 	PORT_CATEGORY_ITEM(    0x00, DEF_STR( Joystick ), 10 )
-	PORT_CATEGORY_ITEM(    0x10, "Paddles", 11 )
-	PORT_CATEGORY_ITEM(    0x20, "Driving", 12 )
-	PORT_CATEGORY_ITEM(    0x30, "Keypad", 13 )
-	//PORT_CATEGORY_ITEM(    0x40, "Lightgun", 14 )
-	PORT_CATEGORY_ITEM(    0x50, "Booster Grip", 10 )
-	//PORT_CATEGORY_ITEM(    0x60, "CX-22 Trak-Ball", 15 )
-	//PORT_CATEGORY_ITEM(    0x70, "CX-80 Trak-Ball (TB Mode) / AtariST Mouse", 16 )
+	PORT_CATEGORY_ITEM(    0x10, STR_PADDLES, 11 )
+	PORT_CATEGORY_ITEM(    0x20, STR_DRIVING, 12 )
+	PORT_CATEGORY_ITEM(    0x30, STR_KEYPAD, 13 )
+	//PORT_CATEGORY_ITEM(    0x40, STR_LIGHTGUN, 14 )
+	PORT_CATEGORY_ITEM(    0x50, STR_BOOSTERGRIP, 10 )
+	//PORT_CATEGORY_ITEM(    0x60, STR_CX22TRAKBALL, 15 )
+	//PORT_CATEGORY_ITEM(    0x70, STR_CX80TRAKBALL, 15 )
 	//PORT_CATEGORY_ITEM(    0x80, "CX-80 Trak-Ball (JS Mode)", 17 )
-	//PORT_CATEGORY_ITEM(    0x90, "Amiga Mouse", 18 )
-	PORT_CATEGORY_CLASS( 0x0f, 0x00, "Right Controller" )
+	//PORT_CATEGORY_ITEM(    0x90, STR_AMIGAMOUSE, 15 )
+	PORT_CATEGORY_CLASS( 0x0f, 0x00, STR_RIGHT_CONTROLLER )
 	PORT_CATEGORY_ITEM(    0x00, DEF_STR( Joystick ), 20 )
-	PORT_CATEGORY_ITEM(    0x01, "Paddles", 21 )
-	PORT_CATEGORY_ITEM(    0x02, "Driving", 22 )
-	PORT_CATEGORY_ITEM(    0x03, "Keypad", 23 )
-	//PORT_CATEGORY_ITEM(    0x04, "Lightgun", 24 )
-	PORT_CATEGORY_ITEM(    0x05, "Booster Grip", 20 )
-	//PORT_CATEGORY_ITEM(    0x06, "CX-22 Trak-Ball", 25 )
-	//PORT_CATEGORY_ITEM(    0x07, "CX-80 Trak-Ball (TB Mode) / AtariST Mouse", 26 )
+	PORT_CATEGORY_ITEM(    0x01, STR_PADDLES, 21 )
+	PORT_CATEGORY_ITEM(    0x02, STR_DRIVING, 22 )
+	PORT_CATEGORY_ITEM(    0x03, STR_KEYPAD, 23 )
+	//PORT_CATEGORY_ITEM(    0x04, STR_LIGHTGUN, 24 )
+	PORT_CATEGORY_ITEM(    0x05, STR_BOOSTERGRIP, 20 )
+	//PORT_CATEGORY_ITEM(    0x06, STR_CX22TRAKBALL, 25 )
+	//PORT_CATEGORY_ITEM(    0x07, STR_CX80TRAKBALL, 25 )
 	//PORT_CATEGORY_ITEM(    0x08, "CX-80 Trak-Ball (JS Mode)", 27 )
-	//PORT_CATEGORY_ITEM(    0x09, "Amiga Mouse", 28 )
-	PORT_CATEGORY_ITEM(    0x0a, "KidVid Voice Module", 30 )
+	//PORT_CATEGORY_ITEM(    0x09, STR_AMIGAMOUSE, 25 )
+	PORT_CATEGORY_ITEM(    0x0a, STR_KIDVID, 30 )
 	//PORT_CATEGORY_ITEM(    0x0b, "Save Key", 31 )
 
 	PORT_START	/* [10] left keypad */
@@ -1783,17 +1909,30 @@ INPUT_PORTS_START( a2600 )
 	PORT_START	/* [13] right driving controller */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(22) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
-//	PORT_START	/* [14] left light gun X */
+	PORT_START	/* [14] left light gun X */
 //	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CATEGORY(14) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-//	PORT_START	/* [15] left light gun Y */
+	PORT_START	/* [15] left light gun Y */
 //	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CATEGORY(14) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-//	PORT_START	/* [16] right light gun X */
+	PORT_START	/* [16] right light gun X */
 //	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CATEGORY(24) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-//	PORT_START	/* [17] right light gun Y */
+	PORT_START	/* [17] right light gun Y */
 //	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CATEGORY(24) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
+
+	PORT_START	/* [18] left trak ball X */
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(15) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(1)
+
+	PORT_START	/* [19] left trak ball Y */
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_CATEGORY(15) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(1)
+
+	PORT_START	/* [20]	right trak ball X */
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(25) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
+
+	PORT_START	/* [21] right trak ball Y */
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_CATEGORY(25) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
+
 INPUT_PORTS_END
 
 
@@ -1871,6 +2010,7 @@ static void a2600_cartslot_getinfo(const device_class *devclass, UINT32 state, u
 		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_a2600_cart; break;
 		case DEVINFO_PTR_LOAD:							info->load = device_load_a2600_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
