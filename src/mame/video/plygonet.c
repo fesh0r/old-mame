@@ -28,13 +28,6 @@ static TILE_GET_INFO( ttl_get_tile_info )
 	SET_TILE_INFO(ttl_gfx_index, code, attr, 0);
 }
 
-static UINT32 ttl_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
-{
-	/* logical (col,row) -> memory offset */
-
-	return row*64 + col;
-}
-
 READ32_HANDLER( polygonet_ttl_ram_r )
 {
 	UINT32 *vram = (UINT32 *)ttl_vram;
@@ -77,18 +70,12 @@ VIDEO_START( polygonet )
 	decodegfx(machine->gfx[ttl_gfx_index], memory_region(REGION_GFX1), 0, machine->gfx[ttl_gfx_index]->total_elements);
 
 	if (machine->drv->color_table_len)
-	{
-	        machine->gfx[ttl_gfx_index]->colortable = machine->remapped_colortable;
 	        machine->gfx[ttl_gfx_index]->total_colors = machine->drv->color_table_len / 16;
-	}
 	else
-	{
-	        machine->gfx[ttl_gfx_index]->colortable = machine->pens;
 	        machine->gfx[ttl_gfx_index]->total_colors = machine->drv->total_colors / 16;
-	}
 
 	// create the tilemap
-	ttl_tilemap = tilemap_create(ttl_get_tile_info, ttl_scan, TILEMAP_TYPE_TRANSPARENT, 8, 8, 64, 32);
+	ttl_tilemap = tilemap_create(ttl_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(ttl_tilemap, 0);
 

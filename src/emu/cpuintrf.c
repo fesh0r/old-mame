@@ -37,14 +37,16 @@ void n2a03_get_info(UINT32 state, cpuinfo *info);
 void deco16_get_info(UINT32 state, cpuinfo *info);
 void m4510_get_info(UINT32 state, cpuinfo *info);
 void h6280_get_info(UINT32 state, cpuinfo *info);
-void i86_get_info(UINT32 state, cpuinfo *info);
-void i88_get_info(UINT32 state, cpuinfo *info);
-void i186_get_info(UINT32 state, cpuinfo *info);
-void i188_get_info(UINT32 state, cpuinfo *info);
-void i286_get_info(UINT32 state, cpuinfo *info);
+void i8086_get_info(UINT32 state, cpuinfo *info);
+void i8088_get_info(UINT32 state, cpuinfo *info);
+void i80186_get_info(UINT32 state, cpuinfo *info);
+void i80188_get_info(UINT32 state, cpuinfo *info);
+void i80286_get_info(UINT32 state, cpuinfo *info);
 void v20_get_info(UINT32 state, cpuinfo *info);
+void v25_get_info(UINT32 state, cpuinfo *info);
 void v30_get_info(UINT32 state, cpuinfo *info);
 void v33_get_info(UINT32 state, cpuinfo *info);
+void v35_get_info(UINT32 state, cpuinfo *info);
 void v60_get_info(UINT32 state, cpuinfo *info);
 void v70_get_info(UINT32 state, cpuinfo *info);
 void i8035_get_info(UINT32 state, cpuinfo *info);
@@ -158,6 +160,7 @@ void v810_get_info(UINT32 state, cpuinfo *info);
 void m37702_get_info(UINT32 state, cpuinfo *info);
 void m37710_get_info(UINT32 state, cpuinfo *info);
 void ppc403_get_info(UINT32 state, cpuinfo *info);
+void ppc601_get_info(UINT32 state, cpuinfo *info);
 void ppc602_get_info(UINT32 state, cpuinfo *info);
 void ppc603_get_info(UINT32 state, cpuinfo *info);
 void mpc8240_get_info(UINT32 state, cpuinfo *info);
@@ -316,29 +319,35 @@ static const struct
 #if (HAS_H6280)
 	{ CPU_H6280, h6280_get_info },
 #endif
-#if (HAS_I86)
-	{ CPU_I86, i86_get_info },
+#if (HAS_I8086)
+	{ CPU_I8086, i8086_get_info },
 #endif
-#if (HAS_I88)
-	{ CPU_I88, i88_get_info },
+#if (HAS_I8088)
+	{ CPU_I8088, i8088_get_info },
 #endif
-#if (HAS_I186)
-	{ CPU_I186, i186_get_info },
+#if (HAS_I80186)
+	{ CPU_I80186, i80186_get_info },
 #endif
-#if (HAS_I188)
-	{ CPU_I188, i188_get_info },
+#if (HAS_I80188)
+	{ CPU_I80188, i80188_get_info },
 #endif
-#if (HAS_I286)
-	{ CPU_I286, i286_get_info },
+#if (HAS_I80286)
+	{ CPU_I80286, i80286_get_info },
 #endif
 #if (HAS_V20)
 	{ CPU_V20, v20_get_info },
+#endif
+#if (HAS_V25)
+	{ CPU_V25, v25_get_info },
 #endif
 #if (HAS_V30)
 	{ CPU_V30, v30_get_info },
 #endif
 #if (HAS_V33)
 	{ CPU_V33, v33_get_info },
+#endif
+#if (HAS_V35)
+	{ CPU_V35, v35_get_info },
 #endif
 #if (HAS_V60)
 	{ CPU_V60, v60_get_info },
@@ -663,6 +672,9 @@ static const struct
 #if (HAS_PPC403)
 	{ CPU_PPC403, ppc403_get_info },
 #endif
+#if (HAS_PPC601)
+	{ CPU_PPC601, ppc601_get_info },
+#endif
 #if (HAS_PPC602)
 	{ CPU_PPC602, ppc602_get_info },
 #endif
@@ -945,9 +957,6 @@ void cpuintrf_init(running_machine *machine)
 		(*intf->get_info)(CPUINFO_PTR_TRANSLATE, &info);
 		intf->translate = info.translate;
 
-		/* get the instruction count pointer */
-		(*intf->get_info)(CPUINFO_PTR_INSTRUCTION_COUNTER, &info);	intf->icount = info.icount;
-
 		/* get other miscellaneous stuff */
 		intf->context_size = cputype_context_size(cputype);
 		intf->address_shift = cputype_addrbus_shift(cputype, ADDRESS_SPACE_PROGRAM);
@@ -1028,6 +1037,8 @@ void cpuintrf_set_dasm_override(int cpunum, offs_t (*dasm_override)(char *buffer
 
 int cpuintrf_init_cpu(int cpunum, int cputype, int clock, const void *config, int (*irqcallback)(int))
 {
+	cpuinfo info;
+
 	/* allocate a context buffer for the CPU */
 	cpu[cpunum].context = auto_malloc(cpu[cpunum].intf.context_size);
 	memset(cpu[cpunum].context, 0, cpu[cpunum].intf.context_size);
@@ -1037,6 +1048,11 @@ int cpuintrf_init_cpu(int cpunum, int cputype, int clock, const void *config, in
 	(*cpu[cpunum].intf.init)(cpunum, clock, config, irqcallback);
 	(*cpu[cpunum].intf.get_context)(cpu[cpunum].context);
 	activecpu = -1;
+
+	/* get the instruction count pointer */
+	info.icount = NULL;
+	(*cpu[cpunum].intf.get_info)(CPUINFO_PTR_INSTRUCTION_COUNTER, &info);
+	cpu[cpunum].intf.icount = info.icount;
 
 	/* clear out the registered CPU for this family */
 	cpu_active_context[cpu[cpunum].family] = -1;

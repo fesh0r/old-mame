@@ -60,7 +60,7 @@ RC = @windres --use-temp-file
 
 RCDEFS = -DNDEBUG -D_WIN32_IE=0x0400
 
-RCFLAGS = -O coff --include-dir $(WINSRC)
+RCFLAGS = -O coff -I $(WINSRC) -I $(WINOBJ)
 
 
 
@@ -139,6 +139,9 @@ CURPATH = ./
 #-------------------------------------------------
 # Windows-specific debug objects and flags
 #-------------------------------------------------
+
+# define the x64 ABI to be Windows
+DEFS += -DX64_WINDOWS_ABI
 
 # map all instances of "main" to "utf8_main"
 DEFS += -Dmain=utf8_main
@@ -240,16 +243,6 @@ endif
 
 
 #-------------------------------------------------
-# if building with a UI, include the ui.mak
-#-------------------------------------------------
-
-ifdef WINUI
-include $(WINSRC)/ui/ui.mak
-endif
-
-
-
-#-------------------------------------------------
 # rules for building the libaries
 #-------------------------------------------------
 
@@ -265,9 +258,23 @@ $(LIBOSD): $(OSDOBJS)
 
 ledutil$(EXE): $(WINOBJ)/ledutil.o $(LIBOCORE)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
 
 TOOLS += ledutil$(EXE)
+
+
+
+#-------------------------------------------------
+# rule for making the verinfo tool
+#-------------------------------------------------
+
+VERINFO = $(WINOBJ)/verinfo$(EXE)
+
+$(VERINFO): $(WINOBJ)/verinfo.o $(LIBOCORE)
+	@echo Linking $@...
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+
+BUILD += $(VERINFO)
 
 
 
@@ -278,3 +285,15 @@ TOOLS += ledutil$(EXE)
 $(WINOBJ)/%.res: $(WINSRC)/%.rc | $(OSPREBUILD)
 	@echo Compiling resources $<...
 	$(RC) $(RCDEFS) $(RCFLAGS) -o $@ -i $<
+
+
+
+#-------------------------------------------------
+# rules for resource file
+#-------------------------------------------------
+
+$(RESFILE): $(WINSRC)/mame.rc $(WINOBJ)/mamevers.rc
+
+$(WINOBJ)/mamevers.rc: $(VERINFO) $(SRC)/version.c
+	@echo Emitting $@...
+	@$(VERINFO) $(SRC)/version.c > $@

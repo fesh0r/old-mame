@@ -532,17 +532,13 @@ void expand_2nd_key(UINT32 *dstkey, const UINT32 *srckey)
 // for the 2nd FN (2x32 bits)
 static void expand_subkey(UINT32* subkey, UINT16 seed)
 {
-	// Note that every bit of the seed is used exactly 4 times.
+	// Note that each row of the table is a permutation of the seed bits.
 	static const int bits[64] =
 	{
-		 5, 10, 14,  9,  4,  0, 15,  6,
-		 1,  8,  3,  2, 12,  7, 13, 11,
-		 5, 12,  7,  2, 13, 11,  9, 14,
-		 4,  1,  6, 10,  8,  0, 15,  3,
-		 4, 10,  2,  0,  6,  9, 12,  1,
-		11,  7, 15,  8, 13,  5, 14,  3,
-		14, 11, 12,  7,  4,  5,  2, 10,
-		 1, 15,  0,  9,  8,  6, 13,  3,
+		 5, 10, 14,  9,  4,  0, 15,  6,  1,  8,  3,  2, 12,  7, 13, 11,
+		 5, 12,  7,  2, 13, 11,  9, 14,  4,  1,  6, 10,  8,  0, 15,  3,
+		 4, 10,  2,  0,  6,  9, 12,  1, 11,  7, 15,  8, 13,  5, 14,  3,
+		14, 11, 12,  7,  4,  5,  2, 10,  1, 15,  0,  9,  8,  6, 13,  3,
 	};
 	int i;
 
@@ -559,38 +555,31 @@ static UINT16 feistel(UINT16 val, const int *bitsA, const int *bitsB,
 		const struct optimised_sbox* boxes1, const struct optimised_sbox* boxes2, const struct optimised_sbox* boxes3, const struct optimised_sbox* boxes4,
 		UINT32 key1, UINT32 key2, UINT32 key3, UINT32 key4)
 {
-	const UINT8 l0 = BITSWAP8(val, bitsB[7],bitsB[6],bitsB[5],bitsB[4],bitsB[3],bitsB[2],bitsB[1],bitsB[0]);
-	const UINT8 r0 = BITSWAP8(val, bitsA[7],bitsA[6],bitsA[5],bitsA[4],bitsA[3],bitsA[2],bitsA[1],bitsA[0]);
+	UINT8 l = BITSWAP8(val, bitsB[7],bitsB[6],bitsB[5],bitsB[4],bitsB[3],bitsB[2],bitsB[1],bitsB[0]);
+	UINT8 r = BITSWAP8(val, bitsA[7],bitsA[6],bitsA[5],bitsA[4],bitsA[3],bitsA[2],bitsA[1],bitsA[0]);
 
-	const UINT8 l1 = r0;
-	const UINT8 r1 = l0 ^ fn(r0, boxes1, key1);
-
-	const UINT8 l2 = r1;
-	const UINT8 r2 = l1 ^ fn(r1, boxes2, key2);
-
-	const UINT8 l3 = r2;
-	const UINT8 r3 = l2 ^ fn(r2, boxes3, key3);
-
-	const UINT8 l4 = r3;
-	const UINT8 r4 = l3 ^ fn(r3, boxes4, key4);
+	l ^= fn(r, boxes1, key1);
+	r ^= fn(l, boxes2, key2);
+	l ^= fn(r, boxes3, key3);
+	r ^= fn(l, boxes4, key4);
 
 	return
-		(BIT(l4, 0) << bitsA[0]) |
-		(BIT(l4, 1) << bitsA[1]) |
-		(BIT(l4, 2) << bitsA[2]) |
-		(BIT(l4, 3) << bitsA[3]) |
-		(BIT(l4, 4) << bitsA[4]) |
-		(BIT(l4, 5) << bitsA[5]) |
-		(BIT(l4, 6) << bitsA[6]) |
-		(BIT(l4, 7) << bitsA[7]) |
-		(BIT(r4, 0) << bitsB[0]) |
-		(BIT(r4, 1) << bitsB[1]) |
-		(BIT(r4, 2) << bitsB[2]) |
-		(BIT(r4, 3) << bitsB[3]) |
-		(BIT(r4, 4) << bitsB[4]) |
-		(BIT(r4, 5) << bitsB[5]) |
-		(BIT(r4, 6) << bitsB[6]) |
-		(BIT(r4, 7) << bitsB[7]);
+		(BIT(l, 0) << bitsA[0]) |
+		(BIT(l, 1) << bitsA[1]) |
+		(BIT(l, 2) << bitsA[2]) |
+		(BIT(l, 3) << bitsA[3]) |
+		(BIT(l, 4) << bitsA[4]) |
+		(BIT(l, 5) << bitsA[5]) |
+		(BIT(l, 6) << bitsA[6]) |
+		(BIT(l, 7) << bitsA[7]) |
+		(BIT(r, 0) << bitsB[0]) |
+		(BIT(r, 1) << bitsB[1]) |
+		(BIT(r, 2) << bitsB[2]) |
+		(BIT(r, 3) << bitsB[3]) |
+		(BIT(r, 4) << bitsB[4]) |
+		(BIT(r, 5) << bitsB[5]) |
+		(BIT(r, 6) << bitsB[6]) |
+		(BIT(r, 7) << bitsB[7]);
 }
 
 
@@ -792,6 +781,7 @@ static const struct game_keys keys_table[] =
 	{ "xmcotah",  { 0xf5e8dc34,0xa096b217 }, 0x100000 },	// 0C80 1972 0301  cmpi.l  #$19720301,D0
 	{ "xmcotaj",  { 0x46027315,0xaf8bcd9e }, 0x100000 },	// 0C80 1972 0301  cmpi.l  #$19720301,D0
 	{ "xmcotaj1", { 0x46027315,0xaf8bcd9e }, 0x100000 },	// 0C80 1972 0301  cmpi.l  #$19720301,D0
+	{ "xmcotaj2", { 0x46027315,0xaf8bcd9e }, 0x100000 },	// 0C80 1972 0301  cmpi.l  #$19720301,D0
 	{ "xmcotajr", { 0x46027315,0xaf8bcd9e }, 0x100000 },	// 0C80 1972 0301  cmpi.l  #$19720301,D0
 	{ "xmcotaa",  { 0x0795a4e2,0xdb3f861c }, 0x100000 },	// 0C80 1972 0301  cmpi.l  #$19720301,D0
 	{ "armwar",   { 0x9e9d4c0b,0x8a39081f }, 0x100000 },	// 3039 0080 4020  move.w  $00804020,D0
@@ -844,8 +834,8 @@ static const struct game_keys keys_table[] =
 	{ "sfzh",     { 0x876b0e39,0x5ca24fd1 }, 0x080000 },	// 0C80 0564 2194  cmpi.l  #$05642194,D0
 	{ "sfzb",     { 0xef415bd3,0x7a92c680 }, 0x080000 },	// 0C80 0564 2194  cmpi.l  #$05642194,D0
 	{ "sfzbr1",   { 0xef415bd3,0x7a92c680 }, 0x080000 },	// 0C80 0564 2194  cmpi.l  #$05642194,D0
-//  { "mmancp2u", {     /* MISSING */     }, 0x100000 },    // 0C80 0564 2194  cmpi.l  #$05642194,D0 (found in CPS1 version)
-//  { "rmancp2j", {     /* MISSING */     }, 0x100000 },    // 0C80 0564 2194  cmpi.l  #$05642194,D0 (found in CPS1 version)
+	{ "mmancp2u", { 0x054893fa,0x94642525 }, 0x100000 },    // 0C80 0564 2194  cmpi.l  #$05642194,D0
+	{ "rmancp2j", { 0x07215501,0x37fa32d0 }, 0x100000 },	// 0C80 0564 2194  cmpi.l  #$05642194,D0
 	{ "19xx",     { 0x0e07181f,0x5fd0f080 }, 0x200000 },	// 0C81 0095 1101  cmpi.l  #$00951101,D1
 	{ "19xxa",    { 0xcce74cf5,0xb7da3711 }, 0x200000 },	// 0C81 0095 1101  cmpi.l  #$00951101,D1
 	{ "19xxj",    { 0x00115df8,0x000ff87e }, 0x200000 },	// 0C81 0095 1101  cmpi.l  #$00951101,D1
@@ -929,8 +919,9 @@ static const struct game_keys keys_table[] =
 	{ "mvscar1",  { 0xf248aec6,0x7905cd17 }, 0x100000 },	// 0C81 1972 0121  cmpi.l  #$19720121,D1
 	{ "mvsch",    { 0x9d5c7a23,0xe56b18ef }, 0x100000 },	// 0C81 1972 0121  cmpi.l  #$19720121,D1
 	{ "mvscb",    { 0x0874d6eb,0x51c2b798 }, 0x100000 },	// 0C81 1972 0121  cmpi.l  #$19720121,D1
-	{ "sfa3",     { 0xe7bbf0e5,0x67943248 }, 0x100000 },	// 0C80 1C62 F5A8  cmpi.l  #$1C62F5A8,D0
-	{ "sfa3r1",   { 0xe7bbf0e5,0x67943248 }, 0x100000 },	// 0C80 1C62 F5A8  cmpi.l  #$1C62F5A8,D0
+	{ "sfa3",     { 0x6abfc8e0,0x2780ddc1 }, 0x100000 },	// 0C80 1C62 F5A8  cmpi.l  #$1C62F5A8,D0
+	{ "sfa3u",    { 0xe7bbf0e5,0x67943248 }, 0x100000 },	// 0C80 1C62 F5A8  cmpi.l  #$1C62F5A8,D0
+	{ "sfa3ur1",  { 0xe7bbf0e5,0x67943248 }, 0x100000 },	// 0C80 1C62 F5A8  cmpi.l  #$1C62F5A8,D0
 	{ "sfa3b",    { 0xd421c0b2,0x8116d296 }, 0x100000 },	// 0C80 1C62 F5A8  cmpi.l  #$1C62F5A8,D0
 	{ "sfz3j",    { 0x7d49f803,0x0cbe2d79 }, 0x100000 },	// 0C80 1C62 F5A8  cmpi.l  #$1C62F5A8,D0
 	{ "sfz3jr1",  { 0x7d49f803,0x0cbe2d79 }, 0x100000 },	// 0C80 1C62 F5A8  cmpi.l  #$1C62F5A8,D0
@@ -950,7 +941,8 @@ static const struct game_keys keys_table[] =
 	{ "pzloop2",  { 0xa054f812,0xc40d36b4 }, 0x400000 },	// 0C82 9A73 15F1  cmpi.l  #$9A7315F1,D2
 	{ "pzloop2j", { 0xa054f812,0xc40d36b4 }, 0x400000 },	// 0C82 9A73 15F1  cmpi.l  #$9A7315F1,D2
 	{ "choko",    { 0xd3fb12c6,0x7f8e17b5 }, 0x400000 },	// 0C86 4D17 5B3C  cmpi.l  #$4D175B3C,D6
-	{ "dimahoo",  { 0x6575af59,0xb0fea691 }, 0x080000 },	// BE4C B244 B6C5  cmp.w   A4,D7   cmp.w   D4,D1   cmpa.w  D5,A3
+	{ "dimahoo",  { 0x0ddb8e40,0x2817fd2b }, 0x080000 },	// BE4C B244 B6C5  cmp.w   A4,D7   cmp.w   D4,D1   cmpa.w  D5,A3
+	{ "dimahoou", { 0x6575af59,0xb0fea691 }, 0x080000 },	// BE4C B244 B6C5  cmp.w   A4,D7   cmp.w   D4,D1   cmpa.w  D5,A3
 	{ "gmahou",   { 0x97f7be58,0x6121eb62 }, 0x080000 },	// BE4C B244 B6C5  cmp.w   A4,D7   cmp.w   D4,D1   cmpa.w  D5,A3
 	{ "1944",     { 0x1d3e724c,0x8b59fc7a }, 0x080000 },	// 0C86 7B5D 94F1  cmpi.l  #$7B5D94F1,D6
 	{ "1944j",    { 0x23d79c3a,0xe18b2746 }, 0x080000 },	// 0C86 7B5D 94F1  cmpi.l  #$7B5D94F1,D6

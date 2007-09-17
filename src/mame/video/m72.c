@@ -1,10 +1,11 @@
 #include "driver.h"
 #include "audio/m72.h"
+#include "m72.h"
 
 
 
-UINT8 *m72_videoram1,*m72_videoram2,*majtitle_rowscrollram;
-static UINT8 *m72_spriteram;
+UINT16 *m72_videoram1,*m72_videoram2,*majtitle_rowscrollram;
+static UINT16 *m72_spriteram;
 static INT32 splitline;
 static tilemap *fg_tilemap,*bg_tilemap;
 static int xadjust;
@@ -65,15 +66,15 @@ INTERRUPT_GEN( m72_interrupt )
 
 ***************************************************************************/
 
-INLINE void m72_get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT8 *vram,int gfxnum)
+INLINE void m72_get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,const UINT16 *vram,int gfxnum)
 {
 	int code,attr,color,pri;
 
-	tile_index *= 4;
+	tile_index *= 2;
 
-	code  = vram[tile_index];
-	attr  = vram[tile_index+1];
-	color = vram[tile_index+2];
+	code  = vram[tile_index] & 0xff;
+	attr  = vram[tile_index] >> 8;
+	color = vram[tile_index+1] & 0xff;
 
 	if (color & 0x80) pri = 2;
 	else if (color & 0x40) pri = 1;
@@ -84,18 +85,19 @@ INLINE void m72_get_tile_info(running_machine *machine,tile_data *tileinfo,int t
 			gfxnum,
 			code + ((attr & 0x3f) << 8),
 			color & 0x0f,
-			TILE_FLIPYX((attr & 0xc0) >> 6) | TILE_SPLIT(pri))
+			TILE_FLIPYX((attr & 0xc0) >> 6));
+	tileinfo->group = pri;
 }
 
-INLINE void rtype2_get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,UINT8 *vram,int gfxnum)
+INLINE void rtype2_get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,const UINT16 *vram,int gfxnum)
 {
 	int code,attr,color,pri;
 
-	tile_index *= 4;
+	tile_index *= 2;
 
-	code  = vram[tile_index] + (vram[tile_index+1] << 8);
-	color = vram[tile_index+2];
-	attr  = vram[tile_index+3];
+	code  = vram[tile_index];
+	color = vram[tile_index+1] & 0xff;
+	attr  = vram[tile_index+1] >> 8;
 
 	if (attr & 0x01) pri = 2;
 	else if (color & 0x80) pri = 1;
@@ -108,7 +110,8 @@ INLINE void rtype2_get_tile_info(running_machine *machine,tile_data *tileinfo,in
 			gfxnum,
 			code,
 			color & 0x0f,
-			TILE_FLIPYX((color & 0x60) >> 5) | TILE_SPLIT(pri))
+			TILE_FLIPYX((color & 0x60) >> 5));
+	tileinfo->group = pri;
 }
 
 
@@ -138,7 +141,7 @@ static TILE_GET_INFO( rtype2_get_fg_tile_info )
 }
 
 
-static UINT32 majtitle_scan_rows( UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows )
+static TILEMAP_MAPPER( majtitle_scan_rows )
 {
 	/* logical (col,row) -> memory offset */
 	return row*256 + col;
@@ -165,8 +168,8 @@ static void register_savestate(void)
 
 VIDEO_START( m72 )
 {
-	bg_tilemap = tilemap_create(m72_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_SPLIT,8,8,64,64);
-	fg_tilemap = tilemap_create(m72_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_SPLIT,8,8,64,64);
+	bg_tilemap = tilemap_create(m72_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	fg_tilemap = tilemap_create(m72_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -188,8 +191,8 @@ VIDEO_START( m72 )
 
 VIDEO_START( rtype2 )
 {
-	bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_SPLIT,8,8,64,64);
-	fg_tilemap = tilemap_create(rtype2_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_SPLIT,8,8,64,64);
+	bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	fg_tilemap = tilemap_create(rtype2_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -222,9 +225,9 @@ VIDEO_START( majtitle )
 {
 // The tilemap can be 256x64, but seems to be used at 128x64 (scroll wraparound).
 // The layout ramains 256x64, the right half is just not displayed.
-//  bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_SPLIT,8,8,256,64);
-	bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,majtitle_scan_rows,TILEMAP_TYPE_SPLIT,8,8,128,64);
-	fg_tilemap = tilemap_create(rtype2_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_SPLIT,8,8,64,64);
+//  bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,256,64);
+	bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,majtitle_scan_rows,TILEMAP_TYPE_PEN,8,8,128,64);
+	fg_tilemap = tilemap_create(rtype2_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -246,8 +249,8 @@ VIDEO_START( majtitle )
 
 VIDEO_START( hharry )
 {
-	bg_tilemap = tilemap_create(hharry_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_SPLIT,8,8,64,64);
-	fg_tilemap = tilemap_create(m72_get_fg_tile_info,   tilemap_scan_rows,TILEMAP_TYPE_SPLIT,8,8,64,64);
+	bg_tilemap = tilemap_create(hharry_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	fg_tilemap = tilemap_create(m72_get_fg_tile_info,   tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -274,26 +277,20 @@ VIDEO_START( hharry )
 
 ***************************************************************************/
 
-READ8_HANDLER( m72_palette1_r )
+READ16_HANDLER( m72_palette1_r )
 {
-	/* only D0-D4 are connected */
-	if (offset & 1) return 0xff;
-
 	/* A9 isn't connected, so 0x200-0x3ff mirrors 0x000-0x1ff etc. */
-	offset &= ~0x200;
+	offset &= ~0x100;
 
-	return paletteram[offset] | 0xe0;	/* only D0-D4 are connected */
+	return paletteram16[offset] | 0xffe0;	/* only D0-D4 are connected */
 }
 
-READ8_HANDLER( m72_palette2_r )
+READ16_HANDLER( m72_palette2_r )
 {
-	/* only D0-D4 are connected */
-	if (offset & 1) return 0xff;
-
 	/* A9 isn't connected, so 0x200-0x3ff mirrors 0x000-0x1ff etc. */
-	offset &= ~0x200;
+	offset &= ~0x100;
 
-	return paletteram_2[offset] | 0xe0;	/* only D0-D4 are connected */
+	return paletteram16_2[offset] | 0xffe0;	/* only D0-D4 are connected */
 }
 
 INLINE void changecolor(int color,int r,int g,int b)
@@ -301,158 +298,131 @@ INLINE void changecolor(int color,int r,int g,int b)
 	palette_set_color_rgb(Machine,color,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
-WRITE8_HANDLER( m72_palette1_w )
+WRITE16_HANDLER( m72_palette1_w )
 {
-	/* only D0-D4 are connected */
-	if (offset & 1) return;
-
 	/* A9 isn't connected, so 0x200-0x3ff mirrors 0x000-0x1ff etc. */
-	offset &= ~0x200;
+	offset &= ~0x100;
 
-	paletteram[offset] = data;
-	offset &= 0x1ff;
-	changecolor(offset / 2,
-			paletteram[offset + 0x000],
-			paletteram[offset + 0x400],
-			paletteram[offset + 0x800]);
+	COMBINE_DATA(&paletteram16[offset]);
+	offset &= 0x0ff;
+	changecolor(offset,
+			paletteram16[offset + 0x000],
+			paletteram16[offset + 0x200],
+			paletteram16[offset + 0x400]);
 }
 
-WRITE8_HANDLER( m72_palette2_w )
+WRITE16_HANDLER( m72_palette2_w )
 {
-	/* only D0-D4 are connected */
-	if (offset & 1) return;
-
 	/* A9 isn't connected, so 0x200-0x3ff mirrors 0x000-0x1ff etc. */
-	offset &= ~0x200;
+	offset &= ~0x100;
 
-	paletteram_2[offset] = data;
-	offset &= 0x1ff;
-	changecolor(offset / 2 + 256,
-			paletteram_2[offset + 0x000],
-			paletteram_2[offset + 0x400],
-			paletteram_2[offset + 0x800]);
+	COMBINE_DATA(&paletteram16_2[offset]);
+	offset &= 0x0ff;
+	changecolor(offset + 256,
+			paletteram16_2[offset + 0x000],
+			paletteram16_2[offset + 0x200],
+			paletteram16_2[offset + 0x400]);
 }
 
-READ8_HANDLER( m72_videoram1_r )
+WRITE16_HANDLER( m72_videoram1_w )
 {
-	return m72_videoram1[offset];
+	COMBINE_DATA(&m72_videoram1[offset]);
+	tilemap_mark_tile_dirty(fg_tilemap,offset/2);
 }
 
-READ8_HANDLER( m72_videoram2_r )
+WRITE16_HANDLER( m72_videoram2_w )
 {
-	return m72_videoram2[offset];
+	COMBINE_DATA(&m72_videoram2[offset]);
+	tilemap_mark_tile_dirty(bg_tilemap,offset/2);
 }
 
-WRITE8_HANDLER( m72_videoram1_w )
+WRITE16_HANDLER( m72_irq_line_w )
 {
-	m72_videoram1[offset] = data;
-	tilemap_mark_tile_dirty(fg_tilemap,offset/4);
+	COMBINE_DATA(&splitline);
 }
 
-WRITE8_HANDLER( m72_videoram2_w )
+WRITE16_HANDLER( m72_scrollx1_w )
 {
-	m72_videoram2[offset] = data;
-	tilemap_mark_tile_dirty(bg_tilemap,offset/4);
+	COMBINE_DATA(&scrollx1);
 }
 
-WRITE8_HANDLER( m72_irq_line_w )
+WRITE16_HANDLER( m72_scrollx2_w )
 {
-	offset *= 8;
-	splitline = (splitline & (0xff00 >> offset)) | (data << offset);
+	COMBINE_DATA(&scrollx2);
 }
 
-WRITE8_HANDLER( m72_scrollx1_w )
+WRITE16_HANDLER( m72_scrolly1_w )
 {
-	offset *= 8;
-	scrollx1 = (scrollx1 & (0xff00 >> offset)) | (data << offset);
+	COMBINE_DATA(&scrolly1);
 }
 
-WRITE8_HANDLER( m72_scrollx2_w )
+WRITE16_HANDLER( m72_scrolly2_w )
 {
-	offset *= 8;
-	scrollx2 = (scrollx2 & (0xff00 >> offset)) | (data << offset);
+	COMBINE_DATA(&scrolly2);
 }
 
-WRITE8_HANDLER( m72_scrolly1_w )
+WRITE16_HANDLER( m72_dmaon_w )
 {
-	offset *= 8;
-	scrolly1 = (scrolly1 & (0xff00 >> offset)) | (data << offset);
+	if (ACCESSING_LSB)
+		memcpy(m72_spriteram,spriteram16,spriteram_size);
 }
 
-WRITE8_HANDLER( m72_scrolly2_w )
-{
-	offset *= 8;
-	scrolly2 = (scrolly2 & (0xff00 >> offset)) | (data << offset);
-}
 
-WRITE8_HANDLER( m72_dmaon_w )
+WRITE16_HANDLER( m72_port02_w )
 {
-	if (offset == 0)
+	if (ACCESSING_LSB)
 	{
-		memcpy(m72_spriteram,spriteram,spriteram_size);
+		if (data & 0xe0) logerror("write %02x to port 02\n",data);
+
+		/* bits 0/1 are coin counters */
+		coin_counter_w(0,data & 0x01);
+		coin_counter_w(1,data & 0x02);
+
+		/* bit 2 is flip screen (handled both by software and hardware) */
+		flip_screen_set(((data & 0x04) >> 2) ^ ((~readinputport(2) >> 8) & 1));
+
+		/* bit 3 is display disable */
+		video_off = data & 0x08;
+
+		/* bit 4 resets sound CPU (active low) */
+		if (data & 0x10)
+			cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
+		else
+			cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+
+		/* bit 5 = "bank"? */
 	}
 }
 
-
-WRITE8_HANDLER( m72_port02_w )
+WRITE16_HANDLER( rtype2_port02_w )
 {
-	if (offset != 0)
+	if (ACCESSING_LSB)
 	{
-		if (data) logerror("write %02x to port 03\n",data);
-		return;
+		if (data & 0xe0) logerror("write %02x to port 02\n",data);
+
+		/* bits 0/1 are coin counters */
+		coin_counter_w(0,data & 0x01);
+		coin_counter_w(1,data & 0x02);
+
+		/* bit 2 is flip screen (handled both by software and hardware) */
+		flip_screen_set(((data & 0x04) >> 2) ^ ((~readinputport(2) >> 8) & 1));
+
+		/* bit 3 is display disable */
+		video_off = data & 0x08;
+
+		/* other bits unknown */
 	}
-	if (data & 0xe0) logerror("write %02x to port 02\n",data);
-
-	/* bits 0/1 are coin counters */
-	coin_counter_w(0,data & 0x01);
-	coin_counter_w(1,data & 0x02);
-
-	/* bit 2 is flip screen (handled both by software and hardware) */
-	flip_screen_set(((data & 0x04) >> 2) ^ (~readinputport(5) & 1));
-
-	/* bit 3 is display disable */
-	video_off = data & 0x08;
-
-	/* bit 4 resets sound CPU (active low) */
-	if (data & 0x10)
-		cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
-	else
-		cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
-
-	/* bit 5 = "bank"? */
-}
-
-WRITE8_HANDLER( rtype2_port02_w )
-{
-	if (offset != 0)
-	{
-		if (data) logerror("write %02x to port 03\n",data);
-		return;
-	}
-	if (data & 0xe0) logerror("write %02x to port 02\n",data);
-
-	/* bits 0/1 are coin counters */
-	coin_counter_w(0,data & 0x01);
-	coin_counter_w(1,data & 0x02);
-
-	/* bit 2 is flip screen (handled both by software and hardware) */
-	flip_screen_set(((data & 0x04) >> 2) ^ (~readinputport(5) & 1));
-
-	/* bit 3 is display disable */
-	video_off = data & 0x08;
-
-	/* other bits unknown */
 }
 
 
 static int majtitle_rowscroll;
 
 /* the following is mostly a kludge. This register seems to be used for something else */
-WRITE8_HANDLER( majtitle_gfx_ctrl_w )
+WRITE16_HANDLER( majtitle_gfx_ctrl_w )
 {
-	if (offset == 1)
+	if (ACCESSING_MSB)
 	{
-		if (data) majtitle_rowscroll = 1;
+		if (data & 0xff00) majtitle_rowscroll = 1;
 		else majtitle_rowscroll = 0;
 	}
 }
@@ -469,20 +439,20 @@ static void m72_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const
 	int offs;
 
 	offs = 0;
-	while (offs < spriteram_size)
+	while (offs < spriteram_size/2)
 	{
 		int code,color,sx,sy,flipx,flipy,w,h,x,y;
 
 
-		code = m72_spriteram[offs+2] | (m72_spriteram[offs+3] << 8);
-		color = m72_spriteram[offs+4] & 0x0f;
-		sx = -256+(m72_spriteram[offs+6] | ((m72_spriteram[offs+7] & 0x03) << 8));
-		sy = 512-(m72_spriteram[offs+0] | ((m72_spriteram[offs+1] & 0x01) << 8));
-		flipx = m72_spriteram[offs+5] & 0x08;
-		flipy = m72_spriteram[offs+5] & 0x04;
+		code = m72_spriteram[offs+1];
+		color = m72_spriteram[offs+2] & 0x0f;
+		sx = -256+(m72_spriteram[offs+3] & 0x3ff);
+		sy = 512-(m72_spriteram[offs+0] & 0x1ff);
+		flipx = m72_spriteram[offs+2] & 0x0800;
+		flipy = m72_spriteram[offs+2] & 0x0400;
 
-		w = 1 << ((m72_spriteram[offs+5] & 0xc0) >> 6);
-		h = 1 << ((m72_spriteram[offs+5] & 0x30) >> 4);
+		w = 1 << ((m72_spriteram[offs+2] & 0xc000) >> 14);
+		h = 1 << ((m72_spriteram[offs+2] & 0x3000) >> 12);
 		sy -= 16 * h;
 
 		if (flip_screen)
@@ -513,7 +483,7 @@ static void m72_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const
 			}
 		}
 
-		offs += w*8;
+		offs += w*4;
 	}
 }
 
@@ -521,20 +491,20 @@ static void majtitle_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 {
 	int offs;
 
-	for (offs = 0;offs < spriteram_size;offs += 8)
+	for (offs = 0;offs < spriteram_size;offs += 4)
 	{
 		int code,color,sx,sy,flipx,flipy,w,h,x,y;
 
 
-		code = spriteram_2[offs+2] | (spriteram_2[offs+3] << 8);
-		color = spriteram_2[offs+4] & 0x0f;
-		sx = -256+(spriteram_2[offs+6] | ((spriteram_2[offs+7] & 0x03) << 8));
-		sy = 512-(spriteram_2[offs+0] | ((spriteram_2[offs+1] & 0x01) << 8));
-		flipx = spriteram_2[offs+5] & 0x08;
-		flipy = spriteram_2[offs+5] & 0x04;
+		code = spriteram16_2[offs+1];
+		color = spriteram16_2[offs+2] & 0x0f;
+		sx = -256+(spriteram16_2[offs+3] & 0x3ff);
+		sy = 512-(spriteram16_2[offs+0] & 0x1ff);
+		flipx = spriteram16_2[offs+2] & 0x0800;
+		flipy = spriteram16_2[offs+2] & 0x0400;
 
-		w = 1;// << ((spriteram_2[offs+5] & 0xc0) >> 6);
-		h = 1 << ((spriteram_2[offs+5] & 0x30) >> 4);
+		w = 1;// << ((spriteram16_2[offs+2] & 0xc000) >> 14);
+		h = 1 << ((spriteram16_2[offs+2] & 0x3000) >> 12);
 		sy -= 16 * h;
 
 		if (flip_screen)
@@ -581,11 +551,11 @@ VIDEO_UPDATE( m72 )
 	tilemap_set_scrollx(bg_tilemap,0,scrollx2 + xadjust + bgadjust);
 	tilemap_set_scrolly(bg_tilemap,0,scrolly2);
 
-	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_BACK,0);
-	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_BACK,0);
+	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER1,0);
+	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_LAYER1,0);
 	m72_draw_sprites(machine, bitmap,cliprect);
-	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_FRONT,0);
-	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_FRONT,0);
+	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER0,0);
+	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	return 0;
 }
 
@@ -608,7 +578,7 @@ VIDEO_UPDATE( majtitle )
 		tilemap_set_scroll_rows(bg_tilemap,512);
 		for (i = 0;i < 512;i++)
 			tilemap_set_scrollx(bg_tilemap,(i+scrolly2)&0x1ff,
-					256 + majtitle_rowscrollram[2*i] + (majtitle_rowscrollram[2*i+1] << 8) + xadjust);
+					256 + majtitle_rowscrollram[i] + xadjust);
 	}
 	else
 	{
@@ -617,11 +587,11 @@ VIDEO_UPDATE( majtitle )
 	}
 	tilemap_set_scrolly(bg_tilemap,0,scrolly2);
 
-	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_BACK,0);
-	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_BACK,0);
+	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER1,0);
+	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_LAYER1,0);
 	majtitle_draw_sprites(machine, bitmap,cliprect);
 	m72_draw_sprites(machine, bitmap,cliprect);
-	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_FRONT,0);
-	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_FRONT,0);
+	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER0,0);
+	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	return 0;
 }

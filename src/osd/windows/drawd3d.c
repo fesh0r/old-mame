@@ -532,10 +532,15 @@ static void drawd3d_window_destroy(win_window_info *window)
 
 static const render_primitive_list *drawd3d_window_get_primitives(win_window_info *window)
 {
+	d3d_info *d3d = window->drawdata;
 	RECT client;
+
 	GetClientRect(window->hwnd, &client);
 	if (rect_width(&client) > 0 && rect_height(&client) > 0)
+	{
 		render_target_set_bounds(window->target, rect_width(&client), rect_height(&client), winvideo_monitor_get_aspect(window->monitor));
+		render_target_set_max_update_rate(window->target, (d3d->refresh == 0) ? d3d->origmode.RefreshRate : d3d->refresh);
+	}
 	return render_target_get_primitives(window->target);
 }
 
@@ -701,7 +706,7 @@ try_again:
 	d3d->presentation.MultiSampleType				= D3DMULTISAMPLE_NONE;
 	d3d->presentation.SwapEffect					= D3DSWAPEFFECT_DISCARD;
 	d3d->presentation.hDeviceWindow					= window->hwnd;
-	d3d->presentation.Windowed						= !window->fullscreen || win_has_menu(window);
+	d3d->presentation.Windowed						= !window->fullscreen || HAS_WINDOW_MENU;
 	d3d->presentation.EnableAutoDepthStencil		= FALSE;
 	d3d->presentation.AutoDepthStencilFormat		= D3DFMT_D16;
 	d3d->presentation.Flags							= 0;
@@ -1102,7 +1107,7 @@ static int config_adapter_mode(win_window_info *window)
 	}
 
 	// choose a resolution: window mode case
-	if (!window->fullscreen || win_has_menu(window))
+	if (!window->fullscreen || HAS_WINDOW_MENU)
 	{
 		RECT client;
 

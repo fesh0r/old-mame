@@ -105,7 +105,7 @@ static TILE_GET_INFO( get_alpha_tile_info )
 	int code = data & 0x3ff;
 	int color = (data >> 10) & 0x07;
 	int opaque = data & 0x2000;
-	SET_TILE_INFO(0, code, color, opaque ? TILE_IGNORE_TRANSPARENCY : 0);
+	SET_TILE_INFO(0, code, color, opaque ? TILE_FORCE_LAYER0 : 0);
 }
 
 
@@ -175,13 +175,13 @@ VIDEO_START( atarisy1 )
 	decode_gfx(machine, playfield_lookup, motable);
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 8,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 
 	/* modify the motion object code lookup */
@@ -654,7 +654,7 @@ static int get_bank(running_machine *machine, UINT8 prom1, UINT8 prom2, int bpp)
 	decodegfx(machine->gfx[gfx_index], &memory_region(REGION_GFX2)[0x80000 * (bank_index - 1)], 0, machine->gfx[gfx_index]->total_elements);
 
 	/* set the color information */
-	machine->gfx[gfx_index]->colortable = &machine->remapped_colortable[256];
+	machine->gfx[gfx_index]->color_base = 256;
 	machine->gfx[gfx_index]->color_granularity = 8;
 	machine->gfx[gfx_index]->total_colors = 0x40;
 	bank_color_shift[gfx_index] = bpp - 3;

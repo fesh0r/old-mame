@@ -1481,6 +1481,79 @@ INPUT_PORTS_START( oscar )
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
+INPUT_PORTS_START( oscarj0 )
+	PORT_START_TAG("IN0")
+	PLAYER1_JOYSTICK
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
+
+ 	PORT_START_TAG("IN1")
+	PLAYER2_JOYSTICK
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_COCKTAIL
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
+
+	PORT_START_TAG("IN2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
+
+	PORT_START_TAG("DSW0")
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(    0x03, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
+	PORT_DIPNAME( 0x10, 0x10, "Freeze Mode" )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Flip_Screen ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
+
+	PORT_START_TAG("DSW1")
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
+	PORT_DIPSETTING(    0x01, "1" )
+	PORT_DIPSETTING(    0x03, "3" )
+	PORT_DIPSETTING(    0x02, "5" )
+	PORT_DIPSETTING(    0x00, "Infinite (Cheat)")
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Hard ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x30, "Every 40000" )
+	PORT_DIPSETTING(    0x20, "Every 60000" )
+	PORT_DIPSETTING(    0x10, "Every 90000" )
+	PORT_DIPSETTING(    0x00, "50000 only" )
+	PORT_DIPNAME( 0x40, 0x40, "Invulnerability (Cheat)")
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Allow_Continue ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
+INPUT_PORTS_END
+
 INPUT_PORTS_START( lastmisn )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
@@ -2088,7 +2161,7 @@ static MACHINE_DRIVER_START( cobracom )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,dec8_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(529) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529) /* 58Hz, 529ms Vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -2127,7 +2200,7 @@ static MACHINE_DRIVER_START( ghostb )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,dec8_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(2500) /* 58Hz, 529ms Vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -2168,7 +2241,7 @@ static MACHINE_DRIVER_START( srdarwin )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,dec8_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(529) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529) /* 58Hz, 529ms Vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -2207,7 +2280,7 @@ static MACHINE_DRIVER_START( gondo )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,oscar_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(529) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529) /* 58Hz, 529ms Vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -2250,7 +2323,7 @@ static MACHINE_DRIVER_START( oscar )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,oscar_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(2500) /* 58Hz, 529ms Vblank duration */)
 	MDRV_INTERLEAVE(40) /* 40 CPU slices per frame */
 
 	/* video hardware */
@@ -2292,7 +2365,7 @@ static MACHINE_DRIVER_START( lastmiss )
 	MDRV_CPU_PROGRAM_MAP(ym3526_s_readmem,ym3526_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(2500) /* 58Hz, 529ms Vblank duration */)
 	MDRV_INTERLEAVE(200)
 
 	/* video hardware */
@@ -2334,7 +2407,7 @@ static MACHINE_DRIVER_START( shackled )
 	MDRV_CPU_PROGRAM_MAP(ym3526_s_readmem,ym3526_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(2500) /* 58Hz, 529ms Vblank duration */)
 	MDRV_INTERLEAVE(80)
 
 	/* video hardware */
@@ -2377,7 +2450,7 @@ static MACHINE_DRIVER_START( csilver )
 	MDRV_CPU_PROGRAM_MAP(csilver_s_readmem,csilver_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(529) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529) /* 58Hz, 529ms Vblank duration */)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
@@ -2421,7 +2494,7 @@ static MACHINE_DRIVER_START( garyoret )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,oscar_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(529) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529) /* 58Hz, 529ms Vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -3381,7 +3454,7 @@ static DRIVER_INIT( deco222 )
 
 	sound_cpu = 1;
 	/* Oscar has three CPUs */
-	if (machine->drv->cpu[2].cpu_type != 0) sound_cpu = 2;
+	if (machine->drv->cpu[2].cpu_type != CPU_DUMMY) sound_cpu = 2;
 
 	/* bits 5 and 6 of the opcodes are swapped */
 	rom = memory_region(REGION_CPU1+sound_cpu);
@@ -3421,7 +3494,7 @@ GAME( 1987, makyosen, gondo,    gondo,    gondo,    0,       ROT270, "Data East 
 GAME( 1988, oscar,    0,        oscar,    oscar,    deco222, ROT0,   "Data East USA", "Psycho-Nics Oscar (US)", 0 )
 GAME( 1987, oscarj,   oscar,    oscar,    oscar,    deco222, ROT0,   "Data East Corporation", "Psycho-Nics Oscar (Japan revision 2)", 0 )
 GAME( 1987, oscarj1,  oscar,    oscar,    oscar,    deco222, ROT0,   "Data East Corporation", "Psycho-Nics Oscar (Japan revision 1)", 0 )
-GAME( 1987, oscarj0,  oscar,    oscar,    oscar,    deco222, ROT0,   "Data East Corporation", "Psycho-Nics Oscar (Japan revision 0)", 0 )
+GAME( 1987, oscarj0,  oscar,    oscar,    oscarj0,  deco222, ROT0,   "Data East Corporation", "Psycho-Nics Oscar (Japan revision 0)", 0 )
 GAME( 1986, lastmisn, 0,        lastmiss, lastmisn, 0,       ROT270, "Data East USA", "Last Mission (US revision 6)", 0 )
 GAME( 1986, lastmsno, lastmisn, lastmiss, lastmisn, 0,       ROT270, "Data East USA", "Last Mission (US revision 5)", 0 )
 GAME( 1986, lastmsnj, lastmisn, lastmiss, lastmsnj, 0,       ROT270, "Data East Corporation", "Last Mission (Japan)", 0 )

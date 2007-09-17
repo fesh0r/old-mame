@@ -102,28 +102,28 @@ static const gfx_layout sys24_char_layout = {
 static TILE_GET_INFO( sys24_tile_info_0s )
 {
 	UINT16 val = sys24_tile_ram[tile_index];
-	tileinfo->priority = (val & 0x8000) != 0;
+	tileinfo->category = (val & 0x8000) != 0;
 	SET_TILE_INFO(sys24_char_gfx_index, val & sys24_tile_mask, (val >> 7) & 0xff, 0);
 }
 
 static TILE_GET_INFO( sys24_tile_info_0w )
 {
 	UINT16 val = sys24_tile_ram[tile_index|0x1000];
-	tileinfo->priority = (val & 0x8000) != 0;
+	tileinfo->category = (val & 0x8000) != 0;
 	SET_TILE_INFO(sys24_char_gfx_index, val & sys24_tile_mask, (val >> 7) & 0xff, 0);
 }
 
 static TILE_GET_INFO( sys24_tile_info_1s )
 {
 	UINT16 val = sys24_tile_ram[tile_index|0x2000];
-	tileinfo->priority = (val & 0x8000) != 0;
+	tileinfo->category = (val & 0x8000) != 0;
 	SET_TILE_INFO(sys24_char_gfx_index, val & sys24_tile_mask, (val >> 7) & 0xff, 0);
 }
 
 static TILE_GET_INFO( sys24_tile_info_1w )
 {
 	UINT16 val = sys24_tile_ram[tile_index|0x3000];
-	tileinfo->priority = (val & 0x8000) != 0;
+	tileinfo->category = (val & 0x8000) != 0;
 	SET_TILE_INFO(sys24_char_gfx_index, val & sys24_tile_mask, (val >> 7) & 0xff, 0);
 }
 
@@ -148,10 +148,10 @@ void sys24_tile_vh_start(running_machine *machine, UINT16 tile_mask)
 
 	sys24_char_dirtymap = auto_malloc(SYS24_TILES);
 
-	sys24_tile_layer[0] = tilemap_create(sys24_tile_info_0s, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8, 8, 64, 64);
-	sys24_tile_layer[1] = tilemap_create(sys24_tile_info_0w, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8, 8, 64, 64);
-	sys24_tile_layer[2] = tilemap_create(sys24_tile_info_1s, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8, 8, 64, 64);
-	sys24_tile_layer[3] = tilemap_create(sys24_tile_info_1w, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8, 8, 64, 64);
+	sys24_tile_layer[0] = tilemap_create(sys24_tile_info_0s, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 64);
+	sys24_tile_layer[1] = tilemap_create(sys24_tile_info_0w, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 64);
+	sys24_tile_layer[2] = tilemap_create(sys24_tile_info_1s, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 64);
+	sys24_tile_layer[3] = tilemap_create(sys24_tile_info_1w, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 64);
 
 	tilemap_set_transparent_pen(sys24_tile_layer[0], 0);
 	tilemap_set_transparent_pen(sys24_tile_layer[1], 0);
@@ -166,15 +166,9 @@ void sys24_tile_vh_start(running_machine *machine, UINT16 tile_mask)
 	machine->gfx[sys24_char_gfx_index] = allocgfx(&sys24_char_layout);
 
 	if (machine->drv->color_table_len)
-	{
-		machine->gfx[sys24_char_gfx_index]->colortable = machine->remapped_colortable;
 		machine->gfx[sys24_char_gfx_index]->total_colors = machine->drv->color_table_len / 16;
-	}
 	else
-	{
-		machine->gfx[sys24_char_gfx_index]->colortable = machine->pens;
 		machine->gfx[sys24_char_gfx_index]->total_colors = machine->drv->total_colors / 16;
-	}
 
 	state_save_register_global_pointer(sys24_tile_ram, 0x10000/2);
 	state_save_register_global_pointer(sys24_char_ram, 0x80000/2);
@@ -208,7 +202,7 @@ static void sys24_tile_draw_rect(running_machine *machine, mame_bitmap *bm, mame
 	UINT8        *prib = priority_bitmap->base;
 	UINT16       *dest = dm->base;
 
-	tpri |= TILE_FLAG_FG_OPAQUE;
+	tpri |= TILEMAP_PIXEL_LAYER0;
 
 	dest += yy1*dm->rowpixels + xx1;
 	prib += yy1*priority_bitmap->rowpixels + xx1;
@@ -340,9 +334,9 @@ static void sys24_tile_draw_rect_rgb(running_machine *machine, mame_bitmap *bm, 
 	const UINT16 *source  = ((UINT16 *)bm->base) + sx + sy*bm->rowpixels;
 	const UINT8  *trans = ((UINT8 *) tm->base) + sx + sy*tm->rowpixels;
 	UINT16       *dest = dm->base;
-	pen_t        *pens   = machine->pens;
+	const pen_t  *pens   = machine->pens;
 
-	tpri |= TILE_FLAG_FG_OPAQUE;
+	tpri |= TILEMAP_PIXEL_LAYER0;
 
 	dest += yy1*dm->rowpixels + xx1;
 	mask += yy1*4;
@@ -530,7 +524,7 @@ void sys24_tile_draw(running_machine *machine, mame_bitmap *bitmap, const rectan
 			draw = sys24_tile_draw_rect;
 
 		bm = tilemap_get_pixmap(sys24_tile_layer[layer]);
-		tm = tilemap_get_transparency_bitmap(sys24_tile_layer[layer]);
+		tm = tilemap_get_flagsmap(sys24_tile_layer[layer]);
 
 		if(hscr & 0x8000) {
 			int y;

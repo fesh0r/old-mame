@@ -25,24 +25,18 @@ it will crash shortly afterwards tho
 #include "audio/seibu.h"
 
 static tilemap *background_layer,*midground_layer,*foreground_layer,*text_layer;
-static UINT8 *back_data,*fore_data,*mid_data, *w1ram;
+static UINT16 *back_data,*fore_data,*mid_data, *w1ram;
 static int bg_bank=0, fg_bank=6, mid_bank=1, bg_col=0, fg_col=1, mid_col=2;
 
 static int tick;
-static UINT8 *mainram;
+static UINT16 *mainram;
 
 static int c_r[0xc000], c_w[0xc000];
 
-static void combine16(UINT16 *val, int offset, UINT8 data)
+static void combine32(UINT32 *val, int offset, UINT16 data, UINT16 mem_mask)
 {
-	offset *= 8;
-	*val = (*val & ~(0xff << offset)) | (data << offset);
-}
-
-static void combine32(UINT32 *val, int offset, UINT8 data)
-{
-	offset *= 8;
-	*val = (*val & ~(0xff << offset)) | (data << offset);
+	UINT16 *dest = (UINT16 *)val + BYTE_XOR_LE(offset);
+	COMBINE_DATA(dest);
 }
 
 
@@ -50,9 +44,8 @@ static void combine32(UINT32 *val, int offset, UINT8 data)
 
 static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect ,int pri_mask )
 {
-
-	const UINT8 *source = spriteram+0x1000-8 ;
-	const UINT8 *finish = spriteram;
+	const UINT16 *source = spriteram16 + 0x1000/2 - 4;
+	const UINT16 *finish = spriteram16;
 
 	const gfx_element *gfx = machine->gfx[2];
 
@@ -79,9 +72,9 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 
 	while( source>finish ){
-		int tile_number = source[2]|(source[3]<<8);
-		int sx = source[4] | (source[5] <<8);
-		int sy = source[6] | (source[7] <<8);
+		int tile_number = source[1];
+		int sx = source[2];
+		int sy = source[3];
 		int colr;
 		int xtiles, ytiles;
 		int ytlim, xtlim;
@@ -92,14 +85,13 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		if (sy & 0x8000) sy -= 0x10000;
 
 
-		ytlim = (source[1] >> 4) & 0x7;
-		xtlim = (source[1] >> 0) & 0x7;
+		ytlim = (source[0] >> 12) & 0x7;
+		xtlim = (source[0] >> 8) & 0x7;
 
-		xflip = (source[1] >> 7) & 0x1;
-		yflip = (source[1] >> 3) & 0x1;
+		xflip = (source[0] >> 15) & 0x1;
+		yflip = (source[0] >> 11) & 0x1;
 
-		colr = source[0];
-		colr &= 0x3f;
+		colr = source[0] & 0x3f;
 
 		ytlim += 1;
 		xtlim += 1;
@@ -139,105 +131,101 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			}
 		}
 
-		source-=8;
+		source-=4;
 	}
 
 }
 
 /* VIDEO RELATED WRITE HANDLERS (move to video file) */
 
-static WRITE8_HANDLER(raiden2_background_w)
+static WRITE16_HANDLER(raiden2_background_w)
 {
-	back_data[offset] = data;
-	tilemap_mark_tile_dirty(background_layer, offset/2);
+	COMBINE_DATA(&back_data[offset]);
+	tilemap_mark_tile_dirty(background_layer, offset);
 }
 
-static WRITE8_HANDLER(raiden2_midground_w)
+static WRITE16_HANDLER(raiden2_midground_w)
 {
-	mid_data[offset] = data;
-	tilemap_mark_tile_dirty(midground_layer,offset/2);
+	COMBINE_DATA(&mid_data[offset]);
+	tilemap_mark_tile_dirty(midground_layer,offset);
 }
 
-static WRITE8_HANDLER(raiden2_foreground_w)
+static WRITE16_HANDLER(raiden2_foreground_w)
 {
-	fore_data[offset] = data;
-	tilemap_mark_tile_dirty(foreground_layer,offset/2);
+	COMBINE_DATA(&fore_data[offset]);
+	tilemap_mark_tile_dirty(foreground_layer,offset);
 }
 
-static WRITE8_HANDLER(raiden2_text_w)
+static WRITE16_HANDLER(raiden2_text_w)
 {
-	videoram[offset] = data;
-	tilemap_mark_tile_dirty(text_layer, offset/2);
+	COMBINE_DATA(&videoram16[offset]);
+	tilemap_mark_tile_dirty(text_layer, offset);
 }
 
 /* TILEMAP RELATED (move to video file) */
 
 static TILE_GET_INFO( get_back_tile_info )
 {
-	int offs = tile_index*2;
-	int tile = back_data[offs]+(back_data[offs+1]<<8);
+	int tile = back_data[tile_index];
 	int color = (tile >> 12) | (bg_col << 4);
 
 	tile = (tile & 0xfff) | (bg_bank << 12);
 
-	SET_TILE_INFO(1,tile+0x0000,color,0)
+	SET_TILE_INFO(1,tile+0x0000,color,0);
 }
 
 static TILE_GET_INFO( get_mid_tile_info )
 {
-	int offs = tile_index*2;
-	int tile = mid_data[offs]+(mid_data[offs+1]<<8);
+	int tile = mid_data[tile_index];
 	int color = (tile >> 12) | (mid_col << 4);
 
 	tile = (tile & 0xfff) | (mid_bank << 12);
 
-	SET_TILE_INFO(1,tile,color,0)
+	SET_TILE_INFO(1,tile,color,0);
 }
 
 static TILE_GET_INFO( get_fore_tile_info )
 {
-	int offs = tile_index*2;
-	int tile = fore_data[offs]+(fore_data[offs+1]<<8);
+	int tile = fore_data[tile_index];
 	int color = (tile >> 12) | (fg_col << 4);
 
 
 	tile = (tile & 0xfff) | (fg_bank << 12);
 	//  tile = (tile & 0xfff) | (3<<12);  // 3000 intro (cliff) 1000 game (bg )
 
-	SET_TILE_INFO(1,tile,color,0)
+	SET_TILE_INFO(1,tile,color,0);
 }
 
 static TILE_GET_INFO( get_text_tile_info )
 {
-	int offs = tile_index*2;
-	int tile = videoram[offs]+(videoram[offs+1]<<8);
+	int tile = videoram16[tile_index];
 	int color = (tile>>12)&0xf;
 
 	tile &= 0xfff;
 
-	SET_TILE_INFO(0,tile,color,0)
+	SET_TILE_INFO(0,tile,color,0);
 }
 
 static void set_scroll(tilemap *tm, int plane)
 {
-	int x = (mainram[0x620+plane*4+1]<<8) | mainram[0x620+plane*4+0];
-	int y = (mainram[0x620+plane*4+3]<<8) | mainram[0x620+plane*4+2];
+	int x = mainram[0x620/2+plane*2+0];
+	int y = mainram[0x620/2+plane*2+1];
 	tilemap_set_scrollx(tm, 0, x);
 	tilemap_set_scrolly(tm, 0, y);
 }
 
 /* VIDEO START (move to video file) */
 
-VIDEO_START(raiden2)
+VIDEO_START( raiden2 )
 {
-	text_layer       = tilemap_create( get_text_tile_info,tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT,  8, 8,64,32 );
-	background_layer = tilemap_create( get_back_tile_info,tilemap_scan_rows, TILEMAP_TYPE_OPAQUE,      16,16,32,32 );
-	midground_layer  = tilemap_create( get_mid_tile_info, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 16,16,32,32 );
-	foreground_layer = tilemap_create( get_fore_tile_info,tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 16,16,32,32 );
+	text_layer       = tilemap_create(get_text_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN,  8, 8, 64,32 );
+	background_layer = tilemap_create(get_back_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,32 );
+	midground_layer  = tilemap_create(get_mid_tile_info,  tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,32 );
+	foreground_layer = tilemap_create(get_fore_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,32 );
 
-	tilemap_set_transparent_pen(midground_layer,15);
-	tilemap_set_transparent_pen(foreground_layer,15);
-	tilemap_set_transparent_pen(text_layer,15);
+	tilemap_set_transparent_pen(midground_layer, 15);
+	tilemap_set_transparent_pen(foreground_layer, 15);
+	tilemap_set_transparent_pen(text_layer, 15);
 
 	tick = 0;
 }
@@ -253,7 +241,7 @@ VIDEO_START(raiden2)
 
 /* VIDEO UPDATE (move to video file) */
 
-VIDEO_UPDATE (raiden2)
+VIDEO_UPDATE ( raiden2 )
 {
 	int info_1, info_2, info_3;
 
@@ -263,9 +251,9 @@ VIDEO_UPDATE (raiden2)
 	static UINT8 zz3[12];
 #endif
 
-	info_1 = mainram[0x6cc] & 1;
-	info_2 = (mainram[0x6cc] & 2)>>1;
-	info_3 = (mainram[0x471] & 0xc0)>>6;
+	info_1 = mainram[0x6cc/2] & 1;
+	info_2 = (mainram[0x6cc/2] & 2)>>1;
+	info_3 = (mainram[0x470/2] & 0xc000)>>14;
 
 #if 1
 	set_scroll(background_layer, 0);
@@ -276,19 +264,19 @@ VIDEO_UPDATE (raiden2)
 #if 0
 	{
 		int new_bank;
-		new_bank = 0 | (mainram[0x6cc]&1);
+		new_bank = 0 | (mainram[0x6cc/2]&1);
 		if(new_bank != bg_bank) {
 			bg_bank = new_bank;
 			tilemap_mark_all_tiles_dirty(background_layer);
 		}
 
-		new_bank = 2 | ((mainram[0x6cc]>>1)&1);
+		new_bank = 2 | ((mainram[0x6cc/2]>>1)&1);
 		if(new_bank != mid_bank) {
 			mid_bank = new_bank;
 			tilemap_mark_all_tiles_dirty(midground_layer);
 		}
 
-		new_bank = 4 | (mainram[0x471]>>6);
+		new_bank = 4 | (mainram[0x470]>>14);
 		if(new_bank != fg_bank) {
 			fg_bank = new_bank;
 			tilemap_mark_all_tiles_dirty(foreground_layer);
@@ -300,39 +288,39 @@ VIDEO_UPDATE (raiden2)
 	}
 #endif
 #if 0
-	if(0 && memcmp(zz, mainram+0x620, 16)) {
+	if(0 && memcmp(zz, mainram+0x620/2, 16)) {
 		logerror("0:%04x %04x  1:%04x %04x 2:%04x %04x 3:%04x %04x\n",
-				 (mainram[0x623]<<8) | mainram[0x622],
-				 (mainram[0x621]<<8) | mainram[0x620],
-				 (mainram[0x627]<<8) | mainram[0x626],
-				 (mainram[0x625]<<8) | mainram[0x624],
-				 (mainram[0x62b]<<8) | mainram[0x62a],
-				 (mainram[0x629]<<8) | mainram[0x628],
-				 (mainram[0x62f]<<8) | mainram[0x62e],
-				 (mainram[0x62d]<<8) | mainram[0x62c]);
-		memcpy(zz, mainram+0x620, 16);
+				 mainram[0x622/2],
+				 mainram[0x620/2],
+				 mainram[0x626/2],
+				 mainram[0x624/2],
+				 mainram[0x62a/2],
+				 mainram[0x628/2],
+				 mainram[0x62e/2],
+				 mainram[0x62c/2]);
+		memcpy(zz, mainram+0x620/2, 16);
 	}
-	if(0 && memcmp(zz2, mainram+0x470, 32)) {
+	if(0 && memcmp(zz2, mainram+0x470/2, 32)) {
 		logerror("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x  %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-				 mainram[0x470], mainram[0x471], mainram[0x472], mainram[0x473],
-				 mainram[0x474], mainram[0x475], mainram[0x476], mainram[0x477],
-				 mainram[0x478], mainram[0x479], mainram[0x47a], mainram[0x47b],
-				 mainram[0x47c], mainram[0x47d], mainram[0x47e], mainram[0x47f],
-				 mainram[0x480], mainram[0x481], mainram[0x482], mainram[0x483],
-				 mainram[0x484], mainram[0x485], mainram[0x486], mainram[0x487],
-				 mainram[0x488], mainram[0x489], mainram[0x48a], mainram[0x48b],
-				 mainram[0x48c], mainram[0x48d], mainram[0x48e], mainram[0x48f]);
-		memcpy(zz2, mainram+0x470, 32);
+				 mainram[0x470/2] & 0xff, mainram[0x471/2] >> 8, mainram[0x472/2] & 0xff, mainram[0x473/2] >> 8,
+				 mainram[0x474/2] & 0xff, mainram[0x475/2] >> 8, mainram[0x476/2] & 0xff, mainram[0x477/2] >> 8,
+				 mainram[0x478/2] & 0xff, mainram[0x479/2] >> 8, mainram[0x47a/2] & 0xff, mainram[0x47b/2] >> 8,
+				 mainram[0x47c/2] & 0xff, mainram[0x47d/2] >> 8, mainram[0x47e/2] & 0xff, mainram[0x47f/2] >> 8,
+				 mainram[0x480/2] & 0xff, mainram[0x481/2] >> 8, mainram[0x482/2] & 0xff, mainram[0x483/2] >> 8,
+				 mainram[0x484/2] & 0xff, mainram[0x485/2] >> 8, mainram[0x486/2] & 0xff, mainram[0x487/2] >> 8,
+				 mainram[0x488/2] & 0xff, mainram[0x489/2] >> 8, mainram[0x48a/2] & 0xff, mainram[0x48b/2] >> 8,
+				 mainram[0x48c/2] & 0xff, mainram[0x48d/2] >> 8, mainram[0x48e/2] & 0xff, mainram[0x48f/2] >> 8);
+		memcpy(zz2, mainram+0x470/2, 32);
 	}
 
 #endif
 #if 0
-	if(memcmp(zz3, mainram+0x620, 12)) {
-		logerror("%02x%02x %02x%02x  %02x%02x %02x%02x  %02x%02x %02x%02x\n",
-				 mainram[0x623], mainram[0x622], mainram[0x621], mainram[0x620],
-				 mainram[0x627], mainram[0x626], mainram[0x625], mainram[0x624],
-				 mainram[0x62b], mainram[0x62a], mainram[0x629], mainram[0x628]);
-		memcpy(zz3, mainram+0x620, 12);
+	if(memcmp(zz3, mainram+0x620/2, 12)) {
+		logerror("%04x %04x  %04x %04x  %04x %04x\n",
+				 mainram[0x622/2], mainram[0x620/2],
+				 mainram[0x626/2], mainram[0x624/2],
+				 mainram[0x62a/2], mainram[0x628/2]);
+		memcpy(zz3, mainram+0x620/2, 12);
 	}
 #endif
 #if 1
@@ -425,188 +413,237 @@ VIDEO_UPDATE (raiden2)
 
 	fillbitmap(bitmap, get_black_pen(machine), cliprect);
 
-	if(!input_code_pressed(KEYCODE_Q))
-		tilemap_draw(bitmap,cliprect,background_layer,0,0);
-	if(!input_code_pressed(KEYCODE_W))
-		tilemap_draw(bitmap,cliprect,midground_layer,0,0);
-	if(!input_code_pressed(KEYCODE_E))
-		tilemap_draw(bitmap,cliprect,foreground_layer,0,0);
+	if (!input_code_pressed(KEYCODE_Q))
+		tilemap_draw(bitmap, cliprect, background_layer, 0, 0);
+	if (!input_code_pressed(KEYCODE_W))
+		tilemap_draw(bitmap, cliprect, midground_layer, 0, 0);
+	if (!input_code_pressed(KEYCODE_E))
+		tilemap_draw(bitmap, cliprect, foreground_layer, 0, 0);
 
-	draw_sprites(machine,bitmap,cliprect,0);
-	if(!input_code_pressed(KEYCODE_A))
-		tilemap_draw(bitmap,cliprect,text_layer,0,0);
+	draw_sprites(machine, bitmap, cliprect, 0);
+
+	if (!input_code_pressed(KEYCODE_A))
+		tilemap_draw(bitmap, cliprect, text_layer, 0, 0);
+
 	return 0;
 }
 
 
+
+
+/*************************************
+ *
+ *  Interrupts
+ *
+ *************************************/
+
+static INTERRUPT_GEN( raiden2_interrupt )
+{
+	mainram[0x740/2] = readinputport(2) | (readinputport(3) << 8);
+	mainram[0x742/2] = 0xffff;
+	mainram[0x744/2] = readinputport(0) | (readinputport(1) << 8);
+	mainram[0x746/2] = 0xffff;
+	mainram[0x748/2] = 0xffff;
+	mainram[0x74a/2] = 0xffff;
+	mainram[0x74c/2] = readinputport(4) | 0xff00;
+	mainram[0x74e/2] = 0xffff;
+
+	cpunum_set_input_line_and_vector(cpu_getactivecpu(), 0, HOLD_LINE, 0xc0/4);	/* VBL */
+	logerror("VSYNC\n");
+}
+
+
+
 //  COPX functions, terribly incomplete
 
-static UINT8 cop_buf[6];
-static UINT16 cop_adr, cop_fct;
-static UINT32 cop_reg[16];
-static UINT16 cop_data_fct[0x20], cop_data_val[0x20], cop_data_mask[0x20], cop_data_prg[0x100];
-
-
-static UINT32 r32(int adr)
+typedef struct _cop_state cop_state;
+struct _cop_state
 {
-	return program_read_byte(adr) |
-		(program_read_byte(adr+1)<<8) |
-		(program_read_byte(adr+2)<<16) |
-		(program_read_byte(adr+3)<<24);
+	UINT16		offset;						/* last write offset */
+	UINT16		ram[0x200/2];				/* RAM from 0x400-0x5ff */
+
+	UINT32		reg[4];						/* registers */
+
+	UINT16		func_trigger[0x100/8];		/* function trigger */
+	UINT16		func_value[0x100/8];		/* function value (?) */
+	UINT16		func_mask[0x100/8];			/* function mask (?) */
+	UINT16		program[0x100];				/* program "code" */
+};
+
+static cop_state cop_data;
+
+
+#define COP_LOG(x)		logerror x
+
+
+
+INLINE UINT16 cop_ram_r(cop_state *cop, UINT16 offset)
+{
+	return cop->ram[(offset - 0x400) / 2];
 }
 
-static void w32(int adr, UINT32 v)
+INLINE void cop_ram_w(cop_state *cop, UINT16 offset, UINT16 data)
 {
-	program_write_byte(adr, v);
-	program_write_byte(adr+1, v>>8);
-	program_write_byte(adr+2, v>>16);
-	program_write_byte(adr+3, v>>24);
+	cop->ram[(offset - 0x400) / 2] = data;
 }
+
+INLINE UINT32 r32(offs_t address)
+{
+	return 	(program_read_word(address + 0) << 0) |
+			(program_read_word(address + 2) << 16);
+}
+
+INLINE void w32(offs_t address, UINT32 data)
+{
+	program_write_word(address + 0, data >> 0);
+	program_write_word(address + 2, data >> 16);
+}
+
 
 static void cop_init(void)
 {
-	memset(cop_buf, 0, sizeof(cop_buf));
-	memset(cop_reg, 0, sizeof(cop_reg));
-	memset(cop_data_fct, 0, sizeof(cop_data_fct));
-	memset(cop_data_val, 0, sizeof(cop_data_val));
-	memset(cop_data_mask, 0, sizeof(cop_data_mask));
-	memset(cop_data_prg, 0, sizeof(cop_data_prg));
-
-	cop_adr = 0;
-	cop_fct = 0;
+	memset(&cop_data, 0, sizeof(cop_data));
 }
 
-static void cop_run(void)
+
+static WRITE16_HANDLER( cop_w )
 {
-	int i;
+	cop_state *cop = &cop_data;
+	UINT32 temp32;
+	UINT8 regnum;
+	int func;
 
-	if(cop_fct != 0x5a05 && cop_fct != 0xf205 && cop_fct != 0x5205)
-		logerror("XCOP %04x %08x %08x %08x %08x (%06x)\n", cop_fct, cop_reg[0], cop_reg[1], cop_reg[2], cop_reg[3], activecpu_get_pc());
+	/* all COP data writes are word-length (?) */
+	data = COMBINE_DATA(&cop->ram[offset]);
 
-	switch(cop_fct) {
-	case 0x0205: { // 0205 0006 ffeb 0000 - 0188 0282 0082 0b8e 098e 0000 0000 0000
-		UINT32 src = cop_reg[0];
-		int i;
-		logerror("COP %04x %08x (uns) (%06x)\n", cop_fct, src, activecpu_get_pc());
-		logerror(" COP -> %08x:", src);
-		for(i=0; i<32; i++)
-			logerror(" %02x", program_read_byte(src+i));
-		logerror("\n");
-		break;
-	}
-	case 0x138e: { // 130e 0005 bf7f 0010 - 0984 0aa4 0d82 0aa2 039b 0b9a 0b9a 0a9a
-		UINT32 src = cop_reg[0];
-		UINT32 dst = cop_reg[1];
-		logerror("COP %04x %08x %08x (uns) (%06x)\n", cop_fct, src, dst, activecpu_get_pc());
-		break;
-	}
-	case 0x3bb0: { // 3bb0 0004 007f 0038 - 0f9c 0b9c 0b9c 0b9c 0b9c 0b9c 0b9c 099c
-		UINT32 src = cop_reg[0];
-		UINT32 dst = cop_reg[1];
-		logerror("COP %04x %08x %08x (uns) (%06x)\n", cop_fct, src, dst, activecpu_get_pc());
-		break;
-	}
-	case 0x42c2: { // 42c2 0005 fcdd 0040 - 0f9a 0b9a 0b9c 0b9c 0b9c 029c 0000 0000
-		UINT32 src = cop_reg[0];
-		UINT32 dst = cop_reg[1];
-		logerror("COP %04x %08x %08x (uns) (%06x)\n", cop_fct, src, dst, activecpu_get_pc());
-		break;
-	}
-	case 0x5205:   // 5205 0006 fff7 0050 - 0180 02e0 03a0 00a0 03a0 0000 0000 0000
-	case 0x5a05: { // 5a05 0006 fff7 0058 - 0180 02e0 03a0 00a0 03a0 0000 0000 0000
-		UINT32 src = cop_reg[0];
-		UINT32 dst = cop_reg[1];
-		UINT32 val = r32(src);
-		w32(dst, val);
-		//      logerror("COP %04x %08x -> %08x - %08x (%06x)\n", cop_fct, src, dst, val, activecpu_get_pc());
-		break;
-	}
-	case 0x8100: { // 8100 0007 fdfb 0080 - 0b9a 0b88 0888 0000 0000 0000 0000 0000
-		UINT32 src = cop_reg[0];
-		logerror("COP %04x %08x (uns) (%06x)\n", cop_fct, src, activecpu_get_pc());
-		logerror(" COP -> %08x:", src);
-		for(i=0; i<32; i++)
-			logerror(" %02x", program_read_byte(src+i));
-		logerror("\n");
-		break;
-	}
-	case 0x8900: { // 8900 0007 fdfb 0088 - 0b9a 0b8a 088a 0000 0000 0000 0000 0000
-		UINT32 src = cop_reg[0];
-		logerror("COP %04x %08x (uns) (%06x)\n", cop_fct, src, activecpu_get_pc());
-		logerror(" COP -> %08x:", src);
-		for(i=0; i<32; i++)
-			logerror(" %02x", program_read_byte(src+i));
-		logerror("\n");
-		break;
-	}
-	case 0xf205: { // f205 0006 fff7 00f0 - 0182 02e0 03c0 00c0 03c0 0000 0000 0000
-		UINT32 src = cop_reg[0]+4;
-		UINT32 dst = cop_reg[2];
-		UINT32 val = r32(src);
-		w32(dst, val);
-		//      logerror("COP %04x %08x -> %08x - %08x (%06x)\n", cop_fct, src, dst, val, activecpu_get_pc());
-		break;
-	}
-	default:
-		logerror("Unknown COP routine %04x at %06x\n", cop_fct, activecpu_get_pc());
-		break;
+	/* handle writes */
+	switch (offset + 0x400)
+	{
+		/* ----- BCD conversion ----- */
+
+		case 0x420:		/* LSW of number */
+		case 0x422:		/* MSW of number */
+			temp32 = cop_ram_r(cop, 0x420) | (cop_ram_r(cop, 0x422) << 16);
+			cop_ram_w(cop, 0x590, ((temp32 / 1) % 10) + (((temp32 / 10) % 10) << 8) + 0x3030);
+			cop_ram_w(cop, 0x592, ((temp32 / 100) % 10) + (((temp32 / 1000) % 10) << 8) + 0x3030);
+			cop_ram_w(cop, 0x594, ((temp32 / 10000) % 10) + (((temp32 / 100000) % 10) << 8) + 0x3030);
+			cop_ram_w(cop, 0x596, ((temp32 / 1000000) % 10) + (((temp32 / 10000000) % 10) << 8) + 0x3030);
+			cop_ram_w(cop, 0x598, ((temp32 / 100000000) % 10) + (((temp32 / 1000000000) % 10) << 8) + 0x3030);
+			break;
+
+		/* ----- program upload registers ----- */
+
+		case 0x432:		/* COP program data */
+			COP_LOG(("%05X:COP Prog Data = %04X\n", activecpu_get_pc(), data));
+			cop->program[cop_ram_r(cop, 0x434)] = data;
+			break;
+
+		case 0x434:		/* COP program address */
+			COP_LOG(("%05X:COP Prog Addr = %04X\n", activecpu_get_pc(), data));
+			assert((data & ~0xff) == 0);
+			temp32 = (data & 0xff) / 8;
+			cop->func_value[temp32] = cop_ram_r(cop, 0x438);
+			cop->func_mask[temp32] = cop_ram_r(cop, 0x43a);
+			cop->func_trigger[temp32] = cop_ram_r(cop, 0x43c);
+			break;
+
+		case 0x438:		/* COP program entry value (0,4,5,6,7,8,9,F) */
+			COP_LOG(("%05X:COP Prog Val  = %04X\n", activecpu_get_pc(), data));
+			break;
+
+		case 0x43a:		/* COP program entry mask */
+			COP_LOG(("%05X:COP Prog Mask = %04X\n", activecpu_get_pc(), data));
+			break;
+
+		case 0x43c:		/* COP program trigger value */
+			COP_LOG(("%05X:COP Prog Trig = %04X\n", activecpu_get_pc(), data));
+			break;
+
+		/* ----- ???? ----- */
+
+		case 0x47a:		/* clear RAM */
+			if (cop_ram_r(cop, 0x47e) == 0x118)
+			{
+				UINT32 addr = cop_ram_r(cop, 0x478) << 6;
+				int count = (cop_ram_r(cop, 0x47a) + 1) << 5;
+				COP_LOG(("%05X:COP RAM clear from %05X to %05X\n", activecpu_get_pc(), addr, addr + count));
+				while (count--)
+					program_write_byte(addr++, 0);
+			}
+			else
+			{
+				COP_LOG(("%05X:COP Unknown RAM clear(%04X) = %04X\n", activecpu_get_pc(), cop_ram_r(cop, 0x47e), data));
+			}
+			break;
+
+		/* ----- program data registers ----- */
+
+		case 0x4a0:		/* COP register high word */
+		case 0x4a2:		/* COP register high word */
+		case 0x4a4:		/* COP register high word */
+		case 0x4a6:		/* COP register high word */
+			regnum = (offset / 2) % 4;
+			COP_LOG(("%05X:COP RegHi(%d) = %04X\n", activecpu_get_pc(), regnum, data));
+			cop->reg[regnum] = (cop->reg[regnum] & 0x0000ffff) | (data << 16);
+			break;
+
+		case 0x4c0:		/* COP register low word */
+		case 0x4c2:		/* COP register low word */
+		case 0x4c4:		/* COP register low word */
+		case 0x4c6:		/* COP register low word */
+			regnum = (offset / 2) % 4;
+			COP_LOG(("%05X:COP RegLo(%d) = %04X\n", activecpu_get_pc(), regnum, data));
+			cop->reg[regnum] = (cop->reg[regnum] & 0xffff0000) | data;
+			break;
+
+		/* ----- program trigger register ----- */
+
+		case 0x500:		/* COP trigger */
+			COP_LOG(("%05X:COP Trigger = %04X\n", activecpu_get_pc(), data));
+			for (func = 0; func < ARRAY_LENGTH(cop->func_trigger); func++)
+				if (cop->func_trigger[func] == data)
+				{
+					int offs;
+
+					COP_LOG(("  Execute:"));
+					for (offs = 0; offs < 8; offs++)
+					{
+						if (cop->program[func * 8 + offs] == 0)
+							break;
+						COP_LOG((" %04X", cop->program[func * 8 + offs]));
+					}
+					COP_LOG(("\n"));
+
+					/* special cases for now */
+					if (data == 0x5205 || data == 0x5a05)
+					{
+						COP_LOG(("  Copy 32 bits from %05X to %05X\n", cop->reg[0], cop->reg[1]));
+						w32(cop->reg[1], r32(cop->reg[0]));
+					}
+					else if (data == 0xf205)
+					{
+						COP_LOG(("  Copy 32 bits from %05X to %05X\n", cop->reg[0] + 4, cop->reg[1]));
+						w32(cop->reg[2], r32(cop->reg[0] + 4));
+					}
+					break;
+				}
+			assert(func != ARRAY_LENGTH(cop->func_trigger));
+			break;
+
+		/* ----- other stuff ----- */
+
+		default:		/* unknown */
+			COP_LOG(("%05X:COP Unknown(%04X) = %04X\n", activecpu_get_pc(), offset + 0x400, data));
+			break;
 	}
 }
 
-static WRITE8_HANDLER(cop_up_fct_w)
-{
-	cop_buf[offset] = data;
-	if(offset == 3) {
-		int entry = cop_buf[5] >> 3;
-		cop_data_fct[entry]  = cop_buf[4] | (cop_buf[5] << 8);
-		cop_data_val[entry]  = cop_buf[0] | (cop_buf[1] << 8);
-		cop_data_mask[entry] = cop_buf[2] | (cop_buf[3] << 8);
-	}
-}
 
-static WRITE8_HANDLER(cop_up_adr_w)
+static READ16_HANDLER( cop_r )
 {
-	if(offset)
-		cop_adr = (cop_adr & 0xff) | (data << 8);
-	else
-		cop_adr = (cop_adr & 0xff00) | data;
-}
-
-static WRITE8_HANDLER(cop_up_data_w)
-{
-	if(offset)
-		cop_data_prg[cop_adr] = (cop_data_prg[cop_adr] & 0xff) | (data << 8);
-	else
-		cop_data_prg[cop_adr] = (cop_data_prg[cop_adr] & 0xff00) | data;
-}
-
-static WRITE8_HANDLER(cop_reg_w)
-{
-	int entry = (offset >> 1) & 15;
-	switch(offset & 0x21) {
-	case 0x00:
-		cop_reg[entry] = (cop_reg[entry] & 0xff00ffffU) | (data << 16);
-		break;
-	case 0x01:
-		cop_reg[entry] = (cop_reg[entry] & 0x00ffffffU) | (data << 24);
-		break;
-	case 0x20:
-		cop_reg[entry] = (cop_reg[entry] & 0xffffff00U) | data;
-		break;
-	case 0x21:
-		cop_reg[entry] = (cop_reg[entry] & 0xffff00ffU) | (data << 8);
-		break;
-	}
-	logerror("cop_reg_w %x, %08x\n", entry, cop_reg[entry]);
-}
-
-static WRITE8_HANDLER(cop_fct_w)
-{
-	if(offset) {
-		cop_fct = (cop_fct & 0xff) | (data << 8);
-		cop_run();
-	} else
-		cop_fct = (cop_fct & 0xff00) | data;
+	cop_state *cop = &cop_data;
+	COP_LOG(("%05X:COP Read(%04X) = %04X\n", activecpu_get_pc(), offset*2 + 0x400, cop->ram[offset]));
+	return cop->ram[offset];
 }
 
 
@@ -630,55 +667,55 @@ static void sprcpt_init(void)
 }
 
 
-static WRITE8_HANDLER(sprcpt_adr_w)
+static WRITE16_HANDLER(sprcpt_adr_w)
 {
-	combine32(&sprcpt_adr, offset, data);
+	combine32(&sprcpt_adr, offset, data, mem_mask);
 }
 
-static WRITE8_HANDLER(sprcpt_data_1_w)
+static WRITE16_HANDLER(sprcpt_data_1_w)
 {
-	combine32(sprcpt_data_1+sprcpt_adr, offset, data);
+	combine32(sprcpt_data_1+sprcpt_adr, offset, data, mem_mask);
 }
 
-static WRITE8_HANDLER(sprcpt_data_2_w)
+static WRITE16_HANDLER(sprcpt_data_2_w)
 {
-	combine32(sprcpt_data_2+sprcpt_adr, offset, data);
+	combine32(sprcpt_data_2+sprcpt_adr, offset, data, mem_mask);
 }
 
-static WRITE8_HANDLER(sprcpt_data_3_w)
+static WRITE16_HANDLER(sprcpt_data_3_w)
 {
-	combine32(sprcpt_data_3+sprcpt_idx, offset, data);
-	if(offset == 3) {
+	combine32(sprcpt_data_3+sprcpt_idx, offset, data, mem_mask);
+	if(offset == 1) {
 		sprcpt_idx ++;
 		if(sprcpt_idx == 6)
 			sprcpt_idx = 0;
 	}
 }
 
-static WRITE8_HANDLER(sprcpt_data_4_w)
+static WRITE16_HANDLER(sprcpt_data_4_w)
 {
-	combine32(sprcpt_data_4+sprcpt_idx, offset, data);
-	if(offset == 3) {
+	combine32(sprcpt_data_4+sprcpt_idx, offset, data, mem_mask);
+	if(offset == 1) {
 		sprcpt_idx ++;
 		if(sprcpt_idx == 4)
 			sprcpt_idx = 0;
 	}
 }
 
-static WRITE8_HANDLER(sprcpt_val_1_w)
+static WRITE16_HANDLER(sprcpt_val_1_w)
 {
-	combine32(sprcpt_val+0, offset, data);
+	combine32(sprcpt_val+0, offset, data, mem_mask);
 }
 
-static WRITE8_HANDLER(sprcpt_val_2_w)
+static WRITE16_HANDLER(sprcpt_val_2_w)
 {
-	combine32(sprcpt_val+1, offset, data);
+	combine32(sprcpt_val+1, offset, data, mem_mask);
 }
 
-static WRITE8_HANDLER(sprcpt_flags_1_w)
+static WRITE16_HANDLER(sprcpt_flags_1_w)
 {
-	combine32(&sprcpt_flags1, offset, data);
-	if(offset == 3) {
+	combine32(&sprcpt_flags1, offset, data, mem_mask);
+	if(offset == 1) {
 		// bit 31: 1 = allow write on sprcpt data
 
 		if(!(sprcpt_flags1 & 0x80000000U)) {
@@ -704,10 +741,10 @@ static WRITE8_HANDLER(sprcpt_flags_1_w)
 	}
 }
 
-static WRITE8_HANDLER(sprcpt_flags_2_w)
+static WRITE16_HANDLER(sprcpt_flags_2_w)
 {
-	combine16(&sprcpt_flags2, offset, data);
-	if(offset == 1) {
+	COMBINE_DATA(&sprcpt_flags2);
+	if(offset == 0) {
 		if(sprcpt_flags2 & 0x8000) {
 			// Reset decryption -> redo it
 		}
@@ -719,51 +756,51 @@ static WRITE8_HANDLER(sprcpt_flags_2_w)
 // XXX
 // write only: 4c0 4c1 500 501 502 503
 
-static UINT8 handle_io_r(int offset)
+static UINT16 handle_io_r(int offset)
 {
-	logerror("io_r %04x, %02x (%x)\n", offset, mainram[offset], activecpu_get_pc());
+	logerror("io_r %04x, %04x (%x)\n", offset*2, mainram[offset], activecpu_get_pc());
 	return mainram[offset];
 }
 
-static void handle_io_w(int offset, UINT8 data)
+static void handle_io_w(int offset, UINT16 data, UINT16 mem_mask)
 {
-	mainram[offset] = data;
+	COMBINE_DATA(&mainram[offset]);
 	switch(offset) {
 	default:
-		logerror("io_w %04x, %02x (%x)\n", offset, data, activecpu_get_pc());
+		logerror("io_w %04x, %04x & %04x (%x)\n", offset*2, data, mem_mask ^ 0xffff, activecpu_get_pc());
 	}
 }
 
-static READ8_HANDLER(any_r)
+static READ16_HANDLER(any_r)
 {
 	c_r[offset]++;
 
-	if(offset >= 0x400 && offset < 0x800)
+	if(offset >= 0x400/2 && offset < 0x800/2)
 		return handle_io_r(offset);
 
 	return mainram[offset];
 }
 
-static WRITE8_HANDLER(any_w)
+static WRITE16_HANDLER(any_w)
 {
 	int show = 0;
-	if(offset >= 0x400 && offset < 0x800)
-		handle_io_w(offset, data);
+	if(offset >= 0x400/2 && offset < 0x800/2)
+		handle_io_w(offset, data, mem_mask);
 
 	c_w[offset]++;
 	//  logerror("mainram_w %04x, %02x (%x)\n", offset, data, activecpu_get_pc());
 	if(mainram[offset] != data && offset >= 0x400 && offset < 0x800) {
 		if(0 &&
-		   offset != 0x4c0 && offset != 0x4c1 && offset != 0x500 && offset != 0x501 &&
-		   offset != 0x444 && offset != 0x6de && offset != 0x6df && offset != 0x47e &&
-		   offset != 0x4a0 && offset != 0x6df && offset != 0x620 && offset != 0x6c6 &&
-		   offset != 0x6c7 && offset != 0x628 && offset != 0x62a && offset != 0x47f)
-			logerror("mainram_w %04x, %02x (%x)\n", offset, data, activecpu_get_pc());
+		   offset != 0x4c0/2 && offset != 0x500/2 &&
+		   offset != 0x444/2 && offset != 0x6de/2 && offset != 0x47e/2 &&
+		   offset != 0x4a0/2 && offset != 0x620/2 && offset != 0x6c6/2 &&
+		   offset != 0x628/2 && offset != 0x62a/2)
+			logerror("mainram_w %04x, %04x & %04x (%x)\n", offset*2, data, mem_mask ^ 0xffff, activecpu_get_pc());
 	}
 
 	if(0 && c_w[offset]>1000 && !c_r[offset]) {
-		if(offset != 0x4c0 && offset != 0x4c1 && (offset<0x500 || offset > 0x503))
-			logerror("mainram_w %04x, %02x [%d.%d] (%x)\n", offset, data, c_w[offset], c_r[offset], activecpu_get_pc());
+		if(offset != 0x4c0/2 && (offset<0x500/2 || offset > 0x503/2))
+			logerror("mainram_w %04x, %04x & %04x [%d.%d] (%x)\n", offset*2, data, mem_mask ^ 0xffff, c_w[offset], c_r[offset], activecpu_get_pc());
 	}
 
 	//  if(offset == 0x471 || (offset >= 0xb146 && offset < 0xb156))
@@ -774,38 +811,24 @@ static WRITE8_HANDLER(any_w)
 	//  show = offset == 0x704 || offset == 0x710 || offset == 0x71c;
 
 	if(show)
-		logerror("mainram_w %04x, %02x (%x)\n", offset, data, activecpu_get_pc());
+		logerror("mainram_w %04x, %04x & %04x (%x)\n", offset*2, data, mem_mask ^ 0xffff, activecpu_get_pc());
 
 	//  if(offset == 0x700)
 	//      cpu_setbank(2, memory_region(REGION_USER1)+0x20000*data);
 
-	mainram[offset] = data;
+	COMBINE_DATA(&mainram[offset]);
 }
-#if 0
-static READ8_HANDLER(rb_r)
-{
-	static int bank = 0;
-	int pc = activecpu_get_pc();
-	int show = 0;
-	switch(pc) {
-	}
-	if(show)
-		logerror("rb_r %05x, pc=%05x\n", offset, activecpu_get_pc());
 
-	return memory_region(REGION_USER1)[offset+0x20000*bank];
-}
-#endif
-
-static WRITE8_HANDLER(w1x)
+static WRITE16_HANDLER(w1x)
 {
-	w1ram[offset] = data;
-	if(0 && offset < 0x800)
-		logerror("w1x %05x, %02x (%05x)\n", offset+0x10000, data, activecpu_get_pc());
+	COMBINE_DATA(&w1ram[offset]);
+	if(0 && offset < 0x800/2)
+		logerror("w1x %05x, %04x & %04x (%05x)\n", offset*2+0x10000, data, mem_mask ^ 0xffff, activecpu_get_pc());
 }
 
 static void r2_dt(UINT16 sc, UINT16 cc, UINT16 ent, UINT16 tm, UINT16 x, UINT16 y)
 {
-	int bank = mainram[0x704];
+	int bank = mainram[0x704/2];
 
 #if 0
 	switch(ent) {
@@ -871,12 +894,8 @@ static MACHINE_RESET(raiden2)
 
 /* MEMORY MAPS */
 
-static ADDRESS_MAP_START( raiden2_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x00432, 0x00433) AM_WRITE(cop_up_data_w)
-	AM_RANGE(0x00434, 0x00435) AM_WRITE(cop_up_adr_w)
-	AM_RANGE(0x00438, 0x0043d) AM_WRITE(cop_up_fct_w)
-	AM_RANGE(0x004a0, 0x004df) AM_WRITE(cop_reg_w)
-	AM_RANGE(0x00500, 0x00501) AM_WRITE(cop_fct_w)
+static ADDRESS_MAP_START( raiden2_mem, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x00400, 0x005ff) AM_READWRITE(cop_r, cop_w)
 
 	AM_RANGE(0x006a0, 0x006a3) AM_WRITE(sprcpt_val_1_w)
 	AM_RANGE(0x006a4, 0x006a7) AM_WRITE(sprcpt_data_3_w)
@@ -886,23 +905,21 @@ static ADDRESS_MAP_START( raiden2_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x006b4, 0x006b7) AM_WRITE(sprcpt_data_2_w)
 	AM_RANGE(0x006b8, 0x006bb) AM_WRITE(sprcpt_val_2_w)
 	AM_RANGE(0x006bc, 0x006bf) AM_WRITE(sprcpt_adr_w)
-
 	AM_RANGE(0x006ce, 0x006cf) AM_WRITE(sprcpt_flags_2_w)
 
 	AM_RANGE(0x00000, 0x0bfff) AM_READWRITE(any_r, any_w) AM_BASE(&mainram)
 //  AM_RANGE(0x00000, 0x003ff) AM_RAM
 
-	AM_RANGE(0x0c000, 0x0cfff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x0d000, 0x0d7ff) AM_READWRITE(MRA8_RAM, raiden2_background_w) AM_BASE(&back_data)
-	AM_RANGE(0x0d800, 0x0dfff) AM_READWRITE(MRA8_RAM, raiden2_foreground_w) AM_BASE(&fore_data)
-    AM_RANGE(0x0e000, 0x0e7ff) AM_READWRITE(MRA8_RAM, raiden2_midground_w)  AM_BASE(&mid_data)
-    AM_RANGE(0x0e800, 0x0f7ff) AM_READWRITE(MRA8_RAM, raiden2_text_w) AM_BASE(&videoram)
+	AM_RANGE(0x0c000, 0x0cfff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0d000, 0x0d7ff) AM_READWRITE(MRA16_RAM, raiden2_background_w) AM_BASE(&back_data)
+	AM_RANGE(0x0d800, 0x0dfff) AM_READWRITE(MRA16_RAM, raiden2_foreground_w) AM_BASE(&fore_data)
+    AM_RANGE(0x0e000, 0x0e7ff) AM_READWRITE(MRA16_RAM, raiden2_midground_w)  AM_BASE(&mid_data)
+    AM_RANGE(0x0e800, 0x0f7ff) AM_READWRITE(MRA16_RAM, raiden2_text_w) AM_BASE(&videoram16)
 	AM_RANGE(0x0f800, 0x0ffff) AM_RAM /* Stack area */
 
-	AM_RANGE(0x10000, 0x1efff) AM_READWRITE(MRA8_RAM, w1x) AM_BASE(&w1ram)
-	AM_RANGE(0x1f000, 0x1ffff) AM_READWRITE(MRA8_RAM, paletteram_xBBBBBGGGGGRRRRR_le_w) AM_BASE(&paletteram)
+	AM_RANGE(0x10000, 0x1efff) AM_READWRITE(MRA16_RAM, w1x) AM_BASE(&w1ram)
+	AM_RANGE(0x1f000, 0x1ffff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 
-//  AM_RANGE(0x20000, 0x3ffff) AM_READ(rb_r)
 	AM_RANGE(0x20000, 0x3ffff) AM_ROMBANK(1)
 	AM_RANGE(0x40000, 0xfffff) AM_ROMBANK(2)
 ADDRESS_MAP_END
@@ -1118,7 +1135,13 @@ INPUT_PORTS_START( raiden2n ) /* For "Newer" (V33) versions of Raiden 2 & Raiden
 INPUT_PORTS_END
 
 
-/* GFX DECODING */
+
+
+/*************************************
+ *
+ *  Graphics layouts
+ *
+ *************************************/
 
 static const gfx_layout raiden2_charlayout =
 {
@@ -1127,7 +1150,7 @@ static const gfx_layout raiden2_charlayout =
 	4,
 	{ 8,12,0,4 },
 	{ 3,2,1,0,19,18,17,16 },
-	{ 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32 },
+	{ STEP8(0,32) },
 	32*8
 };
 
@@ -1144,8 +1167,7 @@ static const gfx_layout raiden2_tilelayout =
 		3+64*8, 2+64*8, 1+64*8, 0+64*8,
 		19+64*8,18+64*8,17+64*8,16+64*8,
 	},
-	{ 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32,
-			8*32, 9*32, 10*32, 11*32, 12*32, 13*32, 14*32, 15*32 },
+	{ STEP16(0,32) },
 	128*8
 };
 
@@ -1154,9 +1176,9 @@ static const gfx_layout raiden2_spritelayout =
 	16, 16,
 	0x10000,
 	4,
-	{ 0, 1, 2, 3 },
+	{ STEP4(0,1) },
 	{ 4, 0, 12, 8, 20, 16, 28, 24, 36, 32, 44, 40, 52, 48, 60, 56 },
-	{ 0, 64, 128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832, 896, 960 },
+	{ STEP16(0,64) },
 	16*16*4
 };
 
@@ -1168,30 +1190,6 @@ static const gfx_decode raiden2_gfxdecodeinfo[] =
 	{ -1 }
 };
 
-/* INTERRUPTS */
-
-static INTERRUPT_GEN( raiden2_interrupt )
-{
-	mainram[0x740] = readinputport(2);
-	mainram[0x741] = readinputport(3);
-	mainram[0x742] = 0xff;
-	mainram[0x743] = 0xff;
-	mainram[0x744] = readinputport(0);
-	mainram[0x745] = readinputport(1);
-	mainram[0x746] = 0xff;
-	mainram[0x747] = 0xff;
-	mainram[0x748] = 0xff;
-	mainram[0x749] = 0xff;
-	mainram[0x74a] = 0xff;
-	mainram[0x74b] = 0xff;
-	mainram[0x74c] = readinputport(4);
-	mainram[0x74d] = 0xff; // Actually read but seems ignored
-	mainram[0x74e] = 0xff;
-	mainram[0x74f] = 0xff;
-
-	cpunum_set_input_line_and_vector(cpu_getactivecpu(), 0, HOLD_LINE, 0xc0/4);	/* VBL */
-	logerror("VSYNC\n");
-}
 
 /* MACHINE DRIVERS */
 
@@ -1203,7 +1201,7 @@ static MACHINE_DRIVER_START( raiden2 )
 	MDRV_CPU_VBLANK_INT(raiden2_interrupt,1)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(DEFAULT_REAL_60HZ_VBLANK_DURATION/2))
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION/2)
 
 	MDRV_MACHINE_RESET(raiden2)
 

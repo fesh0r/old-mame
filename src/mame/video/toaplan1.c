@@ -194,9 +194,9 @@ static TILE_GET_INFO( get_pf1_tile_info )
 			0,
 			tile_number,
 			color,
-			0)
-	if (pf1_tilevram16[2*tile_index+1] & 0x8000) tileinfo->priority = 0;
-	else tileinfo->priority = (attrib & 0xf000) >> 12;
+			0);
+	if (pf1_tilevram16[2*tile_index+1] & 0x8000) tileinfo->category = 0;
+	else tileinfo->category = (attrib & 0xf000) >> 12;
 }
 
 static TILE_GET_INFO( get_pf2_tile_info )
@@ -210,9 +210,9 @@ static TILE_GET_INFO( get_pf2_tile_info )
 			0,
 			tile_number,
 			color,
-			0)
-	if (pf2_tilevram16[2*tile_index+1] & 0x8000) tileinfo->priority = 0;
-	else tileinfo->priority = (attrib & 0xf000) >> 12;
+			0);
+	if (pf2_tilevram16[2*tile_index+1] & 0x8000) tileinfo->category = 0;
+	else tileinfo->category = (attrib & 0xf000) >> 12;
 }
 
 static TILE_GET_INFO( get_pf3_tile_info )
@@ -226,9 +226,9 @@ static TILE_GET_INFO( get_pf3_tile_info )
 			0,
 			tile_number,
 			color,
-			0)
-	if (pf3_tilevram16[2*tile_index+1] & 0x8000) tileinfo->priority = 0;
-	else tileinfo->priority = (attrib & 0xf000) >> 12;
+			0);
+	if (pf3_tilevram16[2*tile_index+1] & 0x8000) tileinfo->category = 0;
+	else tileinfo->category = (attrib & 0xf000) >> 12;
 }
 
 static TILE_GET_INFO( get_pf4_tile_info )
@@ -242,9 +242,9 @@ static TILE_GET_INFO( get_pf4_tile_info )
 			0,
 			tile_number,
 			color,
-			0)
-	if (pf4_tilevram16[2*tile_index+1] & 0x8000) tileinfo->priority = 0;
-	else tileinfo->priority = (attrib & 0xf000) >> 12;
+			0);
+	if (pf4_tilevram16[2*tile_index+1] & 0x8000) tileinfo->category = 0;
+	else tileinfo->category = (attrib & 0xf000) >> 12;
 }
 
 /***************************************************************************
@@ -255,10 +255,10 @@ static TILE_GET_INFO( get_pf4_tile_info )
 
 static void toaplan1_create_tilemaps(void)
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
-	pf3_tilemap = tilemap_create(get_pf3_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
-	pf4_tilemap = tilemap_create(get_pf4_tile_info,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,64);
+	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	pf3_tilemap = tilemap_create(get_pf3_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	pf4_tilemap = tilemap_create(get_pf4_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf2_tilemap,0);
@@ -945,7 +945,7 @@ static void toaplan1_draw_sprite_custom(mame_bitmap *dest_bmp,const gfx_element 
 		UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
 		const rectangle *clip,int priority)
 {
-	const pen_t *pal = &gfx->colortable[gfx->color_granularity * (color % gfx->total_colors)]; /* ASG 980209 */
+	const pen_t *pal = &Machine->remapped_colortable[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
 	UINT8 *source_base = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
 
 	int sprite_screen_height = ((1<<16)*gfx->height+0x8000)>>16;
@@ -1153,8 +1153,8 @@ VIDEO_UPDATE( rallybik )
 
 	fillbitmap(bitmap,machine->pens[0],cliprect);
 
-	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_IGNORE_TRANSPARENCY | 0,0);
-	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_IGNORE_TRANSPARENCY | 1,0);
+	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_DRAW_OPAQUE | 0,0);
+	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_DRAW_OPAQUE | 1,0);
 
 	for (priority = 1; priority < 16; priority++)
 	{
@@ -1178,9 +1178,9 @@ VIDEO_UPDATE( toaplan1 )
 	fillbitmap(priority_bitmap,0,cliprect);
 	fillbitmap(bitmap,machine->pens[0x120],cliprect);
 
-	tilemap_draw(bitmap,cliprect,pf4_tilemap,TILEMAP_IGNORE_TRANSPARENCY,0);
+	tilemap_draw(bitmap,cliprect,pf4_tilemap,TILEMAP_DRAW_OPAQUE,0);
 	for (priority = 8; priority < 16; priority++)
-		tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_IGNORE_TRANSPARENCY | priority,0);
+		tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_DRAW_OPAQUE | priority,0);
 
 	for (priority = 1; priority < 16; priority++)
 	{
@@ -1205,8 +1205,8 @@ VIDEO_UPDATE( demonwld )
 	fillbitmap(priority_bitmap,0,cliprect);
 	fillbitmap(bitmap,machine->pens[0x120],cliprect);
 
-	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_IGNORE_TRANSPARENCY | 0,0);
-	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_IGNORE_TRANSPARENCY | 1,0);
+	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_DRAW_OPAQUE | 0,0);
+	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_DRAW_OPAQUE | 1,0);
 
 	for (priority = 1; priority < 16; priority++)
 	{

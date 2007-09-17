@@ -56,7 +56,7 @@ static TILE_GET_INFO( get_tile_info_splash_tilemap0 )
 			0,
 			code + ((0x20 + (attr & 0x0f)) << 8),
 			(attr & 0xf0) >> 4,
-			0)
+			0);
 }
 
 static TILE_GET_INFO( get_tile_info_splash_tilemap1 )
@@ -69,7 +69,7 @@ static TILE_GET_INFO( get_tile_info_splash_tilemap1 )
 			1,
 			(code >> 2) + ((0x30 + (attr & 0x0f)) << 6),
 			(attr & 0xf0) >> 4,
-			TILE_FLIPXY(code & 0x03))
+			TILE_FLIPXY(code & 0x03));
 }
 
 /***************************************************************************
@@ -164,7 +164,8 @@ static void draw_bitmap(running_machine *machine, mame_bitmap *bitmap,const rect
 				break;
 			}
 
-			*BITMAP_ADDR16(bitmap, sy, sx-9) = machine->pens[0x300+(color^colxor)];
+			if (sy >= cliprect->min_y && sy <= cliprect->max_y && sx-9 >= cliprect->min_x && sx-9 <= cliprect->max_x)
+				*BITMAP_ADDR16(bitmap, sy, sx-9) = machine->pens[0x300+(color^colxor)];
 		}
 	}
 
@@ -177,8 +178,8 @@ static void draw_bitmap(running_machine *machine, mame_bitmap *bitmap,const rect
 
 VIDEO_START( splash )
 {
-	bg_tilemap[0] = tilemap_create(get_tile_info_splash_tilemap0,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT, 8, 8,64,32);
-	bg_tilemap[1] = tilemap_create(get_tile_info_splash_tilemap1,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,32,32);
+	bg_tilemap[0] = tilemap_create(get_tile_info_splash_tilemap0,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	bg_tilemap[1] = tilemap_create(get_tile_info_splash_tilemap1,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
 
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);

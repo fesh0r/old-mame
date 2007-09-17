@@ -295,7 +295,7 @@ static void decode_bg(running_machine *machine, int region)
 	decodegfx(machine->gfx[gfx_index], memory_region(region), 0, machine->gfx[gfx_index]->total_elements);
 
 	/* set the color information */
-	machine->gfx[gfx_index]->colortable = &machine->remapped_colortable[2048];
+	machine->gfx[gfx_index]->color_base = 2048;
 	machine->gfx[gfx_index]->total_colors = 64;
 }
 
@@ -306,7 +306,7 @@ static void decode_sprite(running_machine *machine, int gfx_index, const gfx_lay
 	decodegfx(machine->gfx[gfx_index], data, 0, machine->gfx[gfx_index]->total_elements);
 
 	/* set the color information */
-	machine->gfx[gfx_index]->colortable = &machine->remapped_colortable[1024];
+	machine->gfx[gfx_index]->color_base = 1024;
 	machine->gfx[gfx_index]->total_colors = 64;
 }
 
@@ -445,17 +445,14 @@ VIDEO_START( tceptor )
 
 	namco_road_set_transparent_color(machine->remapped_colortable[0xfff]);
 
-	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_cols, TILEMAP_TYPE_TRANSPARENT_COLOR, 8, 8, 34, 28);
+	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_cols, TILEMAP_TYPE_COLORTABLE, 8, 8, 34, 28);
 
 	tilemap_set_scrollx(tx_tilemap, 0, -2*8);
 	tilemap_set_scrolly(tx_tilemap, 0, 0);
 	tilemap_set_transparent_pen(tx_tilemap, 7);
 
-	bg1_tilemap = tilemap_create(get_bg1_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 8, 8, 64, 32);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 8, 8, 64, 32);
-
-	tilemap_set_transparent_pen(bg1_tilemap, 0);
-	tilemap_set_transparent_pen(bg2_tilemap, 0);
+	bg1_tilemap = tilemap_create(get_bg1_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+	bg2_tilemap = tilemap_create(get_bg2_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 32);
 
 	state_save_register_global(bg1_scroll_x);
 	state_save_register_global(bg1_scroll_y);

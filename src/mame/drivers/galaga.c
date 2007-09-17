@@ -631,17 +631,39 @@ Notes:
   custom chips.
 
 - differences between versions of digdug:
-  - the background graphics are slightly different in the Atari version, the earth is
+  - the background graphics are slightly different in the Atari versions; the earth is
     less regular.
 
-  - "digdugb" and "digduga1" are identical, apart from the gfx and copyright notices
+  - "digduga1" is identical to "digdugb", apart from the gfx and copyright notices
     changed from "NAMCO LTD." to "ATARI INC.".
 
-  - "digdug" is almost identical to "digdugat" (apart from the above changes), but
-    there are three more instructions in the latter that change the code alignment.
+  - "digdug" fixes two bugs that were present in "digdugb":  First, as monster speed
+    increased in later rounds it could eventually roll over to 0, causing the monsters
+    to stop moving altogether.  Second, "double-killing" a monster by bursting it and
+    immediately dropping a rock on the corpse could result in the round not ending
+    even after all monsters were killed.
+    This set also has the code to save high scores to EEPROM rewritten, though the
+    reason for the changes is unclear.
+
+  - "digdugat" is almost identical to "digdug" (apart from the Atari gfx/copyright
+    changes), but there are three added instructions in the CPU0 program that change
+    the code alignment.  The change eliminates the "kill screen" at round 256 by
+    making the round number roll over to 156, and hides the rollover from the player
+    by only ever displaying the lower two digits of the round number.  Interestingly,
+    "digdug" actually contains all the code to implement the rollover (at $0018-$0026)
+    but just doesn't call it, implying that Namco deliberately chose to keep the kill
+    screen in this version.
+
+  - "digsid" is intermediate between "digdugb" and "digdug"; it has the changed EEPROM
+    handling, but not the gameplay bug fixes.  It has some unique changes as well:
+    the initial high scores are 25000 instead of 10000, and the game begins on the
+    screen that is round 4 in the other sets, skipping the first three screens.
+    The latter change seems likely to have been done by Namco themselves and not by
+    Sidam, as it involves insertion of code right in the middle of the CPU0 program
+    and realignment of all the code after the insertion.
 
   - "dzigzag" and "digdugb" are identical, apart from the hacked gfx and the copyright
-    notices changed from "NAMCO LTD." to "1 9 8 2". It's a bottleg of "digdugb", and
+    notices changed from "NAMCO LTD." to "1 9 8 2".  It's a bootleg of "digdugb", and
     not of "digduga1", because the hidden "NAMCO" string at offset 0x1eea of CPU2 is
     still present, while it is replaced by "ATARI" in digduga1.
     The only interesting thing about the bootleg is the 4th Z80, used to simulate
@@ -698,8 +720,8 @@ static READ8_HANDLER( bosco_dsw_r )
 {
 	int bit0,bit1;
 
-	bit0 = (readinputport(3) >> offset) & 1;
-	bit1 = (readinputport(2) >> offset) & 1;
+	bit0 = (readinputportbytag("DSWB") >> offset) & 1;
+	bit1 = (readinputportbytag("DSWA") >> offset) & 1;
 
 	return bit0 | (bit1 << 1);
 }
@@ -753,14 +775,14 @@ static WRITE8_HANDLER( bosco_latch_w )
 }
 
 
-static READ8_HANDLER( in0_l )	{ return readinputport(0); }		// fire and start buttons
-static READ8_HANDLER( in0_h )	{ return readinputport(0) >> 4; }	// coins
-static READ8_HANDLER( in1_l )	{ return readinputport(1); }		// P1 joystick
-static READ8_HANDLER( in1_h )	{ return readinputport(1) >> 4; }	// P2 joystick
-static READ8_HANDLER( dipA_l )	{ return readinputport(2); }		// dips A
-static READ8_HANDLER( dipA_h )	{ return readinputport(2) >> 4; }	// dips A
-static READ8_HANDLER( dipB_l )	{ return readinputport(3); }		// dips B
-static READ8_HANDLER( dipB_h )	{ return readinputport(3) >> 4; }	// dips B
+static READ8_HANDLER( in0_l )	{ return readinputportbytag("IN0"); }		// fire and start buttons
+static READ8_HANDLER( in0_h )	{ return readinputportbytag("IN0") >> 4; }	// coins
+static READ8_HANDLER( in1_l )	{ return readinputportbytag("IN1"); }		// P1 joystick
+static READ8_HANDLER( in1_h )	{ return readinputportbytag("IN1") >> 4; }	// P2 joystick
+static READ8_HANDLER( dipA_l )	{ return readinputportbytag("DSWA"); }		// dips A
+static READ8_HANDLER( dipA_h )	{ return readinputportbytag("DSWA") >> 4; }	// dips A
+static READ8_HANDLER( dipB_l )	{ return readinputportbytag("DSWB"); }		// dips B
+static READ8_HANDLER( dipB_h )	{ return readinputportbytag("DSWB") >> 4; }	// dips B
 static WRITE8_HANDLER( out_0 )
 {
 	set_led_status(1,data & 1);
@@ -988,7 +1010,7 @@ ADDRESS_MAP_END
 
 
 INPUT_PORTS_START( bosco )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -998,7 +1020,7 @@ INPUT_PORTS_START( bosco )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -1008,7 +1030,7 @@ INPUT_PORTS_START( bosco )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 
-	PORT_START	/* DSW A */
+	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Medium ) )
@@ -1033,7 +1055,7 @@ INPUT_PORTS_START( bosco )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START	/* DSW B */
+	PORT_START_TAG("DSWB")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
@@ -1061,27 +1083,9 @@ INPUT_PORTS_START( bosco )
 INPUT_PORTS_END
 
 INPUT_PORTS_START( boscomd )
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
+	PORT_INCLUDE( bosco )
 
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
-
-	PORT_START	/* DSW A */
+	PORT_MODIFY("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, "2 Credits Game" )
 	PORT_DIPSETTING(    0x00, "1 Player" )
 	PORT_DIPSETTING(    0x01, "2 Players" )
@@ -1105,37 +1109,11 @@ INPUT_PORTS_START( boscomd )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-
-	PORT_START	/* DSW B */
-	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x07, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x06, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x05, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
-	/* TODO: bonus scores are different for 5 lives */
-	PORT_DIPNAME( 0x38, 0x08, "Bonus Fighter" )
-	PORT_DIPSETTING(    0x30, "15K 50K" )
-	PORT_DIPSETTING(    0x38, "20K 70K" )
-	PORT_DIPSETTING(    0x08, "10K 50K 50K" )
-	PORT_DIPSETTING(    0x10, "15K 50K 50K" )
-	PORT_DIPSETTING(    0x18, "15K 70K 70K" )
-	PORT_DIPSETTING(    0x20, "20K 70K 70K" )
-	PORT_DIPSETTING(    0x28, "30K 100K 100K" )
-	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	PORT_DIPNAME( 0xc0, 0x80, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x00, "1" )
-	PORT_DIPSETTING(    0x40, "2" )
-	PORT_DIPSETTING(    0x80, "3" )
-	PORT_DIPSETTING(    0xc0, "5" )
 INPUT_PORTS_END
 
 
 INPUT_PORTS_START( galaga )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -1155,7 +1133,7 @@ INPUT_PORTS_START( galaga )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_COCKTAIL
 
-	PORT_START      /* DSW A */
+	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Medium ) )
@@ -1180,7 +1158,7 @@ INPUT_PORTS_START( galaga )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START      /* DSW B */
+	PORT_START_TAG("DSWB")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
@@ -1207,29 +1185,10 @@ INPUT_PORTS_START( galaga )
 	PORT_DIPSETTING(    0xc0, "5" )
 INPUT_PORTS_END
 
-/* dip switches are slightly different */
 INPUT_PORTS_START( galagamw )
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
+	PORT_INCLUDE( galaga )
 
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_COCKTAIL
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_COCKTAIL
-
-	PORT_START      /* DSW A */
+	PORT_MODIFY("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, "2 Credits Game" )
 	PORT_DIPSETTING(    0x00, "1 Player" )
 	PORT_DIPSETTING(    0x01, "2 Players" )
@@ -1253,34 +1212,7 @@ INPUT_PORTS_START( galagamw )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-
-	PORT_START      /* DSW B */
-	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x06, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x07, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x05, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
-	/* TODO: bonus scores are different for 5 lives */
-	PORT_DIPNAME( 0x38, 0x10, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x20, "20K 60K 60K" )
-	PORT_DIPSETTING(    0x18, "20K 60K" )
-	PORT_DIPSETTING(    0x10, "20K 70K 70K" )
-	PORT_DIPSETTING(    0x30, "20K 80K 80K" )
-	PORT_DIPSETTING(    0x38, "30K 80K" )
-	PORT_DIPSETTING(    0x08, "30K 100K 100K" )
-	PORT_DIPSETTING(    0x28, "30K 120K 120K" )
-	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	PORT_DIPNAME( 0xc0, 0x80, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x00, "2" )
-	PORT_DIPSETTING(    0x80, "3" )
-	PORT_DIPSETTING(    0x40, "4" )
-	PORT_DIPSETTING(    0xc0, "5" )
 INPUT_PORTS_END
-
 
 /* the same as galaga but with vertical movement */
 INPUT_PORTS_START( gatsbee )
@@ -1299,7 +1231,7 @@ INPUT_PORTS_END
 
 
 INPUT_PORTS_START( xevious )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -1309,7 +1241,7 @@ INPUT_PORTS_START( xevious )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -1319,33 +1251,29 @@ INPUT_PORTS_START( xevious )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 
-	PORT_START	/* DSW A */
+	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	/* TODO: bonus scores are different for 5 lives */
 	PORT_DIPNAME( 0x1c, 0x1c, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x18, "10K 40K 40K" )
-	PORT_DIPSETTING(    0x14, "10K 50K 50K" )
-	PORT_DIPSETTING(    0x10, "20K 50K 50K" )
-	PORT_DIPSETTING(    0x1c, "20K 60K 60K" )
-	PORT_DIPSETTING(    0x0c, "20K 70K 70K" )
-	PORT_DIPSETTING(    0x08, "20K 80K 80K" )
-	PORT_DIPSETTING(    0x04, "20K 60K" )
-	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	/* Bonus scores for 5 lives
-    PORT_DIPNAME( 0x1c, 0x1c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x18, "10K 50K 50K" )
-    PORT_DIPSETTING(    0x14, "20K 50K 50K" )
-    PORT_DIPSETTING(    0x10, "20K 60K 60K" )
-    PORT_DIPSETTING(    0x1c, "20K 70K 70K" )
-    PORT_DIPSETTING(    0x0c, "20K 80K 80K" )
-    PORT_DIPSETTING(    0x08, "30K 100K 100K" )
-    PORT_DIPSETTING(    0x04, "20K 80K" )
-    PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-    */
+	PORT_DIPSETTING(    0x18, "10K 40K 40K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(    0x14, "10K 50K 50K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(    0x10, "20K 50K 50K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(    0x1c, "20K 60K 60K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(    0x0c, "20K 70K 70K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(    0x08, "20K 80K 80K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(    0x04, "20K 60K" )       PORT_CONDITION("DSWA",0x60,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) ) PORT_CONDITION("DSWA",0x60,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(    0x18, "10K 50K 50K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x14, "20K 50K 50K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x10, "20K 60K 60K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x1c, "20K 70K 70K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x0c, "20K 80K 80K" )   PORT_CONDITION("DSWA",0x60,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x08, "30K 100K 100K" ) PORT_CONDITION("DSWA",0x60,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x04, "20K 80K" )       PORT_CONDITION("DSWA",0x60,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) ) PORT_CONDITION("DSWA",0x60,PORTCOND_EQUALS,0x00)
 	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x40, "1" )
 	PORT_DIPSETTING(    0x20, "2" )
@@ -1355,7 +1283,7 @@ INPUT_PORTS_START( xevious )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START	/* DSW B */
+	PORT_START_TAG("DSWB")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_DIPNAME( 0x02, 0x02, "Flags Award Bonus Life" )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
@@ -1378,63 +1306,9 @@ INPUT_PORTS_END
 
 /* same as xevious but different "Coin B" Dip Switch and "Copyright" Dip Switch instead of "Freeze" */
 INPUT_PORTS_START( xeviousa )
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
+	PORT_INCLUDE( xevious )
 
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
-
-	PORT_START	/* DSW A */
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	/* TODO: bonus scores are different for 5 lives */
-	PORT_DIPNAME( 0x1c, 0x1c, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x18, "10K 40K 40K" )
-	PORT_DIPSETTING(    0x14, "10K 50K 50K" )
-	PORT_DIPSETTING(    0x10, "20K 50K 50K" )
-	PORT_DIPSETTING(    0x1c, "20K 60K 60K" )
-	PORT_DIPSETTING(    0x0c, "20K 70K 70K" )
-	PORT_DIPSETTING(    0x08, "20K 80K 80K" )
-	PORT_DIPSETTING(    0x04, "20K 60K" )
-	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	/* Bonus scores for 5 lives
-    PORT_DIPNAME( 0x1c, 0x1c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x18, "10K 50K 50K" )
-    PORT_DIPSETTING(    0x14, "20K 50K 50K" )
-    PORT_DIPSETTING(    0x10, "20K 60K 60K" )
-    PORT_DIPSETTING(    0x1c, "20K 70K 70K" )
-    PORT_DIPSETTING(    0x0c, "20K 80K 80K" )
-    PORT_DIPSETTING(    0x08, "30K 100K 100K" )
-    PORT_DIPSETTING(    0x04, "20K 80K" )
-    PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-    */
-	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x40, "1" )
-	PORT_DIPSETTING(    0x20, "2" )
-	PORT_DIPSETTING(    0x60, "3" )
-	PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-
-	PORT_START	/* DSW B */
+	PORT_MODIFY("DSWB")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_DIPNAME( 0x02, 0x02, "Flags Award Bonus Life" )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
@@ -1458,63 +1332,9 @@ INPUT_PORTS_END
 
 /* same as xevious but "Copyright" Dip Switch instead of "Freeze" */
 INPUT_PORTS_START( xeviousb )
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
+	PORT_INCLUDE( xevious )
 
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
-
-	PORT_START	/* DSW A */
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	/* TODO: bonus scores are different for 5 lives */
-	PORT_DIPNAME( 0x1c, 0x1c, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x18, "10K 40K 40K" )
-	PORT_DIPSETTING(    0x14, "10K 50K 50K" )
-	PORT_DIPSETTING(    0x10, "20K 50K 50K" )
-	PORT_DIPSETTING(    0x1c, "20K 60K 60K" )
-	PORT_DIPSETTING(    0x0c, "20K 70K 70K" )
-	PORT_DIPSETTING(    0x08, "20K 80K 80K" )
-	PORT_DIPSETTING(    0x04, "20K 60K" )
-	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	/* Bonus scores for 5 lives
-    PORT_DIPNAME( 0x1c, 0x1c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x18, "10K 50K 50K" )
-    PORT_DIPSETTING(    0x14, "20K 50K 50K" )
-    PORT_DIPSETTING(    0x10, "20K 60K 60K" )
-    PORT_DIPSETTING(    0x1c, "20K 70K 70K" )
-    PORT_DIPSETTING(    0x0c, "20K 80K 80K" )
-    PORT_DIPSETTING(    0x08, "30K 100K 100K" )
-    PORT_DIPSETTING(    0x04, "20K 80K" )
-    PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-    */
-	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x40, "1" )
-	PORT_DIPSETTING(    0x20, "2" )
-	PORT_DIPSETTING(    0x60, "3" )
-	PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-
-	PORT_START	/* DSW B */
+	PORT_MODIFY("DSWB")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_DIPNAME( 0x02, 0x02, "Flags Award Bonus Life" )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
@@ -1538,63 +1358,9 @@ INPUT_PORTS_END
 
 /* same as xevious but different "Coin B" Dip Switch and inverted "Freeze" Dip Switch */
 INPUT_PORTS_START( sxevious )
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
+	PORT_INCLUDE( xevious )
 
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
-
-	PORT_START	/* DSW A */
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	/* TODO: bonus scores are different for 5 lives */
-	PORT_DIPNAME( 0x1c, 0x1c, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x18, "10K 40K 40K" )
-	PORT_DIPSETTING(    0x14, "10K 50K 50K" )
-	PORT_DIPSETTING(    0x10, "20K 50K 50K" )
-	PORT_DIPSETTING(    0x1c, "20K 60K 60K" )
-	PORT_DIPSETTING(    0x0c, "20K 70K 70K" )
-	PORT_DIPSETTING(    0x08, "20K 80K 80K" )
-	PORT_DIPSETTING(    0x04, "20K 60K" )
-	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	/* Bonus scores for 5 lives
-    PORT_DIPNAME( 0x1c, 0x1c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x18, "10K 50K 50K" )
-    PORT_DIPSETTING(    0x14, "20K 50K 50K" )
-    PORT_DIPSETTING(    0x10, "20K 60K 60K" )
-    PORT_DIPSETTING(    0x1c, "20K 70K 70K" )
-    PORT_DIPSETTING(    0x0c, "20K 80K 80K" )
-    PORT_DIPSETTING(    0x08, "30K 100K 100K" )
-    PORT_DIPSETTING(    0x04, "20K 80K" )
-    PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-    */
-	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x40, "1" )
-	PORT_DIPSETTING(    0x20, "2" )
-	PORT_DIPSETTING(    0x60, "3" )
-	PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-
-	PORT_START	/* DSW B */
+	PORT_MODIFY("DSWB")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_DIPNAME( 0x02, 0x02, "Flags Award Bonus Life" )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
@@ -1617,7 +1383,7 @@ INPUT_PORTS_END
 
 
 INPUT_PORTS_START( digdug )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -1627,7 +1393,7 @@ INPUT_PORTS_START( digdug )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
@@ -1637,7 +1403,7 @@ INPUT_PORTS_START( digdug )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
 
-	PORT_START	/* DSW A */
+	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x07, 0x01, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
@@ -1647,23 +1413,30 @@ INPUT_PORTS_START( digdug )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_7C ) )
-	/* TODO: bonus scores are different for 5 lives */
 	PORT_DIPNAME( 0x38, 0x18, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x20, "10k 40k 40k" )
-	PORT_DIPSETTING(    0x10, "10k 50k 50k" )
-	PORT_DIPSETTING(    0x30, "20k 60k 60k" )
-	PORT_DIPSETTING(    0x08, "20k 70k 70k" )
-	PORT_DIPSETTING(    0x28, "10k 40k" )
-	PORT_DIPSETTING(    0x18, "20k 60k" )
-	PORT_DIPSETTING(    0x38, "10k" )
-	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
+	PORT_DIPSETTING(    0x20, "10K 40K 40K" )   PORT_CONDITION("DSWA",0xc0,PORTCOND_NOTEQUALS,0xc0)
+	PORT_DIPSETTING(    0x10, "10K 50K 50K" )   PORT_CONDITION("DSWA",0xc0,PORTCOND_NOTEQUALS,0xc0)
+	PORT_DIPSETTING(    0x30, "20K 60K 60K" )   PORT_CONDITION("DSWA",0xc0,PORTCOND_NOTEQUALS,0xc0)
+	PORT_DIPSETTING(    0x08, "20K 70K 70K" )   PORT_CONDITION("DSWA",0xc0,PORTCOND_NOTEQUALS,0xc0)
+	PORT_DIPSETTING(    0x28, "10K 40K" )       PORT_CONDITION("DSWA",0xc0,PORTCOND_NOTEQUALS,0xc0)
+	PORT_DIPSETTING(    0x18, "20K 60K" )       PORT_CONDITION("DSWA",0xc0,PORTCOND_NOTEQUALS,0xc0)
+	PORT_DIPSETTING(    0x38, "10K" )           PORT_CONDITION("DSWA",0xc0,PORTCOND_NOTEQUALS,0xc0)
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) ) PORT_CONDITION("DSWA",0xc0,PORTCOND_NOTEQUALS,0xc0)
+	PORT_DIPSETTING(    0x20, "20K 60K 60K" )   PORT_CONDITION("DSWA",0xc0,PORTCOND_EQUALS,0xc0)
+	PORT_DIPSETTING(    0x10, "30K 80K 80K" )   PORT_CONDITION("DSWA",0xc0,PORTCOND_EQUALS,0xc0)
+	PORT_DIPSETTING(    0x30, "20K 50K" )       PORT_CONDITION("DSWA",0xc0,PORTCOND_EQUALS,0xc0)
+	PORT_DIPSETTING(    0x08, "20K 60K" )       PORT_CONDITION("DSWA",0xc0,PORTCOND_EQUALS,0xc0)
+	PORT_DIPSETTING(    0x28, "30K 70K" )       PORT_CONDITION("DSWA",0xc0,PORTCOND_EQUALS,0xc0)
+	PORT_DIPSETTING(    0x18, "20K" )           PORT_CONDITION("DSWA",0xc0,PORTCOND_EQUALS,0xc0)
+	PORT_DIPSETTING(    0x38, "30K" )           PORT_CONDITION("DSWA",0xc0,PORTCOND_EQUALS,0xc0)
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) ) PORT_CONDITION("DSWA",0xc0,PORTCOND_EQUALS,0xc0)
 	PORT_DIPNAME( 0xc0, 0x80, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x40, "2" )
 	PORT_DIPSETTING(    0x80, "3" )
 	PORT_DIPSETTING(    0xc0, "5" )
 
-	PORT_START	/* DSW B */
+	PORT_START_TAG("DSWB")
 	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -1696,8 +1469,8 @@ static const gfx_layout charlayout_2bpp =
 	RGN_FRAC(1,1),
 	2,
 	{ 0, 4 },
-	{ 8*8+0, 8*8+1, 8*8+2, 8*8+3, 0, 1, 2, 3 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	{ STEP4(8*8,1), STEP4(0*8,1) },
+	{ STEP8(0*8,8) },
 	16*8
 };
 
@@ -1707,8 +1480,8 @@ static const gfx_layout charlayout_xevious =
 	RGN_FRAC(1,1),
 	1,
 	{ 0 },
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
 	8*8
 };
 
@@ -1718,8 +1491,8 @@ static const gfx_layout charlayout_digdug =
 	RGN_FRAC(1,1),
 	1,
 	{ 0 },
-	{ 7, 6, 5, 4, 3, 2, 1, 0 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	{ STEP8(7,-1) },
+	{ STEP8(0,8) },
 	8*8
 };
 
@@ -1729,8 +1502,8 @@ static const gfx_layout bgcharlayout =
 	RGN_FRAC(1,2),
 	2,
 	{ 0, RGN_FRAC(1,2) },
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
 	8*8
 };
 
@@ -1740,10 +1513,8 @@ static const gfx_layout spritelayout_bosco =
 	RGN_FRAC(1,1),
 	2,
 	{ 0, 4 },
-	{ 8*8, 8*8+1, 8*8+2, 8*8+3, 16*8+0, 16*8+1, 16*8+2, 16*8+3,
-			24*8+0, 24*8+1, 24*8+2, 24*8+3, 0, 1, 2, 3  },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8,
-			32*8, 33*8, 34*8, 35*8, 36*8, 37*8, 38*8, 39*8 },
+	{ STEP4(8*8,1), STEP4(16*8,1), STEP4(24*8,1), STEP4(0*8,1) },
+	{ STEP8(0*8,8), STEP8(32*8,8) },
 	64*8
 };
 
@@ -1753,10 +1524,8 @@ static const gfx_layout spritelayout_galaga =
 	RGN_FRAC(1,1),
 	2,
 	{ 0, 4 },
-	{ 0, 1, 2, 3, 8*8, 8*8+1, 8*8+2, 8*8+3, 16*8+0, 16*8+1, 16*8+2, 16*8+3,
-			24*8+0, 24*8+1, 24*8+2, 24*8+3 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8,
-			32*8, 33*8, 34*8, 35*8, 36*8, 37*8, 38*8, 39*8 },
+	{ STEP4(0*8,1), STEP4(8*8,1), STEP4(16*8,1), STEP4(24*8,1) },
+	{ STEP8(0*8,8), STEP8(32*8,8) },
 	64*8
 };
 
@@ -1766,10 +1535,8 @@ static const gfx_layout spritelayout_xevious =
 	RGN_FRAC(1,2),
 	3,
 	{ RGN_FRAC(1,2)+4, 0, 4 },
-	{ 0, 1, 2, 3, 8*8+0, 8*8+1, 8*8+2, 8*8+3,
-			16*8+0, 16*8+1, 16*8+2, 16*8+3, 24*8+0, 24*8+1, 24*8+2, 24*8+3 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8,
-			32*8, 33*8, 34*8, 35*8, 36*8, 37*8, 38*8, 39*8 },
+	{ STEP4(0*8,1), STEP4(8*8,1), STEP4(16*8,1), STEP4(24*8,1) },
+	{ STEP8(0*8,8), STEP8(32*8,8) },
 	64*8
 };
 
@@ -1779,8 +1546,8 @@ static const gfx_layout dotlayout =
 	8,
 	3,	/* 2 bits color + 1 bit transparency */
 	{ 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8 },
-	{ 0*32, 1*32, 2*32, 3*32 },
+	{ STEP4(0,8) },
+	{ STEP4(0,32) },
 	16*8
 };
 
@@ -1899,8 +1666,7 @@ static MACHINE_DRIVER_START( bosco )
 	MDRV_SCREEN_SIZE(36*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo_bosco)
-	MDRV_PALETTE_LENGTH(32+64)
-	MDRV_COLORTABLE_LENGTH(64*4+64*4+8)
+	MDRV_PALETTE_LENGTH(64*4+64*4+4+64)
 
 	MDRV_PALETTE_INIT(bosco)
 	MDRV_VIDEO_START(bosco)
@@ -1958,8 +1724,7 @@ static MACHINE_DRIVER_START( galaga )
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 0*8, 28*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo_galaga)
-	MDRV_PALETTE_LENGTH(32+64)
-	MDRV_COLORTABLE_LENGTH(64*4+64*4)
+	MDRV_PALETTE_LENGTH(64*4+64*4+64)
 
 	MDRV_PALETTE_INIT(galaga)
 	MDRV_VIDEO_START(galaga)
@@ -2032,8 +1797,7 @@ static MACHINE_DRIVER_START( xevious )
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 0*8, 28*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo_xevious)
-	MDRV_PALETTE_LENGTH(128+1)
-	MDRV_COLORTABLE_LENGTH(128*4+64*8+64*2)
+	MDRV_PALETTE_LENGTH(128*4+64*8+64*2)
 
 	MDRV_PALETTE_INIT(xevious)
 	MDRV_VIDEO_START(xevious)
@@ -2106,8 +1870,7 @@ static MACHINE_DRIVER_START( digdug )
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 0*8, 28*8-1)
 	MDRV_GFXDECODE(gfxdecodeinfo_digdug)
-	MDRV_PALETTE_LENGTH(32)
-	MDRV_COLORTABLE_LENGTH(16*2+64*4+64*4)
+	MDRV_PALETTE_LENGTH(16*2+64*4+64*4)
 
 	MDRV_PALETTE_INIT(digdug)
 	MDRV_VIDEO_START(digdug)

@@ -49,12 +49,12 @@ static TILE_GET_INFO( get_tile_info )
 {
 	int tile = videoram[tile_index];
 
-	SET_TILE_INFO(0,tile,superdq_color_bank,0)
+	SET_TILE_INFO(0,tile,superdq_color_bank,0);
 }
 
 VIDEO_START( superdq )
 {
-	superdq_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_OPAQUE, 8, 8, 32, 32);
+	superdq_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 
 	add_exit_callback(machine, video_cleanup);
 }
@@ -223,10 +223,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( superdq_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_READWRITE(port_tag_to_handler8("IN0"),superdq_ld_w)
-	AM_RANGE(0x01, 0x01) AM_READ(port_tag_to_handler8("IN1"))
-	AM_RANGE(0x02, 0x02) AM_READ(port_tag_to_handler8("DSW1"))
-	AM_RANGE(0x03, 0x03) AM_READ(port_tag_to_handler8("DSW2"))
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0") AM_WRITE(superdq_ld_w)
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("DSW1")
+	AM_RANGE(0x03, 0x03) AM_READ_PORT("DSW2")
 	AM_RANGE(0x04, 0x04) AM_READWRITE(superdq_ld_r,SN76496_0_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(superdq_io_w)
 	AM_RANGE(0x0c, 0x0d) AM_NOP /* HD46505S */
@@ -361,7 +361,7 @@ static MACHINE_DRIVER_START( superdq )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(SN76496, MASTER_CLOCK/2)
+	MDRV_SOUND_ADD(SN76496, MASTER_CLOCK/8)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.8)
 
 	MDRV_SOUND_ADD(CUSTOM, 0)

@@ -51,11 +51,11 @@ static void draw_char(mame_bitmap *bitmap, const rectangle *cliprect, const gfx_
 			UINT8 pen = dp[index++];
 			if (pen)
 			{
-				p[i] = gfx->colortable[att & 0xf];
+				p[i] = Machine->remapped_colortable[gfx->color_base + (att & 0xf)];
 			}
 			else
 			{
-				p[i] = gfx->colortable[(att >> 4) & 0x7];
+				p[i] = Machine->remapped_colortable[gfx->color_base  + ((att >> 4) & 0x7)];
 			}
 		}
 	}
@@ -422,7 +422,7 @@ static MACHINE_DRIVER_START(taitowlf)
 	MDRV_CPU_IO_MAP(taitowlf_io, 0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(0))
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(taitowlf)
 

@@ -9,6 +9,7 @@ static tilemap *bg_tilemap,*tx_tilemap;
 
 static INT32 bg_select, tx_color_mode, bg_disable, bg_color_bank;
 
+static colortable *digdug_colortable;
 
 
 /***************************************************************************
@@ -34,6 +35,8 @@ PALETTE_INIT( digdug )
 {
 	int i;
 
+	digdug_colortable = colortable_alloc(machine, 32);
+
 	for (i = 0;i < 32;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
@@ -50,23 +53,24 @@ PALETTE_INIT( digdug )
 		bit1 = (*color_prom >> 6) & 0x01;
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
+		colortable_palette_set_color(digdug_colortable,i,MAKE_RGB(r,g,b));
 		color_prom++;
 	}
 
 	/* characters - direct mapping */
 	for (i = 0; i < 16; i++)
 	{
-		colortable[0] = 0;
-		colortable[1] = i;
-		colortable += 2;
+		colortable_entry_set_value(digdug_colortable, i*2+0, 0);
+		colortable_entry_set_value(digdug_colortable, i*2+1, i);
 	}
+
 	/* sprites */
 	for (i = 0;i < 0x100;i++)
-		*(colortable++) = (*(color_prom++) & 0x0f) + 0x10;
+		colortable_entry_set_value(digdug_colortable, 16*2+i, (*color_prom++ & 0x0f) + 0x10);
+
 	/* bg_select */
 	for (i = 0;i < 0x100;i++)
-		*(colortable++) = (*(color_prom++) & 0x0f);
+		colortable_entry_set_value(digdug_colortable, 16*2+256+i, *color_prom++ & 0x0f);
 }
 
 
@@ -78,7 +82,7 @@ PALETTE_INIT( digdug )
 ***************************************************************************/
 
 /* convert from 32x32 to 36x28 */
-static UINT32 tilemap_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
+static TILEMAP_MAPPER( tilemap_scan )
 {
 	int offs;
 
@@ -107,7 +111,7 @@ static TILE_GET_INFO( bg_get_tile_info )
 			2,
 			code,
 			color | bg_color_bank,
-			0)
+			0);
 }
 
 static TILE_GET_INFO( tx_get_tile_info )
@@ -134,7 +138,7 @@ static TILE_GET_INFO( tx_get_tile_info )
 			0,
 			(code & 0x7f) | (flip_screen ? 0x80 : 0),
 			color,
-			flip_screen ? TILE_FLIPX : 0)
+			flip_screen ? TILE_FLIPX : 0);
 }
 
 
@@ -147,8 +151,8 @@ static TILE_GET_INFO( tx_get_tile_info )
 
 VIDEO_START( digdug )
 {
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan,TILEMAP_TYPE_OPAQUE,     8,8,36,28);
-	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan,TILEMAP_TYPE_TRANSPARENT,8,8,36,28);
+	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,     8,8,36,28);
+	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,8,8,36,28);
 
 	tilemap_set_transparent_pen(tx_tilemap, 0);
 
@@ -288,19 +292,20 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 		{
 			for (x = 0;x <= size;x++)
 			{
+				UINT32 transmask = colortable_get_transpen_mask(digdug_colortable, machine->gfx[1], color, 0x1f);
 				drawgfx(bitmap,machine->gfx[1],
 					sprite + gfx_offs[y ^ (size * flipy)][x ^ (size * flipx)],
 					color,
 					flipx,flipy,
 					((sx + 16*x) & 0xff), sy + 16*y,
-					&spritevisiblearea,TRANSPARENCY_COLOR,0x1f);
+					&spritevisiblearea,TRANSPARENCY_PENS,transmask);
 				/* wraparound */
 				drawgfx(bitmap,machine->gfx[1],
 					sprite + gfx_offs[y ^ (size * flipy)][x ^ (size * flipx)],
 					color,
 					flipx,flipy,
 					((sx + 16*x) & 0xff) + 0x100, sy + 16*y,
-					&spritevisiblearea,TRANSPARENCY_COLOR,0x1f);
+					&spritevisiblearea,TRANSPARENCY_PENS,transmask);
 			}
 		}
 	}

@@ -142,7 +142,7 @@ VIDEO_UPDATE( wcvol95 )
 
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 
-	deco16_tilemap_2_draw(bitmap,cliprect,TILEMAP_IGNORE_TRANSPARENCY,0);
+	deco16_tilemap_2_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 	draw_sprites(machine,bitmap,cliprect);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;
@@ -430,7 +430,7 @@ static MACHINE_DRIVER_START( hvysmsh )
 	MDRV_CPU_VBLANK_INT(deco32_vbl_interrupt,1)
 
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(529))
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529))
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
@@ -466,7 +466,7 @@ static MACHINE_DRIVER_START( wcvol95 )
 	MDRV_CPU_VBLANK_INT(deco32_vbl_interrupt,1)
 
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(529))
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529))
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */

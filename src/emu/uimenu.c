@@ -1651,7 +1651,7 @@ static UINT32 menu_select_game(UINT32 state)
 	else
 	{
 		/* handle typeahead */
-		recompute |= select_game_handle_key(KEYCODE_BACKSPACE, -1);
+		recompute |= select_game_handle_key(KEYCODE_BACKSPACE, 8);
 		recompute |= select_game_handle_key(KEYCODE_SPACE, ' ');
 		for (curkey = KEYCODE_A; curkey <= KEYCODE_Z; curkey++)
 			recompute |= select_game_handle_key(curkey, curkey - KEYCODE_A + 'a');
@@ -1687,7 +1687,7 @@ static UINT32 menu_select_game(UINT32 state)
 		if (input_ui_pressed(IPT_UI_SELECT))
 		{
 			/* control config */
-			if (selected == menu_items - 2)
+			if (ui_menu_is_force_game_select() && selected == menu_items - 2)
 				return ui_menu_stack_push(menu_input_groups, 0);
 
 			/* valid selected game */
@@ -1698,7 +1698,7 @@ static UINT32 menu_select_game(UINT32 state)
 				int audit_result;
 
 				/* audit the game first to see if we're going to work */
-				audit_records = audit_images(select_game_list[selected], AUDIT_VALIDATE_FAST, &audit);
+				audit_records = audit_images(mame_options(), select_game_list[selected], AUDIT_VALIDATE_FAST, &audit);
 				audit_result = audit_summary(select_game_list[selected], audit_records, audit, FALSE);
 				if (audit_records > 0)
 					free(audit);
@@ -2600,7 +2600,7 @@ static int select_game_handle_key(input_code keycode, char value)
 		int buflen = strlen(select_game_buffer);
 
 		/* if it's a backspace and we can handle it, do so */
-		if (value == -1)
+		if (value == 8)
 		{
 			if (buflen > 0)
 			{

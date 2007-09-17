@@ -19,41 +19,12 @@
 
 
 /***************************************************************************
-    GLOBAL VARIABLES
-***************************************************************************/
-
-static const game_driver *chd_gamedrv;
-
-
-
-/***************************************************************************
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static int audit_one_rom(const rom_entry *rom, const game_driver *gamedrv, UINT32 validation, audit_record *record);
-static int audit_one_disk(const rom_entry *rom, const game_driver *gamedrv, UINT32 validation, audit_record *record);
+static int audit_one_rom(core_options *options, const rom_entry *rom, const game_driver *gamedrv, UINT32 validation, audit_record *record);
+static int audit_one_disk(core_options *options, const rom_entry *rom, const game_driver *gamedrv, UINT32 validation, audit_record *record);
 static int rom_used_by_parent(const game_driver *gamedrv, const rom_entry *romentry, const game_driver **parent);
-
-static chd_interface_file *audit_chd_open(const char *filename, const char *mode);
-static void audit_chd_close(chd_interface_file *file);
-static UINT32 audit_chd_read(chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer);
-static UINT32 audit_chd_write(chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer);
-static UINT64 audit_chd_length(chd_interface_file *file);
-
-
-
-/***************************************************************************
-    HARD DISK INTERFACE
-***************************************************************************/
-
-static chd_interface audit_chd_interface =
-{
-	audit_chd_open,
-	audit_chd_close,
-	audit_chd_read,
-	audit_chd_write,
-	audit_chd_length
-};
 
 
 
@@ -83,7 +54,7 @@ INLINE void set_status(audit_record *record, UINT8 status, UINT8 substatus)
     images for a game
 -------------------------------------------------*/
 
-int audit_images(const game_driver *gamedrv, UINT32 validation, audit_record **audit)
+int audit_images(core_options *options, const game_driver *gamedrv, UINT32 validation, audit_record **audit)
 {
 	const rom_entry *region, *rom;
 	audit_record *record;
@@ -118,14 +89,14 @@ int audit_images(const game_driver *gamedrv, UINT32 validation, audit_record **a
 				/* audit a file */
 				if (ROMREGION_ISROMDATA(region))
 				{
-					if (audit_one_rom(rom, gamedrv, validation, record++) && (!shared || allshared))
+					if (audit_one_rom(options, rom, gamedrv, validation, record++) && (!shared || allshared))
 						foundany = TRUE;
 				}
 
 				/* audit a disk */
 				else if (ROMREGION_ISDISKDATA(region))
 				{
-					if (audit_one_disk(rom, gamedrv, validation, record++) && (!shared || allshared))
+					if (audit_one_disk(options, rom, gamedrv, validation, record++) && (!shared || allshared))
 						foundany = TRUE;
 				}
 			}
@@ -147,7 +118,7 @@ int audit_images(const game_driver *gamedrv, UINT32 validation, audit_record **a
     game
 -------------------------------------------------*/
 
-int audit_samples(const game_driver *gamedrv, audit_record **audit)
+int audit_samples(core_options *options, const game_driver *gamedrv, audit_record **audit)
 {
 	machine_config config;
 	audit_record *record;
@@ -202,13 +173,13 @@ int audit_samples(const game_driver *gamedrv, audit_record **audit)
 
 						/* attempt to access the file from the game driver name */
 						fname = astring_assemble_3(astring_alloc(), gamedrv->name, PATH_SEPARATOR, intf->samplenames[sampnum]);
-						filerr = mame_fopen(SEARCHPATH_SAMPLE, astring_c(fname), OPEN_FLAG_READ, &file);
+						filerr = mame_fopen_options(options, SEARCHPATH_SAMPLE, astring_c(fname), OPEN_FLAG_READ, &file);
 
 						/* attempt to access the file from the shared driver name */
 						if (filerr != FILERR_NONE && sharedname != NULL)
 						{
 							astring_assemble_3(fname, sharedname, PATH_SEPARATOR, intf->samplenames[sampnum]);
-							filerr = mame_fopen(SEARCHPATH_SAMPLE, astring_c(fname), OPEN_FLAG_READ, &file);
+							filerr = mame_fopen_options(options, SEARCHPATH_SAMPLE, astring_c(fname), OPEN_FLAG_READ, &file);
 						}
 						astring_free(fname);
 
@@ -338,7 +309,7 @@ int audit_summary(const game_driver *gamedrv, int count, const audit_record *rec
     audit_one_rom - validate a single ROM entry
 -------------------------------------------------*/
 
-static int audit_one_rom(const rom_entry *rom, const game_driver *gamedrv, UINT32 validation, audit_record *record)
+static int audit_one_rom(core_options *options, const rom_entry *rom, const game_driver *gamedrv, UINT32 validation, audit_record *record)
 {
 	const game_driver *drv;
 	const rom_entry *chunk;
@@ -370,9 +341,9 @@ static int audit_one_rom(const rom_entry *rom, const game_driver *gamedrv, UINT3
 		/* open the file if we can */
 		fname = astring_assemble_3(astring_alloc(), drv->name, PATH_SEPARATOR, ROM_GETNAME(rom));
 	    if (has_crc)
-			filerr = mame_fopen_crc(SEARCHPATH_ROM, astring_c(fname), crc, OPEN_FLAG_READ, &file);
+			filerr = mame_fopen_crc_options(options, SEARCHPATH_ROM, astring_c(fname), crc, OPEN_FLAG_READ, &file);
 		else
-			filerr = mame_fopen(SEARCHPATH_ROM, astring_c(fname), OPEN_FLAG_READ, &file);
+			filerr = mame_fopen_options(options, SEARCHPATH_ROM, astring_c(fname), OPEN_FLAG_READ, &file);
 		astring_free(fname);
 
 		/* if we got it, extract the hash and length */
@@ -440,8 +411,9 @@ static int audit_one_rom(const rom_entry *rom, const game_driver *gamedrv, UINT3
     audit_one_disk - validate a single disk entry
 -------------------------------------------------*/
 
-static int audit_one_disk(const rom_entry *rom, const game_driver *gamedrv, UINT32 validation, audit_record *record)
+static int audit_one_disk(core_options *options, const rom_entry *rom, const game_driver *gamedrv, UINT32 validation, audit_record *record)
 {
+	mame_file *source_file;
 	chd_file *source;
 	chd_error err;
 
@@ -451,9 +423,7 @@ static int audit_one_disk(const rom_entry *rom, const game_driver *gamedrv, UINT
 	record->exphash = ROM_GETHASHDATA(rom);
 
 	/* open the disk */
-	chd_gamedrv = gamedrv;
-	chd_set_interface(&audit_chd_interface);
-	err = open_disk_image(gamedrv, rom, &source);
+	err = open_disk_image_options(options, gamedrv, rom, &source_file, &source);
 
 	/* if we failed, report the error */
 	if (err != CHDERR_NONE)
@@ -496,6 +466,7 @@ static int audit_one_disk(const rom_entry *rom, const game_driver *gamedrv, UINT
 			set_status(record, AUDIT_STATUS_GOOD, SUBSTATUS_GOOD);
 
 		chd_close(source);
+		mame_fclose(source_file);
 	}
 
 	/* return TRUE if we found anything at all */
@@ -531,81 +502,4 @@ static int rom_used_by_parent(const game_driver *gamedrv, const rom_entry *romen
 	}
 
 	return FALSE;
-}
-
-
-
-/***************************************************************************
-    CHD INTERFACES
-***************************************************************************/
-
-/*-------------------------------------------------
-    audit_chd_open - interface for opening
-    a hard disk image
--------------------------------------------------*/
-
-static chd_interface_file *audit_chd_open(const char *filename, const char *mode)
-{
-	const game_driver *drv;
-
-	/* attempt reading up the chain through the parents */
-	for (drv = chd_gamedrv; drv != NULL; drv = driver_get_clone(drv))
-	{
-		file_error filerr;
-		mame_file *file;
-		astring *fname;
-
-		fname = astring_assemble_3(astring_alloc(), drv->name, PATH_SEPARATOR, filename);
-		filerr = mame_fopen(SEARCHPATH_IMAGE, astring_c(fname), OPEN_FLAG_READ, &file);
-		astring_free(fname);
-
-		if (filerr == FILERR_NONE)
-			return (chd_interface_file *)file;
-	}
-	return NULL;
-}
-
-
-/*-------------------------------------------------
-    audit_chd_close - interface for closing
-    a hard disk image
--------------------------------------------------*/
-
-static void audit_chd_close(chd_interface_file *file)
-{
-	mame_fclose((mame_file *)file);
-}
-
-
-/*-------------------------------------------------
-    audit_chd_read - interface for reading
-    from a hard disk image
--------------------------------------------------*/
-
-static UINT32 audit_chd_read(chd_interface_file *file, UINT64 offset, UINT32 count, void *buffer)
-{
-	mame_fseek((mame_file *)file, offset, SEEK_SET);
-	return mame_fread((mame_file *)file, buffer, count);
-}
-
-
-/*-------------------------------------------------
-    audit_chd_write - interface for writing
-    to a hard disk image
--------------------------------------------------*/
-
-static UINT32 audit_chd_write(chd_interface_file *file, UINT64 offset, UINT32 count, const void *buffer)
-{
-	return 0;
-}
-
-
-/*-------------------------------------------------
-    audit_chd_length - interface for getting
-    the length a hard disk image
--------------------------------------------------*/
-
-static UINT64 audit_chd_length(chd_interface_file *file)
-{
-	return mame_fsize((mame_file *)file);
 }

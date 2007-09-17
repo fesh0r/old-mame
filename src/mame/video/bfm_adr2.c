@@ -145,7 +145,7 @@ static TILE_GET_INFO( get_tile0_info )
 	flags = ((data & 0x4000)?TILE_FLIPY:0) |
 			((data & 0x2000)?TILE_FLIPX:0);
 
-	SET_TILE_INFO(0, code, color, flags)
+	SET_TILE_INFO(0, code, color, flags);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -168,7 +168,7 @@ static TILE_GET_INFO( get_tile1_info )
 	flags = ((data & 0x4000)?TILE_FLIPY:0) |
 			((data & 0x2000)?TILE_FLIPX:0);
 
-	SET_TILE_INFO(0, code, color, flags)
+	SET_TILE_INFO(0, code, color, flags);
 }
 
 // video initialisation ///////////////////////////////////////////////////
@@ -206,13 +206,13 @@ VIDEO_START( adder2 )
 	state_save_register_item_array("Adder", 0, adder_ram);
 	state_save_register_item_2d_array("Adder", 0, adder_screen_ram);
 
-	tilemap0 = tilemap_create(get_tile0_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 8, 8, 50, 35);
+	tilemap0 = tilemap_create(get_tile0_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 50, 35);
 
-	tilemap1 = tilemap_create(get_tile1_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 8, 8, 50, 35);
+	tilemap1 = tilemap_create(get_tile1_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 50, 35);
 }
 
 // video update ///////////////////////////////////////////////////////////
-static rectangle visible1 = { 0, 400,  0,  280 };  //minx,maxx, miny,maxy
+static rectangle visible1 = { 0, 400-1,  0,  280-1 };  //minx,maxx, miny,maxy
 
 VIDEO_UPDATE( adder2 )
 {
@@ -477,12 +477,12 @@ ADDRESS_MAP_START( adder2_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xC001, 0xC001) AM_WRITE(adder2_c001_w)			// ??
 
 	AM_RANGE(0xC101, 0xC101) AM_READWRITE(adder2_vbl_ctrl_r, adder2_vbl_ctrl_w)
-	AM_RANGE(0xC103, 0xC103) AM_READ(adder2_irq_r);				// IRQ latch read
+	AM_RANGE(0xC103, 0xC103) AM_READ(adder2_irq_r)				// IRQ latch read
 
 	// MC6850 compatible uart connected to main (scorpion2) board ///////////////////////////////////////
 
-	AM_RANGE(0xC200, 0xC200) AM_READWRITE( adder2_uart_ctrl_r, adder2_uart_ctrl_w );// 6850 compatible uart control reg
-	AM_RANGE(0xC201, 0xC201) AM_READWRITE( adder2_uart_rx_r, adder2_uart_tx_w );	// 6850 compatible uart data reg
+	AM_RANGE(0xC200, 0xC200) AM_READWRITE( adder2_uart_ctrl_r, adder2_uart_ctrl_w )	// 6850 compatible uart control reg
+	AM_RANGE(0xC201, 0xC201) AM_READWRITE( adder2_uart_rx_r, adder2_uart_tx_w )	// 6850 compatible uart data reg
 
 	AM_RANGE(0xE000, 0xFFFF) AM_ROM								// 8k  ROM
 ADDRESS_MAP_END

@@ -9,7 +9,7 @@
 
 #include "osdcore.h"
 #include "chd.h"
-#include "cdrom.h"
+#include "chdcd.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -20,48 +20,7 @@
     CONSTANTS & DEFINES
 ***************************************************************************/
 
-#define EATWHITESPACE	\
-	while ((linebuffer[i] == ' ' || linebuffer[i] == 0x09 || linebuffer[i] == '\r') && (i < 512))	\
-	{	\
-		i++;	\
-	}
-
-#define EATQUOTE	\
-	while ((linebuffer[i] == '"' || linebuffer[i] == '\'') && (i < 512))	\
-	{	\
-		i++;	\
-	}
-
-#define TOKENIZE	\
-	j = 0; \
-	while (!isspace(linebuffer[i]) && (i < 512) && (j < 128))	\
-	{	\
-		token[j] = linebuffer[i];	\
-		i++;	\
-		j++;	\
-	}	\
-	token[j] = '\0';
-
-#define TOKENIZETOCOLON	\
-	j = 0; \
-	while ((linebuffer[i] != ':') && (i < 512) && (j < 128))	\
-	{	\
-		token[j] = linebuffer[i];	\
-		i++;	\
-		j++;	\
-	}	\
-	token[j] = '\0';
-
-#define TOKENIZETOCOLONINC	\
-	j = 0; \
-	while ((linebuffer[i] != ':') && (i < 512) && (j < 128))	\
-	{	\
-		token[j] = linebuffer[i];	\
-		i++;	\
-		j++;	\
-	}	\
-	token[j++] = ':';	\
-	token[j] = '\0';
+#define TOKENIZE i = tokenize( linebuffer, i, sizeof(linebuffer), token, sizeof(token) );
 
 
 
@@ -95,19 +54,82 @@ static UINT64 get_file_size(const char *filename)
 
 
 /*-------------------------------------------------
-    cdrom_parse_toc - parse a CDRDAO format TOC file
+    tokenize - get a token from the line buffer
 -------------------------------------------------*/
 
-static void show_raw_message(void)
+static int tokenize( const char *linebuffer, int i, int linebuffersize, char *token, int tokensize )
 {
-	printf("Note: MAME now prefers and can accept RAW format images.\n");
-	printf("At least one track of this CDRDAO rip is not either RAW or AUDIO.\n");
+	int j = 0;
+	int singlequote = 0;
+	int doublequote = 0;
+
+	while ((i < linebuffersize) && isspace(linebuffer[i]))
+	{
+		i++;
+	}
+
+	while ((i < linebuffersize) && (j < tokensize))
+	{
+		if (!singlequote && linebuffer[i] == '"' )
+		{
+			doublequote = !doublequote;
+		}
+		else if (!doublequote && linebuffer[i] == '\'')
+		{
+			singlequote = !singlequote;
+		}
+		else if (!singlequote && !doublequote && isspace(linebuffer[i]))
+		{
+			break;
+		}
+		else
+		{
+			token[j] = linebuffer[i];
+			j++;
+		}
+
+		i++;
+	}
+
+	token[j] = '\0';
+
+	return i;
 }
 
-chd_error cdrom_parse_toc(const char *tocfname, cdrom_toc *outtoc, cdrom_track_input_info *outinfo)
+
+/*-------------------------------------------------
+    msf_to_frames - convert m:s:f into a number of frames
+-------------------------------------------------*/
+
+static int msf_to_frames( char *token )
+{
+	int m = 0;
+	int s = 0;
+	int f = 0;
+
+	if( sscanf( token, "%d:%d:%d", &m, &s, &f ) == 1 )
+	{
+		f = m;
+	}
+	else
+	{
+		/* convert to just frames */
+		s += (m * 60);
+		f += (s * 75);
+	}
+
+	return f;
+}
+
+
+/*-------------------------------------------------
+    chdcd_parse_toc - parse a CDRDAO format TOC file
+-------------------------------------------------*/
+
+chd_error chdcd_parse_toc(const char *tocfname, cdrom_toc *outtoc, chdcd_track_input_info *outinfo)
 {
 	FILE *infile;
-	int i, j, k, trknum, m, s, f, foundcolon;
+	int i, trknum;
 	static char token[128];
 
 	infile = fopen(tocfname, "rt");
@@ -119,7 +141,7 @@ chd_error cdrom_parse_toc(const char *tocfname, cdrom_toc *outtoc, cdrom_track_i
 
 	/* clear structures */
 	memset(outtoc, 0, sizeof(cdrom_toc));
-	memset(outinfo, 0, sizeof(cdrom_track_input_info));
+	memset(outinfo, 0, sizeof(chdcd_track_input_info));
 
 	trknum = -1;
 
@@ -132,154 +154,92 @@ chd_error cdrom_parse_toc(const char *tocfname, cdrom_toc *outtoc, cdrom_track_i
 		if (!feof(infile))
 		{
 			i = 0;
-			EATWHITESPACE
+
 			TOKENIZE
 
 			if ((!strcmp(token, "DATAFILE")) || (!strcmp(token, "AUDIOFILE")) || (!strcmp(token, "FILE")))
 			{
-				/* found the data file for a track */
-				EATWHITESPACE
-				EATQUOTE
-				TOKENIZE
+				int f;
 
-				/* remove trailing quote if any */
-				if (token[strlen(token)-1] == '"')
-				{
-					token[strlen(token)-1] = '\0';
-				}
+				/* found the data file for a track */
+				TOKENIZE
 
 				/* keep the filename */
 				strncpy(&outinfo->fname[trknum][0], token, strlen(token));
 
 				/* get either the offset or the length */
-				EATWHITESPACE
+				TOKENIZE
 
-				if (linebuffer[i] == '#')
+				if (!strcmp(token, "SWAP"))
+				{
+					TOKENIZE
+
+					outinfo->swap[trknum] = 1;
+				}
+				else
+				{
+					outinfo->swap[trknum] = 0;
+				}
+
+				if (token[0] == '#')
 				{
 					/* it's a decimal offset, use it */
-					TOKENIZE
-					outinfo->offset[trknum] = strtoul(&token[1], NULL, 10);
+					f = strtoul(&token[1], NULL, 10);
+				}
+				else if (isdigit(token[0]))
+				{
+					/* convert the time to an offset */
+					f = msf_to_frames( token );
 
-					/* we're using this token, go on */
-					EATWHITESPACE
-					TOKENIZETOCOLONINC
+					f *= (outtoc->tracks[trknum].datasize + outtoc->tracks[trknum].subsize);
 				}
 				else
 				{
-					/* no offset, just M:S:F */
-					outinfo->offset[trknum] = 0;
-					TOKENIZETOCOLONINC
-				}
-
-				/*
-                   This is tricky: the next number can be either a raw
-                   number or an M:S:F number.  Check which it is.
-                   If a space or LF/CR/terminator occurs before a colon in the token,
-                   it's a raw number.
-                */
-
-trycolonagain:
-				foundcolon = 0;
-				for (k = 0; k < strlen(token); k++)
-				{
-					if ((token[k] <= ' ') && (token[k] != ':'))
-					{
-						break;
-					}
-
-					if (token[k] == ':')
-					{
-						foundcolon = 1;
-						break;
-					}
-				}
-
-				if (!foundcolon)
-				{
-					// rewind to the start of the real MSF
-					while (linebuffer[i] != ' ')
-					{
-						i--;
-					}
-
-					// check for spurious offset included by newer CDRDAOs
-					if ((token[0] == '0') && (token[1] == ' '))
-					{
-						i++;
-						EATWHITESPACE
-						TOKENIZETOCOLONINC
-						goto trycolonagain;
-					}
-
-					i++;
-					TOKENIZE
-
-
-					f = strtoul(token, NULL, 10);
-				}
-				else
-				{
-					/* now get the MSF format length (might be MSF offset too) */
-					m = strtoul(token, NULL, 10);
-					i++;	/* skip the colon */
-					TOKENIZETOCOLON
-					s = strtoul(token, NULL, 10);
-					i++;	/* skip the colon */
-					TOKENIZE
-					f = strtoul(token, NULL, 10);
-
-					/* convert to just frames */
-					s += (m * 60);
-					f += (s * 75);
-				}
-
-				EATWHITESPACE
-				if (isdigit(linebuffer[i]))
-				{
-					f *= outtoc->tracks[trknum].datasize;
-
-					outinfo->offset[trknum] += f;
-
-					EATWHITESPACE
-					TOKENIZETOCOLON
-
-					m = strtoul(token, NULL, 10);
-					i++;	/* skip the colon */
-					TOKENIZETOCOLON
-					s = strtoul(token, NULL, 10);
-					i++;	/* skip the colon */
-					TOKENIZE
-					f = strtoul(token, NULL, 10);
-
-					/* convert to just frames */
-					s += (m * 60);
-					f += (s * 75);
-				}
-				else if( trknum > 1 )
-				{
-					f *= outtoc->tracks[trknum].datasize;
-
-					outinfo->offset[trknum] += f;
-
 					f = 0;
 				}
 
-				if (f)
-				{
-					outtoc->tracks[trknum].frames = f;
-				}
-				else	/* track can't be zero length, guesstimate it */
-				{
-					UINT64 tlen;
+				outinfo->offset[trknum] = f;
 
+				TOKENIZE
+
+				if (isdigit(token[0]))
+				{
+					// this could be the length or an offset from the previous field.
+					f = msf_to_frames( token );
+
+					TOKENIZE
+
+					if (isdigit(token[0]))
+					{
+						// it was an offset.
+						f *= (outtoc->tracks[trknum].datasize + outtoc->tracks[trknum].subsize);
+
+						outinfo->offset[trknum] += f;
+
+						// this is the length.
+						f = msf_to_frames( token );
+					}
+				}
+				else if( trknum == 0 && outinfo->offset[trknum] != 0 )
+				{
+					/* the 1st track might have a length with no offset */
+					f = outinfo->offset[trknum] / (outtoc->tracks[trknum].datasize + outtoc->tracks[trknum].subsize);
+					outinfo->offset[trknum] = 0;
+				}
+				else
+				{
+					/* guesstimate the track length */
+					UINT64 tlen;
 					printf("Warning: Estimating length of track %d.  If this is not the final or only track\n on the disc, the estimate may be wrong.\n", trknum+1);
 
 					tlen = get_file_size(outinfo->fname[trknum]) - outinfo->offset[trknum];
 
 					tlen /= (outtoc->tracks[trknum].datasize + outtoc->tracks[trknum].subsize);
 
-					outtoc->tracks[trknum].frames = tlen;
+					f = tlen;
 				}
+
+				outtoc->tracks[trknum].frames = f;
 			}
 			else if (!strcmp(token, "TRACK"))
 			{
@@ -287,7 +247,6 @@ trycolonagain:
 				trknum++;
 
 				/* next token on the line is the track type */
-				EATWHITESPACE
 				TOKENIZE
 
 				outtoc->tracks[trknum].trktype = CD_TRACK_MODE1;
@@ -297,14 +256,18 @@ trycolonagain:
 
 				cdrom_convert_type_string_to_track_info(token, &outtoc->tracks[trknum]);
 				if (outtoc->tracks[trknum].datasize == 0)
+				{
 					printf("ERROR: Unknown track type [%s].  Contact MAMEDEV.\n", token);
+				}
 				else if (outtoc->tracks[trknum].trktype != CD_TRACK_MODE1_RAW &&
-						 outtoc->tracks[trknum].trktype != CD_TRACK_MODE2_RAW &&
-						 outtoc->tracks[trknum].trktype != CD_TRACK_AUDIO)
-					show_raw_message();
+					outtoc->tracks[trknum].trktype != CD_TRACK_MODE2_RAW &&
+					outtoc->tracks[trknum].trktype != CD_TRACK_AUDIO)
+				{
+					printf("Note: MAME now prefers and can accept RAW format images.\n");
+					printf("At least one track of this CDRDAO rip is not either RAW or AUDIO.\n");
+				}
 
 				/* next (optional) token on the line is the subcode type */
-				EATWHITESPACE
 				TOKENIZE
 
 				cdrom_convert_subtype_string_to_track_info(token, &outtoc->tracks[trknum]);

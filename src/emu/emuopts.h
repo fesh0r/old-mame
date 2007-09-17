@@ -72,6 +72,8 @@
 #define OPTION_SECONDS_TO_RUN		"seconds_to_run"
 #define OPTION_THROTTLE				"throttle"
 #define OPTION_SLEEP				"sleep"
+#define OPTION_SPEED				"speed"
+#define OPTION_REFRESHSPEED			"refreshspeed"
 
 /* core rotation options */
 #define OPTION_ROTATE				"rotate"
@@ -150,8 +152,6 @@ extern const options_entry mame_core_options[];
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-void mame_options_init(const options_entry *entries);
-void mame_options_exit(void);
-core_options *mame_options(void);
+core_options *mame_options_init(const options_entry *entries);
 
 #endif	/* __EMUOPTS_H__ */

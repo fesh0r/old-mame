@@ -42,13 +42,13 @@ static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index];
 
-	SET_TILE_INFO(0, code, 0, 0)
+	SET_TILE_INFO(0, code, 0, 0);
 }
 
 VIDEO_START( circus )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_OPAQUE, 8, 8, 32, 32);
+		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 }
 
 static void draw_line(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int x1, int y1, int x2, int y2, int dotted)
@@ -202,7 +202,7 @@ VIDEO_UPDATE( crash )
 static void ripcord_draw_skydiver(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	const gfx_element *gfx;
-	pen_t *pal_ptr;
+	const pen_t *pal_ptr;
 	UINT8  *src_lineptr, *src_pixptr;
 	UINT16 *dst_lineptr, *dst_lineend;
 	UINT32 code, color;
@@ -222,7 +222,7 @@ static void ripcord_draw_skydiver(running_machine *machine, mame_bitmap *bitmap,
 	edx = 1;
 
 	gfx = machine->gfx[1];
-	pal_ptr = gfx->colortable + color * gfx->color_granularity;
+	pal_ptr = &machine->remapped_colortable[gfx->color_base + color * gfx->color_granularity];
 	src_lineptr = gfx->gfxdata + code * gfx->char_modulo;
 	src_pitch = gfx->line_modulo;
 	dst_pitch = bitmap->rowpixels;

@@ -16,7 +16,7 @@ static tilemap *bg_tilemap;
 UINT16 *toypop_bg_image;
 static int bitmapflip,palettebank;
 
-static UINT16 *transmask;
+static colortable *toypop_colortable;
 
 
 /***************************************************************************
@@ -30,8 +30,10 @@ static UINT16 *transmask;
 
 PALETTE_INIT( toypop )
 {
-	rgb_t palette[256];
 	int i;
+
+	/* allocate the colortable */
+	toypop_colortable = colortable_alloc(machine, 256);
 
 	for (i = 0;i < 256;i++)
 	{
@@ -56,30 +58,25 @@ PALETTE_INIT( toypop )
 		bit3 = (color_prom[i+0x200] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-		palette[i] = MAKE_RGB(r,g,b);
+		colortable_palette_set_color(toypop_colortable, i, MAKE_RGB(r,g,b));
 	}
-
-	/* allocate memory for mask of pens that are transparent in sprites */
-	transmask = auto_malloc(64 * sizeof(transmask[0]));
-	memset(transmask, 0, 64 * sizeof(transmask[0]));
 
 	for (i = 0;i < 256;i++)
 	{
 		UINT8 entry;
+
 		// characters
-		palette_set_color(machine, i + 0*256, palette[(color_prom[i + 0x300] & 0x0f) | 0x70]);
-		palette_set_color(machine, i + 1*256, palette[(color_prom[i + 0x300] & 0x0f) | 0xf0]);
+		colortable_entry_set_value(toypop_colortable, i + 0*256, (color_prom[i + 0x300] & 0x0f) | 0x70);
+		colortable_entry_set_value(toypop_colortable, i + 1*256, (color_prom[i + 0x300] & 0x0f) | 0xf0);
 		// sprites
 		entry = color_prom[i + 0x500];
-		palette_set_color(machine, i + 2*256, palette[entry]);
-		if (entry == 0xff)
-			transmask[i/4] |= 1 << (i % 4);
+		colortable_entry_set_value(toypop_colortable, i + 2*256, entry);
 	}
 	for (i = 0;i < 16;i++)
 	{
 		// background
-		palette_set_color(machine, i + 3*256 + 0*16, palette[0x60 + i]);
-		palette_set_color(machine, i + 3*256 + 1*16, palette[0xe0 + i]);
+		colortable_entry_set_value(toypop_colortable, i + 3*256 + 0*16, 0x60 + i);
+		colortable_entry_set_value(toypop_colortable, i + 3*256 + 1*16, 0xe0 + i);
 	}
 }
 
@@ -92,7 +89,7 @@ PALETTE_INIT( toypop )
 ***************************************************************************/
 
 /* convert from 32x32 to 36x28 */
-static UINT32 tilemap_scan(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
+static TILEMAP_MAPPER( tilemap_scan )
 {
 	int offs;
 
@@ -113,7 +110,7 @@ static TILE_GET_INFO( get_tile_info )
 			0,
 			toypop_videoram[tile_index],
 			(attr & 0x3f) + 0x40 * palettebank,
-			0)
+			0);
 }
 
 
@@ -126,7 +123,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( toypop )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan,TILEMAP_TYPE_TRANSPARENT,8,8,36,28);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,8,8,36,28);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 }
@@ -226,7 +223,7 @@ static void draw_background(mame_bitmap *bitmap)
 ***************************************************************************/
 
 /* from mappy.c */
-void mappy_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int xoffs, int yoffs, const UINT16 *transmask_table );
+void mappy_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int xoffs, int yoffs, colortable *ctable, int transcolor);
 
 
 VIDEO_UPDATE( toypop )
@@ -234,6 +231,6 @@ VIDEO_UPDATE( toypop )
 	draw_background(bitmap);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 
-	mappy_draw_sprites(machine, bitmap, cliprect, -31, -8, transmask );
+	mappy_draw_sprites(machine, bitmap, cliprect, -31, -8, toypop_colortable, 0xff);
 	return 0;
 }

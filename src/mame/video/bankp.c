@@ -15,6 +15,8 @@ static int scroll_x;
 static int priority;
 
 static tilemap *bg_tilemap, *fg_tilemap;
+static colortable *bankp_colortable;
+
 
 /***************************************************************************
 
@@ -44,11 +46,12 @@ PALETTE_INIT( bankp )
 	#define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
 	#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
 
+	/* allocate the colortable */
+	bankp_colortable = colortable_alloc(machine, 32);
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < 32;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
-
 
 		/* red component */
 		bit0 = (*color_prom >> 0) & 0x01;
@@ -66,7 +69,7 @@ PALETTE_INIT( bankp )
 		bit2 = (*color_prom >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
+		colortable_palette_set_color(bankp_colortable,i,MAKE_RGB(r,g,b));
 
 		color_prom++;
 	}
@@ -74,14 +77,14 @@ PALETTE_INIT( bankp )
 	/* color_prom now points to the beginning of the lookup table */
 
 	/* charset #1 lookup table */
-	for (i = 0;i < TOTAL_COLORS(0);i++)
-		COLOR(0,i) = *(color_prom++) & 0x0f;
+	for (i = 0;i < machine->gfx[0]->total_colors * machine->gfx[0]->color_granularity;i++)
+		colortable_entry_set_value(bankp_colortable, machine->gfx[0]->color_base + i, *color_prom++ & 0x0f);
 
 	color_prom += 128;	/* skip the bottom half of the PROM - seems to be not used */
 
 	/* charset #2 lookup table */
-	for (i = 0;i < TOTAL_COLORS(1);i++)
-		COLOR(1,i) = *(color_prom++) & 0x0f;
+	for (i = 0;i < machine->gfx[1]->total_colors * machine->gfx[1]->color_granularity;i++)
+		colortable_entry_set_value(bankp_colortable, machine->gfx[1]->color_base + i, *color_prom++ & 0x0f);
 
 	/* the bottom half of the PROM seems to be not used */
 }
@@ -138,7 +141,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 	int color = bankp_colorram2[tile_index] >> 4;
 	int flags = (bankp_colorram2[tile_index] & 0x08) ? TILE_FLIPX : 0;
 
-	SET_TILE_INFO(1, code, color, flags)
+	SET_TILE_INFO(1, code, color, flags);
+	tileinfo->group = color;
 }
 
 static TILE_GET_INFO( get_fg_tile_info )
@@ -147,19 +151,20 @@ static TILE_GET_INFO( get_fg_tile_info )
 	int color = colorram[tile_index] >> 3;
 	int flags = (colorram[tile_index] & 0x04) ? TILE_FLIPX : 0;
 
-	SET_TILE_INFO(0, code, color, flags)
+	SET_TILE_INFO(0, code, color, flags);
+	tileinfo->group = color;
 }
 
 VIDEO_START( bankp )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_TRANSPARENT_COLOR, 8, 8, 32, 32);
+		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_TRANSPARENT_COLOR, 8, 8, 32, 32);
+		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 
-	tilemap_set_transparent_pen(bg_tilemap, 0);
-	tilemap_set_transparent_pen(fg_tilemap, 0);
+	colortable_configure_tilemap_groups(bankp_colortable, bg_tilemap, machine->gfx[1], 0);
+	colortable_configure_tilemap_groups(bankp_colortable, fg_tilemap, machine->gfx[0], 0);
 }
 
 VIDEO_UPDATE( bankp )
@@ -180,19 +185,19 @@ VIDEO_UPDATE( bankp )
 	switch (priority)
 	{
 	case 0: // combat hawk uses this
-		tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_IGNORE_TRANSPARENCY, 0);
+		tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
 		tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 		break;
 	case 1:
-		tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_IGNORE_TRANSPARENCY, 0);
+		tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
 		tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 		break;
 	case 2:
-		tilemap_draw(bitmap, cliprect, fg_tilemap, TILEMAP_IGNORE_TRANSPARENCY, 0);
+		tilemap_draw(bitmap, cliprect, fg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
 		tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 		break;
 	case 3:
-		tilemap_draw(bitmap, cliprect, fg_tilemap, TILEMAP_IGNORE_TRANSPARENCY, 0); // just a guess
+		tilemap_draw(bitmap, cliprect, fg_tilemap, TILEMAP_DRAW_OPAQUE, 0); // just a guess
 		tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 		break;
 	}

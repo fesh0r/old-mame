@@ -487,9 +487,9 @@ INLINE void dragngun_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 	}
 
 	{
-		if( gfx && gfx->colortable )
+		if( gfx )
 		{
-			const pen_t *pal = &gfx->colortable[gfx->color_granularity * (color % gfx->total_colors)]; /* ASG 980209 */
+			const pen_t *pal = &Machine->remapped_colortable[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
 			int source_base = (code % gfx->total_elements) * gfx->height;
 
 			if (sprite_screen_width && sprite_screen_height)
@@ -839,14 +839,14 @@ static UINT32 deco16_scan_rows(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_
 static TILE_GET_INFO( get_pf1_tile_info )
 {
 	int tile=deco32_pf1_data[tile_index];
-	SET_TILE_INFO(0,(tile&0xfff)|deco32_pf1_bank,(tile>>12)&0xf,0)
+	SET_TILE_INFO(0,(tile&0xfff)|deco32_pf1_bank,(tile>>12)&0xf,0);
 }
 
 static TILE_GET_INFO( get_pf1a_tile_info )
 {
 
 	int tile=deco32_pf1_data[tile_index];
-	SET_TILE_INFO(1,(tile&0xfff)|deco32_pf1_bank,(tile>>12)&0xf,0)
+	SET_TILE_INFO(1,(tile&0xfff)|deco32_pf1_bank,(tile>>12)&0xf,0);
 }
 
 static TILE_GET_INFO( get_pf2_tile_info )
@@ -866,7 +866,7 @@ static TILE_GET_INFO( get_pf2_tile_info )
 		}
 	}
 
-	SET_TILE_INFO(1,(tile&0xfff)|deco32_pf2_bank,colour+deco32_pf2_colourbank,flags)
+	SET_TILE_INFO(1,(tile&0xfff)|deco32_pf2_bank,colour+deco32_pf2_colourbank,flags);
 }
 
 static TILE_GET_INFO( get_pf3_tile_info )
@@ -886,7 +886,7 @@ static TILE_GET_INFO( get_pf3_tile_info )
 		}
 	}
 
-	SET_TILE_INFO(2,(tile&0xfff)|deco32_pf3_bank,colour,flags)
+	SET_TILE_INFO(2,(tile&0xfff)|deco32_pf3_bank,colour,flags);
 }
 
 static TILE_GET_INFO( get_pf4_tile_info )
@@ -906,14 +906,14 @@ static TILE_GET_INFO( get_pf4_tile_info )
 		}
 	}
 
-	SET_TILE_INFO(2,(tile&0xfff)|deco32_pf4_bank,colour+deco32_pf4_colourbank,flags)
+	SET_TILE_INFO(2,(tile&0xfff)|deco32_pf4_bank,colour+deco32_pf4_colourbank,flags);
 }
 
 /* Captain America tilemap chip 2 has different banking and colour from normal */
 static TILE_GET_INFO( get_ca_pf3_tile_info )
 {
 	int tile=deco32_pf3_data[tile_index];
-	SET_TILE_INFO(2,(tile&0x3fff)+deco32_pf3_bank,(tile >> 14)&3,0)
+	SET_TILE_INFO(2,(tile&0x3fff)+deco32_pf3_bank,(tile >> 14)&3,0);
 }
 
 static TILE_GET_INFO( get_ll_pf3_tile_info )
@@ -928,7 +928,7 @@ static TILE_GET_INFO( get_ll_pf3_tile_info )
 			flags|=TILE_FLIPY;
 	}
 
-	SET_TILE_INFO(2,(tile&0x0fff)|deco32_pf3_bank,(tile >> 12)&3,flags)
+	SET_TILE_INFO(2,(tile&0x0fff)|deco32_pf3_bank,(tile >> 12)&3,flags);
 }
 
 static TILE_GET_INFO( get_ll_pf4_tile_info )
@@ -943,15 +943,15 @@ static TILE_GET_INFO( get_ll_pf4_tile_info )
 			flags|=TILE_FLIPY;
 	}
 
-	SET_TILE_INFO(2,(tile&0x0fff)|deco32_pf4_bank,(tile >> 12)&3,flags)
+	SET_TILE_INFO(2,(tile&0x0fff)|deco32_pf4_bank,(tile >> 12)&3,flags);
 }
 
 VIDEO_START( captaven )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info,    tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT, 8, 8,64,32);
-	pf1a_tilemap =tilemap_create(get_pf1a_tile_info,   deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,    deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
-	pf3_tilemap = tilemap_create(get_ca_pf3_tile_info, tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,32,32);
+	pf1_tilemap = tilemap_create(get_pf1_tile_info,    tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	pf1a_tilemap =tilemap_create(get_pf1a_tile_info,   deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	pf2_tilemap = tilemap_create(get_pf2_tile_info,    deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	pf3_tilemap = tilemap_create(get_ca_pf3_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
 	deco32_raster_display_list=auto_malloc(10 * 256);
 	memset(deco32_raster_display_list, 0, 10 * 256);
 
@@ -967,10 +967,10 @@ VIDEO_START( captaven )
 
 VIDEO_START( fghthist )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info, tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT, 8, 8,64,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info, deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
-	pf3_tilemap = tilemap_create(get_pf3_tile_info, deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
-	pf4_tilemap = tilemap_create(get_pf4_tile_info, deco16_scan_rows,TILEMAP_TYPE_OPAQUE,     16,16,64,32);
+	pf1_tilemap = tilemap_create(get_pf1_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	pf2_tilemap = tilemap_create(get_pf2_tile_info, deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	pf3_tilemap = tilemap_create(get_pf3_tile_info, deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	pf4_tilemap = tilemap_create(get_pf4_tile_info, deco16_scan_rows,TILEMAP_TYPE_PEN,     16,16,64,32);
 	pf1a_tilemap =0;
 	dirty_palette = auto_malloc(4096);
 
@@ -979,7 +979,6 @@ VIDEO_START( fghthist )
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf2_tilemap,0);
 	tilemap_set_transparent_pen(pf3_tilemap,0);
-	tilemap_set_transparent_pen(pf4_tilemap,0);
 
 	deco32_raster_display_list=0;
 	deco32_pf2_colourbank=deco32_pf4_colourbank=0;
@@ -988,11 +987,11 @@ VIDEO_START( fghthist )
 
 VIDEO_START( dragngun )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info,    tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT, 8, 8,64,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,    deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
-	pf3_tilemap = tilemap_create(get_ll_pf3_tile_info, deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
-	pf4_tilemap = tilemap_create(get_ll_pf4_tile_info, deco16_scan_rows,TILEMAP_TYPE_OPAQUE,     16,16,64,32);
-	pf1a_tilemap =tilemap_create(get_pf1a_tile_info,   deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
+	pf1_tilemap = tilemap_create(get_pf1_tile_info,    tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	pf2_tilemap = tilemap_create(get_pf2_tile_info,    deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	pf3_tilemap = tilemap_create(get_ll_pf3_tile_info, deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	pf4_tilemap = tilemap_create(get_ll_pf4_tile_info, deco16_scan_rows,TILEMAP_TYPE_PEN,     16,16,64,32);
+	pf1a_tilemap =tilemap_create(get_pf1a_tile_info,   deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
 	dirty_palette = auto_malloc(4096);
 	deco32_raster_display_list = auto_malloc(10 * 256);
 
@@ -1011,11 +1010,11 @@ VIDEO_START( dragngun )
 
 VIDEO_START( lockload )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info,    tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT, 8, 8,64,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,    deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
-	pf3_tilemap = tilemap_create(get_ll_pf3_tile_info, deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,32,32);
-	pf4_tilemap = tilemap_create(get_ll_pf4_tile_info, deco16_scan_rows,TILEMAP_TYPE_OPAQUE,     16,16,32,32);
-	pf1a_tilemap =tilemap_create(get_pf1a_tile_info,   deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
+	pf1_tilemap = tilemap_create(get_pf1_tile_info,    tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	pf2_tilemap = tilemap_create(get_pf2_tile_info,    deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	pf3_tilemap = tilemap_create(get_ll_pf3_tile_info, deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	pf4_tilemap = tilemap_create(get_ll_pf4_tile_info, deco16_scan_rows,TILEMAP_TYPE_PEN,     16,16,32,32);
+	pf1a_tilemap =tilemap_create(get_pf1a_tile_info,   deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
 	dirty_palette = auto_malloc(4096);
 	deco32_raster_display_list = auto_malloc(10 * 256);
 	memset(deco32_raster_display_list, 0, 10 * 256);
@@ -1035,10 +1034,10 @@ VIDEO_START( lockload )
 
 VIDEO_START( nslasher )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info, tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT, 8, 8,64,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info, deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
-	pf3_tilemap = tilemap_create(get_pf3_tile_info, deco16_scan_rows,TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
-	pf4_tilemap = tilemap_create(get_pf4_tile_info, deco16_scan_rows,TILEMAP_TYPE_OPAQUE,     16,16,64,32);
+	pf1_tilemap = tilemap_create(get_pf1_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	pf2_tilemap = tilemap_create(get_pf2_tile_info, deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	pf3_tilemap = tilemap_create(get_pf3_tile_info, deco16_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	pf4_tilemap = tilemap_create(get_pf4_tile_info, deco16_scan_rows,TILEMAP_TYPE_PEN,     16,16,64,32);
 	pf1a_tilemap =0;
 	dirty_palette = auto_malloc(4096);
 
@@ -1241,7 +1240,7 @@ VIDEO_UPDATE( captaven )
 	fillbitmap(priority_bitmap,0,cliprect);
 	if ((deco32_pri&1)==0) {
 		if (pf3_enable)
-			tilemap_draw(bitmap,cliprect,pf3_tilemap,TILEMAP_IGNORE_TRANSPARENCY,0);
+			tilemap_draw(bitmap,cliprect,pf3_tilemap,TILEMAP_DRAW_OPAQUE,0);
 		else
 			fillbitmap(bitmap,get_black_pen(machine),cliprect);
 
@@ -1252,7 +1251,7 @@ VIDEO_UPDATE( captaven )
 	} else {
 		if (pf2_enable) {
 			if (deco32_raster_display_position)
-				tilemap_raster_draw(bitmap,cliprect,TILEMAP_IGNORE_TRANSPARENCY,0);
+				tilemap_raster_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 			else
 				tilemap_draw(bitmap,cliprect,pf2_tilemap,0,0);
 		}
@@ -1414,9 +1413,9 @@ VIDEO_UPDATE( fghthist )
 */
 static void mixDualAlphaSprites(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect, const gfx_element *gfx0, const gfx_element *gfx1, int mixAlphaTilemap)
 {
-	const pen_t *pal0 = gfx0->colortable;
-	const pen_t *pal1 = gfx1->colortable;
-	const pen_t *pal2 = (deco32_pri&1) ? machine->gfx[1]->colortable : machine->gfx[2]->colortable;
+	const pen_t *pal0 = &machine->remapped_colortable[gfx0->color_base];
+	const pen_t *pal1 = &machine->remapped_colortable[gfx1->color_base];
+	const pen_t *pal2 = &machine->remapped_colortable[(deco32_pri&1) ? machine->gfx[1]->color_base : machine->gfx[2]->color_base];
 	int x,y;
 
 	/* Mix sprites into main bitmap, based on priority & alpha */

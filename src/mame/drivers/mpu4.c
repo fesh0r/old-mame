@@ -1754,13 +1754,9 @@ VIDEO_START( mpu4_vid )
 	machine->gfx[mpu4_gfx_index+3] = allocgfx(&mpu4_vid_char_16x16_layout);
 
 	/* set the color information */
-	machine->gfx[mpu4_gfx_index+0]->colortable = machine->pens;
 	machine->gfx[mpu4_gfx_index+0]->total_colors = machine->drv->total_colors / 16;
-	machine->gfx[mpu4_gfx_index+1]->colortable = machine->pens;
 	machine->gfx[mpu4_gfx_index+1]->total_colors = machine->drv->total_colors / 16;
-	machine->gfx[mpu4_gfx_index+2]->colortable = machine->pens;
 	machine->gfx[mpu4_gfx_index+2]->total_colors = machine->drv->total_colors / 16;
-	machine->gfx[mpu4_gfx_index+3]->colortable = machine->pens;
 	machine->gfx[mpu4_gfx_index+3]->total_colors = machine->drv->total_colors / 16;
 
 	scn2675_IR_pointer = 0;
@@ -2691,12 +2687,12 @@ static TILE_GET_INFO( get_bg_tile_info )
 	tileno = dealem_videoram[tile_index];
 	colour = dealem_videoram[tile_index];
 
-	SET_TILE_INFO(0,tileno,colour,0)
+	SET_TILE_INFO(0,tileno,colour,0);
 }
 
 VIDEO_START(dealem)
 {
-	dealem_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_OPAQUE, 8, 8,32,32);
+	dealem_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
 }
 
 WRITE8_HANDLER( dealem_videoram_w )

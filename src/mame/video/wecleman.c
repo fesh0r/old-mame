@@ -26,7 +26,7 @@ struct sprite
 	UINT8 *pen_data;	/* points to top left corner of tile data */
 	int line_offset;
 
-	pen_t *pal_data;
+	const pen_t *pal_data;
 
 	int x_offset, y_offset;
 	int tile_width, tile_height;
@@ -104,7 +104,7 @@ static struct sprite *sprite_list_create(int num_sprites)
 
 static void get_sprite_info(running_machine *machine)
 {
-	pen_t *base_pal = machine->remapped_colortable;
+	const pen_t *base_pal = machine->remapped_colortable;
 	UINT8 *base_gfx = memory_region(REGION_GFX1);
 	int gfx_max     = memory_region_length(REGION_GFX1);
 
@@ -202,7 +202,7 @@ static void do_blit_zoom16(mame_bitmap *bitmap, const rectangle *cliprect, struc
 #define PRECISION_Y 20
 #define FPY_HALF (1<<(PRECISION_Y-1))
 
-	pen_t *pal_base;
+	const pen_t *pal_base;
 	int src_f0y, src_fdy, src_f0x, src_fdx, src_fpx;
 	int x1, x2, y1, y2, dx, dy, sx, sy;
 	int xcount0=0, ycount0=0;
@@ -419,7 +419,7 @@ static void sprite_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 TILE_GET_INFO( wecleman_get_txt_tile_info )
 {
 	int code = wecleman_txtram[tile_index];
-	SET_TILE_INFO(PAGE_GFX, code&0xfff, (code>>5&0x78)+(code>>12), 0)
+	SET_TILE_INFO(PAGE_GFX, code&0xfff, (code>>5&0x78)+(code>>12), 0);
 }
 
 WRITE16_HANDLER( wecleman_txtram_w )
@@ -467,7 +467,7 @@ TILE_GET_INFO( wecleman_get_bg_tile_info )
 	int page = wecleman_bgpage[((tile_index&0x7f)>>6) + ((tile_index>>12)<<1)];
 	int code = wecleman_pageram[(tile_index&0x3f) + ((tile_index>>7&0x1f)<<6) + (page<<11)];
 
-	SET_TILE_INFO(PAGE_GFX, code&0xfff, (code>>5&0x78)+(code>>12), 0)
+	SET_TILE_INFO(PAGE_GFX, code&0xfff, (code>>5&0x78)+(code>>12), 0);
 }
 
 /*------------------------------------------------------------------------
@@ -480,7 +480,7 @@ TILE_GET_INFO( wecleman_get_fg_tile_info )
 	int code = wecleman_pageram[(tile_index&0x3f) + ((tile_index>>7&0x1f)<<6) + (page<<11)];
 
 	if (!code || code==0xffff) code = 0x20;
-	SET_TILE_INFO(PAGE_GFX, code&0xfff, (code>>5&0x78)+(code>>12), 0)
+	SET_TILE_INFO(PAGE_GFX, code&0xfff, (code>>5&0x78)+(code>>12), 0);
 }
 
 /*------------------------------------------------------------------------
@@ -559,7 +559,7 @@ static void wecleman_draw_road(running_machine *machine, mame_bitmap *bitmap, co
 
 
 	UINT8 *src_ptr;
-	pen_t *pal_ptr, *rgb_ptr;
+	const pen_t *pal_ptr, *rgb_ptr;
 
 	int scrollx, sy, sx;
 	int mdy, tdy, i;
@@ -653,7 +653,7 @@ static void draw_cloud(running_machine *machine, mame_bitmap *bitmap,
 {
 	UINT8 *src_base, *src_ptr;
 	UINT16 *tmap_ptr, *dst_base, *dst_ptr;
-	pen_t *pal_base, *pal_ptr;
+	const pen_t *pal_base, *pal_ptr;
 
 	int tilew, tileh;
 	int tmskipx, tmskipy, tmscanx, tmmaskx, tmmasky;
@@ -920,19 +920,19 @@ VIDEO_START( wecleman )
 
 	bg_tilemap = tilemap_create(wecleman_get_bg_tile_info,
 								tilemap_scan_rows,
-								TILEMAP_TYPE_TRANSPARENT,	/* We draw part of the road below */
+								TILEMAP_TYPE_PEN,	/* We draw part of the road below */
 								8,8,
 								PAGE_NX * 2, PAGE_NY * 2 );
 
 	fg_tilemap = tilemap_create(wecleman_get_fg_tile_info,
 								tilemap_scan_rows,
-								TILEMAP_TYPE_TRANSPARENT,
+								TILEMAP_TYPE_PEN,
 								8,8,
 								PAGE_NX * 2, PAGE_NY * 2);
 
 	txt_tilemap = tilemap_create(wecleman_get_txt_tile_info,
 								 tilemap_scan_rows,
-								 TILEMAP_TYPE_TRANSPARENT,
+								 TILEMAP_TYPE_PEN,
 								 8,8,
 								 PAGE_NX * 1, PAGE_NY * 1);
 
@@ -998,8 +998,8 @@ VIDEO_START( hotchase )
 
 	sprite_list = sprite_list_create(NUM_SPRITES);
 
-	K051316_vh_start_0(machine,ZOOMROM0_MEM_REGION,4,TILEMAP_TYPE_TRANSPARENT,0,zoom_callback_0);
-	K051316_vh_start_1(machine,ZOOMROM1_MEM_REGION,4,TILEMAP_TYPE_TRANSPARENT,0,zoom_callback_1);
+	K051316_vh_start_0(machine,ZOOMROM0_MEM_REGION,4,FALSE,0,zoom_callback_0);
+	K051316_vh_start_1(machine,ZOOMROM1_MEM_REGION,4,FALSE,0,zoom_callback_1);
 
 	K051316_wraparound_enable(0,1);
 //  K051316_wraparound_enable(1,1);
@@ -1014,7 +1014,7 @@ VIDEO_START( hotchase )
 
 VIDEO_UPDATE ( wecleman )
 {
-	pen_t *mrct;
+	const pen_t *mrct;
 	int video_on;
 	int fg_x, bg_x, fg_y, bg_y;
 	int cloud_sx, cloud_sy;
@@ -1049,7 +1049,8 @@ VIDEO_UPDATE ( wecleman )
 	}
 
 	// temporary fix for ranking screen tile masking
-	mrct[0x27] = mrct[0x24];
+	/* palette hacks! */
+	((pen_t *)mrct)[0x27] = mrct[0x24];
 
 	get_sprite_info(machine);
 
@@ -1064,7 +1065,8 @@ VIDEO_UPDATE ( wecleman )
 	// draws the cloud layer; needs work
 	if (cloud_visible)
 	{
-		mrct[0] = mrct[0x40] = mrct[0x200] = mrct[0x205];
+		/* palette hacks! */
+		((pen_t *)mrct)[0] = ((pen_t *)mrct)[0x40] = ((pen_t *)mrct)[0x200] = ((pen_t *)mrct)[0x205];
 
 		if (video_on)
 			draw_cloud(machine,

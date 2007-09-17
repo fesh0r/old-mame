@@ -171,7 +171,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 	code = madalien_videoram[tile_index];
 	color = 2 * madalien_select_color_1;
 
-	SET_TILE_INFO(0, code, color, 0)
+	SET_TILE_INFO(0, code, color, 0);
 }
 
 static TILE_GET_INFO( get_bg_tile_info_l )
@@ -192,7 +192,7 @@ static TILE_GET_INFO( get_bg_tile_info_l )
 
 	color = madalien_swap_colors * 4;
 
-	SET_TILE_INFO(1, code, color, 0)
+	SET_TILE_INFO(1, code, color, 0);
 }
 
 static TILE_GET_INFO( get_bg_tile_info_r )
@@ -213,7 +213,7 @@ static TILE_GET_INFO( get_bg_tile_info_r )
 
 	color = madalien_swap_colors * 4;
 
-	SET_TILE_INFO(1, code, color, 0)
+	SET_TILE_INFO(1, code, color, 0);
 }
 
 
@@ -225,13 +225,13 @@ VIDEO_START( madalien )
 	const UINT8 *headlight_rom;
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols_flip_x,
-		TILEMAP_TYPE_TRANSPARENT, 8, 8, 32, 32);
+		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 
 	bg_tilemap_l = tilemap_create(get_bg_tile_info_l, tilemap_scan_cols_flip_x,
-		TILEMAP_TYPE_OPAQUE, 16, 16, 16, 16);
+		TILEMAP_TYPE_PEN, 16, 16, 16, 16);
 
 	bg_tilemap_r = tilemap_create(get_bg_tile_info_r, tilemap_scan_cols_flip_x,
-		TILEMAP_TYPE_OPAQUE, 16, 16, 16, 16);
+		TILEMAP_TYPE_PEN, 16, 16, 16, 16);
 
 	tilemap_set_transparent_pen( fg_tilemap, 0 );
 
@@ -665,7 +665,7 @@ static MACHINE_DRIVER_START( madalien )
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse, 16)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(3072))
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(3072))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

@@ -50,14 +50,16 @@ CPUS += N2A03
 CPUS += DECO16
 CPUS += M4510
 CPUS += H6280
-CPUS += I86
-CPUS += I88
-CPUS += I186
-CPUS += I188
-CPUS += I286
+CPUS += I8086
+CPUS += I8088
+CPUS += I80186
+CPUS += I80188
+CPUS += I80286
 CPUS += V20
+CPUS += V25
 CPUS += V30
 CPUS += V33
+CPUS += V35
 CPUS += V60
 CPUS += V70
 CPUS += I8035
@@ -161,6 +163,7 @@ CPUS += V810
 CPUS += M37702
 CPUS += M37710
 CPUS += PPC403
+CPUS += PPC601
 CPUS += PPC602
 CPUS += PPC603
 CPUS += MPC8240
@@ -362,6 +365,7 @@ DRVLIBS = \
 	$(MAMEOBJ)/sigma.a \
 	$(MAMEOBJ)/snk.a \
 	$(MAMEOBJ)/stern.a \
+	$(MAMEOBJ)/subsino.a \
 	$(MAMEOBJ)/sun.a \
 	$(MAMEOBJ)/suna.a \
 	$(MAMEOBJ)/tad.a \
@@ -435,6 +439,7 @@ $(MAMEOBJ)/shared.a: \
 	$(MACHINE)/ticket.o \
 	$(MACHINE)/timekpr.o \
 	$(MACHINE)/tmp68301.o \
+	$(MACHINE)/wd33c93.o \
 	$(MACHINE)/z80ctc.o \
 	$(MACHINE)/z80pio.o \
 	$(MACHINE)/z80sio.o \
@@ -473,7 +478,7 @@ $(MAMEOBJ)/amiga.a: \
 	$(DRIVERS)/alg.o \
 	$(MACHINE)/amiga.o $(AUDIO)/amiga.o $(VIDEO)/amiga.o \
 	$(DRIVERS)/arcadia.o \
-	$(DRIVERS)/cubocd32.o \
+	$(DRIVERS)/cubocd32.o $(MACHINE)/cubocd32.o \
 	$(DRIVERS)/mquake.o \
 	$(DRIVERS)/upscope.o \
 
@@ -1241,6 +1246,7 @@ $(MAMEOBJ)/seta.a: \
 	$(DRIVERS)/macs.o \
 	$(DRIVERS)/seta.o $(VIDEO)/seta.o \
 	$(DRIVERS)/seta2.o $(VIDEO)/seta2.o \
+	$(DRIVERS)/speglsht.o \
 	$(DRIVERS)/speedatk.o $(VIDEO)/speedatk.o \
 	$(DRIVERS)/srmp2.o $(VIDEO)/srmp2.o \
 	$(DRIVERS)/srmp6.o \
@@ -1274,6 +1280,10 @@ $(MAMEOBJ)/stern.a: \
 	$(DRIVERS)/cliffhgr.o $(AUDIO)/cliffhgr.o \
 	$(DRIVERS)/mazerbla.o \
 	$(DRIVERS)/supdrapo.o \
+
+$(MAMEOBJ)/subsino.a: \
+	$(DRIVERS)/bishjan.o \
+	$(DRIVERS)/lastfght.o \
 
 $(MAMEOBJ)/sun.a: \
 	$(DRIVERS)/arabian.o $(VIDEO)/arabian.o \
@@ -1532,6 +1542,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/cherrym.o \
 	$(DRIVERS)/cidelsa.o $(VIDEO)/cdp1869.o \
 	$(DRIVERS)/coinmstr.o \
+	$(DRIVERS)/comebaby.o \
 	$(DRIVERS)/coolpool.o \
 	$(DRIVERS)/cowrace.o \
 	$(DRIVERS)/crystal.o $(MACHINE)/ds1302.o $(VIDEO)/vrender0.o \
@@ -1565,6 +1576,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/hotblock.o \
 	$(DRIVERS)/imolagp.o \
 	$(DRIVERS)/intrscti.o \
+	$(DRIVERS)/istellar.o \
 	$(DRIVERS)/jackpool.o \
 	$(DRIVERS)/jpmimpct.o $(VIDEO)/jpmimpct.o \
 	$(DRIVERS)/kingpin.o \
@@ -1572,7 +1584,6 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/kyugo.o $(VIDEO)/kyugo.o \
 	$(DRIVERS)/ladyfrog.o $(VIDEO)/ladyfrog.o \
 	$(DRIVERS)/laserbas.o \
-	$(DRIVERS)/lastfght.o \
 	$(DRIVERS)/lethalj.o $(VIDEO)/lethalj.o \
 	$(DRIVERS)/limenko.o \
 	$(DRIVERS)/ltcasino.o \
@@ -1623,6 +1634,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/taxidrvr.o $(VIDEO)/taxidrvr.o \
 	$(DRIVERS)/tcl.o \
 	$(DRIVERS)/tetriunk.o \
+	$(DRIVERS)/thayers.o \
 	$(DRIVERS)/thedeep.o $(VIDEO)/thedeep.o \
 	$(DRIVERS)/tiamc1.o $(VIDEO)/tiamc1.o $(AUDIO)/tiamc1.o \
 	$(DRIVERS)/tickee.o $(VIDEO)/tickee.o \

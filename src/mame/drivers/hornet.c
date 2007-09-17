@@ -323,13 +323,13 @@ static int K037122_vh_start(running_machine *machine, int chip)
 
 	if (chip == 0)
 	{
-		K037122_layer[chip][0] = tilemap_create(K037122_0_tile_info_layer0, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8, 8, 256, 64);
-		K037122_layer[chip][1] = tilemap_create(K037122_0_tile_info_layer1, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8, 8, 128, 64);
+		K037122_layer[chip][0] = tilemap_create(K037122_0_tile_info_layer0, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 256, 64);
+		K037122_layer[chip][1] = tilemap_create(K037122_0_tile_info_layer1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 128, 64);
 	}
 	else
 	{
-		K037122_layer[chip][0] = tilemap_create(K037122_1_tile_info_layer0, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8, 8, 256, 64);
-		K037122_layer[chip][1] = tilemap_create(K037122_1_tile_info_layer1, tilemap_scan_rows, TILEMAP_TYPE_TRANSPARENT, 8, 8, 128, 64);
+		K037122_layer[chip][0] = tilemap_create(K037122_1_tile_info_layer0, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 256, 64);
+		K037122_layer[chip][1] = tilemap_create(K037122_1_tile_info_layer1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 128, 64);
 	}
 
 	tilemap_set_transparent_pen(K037122_layer[chip][0], 0);
@@ -343,15 +343,9 @@ static int K037122_vh_start(running_machine *machine, int chip)
 	decodegfx(machine->gfx[K037122_gfx_index[chip]], (UINT8*)K037122_char_ram[chip], 0, machine->gfx[K037122_gfx_index[chip]]->total_elements);
 
 	if (machine->drv->color_table_len)
-	{
-		machine->gfx[K037122_gfx_index[chip]]->colortable = machine->remapped_colortable;
 		machine->gfx[K037122_gfx_index[chip]]->total_colors = machine->drv->color_table_len / 16;
-	}
 	else
-	{
-		machine->gfx[K037122_gfx_index[chip]]->colortable = machine->pens;
 		machine->gfx[K037122_gfx_index[chip]]->total_colors = machine->drv->total_colors / 16;
-	}
 
 	return 0;
 }

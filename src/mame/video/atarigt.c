@@ -65,6 +65,8 @@ static UINT32 tram_checksum;
 static UINT16 *cram, *tram;
 static UINT32 *mram;
 
+static pen_t *substitute_pens;
+
 static UINT32 *expanded_mram;
 
 static UINT8 rshift, gshift, bshift;
@@ -95,7 +97,7 @@ static TILE_GET_INFO( get_playfield_tile_info )
 }
 
 
-static UINT32 atarigt_playfield_scan(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows)
+static TILEMAP_MAPPER( atarigt_playfield_scan )
 {
 	int bank = 1 - (col / (num_cols / 2));
 	return bank * (num_rows * num_cols / 2) + row * (num_cols / 2) + (col % (num_cols / 2));
@@ -138,13 +140,13 @@ VIDEO_START( atarigt )
 	atarigen_blend_gfx(machine, 0, 2, 0x0f, 0x30);
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, atarigt_playfield_scan, TILEMAP_TYPE_OPAQUE, 8,8, 128,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, atarigt_playfield_scan, TILEMAP_TYPE_PEN, 8,8, 128,64);
 
 	/* initialize the motion objects */
 	atarirle_init(0, &adjusted_modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_OPAQUE, 8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32);
 
 	/* allocate temp bitmaps */
 	pf_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
@@ -154,8 +156,10 @@ VIDEO_START( atarigt )
 	expanded_mram = auto_malloc(sizeof(*expanded_mram) * MRAM_ENTRIES * 3);
 
 	/* map pens 1:1 */
+	substitute_pens = auto_malloc(65536 * sizeof(*substitute_pens));
 	for (i = 0; i < machine->drv->total_colors; i++)
-		machine->pens[i] = i;
+		substitute_pens[i] = i;
+	machine->pens = substitute_pens;
 
 	/* compute shift values */
 	rshift = 16;

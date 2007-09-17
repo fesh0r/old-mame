@@ -74,6 +74,8 @@ const options_entry mame_core_options[] =
 	{ "seconds_to_run;str",          "0",         0,                 "number of emulated seconds to run before automatically exiting" },
 	{ "throttle",                    "1",         OPTION_BOOLEAN,    "enable throttling to keep game running in sync with real time" },
 	{ "sleep",                       "1",         OPTION_BOOLEAN,    "enable sleeping, which gives time back to other applications when idle" },
+	{ "speed(0.01-100)",             "1.0",       0,                 "controls the speed of gameplay, relative to realtime; smaller numbers are slower" },
+	{ "refreshspeed;rs",             "0",         OPTION_BOOLEAN,    "automatically adjusts the speed of gameplay to keep the refresh rate lower than the screen" },
 
 	/* rotation options */
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE ROTATION OPTIONS" },
@@ -158,8 +160,6 @@ const options_entry mame_core_options[] =
 	{ NULL }
 };
 
-static core_options *mame_opts;
-
 
 
 /***************************************************************************
@@ -204,7 +204,7 @@ static void mame_puts_error(const char *s)
     mame_options_init - create core MAME options
 -------------------------------------------------*/
 
-void mame_options_init(const options_entry *entries)
+core_options *mame_options_init(const options_entry *entries)
 {
 	/* create MAME core options */
 	core_options *opts = options_create(memory_error);
@@ -218,37 +218,9 @@ void mame_options_init(const options_entry *entries)
 	if (entries != NULL)
 		options_add_entries(opts, entries);
 
-	mame_opts = opts;
-
 #ifdef MESS
-	mess_options_init();
+	mess_options_init(opts);
 #endif /* MESS */
-}
 
-
-
-/*-------------------------------------------------
-    mame_options_exit - free core MAME options
--------------------------------------------------*/
-
-void mame_options_exit(void)
-{
-	if (mame_opts != NULL)
-	{
-		options_free(mame_opts);
-		mame_opts = NULL;
-	}
-}
-
-
-
-/*-------------------------------------------------
-    mame_options - accesses the options for the
-    currently running emulation
--------------------------------------------------*/
-
-core_options *mame_options(void)
-{
-	assert(mame_opts);
-	return mame_opts;
+	return opts;
 }

@@ -33,7 +33,7 @@ static void tilemap_get_info(
 
 	if( data&0x8000 )
 	{
-		SET_TILE_INFO( 0,tile,tilemap_color,TILE_IGNORE_TRANSPARENCY );
+		SET_TILE_INFO( 0,tile,tilemap_color,TILE_FORCE_LAYER0 );
 	}
 	else
 	{
@@ -219,7 +219,7 @@ VIDEO_START( namcona1 )
 {
 	int i;
 	gfx_element *gfx0,*gfx1;
-	static tile_get_info_fn get_info[4] =
+	static tile_get_info_callback get_info[4] =
 	{ tilemap_get_info0, tilemap_get_info1, tilemap_get_info2, tilemap_get_info3 };
 
 	for( i=0; i<NAMCONA1_NUM_TILEMAPS; i++ )
@@ -227,7 +227,7 @@ VIDEO_START( namcona1 )
 		bg_tilemap[i] = tilemap_create(
 			get_info[i],
 			tilemap_scan_rows,
-			TILEMAP_TYPE_BITMASK,8,8,64,64 );
+			TILEMAP_TYPE_PEN,8,8,64,64 );
 
 		tilemap_palette_bank[i] = -1;
 	}
@@ -238,11 +238,9 @@ VIDEO_START( namcona1 )
 
 		gfx0 = allocgfx( &cg_layout );
 		gfx1 = allocgfx( &shape_layout );
-			gfx0->colortable = machine->remapped_colortable;
 			gfx0->total_colors = machine->drv->total_colors/256;
 			machine->gfx[0] = gfx0;
 
-			gfx1->colortable = machine->remapped_colortable;
 			gfx1->total_colors = machine->drv->total_colors/2;
 			machine->gfx[1] = gfx1;
 } /* namcona1_vh_start */
@@ -251,6 +249,7 @@ VIDEO_START( namcona1 )
 
 static void pdraw_masked_tile(running_machine *machine,
 		mame_bitmap *bitmap,
+		const rectangle *cliprect,
 		unsigned code,
 		int color,
 		int sx, int sy,
@@ -268,18 +267,17 @@ static void pdraw_masked_tile(running_machine *machine,
 
 	/*
      *  custom blitter for drawing a masked 8x8x8BPP tile
-     *  - assumes there is an 8 pixel overdraw region on the screen bitmap for clipping
      */
-	if( sx > -8 &&
-		sy > -8 &&
-		sx < bitmap->width &&
-		sy < bitmap->height ) /* all-or-nothing clip */
+	if( sx > cliprect->min_x-8 &&
+		sy > cliprect->min_y-8 &&
+		sx <= cliprect->max_x &&
+		sy <= cliprect->max_y ) /* all-or-nothing clip */
 	{
 		gfx = machine->gfx[0];
 		mask = machine->gfx[1];
 		code %= gfx->total_elements;
 		color %= gfx->total_colors;
-		paldata = &gfx->colortable[gfx->color_granularity * color];
+		paldata = &machine->remapped_colortable[gfx->color_base + gfx->color_granularity * color];
 		gfx_addr = gfx->gfxdata + code * gfx->char_modulo;
 		gfx_pitch = gfx->line_modulo;
 		mask_addr = mask->gfxdata + code * mask->char_modulo;
@@ -294,38 +292,43 @@ static void pdraw_masked_tile(running_machine *machine,
 			for( y=0; y<8; y++ )
 			{
 				int ypos = sy+(flipy?7-y:y);
-				UINT8 *pri = BITMAP_ADDR8(priority_bitmap, ypos, 0);
-				UINT16 *dest = BITMAP_ADDR16(bitmap, ypos, 0);
-				if( flipx )
+				if (ypos >= cliprect->min_y && ypos <= cliprect->max_y)
 				{
-					dest += sx+7;
-					pri += sx+7;
-					for( x=0; x<8; x++ )
+					UINT8 *pri = BITMAP_ADDR8(priority_bitmap, ypos, 0);
+					UINT16 *dest = BITMAP_ADDR16(bitmap, ypos, 0);
+					if( flipx )
 					{
-						if( mask_addr[x] )
-						{ /* sprite pixel is opaque */
-							if( priority>=pri[-x] )
+						dest += sx+7;
+						pri += sx+7;
+						for( x=0; x<8; x++ )
+							if (sx+x >= cliprect->min_x && sx+x <= cliprect->max_x)
 							{
-								dest[-x] |= 0x1000;
+								if( mask_addr[x] )
+								{ /* sprite pixel is opaque */
+									if( priority>=pri[-x] )
+									{
+										dest[-x] |= 0x1000;
+									}
+									pri[-x] = 0xff;
+								}
 							}
-							pri[-x] = 0xff;
-						}
 					}
-				}
-				else
-				{
-					dest += sx;
-					pri += sx;
-					for( x=0; x<8; x++ )
+					else
 					{
-						if( mask_addr[x] )
-						{ /* sprite pixel is opaque */
-							if( priority>=pri[x] )
+						dest += sx;
+						pri += sx;
+						for( x=0; x<8; x++ )
+							if (sx+x >= cliprect->min_x && sx+x <= cliprect->max_x)
 							{
-								dest[x] |= 0x1000;
+								if( mask_addr[x] )
+								{ /* sprite pixel is opaque */
+									if( priority>=pri[x] )
+									{
+										dest[x] |= 0x1000;
+									}
+									pri[x] = 0xff;
+								}
 							}
-							pri[x] = 0xff;
-						}
 					}
 				}
 				mask_addr += mask_pitch;
@@ -336,40 +339,45 @@ static void pdraw_masked_tile(running_machine *machine,
 			for( y=0; y<8; y++ )
 			{
 				int ypos = sy+(flipy?7-y:y);
-				UINT8 *pri = BITMAP_ADDR8(priority_bitmap, ypos, 0);
-				UINT16 *dest = BITMAP_ADDR16(bitmap, ypos, 0);
-				if( flipx )
+				if (ypos >= cliprect->min_y && ypos <= cliprect->max_y)
 				{
-					dest += sx+7;
-					pri += sx+7;
-					for( x=0; x<8; x++ )
+					UINT8 *pri = BITMAP_ADDR8(priority_bitmap, ypos, 0);
+					UINT16 *dest = BITMAP_ADDR16(bitmap, ypos, 0);
+					if( flipx )
 					{
-						if( mask_addr[x] )
-						{ /* sprite pixel is opaque */
-							if( priority>=pri[-x] )
+						dest += sx+7;
+						pri += sx+7;
+						for( x=0; x<8; x++ )
+							if (sx-x >= cliprect->min_x && sx-x <= cliprect->max_x)
 							{
-								dest[-x] = paldata[gfx_addr[x]];
+								if( mask_addr[x] )
+								{ /* sprite pixel is opaque */
+									if( priority>=pri[-x] )
+									{
+										dest[-x] = paldata[gfx_addr[x]];
+									}
+									pri[-x] = 0xff;
+								}
 							}
-							pri[-x] = 0xff;
-						}
 					}
-				}
-				else
-				{
-					dest += sx;
-					pri += sx;
-					for( x=0; x<8; x++ )
+					else
 					{
-						if( mask_addr[x] )
-						{ /* sprite pixel is opaque */
-							if( priority>=pri[x] )
+						dest += sx;
+						pri += sx;
+						for( x=0; x<8; x++ )
+							if (sx+x >= cliprect->min_x && sx+x <= cliprect->max_x)
 							{
-								dest[x] = paldata[gfx_addr[x]];
-							}
-							pri[x] = 0xff;
-						}
-					} /* next x */
-				} /* !flipx */
+								if( mask_addr[x] )
+								{ /* sprite pixel is opaque */
+									if( priority>=pri[x] )
+									{
+										dest[x] = paldata[gfx_addr[x]];
+									}
+									pri[x] = 0xff;
+								}
+							} /* next x */
+					} /* !flipx */
+				}
 				gfx_addr += gfx_pitch;
 				mask_addr += mask_pitch;
 			} /* next y */
@@ -379,6 +387,7 @@ static void pdraw_masked_tile(running_machine *machine,
 
 static void pdraw_opaque_tile(running_machine *machine,
 		mame_bitmap *bitmap,
+		const rectangle *cliprect,
 		unsigned code,
 		int color,
 		int sx, int sy,
@@ -395,49 +404,54 @@ static void pdraw_opaque_tile(running_machine *machine,
 	UINT8 *pri;
 	UINT16 *dest;
 
-	if( sx > -8 &&
-		sy > -8 &&
-		sx < bitmap->width &&
-		sy < bitmap->height ) /* all-or-nothing clip */
+	if( sx > cliprect->min_x-8 &&
+		sy > cliprect->min_y-8 &&
+		sx <= cliprect->max_x &&
+		sy <= cliprect->max_y ) /* all-or-nothing clip */
 	{
 		gfx = machine->gfx[0];
 		code %= gfx->total_elements;
 		color %= gfx->total_colors;
-		paldata = &gfx->colortable[gfx->color_granularity * color];
+		paldata = &machine->remapped_colortable[gfx->color_base + gfx->color_granularity * color];
 		gfx_addr = gfx->gfxdata + code * gfx->char_modulo;
 		gfx_pitch = gfx->line_modulo;
 
 		for( y=0; y<8; y++ )
 		{
 			ypos = sy+(flipy?7-y:y);
-			pri = BITMAP_ADDR8(priority_bitmap, ypos, 0);
-			dest = BITMAP_ADDR16(bitmap, ypos, 0);
-			if( flipx )
+			if (ypos >= cliprect->min_y && ypos <= cliprect->max_y)
 			{
-				dest += sx+7;
-				pri += sx+7;
-				for( x=0; x<8; x++ )
+				pri = BITMAP_ADDR8(priority_bitmap, ypos, 0);
+				dest = BITMAP_ADDR16(bitmap, ypos, 0);
+				if( flipx )
 				{
-					if( priority>=pri[-x] )
-					{
-						dest[-x] = paldata[gfx_addr[x]];
-					}
-					pri[-x] = 0xff;
+					dest += sx+7;
+					pri += sx+7;
+					for( x=0; x<8; x++ )
+						if (sx-x >= cliprect->min_x && sx-x <= cliprect->max_x)
+						{
+							if( priority>=pri[-x] )
+							{
+								dest[-x] = paldata[gfx_addr[x]];
+							}
+							pri[-x] = 0xff;
+						}
 				}
-			}
-			else
-			{
-				dest += sx;
-				pri += sx;
-				for( x=0; x<8; x++ )
+				else
 				{
-					if( priority>=pri[x] )
-					{
-						dest[x] = paldata[gfx_addr[x]];
-					}
-					pri[x] = 0xff;
-				} /* next x */
-			} /* !flipx */
+					dest += sx;
+					pri += sx;
+					for( x=0; x<8; x++ )
+						if (sx+x >= cliprect->min_x && sx+x <= cliprect->max_x)
+						{
+							if( priority>=pri[x] )
+							{
+								dest[x] = paldata[gfx_addr[x]];
+							}
+							pri[x] = 0xff;
+						} /* next x */
+				} /* !flipx */
+			}
 			gfx_addr += gfx_pitch;
 		} /* next y */
 	}
@@ -445,12 +459,13 @@ static void pdraw_opaque_tile(running_machine *machine,
 
 static const UINT8 pri_mask[8] = { 0x00,0x01,0x03,0x07,0x0f,0x1f,0x3f,0x7f };
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap )
+static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int which;
 	const UINT16 *source = spriteram16;
 	void (*drawtile)(running_machine *,
 		mame_bitmap *,
+		const rectangle *,
 		unsigned code,
 		int color,
 		int sx, int sy,
@@ -513,6 +528,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap )
 				}
 				drawtile(machine,
 					bitmap,
+					cliprect,
 					tile + row*64+col,
 					(color>>4)&0xf,
 					((sx+16)&0x1ff)-8,
@@ -558,7 +574,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 	gfx_element *pGfx;
 
 	pGfx = machine->gfx[0];
-	paldata = &pGfx->colortable[pGfx->color_granularity * tilemap_palette_bank[which]];
+	paldata = &machine->remapped_colortable[pGfx->color_base + pGfx->color_granularity * tilemap_palette_bank[which]];
 
 	/* draw one scanline at a time */
 	clip.min_x = cliprect->min_x;
@@ -645,7 +661,7 @@ VIDEO_UPDATE( namcona1 )
 				}
 			} /* next tilemap */
 		} /* next priority level */
-		draw_sprites(machine,bitmap );
+		draw_sprites(machine,bitmap,cliprect);
 	} /* gfx enabled */
 	return 0;
 }

@@ -148,7 +148,7 @@ INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_
 	{
 		int _code = code & 0x000f;
 		tileinfo->pen_data = empty_tiles + _code*16*16;
-		tileinfo->pal_data = &machine->remapped_colortable[(((code & 0x0ff0) ^ 0x0f0) + 0x1000)];
+		tileinfo->palette_base = ((code & 0x0ff0) ^ 0x0f0) + 0x1000;
 		tileinfo->flags = 0;
 	}
 	else
@@ -156,7 +156,7 @@ INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_
 				0,
 				(tile & 0xfffff) + (code & 0xf),
 				(((tile & 0x0ff00000) >> 20) ^ 0x0f) + 0x100,
-				TILE_FLIPXY((code & 0x6000) >> 13))
+				TILE_FLIPXY((code & 0x6000) >> 13));
 }
 
 
@@ -184,7 +184,7 @@ INLINE void get_tile_info_8bit(running_machine *machine,tile_data *tileinfo,int 
 	{
 		int _code = code & 0x000f;
 		tileinfo->pen_data = empty_tiles + _code*16*16;
-		tileinfo->pal_data = &machine->remapped_colortable[(((code & 0x0ff0) ^ 0x0f0) + 0x1000)];
+		tileinfo->palette_base = ((code & 0x0ff0) ^ 0x0f0) + 0x1000;
 		tileinfo->flags = 0;
 	}
 	else if ((tile & 0x00f00000)==0x00f00000)	/* draw tile as 8bpp */
@@ -192,13 +192,13 @@ INLINE void get_tile_info_8bit(running_machine *machine,tile_data *tileinfo,int 
 				1,
 				(tile & 0xfffff) + 2*(code & 0xf),
 				((tile & 0x0f000000) >> 24) + 0x10,
-				TILE_FLIPXY((code & 0x6000) >> 13))
+				TILE_FLIPXY((code & 0x6000) >> 13));
 	else
 		SET_TILE_INFO(
 				0,
 				(tile & 0xfffff) + (code & 0xf),
 				(((tile & 0x0ff00000) >> 20) ^ 0x0f) + 0x100,
-				TILE_FLIPXY((code & 0x6000) >> 13))
+				TILE_FLIPXY((code & 0x6000) >> 13));
 }
 
 /* 16x16x4 or 16x16x8 tiles. It's the tile's color that decides: if its low 4
@@ -225,7 +225,7 @@ INLINE void get_tile_info_16x16_8bit(running_machine *machine,tile_data *tileinf
 	{
 		int _code = code & 0x000f;
 		tileinfo->pen_data = empty_tiles + _code*16*16;
-		tileinfo->pal_data = &machine->remapped_colortable[(((code & 0x0ff0) ^ 0x0f0) + 0x1000)];
+		tileinfo->palette_base = ((code & 0x0ff0) ^ 0x0f0) + 0x1000;
 		tileinfo->flags = 0;
 	}
 	else if ((tile & 0x00f00000)==0x00f00000)	/* draw tile as 8bpp */
@@ -233,13 +233,13 @@ INLINE void get_tile_info_16x16_8bit(running_machine *machine,tile_data *tileinf
 				3,
 				(tile & 0xfffff) + 8*(code & 0xf),
 				((tile & 0x0f000000) >> 24) + 0x10,
-				TILE_FLIPXY((code & 0x6000) >> 13))
+				TILE_FLIPXY((code & 0x6000) >> 13));
 	else
 		SET_TILE_INFO(
 				2,
 				(tile & 0xfffff) + 4*(code & 0xf),
 				(((tile & 0x0ff00000) >> 20) ^ 0x0f) + 0x100,
-				TILE_FLIPXY((code & 0x6000) >> 13))
+				TILE_FLIPXY((code & 0x6000) >> 13));
 }
 
 
@@ -317,9 +317,9 @@ VIDEO_START( hyprduel_14220 )
 	hypr_tiletable_old = auto_malloc(hyprduel_tiletable_size);
 	dirtyindex = auto_malloc(hyprduel_tiletable_size/4);
 
-	bg_tilemap[0] = tilemap_create(get_tile_info_0_8bit,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,WIN_NX,WIN_NY);
-	bg_tilemap[1] = tilemap_create(get_tile_info_1_8bit,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,WIN_NX,WIN_NY);
-	bg_tilemap[2] = tilemap_create(get_tile_info_2_8bit,tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,WIN_NX,WIN_NY);
+	bg_tilemap[0] = tilemap_create(get_tile_info_0_8bit,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,WIN_NX,WIN_NY);
+	bg_tilemap[1] = tilemap_create(get_tile_info_1_8bit,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,WIN_NX,WIN_NY);
+	bg_tilemap[2] = tilemap_create(get_tile_info_2_8bit,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,WIN_NX,WIN_NY);
 
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
@@ -471,8 +471,9 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 				gfx.width = width;
 				gfx.height = height;
 				gfx.total_elements = 1;
+				gfx.color_depth = 256;
 				gfx.color_granularity = 256;
-				gfx.colortable = machine->remapped_colortable;
+				gfx.color_base = 0;
 				gfx.total_colors = 0x20;
 				gfx.pen_usage = NULL;
 				gfx.gfxdata = gfxdata;
@@ -500,14 +501,15 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 				gfx.width = width;
 				gfx.height = height;
 				gfx.total_elements = 1;
+				gfx.color_depth = 16;
 				gfx.color_granularity = 16;
-				gfx.colortable = Machine->remapped_colortable;
+				gfx.color_base = 0;
 				gfx.total_colors = 0x200;
 				gfx.pen_usage = NULL;
 				gfx.gfxdata = gfxdata;
 				gfx.line_modulo = width/2;
 				gfx.char_modulo = 0;	/* doesn't matter */
-				gfx.flags = GFX_PACKED;
+				gfx.flags = GFX_ELEMENT_PACKED;
 
 				/* Bounds checking */
 				if ( (gfxdata + width/2 * height - 1) >= gfx_max )

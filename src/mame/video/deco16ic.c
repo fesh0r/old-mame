@@ -236,7 +236,7 @@ WRITE16_HANDLER( deco16_priority_w )
 
 /*****************************************************************************************/
 
-static UINT32 deco16_scan_rows(UINT32 col,UINT32 row,UINT32 num_cols,UINT32 num_rows)
+static TILEMAP_MAPPER( deco16_scan_rows )
 {
 	/* logical (col,row) -> memory offset */
 	return (col & 0x1f) + ((row & 0x1f) << 5) + ((col & 0x20) << 5) + ((row & 0x20) << 6);
@@ -263,7 +263,7 @@ static TILE_GET_INFO( get_pf4_tile_info )
 			deco16_pf34_16x16_gfx_bank,
 			(tile&0xfff)|deco16_pf4_bank,
 			(colour&deco16_pf4_colourmask)+deco16_pf4_colour_bank,
-			flags)
+			flags);
 }
 
 static TILE_GET_INFO( get_pf3_tile_info )
@@ -287,7 +287,7 @@ static TILE_GET_INFO( get_pf3_tile_info )
 			deco16_pf34_16x16_gfx_bank,
 			(tile&0xfff)|deco16_pf3_bank,
 			(colour&deco16_pf3_colourmask)+deco16_pf3_colour_bank,
-			flags)
+			flags);
 }
 
 static TILE_GET_INFO( get_pf2_tile_info )
@@ -311,7 +311,7 @@ static TILE_GET_INFO( get_pf2_tile_info )
 			deco16_pf12_16x16_gfx_bank,
 			(tile&0xfff)|deco16_pf2_bank,
 			(colour&deco16_pf2_colourmask)+deco16_pf2_colour_bank,
-			flags)
+			flags);
 }
 
 static TILE_GET_INFO( get_pf1_tile_info )
@@ -335,7 +335,7 @@ static TILE_GET_INFO( get_pf1_tile_info )
 			deco16_pf12_16x16_gfx_bank,
 			(tile&0xfff)|deco16_pf1_bank,
 			(colour&deco16_pf1_colourmask)+deco16_pf1_colour_bank,
-			flags)
+			flags);
 }
 
 static TILE_GET_INFO( get_pf2_tile_info_b )
@@ -359,7 +359,7 @@ static TILE_GET_INFO( get_pf2_tile_info_b )
 			deco16_pf12_8x8_gfx_bank,
 			(tile&0xfff)|deco16_pf2_bank,
 			(colour&deco16_pf2_colourmask)+deco16_pf2_colour_bank,
-			flags)
+			flags);
 }
 
 static TILE_GET_INFO( get_pf1_tile_info_b )
@@ -383,7 +383,7 @@ static TILE_GET_INFO( get_pf1_tile_info_b )
 			deco16_pf12_8x8_gfx_bank,
 			(tile&0xfff)|deco16_pf1_bank,
 			(colour&deco16_pf1_colourmask)+deco16_pf1_colour_bank,
-			flags)
+			flags);
 }
 
 /******************************************************************************/
@@ -519,22 +519,22 @@ static void deco16_video_init(int pf12_only, int split, int full_width)
 {
 	sprite_priority_bitmap = auto_bitmap_alloc( Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED8 );
 
-	pf1_tilemap_16x16 =	tilemap_create(get_pf1_tile_info,   deco16_scan_rows, TILEMAP_TYPE_TRANSPARENT,16,16,64,32);
-	pf1_tilemap_8x8 =	tilemap_create(get_pf1_tile_info_b, tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,64,32);
+	pf1_tilemap_16x16 =	tilemap_create(get_pf1_tile_info,   deco16_scan_rows, TILEMAP_TYPE_PEN,16,16,64,32);
+	pf1_tilemap_8x8 =	tilemap_create(get_pf1_tile_info_b, tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
 
 	if (split)
-		pf2_tilemap_16x16 =	tilemap_create(get_pf2_tile_info,   deco16_scan_rows, TILEMAP_TYPE_SPLIT,16,16,full_width ? 64 : 32,32);
+		pf2_tilemap_16x16 =	tilemap_create(get_pf2_tile_info,   deco16_scan_rows, TILEMAP_TYPE_PEN,16,16,full_width ? 64 : 32,32);
 	else
-		pf2_tilemap_16x16 =	tilemap_create(get_pf2_tile_info,   deco16_scan_rows, TILEMAP_TYPE_TRANSPARENT,16,16,full_width ? 64 : 32,32);
-	pf2_tilemap_8x8 =	tilemap_create(get_pf2_tile_info_b, tilemap_scan_rows,TILEMAP_TYPE_TRANSPARENT,8,8,full_width ? 64 : 32,32);
+		pf2_tilemap_16x16 =	tilemap_create(get_pf2_tile_info,   deco16_scan_rows, TILEMAP_TYPE_PEN,16,16,full_width ? 64 : 32,32);
+	pf2_tilemap_8x8 =	tilemap_create(get_pf2_tile_info_b, tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,full_width ? 64 : 32,32);
 
 	dirty_palette = auto_malloc(4096);
 	deco16_raster_display_list=auto_malloc(20 * 256);
 
 	if (!pf12_only)
 	{
-		pf4_tilemap_16x16 =	tilemap_create(get_pf4_tile_info,   deco16_scan_rows, TILEMAP_TYPE_TRANSPARENT,16,16,full_width ? 64 : 32,32);
-		pf3_tilemap_16x16 =	tilemap_create(get_pf3_tile_info,   deco16_scan_rows, TILEMAP_TYPE_TRANSPARENT,16,16,full_width ? 64 : 32,32);
+		pf4_tilemap_16x16 =	tilemap_create(get_pf4_tile_info,   deco16_scan_rows, TILEMAP_TYPE_PEN,16,16,full_width ? 64 : 32,32);
+		pf3_tilemap_16x16 =	tilemap_create(get_pf3_tile_info,   deco16_scan_rows, TILEMAP_TYPE_PEN,16,16,full_width ? 64 : 32,32);
 	}
 	else
 	{
@@ -837,7 +837,7 @@ void deco16_pdrawgfx(mame_bitmap *dest,const gfx_element *gfx,
 	int ox,oy,cx,cy;
 	int x_index,y_index,x,y;
 
-	const pen_t *pal = &gfx->colortable[gfx->color_granularity * (color % gfx->total_colors)];
+	const pen_t *pal = &Machine->remapped_colortable[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
 	int source_base = (code % gfx->total_elements) * gfx->height;
 
 	/* check bounds */
@@ -863,24 +863,27 @@ void deco16_pdrawgfx(mame_bitmap *dest,const gfx_element *gfx,
 		UINT8 *pri = BITMAP_ADDR8(priority_bitmap, sy, 0);
 		UINT8 *spri = BITMAP_ADDR8(sprite_priority_bitmap, sy, 0);
 
-		if (flipx) { source+=15-(sx-ox); x_index=-1; } else { x_index=1; source+=(sx-ox); }
-
-		for (x=sx; x<cx; x++)
+		if (sy >= 0 && sy < 248)
 		{
-			int c = *source;
-			if( c != transparent_color )
+			if (flipx) { source+=15-(sx-ox); x_index=-1; } else { x_index=1; source+=(sx-ox); }
+
+			for (x=sx; x<cx; x++)
 			{
-				if (pri_mask>pri[x] && sprite_mask>spri[x]) {
-					if (transparency == TRANSPARENCY_ALPHA)
-						destb[x] = alpha_blend32(destb[x], pal[c]);
-					else
-						destb[x] = pal[c];
-					if (write_pri)
-						pri[x] |= pri_mask;
+				int c = *source;
+				if( c != transparent_color && x >= 0 && x < 320 )
+				{
+					if (pri_mask>pri[x] && sprite_mask>spri[x]) {
+						if (transparency == TRANSPARENCY_ALPHA)
+							destb[x] = alpha_blend32(destb[x], pal[c]);
+						else
+							destb[x] = pal[c];
+						if (write_pri)
+							pri[x] |= pri_mask;
+					}
+					spri[x]|=sprite_mask;
 				}
-				spri[x]|=sprite_mask;
+				source+=x_index;
 			}
-			source+=x_index;
 		}
 
 		sy++;
@@ -965,8 +968,10 @@ static void custom_tilemap_draw(
 	int flags,
 	UINT32 priority)
 {
-	const mame_bitmap *src_bitmap0 = (control1&0x80) ? tilemap_get_pixmap(tilemap0_8x8) : tilemap_get_pixmap(tilemap0_16x16);
-	const mame_bitmap *src_bitmap1 = (control1&0x80) ? tilemap_get_pixmap(tilemap1_8x8) : tilemap_get_pixmap(tilemap1_16x16);
+	tilemap *tilemap0 = (control1&0x80) ? tilemap0_8x8 : tilemap0_16x16;
+	tilemap *tilemap1 = (control1&0x80) ? tilemap1_8x8 : tilemap1_16x16;
+	const mame_bitmap *src_bitmap0 = tilemap0 ? tilemap_get_pixmap(tilemap0) : NULL;
+	const mame_bitmap *src_bitmap1 = tilemap1 ? tilemap_get_pixmap(tilemap1) : NULL;
 	int width_mask, height_mask, x, y, p;
 	int column_offset, src_x=0, src_y=0;
 	int	row_type=1 << ((control0>>3)&0xf);
@@ -991,24 +996,52 @@ static void custom_tilemap_draw(
 
 		src_x &= width_mask;
 
-		for (x=0; x<320; x++) {
-			if (rowscroll_ptr && (control1&0x20))
-				column_offset=rowscroll_ptr[0x200 + ((src_x&0x1ff) / col_type)];
-			else
-				column_offset=0;
+		if (bitmap->bpp == 16)
+		{
+			for (x=0; x<320; x++) {
+				if (rowscroll_ptr && (control1&0x20))
+					column_offset=rowscroll_ptr[0x200 + ((src_x&0x1ff) / col_type)];
+				else
+					column_offset=0;
 
-			p=*BITMAP_ADDR16(src_bitmap0, (src_y + column_offset)&height_mask, src_x);
-			if (src_bitmap1)
-				p|=(*BITMAP_ADDR16(src_bitmap1, (src_y + column_offset)&height_mask, src_x)&combine_mask)<<combine_shift;
+				p=*BITMAP_ADDR16(src_bitmap0, (src_y + column_offset)&height_mask, src_x);
+				if (src_bitmap1)
+					p|=(*BITMAP_ADDR16(src_bitmap1, (src_y + column_offset)&height_mask, src_x)&combine_mask)<<combine_shift;
 
-			src_x=(src_x+1)&width_mask;
-			if ((flags&TILEMAP_IGNORE_TRANSPARENCY) || (p&trans_mask))
-			{
-				*BITMAP_ADDR16(bitmap, y, x) = Machine->pens[p];
-				if (priority_bitmap)
+				src_x=(src_x+1)&width_mask;
+				if ((flags&TILEMAP_DRAW_OPAQUE) || (p&trans_mask))
 				{
-					UINT8 *pri = BITMAP_ADDR8(priority_bitmap, y, 0);
-					pri[x]|=priority;
+					*BITMAP_ADDR16(bitmap, y, x) = Machine->pens[p];
+					if (priority_bitmap)
+					{
+						UINT8 *pri = BITMAP_ADDR8(priority_bitmap, y, 0);
+						pri[x]|=priority;
+					}
+				}
+			}
+		}
+		else
+		{
+			/* boogwing */
+			for (x=0; x<320; x++) {
+				if (rowscroll_ptr && (control1&0x20))
+					column_offset=rowscroll_ptr[0x200 + ((src_x&0x1ff) / col_type)];
+				else
+					column_offset=0;
+
+				p=*BITMAP_ADDR16(src_bitmap0, (src_y + column_offset)&height_mask, src_x);
+				if (src_bitmap1)
+					p|=(*BITMAP_ADDR16(src_bitmap1, (src_y + column_offset)&height_mask, src_x)&combine_mask)<<combine_shift;
+
+				src_x=(src_x+1)&width_mask;
+				if ((flags&TILEMAP_DRAW_OPAQUE) || (p&trans_mask))
+				{
+					*BITMAP_ADDR32(bitmap, y, x) = Machine->pens[p];
+					if (priority_bitmap)
+					{
+						UINT8 *pri = BITMAP_ADDR8(priority_bitmap, y, 0);
+						pri[x]|=priority;
+					}
 				}
 			}
 		}

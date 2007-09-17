@@ -119,11 +119,15 @@ struct _video_global
 	UINT8					fastforward;		/* flag: TRUE if we're currently fast-forwarding */
 	UINT32					seconds_to_run;		/* number of seconds to run before quitting */
 	UINT8					auto_frameskip;		/* flag: TRUE if we're automatically frameskipping */
+	UINT32					speed;				/* overall speed (*100) */
+	UINT32					original_speed;		/* originally-specified speed */
+	UINT8					refresh_speed;		/* flag: TRUE if we max out our speed according to the refresh */
 
 	/* frameskipping */
+	UINT8					empty_skip_count;	/* number of empty frames we have skipped */
 	UINT8					frameskip_level;	/* current frameskip level */
 	UINT8					frameskip_counter;	/* counter that counts through the frameskip steps */
-	INT8					frameskipadjust;
+	INT8					frameskip_adjust;
 	UINT8					skipping_this_frame;/* flag: TRUE if we are skipping the current frame */
 	osd_ticks_t				average_oversleep;	/* average number of ticks the OSD oversleeps */
 };
@@ -165,12 +169,12 @@ static void video_exit(running_machine *machine);
 static void init_buffered_spriteram(void);
 
 /* graphics decoding */
-static void allocate_graphics(const gfx_decode *gfxdecodeinfo);
-static void decode_graphics(const gfx_decode *gfxdecodeinfo);
+static void allocate_graphics(running_machine *machine, const gfx_decode *gfxdecodeinfo);
+static void decode_graphics(running_machine *machine, const gfx_decode *gfxdecodeinfo);
 
 /* global rendering */
 static TIMER_CALLBACK( scanline0_callback );
-static void finish_screen_updates(running_machine *machine);
+static int finish_screen_updates(running_machine *machine);
 
 /* throttling/frameskipping/performance */
 static void update_throttle(mame_time emutime);
@@ -279,6 +283,8 @@ void video_init(running_machine *machine)
 	global.auto_frameskip = options_get_bool(mame_options(), OPTION_AUTOFRAMESKIP);
 	global.frameskip_level = options_get_int(mame_options(), OPTION_FRAMESKIP);
 	global.seconds_to_run = options_get_int(mame_options(), OPTION_SECONDS_TO_RUN);
+	global.original_speed = global.speed = (options_get_float(mame_options(), OPTION_SPEED) * 100.0 + 0.5);
+	global.refresh_speed = options_get_bool(mame_options(), OPTION_REFRESHSPEED);
 
 	/* allocate memory for our private data */
 	viddata = machine->video_data = auto_malloc(sizeof(*viddata));
@@ -329,14 +335,14 @@ void video_init(running_machine *machine)
 	/* convert the gfx ROMs into character sets. This is done BEFORE calling the driver's */
 	/* palette_init() routine because it might need to check the machine->gfx[] data */
 	if (machine->drv->gfxdecodeinfo != NULL)
-		allocate_graphics(machine->drv->gfxdecodeinfo);
+		allocate_graphics(machine, machine->drv->gfxdecodeinfo);
 
 	/* configure the palette */
 	palette_config(machine);
 
 	/* actually decode the graphics */
 	if (machine->drv->gfxdecodeinfo != NULL)
-		decode_graphics(machine->drv->gfxdecodeinfo);
+		decode_graphics(machine, machine->drv->gfxdecodeinfo);
 
 	/* reset video statics and get out of here */
 	pdrawgfx_shadow_lowpri = 0;
@@ -480,7 +486,7 @@ static void init_buffered_spriteram(void)
     graphics
 -------------------------------------------------*/
 
-static void allocate_graphics(const gfx_decode *gfxdecodeinfo)
+static void allocate_graphics(running_machine *machine, const gfx_decode *gfxdecodeinfo)
 {
 	int i;
 
@@ -576,12 +582,11 @@ static void allocate_graphics(const gfx_decode *gfxdecodeinfo)
 		}
 
 		/* allocate the graphics */
-		Machine->gfx[i] = allocgfx(&glcopy);
+		machine->gfx[i] = allocgfx(&glcopy);
 
 		/* if we have a remapped colortable, point our local colortable to it */
-		if (Machine->remapped_colortable != NULL)
-			Machine->gfx[i]->colortable = &Machine->remapped_colortable[gfxdecodeinfo[i].color_codes_start];
-		Machine->gfx[i]->total_colors = gfxdecodeinfo[i].total_color_codes;
+		machine->gfx[i]->total_colors = gfxdecodeinfo[i].total_color_codes;
+		machine->gfx[i]->color_base = machine->drv->gfxdecodeinfo[i].color_codes_start;
 	}
 }
 
@@ -590,7 +595,7 @@ static void allocate_graphics(const gfx_decode *gfxdecodeinfo)
     decode_graphics - decode the graphics
 -------------------------------------------------*/
 
-static void decode_graphics(const gfx_decode *gfxdecodeinfo)
+static void decode_graphics(running_machine *machine, const gfx_decode *gfxdecodeinfo)
 {
 	int totalgfx = 0, curgfx = 0;
 	char buffer[200];
@@ -598,18 +603,18 @@ static void decode_graphics(const gfx_decode *gfxdecodeinfo)
 
 	/* count total graphics elements */
 	for (i = 0; i < MAX_GFX_ELEMENTS; i++)
-		if (Machine->gfx[i])
-			totalgfx += Machine->gfx[i]->total_elements;
+		if (machine->gfx[i])
+			totalgfx += machine->gfx[i]->total_elements;
 
 	/* loop over all elements */
 	for (i = 0; i < MAX_GFX_ELEMENTS; i++)
-		if (Machine->gfx[i])
+		if (machine->gfx[i] != NULL)
 		{
 			/* if we have a valid region, decode it now */
 			if (gfxdecodeinfo[i].memory_region > REGION_INVALID)
 			{
 				UINT8 *region_base = memory_region(gfxdecodeinfo[i].memory_region);
-				gfx_element *gfx = Machine->gfx[i];
+				gfx_element *gfx = machine->gfx[i];
 				int j;
 
 				/* now decode the actual graphics */
@@ -627,7 +632,7 @@ static void decode_graphics(const gfx_decode *gfxdecodeinfo)
 
 			/* otherwise, clear the target region */
 			else
-				memset(Machine->gfx[i]->gfxdata, 0, Machine->gfx[i]->char_modulo * Machine->gfx[i]->total_elements);
+				memset(machine->gfx[i]->gfxdata, 0, machine->gfx[i]->char_modulo * machine->gfx[i]->total_elements);
 		}
 }
 
@@ -692,9 +697,13 @@ void video_screen_configure(int scrnum, int width, int height, const rectangle *
 				default:						fatalerror("Invalid bitmap format!");	break;
 			}
 
-			/* allocate new stuff */
+			/* allocate bitmaps */
 			info->bitmap[0] = bitmap_alloc(curwidth, curheight, screen_format);
+			bitmap_set_palette(info->bitmap[0], Machine->palette);
 			info->bitmap[1] = bitmap_alloc(curwidth, curheight, screen_format);
+			bitmap_set_palette(info->bitmap[1], Machine->palette);
+
+			/* allocate textures */
 			info->texture[0] = render_texture_alloc(NULL, NULL);
 			render_texture_set_bitmap(info->texture[0], info->bitmap[0], visarea, info->config->palette_base, info->format);
 			info->texture[1] = render_texture_alloc(NULL, NULL);
@@ -711,6 +720,22 @@ void video_screen_configure(int scrnum, int width, int height, const rectangle *
 	/* compute timing parameters */
 	info->scantime = refresh / height;
 	info->pixeltime = refresh / (height * width);
+
+	/* adjust speed if necessary */
+	if (global.refresh_speed)
+	{
+		float minrefresh = render_get_max_update_rate();
+		if (minrefresh != 0)
+		{
+			UINT32 target_speed = floor(minrefresh * 100.0 / SUBSECONDS_TO_HZ(refresh));
+			target_speed = MIN(target_speed, global.original_speed);
+			if (target_speed != global.speed)
+			{
+				mame_printf_verbose("Adjusting target speed to %d%%\n", target_speed);
+				global.speed = target_speed;
+			}
+		}
+	}
 
 	/* recompute the VBLANK timing */
 	cpu_compute_vblank_timing();
@@ -1004,7 +1029,17 @@ void video_frame_update(void)
 #else
 	if (phase == MAME_PHASE_RUNNING && !mame_is_paused(Machine))
 #endif
-		finish_screen_updates(Machine);
+	{
+		int anything_changed = finish_screen_updates(Machine);
+
+		/* if none of the screens changed and we haven't skipped too many frames in a row,
+           mark this frame as skipped to prevent throttling; this helps for games that
+           don't update their screen at the monitor refresh rate */
+		if (!anything_changed && !global.auto_frameskip && global.frameskip_level == 0 && global.empty_skip_count++ < 3)
+			skipped_it = TRUE;
+		else
+			global.empty_skip_count = 0;
+	}
 
 	/* draw the user interface */
 	ui_update_and_render();
@@ -1015,7 +1050,7 @@ void video_frame_update(void)
 
 	/* ask the OSD to update */
 	profiler_mark(PROFILER_BLIT);
-	osd_update(global.skipping_this_frame);
+	osd_update(skipped_it);
 	profiler_mark(PROFILER_END);
 
 	/* perform tasks for this frame */
@@ -1051,9 +1086,10 @@ void video_frame_update(void)
     the screens
 -------------------------------------------------*/
 
-static void finish_screen_updates(running_machine *machine)
+static int finish_screen_updates(running_machine *machine)
 {
 	video_private *viddata = machine->video_data;
+	int anything_changed = FALSE;
 	int livemask;
 	int scrnum;
 
@@ -1097,11 +1133,14 @@ static void finish_screen_updates(running_machine *machine)
 		}
 
 		/* reset the screen changed flags */
+		if (screen->changed)
+			anything_changed = TRUE;
 		screen->changed = FALSE;
 	}
 
 	/* draw any crosshairs */
 	crosshair_render(viddata);
+	return anything_changed;
 }
 
 
@@ -1118,6 +1157,28 @@ static void finish_screen_updates(running_machine *machine)
 int video_skip_this_frame(void)
 {
 	return global.skipping_this_frame;
+}
+
+
+/*-------------------------------------------------
+    video_get_speed_factor - return the speed
+    factor as an integer * 100
+-------------------------------------------------*/
+
+int video_get_speed_factor(void)
+{
+	return global.speed;
+}
+
+
+/*-------------------------------------------------
+    video_set_speed_factor - sets the speed
+    factor as an integer * 100
+-------------------------------------------------*/
+
+void video_set_speed_factor(int speed)
+{
+	global.speed = speed;
 }
 
 
@@ -1304,6 +1365,18 @@ static void update_throttle(mame_time emutime)
 	osd_ticks_t target_ticks;
 	osd_ticks_t diff_ticks;
 
+	/* apply speed factor to emu time */
+	if (global.speed != 0 && global.speed != 100)
+	{
+		/* multiply emutime by 100 */
+		emutime = scale_up_mame_time(emutime, 100);
+
+		/* divide emutime by the global speed factor */
+		emutime.subseconds /= global.speed;
+		emutime.subseconds += (emutime.seconds % global.speed) * (MAX_SUBSECONDS / global.speed);
+		emutime.seconds /= global.speed;
+	}
+
 	/* compute conversion factors up front */
 	ticks_per_second = osd_ticks_per_second();
 	subseconds_per_tick = MAX_SUBSECONDS / ticks_per_second;
@@ -1327,7 +1400,7 @@ static void update_throttle(mame_time emutime)
 	if (emu_delta_subseconds < 0 || emu_delta_subseconds > MAX_SUBSECONDS / 10)
 	{
 		if (LOG_THROTTLE)
-			logerror("Resync due to weird emutime delta: 0.%09d%09d\n", (int)(emu_delta_subseconds / 1000000000), (int)(emu_delta_subseconds % 1000000000));
+			logerror("Resync due to weird emutime delta: 0.%09d%09d\n", (int)(emu_delta_subseconds / MAX_SUBSECONDS_SQRT), (int)(emu_delta_subseconds % MAX_SUBSECONDS_SQRT));
 		goto resync;
 	}
 
@@ -1368,7 +1441,7 @@ static void update_throttle(mame_time emutime)
 		(real_is_ahead_subseconds < 0 && popcount[global.throttle_history & 0xff] < 6))
 	{
 		if (LOG_THROTTLE)
-			logerror("Resync due to being behind: 0.%09d%09d (history=%08X)\n", (int)(-real_is_ahead_subseconds / 1000000000), (int)((-real_is_ahead_subseconds) % 1000000000), global.throttle_history);
+			logerror("Resync due to being behind: 0.%09d%09d (history=%08X)\n", (int)(-real_is_ahead_subseconds / MAX_SUBSECONDS_SQRT), (int)((-real_is_ahead_subseconds) % MAX_SUBSECONDS_SQRT), global.throttle_history);
 		goto resync;
 	}
 
@@ -1463,13 +1536,15 @@ static void update_frameskip(void)
 	/* if we're throttling and autoframeskip is on, adjust */
 	if (effective_throttle() && effective_autoframeskip() && global.frameskip_counter == 0)
 	{
+		float speed = global.speed * 0.01;
+
 		/* if we're too fast, attempt to increase the frameskip */
-		if (global.speed_percent >= 0.995)
+		if (global.speed_percent >= 0.995 * speed)
 		{
 			/* but only after 3 consecutive frames where we are too fast */
-			if (++global.frameskipadjust >= 3)
+			if (++global.frameskip_adjust >= 3)
 			{
-				global.frameskipadjust = 0;
+				global.frameskip_adjust = 0;
 				if (global.frameskip_level > 0)
 					global.frameskip_level--;
 			}
@@ -1479,17 +1554,17 @@ static void update_frameskip(void)
 		else
 		{
 			/* if below 80% speed, be more aggressive */
-			if (global.speed_percent < 0.80)
-				global.frameskipadjust -= (0.90 - global.speed_percent) / 0.05;
+			if (global.speed_percent < 0.80 *  speed)
+				global.frameskip_adjust -= (0.90 * speed - global.speed_percent) / 0.05;
 
 			/* if we're close, only force it up to frameskip 8 */
 			else if (global.frameskip_level < 8)
-				global.frameskipadjust--;
+				global.frameskip_adjust--;
 
 			/* perform the adjustment */
-			while (global.frameskipadjust <= -2)
+			while (global.frameskip_adjust <= -2)
 			{
-				global.frameskipadjust += 2;
+				global.frameskip_adjust += 2;
 				if (global.frameskip_level < MAX_FRAMESKIP)
 					global.frameskip_level++;
 			}
@@ -1587,6 +1662,7 @@ static void recompute_speed(mame_time emutime)
 
 void video_screen_save_snapshot(running_machine *machine, mame_file *fp, int scrnum)
 {
+	const rgb_t *palette = (machine->palette != NULL) ? palette_entry_list_adjusted(machine->palette) : NULL;
 	png_info pnginfo = { 0 };
 	mame_bitmap *bitmap;
 	png_error error;
@@ -1604,7 +1680,7 @@ void video_screen_save_snapshot(running_machine *machine, mame_file *fp, int scr
 	png_add_text(&pnginfo, "System", text);
 
 	/* now do the actual work */
-	error = png_write_bitmap(mame_core_file(fp), &pnginfo, machine->video_data->snap_bitmap, machine->drv->total_colors, palette_get_adjusted_colors(machine));
+	error = png_write_bitmap(mame_core_file(fp), &pnginfo, machine->video_data->snap_bitmap, machine->drv->total_colors, palette);
 
 	/* free any data allocated */
 	png_free(&pnginfo);
@@ -1824,7 +1900,7 @@ static void movie_record_frame(running_machine *machine, int scrnum)
 		}
 
 		/* write the next frame */
-		error = mng_capture_frame(mame_core_file(info->movie_file), &pnginfo, bitmap, machine->drv->total_colors, palette_get_adjusted_colors(machine));
+		error = mng_capture_frame(mame_core_file(info->movie_file), &pnginfo, bitmap, machine->drv->total_colors, palette_entry_list_adjusted(machine->palette));
 		png_free(&pnginfo);
 		if (error != PNGERR_NONE)
 		{

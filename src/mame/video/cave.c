@@ -269,7 +269,7 @@ INLINE void get_tile_info(running_machine *machine, tile_data *tileinfo, int til
 							code,
 							color,
 							0	);
-	tileinfo->priority	=	pri;
+	tileinfo->category	=	pri;
 }
 
 /* Sailormn: the lower 2 Megabytes of tiles banked */
@@ -320,7 +320,7 @@ TILE_GET_INFO( sailormn_get_tile_info_2 )
 							code,
 							color,
 							0	);
-	tileinfo->priority	=	pri;
+	tileinfo->category	=	pri;
 }
 
 
@@ -410,28 +410,28 @@ static void cave_vh_start(running_machine *machine, int num)
 	{
 		case 4:
 			tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
-										TILEMAP_TYPE_TRANSPARENT, 8,8, 512/8,512/8 );
+										TILEMAP_TYPE_PEN, 8,8, 512/8,512/8 );
 			tilemap_set_transparent_pen(tilemap_3, 0);
 			tilemap_set_scroll_rows(tilemap_3, 1);
 			tilemap_set_scroll_cols(tilemap_3, 1);
 
 		case 3:
 			tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-										TILEMAP_TYPE_TRANSPARENT, 8,8, 512/8,512/8 );
+										TILEMAP_TYPE_PEN, 8,8, 512/8,512/8 );
 			tilemap_set_transparent_pen(tilemap_2, 0);
 			tilemap_set_scroll_rows(tilemap_2, 1);
 			tilemap_set_scroll_cols(tilemap_2, 1);
 
 		case 2:
 			tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-										TILEMAP_TYPE_TRANSPARENT, 8,8, 512/8,512/8 );
+										TILEMAP_TYPE_PEN, 8,8, 512/8,512/8 );
 			tilemap_set_transparent_pen(tilemap_1, 0);
 			tilemap_set_scroll_rows(tilemap_1, 1);
 			tilemap_set_scroll_cols(tilemap_1, 1);
 
 		case 1:
 			tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-										TILEMAP_TYPE_TRANSPARENT, 8,8, 512/8,512/8 );
+										TILEMAP_TYPE_PEN, 8,8, 512/8,512/8 );
 			tilemap_set_transparent_pen(tilemap_0, 0);
 			tilemap_set_scroll_rows(tilemap_0, 1);
 			tilemap_set_scroll_cols(tilemap_0, 1);
@@ -479,7 +479,7 @@ VIDEO_START( sailormn_3_layers )
 
 	/* Layer 2 (8x8) needs to be handled differently */
 	tilemap_2 = tilemap_create(	sailormn_get_tile_info_2, tilemap_scan_rows,
-								TILEMAP_TYPE_TRANSPARENT, 8,8, 512/8,512/8 );
+								TILEMAP_TYPE_PEN, 8,8, 512/8,512/8 );
 	tilemap_set_transparent_pen(tilemap_2, 0);
 	tilemap_set_scroll_rows(tilemap_2, 1);
 	tilemap_set_scroll_cols(tilemap_2, 1);
@@ -1315,11 +1315,6 @@ INLINE void cave_tilemap_draw(
             A tilemap line is specified for each scan line. This is handled
             using many horizontal clipping regions (slices) and calling
             tilemap_draw multiple times.
-
-            Note:   tilemap.c has a limitation on the size of a clipping
-                    region, which can only be a multiple of 8 pixels.
-                    Thus in vertical games (where our horizontal slices
-                    become vertical) there may be graphical glitches.
         */
 
 		clip.min_x = cliprect->min_x;
@@ -1329,7 +1324,7 @@ INLINE void cave_tilemap_draw(
 		{
 			/* Find the largest slice */
 			vramdata0 = (vramdata1 = VRAM[(0x1002+(((sy+offs_row+startline)*4)&0x7ff))/2]);
-			for(endline = startline + 1; endline <= cliprect->max_y + 1; endline++)
+			for(endline = startline + 1; endline <= cliprect->max_y; endline++)
 				if((++vramdata1) != VRAM[(0x1002+(((sy+offs_row+endline)*4)&0x7ff))/2]) break;
 
 			tilemap_set_scrolly(TILEMAP, 0, vramdata0 - startline);
