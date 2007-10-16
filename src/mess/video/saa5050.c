@@ -32,7 +32,7 @@ struct	{
 	UINT8	saa5050_prvchr;
 } saa5050_state;
 
-static gfx_layout saa5050_charlayout =
+static const gfx_layout saa5050_charlayout =
 {
 	6, 10,
 	256,
@@ -44,7 +44,7 @@ static gfx_layout saa5050_charlayout =
 	8 * 10
 };
 
-static gfx_layout saa5050_hilayout =
+static const gfx_layout saa5050_hilayout =
 {
 	6, 10,
 	256,
@@ -56,7 +56,7 @@ static gfx_layout saa5050_hilayout =
 	8 * 10
 };
 
-static gfx_layout saa5050_lolayout =
+static const gfx_layout saa5050_lolayout =
 {
 	6, 10,
 	256,
@@ -68,13 +68,11 @@ static gfx_layout saa5050_lolayout =
 	8 * 10
 };
 
-static gfx_decode saa5050_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0x0000, &saa5050_charlayout, 0, 128},
-	{ REGION_GFX1, 0x0000, &saa5050_hilayout, 0, 128},
-	{ REGION_GFX1, 0x0000, &saa5050_lolayout, 0, 128},
-	{-1}
-};
+static GFXDECODE_START( saa5050_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_charlayout, 0, 128 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_hilayout, 0, 128 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_lolayout, 0, 128 )
+GFXDECODE_END
 
 static unsigned char saa5050_palette[8 * 3] =
 {
@@ -112,11 +110,13 @@ static VIDEO_START( saa5050 )
 	video_start_generic(machine);
 }
 
+#ifdef UNUSED_FUNCTION
 static void saa5050_vh_callback (void)
 {
 	if (frame_count++ > 49)
 		frame_count = 0;
 }
+#endif
 
 /* || */
 
@@ -240,7 +240,7 @@ static VIDEO_UPDATE( saa5050 )
 
 MACHINE_DRIVER_START( vh_saa5050 )
 	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(SAA5050_VBLANK))
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(SAA5050_VBLANK))
 	MDRV_INTERLEAVE(1)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

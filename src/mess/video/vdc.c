@@ -707,7 +707,7 @@ static void pce_refresh_line(int which, int line, int external_input, UINT8 *dra
 						line_buffer[ pixel ] = Machine->pens[color_base + vce.vce_data[c].w];
 					pixel++;
 					if ( vdc[which].physical_width != 512 ) {
-						if ( pixel < ( ( ( phys_x + 1 ) * 512 ) / vdc[which].physical_width ) ) {
+						while ( pixel < ( ( ( phys_x + 1 ) * 512 ) / vdc[which].physical_width ) ) {
 							drawn[ pixel ] = c ? 1 : 0;
 							if ( c || ! external_input )
 								line_buffer[ pixel ] = Machine->pens[color_base + vce.vce_data[c].w];
@@ -800,17 +800,16 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 		if ( cgy & 2 )
 			obj_i &= ~12;
 
-		sprites_drawn++;
-		if(sprites_drawn > 16)
-		{
-			vdc[which].status |= VDC_OR;
-			if(vdc[which].vdc_data[CR].w&CR_OV)
-				cpunum_set_input_line(0, 0, ASSERT_LINE);
-			continue;  /* Should cause an interrupt */ 
-		}
+		if (obj_l < obj_h) {
 
-		if (obj_l < obj_h)
-		{
+			sprites_drawn++;
+			if(sprites_drawn > 16) {
+				vdc[which].status |= VDC_OR;
+				if(vdc[which].vdc_data[CR].w&CR_OV)
+					cpunum_set_input_line(0, 0, ASSERT_LINE);
+				continue;  /* Should cause an interrupt */ 
+			}
+
 			cgypos = (obj_l >> 4);
 			if(vf) cgypos = ((obj_h - 1) >> 4) - cgypos;
 
@@ -830,9 +829,11 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 								if( priority || drawn[pixel_x] == 0 ) {
 									line_buffer[pixel_x] = Machine->pens[color_base + vce.vce_data[0x100 + (palette << 4) + buf[x]].w];
 									if ( vdc[which].physical_width != 512 ) { 
-										if ( pixel_x + 1 < ( ( ( obj_x + x + 1 ) * 512 ) / vdc[which].physical_width ) ) { 
-											drawn[pixel_x + 1] = i + 2;
-											line_buffer[pixel_x + 1] = Machine->pens[color_base + vce.vce_data[0x100 + (palette << 4) + buf[x]].w];
+										int dp = 1;
+										while ( pixel_x + dp < ( ( ( obj_x + x + 1 ) * 512 ) / vdc[which].physical_width ) ) { 
+											drawn[pixel_x + dp] = i + 2;
+											line_buffer[pixel_x + dp] = Machine->pens[color_base + vce.vce_data[0x100 + (palette << 4) + buf[x]].w];
+											dp++;
 										}
 									}
 								}
@@ -847,11 +848,10 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 							}
 						}
 					}
-					pixel_x += 1;
 					if ( vdc[which].physical_width != 512 ) {
-						if ( pixel_x < ( ( ( obj_x + x + 1 ) * 512 ) / vdc[which].physical_width ) ) {
-							pixel_x += 1;
-						}
+						pixel_x = ( ( obj_x + x + 1 ) * 512 ) / vdc[which].physical_width;
+					} else {
+						pixel_x += 1;
 					}
 				}
 			}
@@ -871,9 +871,11 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 								if ( priority || drawn[pixel_x] == 0 ) {
 									line_buffer[pixel_x] = Machine->pens[color_base + vce.vce_data[0x100 + (palette << 4) + buf[x]].w];
 									if ( vdc[which].physical_width != 512 ) {
-										if ( pixel_x + 1 < ( ( ( obj_x + x + 1 ) * 512 ) / vdc[which].physical_width ) ) {
-											drawn[pixel_x + 1] = i + 2;
-											line_buffer[pixel_x + 1] = Machine->pens[color_base + vce.vce_data[0x100 + (palette << 4) + buf[x]].w];
+										int dp = 1;
+										while ( pixel_x + dp < ( ( ( obj_x + x + 1 ) * 512 ) / vdc[which].physical_width ) ) {
+											drawn[pixel_x + dp] = i + 2;
+											line_buffer[pixel_x + dp] = Machine->pens[color_base + vce.vce_data[0x100 + (palette << 4) + buf[x]].w];
+											dp++;
 										}
 									}
 								}
@@ -887,11 +889,10 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 							}
 						}
 					}
-					pixel_x += 1;
 					if ( vdc[which].physical_width != 512 ) {
-						if ( pixel_x < ( ( ( obj_x + x + 1 ) * 512 ) / vdc[which].physical_width ) ) {
-							pixel_x += 1;
-						}
+						pixel_x = ( ( obj_x + x + 1 ) * 512 ) / vdc[which].physical_width;
+					} else {
+						pixel_x += 1;
 					}
 				}
 
@@ -914,9 +915,11 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 									if( priority || drawn[pixel_x] == 0 ) {
 										line_buffer[pixel_x] = Machine->pens[color_base + vce.vce_data[0x100 + (palette << 4) + buf[x]].w];
 										if ( vdc[which].physical_width != 512 ) {
-											if ( pixel_x + 1 < ( ( ( obj_x + x + 17 ) * 512 ) / vdc[which].physical_width ) ) {
-												drawn[pixel_x + 1] = i + 2;
-												line_buffer[pixel_x + 1] = Machine->pens[color_base + vce.vce_data[0x100 + (palette << 4) + buf[x]].w];
+											int dp = 1;
+											while ( pixel_x + dp < ( ( ( obj_x + x + 17 ) * 512 ) / vdc[which].physical_width ) ) {
+												drawn[pixel_x + dp] = i + 2;
+												line_buffer[pixel_x + dp] = Machine->pens[color_base + vce.vce_data[0x100 + (palette << 4) + buf[x]].w];
+												dp++;
 											}
 										}                                   
 									}
@@ -930,11 +933,10 @@ static void pce_refresh_sprites(int which, int line, UINT8 *drawn, UINT16 *line_
 								}
 							}
 						}
-						pixel_x += 1;
 						if ( vdc[which].physical_width != 512 ) {
-							if ( pixel_x < ( ( ( obj_x + x + 17 ) * 512 ) / vdc[which].physical_width ) ) {
-								pixel_x += 1;
-							}
+							pixel_x = ( ( obj_x + x + 17 ) * 512 ) / vdc[which].physical_width;
+						} else {
+							pixel_x += 1;
 						}
 					}
 				}

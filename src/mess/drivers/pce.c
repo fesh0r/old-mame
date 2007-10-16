@@ -18,6 +18,30 @@
 - Add 6 button joystick support
 - Add 263 line mode
 - Sprite DMA should use vdc VRAM functions
+- properly implement the pixel clocks instead of the simple scaling we do now
+
+Banking
+=======
+
+Normally address spacebanks 00-F6 are assigned to regular HuCard ROM space. There
+are a couple of special situations:
+
+Street Fighter II:
+  - address space banks 40-7F switchable by writing to 1FF0-1FF3
+    1FF0 - select rom banks 40-7F
+    1FF1 - select rom banks 80-BF
+    1FF2 - select rom banks C0-FF
+    1FF3 - select rom banks 100-13F
+
+Populous:
+  - address space banks 40-43 contains 32KB RAM
+
+CDRom units:
+  - address space banks 80-87 contains 64KB RAM
+
+Super System Card:
+  - address space banks 68-7F contains 192KB RAM
+
 **********************************************************************/
 
 /**********************************************************************
@@ -32,17 +56,24 @@
 #include "cpu/h6280/h6280.h"
 #include "includes/pce.h"
 #include "devices/cartslot.h"
+#include "devices/chd_cd.h"
 #include "sound/c6280.h"
+#include "sound/msm5205.h"
 #include "hash.h"
 
-#define	MAIN_CLOCK	21477270
+#define	MAIN_CLOCK		21477270
+#define PCE_CD_CLOCK	9216000
 
 
 ADDRESS_MAP_START( pce_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x000000, 0x07FFFF) AM_ROMBANK(1)
-	AM_RANGE( 0x080000, 0x0FFFFF) AM_ROMBANK(2)
-	AM_RANGE( 0x100000, 0x1EDFFF) AM_ROMBANK(3)
-	AM_RANGE( 0x1EE000, 0x1EFFFF) AM_RAM AM_BASE( &pce_nvram )
+	AM_RANGE( 0x080000, 0x087FFF) AM_ROMBANK(2)
+	AM_RANGE( 0x088000, 0x0CFFFF) AM_ROMBANK(3)
+	AM_RANGE( 0x0D0000, 0x0FFFFF) AM_ROMBANK(4)
+	AM_RANGE( 0x100000, 0x10FFFF) AM_RAM AM_BASE( &pce_cd_ram )
+	AM_RANGE( 0x110000, 0x1EDFFF) AM_NOP
+	AM_RANGE( 0x1EE000, 0x1EE7FF) AM_ROMBANK(10) AM_WRITE( pce_cd_bram_w )
+	AM_RANGE( 0x1EE800, 0x1EFFFF) AM_NOP
 	AM_RANGE( 0x1F0000, 0x1F1FFF) AM_RAM AM_MIRROR(0x6000) AM_BASE( &pce_user_ram )
 	AM_RANGE( 0x1FE000, 0x1FE3FF) AM_READWRITE( vdc_0_r, vdc_0_w )
 	AM_RANGE( 0x1FE400, 0x1FE7FF) AM_READWRITE( vce_r, vce_w )
@@ -59,9 +90,13 @@ ADDRESS_MAP_END
 
 ADDRESS_MAP_START( sgx_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x000000, 0x07FFFF) AM_ROMBANK(1)
-	AM_RANGE( 0x080000, 0x0FFFFF) AM_ROMBANK(2)
-	AM_RANGE( 0x100000, 0x1EDFFF) AM_ROMBANK(3)
-	AM_RANGE( 0x1EE000, 0x1EFFFF) AM_RAM AM_BASE( &pce_nvram )
+	AM_RANGE( 0x080000, 0x087FFF) AM_ROMBANK(2)
+	AM_RANGE( 0x088000, 0x0CFFFF) AM_ROMBANK(3)
+	AM_RANGE( 0x0D0000, 0x0FFFFF) AM_ROMBANK(4)
+	AM_RANGE( 0x100000, 0x10FFFF) AM_RAM AM_BASE( &pce_cd_ram )
+	AM_RANGE( 0x110000, 0x1EDFFF) AM_NOP
+	AM_RANGE( 0x1EE000, 0x1EE7FF) AM_ROMBANK(10) AM_WRITE( pce_cd_bram_w )
+	AM_RANGE( 0x1EE800, 0x1EFFFF) AM_NOP
 	AM_RANGE( 0x1F0000, 0x1F7FFF) AM_RAM AM_BASE( &pce_user_ram )
 	AM_RANGE( 0x1FE000, 0x1FE007) AM_READWRITE( vdc_0_r, vdc_0_w ) AM_MIRROR(0x03E0)
 	AM_RANGE( 0x1FE008, 0x1FE00F) AM_READWRITE( vpc_r, vpc_w ) AM_MIRROR(0x03E0)
@@ -103,38 +138,6 @@ INPUT_PORTS_START( pce )
 INPUT_PORTS_END
 
 
-#if 0
-static gfx_layout pce_bg_layout =
-{
-        8, 8,
-        2048,
-        4,
-        {0x00*8, 0x01*8, 0x10*8, 0x11*8 },
-        {0, 1, 2, 3, 4, 5, 6, 7 },
-        { 0*8, 2*8, 4*8, 6*8, 8*8, 10*8, 12*8, 14*8 },
-        32*8,
-};
-
-static gfx_layout pce_obj_layout =
-{
-        16, 16,
-        512,
-        4,
-        {0x00*8, 0x20*8, 0x40*8, 0x60*8},
-        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
-        { 0*16, 1*16, 2*16, 3*16, 4*16, 5*16, 6*16, 7*16, 8*16, 9*16, 10*16, 11*16, 12*16, 13*16, 14*16, 15*16 },
-        128*8,
-};
-
-static gfx_decode pce_gfxdecodeinfo[] =
-{
-   { 1, 0x0000, &pce_bg_layout, 0, 0x10 },
-   { 1, 0x0000, &pce_obj_layout, 0x100, 0x10 },
-	{-1}
-};
-#endif
-
-
 static MACHINE_DRIVER_START( pce )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(H6280, MAIN_CLOCK/3)
@@ -144,6 +147,8 @@ static MACHINE_DRIVER_START( pce )
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
+
+	MDRV_MACHINE_RESET( pce )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -163,6 +168,15 @@ static MACHINE_DRIVER_START( pce )
 	MDRV_SOUND_ADD(C6280, MAIN_CLOCK/6)
 	MDRV_SOUND_ROUTE(0, "left", 1.00)
 	MDRV_SOUND_ROUTE(1, "right", 1.00)
+
+	MDRV_SOUND_ADD( MSM5205, PCE_CD_CLOCK / 6 )
+	MDRV_SOUND_CONFIG( pce_cd_msm5205_interface )
+	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "left", 0.00 )
+	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "right", 0.00 )
+
+	MDRV_SOUND_ADD( CDDA, 0 )
+	MDRV_SOUND_ROUTE( 0, "left", 1.00 )
+	MDRV_SOUND_ROUTE( 1, "right", 1.00 )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sgx )
@@ -174,6 +188,8 @@ static MACHINE_DRIVER_START( sgx )
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
+
+	MDRV_MACHINE_RESET( pce )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -192,6 +208,15 @@ static MACHINE_DRIVER_START( sgx )
 	MDRV_SOUND_ADD(C6280, MAIN_CLOCK/6)
 	MDRV_SOUND_ROUTE(0, "left", 1.00)
 	MDRV_SOUND_ROUTE(1, "right", 1.00)
+
+	MDRV_SOUND_ADD( MSM5205, PCE_CD_CLOCK / 6 )
+	MDRV_SOUND_CONFIG( pce_cd_msm5205_interface )
+	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "left", 0.00 )
+	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "right", 0.00 )
+
+	MDRV_SOUND_ADD( CDDA, 0 )
+	MDRV_SOUND_ROUTE( 0, "left", 1.00 )
+	MDRV_SOUND_ROUTE( 1, "right", 1.00 )
 MACHINE_DRIVER_END
 
 static void pce_partialhash(char *dest, const unsigned char *data,
@@ -224,8 +249,16 @@ static void pce_cartslot_getinfo(const device_class *devclass, UINT32 state, uni
 	}
 }
 
+static void pce_chdcd_getinfo(const device_class *devclass, UINT32 state, union devinfo *info) {
+	switch( state ) {
+	case DEVINFO_INT_COUNT:			info->i = 1; break;
+	default:						cdrom_device_getinfo(devclass, state, info);
+	}
+}
+
 SYSTEM_CONFIG_START(pce)
 	CONFIG_DEVICE(pce_cartslot_getinfo)
+	CONFIG_DEVICE(pce_chdcd_getinfo)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -241,5 +274,5 @@ SYSTEM_CONFIG_END
 /*	  YEAR  NAME    PARENT	COMPAT	MACHINE	INPUT	 INIT	CONFIG  COMPANY	 FULLNAME */
 CONS( 1987, pce,    0,      0,      pce,    pce,     pce,   pce,	"Nippon Electronic Company", "PC Engine", GAME_IMPERFECT_SOUND )
 CONS( 1989, tg16,   pce,    0,      pce,    pce,     tg16,  pce,	"Nippon Electronic Company", "TurboGrafx 16", GAME_IMPERFECT_SOUND )
-CONS( 1989,	sgx,	pce,	0,		sgx,	pce,	sgx,	pce,	"Nippon Electronic Company", "SuperGrafx", GAME_NOT_WORKING )
+CONS( 1989,	sgx,	pce,	0,		sgx,	pce,	sgx,	pce,	"Nippon Electronic Company", "SuperGrafx", GAME_IMPERFECT_SOUND )
 

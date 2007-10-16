@@ -22,18 +22,18 @@
 
 	TODO:
 
-	- proper UK TOS roms
+	- MSA disk image support
+	- find missing UK TOS roms
 	- rewrite HD6301 cpu core for serial I/O
 	- UK keyboard layout for the special keys
 	- accurate screen timing
-	- memory shadow for boot memory check
 	- floppy DMA transfer timer
+	- memory shadow for boot memory check
 	- STe DMA sound and LMC1992 Microwire mixer
-	- Mega STe 8/16 MHz switch
-	- Mega STe MC68881 FPU
-	- Mega STe SCC8530 interface
-	- Mega STe LAN
+	- Mega ST/STe MC68881 FPU
 	- MIDI interface
+	- Mega STe 16KB cache
+	- Mega STe LAN
 
 */
 
@@ -447,6 +447,206 @@ static WRITE8_HANDLER( ikbd_port4_w )
 	if (~data & 0x80) ikbd.keylatch = readinputportbytag("P47");
 }
 
+/* DMA Sound */
+
+static struct DMASOUND
+{
+	UINT32 base, end, cntr;
+	UINT32 baselatch, endlatch;
+	UINT16 ctrl, mode;
+	UINT8 fifo[8];
+	UINT8 samples;
+	int active;
+} dmasound;
+
+static const int DMASOUND_RATE[] = { Y2/640/8, Y2/640/4, Y2/640/2, Y2/640 };
+
+static mame_timer *dmasound_timer;
+
+static void atariste_dmasound_set_state(int state)
+{
+	dmasound.active = state;
+	mfp68901_tai_w(0, state);
+
+	if (state == 0)
+	{
+		dmasound.baselatch = dmasound.base;
+		dmasound.endlatch = dmasound.end;
+	}
+	else
+	{
+		dmasound.cntr = dmasound.baselatch;
+	}
+}
+
+static TIMER_CALLBACK( atariste_dmasound_tick )
+{
+	if (dmasound.samples == 0)
+	{
+		int i;
+
+		for (i = 0; i < 8; i++)
+		{
+			dmasound.fifo[i] = memory_region(REGION_CPU1)[dmasound.cntr];
+			dmasound.cntr++;
+			dmasound.samples++;
+
+			if (dmasound.cntr == dmasound.endlatch)
+			{
+				atariste_dmasound_set_state(0);
+				break;
+			}
+		}
+	}
+	
+	if (dmasound.ctrl & 0x80)
+	{
+		logerror("DMA sound left  %i\n", dmasound.fifo[7 - dmasound.samples]);
+		dmasound.samples--;
+
+		logerror("DMA sound right %i\n", dmasound.fifo[7 - dmasound.samples]);
+		dmasound.samples--;
+	}
+	else
+	{
+		logerror("DMA sound mono %i\n", dmasound.fifo[7 - dmasound.samples]);
+		dmasound.samples--;
+	}
+
+	if ((dmasound.samples == 0) && (dmasound.active == 0))
+	{
+		if ((dmasound.ctrl & 0x03) == 0x03)
+		{
+			atariste_dmasound_set_state(1);
+		}
+		else
+		{
+			mame_timer_enable(dmasound_timer, 0);
+		}
+	}
+}
+
+static READ16_HANDLER( atariste_sound_dma_control_r )
+{
+	return dmasound.ctrl;
+}
+
+static READ16_HANDLER( atariste_sound_dma_base_r )
+{
+	switch (offset)
+	{
+	case 0x00:
+		return (dmasound.base >> 16) & 0x3f;
+	case 0x01:
+		return (dmasound.base >> 8) & 0xff;
+	case 0x02:
+		return dmasound.base & 0xff;
+	}
+
+	return 0;
+}
+
+static READ16_HANDLER( atariste_sound_dma_counter_r )
+{
+	switch (offset)
+	{
+	case 0x00:
+		return (dmasound.cntr >> 16) & 0x3f;
+	case 0x01:
+		return (dmasound.cntr >> 8) & 0xff;
+	case 0x02:
+		return dmasound.cntr & 0xff;
+	}
+
+	return 0;
+}
+
+static READ16_HANDLER( atariste_sound_dma_end_r )
+{
+	switch (offset)
+	{
+	case 0x00:
+		return (dmasound.end >> 16) & 0x3f;
+	case 0x01:
+		return (dmasound.end >> 8) & 0xff;
+	case 0x02:
+		return dmasound.end & 0xff;
+	}
+
+	return 0;
+}
+
+static READ16_HANDLER( atariste_sound_mode_r )
+{
+	return dmasound.mode;
+}
+
+static WRITE16_HANDLER( atariste_sound_dma_control_w )
+{
+	dmasound.ctrl = data & 0x03;
+
+	if (dmasound.ctrl & 0x01)
+	{
+		if (!dmasound.active)
+		{
+			atariste_dmasound_set_state(1);
+			mame_timer_adjust(dmasound_timer, time_zero, 0, MAME_TIME_IN_HZ(DMASOUND_RATE[dmasound.mode & 0x03]));
+		}
+	}
+	else
+	{
+		atariste_dmasound_set_state(0);
+		mame_timer_enable(dmasound_timer, 0);
+	}
+}
+
+static WRITE16_HANDLER( atariste_sound_dma_base_w )
+{
+	switch (offset)
+	{
+	case 0x00:
+		dmasound.base = (data << 16) & 0x3f0000;
+		break;
+	case 0x01:
+		dmasound.base = (dmasound.base & 0x3f00fe) | (data & 0xff) << 8;
+		break;
+	case 0x02:
+		dmasound.base = (dmasound.base & 0x3fff00) | (data & 0xfe);
+		break;
+	}
+
+	if (!dmasound.active)
+	{
+		dmasound.baselatch = dmasound.base;
+	}
+}
+
+static WRITE16_HANDLER( atariste_sound_dma_end_w )
+{
+	switch (offset)
+	{
+	case 0x00:
+		dmasound.end = (data << 16) & 0x3f0000;
+		break;
+	case 0x01:
+		dmasound.end = (dmasound.end & 0x3f00fe) | (data & 0xff) << 8;
+		break;
+	case 0x02:
+		dmasound.end = (dmasound.end & 0x3fff00) | (data & 0xfe);
+		break;
+	}
+
+	if (!dmasound.active)
+	{
+		dmasound.endlatch = dmasound.end;
+	}
+}
+
+static WRITE16_HANDLER( atariste_sound_mode_w )
+{
+	dmasound.mode = data & 0x8f;
+}
+
 /* Microwire */
 
 static struct MICROWIRE
@@ -459,16 +659,17 @@ static mame_timer *microwire_timer;
 
 static void atariste_microwire_shift(void)
 {
-	if (BIT(mwire.mask, mwire.shift))
+	if (BIT(mwire.mask, 15))
 	{
-		lmc1992_data_w((mwire.data & 0x8000) >> 15);
+		lmc1992_data_w(BIT(mwire.data, 15));
 		lmc1992_clock_w(1);
 		lmc1992_clock_w(0);
 	}
 
-	// rotate data left
+	// rotate mask and data left
 
-	mwire.data = (mwire.data << 1) | ((mwire.data & 0x8000) >> 15);
+	mwire.mask = (mwire.mask << 1) | BIT(mwire.mask, 15);
+	mwire.data = (mwire.data << 1) | BIT(mwire.data, 15);
 	mwire.shift++;
 }
 
@@ -504,7 +705,7 @@ static WRITE16_HANDLER( atariste_microwire_data_w )
 	if (!mame_timer_enabled(microwire_timer))
 	{
 		mwire.data = data;
-		mame_timer_pulse(MAME_TIME_IN_USEC(2), 0, atariste_microwire_tick);
+		mame_timer_adjust(microwire_timer, time_zero, 0, MAME_TIME_IN_USEC(2));
 	}
 }
 
@@ -519,6 +720,43 @@ static WRITE16_HANDLER( atariste_microwire_mask_w )
 	{
 		mwire.mask = data;
 	}
+}
+
+/* SCC8530 */
+
+static READ16_HANDLER( megaste_scc8530_r )
+{
+	if (ACCESSING_MSB16)
+	{
+		return scc_r(offset);
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+static WRITE16_HANDLER( megaste_scc8530_w )
+{
+	if (ACCESSING_MSB16)
+	{
+		scc_w(offset, data);
+	}
+}
+
+/* Mega STe Cache */
+
+static UINT16 megaste_cache;
+
+static READ16_HANDLER( megaste_cache_r )
+{
+	return megaste_cache;
+}
+
+static WRITE16_HANDLER( megaste_cache_w )
+{
+	megaste_cache = data;
+	cpunum_set_clock(0, (data & 0x01) ? Y2/2 : Y2/4);
 }
 
 /* Memory Maps */
@@ -577,8 +815,20 @@ static ADDRESS_MAP_START( megast_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff8608, 0xff860d) AM_READWRITE(atarist_fdc_dma_base_r, atarist_fdc_dma_base_w)
 	AM_RANGE(0xff8800, 0xff8801) AM_READWRITE(AY8910_read_port_0_msb_r, AY8910_control_port_0_msb_w)
 	AM_RANGE(0xff8802, 0xff8803) AM_WRITE(AY8910_write_port_0_msb_w)
-//	AM_RANGE(0xff8a00, 0xff8a3f) AM_READWRITE(atarist_blitter_r, atarist_blitter_w)
+	AM_RANGE(0xff8a00, 0xff8a1f) AM_READWRITE(atarist_blitter_halftone_r, atarist_blitter_halftone_w)
+	AM_RANGE(0xff8a20, 0xff8a21) AM_READWRITE(atarist_blitter_src_inc_x_r, atarist_blitter_src_inc_x_w)
+	AM_RANGE(0xff8a22, 0xff8a23) AM_READWRITE(atarist_blitter_src_inc_y_r, atarist_blitter_src_inc_y_w)
+	AM_RANGE(0xff8a24, 0xff8a27) AM_READWRITE(atarist_blitter_src_r, atarist_blitter_src_w)
+	AM_RANGE(0xff8a28, 0xff8a2d) AM_READWRITE(atarist_blitter_end_mask_r, atarist_blitter_end_mask_w)
+	AM_RANGE(0xff8a2e, 0xff8a2f) AM_READWRITE(atarist_blitter_dst_inc_x_r, atarist_blitter_dst_inc_x_w)
+	AM_RANGE(0xff8a30, 0xff8a31) AM_READWRITE(atarist_blitter_dst_inc_y_r, atarist_blitter_dst_inc_y_w)
+	AM_RANGE(0xff8a32, 0xff8a35) AM_READWRITE(atarist_blitter_dst_r, atarist_blitter_dst_w)
+	AM_RANGE(0xff8a36, 0xff8a37) AM_READWRITE(atarist_blitter_count_x_r, atarist_blitter_count_x_w)
+	AM_RANGE(0xff8a38, 0xff8a39) AM_READWRITE(atarist_blitter_count_y_r, atarist_blitter_count_y_w)
+	AM_RANGE(0xff8a3a, 0xff8a3b) AM_READWRITE(atarist_blitter_op_r, atarist_blitter_op_w)
+	AM_RANGE(0xff8a3c, 0xff8a3d) AM_READWRITE(atarist_blitter_ctrl_r, atarist_blitter_ctrl_w)
 	AM_RANGE(0xfffa00, 0xfffa3f) AM_READWRITE(mfp68901_0_register_lsb_r, mfp68901_0_register_msb_w)
+//	AM_RANGE(0xfffa40, 0xfffa57) AM_READWRITE(megast_fpu_r, megast_fpu_w)
 	AM_RANGE(0xfffc00, 0xfffc01) AM_READWRITE(acia6850_0_stat_msb_r, acia6850_0_ctrl_msb_w)
 	AM_RANGE(0xfffc02, 0xfffc03) AM_READWRITE(acia6850_0_data_msb_r, acia6850_0_data_msb_w)
 	AM_RANGE(0xfffc04, 0xfffc05) AM_READWRITE(acia6850_1_stat_msb_r, acia6850_1_ctrl_msb_w)
@@ -607,14 +857,25 @@ static ADDRESS_MAP_START( ste_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff8608, 0xff860d) AM_READWRITE(atarist_fdc_dma_base_r, atarist_fdc_dma_base_w)
 	AM_RANGE(0xff8800, 0xff8801) AM_READWRITE(AY8910_read_port_0_msb_r, AY8910_control_port_0_msb_w)
 	AM_RANGE(0xff8802, 0xff8803) AM_WRITE(AY8910_write_port_0_msb_w)
-//	AM_RANGE(0xff8900, 0xff8901) AM_READWRITE(atariste_sound_dma_control_r, atariste_sound_dma_control_w)
-//	AM_RANGE(0xff8902, 0xff8906) AM_READWRITE(atariste_sound_dma_base_r, atariste_sound_dma_base_w)
-//	AM_RANGE(0xff8908, 0xff890d) AM_READ(atariste_sound_dma_counter_r)
-//	AM_RANGE(0xff890e, 0xff8912) AM_READWRITE(atariste_sound_dma_end_r, atariste_sound_dma_end_w)
-//	AM_RANGE(0xff8920, 0xff8920) AM_READWRITE(atariste_sound_mode_r, atariste_sound_mode_w)
+	AM_RANGE(0xff8900, 0xff8901) AM_READWRITE(atariste_sound_dma_control_r, atariste_sound_dma_control_w)
+	AM_RANGE(0xff8902, 0xff8907) AM_READWRITE(atariste_sound_dma_base_r, atariste_sound_dma_base_w)
+	AM_RANGE(0xff8908, 0xff890d) AM_READ(atariste_sound_dma_counter_r)
+	AM_RANGE(0xff890e, 0xff8913) AM_READWRITE(atariste_sound_dma_end_r, atariste_sound_dma_end_w)
+	AM_RANGE(0xff8920, 0xff8921) AM_READWRITE(atariste_sound_mode_r, atariste_sound_mode_w)
 	AM_RANGE(0xff8922, 0xff8923) AM_READWRITE(atariste_microwire_data_r, atariste_microwire_data_w)
 	AM_RANGE(0xff8924, 0xff8925) AM_READWRITE(atariste_microwire_mask_r, atariste_microwire_mask_w)
-//	AM_RANGE(0xff8a00, 0xff8a3f) AM_READWRITE(atariste_blitter_r, atariste_blitter_w)
+	AM_RANGE(0xff8a00, 0xff8a1f) AM_READWRITE(atarist_blitter_halftone_r, atarist_blitter_halftone_w)
+	AM_RANGE(0xff8a20, 0xff8a21) AM_READWRITE(atarist_blitter_src_inc_x_r, atarist_blitter_src_inc_x_w)
+	AM_RANGE(0xff8a22, 0xff8a23) AM_READWRITE(atarist_blitter_src_inc_y_r, atarist_blitter_src_inc_y_w)
+	AM_RANGE(0xff8a24, 0xff8a27) AM_READWRITE(atarist_blitter_src_r, atarist_blitter_src_w)
+	AM_RANGE(0xff8a28, 0xff8a2d) AM_READWRITE(atarist_blitter_end_mask_r, atarist_blitter_end_mask_w)
+	AM_RANGE(0xff8a2e, 0xff8a2f) AM_READWRITE(atarist_blitter_dst_inc_x_r, atarist_blitter_dst_inc_x_w)
+	AM_RANGE(0xff8a30, 0xff8a31) AM_READWRITE(atarist_blitter_dst_inc_y_r, atarist_blitter_dst_inc_y_w)
+	AM_RANGE(0xff8a32, 0xff8a35) AM_READWRITE(atarist_blitter_dst_r, atarist_blitter_dst_w)
+	AM_RANGE(0xff8a36, 0xff8a37) AM_READWRITE(atarist_blitter_count_x_r, atarist_blitter_count_x_w)
+	AM_RANGE(0xff8a38, 0xff8a39) AM_READWRITE(atarist_blitter_count_y_r, atarist_blitter_count_y_w)
+	AM_RANGE(0xff8a3a, 0xff8a3b) AM_READWRITE(atarist_blitter_op_r, atarist_blitter_op_w)
+	AM_RANGE(0xff8a3c, 0xff8a3d) AM_READWRITE(atarist_blitter_ctrl_r, atarist_blitter_ctrl_w)
 	AM_RANGE(0xff9200, 0xff9201) AM_READ(port_tag_to_handler16("JOY0"))
 	AM_RANGE(0xff9202, 0xff9203) AM_READ(port_tag_to_handler16("JOY1"))
 	AM_RANGE(0xff9210, 0xff9211) AM_READ(port_tag_to_handler16("PADDLE0X"))
@@ -651,18 +912,29 @@ static ADDRESS_MAP_START( megaste_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff8608, 0xff860d) AM_READWRITE(atarist_fdc_dma_base_r, atarist_fdc_dma_base_w)
 	AM_RANGE(0xff8800, 0xff8801) AM_READWRITE(AY8910_read_port_0_msb_r, AY8910_control_port_0_msb_w)
 	AM_RANGE(0xff8802, 0xff8803) AM_WRITE(AY8910_write_port_0_msb_w)
-//	AM_RANGE(0xff8900, 0xff8901) AM_READWRITE(atariste_sound_dma_control_r, atariste_sound_dma_control_w)
-//	AM_RANGE(0xff8902, 0xff8906) AM_READWRITE(atariste_sound_dma_base_r, atariste_sound_dma_base_w)
-//	AM_RANGE(0xff8908, 0xff890d) AM_READ(atariste_sound_dma_counter_r)
-//	AM_RANGE(0xff890e, 0xff8912) AM_READWRITE(atariste_sound_dma_end_r, atariste_sound_dma_end_w)
-//	AM_RANGE(0xff8920, 0xff8920) AM_READWRITE(atariste_sound_mode_r, atariste_sound_mode_w)
+	AM_RANGE(0xff8900, 0xff8901) AM_READWRITE(atariste_sound_dma_control_r, atariste_sound_dma_control_w)
+	AM_RANGE(0xff8902, 0xff8907) AM_READWRITE(atariste_sound_dma_base_r, atariste_sound_dma_base_w)
+	AM_RANGE(0xff8908, 0xff890d) AM_READ(atariste_sound_dma_counter_r)
+	AM_RANGE(0xff890e, 0xff8913) AM_READWRITE(atariste_sound_dma_end_r, atariste_sound_dma_end_w)
+	AM_RANGE(0xff8920, 0xff8921) AM_READWRITE(atariste_sound_mode_r, atariste_sound_mode_w)
 	AM_RANGE(0xff8922, 0xff8923) AM_READWRITE(atariste_microwire_data_r, atariste_microwire_data_w)
 	AM_RANGE(0xff8924, 0xff8925) AM_READWRITE(atariste_microwire_mask_r, atariste_microwire_mask_w)
-//	AM_RANGE(0xff8a00, 0xff8a3f) AM_READWRITE(atariste_blitter_r, atariste_blitter_w)
-//	AM_RANGE(0xff8e20, 0xff8e21) AM_READWRITE(megaste_cache_r, megaste_cache_w)
+	AM_RANGE(0xff8a00, 0xff8a1f) AM_READWRITE(atarist_blitter_halftone_r, atarist_blitter_halftone_w)
+	AM_RANGE(0xff8a20, 0xff8a21) AM_READWRITE(atarist_blitter_src_inc_x_r, atarist_blitter_src_inc_x_w)
+	AM_RANGE(0xff8a22, 0xff8a23) AM_READWRITE(atarist_blitter_src_inc_y_r, atarist_blitter_src_inc_y_w)
+	AM_RANGE(0xff8a24, 0xff8a27) AM_READWRITE(atarist_blitter_src_r, atarist_blitter_src_w)
+	AM_RANGE(0xff8a28, 0xff8a2d) AM_READWRITE(atarist_blitter_end_mask_r, atarist_blitter_end_mask_w)
+	AM_RANGE(0xff8a2e, 0xff8a2f) AM_READWRITE(atarist_blitter_dst_inc_x_r, atarist_blitter_dst_inc_x_w)
+	AM_RANGE(0xff8a30, 0xff8a31) AM_READWRITE(atarist_blitter_dst_inc_y_r, atarist_blitter_dst_inc_y_w)
+	AM_RANGE(0xff8a32, 0xff8a35) AM_READWRITE(atarist_blitter_dst_r, atarist_blitter_dst_w)
+	AM_RANGE(0xff8a36, 0xff8a37) AM_READWRITE(atarist_blitter_count_x_r, atarist_blitter_count_x_w)
+	AM_RANGE(0xff8a38, 0xff8a39) AM_READWRITE(atarist_blitter_count_y_r, atarist_blitter_count_y_w)
+	AM_RANGE(0xff8a3a, 0xff8a3b) AM_READWRITE(atarist_blitter_op_r, atarist_blitter_op_w)
+	AM_RANGE(0xff8a3c, 0xff8a3d) AM_READWRITE(atarist_blitter_ctrl_r, atarist_blitter_ctrl_w)
+	AM_RANGE(0xff8e20, 0xff8e21) AM_READWRITE(megaste_cache_r, megaste_cache_w)
 	AM_RANGE(0xfffa00, 0xfffa3f) AM_READWRITE(mfp68901_0_register_lsb_r, mfp68901_0_register_msb_w)
-//	AM_RANGE(0xfffa40, 0xfffa5f) AM_READWRITE(megaste_fpu_r, megaste_fpu_w)
-//	AM_RANGE(0xff8c80, 0xff8c87) AM_READWRITE(megaste_scc8530_r, megaste_scc8530_w)
+//	AM_RANGE(0xfffa40, 0xfffa5f) AM_READWRITE(megast_fpu_r, megast_fpu_w)
+	AM_RANGE(0xff8c80, 0xff8c87) AM_READWRITE(megaste_scc8530_r, megaste_scc8530_w)
 	AM_RANGE(0xfffc00, 0xfffc01) AM_READWRITE(acia6850_0_stat_msb_r, acia6850_0_ctrl_msb_w)
 	AM_RANGE(0xfffc02, 0xfffc03) AM_READWRITE(acia6850_0_data_msb_r, acia6850_0_data_msb_w)
 	AM_RANGE(0xfffc04, 0xfffc05) AM_READWRITE(acia6850_1_stat_msb_r, acia6850_1_ctrl_msb_w)
@@ -1014,39 +1286,29 @@ static CENTRONICS_CONFIG atarist_centronics_config[1] =
 	}
 };
 
-static MACHINE_START( atarist )
+static void atarist_configure_memory(void)
 {
 	switch (mess_ram_size)
 	{
 	case 256 * 1024:
-		memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x03ffff, 0, 0, MRA16_BANK1);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x03ffff, 0, 0, MWA16_BANK1);
-		memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0x040000, 0x3fffff, 0, 0, MRA16_UNMAP);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x040000, 0x3fffff, 0, 0, MWA16_UNMAP);
+		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x03ffff, 0, 0, MRA16_BANK1, MWA16_BANK1);
+		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x040000, 0x3fffff, 0, 0, MRA16_UNMAP, MWA16_UNMAP);
 		break;
 	case 512 * 1024:
-		memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x07ffff, 0, 0, MRA16_BANK1);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x07ffff, 0, 0, MWA16_BANK1);
-		memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0x080000, 0x3fffff, 0, 0, MRA16_UNMAP);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x080000, 0x3fffff, 0, 0, MWA16_UNMAP);
+		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x07ffff, 0, 0, MRA16_BANK1, MWA16_BANK1);
+		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x080000, 0x3fffff, 0, 0, MRA16_UNMAP, MWA16_UNMAP);
 		break;
 	case 1024 * 1024:
-		memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x0fffff, 0, 0, MRA16_BANK1);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x0fffff, 0, 0, MWA16_BANK1);
-		memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x3fffff, 0, 0, MRA16_UNMAP);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x3fffff, 0, 0, MWA16_UNMAP);
+		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x0fffff, 0, 0, MRA16_BANK1, MWA16_BANK1);
+		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x3fffff, 0, 0, MRA16_UNMAP, MWA16_UNMAP);
 		break;
 	case 2048 * 1024:
-		memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x1fffff, 0, 0, MRA16_BANK1);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x1fffff, 0, 0, MWA16_BANK1);
-		memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x3fffff, 0, 0, MRA16_UNMAP);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x3fffff, 0, 0, MWA16_UNMAP);
+		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x1fffff, 0, 0, MRA16_BANK1, MWA16_BANK1);
+		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x3fffff, 0, 0, MRA16_UNMAP, MWA16_UNMAP);
 		break;
 	case 4096 * 1024:
-		memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x1fffff, 0, 0, MRA16_BANK1);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x1fffff, 0, 0, MWA16_BANK1);
-		memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x3fffff, 0, 0, MRA16_BANK2);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x3fffff, 0, 0, MWA16_BANK2);
+		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x1fffff, 0, 0, MRA16_BANK1, MWA16_BANK1);
+		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x3fffff, 0, 0, MRA16_BANK2, MWA16_BANK2);
 		break;
 	}
 
@@ -1056,18 +1318,14 @@ static MACHINE_START( atarist )
 	memory_configure_bank(2, 0, 1, memory_region(REGION_CPU1) + 0x200000, 0);
 	memory_set_bank(2, 0);
 
-	memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, MRA16_UNMAP);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, MWA16_UNMAP);
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, MRA16_UNMAP, MWA16_UNMAP);
 
 	memory_configure_bank(3, 0, 1, memory_region(REGION_CPU1) + 0xfa0000, 0);
 	memory_set_bank(3, 0);
+}
 
-	centronics_config(0, atarist_centronics_config);
-	wd17xx_init(WD_TYPE_1772, atarist_fdc_callback, NULL);
-	acia6850_config(0, &acia_ikbd_intf);
-	acia6850_config(1, &acia_midi_intf);
-	mfp68901_config(0, &mfp_intf);
-
+static void atarist_state_save(void)
+{
 	memset(&fdc, 0, sizeof(fdc));
 	memset(&ikbd, 0, sizeof(ikbd));
 
@@ -1093,6 +1351,18 @@ static MACHINE_START( atarist )
 	state_save_register_global(mfp_tx);
 }
 
+static MACHINE_START( atarist )
+{
+	atarist_configure_memory();
+	atarist_state_save();
+
+	centronics_config(0, atarist_centronics_config);
+	wd17xx_init(WD_TYPE_1772, atarist_fdc_callback, NULL);
+	acia6850_config(0, &acia_ikbd_intf);
+	acia6850_config(1, &acia_midi_intf);
+	mfp68901_config(0, &mfp_intf);
+}
+
 static struct rp5c15_interface rtc_intf = 
 {
 	NULL
@@ -1104,20 +1374,88 @@ static MACHINE_START( megast )
 	rp5c15_init(&rtc_intf);
 }
 
-static MACHINE_START( atariste )
+static READ8_HANDLER( atariste_mfp_gpio_r )
 {
-	machine_start_atarist(machine);
+	/*
+
+		bit		description
+		
+		0		Centronics BUSY
+		1		RS232 DCD
+		2		RS232 CTS
+		3		Blitter done
+		4		Keyboard/MIDI
+		5		FDC
+		6		RS232 RI
+		7		Monochrome monitor detect / DMA sound active
+
+	*/
+
+	UINT8 data = (centronics_read_handshake(0) & CENTRONICS_NOT_BUSY) >> 7;
+
+	data |= (acia_irq << 4);
+	data |= (fdc.irq << 5);
+	data |= (readinputportbytag("config") & 0x80) ^ (dmasound.active << 7);
+
+	return data;
+}
+
+static const mfp68901_interface atariste_mfp_intf =
+{
+	Y2/8,
+	Y1,
+	MFP68901_TDO_LOOPBACK,
+	MFP68901_TDO_LOOPBACK,
+	&mfp_rx,
+	&mfp_tx,
+	NULL,
+	mfp_interrupt,
+	atariste_mfp_gpio_r,
+	NULL
+};
+
+static void atariste_state_save(void)
+{
+	atarist_state_save();
 
 	memset(&mwire, 0, sizeof(mwire));
+	memset(&dmasound, 0, sizeof(dmasound));
+
+	state_save_register_global(dmasound.base);
+	state_save_register_global(dmasound.end);
+	state_save_register_global(dmasound.cntr);
+	state_save_register_global(dmasound.baselatch);
+	state_save_register_global(dmasound.endlatch);
+	state_save_register_global(dmasound.ctrl);
+	state_save_register_global(dmasound.mode);
+	state_save_register_global_array(dmasound.fifo);
+	state_save_register_global(dmasound.samples);
+	state_save_register_global(dmasound.active);
 
 	state_save_register_global(mwire.data);
 	state_save_register_global(mwire.mask);
 	state_save_register_global(mwire.shift);
 }
 
+static MACHINE_START( atariste )
+{
+	atarist_configure_memory();
+	atariste_state_save();
+
+	centronics_config(0, atarist_centronics_config);
+	wd17xx_init(WD_TYPE_1772, atarist_fdc_callback, NULL);
+	acia6850_config(0, &acia_ikbd_intf);
+	acia6850_config(1, &acia_midi_intf);
+	mfp68901_config(0, &atariste_mfp_intf);
+
+	dmasound_timer = mame_timer_alloc(atariste_dmasound_tick);
+	microwire_timer = mame_timer_alloc(atariste_microwire_tick);
+}
+
 static MACHINE_START( megaste )
 {
 	machine_start_atariste(machine);
+	state_save_register_global(megaste_cache);
 	rp5c15_init(&rtc_intf);
 }
 
@@ -1134,7 +1472,7 @@ static MACHINE_DRIVER_START( atarist )
 
 	// video hardware
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_VIDEO_START( atarist )
 	MDRV_VIDEO_UPDATE( atarist )
@@ -1171,7 +1509,7 @@ static MACHINE_DRIVER_START( atariste )
 
 	// video hardware
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_PALETTE_LENGTH(512)
 	MDRV_VIDEO_START( atarist )
 	MDRV_VIDEO_UPDATE( atarist )
@@ -1432,8 +1770,7 @@ static DEVICE_LOAD( atarist_cart )
 	{
 		if (image_fread(image, ptr, filesize) == filesize)
 		{
-			memory_install_read16_handler (0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, MRA16_BANK3);
-			memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, MWA16_BANK3);
+			memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, MRA16_BANK3, MWA16_BANK3);
 
 			return INIT_PASS;
 		}
@@ -1515,7 +1852,7 @@ COMP( 1989, stacy,    atarist,  0,		stacy,    stacy,    0,     stacy,	 "Atari", 
 COMP( 1992, stbook,   atarist,  0,		stbook,   stbook,   0,     stbook,	 "Atari", "ST Book", GAME_NOT_WORKING )
 */
 COMP( 1989, atariste, 0,		0,		atariste, atariste, 0,     atariste, "Atari", "STE", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
-COMP( 1991, megaste,  atariste, 0,		megaste,  atariste, 0,     megaste,  "Atari", "Mega STE", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
+COMP( 1991, megaste,  atariste, 0,		megaste,  atarist,  0,     megaste,  "Atari", "Mega STE", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
 /*
 COMP( 1990, tt030,    0,        0,		tt030,    tt030,    0,     tt030,	 "Atari", "TT030", GAME_NOT_WORKING )
 COMP( 1992, falcon,   0,        0,		falcon,   falcon,   0,     falcon,	 "Atari", "Falcon030", GAME_NOT_WORKING )

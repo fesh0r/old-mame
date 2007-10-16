@@ -237,7 +237,7 @@ INPUT_PORTS_START( mz700 )
 	PORT_BIT( 0x10, 0x00, IPT_JOYSTICK_RIGHT) PORT_8WAY
 INPUT_PORTS_END
 
-static gfx_layout char_layout =
+static const gfx_layout char_layout =
 {
 	8, 8,		/* 8 x 8 graphics */
 	512,		/* 512 codes */
@@ -248,11 +248,9 @@ static gfx_layout char_layout =
 	8 * 8		/* code takes 8 times 8 bits */
 };
 
-static gfx_decode gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &char_layout, 0, 256 },
-	{-1}
-};	 /* end of array */
+static GFXDECODE_START( gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, char_layout, 0, 256 )
+GFXDECODE_END
 
 
 
@@ -267,7 +265,7 @@ static MACHINE_DRIVER_START(mz700)
 	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
 
 	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500))
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	/*MDRV_INTERLEAVE(interleave)*/
 
 	MDRV_MACHINE_RESET( mz700 )
@@ -305,7 +303,7 @@ static MACHINE_DRIVER_START(mz800)
 	MDRV_CPU_IO_MAP(mz800_io, 0)
 
 	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500))
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET( mz700 )
 

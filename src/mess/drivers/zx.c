@@ -304,7 +304,7 @@ INPUT_PORTS_END
 
 /* Graphics Layouts */
 
-static gfx_layout zx_char_layout =
+static const gfx_layout zx_char_layout =
 {
 	8, 8,							   /* 8x8 pixels */
 	64,								   /* 64 codes */
@@ -319,29 +319,21 @@ static gfx_layout zx_char_layout =
 
 /* Graphics Decode Information */
 
-static gfx_decode zx80_gfxdecodeinfo[] =
-{
-	{ REGION_CPU1, 0x0e00, &zx_char_layout,  0, 2 },
-	{ -1 }
-};
+static GFXDECODE_START( zx80_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_CPU1, 0x0e00, zx_char_layout, 0, 2 )
+GFXDECODE_END
 
-static gfx_decode zx81_gfxdecodeinfo[] =
-{
-	{ REGION_CPU1, 0x1e00, &zx_char_layout,  0, 2 },
-	{ -1 }
-};
+static GFXDECODE_START( zx81_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_CPU1, 0x1e00, zx_char_layout, 0, 2 )
+GFXDECODE_END
 
-static gfx_decode pc8300_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0x0000, &zx_char_layout,  0, 2 },
-	{ -1 }
-};
+static GFXDECODE_START( pc8300_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, zx_char_layout, 0, 2 )
+GFXDECODE_END
 
-static gfx_decode pow3000_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0x0000, &zx_char_layout,  0, 2 },
-	{ -1 }
-};
+static GFXDECODE_START( pow3000_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, zx_char_layout, 0, 2 )
+GFXDECODE_END
 
 /* Palette Initialization */
 
@@ -409,7 +401,7 @@ static MACHINE_DRIVER_START( zx80 )
 	MDRV_CPU_PROGRAM_MAP(zx80_map, 0)
 	MDRV_CPU_IO_MAP(zx80_io_map, 0)
 	MDRV_SCREEN_REFRESH_RATE(ZX81_PAL_FRAMES_PER_SECOND)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(ZX81_VBLANK_DURATION))
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(ZX81_VBLANK_DURATION))
 
 	MDRV_MACHINE_RESET(zx80)
 

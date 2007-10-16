@@ -66,6 +66,9 @@ endif
 # uncomment next line to include the debugger
 # DEBUG = 1
 
+# uncomment next line to include the internal profiler
+# PROFILER = 1
+
 # uncomment next line to use DRC MIPS3 engine
 X86_MIPS3_DRC = 1
 
@@ -86,6 +89,7 @@ MESS = 1
 #-------------------------------------------------
 
 # uncomment one of the next lines to build a target-optimized build
+# NATIVE = 1
 # ATHLON = 1
 # I686 = 1
 # P4 = 1
@@ -107,7 +111,7 @@ BUILD_ZLIB = 1
 # uncomment next line to include the symbols
 # SYMBOLS = 1
 
-# uncomment next line to include profiling information
+# uncomment next line to include profiling information from the compiler
 # PROFILE = 1
 
 # uncomment next line to generate a link map for exception handling in windows
@@ -132,7 +136,6 @@ BUILD_ZLIB = 1
 
 # disable DRC cores for 64-bit builds
 ifdef PTR64
-X86_MIPS3_DRC =
 X86_PPC_DRC =
 endif
 
@@ -142,6 +145,13 @@ ifndef SYMBOLS
 OPTIMIZE = 3
 else
 OPTIMIZE = 0
+endif
+endif
+
+# profiler defaults to on for DEBUG builds
+ifdef DEBUG
+ifndef PROFILER
+PROFILER = 1
 endif
 endif
 
@@ -172,14 +182,6 @@ RM = @rm -f
 
 
 #-------------------------------------------------
-# form the name of the executable
-#-------------------------------------------------
-
-ifeq ($(OSD),msdos)
-PREFIX = d
-endif
-
-#-------------------------------------------------
 # based on the architecture, determine suffixes
 # and endianness
 #-------------------------------------------------
@@ -188,6 +190,12 @@ endif
 # and assume little-endian (x86)
 ARCH = 
 ENDIAN = little
+
+# architecture-specific builds get extra options
+ifdef NATIVE
+SUFFIX = nat
+ARCH = -march=native
+endif
 
 # architecture-specific builds get extra options
 ifdef ATHLON
@@ -238,16 +246,22 @@ endif
 # form the name of the executable
 #-------------------------------------------------
 
+# MSVC builds append the 'vc' suffix
 ifdef MSVC_BUILD
 SUFFIX:=$(SUFFIX)vc
 endif
 
-# unicode builds just get the additional 'u' suffix
+# unicode builds append the 'u' suffix
 ifdef UNICODE
 SUFFIX:=$(SUFFIX)u
 endif
 
-# debug builds just get the 'd' suffix and nothing more
+# x64 builds append the 'x64' suffix
+ifdef PTR64
+SUFFIX:=$(SUFFIX)x64
+endif
+
+# debug builds append the 'd' suffix
 ifdef DEBUG
 SUFFIX:=$(SUFFIX)d
 endif
@@ -316,6 +330,11 @@ else
 DEFS += -DNDEBUG 
 endif
 
+# define MAME_PROFILER if we are a profiling build
+ifdef PROFILER
+DEFS += -DMAME_PROFILER
+endif
+
 # define VOODOO_DRC if we are building the DRC Voodoo engine
 ifdef X86_VOODOO_DRC
 DEFS += -DVOODOO_DRC
@@ -345,7 +364,6 @@ CFLAGS += \
 	-Wundef \
 	-Wformat-security \
 	-Wwrite-strings \
-	-Wno-unused-function \
 
 # add profiling information for the compiler
 ifdef PROFILE
@@ -366,8 +384,10 @@ ifneq ($(OPTIMIZE),0)
 CFLAGS += -Werror $(ARCH) -fno-strict-aliasing
 endif
 
-
-
+# if symbols are on, make sure we have frame pointers
+ifdef SYMBOLS
+CFLAGS += -fno-omit-frame-pointer
+endif
 
 
 ifeq ($(OSD),windows)
@@ -418,6 +438,11 @@ endif
 # flags only used when linking the core emulator
 LDFLAGS = 
 LDFLAGSEMULATOR =
+
+# add profiling information for the linker
+ifdef PROFILE
+LDFLAGS += -pg
+endif
 
 # strip symbols and other metadata in non-symbols and non profiling builds
 ifndef SYMBOLS
@@ -575,9 +600,9 @@ $(EMULATORDLL): $(VERSIONOBJ) $(OBJ)/mess/osd/windows/messlib.o $(DRVLIBS) $(LIB
 	$(LD) -shared $(LDFLAGS) $(LDFLAGSEMULATOR) $^ $(LIBS) -o $@
 
 # gui target
-$(EMULATORGUI):	$(EMULATORDLL) $(OBJ)/mess/osd/windows/ui/guimain.o $(GUIRESFILE)
+$(EMULATORGUI):	$(EMULATORDLL) $(OBJ)/mess/osd/winui/guimain.o $(GUIRESFILE)
 	@echo Linking $@...
-	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) -mwindows $(FULLNAME)lib.$(DLLLINK) $(OBJ)/mess/osd/windows/ui/guimain.o $(GUIRESFILE) $(LIBS) -o $@
+	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) -mwindows $(FULLNAME)lib.$(DLLLINK) $(OBJ)/mess/osd/winui/guimain.o $(GUIRESFILE) $(LIBS) -o $@
 
 # cli target
 $(EMULATORCLI):	$(EMULATORDLL) $(OBJ)/mess/osd/windows/climain.o

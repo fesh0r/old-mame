@@ -1391,6 +1391,7 @@ INTRQ - signal of completion of execution of command.
 
 static int betadisk_status;
 static int betadisk_active;
+#ifdef UNUSED_FUNCTION
 static void (*betadisk_memory_update)(void);
 
 static OPBASE_HANDLER(betadisk_opbase_handler)
@@ -1418,6 +1419,7 @@ static OPBASE_HANDLER(betadisk_opbase_handler)
 
 	return pc & 0x0ffff;
 }
+#endif
 
 static void betadisk_wd179x_callback(wd17xx_state_t state, void *param)
 {
@@ -1449,6 +1451,7 @@ static void betadisk_wd179x_callback(wd17xx_state_t state, void *param)
 	}
 }
 
+#ifdef UNUSED_FUNCTION
 /* these are active only when betadisk is enabled */
 static WRITE8_HANDLER(betadisk_w)
 {
@@ -1458,7 +1461,6 @@ static WRITE8_HANDLER(betadisk_w)
 
 	}
 }
-
 
 /* these are active only when betadisk is enabled */
 static  READ8_HANDLER(betadisk_r)
@@ -1478,6 +1480,7 @@ static  READ8_HANDLER(betadisk_r)
 
 	return 0x0ff;
 }
+#endif
 
 static void	 betadisk_init(void)
 {
@@ -1761,7 +1764,8 @@ static MACHINE_RESET( pentagon )
 
 /****************************************************************************************************/
 
-static gfx_layout spectrum_charlayout = {
+static const gfx_layout spectrum_charlayout =
+{
 	8,8,
 	256,
 	1,						/* 1 bits per pixel */
@@ -1774,12 +1778,11 @@ static gfx_layout spectrum_charlayout = {
 	8				/* every char takes 1 consecutive byte */
 };
 
-static gfx_decode spectrum_gfxdecodeinfo[] = {
-	{ 0, 0x0, &spectrum_charlayout, 0, 0x80 },
-	{ 0, 0x0, &spectrum_charlayout, 0, 0x80 },
-	{ 0, 0x0, &spectrum_charlayout, 0, 0x80 },
-	{ -1 } /* end of array */
-};
+static GFXDECODE_START( spectrum_gfxdecodeinfo )
+	GFXDECODE_ENTRY( 0, 0x0, spectrum_charlayout, 0, 0x80 )
+	GFXDECODE_ENTRY( 0, 0x0, spectrum_charlayout, 0, 0x80 )
+	GFXDECODE_ENTRY( 0, 0x0, spectrum_charlayout, 0, 0x80 )
+GFXDECODE_END
 
 INPUT_PORTS_START( spectrum )
 	PORT_START /* [0] 0xFEFE */
@@ -1963,7 +1966,7 @@ static MACHINE_DRIVER_START( spectrum )
 	MDRV_CPU_IO_MAP(spectrum_io, 0)
 	MDRV_CPU_VBLANK_INT(spec_interrupt,1)
 	MDRV_SCREEN_REFRESH_RATE(50.08)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500))
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( spectrum )

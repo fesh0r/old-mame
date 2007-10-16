@@ -188,11 +188,9 @@ const gfx_layout mbee_charlayout =
     8*16                    /* every char takes 16 bytes */
 };
 
-static gfx_decode mbee_gfxdecodeinfo[] =
-{
-    { REGION_CPU1, 0xf000, &mbee_charlayout, 0, 256},
-	{ -1 }   /* end of array */
-};
+static GFXDECODE_START( mbee_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_CPU1, 0xf000, mbee_charlayout, 0, 256 )
+GFXDECODE_END
 
 static const UINT8 palette[] =
 {
@@ -257,7 +255,7 @@ static MACHINE_DRIVER_START( mbee )
 	/* MDRV_CPU_CONFIG(mbee_daisy_chain) */
 	MDRV_CPU_VBLANK_INT(mbee_interrupt,1)
 	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500))
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( mbee )

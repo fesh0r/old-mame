@@ -1726,11 +1726,13 @@ static UINT8 amstrad_cycle_table_ex[256]=
 	 8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0,  8,  0,  0,  0
 };
 
+#ifdef UNUSED_FUNCTION
 /* every 2us let's the crtc do the job !*/
 static void amstrad_update_video_1(int dummy)
 {
 	amstrad_vh_execute_crtc_cycles(2);
 } 
+#endif
 
 static TIMER_CALLBACK(amstrad_vh_execute_crtc_cycles_callback)
 {
@@ -2213,11 +2215,9 @@ static const gfx_layout asic_sprite_layout =
 	16*16*8
 };
 
-static const gfx_decode asic_sprite_gfxdecodeinfo[] =
-{
-	{ REGION_USER1, 0, &asic_sprite_layout,  32, 1 },
-	{-1}
-};
+static GFXDECODE_START( asic_sprite_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_USER1, 0, asic_sprite_layout, 32, 1 )
+GFXDECODE_END
 
 
 
@@ -2247,7 +2247,7 @@ static MACHINE_DRIVER_START( amstrad )
 
 	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
 	MDRV_INTERLEAVE(1)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(19968))
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(19968))
 
 	MDRV_MACHINE_RESET( amstrad )
 

@@ -44,6 +44,7 @@ icq3250a-d
 #include "includes/comquest.h"
 #include "devices/cartslot.h"
 
+#ifdef UNUSED_FUNCTION
 static  READ8_HANDLER(comquest_read)
 {
 	UINT8 data=0;
@@ -55,6 +56,7 @@ static WRITE8_HANDLER(comquest_write)
 {
 	logerror("comquest read %.4x %.2x\n",offset,data);
 }
+#endif
 
 static ADDRESS_MAP_START( comquest_mem , ADDRESS_SPACE_PROGRAM, 8)
 //	{ 0x0000, 0x7fff, MRA8_BANK1 },
@@ -165,7 +167,7 @@ INPUT_PORTS_START( comquest )
 
 INPUT_PORTS_END
 
-static gfx_layout comquest_charlayout =
+static const gfx_layout comquest_charlayout =
 {
         8,8,
         256*8,                                    /* 256 characters */
@@ -196,10 +198,9 @@ static gfx_layout comquest_charlayout =
         8*8
 };
 
-static gfx_decode comquest_gfxdecodeinfo[] = {
-	{ REGION_GFX1, 0x0000, &comquest_charlayout,                     0, 2 },
-    { -1 } /* end of array */
-};
+static GFXDECODE_START( comquest_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, comquest_charlayout, 0, 2 )
+GFXDECODE_END
 
 static unsigned char comquest_palette[] =
 {

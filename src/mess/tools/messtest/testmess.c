@@ -91,6 +91,7 @@ struct messtest_command
 struct messtest_testcase
 {
 	const char *name;
+	const char *bios;
 	const char *driver;
 	mame_time time_limit;	/* 0.0 = default */
 	struct messtest_command *commands;
@@ -303,6 +304,8 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	/* set up options */
 	opts = mame_options_init(win_mess_opts);
 	options_set_string(opts, OPTION_GAMENAME, driver->name, OPTION_PRIORITY_CMDLINE);
+	if( current_testcase.bios )
+		options_set_string(opts, OPTION_BIOS, current_testcase.bios, OPTION_PRIORITY_CMDLINE);
 	options_set_bool(opts, OPTION_SKIP_GAMEINFO, TRUE, OPTION_PRIORITY_CMDLINE);
 	options_set_bool(opts, OPTION_THROTTLE, FALSE, OPTION_PRIORITY_CMDLINE);
 	options_set_bool(opts, OPTION_SKIP_WARNINGS, TRUE, OPTION_PRIORITY_CMDLINE);
@@ -1115,7 +1118,7 @@ static int append_command(void)
 }
 
 
-
+#ifdef UNUSED_FUNCTION
 static void command_end_handler(const void *buffer, size_t size)
 {
 	if (!append_command())
@@ -1124,7 +1127,7 @@ static void command_end_handler(const void *buffer, size_t size)
 		return;
 	}
 }
-
+#endif
 
 
 static void node_wait(xml_data_node *node)
@@ -1435,7 +1438,7 @@ static void node_imageverify(xml_data_node *node)
 }
 
 
-
+#ifdef UNUSED_FUNCTION
 static void verify_end_handler(const void *buffer, size_t size)
 {
 	void *new_buffer;
@@ -1452,7 +1455,7 @@ static void verify_end_handler(const void *buffer, size_t size)
 		return;
 	}
 }
-
+#endif
 
 
 static void node_trace(xml_data_node *node)
@@ -1524,6 +1527,10 @@ void node_testmess(xml_data_node *node)
 	/* 'name' attribute */
 	attr_node = xml_get_attribute(node, "name");
 	current_testcase.name = attr_node ? attr_node->value : current_testcase.driver;
+
+	/* 'bios' attribute */
+	attr_node = xml_get_attribute(node, "bios");
+	current_testcase.bios = attr_node ? attr_node->value : NULL;
 
 	/* 'ramsize' attribute */
 	attr_node = xml_get_attribute(node, "ramsize");

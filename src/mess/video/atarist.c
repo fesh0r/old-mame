@@ -2,11 +2,10 @@
 
 	TODO:
 
-	- medium resolution
-	- high resolution
-	- change screen modes on the fly
-	- blitter
+	- double screen width to allow for medium resolution
 	- STe pixelofs
+	- blitter hog
+	- high resolution
 
 */
 
@@ -48,7 +47,7 @@ static TIMER_CALLBACK(atarist_shifter_tick)
 	case 0: // 320 x 200, 4 Plane
 		color = (BIT(shifter.rr[3], 15) << 3) | (BIT(shifter.rr[2], 15) << 2) | (BIT(shifter.rr[1], 15) << 1) | BIT(shifter.rr[0], 15);
 		
-		*BITMAP_ADDR16(atarist_bitmap, y, x) = Machine->pens[color];
+		*BITMAP_ADDR32(atarist_bitmap, y, x) = Machine->pens[color];
 
 		shifter.rr[0] <<= 1;
 		shifter.rr[1] <<= 1;
@@ -59,7 +58,7 @@ static TIMER_CALLBACK(atarist_shifter_tick)
 	case 1: // 640 x 200, 2 Plane
 		color = (BIT(shifter.rr[1], 15) << 1) | BIT(shifter.rr[0], 15);
 
-		*BITMAP_ADDR16(atarist_bitmap, y, x) = Machine->pens[color];
+		*BITMAP_ADDR32(atarist_bitmap, y, x) = Machine->pens[color];
 
 		shifter.rr[0] <<= 1;
 		shifter.rr[1] <<= 1;
@@ -176,7 +175,7 @@ static TIMER_CALLBACK(atarist_glue_tick)
 	}
 }
 
-/* Atari ST */
+/* Atari ST Shifter */
 
 READ16_HANDLER( atarist_shifter_base_r )
 {
@@ -256,7 +255,7 @@ WRITE16_HANDLER( atarist_shifter_palette_w )
 	palette_set_color_rgb(Machine, offset, pal3bit(data >> 8), pal3bit(data >> 4), pal3bit(data));
 }
 
-/* Atari STe */
+/* Atari STe Shifter */
 
 READ16_HANDLER( atariste_shifter_base_low_r )
 {
@@ -305,9 +304,9 @@ WRITE16_HANDLER( atariste_shifter_counter_w )
 
 WRITE16_HANDLER( atariste_shifter_palette_w )
 {
-	int r = ((data >> 7) & 0x0e) | ((data >> 11) & 0x01);
-	int g = ((data >> 3) & 0x0e) | ((data >> 4) & 0x01);
-	int b = ((data << 1) & 0x0e) | ((data >> 3) & 0x01);
+	int r = ((data >> 7) & 0x0e) | BIT(data, 11);
+	int g = ((data >> 3) & 0x0e) | BIT(data, 7);
+	int b = ((data << 1) & 0x0e) | BIT(data, 3);
 
 	shifter.palette[offset] = data;
 	logerror("SHIFTER palette %x = %x\n", offset, data);
@@ -337,10 +336,362 @@ WRITE16_HANDLER( atariste_shifter_pixelofs_w )
 	logerror("SHIFTER Pixel Offset %x\n", shifter.pixelofs);
 }
 
+/* Atari ST Blitter */
+
+static const int BLITTER_NOPS[16][4] = 
+{
+	{ 1, 1, 1, 1 },
+	{ 2, 2, 3, 3 },
+	{ 2, 2, 3, 3 },
+	{ 1, 1, 2, 2 },
+	{ 2, 2, 3, 3 },
+	{ 2, 2, 2, 2 },
+	{ 2, 2, 3, 3 },
+	{ 2, 2, 3, 3 },
+	{ 2, 2, 3, 3 },
+	{ 2, 2, 3, 3 },
+	{ 2, 2, 2, 2 },
+	{ 2, 2, 3, 3 },
+	{ 1, 1, 2, 2 },
+	{ 2, 2, 3, 3 },
+	{ 2, 2, 3, 3 },
+	{ 1, 1, 1, 1 }
+};
+
+static struct BLITTER
+{
+	UINT16 halftone[16];
+	INT16 src_inc_x, src_inc_y, dst_inc_x, dst_inc_y;
+	UINT32 src, dst;
+	UINT16 endmask1, endmask2, endmask3;
+	UINT16 xcount, ycount, xcountl;
+	UINT8 hop, op, ctrl, skew;
+	UINT32 srcbuf;
+} blitter;
+
+static mame_timer *blitter_timer;
+
+static void atarist_blitter_source(void)
+{
+	UINT8 *RAM = memory_region(REGION_CPU1) + blitter.src;
+
+	if (blitter.src_inc_x < 0)
+	{
+		blitter.srcbuf = (RAM[1] << 24) | (RAM[0] << 16) | (blitter.srcbuf >> 16);
+	}
+	else
+	{
+		blitter.srcbuf = (blitter.srcbuf << 16) | (RAM[1] << 8) | RAM[0];
+	}
+}
+
+static UINT16 atarist_blitter_hop(void)
+{
+	UINT16 source = blitter.srcbuf >> (blitter.skew & 0x0f);
+	UINT16 halftone = blitter.halftone[blitter.ctrl & 0x0f];
+
+	if (blitter.ctrl & ATARIST_BLITTER_CTRL_SMUDGE)
+	{
+		halftone = blitter.halftone[source & 0x0f];
+	}
+
+	switch (blitter.hop)
+	{
+	case 0:
+		return 0xffff;
+	case 1:
+		return halftone;
+	case 2:
+		return source;
+	case 3:
+		return source & halftone;
+	}
+
+	return 0;
+}
+
+static void atarist_blitter_op(UINT16 s, UINT32 dstaddr, UINT16 mask)
+{
+	UINT8 *dst = memory_region(REGION_CPU1) + dstaddr;
+	UINT16 d = (dst[1] << 8) + dst[0];
+	UINT16 result = 0;
+
+	if (blitter.op & 0x08) result = (~s & ~d);
+	if (blitter.op & 0x04) result |= (~s & d);
+	if (blitter.op & 0x02) result |= (s & ~d);
+	if (blitter.op & 0x01) result |= (s & d);
+
+	dst[0] = result & 0xff;
+	dst[1] = (result >> 8) & 0xff;
+}
+
+static TIMER_CALLBACK( atarist_blitter_tick )
+{
+	do
+	{
+		if (blitter.skew & ATARIST_BLITTER_SKEW_FXSR)
+		{
+			atarist_blitter_source();
+			blitter.src += blitter.src_inc_x;
+		}
+
+		atarist_blitter_source();
+		atarist_blitter_op(atarist_blitter_hop(), blitter.dst, blitter.endmask1);
+		blitter.xcount--;
+
+		while (blitter.xcount > 0)
+		{
+			blitter.src += blitter.src_inc_x;
+			blitter.dst += blitter.dst_inc_x;
+			
+			if (blitter.xcount == 1)
+			{
+				if (!(blitter.skew & ATARIST_BLITTER_SKEW_NFSR))
+				{
+					atarist_blitter_source();
+				}
+
+				atarist_blitter_op(atarist_blitter_hop(), blitter.dst, blitter.endmask3);
+			}
+			else
+			{
+				atarist_blitter_source();
+				atarist_blitter_op(atarist_blitter_hop(), blitter.dst, blitter.endmask2);
+			}
+
+			blitter.xcount--;
+		}
+
+		blitter.src += blitter.src_inc_y;
+		blitter.dst += blitter.dst_inc_y;
+
+		if (blitter.dst_inc_y < 0)
+		{
+			blitter.ctrl = (blitter.ctrl & 0xf0) | (((blitter.ctrl & 0x0f) - 1) & 0x0f);
+		}
+		else
+		{
+			blitter.ctrl = (blitter.ctrl & 0xf0) | (((blitter.ctrl & 0x0f) + 1) & 0x0f);
+		}
+
+		blitter.xcount = blitter.xcountl;
+		blitter.ycount--;
+	}
+	while (blitter.ycount > 0);
+
+	blitter.ctrl &= 0x7f;
+}
+
+READ16_HANDLER( atarist_blitter_halftone_r )
+{
+	return blitter.halftone[offset];
+}
+
+READ16_HANDLER( atarist_blitter_src_inc_x_r )
+{
+	return blitter.src_inc_x;
+}
+
+READ16_HANDLER( atarist_blitter_src_inc_y_r )
+{
+	return blitter.src_inc_y;
+}
+
+READ16_HANDLER( atarist_blitter_src_r )
+{
+	switch (offset)
+	{
+	case 0:
+		return (blitter.src >> 16) & 0xff;
+	case 1:
+		return blitter.src & 0xfffe;
+	}
+
+	return 0;
+}
+
+READ16_HANDLER( atarist_blitter_end_mask_r )
+{
+	switch (offset)
+	{
+	case 0:
+		return blitter.endmask1;
+	case 1:
+		return blitter.endmask2;
+	case 2:
+		return blitter.endmask3;
+	}
+
+	return 0;
+}
+
+READ16_HANDLER( atarist_blitter_dst_inc_x_r )
+{
+	return blitter.dst_inc_x;
+}
+
+READ16_HANDLER( atarist_blitter_dst_inc_y_r )
+{
+	return blitter.dst_inc_y;
+}
+
+READ16_HANDLER( atarist_blitter_dst_r )
+{
+	switch (offset)
+	{
+	case 0:
+		return (blitter.dst >> 16) & 0xff;
+	case 1:
+		return blitter.dst & 0xfffe;
+	}
+
+	return 0;
+}
+
+READ16_HANDLER( atarist_blitter_count_x_r )
+{
+	return blitter.xcount;
+}
+
+READ16_HANDLER( atarist_blitter_count_y_r )
+{
+	return blitter.ycount;
+}
+
+READ16_HANDLER( atarist_blitter_op_r )
+{
+	if (ACCESSING_LSB16)
+	{
+		return blitter.hop;
+	}
+	else
+	{
+		return blitter.op;
+	}
+}
+
+READ16_HANDLER( atarist_blitter_ctrl_r )
+{
+	if (ACCESSING_LSB16)
+	{
+		return blitter.ctrl;
+	}
+	else
+	{
+		return blitter.skew;
+	}
+}
+
+WRITE16_HANDLER( atarist_blitter_halftone_w )
+{
+	blitter.halftone[offset] = data;
+}
+
+WRITE16_HANDLER( atarist_blitter_src_inc_x_w )
+{
+	blitter.src_inc_x = data & 0xfffe;
+}
+
+WRITE16_HANDLER( atarist_blitter_src_inc_y_w )
+{
+	blitter.src_inc_y = data & 0xfffe;
+}
+
+WRITE16_HANDLER( atarist_blitter_src_w )
+{
+	switch (offset)
+	{
+	case 0:
+		blitter.src = (data & 0xff) | (blitter.src & 0xfffe);
+	case 1:
+		blitter.src = (blitter.src & 0xff0000) | (data & 0xfffe);
+	}
+}
+
+WRITE16_HANDLER( atarist_blitter_end_mask_w )
+{
+	switch (offset)
+	{
+	case 0:
+		blitter.endmask1 = data;
+	case 1:
+		blitter.endmask2 = data;
+	case 2:
+		blitter.endmask3 = data;
+	}
+}
+
+WRITE16_HANDLER( atarist_blitter_dst_inc_x_w )
+{
+	blitter.dst_inc_x = data & 0xfffe;
+}
+
+WRITE16_HANDLER( atarist_blitter_dst_inc_y_w )
+{
+	blitter.dst_inc_y = data & 0xfffe;
+}
+
+WRITE16_HANDLER( atarist_blitter_dst_w )
+{
+	switch (offset)
+	{
+	case 0:
+		blitter.dst = (data & 0xff) | (blitter.dst & 0xfffe);
+	case 1:
+		blitter.dst = (blitter.dst & 0xff0000) | (data & 0xfffe);
+	}
+}
+
+WRITE16_HANDLER( atarist_blitter_count_x_w )
+{
+	blitter.xcount = data;
+}
+
+WRITE16_HANDLER( atarist_blitter_count_y_w )
+{
+	blitter.ycount = data;
+}
+
+WRITE16_HANDLER( atarist_blitter_op_w )
+{
+	if (ACCESSING_LSB16)
+	{
+		blitter.hop = (data >> 8) & 0x03;
+	}
+	else
+	{
+		blitter.op = data & 0x0f;
+	}
+}
+
+WRITE16_HANDLER( atarist_blitter_ctrl_w )
+{
+	if (ACCESSING_LSB16)
+	{
+		blitter.ctrl = (data >> 8) & 0xef;
+
+		if (!(blitter.ctrl & ATARIST_BLITTER_CTRL_BUSY))
+		{
+			if ((data >> 8) & ATARIST_BLITTER_CTRL_BUSY)
+			{
+				int nops = BLITTER_NOPS[blitter.op][blitter.hop]; // each NOP takes 4 cycles
+				mame_timer_pulse(MAME_TIME_IN_HZ((Y2/4)/(4*nops)), 0, atarist_blitter_tick);
+			}
+		}
+	}
+	else
+	{
+		blitter.skew = data & 0xcf;
+	}
+}
+
+/* Video */
+
 VIDEO_START( atarist )
 {
 	atarist_shifter_timer = mame_timer_alloc(atarist_shifter_tick);
 	atarist_glue_timer = mame_timer_alloc(atarist_glue_tick);
+	blitter_timer = mame_timer_alloc(atarist_blitter_tick);
 
 	mame_timer_adjust(atarist_glue_timer, video_screen_get_time_until_pos(0,0,4), 0, MAME_TIME_IN_HZ(Y2/16)); // 500 ns
 	mame_timer_adjust(atarist_shifter_timer, video_screen_get_time_until_pos(0,0,0), 0, MAME_TIME_IN_HZ(Y2/4)); // 125 ns
@@ -362,6 +713,25 @@ VIDEO_START( atarist )
 	state_save_register_global(shifter.shift);
 	state_save_register_global(shifter.h);
 	state_save_register_global(shifter.v);
+
+	state_save_register_global_array(blitter.halftone);
+	state_save_register_global(blitter.src_inc_x);
+	state_save_register_global(blitter.src_inc_y);
+	state_save_register_global(blitter.dst_inc_x);
+	state_save_register_global(blitter.dst_inc_y);
+	state_save_register_global(blitter.src);
+	state_save_register_global(blitter.dst);
+	state_save_register_global(blitter.endmask1);
+	state_save_register_global(blitter.endmask2);
+	state_save_register_global(blitter.endmask3);
+	state_save_register_global(blitter.xcount);
+	state_save_register_global(blitter.ycount);
+	state_save_register_global(blitter.xcountl);
+	state_save_register_global(blitter.hop);
+	state_save_register_global(blitter.op);
+	state_save_register_global(blitter.ctrl);
+	state_save_register_global(blitter.skew);
+
 	state_save_register_bitmap("video", 0, "atarist_bitmap", atarist_bitmap);
 }
 

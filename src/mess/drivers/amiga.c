@@ -380,6 +380,7 @@ static DRIVER_INIT( amiga )
 	amigakbd_init();
 }
 
+#ifdef UNUSED_FUNCTION
 static DRIVER_INIT( amiga_ecs )
 {
 	static const amiga_machine_interface amiga_intf =
@@ -411,7 +412,7 @@ static DRIVER_INIT( amiga_ecs )
 	/* initialize keyboard */
 	amigakbd_init();
 }
-
+#endif
 
 static DRIVER_INIT( cdtv )
 {
@@ -524,8 +525,8 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*     YEAR  NAME      PARENT   BIOS     COMPAT   MACHINE  INPUT    INIT       CONFIG   COMPANY                             FULLNAME             FLAGS */
-COMP(  1985, a1000n,   0,                0,       a1000n,  amiga,   amiga,     a1000,   "Commodore Business Machines Co.",  "Commodore Amiga 1000 (NTSC-OCS)", GAME_COMPUTER | GAME_IMPERFECT_GRAPHICS )
-COMP(  1985, a1000p,   a1000n,           0,       a1000p,  amiga,   amiga,     a1000,   "Commodore Business Machines Co.",  "Commodore Amiga 1000 (PAL-OCS)", GAME_COMPUTER | GAME_IMPERFECT_GRAPHICS )
-COMPB( 1987, a500n,    0,       amiga,   0,       ntsc,    amiga,   amiga,     amiga,   "Commodore Business Machines Co.",  "Commodore Amiga 500 (NTSC-OCS)", GAME_COMPUTER | GAME_IMPERFECT_GRAPHICS )
-COMPB( 1987, a500p,    a500n,   amiga,   0,       pal,     amiga,   amiga,     amiga,   "Commodore Business Machines Co.",  "Commodore Amiga 500 (PAL-OCS)", GAME_COMPUTER | GAME_IMPERFECT_GRAPHICS )
-COMP(  1991, cdtv,     0,                0,       cdtv,    cdtv,    cdtv,      cdtv,    "Commodore Business Machines Co.",  "Commodore Amiga CDTV 1.0 (NTSC)", GAME_COMPUTER | GAME_IMPERFECT_GRAPHICS )
+COMP(  1985, a1000n,   0,                0,       a1000n,  amiga,   amiga,     a1000,   "Commodore Business Machines Co.",  "Commodore Amiga 1000 (NTSC-OCS)", GAME_IMPERFECT_GRAPHICS )
+COMP(  1985, a1000p,   a1000n,           0,       a1000p,  amiga,   amiga,     a1000,   "Commodore Business Machines Co.",  "Commodore Amiga 1000 (PAL-OCS)", GAME_IMPERFECT_GRAPHICS )
+COMPB( 1987, a500n,    0,       amiga,   0,       ntsc,    amiga,   amiga,     amiga,   "Commodore Business Machines Co.",  "Commodore Amiga 500 (NTSC-OCS)", GAME_IMPERFECT_GRAPHICS )
+COMPB( 1987, a500p,    a500n,   amiga,   0,       pal,     amiga,   amiga,     amiga,   "Commodore Business Machines Co.",  "Commodore Amiga 500 (PAL-OCS)", GAME_IMPERFECT_GRAPHICS )
+COMP(  1991, cdtv,     0,                0,       cdtv,    cdtv,    cdtv,      cdtv,    "Commodore Business Machines Co.",  "Commodore Amiga CDTV 1.0 (NTSC)", GAME_IMPERFECT_GRAPHICS )

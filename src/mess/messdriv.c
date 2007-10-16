@@ -145,6 +145,7 @@ TESTDRIVER( m9016tc )	/* 1978 Mustang 9016 Telespiel Computer				*/
 	/* NEC */
 	DRIVER( pce )		/* PC/Engine NEC 1987-1993							*/
 	DRIVER( tg16 )		/* Turbo Grafix-16  NEC 1989-1993					*/
+	DRIVER( sgx )		/* SuperGrafX NEC 1989								*/
 
 	DRIVER( arcadia )	/* Emerson Arcadia 2001								*/
 TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
@@ -806,12 +807,20 @@ TESTDRIVER(tmc600s1)	/* 1982 Telmac TMC-600 (Series I)					*/
 	/* Quelle International */
 	DRIVER( mk2 )		/* Chess Champion MK II								*/
 	/* Hegener & Glaser Munich */
-        DRIVER( mm4 )		/* Mephisto 4								*/
- 	/* NOVAG Industries Ltd. */
-        DRIVER( mm5 )		/* Mephisto 5								*/
- 	/* NOVAG Industries Ltd. */
-	 DRIVER( rebel5 )		/* Mephisto 5								*/
- 	/* H&G München */
-        TESTDRIVER( ssystem3 )	/* Chess Champion Super System III / MK III			*/
+	DRIVER( mm4 )		/* Mephisto 4								*/
+	/* Hegener & Glaser Munich */
+	DRIVER( mm5 )		/* Mephisto 5.1 ROM								*/
+	DRIVER( mm50 )		/* Mephisto 5.0 ROM								*/
+	/* Hegener & Glaser Munich */
+	DRIVER( rebel5 )		/* Mephisto 5								*/
+	DRIVER( glasgow )		/* Glasgow						*/
+	DRIVER( amsterd )		/* Amsterdam							*/
+	DRIVER( dallas )		/* Dallas							*/
+	DRIVER( dallas16 )		/* Dallas							*/
+	DRIVER( dallas32 )		/* Dallas							*/
+	DRIVER( roma32 )		/* Roma							*/
+	/* Novag */
+TESTDRIVER( ssystem3 )	/* Chess Champion Super System III / MK III			*/
+
 
 #endif /* DRIVER_RECURSIVE */

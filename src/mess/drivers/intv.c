@@ -127,20 +127,16 @@ gfx_layout intvkbd_charlayout =
 	8 * 8
 };
 
-static gfx_decode intv_gfxdecodeinfo[] =
-{
-	{ REGION_CPU1, 0x3000<<1, &intv_gromlayout, 0, 256},
-    { 0, 0, &intv_gramlayout, 0, 256 },    /* Dynamically decoded from RAM */
-	{ -1 }
-};
+static GFXDECODE_START( intv_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_CPU1, 0x3000<<1, intv_gromlayout, 0, 256 )
+	GFXDECODE_ENTRY( 0, 0, intv_gramlayout, 0, 256 )    /* Dynamically decoded from RAM */
+GFXDECODE_END
 
-static gfx_decode intvkbd_gfxdecodeinfo[] =
-{
-	{ REGION_CPU1, 0x3000<<1, &intv_gromlayout, 0, 256},
-    { 0, 0, &intv_gramlayout, 0, 256 },    /* Dynamically decoded from RAM */
-	{ REGION_GFX1, 0x0000, &intvkbd_charlayout, 0, 256},
-	{ -1 }
-};
+static GFXDECODE_START( intvkbd_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_CPU1, 0x3000<<1, intv_gromlayout, 0, 256 )
+	GFXDECODE_ENTRY( 0, 0, intv_gramlayout, 0, 256 )    /* Dynamically decoded from RAM */
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, intvkbd_charlayout, 0, 256 )
+GFXDECODE_END
 
 INPUT_PORTS_START( intv )
 	PORT_START /* IN0 */	/* Right Player Controller Starts Here */
@@ -467,6 +463,7 @@ static void intvkbd_cartslot_getinfo(const device_class *devclass, UINT32 state,
 	}
 }
 
+#ifdef UNUSED_FUNCTION
 static void intvkbd_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
@@ -484,6 +481,7 @@ static void intvkbd_cassette_getinfo(const device_class *devclass, UINT32 state,
 		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
 	}
 }
+#endif
 
 SYSTEM_CONFIG_START(intvkbd)
 	CONFIG_DEVICE(intvkbd_cartslot_getinfo)

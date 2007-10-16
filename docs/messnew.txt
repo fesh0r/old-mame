@@ -1,3 +1,54 @@
+0.120
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- SuperGrafx [Wilbert Pol]
+- Mephisto 8 Bit MM IV, MM V , Rebel 5. [Dirk Verwiebe]
+- Mephisto 16/32 Bit Glasgow, Dallas, Dallas 32, Roma 32,Amsterdam. [Dirk Verwiebe]
+
+
+System Driver Changes:
+----------------------
+- [ATARI] Fixed joystick regression introduced in 0.116.  (bug #1365) [Nate
+  Woods]
+
+- [COCO3] Fixed a regression in VHD handling.  (bug #1383) [Nate Woods]
+
+- [PCE] Added support for Populous on-cart RAM.  [Wilbert Pol]
+
+- [PCE] Added preliminary emulation of the CD-ROM interface.  [Wilbert Pol]
+
+- [X68000] Changed to use common 68901 MFP code.  [Barry Rodewald]
+
+
+
+User Interface Changes:
+-----------------------
+(none)
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.120.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Fixed multisession crash with the new menu selector.  (bug #1328) [Nate
+  Woods]
+
+- Changed the reset done when a cartridge is changed from a soft reset to a
+  hard reset.  [Nate Woods]
+
+- [Messtest] Added selectable bios support.  (bug #1392) [Nate Woods]
+
+
+
 0.119
 
 New System Drivers Supported (in no particular order):

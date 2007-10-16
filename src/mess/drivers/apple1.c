@@ -125,11 +125,9 @@ const gfx_layout apple1_charlayout =
 	8 * 8				/* 8 8-bit pixel rows per character */
 };
 
-static const gfx_decode apple1_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0x0000, &apple1_charlayout, 0, 1},
-	{ -1 }
-};
+static GFXDECODE_START( apple1_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, apple1_charlayout, 0, 1 )
+GFXDECODE_END
 
 /* Monochrome monitors were not easy to get when the Apple I was
    introduced, so most systems used a television display with an RF
@@ -235,7 +233,7 @@ static MACHINE_DRIVER_START( apple1 )
 	   are visible, and each character time is 7 dot times; a dot time
 	   is 2 cycles of the fundamental 14.31818 MHz oscillator.  The
 	   total blanking time is about 4450 microseconds. */
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC((int) (70 * 65 * 7 * 2 / 14.31818)))
+	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS((int) (70 * 65 * 7 * 2 / 14.31818)))
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( apple1 )

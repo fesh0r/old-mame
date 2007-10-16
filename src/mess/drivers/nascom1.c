@@ -77,7 +77,7 @@ ADDRESS_MAP_END
 
 /* graphics output */
 
-static gfx_layout nascom1_charlayout =
+static const gfx_layout nascom1_charlayout =
 {
 	8, 16,
 	128,
@@ -89,13 +89,11 @@ static gfx_layout nascom1_charlayout =
 	8 * 16
 };
 
-static gfx_decode nascom1_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0x0000, &nascom1_charlayout, 0, 1},
-	{-1}
-};
+static GFXDECODE_START( nascom1_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, nascom1_charlayout, 0, 1 )
+GFXDECODE_END
 
-static gfx_layout nascom2_charlayout =
+static const gfx_layout nascom2_charlayout =
 {
 	8, 14,
 	256,
@@ -107,11 +105,9 @@ static gfx_layout nascom2_charlayout =
 	8 * 16
 };
 
-static gfx_decode nascom2_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0x0000, &nascom2_charlayout, 0, 1},
-	{-1}
-};
+static GFXDECODE_START( nascom2_gfxdecodeinfo )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, nascom2_charlayout, 0, 1 )
+GFXDECODE_END
 
 static	unsigned	char	nascom1_palette[] =
 {
@@ -230,7 +226,7 @@ static MACHINE_DRIVER_START( nascom1 )
 	MDRV_CPU_IO_MAP(nascom1_io, 0)
 	MDRV_CPU_VBLANK_INT(nascom_interrupt, 1)
 	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(TIME_IN_USEC(2500))
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( nascom1 )
