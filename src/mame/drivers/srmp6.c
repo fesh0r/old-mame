@@ -72,7 +72,9 @@ static UINT16* tileram;
 static UINT8* dirty_tileram;
 static UINT16* dmaram;
 
-static UINT16 *sprram;
+static UINT16 *sprram, *sprram_old;
+
+static int brightness;
 
 #define SRMP6_VERBOSE 0
 
@@ -87,6 +89,37 @@ static const gfx_layout tiles8x8_layout =
 	8*64
 };
 
+void update_palette(void)
+{
+	INT8 r, g ,b;
+	int brg = brightness - 0x60;
+	int i;
+
+	for(i = 0; i < 0x800; i++)
+	{
+		r = paletteram16[i] >>  0 & 0x1F;
+		g = paletteram16[i] >>  5 & 0x1F;
+		b = paletteram16[i] >> 10 & 0x1F;
+
+		if(brg < 0) {
+			r += (r * brg) >> 5;
+			if(r < 0) r = 0;
+			g += (g * brg) >> 5;
+			if(g < 0) g = 0;
+			b += (b * brg) >> 5;
+			if(b < 0) b = 0;
+		}
+		else if(brg > 0) {
+			r += ((0x1F - r) * brg) >> 5;
+			if(r > 0x1F) r = 0x1F;
+			g += ((0x1F - g) * brg) >> 5;
+			if(g > 0x1F) g = 0x1F;
+			b += ((0x1F - b) * brg) >> 5;
+			if(b > 0x1F) b = 0x1F;
+		}
+		palette_set_color(Machine, i, MAKE_RGB(r << 3, g << 3, b << 3));
+	}
+}
 
 static VIDEO_START(srmp6)
 {
@@ -98,13 +131,19 @@ static VIDEO_START(srmp6)
 	tileram = auto_malloc(0x100000*16);
 	dirty_tileram = auto_malloc((0x100000*16)/0x40); // every 8x8x8 tile is 0x40 bytes
 
-	memset(tileram,(0x100000*16),0x00);
-	memset(dirty_tileram,(0x100000*16)/0x40,1);
+	memset(tileram,0x00,(0x100000*16));
+	memset(dirty_tileram,1,(0x100000*16)/0x40);
 
 	dmaram = auto_malloc(0x100);
+
+	sprram_old = auto_malloc(0x80000);
+	memset(sprram_old, 0, 0x80000);
+
+	brightness = 0x60;
 }
 
 /* Debug code */
+#ifdef UNUSED_FUNCTION
 static void srmp6_decode_charram(void)
 {
 	if(input_code_pressed_once(KEYCODE_Z))
@@ -117,6 +156,7 @@ static void srmp6_decode_charram(void)
 		}
 	}
 }
+#endif
 
 #if 0
 static int xixi=0;
@@ -124,8 +164,9 @@ static int xixi=0;
 
 static VIDEO_UPDATE(srmp6)
 {
+	int trans = TRANSPARENCY_PEN;
 	int x,y,tileno,height,width,xw,yw,sprite,xb,yb;
-	UINT16 *sprite_list=sprram;
+	UINT16 *sprite_list=sprram_old;
 	UINT16 mainlist_offset = 0;
 
 	union
@@ -160,14 +201,14 @@ static VIDEO_UPDATE(srmp6)
 	while (mainlist_offset<0x2000/2)
 	{
 
-		UINT16 *sprite_sublist=&sprram[sprite_list[mainlist_offset+1]<<3];
+		UINT16 *sprite_sublist=&sprram_old[sprite_list[mainlist_offset+1]<<3];
 		UINT16 sublist_length=sprite_list[mainlist_offset+0]&0x7fff; //+1 ?
-		INT16 global_x,global_y;
+		INT16 global_x,global_y, flip_x, flip_y;
 		UINT16 global_pal;
 
 		/* end of list marker */
 		if (sprite_list[mainlist_offset+0] == 0x8000)
-			return 0;
+			break;
 
 
 		if(sprite_list[mainlist_offset+0]!=0)
@@ -177,19 +218,31 @@ static VIDEO_UPDATE(srmp6)
 			temp.b=sprite_list[mainlist_offset+3];
 			global_y=temp.a;
 
-			global_pal = sprite_list[mainlist_offset+4] & 0xf;
+			global_pal = sprite_list[mainlist_offset+4] & 0x7;
 
+			if((sprite_list[mainlist_offset+5] & 0x700) == 0x700)
+			{
+				trans = TRANSPARENCY_ALPHA;
+				alpha_set_level((sprite_list[mainlist_offset+5] & 0x1F) << 3);
+			}
+			else
+			{
+				trans = TRANSPARENCY_PEN;
+				alpha_set_level(255);
+			}
 	//  printf("%x %x \n",sprite_list[mainlist_offset+1],sublist_length);
 
 			while(sublist_length)
 			{
-				sprite=sprite_sublist[0]&0x3fff;
+				sprite=sprite_sublist[0]&0x7fff;
+				flip_x=sprite_sublist[1]>>8&1;
+				flip_y=sprite_sublist[1]>>9&1;
 				temp.b=sprite_sublist[2];
 				x=temp.a;
 				temp.b=sprite_sublist[3];
 				y=temp.a;
-				x+=global_x;
-				y+=global_y;
+				//x+=global_x;
+				//y+=global_y;
 
 				width=((sprite_sublist[1])&0x3);
 				height=((sprite_sublist[1]>>2)&0x3);
@@ -197,7 +250,8 @@ static VIDEO_UPDATE(srmp6)
 				height = 1 << height;
 				width = 1 << width;
 
-				tileno = sprite&0x3fff;
+				y-=height*8;
+				tileno = sprite;
 				//tileno += (sprite_list[4]&0xf)*0x4000; // this makes things worse in places (title screen for example)
 
 				for(xw=0;xw<width;xw++)
@@ -205,16 +259,23 @@ static VIDEO_UPDATE(srmp6)
 					for(yw=0;yw<height;yw++)
 					{
 
-						xb=x+xw*8;
-						yb=y+yw*8;
+						if(!flip_x)
+							xb=x+xw*8+global_x;
+						else
+							xb=x+(width-xw-1)*8+global_x;
+
+						if(!flip_y)
+							yb=y+yw*8+global_y;
+						else
+							yb=y+(height-yw-1)*8+global_y;
 
 						if (dirty_tileram[tileno])
 						{
-							decodechar(Machine->gfx[0], tileno, (UINT8*)tileram, &tiles8x8_layout);
+							decodechar(machine->gfx[0], tileno, (UINT8*)tileram, &tiles8x8_layout);
 							dirty_tileram[tileno] = 0;
 						}
 
-						drawgfx(bitmap,machine->gfx[0],tileno,global_pal,0,0,xb,yb,cliprect,TRANSPARENCY_PEN,0);
+						drawgfx(bitmap,machine->gfx[0],tileno,global_pal,flip_x,flip_y,xb,yb,cliprect,trans,0);
 						tileno++;
 		 			}
 				}
@@ -226,6 +287,7 @@ static VIDEO_UPDATE(srmp6)
 		mainlist_offset+=8;
 	}
 
+	memcpy(sprram_old, sprram, 0x80000);
 	return 0;
 }
 
@@ -313,6 +375,15 @@ static WRITE16_HANDLER( video_regs_w )
 			memory_set_bankptr(1,(UINT16 *)(memory_region(REGION_USER2) + (data & 0x0f)*0x200000));
 			break;
 
+		// set by IT4
+		case 0x5c/2: // either 0x40 explicitely in many places, or according $2083b0 (IT4)
+			//Fade in/out (0x40(dark)-0x60(normal)-0x7e?(bright) reset by 0x00?
+			data = (!data)?0x60:(data == 0x5e)?0x60:data;
+			if(brightness != data) {
+				brightness = data;
+				update_palette();
+			}
+			break;
 
 		/* unknown registers - there are others */
 
@@ -323,9 +394,6 @@ static WRITE16_HANDLER( video_regs_w )
 
 		// set by IT4 ($82e-$846)
 		case 0x56/2: // written 8,9,8,9 successively
-
-		// set by IT4
-		case 0x5c/2: // either 0x40 explicitely in many places, or according $2083b0 (IT4)
 
 		default:
 			logerror("video_regs_w (PC=%06X): %04x = %04x & %04x\n", activecpu_get_previouspc(), offset*2, data, mem_mask);
@@ -389,7 +457,7 @@ static WRITE16_HANDLER(srmp6_dma_w)
 	{
 		UINT32 srctab=2*((((UINT32)dmaram[5])<<16)|dmaram[4]);
 		UINT32 srcdata=2*((((UINT32)dmaram[11])<<16)|dmaram[10]);
-		UINT32 len=(((((UINT32)dmaram[7])<<16)|dmaram[6])+1); //??? WRONG!
+		UINT32 len=4*(((((UINT32)dmaram[7]&3)<<16)|dmaram[6])+1); //??? WRONG!
 		int tempidx=0;
 
 		/* show params */
@@ -411,7 +479,7 @@ static WRITE16_HANDLER(srmp6_dma_w)
 				dmaram[0x1a/2]);
 #endif
 
-		destl=dmaram[9]*0x100000;
+		destl=dmaram[9]*0x40000;
 
 		lastb=0xfffe;
 		lastb2=0xffff;
@@ -429,7 +497,6 @@ static WRITE16_HANDLER(srmp6_dma_w)
 				if(ctrl&0x80)
 				{
 					UINT8 real_byte;
-					p&=0x7f;
 					real_byte = memory_region(REGION_USER2)[srctab+p*2];
 					tempidx+=process(real_byte,tempidx);
 					real_byte = memory_region(REGION_USER2)[srctab+p*2+1];//px[DMA_XOR((current_table_address+p*2+1))];
@@ -475,6 +542,41 @@ static WRITE16_HANDLER(tileram_w)
 		srmp6_dma_w(offset,data,mem_mask);
 	}
 }
+
+WRITE16_HANDLER(paletteram_w)
+{
+	INT8 r, g, b;
+	int brg = brightness - 0x60;
+
+	paletteram16_xBBBBBGGGGGRRRRR_word_w(offset, data, mem_mask);
+
+	if(brg)
+	{
+		r = data >>  0 & 0x1F;
+		g = data >>  5 & 0x1F;
+		b = data >> 10 & 0x1F;
+
+		if(brg < 0) {
+			r += (r * brg) >> 5;
+			if(r < 0) r = 0;
+			g += (g * brg) >> 5;
+			if(g < 0) g = 0;
+			b += (b * brg) >> 5;
+			if(b < 0) b = 0;
+		}
+		else if(brg > 0) {
+			r += ((0x1F - r) * brg) >> 5;
+			if(r > 0x1F) r = 0x1F;
+			g += ((0x1F - g) * brg) >> 5;
+			if(g > 0x1F) g = 0x1F;
+			b += ((0x1F - b) * brg) >> 5;
+			if(b > 0x1F) b = 0x1F;
+		}
+
+		palette_set_color(Machine, offset, MAKE_RGB(r << 3, g << 3, b << 3));
+	}
+}
+
 static ADDRESS_MAP_START( srmp6, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x200000, 0x23ffff) AM_RAM					// work RAM
@@ -482,7 +584,7 @@ static ADDRESS_MAP_START( srmp6, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION(REGION_USER1, 0)
 
 	AM_RANGE(0x300000, 0x300005) AM_READWRITE(srmp6_inputs_r, srmp6_input_select_w)		// inputs
-	AM_RANGE(0x480000, 0x480fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x480000, 0x480fff) AM_READWRITE(MRA16_RAM, paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x4d0000, 0x4d0001) AM_READWRITE(watchdog_reset16_r, watchdog_reset16_w)	// watchdog
 
 	// OBJ RAM: checked [$400000-$47dfff]
@@ -623,7 +725,7 @@ static MACHINE_DRIVER_START( srmp6 )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 340, 2*8, 256)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 42*8-1, 0*8, 30*8-1)
 	MDRV_PALETTE_LENGTH(0x800)
 
 	MDRV_VIDEO_START(srmp6)

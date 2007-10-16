@@ -4,7 +4,7 @@
 
     Core options code code
 
-    Copyright (c) 1996-2006, Nicola Salmoria and the MAME Team.
+    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -145,6 +145,9 @@ int options_parse_ini_file(core_options *opts, core_file *inifile, int priority)
 
 /* output option data to an INI file */
 void options_output_ini_file(core_options *opts, core_file *inifile);
+
+/* output differing option data to an INI file */
+void options_output_diff_ini_file(core_options *opts, core_options *baseopts, core_file *inifile);
 
 /* output option data to a standard file handle */
 void options_output_ini_stdfile(core_options *opts, FILE *inifile);

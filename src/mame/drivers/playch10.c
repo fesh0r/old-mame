@@ -666,8 +666,8 @@ INPUT_PORTS_START( playch10 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Free_Play ) )
 
 	PORT_START_TAG("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("P1 Button A")
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("P1 Button B")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("P1 Button B")
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("P1 Button A")
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 ) PORT_NAME("Game Select") PORT_CODE(KEYCODE_1)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_START2 ) PORT_NAME("Start") PORT_CODE(KEYCODE_2)
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    )
@@ -709,11 +709,9 @@ static const gfx_layout bios_charlayout =
     8*8     /* every char takes 8 consecutive bytes */
 };
 
-static const gfx_decode gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &bios_charlayout,   0,  32 },
-	{ -1 }
-};
+static GFXDECODE_START( playch10 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, bios_charlayout,   0,  32 )
+GFXDECODE_END
 
 static INTERRUPT_GEN( playch10_interrupt ) {
 
@@ -746,7 +744,7 @@ static MACHINE_DRIVER_START( playch10 )
 
 	// video hardware
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(playch10)
 	MDRV_PALETTE_LENGTH(256+8*4*16)
 	MDRV_DEFAULT_LAYOUT(layout_dualhuov)
 

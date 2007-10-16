@@ -1279,10 +1279,12 @@ static UINT8 tile_draw(tilemap *tmap, const UINT8 *pendata, UINT32 x0, UINT32 y0
 		dx0 = -1;
 	}
 
-	/* we draw in groups of TILE_PIXEL_GROUPING pixels, so divide it out now */
-	if ((width % TILE_PIXEL_GROUPING) != 0)
-		fatalerror("Odd tilemap width; tilemap.c draws in groups of %d, and width=%d", TILE_PIXEL_GROUPING, width);
-	width /= TILE_PIXEL_GROUPING;
+	/* in 4bpp mode, we draw in groups of 2 pixels, so halve the width now */
+	if (flags & TILE_4BPP)
+	{
+		assert(width % 2 == 0);
+		width /= 2;
+	}
 
 	/* iterate over rows */
 	for (ty = 0; ty < height; ty++)
@@ -1300,19 +1302,13 @@ static UINT8 tile_draw(tilemap *tmap, const UINT8 *pendata, UINT32 x0, UINT32 y0
 		{
 			for (tx = 0; tx < width; tx++)
 			{
-				UINT8 pen, map;
-				int i;
-
-				for (i = 0; i < TILE_PIXEL_GROUPING; i++)
-				{
-					pen = *pendata++;
-					map = penmap[pen];
-					pixptr[xoffs] = palette_base + pen;
-					flagsptr[xoffs] = map | category;
-					andmask &= map;
-					ormask |= map;
-					xoffs += dx0;
-				}
+				UINT8 pen = *pendata++;
+				UINT8 map = penmap[pen];
+				pixptr[xoffs] = palette_base + pen;
+				flagsptr[xoffs] = map | category;
+				andmask &= map;
+				ormask |= map;
+				xoffs += dx0;
 			}
 		}
 
@@ -1384,10 +1380,12 @@ static UINT8 tile_draw_colortable(tilemap *tmap, const UINT8 *pendata, UINT32 x0
 		dx0 = -1;
 	}
 
-	/* we draw in groups of TILE_PIXEL_GROUPING pixels, so divide it out now */
-	if ((width % TILE_PIXEL_GROUPING) != 0)
-		fatalerror("Odd tilemap width; tilemap.c draws in groups of %d, and width=%d", TILE_PIXEL_GROUPING, width);
-	width /= TILE_PIXEL_GROUPING;
+	/* in 4bpp mode, we draw in groups of 2 pixels, so halve the width now */
+	if (flags & TILE_4BPP)
+	{
+		assert(width % 2 == 0);
+		width /= 2;
+	}
 
 	/* iterate over rows */
 	for (ty = 0; ty < height; ty++)
@@ -1405,20 +1403,13 @@ static UINT8 tile_draw_colortable(tilemap *tmap, const UINT8 *pendata, UINT32 x0
 		{
 			for (tx = 0; tx < width; tx++)
 			{
-				pen_t pen;
-				UINT8 map;
-				int i;
-
-				for (i = 0; i < TILE_PIXEL_GROUPING; i++)
-				{
-					pen = *pendata++;
-					map = penmap[pen];
-					pixptr[xoffs] = palette_lookup[pen];
-					flagsptr[xoffs] = map | category;
-					andmask &= map;
-					ormask |= map;
-					xoffs += dx0;
-				}
+				UINT8 pen = *pendata++;
+				UINT8 map = penmap[pen];
+				pixptr[xoffs] = palette_lookup[pen];
+				flagsptr[xoffs] = map | category;
+				andmask &= map;
+				ormask |= map;
+				xoffs += dx0;
 			}
 		}
 
@@ -1490,10 +1481,12 @@ static UINT8 tile_draw_colortrans(tilemap *tmap, const UINT8 *pendata, UINT32 x0
 		dx0 = -1;
 	}
 
-	/* we draw in groups of TILE_PIXEL_GROUPING pixels, so divide it out now */
-	if ((width % TILE_PIXEL_GROUPING) != 0)
-		fatalerror("Odd tilemap width; tilemap.c draws in groups of %d, and width=%d", TILE_PIXEL_GROUPING, width);
-	width /= TILE_PIXEL_GROUPING;
+	/* in 4bpp mode, we draw in groups of 2 pixels, so halve the width now */
+	if (flags & TILE_4BPP)
+	{
+		assert(width % 2 == 0);
+		width /= 2;
+	}
 
 	/* iterate over rows */
 	for (ty = 0; ty < height; ty++)
@@ -1511,20 +1504,13 @@ static UINT8 tile_draw_colortrans(tilemap *tmap, const UINT8 *pendata, UINT32 x0
 		{
 			for (tx = 0; tx < width; tx++)
 			{
-				pen_t pen;
-				UINT8 map;
-				int i;
-
-				for (i = 0; i < TILE_PIXEL_GROUPING; i++)
-				{
-					pen = palette_lookup[*pendata++];
-					map = penmap[pen];
-					pixptr[xoffs] = pen;
-					flagsptr[xoffs] = map | category;
-					andmask &= map;
-					ormask |= map;
-					xoffs += dx0;
-				}
+				pen_t pen = palette_lookup[*pendata++];
+				UINT8 map = penmap[pen];
+				pixptr[xoffs] = pen;
+				flagsptr[xoffs] = map | category;
+				andmask &= map;
+				ormask |= map;
+				xoffs += dx0;
 			}
 		}
 

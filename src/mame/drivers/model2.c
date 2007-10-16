@@ -38,7 +38,6 @@
     overrev: bad network test like sgt24h.
     vstriker: shows some attract mode, then hangs
     manxtt: no escape from "active motion slider" tutorial (needs analog inputs)
-    doaa: shows parade of 'ANIME' errors
 
 
     TODO
@@ -46,7 +45,7 @@
     Controls are pretty basic right now
     Sound doesn't work properly in all games
     System 24 tilemaps need more advanced linescroll support (see fvipers, daytona)
-    DSP cores + hookups
+    2C needs DSP still
 */
 
 #include "driver.h"
@@ -63,11 +62,14 @@
 extern VIDEO_START(model2);
 extern VIDEO_UPDATE(model2);
 
+extern void model2_3d_set_zclip( UINT8 clip );
+
 UINT32 *model2_bufferram, *model2_colorxlat, *model2_workram, *model2_backup1, *model2_backup2;
 UINT32 *model2_textureram0, *model2_textureram1, *model2_lumaram;
 static UINT32 model2_intreq;
 static UINT32 model2_intena;
 static UINT32 model2_coproctl, model2_coprocnt, model2_geoctl, model2_geocnt;
+static UINT16 *model2_soundram = NULL;
 
 static UINT32 model2_timervals[4], model2_timerorig[4];
 static int      model2_timerrun[4];
@@ -170,8 +172,12 @@ static UINT32 copro_fifoout_pop(void)
 
 	if (copro_fifoout_num == 0)
 	{
-		// Reading from empty FIFO causes the i960 to enter wait state
+		/* Reading from empty FIFO causes the i960 to enter wait state */
 		i960_stall();
+
+		/* spin the main cpu and let the TGP catch up */
+		cpu_spinuntil_time(MAME_TIME_IN_USEC(100));
+
 		return 0;
 	}
 
@@ -318,7 +324,7 @@ static TIMER_CALLBACK( model2_timer_1_cb ) { model2_timer_exp(1, 3); }
 static TIMER_CALLBACK( model2_timer_2_cb ) { model2_timer_exp(2, 4); }
 static TIMER_CALLBACK( model2_timer_3_cb ) { model2_timer_exp(3, 5); }
 
-static MACHINE_RESET(model2o)
+static MACHINE_RESET(model2_common)
 {
 	model2_intreq = 0;
 	model2_intena = 0;
@@ -344,6 +350,11 @@ static MACHINE_RESET(model2o)
 	mame_timer_adjust(model2_timers[1], time_never, 0, time_never);
 	mame_timer_adjust(model2_timers[2], time_never, 0, time_never);
 	mame_timer_adjust(model2_timers[3], time_never, 0, time_never);
+}
+
+static MACHINE_RESET(model2o)
+{
+	machine_reset_model2_common(machine);
 
 	// hold TGP in halt until we have code
 	cpunum_set_input_line(2, INPUT_LINE_HALT, ASSERT_LINE);
@@ -351,25 +362,32 @@ static MACHINE_RESET(model2o)
 	dsp_type = DSP_TYPE_TGP;
 }
 
-static MACHINE_RESET(model2)
+static MACHINE_RESET(model2_scsp)
 {
-	machine_reset_model2o(machine);
-
 	memory_set_bankptr(4, memory_region(REGION_SOUND1) + 0x200000);
 	memory_set_bankptr(5, memory_region(REGION_SOUND1) + 0x600000);
 
 	// copy the 68k vector table into RAM
-	memcpy(memory_region(REGION_CPU2), memory_region(REGION_CPU2)+0x80000, 16);
+	memcpy(model2_soundram, memory_region(REGION_CPU2)+0x80000, 16);
+}
+
+static MACHINE_RESET(model2)
+{
+	machine_reset_model2_common(machine);
+	machine_reset_model2_scsp(machine);
+
+	// hold TGP in halt until we have code
+	cpunum_set_input_line(2, INPUT_LINE_HALT, ASSERT_LINE);
 
 	dsp_type = DSP_TYPE_TGP;
 }
 
 static MACHINE_RESET(model2b)
 {
-	machine_reset_model2(machine);
+	machine_reset_model2_common(machine);
+	machine_reset_model2_scsp(machine);
 
 	cpunum_set_input_line(2, INPUT_LINE_HALT, ASSERT_LINE);
-	//cpunum_set_input_line(3, INPUT_LINE_HALT, ASSERT_LINE);
 
 	// set FIFOIN empty flag on SHARC
 	cpunum_set_input_line(2, SHARC_INPUT_FLAG0, ASSERT_LINE);
@@ -381,7 +399,8 @@ static MACHINE_RESET(model2b)
 
 static MACHINE_RESET(model2c)
 {
-	machine_reset_model2(machine);
+	machine_reset_model2_common(machine);
+	machine_reset_model2_scsp(machine);
 
 	dsp_type = DSP_TYPE_TGPX4;
 }
@@ -507,7 +526,10 @@ static WRITE32_HANDLER( copro_ctl1_w )
 		else
 		{
 			logerror("Boot copro, %d dwords\n", model2_coprocnt);
-			cpunum_set_input_line(2, INPUT_LINE_HALT, CLEAR_LINE);
+			if (dsp_type != DSP_TYPE_TGPX4)
+			{
+				cpunum_set_input_line(2, INPUT_LINE_HALT, CLEAR_LINE);
+			}
 		}
 	}
 
@@ -739,7 +761,10 @@ static READ32_HANDLER( geo_r )
 		return geo_read_start_address;
 	}
 
-	fatalerror("geo_r: %08X, %08X\n", address, mem_mask);
+//  fatalerror("geo_r: %08X, %08X\n", address, mem_mask);
+	mame_printf_debug("geo_r: PC:%08x - %08X\n", safe_activecpu_get_pc(), address);
+
+	return 0;
 }
 
 static WRITE32_HANDLER( geo_w )
@@ -915,7 +940,7 @@ static WRITE32_HANDLER( model2o_serial_w )
 
 static WRITE32_HANDLER( model2_serial_w )
 {
-	if (mem_mask == 0xffff0000)
+	if (((mem_mask & 0xff) == 0) && (offset == 0))
 	{
 		SCSP_MidiIn(0, data&0xff, 0);
 
@@ -1149,6 +1174,7 @@ static WRITE32_HANDLER( network_w )
 	}
 }
 
+#ifdef UNUSED_FUNCTION
 static WRITE32_HANDLER( copro_w )
 {
 	int address = offset * 4;
@@ -1166,10 +1192,58 @@ static WRITE32_HANDLER( copro_w )
 
 	//mame_printf_debug("COPRO: %08X = %08X\n", offset, data);
 }
+#endif
 
 static WRITE32_HANDLER(mode_w)
 {
 	mame_printf_debug("Mode = %08X\n", data);
+}
+
+static WRITE32_HANDLER(model2o_tex_w0)
+{
+	if ( (offset & 1) == 0 )
+	{
+		model2_textureram0[offset>>1] &= 0xffff0000;
+		model2_textureram0[offset>>1] |= data & 0xffff;
+	}
+	else
+	{
+		model2_textureram0[offset>>1] &= 0x0000ffff;
+		model2_textureram0[offset>>1] |= (data & 0xffff) << 16;
+	}
+}
+
+static WRITE32_HANDLER(model2o_tex_w1)
+{
+	if ( (offset & 1) == 0 )
+	{
+		model2_textureram1[offset>>1] &= 0xffff0000;
+		model2_textureram1[offset>>1] |= data & 0xffff;
+	}
+	else
+	{
+		model2_textureram1[offset>>1] &= 0x0000ffff;
+		model2_textureram1[offset>>1] |= (data & 0xffff) << 16;
+	}
+}
+
+static WRITE32_HANDLER(model2o_luma_w)
+{
+	if ( (offset & 1) == 0 )
+	{
+		model2_lumaram[offset>>1] &= 0xffff0000;
+		model2_lumaram[offset>>1] |= data & 0xffff;
+	}
+	else
+	{
+		model2_lumaram[offset>>1] &= 0x0000ffff;
+		model2_lumaram[offset>>1] |= (data & 0xffff) << 16;
+	}
+}
+
+static WRITE32_HANDLER(model2_3d_zclip_w)
+{
+	model2_3d_set_zclip( data & 0xFF );
 }
 
 /* common map for all Model 2 versions */
@@ -1206,6 +1280,7 @@ static ADDRESS_MAP_START( model2_base_mem, ADDRESS_SPACE_PROGRAM, 32 )
 
 	AM_RANGE(0x01800000, 0x01803fff) AM_READWRITE(MRA32_RAM, pal32_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x01810000, 0x0181bfff) AM_RAM AM_BASE(&model2_colorxlat)
+	AM_RANGE(0x0181c000, 0x0181c003) AM_WRITE(model2_3d_zclip_w)
 	AM_RANGE(0x01a10000, 0x01a1ffff) AM_READWRITE(network_r, network_w)
 	AM_RANGE(0x01d00000, 0x01d03fff) AM_RAM AM_BASE( &model2_backup1 ) // Backup sram
 	AM_RANGE(0x02000000, 0x03ffffff) AM_ROM AM_REGION(REGION_USER1, 0)
@@ -1215,14 +1290,8 @@ static ADDRESS_MAP_START( model2_base_mem, ADDRESS_SPACE_PROGRAM, 32 )
 
 	AM_RANGE(0x10000000, 0x101fffff) AM_WRITE(mode_w)
 
-	AM_RANGE(0x11000000, 0x111fffff) AM_RAM	AM_BASE(&model2_textureram0)	// texture RAM 0 (2b/2c)
-	AM_RANGE(0x11200000, 0x113fffff) AM_RAM	AM_BASE(&model2_textureram1)	// texture RAM 1 (2b/2c)
-	AM_RANGE(0x11400000, 0x1140ffff) AM_RAM	AM_BASE(&model2_lumaram)		// polygon "luma" RAM (2b/2c)
-
 	AM_RANGE(0x11600000, 0x1167ffff) AM_RAM	AM_SHARE(1) // framebuffer (last bronx)
 	AM_RANGE(0x11680000, 0x116fffff) AM_RAM	AM_SHARE(1) // FB mirror
-
-	AM_RANGE(0x12000000, 0x12ffffff) AM_WRITENOP	// texture RAM for model 2/2a?
 ADDRESS_MAP_END
 
 /* original Model 2 overrides */
@@ -1239,6 +1308,10 @@ static ADDRESS_MAP_START( model2o_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00980000, 0x00980003) AM_WRITE( copro_ctl1_w )
 	AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_ctl1_w )
 	AM_RANGE(0x009c0000, 0x009cffff) AM_READWRITE( model2_serial_r, model2o_serial_w )
+
+	AM_RANGE(0x12000000, 0x121fffff) AM_READWRITE(MRA32_RAM, model2o_tex_w0) AM_MIRROR(0x200000) AM_BASE(&model2_textureram0)	// texture RAM 0
+	AM_RANGE(0x12400000, 0x125fffff) AM_READWRITE(MRA32_RAM, model2o_tex_w1) AM_MIRROR(0x200000) AM_BASE(&model2_textureram1)	// texture RAM 1
+	AM_RANGE(0x12800000, 0x1281ffff) AM_READWRITE(MRA32_RAM, model2o_luma_w) AM_BASE(&model2_lumaram) // polygon "luma" RAM
 
 	AM_RANGE(0x01c00000, 0x01c00007) AM_READ(analog_r)
 	AM_RANGE(0x01c00010, 0x01c00013) AM_READ(ctrl10_r)
@@ -1262,6 +1335,10 @@ static ADDRESS_MAP_START( model2a_crx_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00980000, 0x00980003) AM_WRITE( copro_ctl1_w )
 	AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_ctl1_w )
 	AM_RANGE(0x009c0000, 0x009cffff) AM_READWRITE( model2_serial_r, model2_serial_w )
+
+	AM_RANGE(0x12000000, 0x121fffff) AM_READWRITE(MRA32_RAM, model2o_tex_w0) AM_MIRROR(0x200000) AM_BASE(&model2_textureram0)	// texture RAM 0
+	AM_RANGE(0x12400000, 0x125fffff) AM_READWRITE(MRA32_RAM, model2o_tex_w1) AM_MIRROR(0x200000) AM_BASE(&model2_textureram1)	// texture RAM 1
+	AM_RANGE(0x12800000, 0x1281ffff) AM_READWRITE(MRA32_RAM, model2o_luma_w) AM_BASE(&model2_lumaram) // polygon "luma" RAM
 
 	AM_RANGE(0x01c00000, 0x01c00003) AM_READWRITE(ctrl0_r, ctrl0_w)
 	AM_RANGE(0x01c00004, 0x01c00007) AM_READ(ctrl1_r)
@@ -1292,6 +1369,11 @@ static ADDRESS_MAP_START( model2b_crx_mem, ADDRESS_SPACE_PROGRAM, 32 )
 
 	AM_RANGE(0x009c0000, 0x009cffff) AM_READWRITE( model2_serial_r, model2_serial_w )
 
+	AM_RANGE(0x11000000, 0x111fffff) AM_RAM	AM_BASE(&model2_textureram0)	// texture RAM 0 (2b/2c)
+	AM_RANGE(0x11200000, 0x113fffff) AM_RAM	AM_BASE(&model2_textureram1)	// texture RAM 1 (2b/2c)
+	AM_RANGE(0x11400000, 0x1140ffff) AM_RAM	AM_BASE(&model2_lumaram)		// polygon "luma" RAM (2b/2c)
+
+
 	AM_RANGE(0x01c00000, 0x01c00003) AM_READWRITE(ctrl0_r, ctrl0_w)
 	AM_RANGE(0x01c00004, 0x01c00007) AM_READ(ctrl1_r)
 	AM_RANGE(0x01c00010, 0x01c00013) AM_READ(ctrl10_r)
@@ -1311,6 +1393,10 @@ static ADDRESS_MAP_START( model2c_crx_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00980000, 0x00980003) AM_WRITE( copro_ctl1_w )
 	AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_ctl1_w )
 	AM_RANGE(0x009c0000, 0x009cffff) AM_READWRITE( model2_serial_r, model2_serial_w )
+
+	AM_RANGE(0x11000000, 0x111fffff) AM_RAM	AM_BASE(&model2_textureram0)	// texture RAM 0 (2b/2c)
+	AM_RANGE(0x11200000, 0x113fffff) AM_RAM	AM_BASE(&model2_textureram1)	// texture RAM 1 (2b/2c)
+	AM_RANGE(0x11400000, 0x1140ffff) AM_RAM	AM_BASE(&model2_lumaram)		// polygon "luma" RAM (2b/2c)
 
 	AM_RANGE(0x01c00000, 0x01c00003) AM_READWRITE(ctrl0_r, ctrl0_w)
 	AM_RANGE(0x01c00004, 0x01c00007) AM_READ(ctrl1_r)
@@ -1588,7 +1674,7 @@ static WRITE16_HANDLER( model2snd_ctrl )
 }
 
 static ADDRESS_MAP_START( model2_snd, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_RAM AM_REGION(REGION_CPU2, 0)
+	AM_RANGE(0x000000, 0x07ffff) AM_RAM AM_REGION(REGION_CPU2, 0) AM_BASE(&model2_soundram)
 	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(SCSP_0_r, SCSP_0_w)
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(model2snd_ctrl)
 	AM_RANGE(0x600000, 0x67ffff) AM_ROM AM_REGION(REGION_CPU2, 0x80000)
@@ -1604,15 +1690,7 @@ static void scsp_irq(int irq)
 	if (irq > 0)
 	{
 		scsp_last_line = irq;
-		cpunum_set_input_line(1, irq, ASSERT_LINE);
-	}
-	else if ( irq < 0)
-	{
-		cpunum_set_input_line(1, irq, CLEAR_LINE);
-	}
-	else
-	{
-		cpunum_set_input_line(1, scsp_last_line, CLEAR_LINE);
+		cpunum_set_input_line(1, irq, PULSE_LINE);
 	}
 }
 
@@ -1677,10 +1755,21 @@ ADDRESS_MAP_END
 #endif
 
 /*****************************************************************************/
-// TGP memory maps
+/* TGP memory maps */
+
+static READ32_HANDLER(copro_tgp_buffer_r)
+{
+	return model2_bufferram[offset & 0x7fff];
+}
+
+static WRITE32_HANDLER(copro_tgp_buffer_w)
+{
+	model2_bufferram[offset&0x7fff] = data;
+}
 
 static ADDRESS_MAP_START( copro_tgp_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x00007fff) AM_RAM AM_BASE(&tgp_program)
+	AM_RANGE(0x00400000, 0x00407fff) AM_READWRITE(copro_tgp_buffer_r, copro_tgp_buffer_w)
 	AM_RANGE(0xff800000, 0xff9fffff) AM_ROM AM_REGION(REGION_CPU3, 0)
 ADDRESS_MAP_END
 
@@ -1714,7 +1803,7 @@ static MACHINE_DRIVER_START( model2o )
 	MDRV_NVRAM_HANDLER( model2 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)
 	MDRV_PALETTE_LENGTH(8192)
@@ -1759,7 +1848,7 @@ static MACHINE_DRIVER_START( model2a )
 	MDRV_NVRAM_HANDLER( model2 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)
 	MDRV_PALETTE_LENGTH(8192)
@@ -1771,8 +1860,8 @@ static MACHINE_DRIVER_START( model2a )
 
 	MDRV_SOUND_ADD(SCSP, 0)
 	MDRV_SOUND_CONFIG(scsp_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(0, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "left", 2.0)
+	MDRV_SOUND_ROUTE(0, "right", 2.0)
 MACHINE_DRIVER_END
 
 
@@ -1807,7 +1896,7 @@ static MACHINE_DRIVER_START( model2b )
 	MDRV_NVRAM_HANDLER( model2 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)
 	MDRV_PALETTE_LENGTH(8192)
@@ -1819,8 +1908,8 @@ static MACHINE_DRIVER_START( model2b )
 
 	MDRV_SOUND_ADD(SCSP, 0)
 	MDRV_SOUND_CONFIG(scsp_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(0, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "left", 2.0)
+	MDRV_SOUND_ROUTE(0, "right", 2.0)
 MACHINE_DRIVER_END
 
 /* 2C-CRX */
@@ -1839,7 +1928,7 @@ static MACHINE_DRIVER_START( model2c )
 	MDRV_NVRAM_HANDLER( model2 )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)
 
@@ -1852,8 +1941,8 @@ static MACHINE_DRIVER_START( model2c )
 
 	MDRV_SOUND_ADD(SCSP, 0)
 	MDRV_SOUND_CONFIG(scsp_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(0, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "left", 2.0)
+	MDRV_SOUND_ROUTE(0, "right", 2.0)
 MACHINE_DRIVER_END
 
 /* ROM definitions */
@@ -2173,13 +2262,14 @@ ROM_START( srallyc )
 
 	ROM_REGION( 0x2000000, REGION_USER2, 0 ) // Models
 	ROM_LOAD32_WORD( "mpr-17748.bin", 0x000000, 0x200000, CRC(3148a2b2) SHA1(283cc49bfb6c6381a7ead9273fd097dca5b981b6) )
-	ROM_LOAD32_WORD( "mpr-17749.bin", 0x000002, 0x200000, CRC(0838d184) SHA1(704175c8b29e4c989afcb7be42e7e0e096740eaf) )
-	ROM_LOAD32_WORD( "mpr-17750.bin", 0x400000, 0x200000, CRC(232aec29) SHA1(4d470e71df61298282c356814e2d151fda323fb6) )
+	ROM_LOAD32_WORD( "mpr-17750.bin", 0x000002, 0x200000, CRC(232aec29) SHA1(4d470e71df61298282c356814e2d151fda323fb6) )
+	ROM_LOAD32_WORD( "mpr-17749.bin", 0x400000, 0x200000, CRC(0838d184) SHA1(704175c8b29e4c989afcb7be42e7e0e096740eaf) )
 	ROM_LOAD32_WORD( "mpr-17751.bin", 0x400002, 0x200000, CRC(ed87ac62) SHA1(601542149d33ca52a47536b4b0af47bf1fd87eb2) )
 
 	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
-	ROM_LOAD32_WORD( "mpr-17752.bin", 0x000000, 0x200000, CRC(d6aa86ce) SHA1(1d342f87d1af1e5438d1ae818b1b14268e765897) )
-	ROM_LOAD32_WORD( "mpr-17753.bin", 0x000002, 0x200000, CRC(6db0eb36) SHA1(dd5fd3c9592360d3e95623ac2491e6faabe9dbcb) )
+	ROM_LOAD32_WORD( "mpr-17753.bin", 0x000000, 0x200000, CRC(6db0eb36) SHA1(dd5fd3c9592360d3e95623ac2491e6faabe9dbcb) )
+	ROM_LOAD32_WORD( "mpr-17752.bin", 0x000002, 0x200000, CRC(d6aa86ce) SHA1(1d342f87d1af1e5438d1ae818b1b14268e765897) )
+
 
 	ROM_REGION( 0x20000, REGION_CPU5, 0) // Communication program
 	ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
@@ -3500,7 +3590,7 @@ ROM_START( daytona )
 	ROM_LOAD32_WORD("mpr-16537.ic28", 0x000000, 0x200000, CRC(36b7c35a) SHA1(b32fd1d3fc8983fb5f2a7b236b665a8c9b52769f) )
 	ROM_LOAD32_WORD("mpr-16536.ic29", 0x000002, 0x200000, CRC(6d6afed9) SHA1(2018468d7d849854b3d0cfbcd217317e2fc93555) )
 
-	ROM_REGION( 0x1000000, REGION_USER2, 0 ) // Models
+	ROM_REGION32_LE( 0x1000000, REGION_USER2, 0 ) // Models
 	ROM_LOAD32_WORD("mpr-16523.ic16", 0x000000, 0x200000, CRC(2f484d42) SHA1(0b83a3fc92b7d913a14cfb01d688c63555c17c41) )
 	ROM_LOAD32_WORD("mpr-16518.ic20", 0x000002, 0x200000, CRC(df683bf7) SHA1(16afe5029591f3536b5b75d9cf50a34d0ea72c3d) )
 	ROM_LOAD32_WORD("mpr-16524.ic17", 0x400000, 0x200000, CRC(34658bd7) SHA1(71b47626ffe5b26d1140afe1b830a9a2be86c88f) )
@@ -3510,11 +3600,11 @@ ROM_START( daytona )
 	ROM_LOAD32_WORD("mpr-16772.ic19", 0xc00000, 0x200000, CRC(770ed912) SHA1(1789f35dd403f73f8be18495a0fe4ad1e6841417) )
 	ROM_LOAD32_WORD("mpr-16771.ic23", 0xc00002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
 
-	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
-	ROM_LOAD32_WORD("mpr-16521.24", 0x000000, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
-	ROM_LOAD32_WORD("mpr-16522.25", 0x000002, 0x200000, CRC(55d39a57) SHA1(abf7b0fc0f111f90da42463d600db9fa32e95efe) )
-	ROM_LOAD32_WORD("mpr-16769.26", 0x400000, 0x200000, CRC(e57429e9) SHA1(8c712ab09e61ef510741a55f29b3c4e497471372) )
-	ROM_LOAD32_WORD("mpr-16770.27", 0x400002, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
+	ROM_REGION16_LE( 0x1000000, REGION_USER3, 0 ) // Textures
+	ROM_LOAD32_WORD("mpr-16522.25", 0x000000, 0x200000, CRC(55d39a57) SHA1(abf7b0fc0f111f90da42463d600db9fa32e95efe) )
+	ROM_LOAD32_WORD("mpr-16521.24", 0x000002, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
+	ROM_LOAD32_WORD("mpr-16770.27", 0x800000, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
+	ROM_LOAD32_WORD("mpr-16769.26", 0x800002, 0x200000, CRC(e57429e9) SHA1(8c712ab09e61ef510741a55f29b3c4e497471372) )
 
 	ROM_REGION( 0x20000, REGION_CPU4, 0) // Communication program
 	ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
@@ -3574,10 +3664,10 @@ ROM_START( daytonas )
 	ROM_LOAD32_WORD("mpr-16771.ic23", 0xc00002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
 
 	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
-	ROM_LOAD32_WORD("mpr-16521.24", 0x000000, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
-	ROM_LOAD32_WORD("mpr-16522.25", 0x000002, 0x200000, CRC(55d39a57) SHA1(abf7b0fc0f111f90da42463d600db9fa32e95efe) )
-	ROM_LOAD32_WORD("mpr-16769.26", 0x400000, 0x200000, CRC(e57429e9) SHA1(8c712ab09e61ef510741a55f29b3c4e497471372) )
-	ROM_LOAD32_WORD("mpr-16770.27", 0x400002, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
+	ROM_LOAD32_WORD("mpr-16522.25", 0x000000, 0x200000, CRC(55d39a57) SHA1(abf7b0fc0f111f90da42463d600db9fa32e95efe) )
+	ROM_LOAD32_WORD("mpr-16521.24", 0x000002, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
+	ROM_LOAD32_WORD("mpr-16770.27", 0x800000, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
+	ROM_LOAD32_WORD("mpr-16769.26", 0x800002, 0x200000, CRC(e57429e9) SHA1(8c712ab09e61ef510741a55f29b3c4e497471372) )
 
 	ROM_REGION( 0x20000, REGION_CPU4, 0) // Communication program
 	ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
@@ -3635,10 +3725,10 @@ ROM_START( daytonat )
 	ROM_LOAD32_WORD("mpr-16771.ic23", 0xc00002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
 
 	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
-	ROM_LOAD32_WORD("mpr-16521.24", 0x000000, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
-	ROM_LOAD32_WORD("mpr-16522.25", 0x000002, 0x200000, CRC(55d39a57) SHA1(abf7b0fc0f111f90da42463d600db9fa32e95efe) )
-	ROM_LOAD32_WORD("mpr-16769.26", 0x400000, 0x200000, CRC(e57429e9) SHA1(8c712ab09e61ef510741a55f29b3c4e497471372) )
-	ROM_LOAD32_WORD("mpr-16770.27", 0x400002, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
+	ROM_LOAD32_WORD("mpr-16522.25", 0x000000, 0x200000, CRC(55d39a57) SHA1(abf7b0fc0f111f90da42463d600db9fa32e95efe) )
+	ROM_LOAD32_WORD("mpr-16521.24", 0x000002, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
+	ROM_LOAD32_WORD("mpr-16770.27", 0x800000, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
+	ROM_LOAD32_WORD("mpr-16769.26", 0x800002, 0x200000, CRC(e57429e9) SHA1(8c712ab09e61ef510741a55f29b3c4e497471372) )
 
 	ROM_REGION( 0x20000, REGION_CPU4, 0) // Communication program
 	ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
@@ -3697,10 +3787,10 @@ ROM_START( daytonam )
 	ROM_LOAD32_WORD("mpr-16771.ic23", 0xc00002, 0x200000, CRC(a2205124) SHA1(257a3675e4ef6adbf61285a5daa5954223c28cb2) )
 
 	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
-	ROM_LOAD32_WORD("mpr-16521.24", 0x000000, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
-	ROM_LOAD32_WORD("mpr-16522.25", 0x000002, 0x200000, CRC(55d39a57) SHA1(abf7b0fc0f111f90da42463d600db9fa32e95efe) )
-	ROM_LOAD32_WORD("mpr-16769.26", 0x400000, 0x200000, CRC(e57429e9) SHA1(8c712ab09e61ef510741a55f29b3c4e497471372) )
-	ROM_LOAD32_WORD("mpr-16770.27", 0x400002, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
+	ROM_LOAD32_WORD("mpr-16522.25", 0x000000, 0x200000, CRC(55d39a57) SHA1(abf7b0fc0f111f90da42463d600db9fa32e95efe) )
+	ROM_LOAD32_WORD("mpr-16521.24", 0x000002, 0x200000, CRC(af1934fb) SHA1(a6a21a23cd34d0de6d3e6a5c3c2687f905d0dc2a) )
+	ROM_LOAD32_WORD("mpr-16770.27", 0x800000, 0x200000, CRC(f9fa7bfb) SHA1(8aa933b74d4e05dc49987238705e50b00e5dae73) )
+	ROM_LOAD32_WORD("mpr-16769.26", 0x800002, 0x200000, CRC(e57429e9) SHA1(8c712ab09e61ef510741a55f29b3c4e497471372) )
 
 	ROM_REGION( 0x20000, REGION_CPU4, 0) // Communication program
 	ROM_LOAD( "epr-16726.bin", 0x000000, 0x020000, CRC(c179b8c7) SHA1(86d3e65c77fb53b1d380b629348f4ab5b3d39228) )
@@ -3745,8 +3835,8 @@ ROM_START( vcop )
 	ROM_LOAD32_WORD( "mpr-17156.020", 0x000002, 0x200000, CRC(c4f4aabf) SHA1(8814cd329609cc8a188fedd770230bb9a5d00361) )
 
 	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
-	ROM_LOAD32_WORD( "mpr-17157.024", 0x000000, 0x200000, CRC(cf31e33d) SHA1(0cb62d4f28b5ad8a7e4c82b0ca8aea3037b05455) )
-	ROM_LOAD32_WORD( "mpr-17158.025", 0x000002, 0x200000, CRC(1108d1ec) SHA1(e95d4166bd4b26c5f21b85821b410f53045f4309) )
+	ROM_LOAD32_WORD( "mpr-17158.025", 0x000000, 0x200000, CRC(1108d1ec) SHA1(e95d4166bd4b26c5f21b85821b410f53045f4309) )
+	ROM_LOAD32_WORD( "mpr-17157.024", 0x000002, 0x200000, CRC(cf31e33d) SHA1(0cb62d4f28b5ad8a7e4c82b0ca8aea3037b05455) )
 
 	ROM_REGION( 0x20000, REGION_CPU5, 0) // Communication program
 	ROM_LOAD32_WORD( "epr-17181.006", 0x000000, 0x010000, CRC(1add2b82) SHA1(81892251d466f630a96af25bde652c20e47d7ede) )
@@ -3787,13 +3877,13 @@ ROM_START( desert )
 
 	ROM_REGION( 0x1000000, REGION_USER2, 0 ) // Models
 	ROM_LOAD32_WORD("mpr-16968.16", 0x000000, 0x200000, CRC(4a16f465) SHA1(411214ed65ce966040d4299b50bfaa40f7f5f266) )
-	ROM_LOAD32_WORD("mpr-16965.20", 0x000002, 0x200000, CRC(9ba7645f) SHA1(c04f369961f908bac16fad8e32b863202390c205) )
+	ROM_LOAD32_WORD("mpr-16964.21", 0x000002, 0x200000, CRC(d4a769b6) SHA1(845c34f95a49e06e3996b0c67aa73b4886fa8996) )
 	ROM_LOAD32_WORD("mpr-16969.17", 0x400000, 0x200000, CRC(887380ac) SHA1(03a9f601764d06cb0b2daaadf4f8433f327abd4a) )
-	ROM_LOAD32_WORD("mpr-16964.21", 0x400002, 0x200000, CRC(d4a769b6) SHA1(845c34f95a49e06e3996b0c67aa73b4886fa8996) )
+	ROM_LOAD32_WORD("mpr-16965.20", 0x400002, 0x200000, CRC(9ba7645f) SHA1(c04f369961f908bac16fad8e32b863202390c205) )
 
 	ROM_REGION( 0x1000000, REGION_USER3, 0 ) // Textures
-	ROM_LOAD32_WORD("mpr-16966.24", 0x000000, 0x200000, CRC(7484efe9) SHA1(33e72139ad6c2990428e3fa041dbcdf39aca1c7a) )
-	ROM_LOAD32_WORD("mpr-16967.25", 0x000002, 0x200000, CRC(b8b84c9d) SHA1(00ef320988609e98c8af383b68d845e3be8d0a03) )
+	ROM_LOAD32_WORD("mpr-16967.25", 0x000000, 0x200000, CRC(b8b84c9d) SHA1(00ef320988609e98c8af383b68d845e3be8d0a03) )
+	ROM_LOAD32_WORD("mpr-16966.24", 0x000002, 0x200000, CRC(7484efe9) SHA1(33e72139ad6c2990428e3fa041dbcdf39aca1c7a) )
 
 	ROM_REGION( 0x20000, REGION_CPU5, ROMREGION_ERASE00 ) // Communication program
 
@@ -3841,14 +3931,6 @@ static DRIVER_INIT( zerogun )
 	ROM[0x700/4] = 0x08000004;
 }
 
-static DRIVER_INIT( daytona )
-{
-	UINT32 *ROM = (UINT32 *)memory_region(REGION_CPU1);
-
-	// kill TGP busywait
-	ROM[0x11c7c/4] = 0x08000004;
-}
-
 static DRIVER_INIT( daytonam )
 {
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x240000, 0x24ffff, 0, 0, maxx_r );
@@ -3879,8 +3961,8 @@ static DRIVER_INIT( doa )
 }
 
 // Model 2 (TGPs, Model 1 sound board)
-GAME( 1993, daytona,         0, model2o, daytona, daytona, ROT0, "Sega", "Daytona USA (Japan)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
-GAME( 1993, daytonas,  daytona, model2o, daytona, daytona, ROT0, "Sega", "Daytona USA (With Saturn Adverts)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, daytona,         0, model2o, daytona, 0, ROT0, "Sega", "Daytona USA (Japan)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, daytonas,  daytona, model2o, daytona, 0, ROT0, "Sega", "Daytona USA (With Saturn Adverts)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1993, daytonat,  daytona, model2o, daytona, 0, ROT0, "Sega", "Daytona USA (Japan, Turbo hack)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1993, daytonam,  daytona, model2o, daytona, daytonam, ROT0, "Sega", "Daytona USA (Japan, To The MAXX)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1994, desert,          0, model2o, desert, 0, ROT0, "Sega/Martin Marietta", "Desert Tank", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )

@@ -231,11 +231,13 @@ static WRITE16_HANDLER( sound_command_w )
 		soundlatch_w(0,((data & 0x7f) << 1) | 1);
 }
 
+#ifdef UNUSED_FUNCTION
 static WRITE16_HANDLER( legion_command_c )
 {
 	COMBINE_DATA(&legion_cmd[offset]);
 	//logerror("Legion CMD %04x=%04x", offset, data);
 }
+#endif
 
 
 
@@ -812,14 +814,12 @@ static const gfx_layout sprite_layout =
 	64*8
 };
 
-static const gfx_decode gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &char_layout,		 0*16,	32 },
-	{ REGION_GFX2, 0, &tile_layout,		64*16,	32 },
-	{ REGION_GFX3, 0, &tile_layout,		96*16,	32 },
-	{ REGION_GFX4, 0, &sprite_layout,	32*16,	32 },
-	{ -1 }
-};
+static GFXDECODE_START( armedf )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, char_layout,		 0*16,	32 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0, tile_layout,		64*16,	32 )
+	GFXDECODE_ENTRY( REGION_GFX3, 0, tile_layout,		96*16,	32 )
+	GFXDECODE_ENTRY( REGION_GFX4, 0, sprite_layout,	32*16,	32 )
+GFXDECODE_END
 
 
 
@@ -844,7 +844,7 @@ static MACHINE_DRIVER_START( terraf )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(12*8, (64-12)*8-1, 1*8, 31*8-1 )
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(armedf)
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_EOF(armedf)
@@ -885,7 +885,7 @@ static MACHINE_DRIVER_START( kodure )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(armedf)
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_EOF(armedf)
@@ -926,7 +926,7 @@ static MACHINE_DRIVER_START( armedf )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(12*8, (64-12)*8-1, 1*8, 31*8-1 )
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(armedf)
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_EOF(armedf)
@@ -967,7 +967,7 @@ static MACHINE_DRIVER_START( cclimbr2 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(armedf)
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_EOF(armedf)
@@ -1008,7 +1008,7 @@ static MACHINE_DRIVER_START( legion )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(armedf)
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_EOF(armedf)
@@ -1049,7 +1049,7 @@ static MACHINE_DRIVER_START( legiono )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(armedf)
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_EOF(armedf)

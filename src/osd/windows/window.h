@@ -96,14 +96,6 @@ struct _win_draw_callbacks
 // windows
 extern win_window_info *win_window_list;
 
-// visible bounds
-extern RECT			win_visible_rect;
-extern int			win_visible_width;
-extern int			win_visible_height;
-
-// raw input support
-extern int			win_use_raw_mouse;
-
 
 
 //============================================================
@@ -132,6 +124,7 @@ void winwindow_ui_pause_from_main_thread(int pause);
 int winwindow_ui_is_paused(void);
 
 void winwindow_ui_exec_on_main_thread(void (*func)(void *), void *param);
+void winwindow_dispatch_message(MSG *message);
 
 #if HAS_WINDOW_MENU
 int win_create_menu(HMENU *menus);

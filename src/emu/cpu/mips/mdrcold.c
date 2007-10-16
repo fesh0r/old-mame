@@ -13,6 +13,8 @@
     CONSTANTS
 ***************************************************************************/
 
+#define MAX_INSTRUCTIONS				((512 + 128) / 4)
+
 /* recompiler flags */
 #define RECOMPILE_UNIMPLEMENTED			0x0000
 #define RECOMPILE_SUCCESSFUL			0x0001
@@ -41,13 +43,13 @@
 #define REGADDRLO(reg)		MBD(REG_ESI, REGDISP(reg))
 #define REGADDRHI(reg)		MBD(REG_ESI, REGDISP(reg)+4)
 
-#define HIADDR				MABS((UINT8 *)&mips3.core->hi)
-#define HIADDRLO			MABS((UINT8 *)&mips3.core->hi)
-#define HIADDRHI			MABS((UINT8 *)&mips3.core->hi + 4)
+#define HIADDR				REGADDR(REG_HI)
+#define HIADDRLO			REGADDRLO(REG_HI)
+#define HIADDRHI			REGADDRHI(REG_HI)
 
-#define LOADDR				MABS((UINT8 *)&mips3.core->lo)
-#define LOADDRLO			MABS((UINT8 *)&mips3.core->lo)
-#define LOADDRHI			MABS((UINT8 *)&mips3.core->lo + 4)
+#define LOADDR				REGADDR(REG_LO)
+#define LOADDRLO			REGADDRLO(REG_LO)
+#define LOADDRHI			REGADDRHI(REG_LO)
 
 #define CPR0ADDR(reg)		MABS((UINT8 *)&mips3.core->cpr[0][reg])
 #define CPR0ADDRLO(reg)		MABS((UINT8 *)&mips3.core->cpr[0][reg])
@@ -163,16 +165,16 @@ struct _mips3drc_data
 	x86code *		handle_pc_tlb_mismatch;
 	x86code *		read_and_translate_byte_signed;
 	x86code *		read_and_translate_byte_unsigned;
-	x86code *		read_and_translate_word_signed;
-	x86code *		read_and_translate_word_unsigned;
-	x86code *		read_and_translate_long;
-	x86code *		read_and_translate_long_masked;
+	x86code *		read_and_translate_half_signed;
+	x86code *		read_and_translate_half_unsigned;
+	x86code *		read_and_translate_word;
+	x86code *		read_and_translate_word_masked;
 	x86code *		read_and_translate_double;
 	x86code *		read_and_translate_double_masked;
 	x86code *		write_and_translate_byte;
+	x86code *		write_and_translate_half;
 	x86code *		write_and_translate_word;
-	x86code *		write_and_translate_long;
-	x86code *		write_and_translate_long_masked;
+	x86code *		write_and_translate_word_masked;
 	x86code *		write_and_translate_double;
 	x86code *		write_and_translate_double_masked;
 };
@@ -280,49 +282,59 @@ static void mips3drc_exit(void)
 
 static void drc_reset_callback(drc_core *drc)
 {
-	code_log_reset();
-
-	code_log("entry_point:", (x86code *)drc->entry_point, drc->out_of_cycles);
-	code_log("out_of_cycles:", drc->out_of_cycles, drc->recompile);
-	code_log("recompile:", drc->recompile, drc->dispatch);
-	code_log("dispatch:", drc->dispatch, drc->flush);
-	code_log("flush:", drc->flush, drc->cache_top);
+	if (LOG_CODE)
+	{
+		x86log_disasm_code_range(mips3.log, "entry_point:", (x86code *)drc->entry_point, drc->out_of_cycles);
+		x86log_disasm_code_range(mips3.log, "out_of_cycles:", drc->out_of_cycles, drc->recompile);
+		x86log_disasm_code_range(mips3.log, "recompile:", drc->recompile, drc->dispatch);
+		x86log_disasm_code_range(mips3.log, "dispatch:", drc->dispatch, drc->flush);
+		x86log_disasm_code_range(mips3.log, "flush:", drc->flush, drc->cache_top);
+	}
 
 	mips3.drcdata->generate_interrupt_exception = drc->cache_top;
 	append_generate_exception(drc, EXCEPTION_INTERRUPT);
-	code_log("generate_interrupt_exception:", mips3.drcdata->generate_interrupt_exception, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "generate_interrupt_exception:", mips3.drcdata->generate_interrupt_exception, drc->cache_top);
 
 	mips3.drcdata->generate_cop_exception = drc->cache_top;
 	append_generate_exception(drc, EXCEPTION_BADCOP);
-	code_log("generate_cop_exception:", mips3.drcdata->generate_cop_exception, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "generate_cop_exception:", mips3.drcdata->generate_cop_exception, drc->cache_top);
 
 	mips3.drcdata->generate_overflow_exception = drc->cache_top;
 	append_generate_exception(drc, EXCEPTION_OVERFLOW);
-	code_log("generate_overflow_exception:", mips3.drcdata->generate_overflow_exception, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "generate_overflow_exception:", mips3.drcdata->generate_overflow_exception, drc->cache_top);
 
 	mips3.drcdata->generate_invalidop_exception = drc->cache_top;
 	append_generate_exception(drc, EXCEPTION_INVALIDOP);
-	code_log("generate_invalidop_exception:", mips3.drcdata->generate_invalidop_exception, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "generate_invalidop_exception:", mips3.drcdata->generate_invalidop_exception, drc->cache_top);
 
 	mips3.drcdata->generate_syscall_exception = drc->cache_top;
 	append_generate_exception(drc, EXCEPTION_SYSCALL);
-	code_log("generate_syscall_exception:", mips3.drcdata->generate_syscall_exception, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "generate_syscall_exception:", mips3.drcdata->generate_syscall_exception, drc->cache_top);
 
 	mips3.drcdata->generate_break_exception = drc->cache_top;
 	append_generate_exception(drc, EXCEPTION_BREAK);
-	code_log("generate_break_exception:", mips3.drcdata->generate_break_exception, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "generate_break_exception:", mips3.drcdata->generate_break_exception, drc->cache_top);
 
 	mips3.drcdata->generate_trap_exception = drc->cache_top;
 	append_generate_exception(drc, EXCEPTION_TRAP);
-	code_log("generate_trap_exception:", mips3.drcdata->generate_trap_exception, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "generate_trap_exception:", mips3.drcdata->generate_trap_exception, drc->cache_top);
 
 	mips3.drcdata->generate_tlbload_exception = drc->cache_top;
 	append_generate_exception(drc, EXCEPTION_TLBLOAD);
-	code_log("generate_tlbload_exception:", mips3.drcdata->generate_tlbload_exception, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "generate_tlbload_exception:", mips3.drcdata->generate_tlbload_exception, drc->cache_top);
 
 	mips3.drcdata->generate_tlbstore_exception = drc->cache_top;
 	append_generate_exception(drc, EXCEPTION_TLBSTORE);
-	code_log("generate_tlbstore_exception:", mips3.drcdata->generate_tlbstore_exception, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "generate_tlbstore_exception:", mips3.drcdata->generate_tlbstore_exception, drc->cache_top);
 
 	mips3.drcdata->handle_pc_tlb_mismatch = drc->cache_top;
 	emit_mov_r32_r32(DRCTOP, REG_EAX, REG_EDI);												// mov  eax,edi
@@ -333,63 +345,78 @@ static void drc_reset_callback(drc_core *drc)
 	emit_jcc(DRCTOP, COND_NZ, mips3.drcdata->generate_tlbload_exception);					// jnz  generate_tlbload_exception
 	emit_mov_m32_r32(DRCTOP, MABS(drc->pcptr), REG_EDI);									// mov  [pcptr],edi
 	emit_jmp(DRCTOP, drc->recompile);														// jmp  recompile
-	code_log("handle_pc_tlb_mismatch:", mips3.drcdata->handle_pc_tlb_mismatch, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "handle_pc_tlb_mismatch:", mips3.drcdata->handle_pc_tlb_mismatch, drc->cache_top);
 
 	mips3.drcdata->read_and_translate_byte_signed = drc->cache_top;
 	append_readwrite_and_translate(drc, 1, ARW_READ | ARW_SIGNED);
-	code_log("read_and_translate_byte_signed:", mips3.drcdata->read_and_translate_byte_signed, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "read_and_translate_byte_signed:", mips3.drcdata->read_and_translate_byte_signed, drc->cache_top);
 
 	mips3.drcdata->read_and_translate_byte_unsigned = drc->cache_top;
 	append_readwrite_and_translate(drc, 1, ARW_READ | ARW_UNSIGNED);
-	code_log("read_and_translate_byte_unsigned:", mips3.drcdata->read_and_translate_byte_unsigned, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "read_and_translate_byte_unsigned:", mips3.drcdata->read_and_translate_byte_unsigned, drc->cache_top);
 
-	mips3.drcdata->read_and_translate_word_signed = drc->cache_top;
+	mips3.drcdata->read_and_translate_half_signed = drc->cache_top;
 	append_readwrite_and_translate(drc, 2, ARW_READ | ARW_SIGNED);
-	code_log("read_and_translate_word_signed:", mips3.drcdata->read_and_translate_word_signed, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "read_and_translate_half_signed:", mips3.drcdata->read_and_translate_half_signed, drc->cache_top);
 
-	mips3.drcdata->read_and_translate_word_unsigned = drc->cache_top;
+	mips3.drcdata->read_and_translate_half_unsigned = drc->cache_top;
 	append_readwrite_and_translate(drc, 2, ARW_READ | ARW_UNSIGNED);
-	code_log("read_and_translate_word_unsigned:", mips3.drcdata->read_and_translate_word_unsigned, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "read_and_translate_half_unsigned:", mips3.drcdata->read_and_translate_half_unsigned, drc->cache_top);
 
-	mips3.drcdata->read_and_translate_long = drc->cache_top;
+	mips3.drcdata->read_and_translate_word = drc->cache_top;
 	append_readwrite_and_translate(drc, 4, ARW_READ);
-	code_log("read_and_translate_long:", mips3.drcdata->read_and_translate_long, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "read_and_translate_word:", mips3.drcdata->read_and_translate_word, drc->cache_top);
 
-	mips3.drcdata->read_and_translate_long_masked = drc->cache_top;
+	mips3.drcdata->read_and_translate_word_masked = drc->cache_top;
 	append_readwrite_and_translate(drc, 4, ARW_READ | ARW_MASKED);
-	code_log("read_and_translate_long_masked:", mips3.drcdata->read_and_translate_long_masked, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "read_and_translate_word_masked:", mips3.drcdata->read_and_translate_word_masked, drc->cache_top);
 
 	mips3.drcdata->read_and_translate_double = drc->cache_top;
 	append_readwrite_and_translate(drc, 8, ARW_READ);
-	code_log("read_and_translate_double:", mips3.drcdata->read_and_translate_double, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "read_and_translate_double:", mips3.drcdata->read_and_translate_double, drc->cache_top);
 
 	mips3.drcdata->read_and_translate_double_masked = drc->cache_top;
 	append_readwrite_and_translate(drc, 8, ARW_READ | ARW_MASKED);
-	code_log("read_and_translate_double_masked:", mips3.drcdata->read_and_translate_double_masked, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "read_and_translate_double_masked:", mips3.drcdata->read_and_translate_double_masked, drc->cache_top);
 
 	mips3.drcdata->write_and_translate_byte = drc->cache_top;
 	append_readwrite_and_translate(drc, 1, ARW_WRITE);
-	code_log("write_and_translate_byte:", mips3.drcdata->write_and_translate_byte, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "write_and_translate_byte:", mips3.drcdata->write_and_translate_byte, drc->cache_top);
+
+	mips3.drcdata->write_and_translate_half = drc->cache_top;
+	append_readwrite_and_translate(drc, 2, ARW_WRITE);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "write_and_translate_half:", mips3.drcdata->write_and_translate_half, drc->cache_top);
 
 	mips3.drcdata->write_and_translate_word = drc->cache_top;
-	append_readwrite_and_translate(drc, 2, ARW_WRITE);
-	code_log("write_and_translate_word:", mips3.drcdata->write_and_translate_word, drc->cache_top);
-
-	mips3.drcdata->write_and_translate_long = drc->cache_top;
 	append_readwrite_and_translate(drc, 4, ARW_WRITE);
-	code_log("write_and_translate_long:", mips3.drcdata->write_and_translate_long, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "write_and_translate_word:", mips3.drcdata->write_and_translate_word, drc->cache_top);
 
-	mips3.drcdata->write_and_translate_long_masked = drc->cache_top;
+	mips3.drcdata->write_and_translate_word_masked = drc->cache_top;
 	append_readwrite_and_translate(drc, 4, ARW_WRITE | ARW_MASKED);
-	code_log("write_and_translate_long_masked:", mips3.drcdata->write_and_translate_long_masked, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "write_and_translate_word_masked:", mips3.drcdata->write_and_translate_word_masked, drc->cache_top);
 
 	mips3.drcdata->write_and_translate_double = drc->cache_top;
 	append_readwrite_and_translate(drc, 8, ARW_WRITE);
-	code_log("write_and_translate_double:", mips3.drcdata->write_and_translate_double, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "write_and_translate_double:", mips3.drcdata->write_and_translate_double, drc->cache_top);
 
 	mips3.drcdata->write_and_translate_double_masked = drc->cache_top;
 	append_readwrite_and_translate(drc, 8, ARW_WRITE | ARW_MASKED);
-	code_log("write_and_translate_double_masked:", mips3.drcdata->write_and_translate_double_masked, drc->cache_top);
+	if (LOG_CODE)
+		x86log_disasm_code_range(mips3.log, "write_and_translate_double_masked:", mips3.drcdata->write_and_translate_double_masked, drc->cache_top);
 }
 
 
@@ -409,7 +436,6 @@ static void drc_recompile_callback(drc_core *drc)
 
 	/* begin the sequence */
 	drc_begin_sequence(drc, pc);
-	code_log_reset();
 
 	/* make sure our FR flag matches the last time */
 	emit_test_m32_imm(DRCTOP, CPR0ADDR(COP0_Status), SR_FR);								// test [COP0_Status],SR_FR
@@ -462,15 +488,15 @@ exit:
 	/* end the sequence */
 	drc_end_sequence(drc);
 
-#if LOG_CODE
-{
-	char label[40];
-	physpc = mips3.core->pc;
-	mips3com_translate_address(mips3.core, ADDRESS_SPACE_PROGRAM, &physpc);
-	sprintf(label, "Code @ %08X (%08X physical)", mips3.core->pc, physpc);
-	code_log(label, start, drc->cache_top);
-}
-#endif
+	/* log the generated code */
+	if (LOG_CODE)
+	{
+		char label[60];
+		physpc = mips3.core->pc;
+		mips3com_translate_address(mips3.core, ADDRESS_SPACE_PROGRAM, &physpc);
+		sprintf(label, "Code @ %08X (%08X physical)", mips3.core->pc, physpc);
+		x86log_disasm_code_range(mips3.log, label, start, drc->cache_top);
+	}
 }
 
 
@@ -777,13 +803,13 @@ static void append_readwrite_and_translate(drc_core *drc, int size, UINT8 flags)
 		if (size == 1)
 			emit_jmp(DRCTOP, (x86code *)mips3.core->memory.writebyte);						// jmp  writebyte
 		else if (size == 2)
-			emit_jmp(DRCTOP, (x86code *)mips3.core->memory.writeword);						// jmp  writeword
+			emit_jmp(DRCTOP, (x86code *)mips3.core->memory.writehalf);						// jmp  writehalf
 		else if (size == 4)
 		{
 			if (!(flags & ARW_MASKED))
-				emit_jmp(DRCTOP, (x86code *)mips3.core->memory.writelong);					// jmp  writelong
+				emit_jmp(DRCTOP, (x86code *)mips3.core->memory.writeword);					// jmp  writeword
 			else
-				emit_jmp(DRCTOP, (x86code *)mips3.core->memory.writelong_masked);			// jmp  writelong_masked
+				emit_jmp(DRCTOP, (x86code *)mips3.core->memory.writeword_masked);			// jmp  writeword_masked
 		}
 		else
 		{
@@ -811,7 +837,7 @@ static void append_readwrite_and_translate(drc_core *drc, int size, UINT8 flags)
 		{
 			emit_sub_r32_imm(DRCTOP, REG_ESP, 8);											// sub  esp,8
 			emit_push_r32(DRCTOP, REG_EBX);													// push ebx
-			emit_call(DRCTOP, (x86code *)mips3.core->memory.readword);						// call  readword
+			emit_call(DRCTOP, (x86code *)mips3.core->memory.readhalf);						// call  readhalf
 			if (flags & ARW_SIGNED)
 				emit_movsx_r32_r16(DRCTOP, REG_EAX, REG_AX);								// movsx eax,ax
 			else
@@ -823,9 +849,9 @@ static void append_readwrite_and_translate(drc_core *drc, int size, UINT8 flags)
 		{
 			emit_mov_m32_r32(DRCTOP, MBD(REG_ESP, 4), REG_EBX);								// mov  [esp+4],ebx
 			if (!(flags & ARW_MASKED))
-				emit_jmp(DRCTOP, (x86code *)mips3.core->memory.readlong);					// jmp  readlong
+				emit_jmp(DRCTOP, (x86code *)mips3.core->memory.readword);					// jmp  readword
 			else
-				emit_jmp(DRCTOP, (x86code *)mips3.core->memory.readlong_masked);			// jmp  readlong_masked
+				emit_jmp(DRCTOP, (x86code *)mips3.core->memory.readword_masked);			// jmp  readword_masked
 		}
 		else
 		{
@@ -949,8 +975,8 @@ static void ddiv(INT64 *rs, INT64 *rt)
 {
 	if (*rt)
 	{
-		mips3.core->lo = *rs / *rt;
-		mips3.core->hi = *rs % *rt;
+		mips3.core->r[REG_LO] = *rs / *rt;
+		mips3.core->r[REG_HI] = *rs % *rt;
 	}
 }
 
@@ -958,8 +984,8 @@ static void ddivu(UINT64 *rs, UINT64 *rt)
 {
 	if (*rt)
 	{
-		mips3.core->lo = *rs / *rt;
-		mips3.core->hi = *rs % *rt;
+		mips3.core->r[REG_LO] = *rs / *rt;
+		mips3.core->r[REG_HI] = *rs % *rt;
 	}
 }
 
@@ -1015,7 +1041,8 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 	UINT32 op = cpu_readop32(physpc);
 	int cycles;
 
-	code_log_add_entry(pc, op, drc->cache_top);
+	if (LOG_CODE)
+		log_add_disasm_comment(mips3.log, drc->cache_top, pc, op);
 
 	switch (op >> 26)
 	{
@@ -1031,8 +1058,8 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 			return RECOMPILE_SUCCESSFUL_CP(0,0) | RECOMPILE_END_OF_STRING;
 
 		case 0x03:	/* JAL */
-			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			emit_mov_m64_imm32(DRCTOP, REGADDR(31), pc + 8);								// mov  [31],pc + 8
+			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			append_branch_or_dispatch(drc, (pc & 0xf0000000) | (LIMMVAL << 2), 1+cycles);	// <branch or dispatch>
 			return RECOMPILE_SUCCESSFUL_CP(0,0) | RECOMPILE_END_OF_STRING;
 
@@ -1617,7 +1644,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->read_and_translate_word_signed);				// call read_and_translate_word_signed
+			emit_call(DRCTOP, mips3.drcdata->read_and_translate_half_signed);				// call read_and_translate_half_signed
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			if (RTREG != 0)
 			{
@@ -1644,7 +1671,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 			emit_push_r32(DRCTOP, REG_ECX);													// push ecx
 			emit_push_r32(DRCTOP, REG_EBX);													// push ebx
 			emit_push_r32(DRCTOP, REG_EAX);													// push eax
-			emit_call(DRCTOP, mips3.drcdata->read_and_translate_long_masked);				// call read_and_translate_long_masked
+			emit_call(DRCTOP, mips3.drcdata->read_and_translate_word_masked);				// call read_and_translate_word_masked
 			emit_add_r32_imm(DRCTOP, REG_ESP, 8);											// add  esp,8
 			emit_pop_r32(DRCTOP, REG_ECX);													// pop  ecx
 
@@ -1677,7 +1704,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->read_and_translate_long);						// call read_and_translate_long
+			emit_call(DRCTOP, mips3.drcdata->read_and_translate_word);						// call read_and_translate_word
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			if (RTREG != 0)
 			{
@@ -1725,7 +1752,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->read_and_translate_word_unsigned);				// call read_and_translate_word_unsigned
+			emit_call(DRCTOP, mips3.drcdata->read_and_translate_half_unsigned);				// call read_and_translate_half_unsigned
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			if (RTREG != 0)
 			{
@@ -1752,7 +1779,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 			emit_push_r32(DRCTOP, REG_ECX);													// push ecx
 			emit_push_r32(DRCTOP, REG_EBX);													// push ebx
 			emit_push_r32(DRCTOP, REG_EAX);													// push eax
-			emit_call(DRCTOP, mips3.drcdata->read_and_translate_long_masked);				// call read_and_translate_long_masked
+			emit_call(DRCTOP, mips3.drcdata->read_and_translate_word_masked);				// call read_and_translate_word_masked
 			emit_add_r32_imm(DRCTOP, REG_ESP, 8);											// add  esp,8
 			emit_pop_r32(DRCTOP, REG_ECX);													// pop  ecx
 
@@ -1785,7 +1812,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->read_and_translate_long);						// call read_and_translate_long
+			emit_call(DRCTOP, mips3.drcdata->read_and_translate_word);						// call read_and_translate_word
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			if (RTREG != 0)
 			{
@@ -1836,7 +1863,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->write_and_translate_word);						// call writeword
+			emit_call(DRCTOP, mips3.drcdata->write_and_translate_half);						// call writehalf
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
 			return RECOMPILE_SUCCESSFUL_CP(1,4);
@@ -1865,7 +1892,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 			else
 				emit_push_imm(DRCTOP, 0);													// push 0
 			emit_push_r32(DRCTOP, REG_EAX);													// push eax
-			emit_call(DRCTOP, mips3.drcdata->write_and_translate_long_masked);				// call write_and_translate_long_masked
+			emit_call(DRCTOP, mips3.drcdata->write_and_translate_word_masked);				// call write_and_translate_word_masked
 			emit_add_r32_imm(DRCTOP, REG_ESP, 16);											// add  esp,16
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
 			return RECOMPILE_SUCCESSFUL_CP(1,4);
@@ -1888,7 +1915,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->write_and_translate_long);						// call write_and_translate_long
+			emit_call(DRCTOP, mips3.drcdata->write_and_translate_word);						// call write_and_translate_word
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
 			return RECOMPILE_SUCCESSFUL_CP(1,4);
@@ -2001,7 +2028,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 			else
 				emit_push_imm(DRCTOP, 0);													// push 0
 			emit_push_r32(DRCTOP, REG_EAX);													// push eax
-			emit_call(DRCTOP, mips3.drcdata->write_and_translate_long_masked);				// call write_and_translate_long_masked
+			emit_call(DRCTOP, mips3.drcdata->write_and_translate_word_masked);				// call write_and_translate_word_masked
 			emit_add_r32_imm(DRCTOP, REG_ESP, 16);											// add  esp,16
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
 			return RECOMPILE_SUCCESSFUL_CP(1,4);
@@ -2025,7 +2052,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->read_and_translate_long);						// call read_and_translate_long
+			emit_call(DRCTOP, mips3.drcdata->read_and_translate_word);						// call read_and_translate_word
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			emit_mov_m32_r32(DRCTOP, FPR32ADDR(RTREG), REG_EAX);							// mov  [rtreg],eax
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
@@ -2045,7 +2072,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->read_and_translate_long);						// call read_and_translate_long
+			emit_call(DRCTOP, mips3.drcdata->read_and_translate_word);						// call read_and_translate_word
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			emit_mov_m32_r32(DRCTOP, CPR2ADDR(RTREG), REG_EAX);								// mov  [rtreg],eax
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
@@ -2096,7 +2123,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->read_and_translate_double);					// call read_and_translate_long
+			emit_call(DRCTOP, mips3.drcdata->read_and_translate_double);					// call read_and_translate_word
 			emit_mov_m64_r64(DRCTOP, CPR2ADDR(RTREG), REG_EDX, REG_EAX);					// mov  [rtreg],edx:eax
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
@@ -2140,7 +2167,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->write_and_translate_long);						// call write_and_translate_long
+			emit_call(DRCTOP, mips3.drcdata->write_and_translate_word);						// call write_and_translate_word
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
 			return RECOMPILE_SUCCESSFUL_CP(1,4);
@@ -2160,7 +2187,7 @@ static UINT32 recompile_instruction(drc_core *drc, UINT32 pc, UINT32 physpc)
 				emit_push_m32(DRCTOP, REGADDRLO(RSREG));									// push [rsreg].lo
 			else
 				emit_push_imm(DRCTOP, SIMMVAL);												// push SIMMVAL
-			emit_call(DRCTOP, mips3.drcdata->write_and_translate_long);						// call write_and_translate_long
+			emit_call(DRCTOP, mips3.drcdata->write_and_translate_word);						// call write_and_translate_word
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
 			return RECOMPILE_SUCCESSFUL_CP(1,4);
@@ -2379,9 +2406,9 @@ static UINT32 recompile_special1(drc_core *drc, UINT32 pc, UINT32 op)
 			return RECOMPILE_SUCCESSFUL_CP(1+cycles,0) | RECOMPILE_END_OF_STRING | RECOMPILE_ADD_DISPATCH;
 
 		case 0x09:	/* JALR */
-			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			if (RDREG != 0)
 				emit_mov_m64_imm32(DRCTOP, REGADDR(RDREG), pc + 8);							// mov  [rdreg],pc + 8
+			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			emit_mov_r32_m32(DRCTOP, REG_EDI, REGADDRLO(RSREG));							// mov  edi,[rsreg].lo
 			return RECOMPILE_SUCCESSFUL_CP(1+cycles,0) | RECOMPILE_END_OF_STRING | RECOMPILE_ADD_DISPATCH;
 
@@ -2634,10 +2661,10 @@ static UINT32 recompile_special1(drc_core *drc, UINT32 pc, UINT32 op)
 			emit_xor_r32_r32(DRCTOP, REG_EBX, REG_EBX);										// xor  ebx,ebx
 			emit_xor_r32_r32(DRCTOP, REG_ECX, REG_ECX);										// xor  ecx,ecx
 			emit_xor_r32_r32(DRCTOP, REG_EDX, REG_EDX);										// xor  edx,edx
-			emit_sub_r32_m32(DRCTOP, REG_EAX, MABS(LO(&mips3.core->lo)));					// sub  eax,[lo].lo
-			emit_sbb_r32_m32(DRCTOP, REG_EBX, MABS(HI(&mips3.core->lo)));					// sbb  ebx,[lo].hi
-			emit_sbb_r32_m32(DRCTOP, REG_ECX, MABS(LO(&mips3.core->hi)));					// sbb  ecx,[hi].lo
-			emit_sbb_r32_m32(DRCTOP, REG_EDX, MABS(HI(&mips3.core->hi)));					// sbb  edx,[hi].hi
+			emit_sub_r32_m32(DRCTOP, REG_EAX, LOADDRLO);									// sub  eax,[lo].lo
+			emit_sbb_r32_m32(DRCTOP, REG_EBX, LOADDRHI);									// sbb  ebx,[lo].hi
+			emit_sbb_r32_m32(DRCTOP, REG_ECX, HIADDRLO);									// sbb  ecx,[hi].lo
+			emit_sbb_r32_m32(DRCTOP, REG_EDX, HIADDRHI);									// sbb  edx,[hi].hi
 			emit_mov_m64_r64(DRCTOP, LOADDR, REG_EBX, REG_EAX);								// mov  [lo],ebx:eax
 			emit_mov_m64_r64(DRCTOP, HIADDR, REG_EDX, REG_ECX);								// mov  [hi],edx:ecx
 			resolve_link(DRCTOP, &link3);												// noflip:
@@ -3447,9 +3474,8 @@ static UINT32 recompile_regimm(drc_core *drc, UINT32 pc, UINT32 op)
 				emit_cmp_m32_imm(DRCTOP, REGADDRHI(RSREG), 0);								// cmp  [rsreg].hi,0
 				emit_jcc_near_link(DRCTOP, COND_GE, &link1);								// jge  skip
 			}
-
-			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			emit_mov_m64_imm32(DRCTOP, MABS(&mips3.core->r[31]), pc + 8);					// mov  [31],pc + 8
+			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			append_branch_or_dispatch(drc, pc + 4 + (SIMMVAL << 2), 1+cycles);				// <branch or dispatch>
 			resolve_link(DRCTOP, &link1);												// skip:
 			return RECOMPILE_SUCCESSFUL_CP(1,4);
@@ -3457,8 +3483,8 @@ static UINT32 recompile_regimm(drc_core *drc, UINT32 pc, UINT32 op)
 		case 0x11:	/* BGEZAL */
 			if (RSREG == 0)
 			{
-				cycles = recompile_delay_slot(drc, pc + 4);									// <next instruction>
 				emit_mov_m64_imm32(DRCTOP, MABS(&mips3.core->r[31]), pc + 8);				// mov  [31],pc + 8
+				cycles = recompile_delay_slot(drc, pc + 4);									// <next instruction>
 				append_branch_or_dispatch(drc, pc + 4 + (SIMMVAL << 2), 1+cycles);			// <branch or dispatch>
 				return RECOMPILE_SUCCESSFUL_CP(0,0) | RECOMPILE_END_OF_STRING;
 			}
@@ -3468,8 +3494,8 @@ static UINT32 recompile_regimm(drc_core *drc, UINT32 pc, UINT32 op)
 				emit_jcc_near_link(DRCTOP, COND_L, &link1);									// jl   skip
 			}
 
-			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			emit_mov_m64_imm32(DRCTOP, MABS(&mips3.core->r[31]), pc + 8);					// mov  [31],pc + 8
+			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			append_branch_or_dispatch(drc, pc + 4 + (SIMMVAL << 2), 1+cycles);				// <branch or dispatch>
 			resolve_link(DRCTOP, &link1);												// skip:
 			return RECOMPILE_SUCCESSFUL_CP(1,4);
@@ -3483,8 +3509,8 @@ static UINT32 recompile_regimm(drc_core *drc, UINT32 pc, UINT32 op)
 				emit_jcc_near_link(DRCTOP, COND_GE, &link1);								// jge  skip
 			}
 
-			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			emit_mov_m64_imm32(DRCTOP, MABS(&mips3.core->r[31]), pc + 8);					// mov  [31],pc + 8
+			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			append_branch_or_dispatch(drc, pc + 4 + (SIMMVAL << 2), 1+cycles);				// <branch or dispatch>
 			resolve_link(DRCTOP, &link1);												// skip:
 			return RECOMPILE_SUCCESSFUL_CP(1,8);
@@ -3492,8 +3518,8 @@ static UINT32 recompile_regimm(drc_core *drc, UINT32 pc, UINT32 op)
 		case 0x13:	/* BGEZALL */
 			if (RSREG == 0)
 			{
-				cycles = recompile_delay_slot(drc, pc + 4);									// <next instruction>
 				emit_mov_m64_imm32(DRCTOP, MABS(&mips3.core->r[31]), pc + 8);				// mov  [31],pc + 8
+				cycles = recompile_delay_slot(drc, pc + 4);									// <next instruction>
 				append_branch_or_dispatch(drc, pc + 4 + (SIMMVAL << 2), 1+cycles);			// <branch or dispatch>
 				return RECOMPILE_SUCCESSFUL_CP(0,0) | RECOMPILE_END_OF_STRING;
 			}
@@ -3503,8 +3529,8 @@ static UINT32 recompile_regimm(drc_core *drc, UINT32 pc, UINT32 op)
 				emit_jcc_near_link(DRCTOP, COND_L, &link1);									// jl   skip
 			}
 
-			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			emit_mov_m64_imm32(DRCTOP, MABS(&mips3.core->r[31]), pc + 8);					// mov  [31],pc + 8
+			cycles = recompile_delay_slot(drc, pc + 4);										// <next instruction>
 			append_branch_or_dispatch(drc, pc + 4 + (SIMMVAL << 2), 1+cycles);				// <branch or dispatch>
 			resolve_link(DRCTOP, &link1);												// skip:
 			return RECOMPILE_SUCCESSFUL_CP(1,8);
@@ -4631,7 +4657,7 @@ static UINT32 recompile_cop1x(drc_core *drc, UINT32 pc, UINT32 op)
 			emit_mov_r32_m32(DRCTOP, REG_EAX, REGADDRLO(RSREG));							// mov  eax,[rsreg]
 			emit_add_r32_m32(DRCTOP, REG_EAX, REGADDRLO(RTREG));							// add  eax,[rtreg]
 			emit_push_r32(DRCTOP, REG_EAX);													// push eax
-			emit_call(DRCTOP, mips3.drcdata->read_and_translate_long);						// call read_and_translate_long
+			emit_call(DRCTOP, mips3.drcdata->read_and_translate_word);						// call read_and_translate_word
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,12
 			emit_mov_m32_r32(DRCTOP, FPR32ADDR(FDREG), REG_EAX);							// mov  [fdreg],eax
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
@@ -4659,7 +4685,7 @@ static UINT32 recompile_cop1x(drc_core *drc, UINT32 pc, UINT32 op)
 			emit_mov_r32_m32(DRCTOP, REG_EAX, REGADDRLO(RSREG));							// mov  eax,[rsreg]
 			emit_add_r32_m32(DRCTOP, REG_EAX, REGADDRLO(RTREG));							// add  eax,[rtreg]
 			emit_push_r32(DRCTOP, REG_EAX);													// push eax
-			emit_call(DRCTOP, mips3.drcdata->write_and_translate_long);						// call write_and_translate_long
+			emit_call(DRCTOP, mips3.drcdata->write_and_translate_word);						// call write_and_translate_word
 			emit_add_r32_imm(DRCTOP, REG_ESP, 12);											// add  esp,8
 			emit_mov_r32_m32(DRCTOP, REG_EBP, ICOUNTADDR);									// mov  ebp,[icount]
 			return RECOMPILE_SUCCESSFUL_CP(1,4);

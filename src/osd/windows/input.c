@@ -53,15 +53,6 @@
 
 
 //============================================================
-//  IMPORTS
-//============================================================
-
-extern int win_physical_width;
-extern int win_physical_height;
-
-
-
-//============================================================
 //  PARAMETERS
 //============================================================
 
@@ -238,7 +229,6 @@ static void wininput_exit(running_machine *machine);
 // device list management
 static void device_list_poll_devices(device_info *devlist_head);
 static void device_list_reset_devices(device_info *devlist_head);
-static int device_list_count(device_info *devlist_head);
 
 // generic device management
 static device_info *generic_device_alloc(device_info **devlist_head_ptr, const TCHAR *name);
@@ -776,21 +766,6 @@ static void device_list_reset_devices(device_info *devlist_head)
 
 	for (curdev = devlist_head; curdev != NULL; curdev = curdev->next)
 		generic_device_reset(curdev);
-}
-
-
-//============================================================
-//  device_list_count
-//============================================================
-
-static int device_list_count(device_info *devlist_head)
-{
-	device_info *curdev;
-	int count = 0;
-
-	for (curdev = devlist_head; curdev != NULL; curdev = curdev->next)
-		count++;
-	return count;
 }
 
 
@@ -1522,22 +1497,22 @@ static BOOL CALLBACK dinput_joystick_enum(LPCDIDEVICEINSTANCE instance, LPVOID r
 
 		// left
 		name = dinput_device_item_name(devinfo, offsetof(DIJOYSTATE2, rgdwPOV) + povnum * sizeof(DWORD), default_pov_name(povnum), TEXT("L"));
-		input_device_item_add(devinfo->device, name, (void *)(povnum * 4 + POVDIR_LEFT), ITEM_ID_OTHER_SWITCH, dinput_joystick_pov_get_state);
+		input_device_item_add(devinfo->device, name, (void *)(FPTR)(povnum * 4 + POVDIR_LEFT), ITEM_ID_OTHER_SWITCH, dinput_joystick_pov_get_state);
 		free((void *)name);
 
 		// right
 		name = dinput_device_item_name(devinfo, offsetof(DIJOYSTATE2, rgdwPOV) + povnum * sizeof(DWORD), default_pov_name(povnum), TEXT("R"));
-		input_device_item_add(devinfo->device, name, (void *)(povnum * 4 + POVDIR_RIGHT), ITEM_ID_OTHER_SWITCH, dinput_joystick_pov_get_state);
+		input_device_item_add(devinfo->device, name, (void *)(FPTR)(povnum * 4 + POVDIR_RIGHT), ITEM_ID_OTHER_SWITCH, dinput_joystick_pov_get_state);
 		free((void *)name);
 
 		// up
 		name = dinput_device_item_name(devinfo, offsetof(DIJOYSTATE2, rgdwPOV) + povnum * sizeof(DWORD), default_pov_name(povnum), TEXT("U"));
-		input_device_item_add(devinfo->device, name, (void *)(povnum * 4 + POVDIR_UP), ITEM_ID_OTHER_SWITCH, dinput_joystick_pov_get_state);
+		input_device_item_add(devinfo->device, name, (void *)(FPTR)(povnum * 4 + POVDIR_UP), ITEM_ID_OTHER_SWITCH, dinput_joystick_pov_get_state);
 		free((void *)name);
 
 		// down
 		name = dinput_device_item_name(devinfo, offsetof(DIJOYSTATE2, rgdwPOV) + povnum * sizeof(DWORD), default_pov_name(povnum), TEXT("D"));
-		input_device_item_add(devinfo->device, name, (void *)(povnum * 4 + POVDIR_DOWN), ITEM_ID_OTHER_SWITCH, dinput_joystick_pov_get_state);
+		input_device_item_add(devinfo->device, name, (void *)(FPTR)(povnum * 4 + POVDIR_DOWN), ITEM_ID_OTHER_SWITCH, dinput_joystick_pov_get_state);
 		free((void *)name);
 	}
 

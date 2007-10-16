@@ -539,30 +539,65 @@ int options_parse_ini_file(core_options *opts, core_file *inifile, int priority)
 ***************************************************************************/
 
 /*-------------------------------------------------
+    options_output_diff_ini_file - output the diff
+    of the current state from a base state to an
+    INI file
+-------------------------------------------------*/
+
+void options_output_diff_ini_file(core_options *opts, core_options *baseopts, core_file *inifile)
+{
+	options_data *data;
+	const char *last_header = NULL;
+	const char *name;
+	const char *value;
+	options_data *basedata;
+
+	/* loop over all items */
+	for (data = opts->datalist; data != NULL; data = data->next)
+	{
+		/* header: record description */
+		if ((data->flags & OPTION_HEADER) != 0)
+			last_header = data->description;
+
+		/* otherwise, output entries for all non-deprecated and non-command items (if not in baseopts) */
+		else if ((data->flags & (OPTION_DEPRECATED | OPTION_INTERNAL | OPTION_COMMAND)) == 0)
+		{
+			/* get name and data of this value */
+			name = astring_c(data->links[0].name);
+			value = astring_c(data->data);
+
+			/* look up counterpart in baseopts, if baseopts is specified */
+			basedata = (baseopts != NULL) ? find_entry_data(baseopts, name, FALSE) : NULL;
+
+			/* is our data different, or not in baseopts? */
+			if ((basedata == NULL) || (strcmp(value, astring_c(basedata->data)) != 0))
+			{
+				/* output header, if we have one */
+				if (last_header != NULL)
+				{
+					core_fprintf(inifile, "\n#\n# %s\n#\n", last_header);
+					last_header = NULL;
+				}
+
+				/* and finally output the data */
+				if (strchr(value, ' ') != NULL)
+					core_fprintf(inifile, "%-25s \"%s\"\n", name, value);
+				else
+					core_fprintf(inifile, "%-25s %s\n", name, value);
+			}
+		}
+	}
+}
+
+
+/*-------------------------------------------------
     options_output_ini_file - output the current
     state to an INI file
 -------------------------------------------------*/
 
 void options_output_ini_file(core_options *opts, core_file *inifile)
 {
-	options_data *data;
-
-	/* loop over all items */
-	for (data = opts->datalist; data != NULL; data = data->next)
-	{
-		/* header: just print */
-		if ((data->flags & OPTION_HEADER) != 0)
-			core_fprintf(inifile, "\n#\n# %s\n#\n", data->description);
-
-		/* otherwise, output entries for all non-deprecated and non-command items */
-		else if ((data->flags & (OPTION_DEPRECATED | OPTION_INTERNAL | OPTION_COMMAND)) == 0)
-		{
-			if (astring_chr(data->data, 0, ' ') != -1)
-				core_fprintf(inifile, "%-25s \"%s\"\n", astring_c(data->links[0].name), astring_c(data->data));
-			else
-				core_fprintf(inifile, "%-25s %s\n", astring_c(data->links[0].name), astring_c(data->data));
-		}
-	}
+	options_output_diff_ini_file(opts, NULL, inifile);
 }
 
 
@@ -665,7 +700,7 @@ int options_get_bool(core_options *opts, const char *name)
 		sscanf(astring_c(data->data), "%d", &value);
 		if (!data->error_reported)
 		{
-			message(opts, OPTMSG_ERROR, "Illegal boolean value for %s; reverting to %d\n", data->links[0].name, value);
+			message(opts, OPTMSG_ERROR, "Illegal boolean value for %s; reverting to %d\n", astring_c(data->links[0].name), value);
 			data->error_reported = TRUE;
 		}
 	}
@@ -694,7 +729,7 @@ int options_get_int(core_options *opts, const char *name)
 		sscanf(astring_c(data->data), "%d", &value);
 		if (!data->error_reported)
 		{
-			message(opts, OPTMSG_ERROR, "Illegal integer value for %s; reverting to %d\n", data->links[0].name, value);
+			message(opts, OPTMSG_ERROR, "Illegal integer value for %s; reverting to %d\n", astring_c(data->links[0].name), value);
 			data->error_reported = TRUE;
 		}
 	}
@@ -723,7 +758,7 @@ float options_get_float(core_options *opts, const char *name)
 		sscanf(astring_c(data->data), "%f", &value);
 		if (!data->error_reported)
 		{
-			message(opts, OPTMSG_ERROR, "Illegal float value for %s; reverting to %f\n", data->links[0].name, (double)value);
+			message(opts, OPTMSG_ERROR, "Illegal float value for %s; reverting to %f\n", astring_c(data->links[0].name), (double)value);
 			data->error_reported = TRUE;
 		}
 	}
@@ -959,14 +994,14 @@ static void update_data(core_options *opts, options_data *data, const char *newd
 			i = 0;
 			if (sscanf(datastart, "%d", &i) != 1)
 			{
-				message(opts, OPTMSG_ERROR, "Illegal integer value for %s; keeping value of %s\n", data->links[0].name, astring_c(data->data));
+				message(opts, OPTMSG_ERROR, "Illegal integer value for %s; keeping value of %s\n", astring_c(data->links[0].name), astring_c(data->data));
 				data->error_reported = TRUE;
 				return;
 			}
 			if (i < data->range_minimum.i || i > data->range_maximum.i)
 			{
 				message(opts, OPTMSG_ERROR, "Invalid %s value (must be between %i and %i); keeping value of %s\n",
-					data->links[0].name, data->range_minimum.i, data->range_maximum.i, astring_c(data->data));
+					astring_c(data->links[0].name), data->range_minimum.i, data->range_maximum.i, astring_c(data->data));
 				data->error_reported = TRUE;
 				return;
 			}
@@ -977,14 +1012,14 @@ static void update_data(core_options *opts, options_data *data, const char *newd
 			f = 0;
 			if (sscanf(datastart, "%f", &f) != 1)
 			{
-				message(opts, OPTMSG_ERROR, "Illegal float value for %s; keeping value of %s\n", data->links[0].name, astring_c(data->data));
+				message(opts, OPTMSG_ERROR, "Illegal float value for %s; keeping value of %s\n", astring_c(data->links[0].name), astring_c(data->data));
 				data->error_reported = TRUE;
 				return;
 			}
 			if (f < data->range_minimum.f || f > data->range_maximum.f)
 			{
 				message(opts, OPTMSG_ERROR, "Invalid %s value (must be between %f and %f); keeping value of %s\n",
-					data->links[0].name, data->range_minimum.f, data->range_maximum.f, astring_c(data->data));
+					astring_c(data->links[0].name), data->range_minimum.f, data->range_maximum.f, astring_c(data->data));
 				data->error_reported = TRUE;
 				return;
 			}

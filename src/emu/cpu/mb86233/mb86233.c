@@ -6,7 +6,6 @@
     Written by ElSemi
     MAME version by Ernesto Corvi
 
-
     TODO:
     - Properly emulate the TGP Tables from the ROM (See GETEXTERNAL)
     - Many unknown opcodes and addressing modes
@@ -41,9 +40,10 @@ typedef struct
 	UINT8			pcsp;
 	UINT32			eb;
 	UINT32			shift;
+	UINT32			repcnt;
 	UINT16			sr;
 
-	UINT16			gpr[16];
+	UINT32			gpr[16];
 	UINT32			extport[0x30];
 
 	/* FIFO */
@@ -84,6 +84,7 @@ static int mb86233_icount;
 #define GETARAM()			mb86233.ARAM
 #define GETBRAM()			mb86233.BRAM
 #define ALU(a)				mb86233_alu(a)
+#define GETREPCNT()			mb86233.repcnt
 
 #define ROPCODE(a)			cpu_readop32(a<<2)
 #define RDMEM(a)			program_read_dword_32le((a<<2))
@@ -357,7 +358,8 @@ static void ALU( UINT32 alu)
 		break;
 
 		case 0x18:	/* ASR D, SHIFT */
-			GETD().u = (GETD().u & 0x80000000) | (GETD().u >> GETSHIFT());
+//          GETD().u = (GETD().u & 0x80000000) | (GETD().u >> GETSHIFT());
+			GETD().i >>= GETSHIFT();
 			FLAGSI(GETD().u);
 		break;
 
@@ -396,7 +398,15 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 
 			r.u = GETEXTPORT()[0x20];
 			a = r.i;
-			r.f = (float)sin((float)a*(2.0*M_PI/65536.0));
+			if ( a == 0 || a == -32768 )
+				r.f = 0;
+			else if ( a == 16384 )
+				r.f = 1.0;
+			else if ( a == -16384 )
+				r.f=-1.0;
+			else
+				r.f = (float)sin((float)a*(2.0*M_PI/65536.0));
+
 			return r.u;
 		}
 
@@ -407,11 +417,19 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 
 			r.u = GETEXTPORT()[0x20];
 			a = r.i;
+			if ( a == 16384 || a == -16384 )
+				r.f = 0;
+			else if ( a == 0 )
+				r.f = 1.0;
+			else if ( a == -32768 )
+				r.f = -1.0;
+			else
+				r.f = (float)cos((float)a*(2.0*M_PI/65536.0));
 
-			r.f = (float)cos((float)a*(2.0*M_PI/65536.0));
 			return r.u;
 		}
 
+#if 0
 		if ( offset == 0x22 )	/* -SIN from value at RAM(0x20) in 0x4000/PI steps */
 		{
 			MB86233_REG		r;
@@ -422,19 +440,36 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 			r.f = (float)-sin((float)a*(2.0*M_PI/65536.0));
 			return r.u;
 		}
+#endif
 
 		if ( offset == 0x27 )	/* atan */
 		{
 			MB86233_REG		r1, r2;
-			INT32			v;
 
 			r1.u = GETEXTPORT()[0x24]; /* A */
 			r2.u = GETEXTPORT()[0x25]; /* B */
 
-			v = (INT32)(atan2(r2.f,r1.f)*32768.0/M_PI);
+			if ( r2.f == 0 )
+			{
+				if ( r1.f >= 0 )
+					GETEXTPORT()[0x27] = 0;
+				else
+					GETEXTPORT()[0x27] = 0xFFFF8000;
+			}
+			else if ( r1.f == 0 )
+			{
+				if ( r2.f >= 0 )
+					GETEXTPORT()[0x27] = 0x4000;
+				else
+					GETEXTPORT()[0x27] = 0xFFFFC000;
+			}
+			else
+			{
+				r1.i = (INT32)((atan2(r2.f,r1.f))*32768.0/M_PI);
+				GETEXTPORT()[0x27] = r1.u;
+			}
 
-			r1.i = v;
-			return r1.u;
+			return GETEXTPORT()[0x27];
 		}
 
 		if ( offset == 0x28 )	/* 1/x - part 1 */
@@ -444,6 +479,8 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 		{
 			MB86233_REG		r;
 			r.u = GETEXTPORT()[0x28];
+			if ( r.f==0 )
+					r.u = 0x80000000;
 			r.f = 1/r.f;
 			return r.u;
 		}
@@ -455,7 +492,10 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 		{
 			MB86233_REG		r;
 			r.u = GETEXTPORT()[0x2a];
-			r.f = 1/sqrt(r.f);
+			if ( r.f == 0 )
+				r.u=0x80000000;
+			else
+				r.f = 1/sqrt(r.f);
 			return r.u;
 		}
 
@@ -508,7 +548,7 @@ static UINT32 GETREGS( UINT32 reg, int source )
 			break;
 
 			case 0x11:	/* A.e */
-				return (GETA().u >> 23) & 0x7f;
+				return (GETA().u >> 23) & 0xff;
 			break;
 
 			case 0x12:	/* A.m */
@@ -520,7 +560,7 @@ static UINT32 GETREGS( UINT32 reg, int source )
 			break;
 
 			case 0x14:	/* B.e */
-				return (GETB().u >> 23) & 0x7f;
+				return (GETB().u >> 23) & 0xff;
 			break;
 
 			case 0x15:	/* B.m */
@@ -532,7 +572,7 @@ static UINT32 GETREGS( UINT32 reg, int source )
 			break;
 
 			case 0x1A:	/* D.e */
-				return (GETD().u >> 23) & 0x7f;
+				return (GETD().u >> 23) & 0xff;
 			break;
 
 			case 0x1B:	/* D.m */
@@ -544,7 +584,7 @@ static UINT32 GETREGS( UINT32 reg, int source )
 			break;
 
 			case 0x1D:	/* P.e */
-				return (GETP().u >> 23) & 0x7f;
+				return (GETP().u >> 23) & 0xff;
 			break;
 
 			case 0x1E:	/* P.m */
@@ -568,10 +608,6 @@ static UINT32 GETREGS( UINT32 reg, int source )
 				{
 					if ( mb86233.fifo_read_cb(&fifo_data) )
 					{
-#if 0
-						if ( GETPC() == 0x4C )
-							printf( "TGP: Function %02x\n", (fifo_data >> 23 ) & 0xff );
-#endif
 						return fifo_data;
 					}
 				}
@@ -587,6 +623,10 @@ static UINT32 GETREGS( UINT32 reg, int source )
 
 			case 0x23:	/* EB */
 				return GETEB();
+			break;
+
+			case 0x34:
+				return GETREPCNT();
 			break;
 
 			default:
@@ -669,6 +709,9 @@ static void SETREGS( UINT32 reg, UINT32 val )
 	{
 		if ( reg < 0x10 )
 		{
+			if ( reg == 12 || reg == 13 )
+				val &= 0xff;
+
 			GETGPR(reg) = val;
 			return;
 		}
@@ -681,7 +724,7 @@ static void SETREGS( UINT32 reg, UINT32 val )
 
 			case 0x11:	/* A.e */
 				GETA().u &= ~((0x0000007f) << 23);
-				GETA().u |= (( val & 0x7f ) << 23 );
+				GETA().u |= (( val & 0xff ) << 23 );
 			break;
 
 			case 0x12:	/* A.m */
@@ -696,7 +739,7 @@ static void SETREGS( UINT32 reg, UINT32 val )
 
 			case 0x14:	/* B.e */
 				GETB().u &= ~((0x0000007f) << 23);
-				GETB().u |= (( val & 0x7f ) << 23 );
+				GETB().u |= (( val & 0xff ) << 23 );
 			break;
 
 			case 0x15:	/* B.m */
@@ -711,7 +754,7 @@ static void SETREGS( UINT32 reg, UINT32 val )
 
 			case 0x1A:	/* D.e */
 				GETD().u &= ~((0x0000007f) << 23);
-				GETD().u |= (( val & 0x7f ) << 23 );
+				GETD().u |= (( val & 0xff ) << 23 );
 			break;
 
 			case 0x1B:	/* B.m */
@@ -726,7 +769,7 @@ static void SETREGS( UINT32 reg, UINT32 val )
 
 			case 0x1D:	/* P.e */
 				GETP().u &= ~((0x0000007f) << 23);
-				GETP().u |= (( val & 0x7f ) << 23 );
+				GETP().u |= (( val & 0xff ) << 23 );
 			break;
 
 			case 0x1E:	/* P.m */
@@ -752,6 +795,10 @@ static void SETREGS( UINT32 reg, UINT32 val )
 
 			case 0x23:
 				GETEB() = val;
+			break;
+
+			case 0x34:
+				GETREPCNT() = val;
 			break;
 
 			default:
@@ -845,8 +892,6 @@ static UINT32 INDIRECT( UINT32 reg, int source )
 	return 0;
 }
 
-
-
 /***************************************************************************
     Core Execution Loop
 ***************************************************************************/
@@ -887,7 +932,7 @@ static int mb86233_execute(int cycles)
 
 					case 0x0D:
 						GETA().u = GETARAM()[INDIRECT(r1,0)];
-						GETB().u = GETBRAM()[INDIRECT(r2|(2<<6),1)];
+						GETB().u = GETBRAM()[INDIRECT(r2|2<<6,0)];
 					break;
 
 					case 0x0F:
@@ -921,9 +966,9 @@ static int mb86233_execute(int cycles)
 
 				switch( op )
 				{
-					case 0x04:	/* MOV RAM->RAM */
+					case 0x04:	/* MOV RAM->External */
 					{
-						GETARAM()[r2] = GETARAM()[r1];
+						SETEXTERNAL(GETEB(), r2, GETARAM()[r1]);
 						ALU(alu);
 					}
 					break;
@@ -1036,7 +1081,7 @@ static int mb86233_execute(int cycles)
 					}
 					break;
 
-					case 0x03:	/* RAM->External */
+					case 0x03:	/* RAM->External Ind */
 					{
 						val = GETARAM()[r1];
 						ALU(alu);
@@ -1114,12 +1159,16 @@ static int mb86233_execute(int cycles)
 
 				if( sub2 == 0x00 )			/* CLEAR reg */
 				{
-					UINT32	reg = opcode & 0x3f;
+					UINT32	reg = opcode & 0x1f;
 
 					switch( reg )
 					{
 						case 0x10:
 							GETD().u = 0;
+						break;
+
+						case 0x08:
+							GETB().u = 0;
 						break;
 
 						case 0x04:
@@ -1129,20 +1178,30 @@ static int mb86233_execute(int cycles)
 				}
 				else if ( sub2 == 0x04 )	/* REP xxx */
 				{
-					if ( (opcode & 0xff) == 0 )
-						GETREPS() = 0x100;
-					else
-						GETREPS() = opcode & 0xff;
+					UINT32		sub3 = ( opcode >> 12 ) & 0x0f;
 
-					GETPC()++;
+					if ( sub3 == 0 )
+					{
+						GETREPS() = opcode & 0xfff;
+
+						if ( GETREPS() == 0 )
+							GETREPS() = 0x100;
+
+						GETPC()++;
+					}
+					else if ( sub3 == 8 )
+					{
+						GETREPS() = GETREGS( opcode & 0xfff, 0 );
+						GETPC()++;
+					}
 				}
 				else if ( sub2 == 0x02 )	/* CLRFLAGS */
 				{
-					GETSR() &= ~(opcode&0xffff);
+					GETSR() &= ~(opcode&0xfff);
 				}
 				else if ( sub2 == 0x06 )	/* SETFLAGS */
 				{
-					GETSR() |= (opcode&0xffff);
+					GETSR() |= (opcode&0xfff);
 				}
 			}
 			break;
@@ -1162,9 +1221,9 @@ static int mb86233_execute(int cycles)
 				UINT32	imm = opcode & 0xffffff;
 
 				if ( sub == 0 ) /* R12 */
-					GETGPR(12) = imm;
+					GETGPR(12) = imm & 0xff;
 				else if ( sub == 1 ) /* R13 */
-					GETGPR(13) = imm;
+					GETGPR(13) = imm & 0xff;
 				else
 					logerror( "TGP: Unknown LDIMM r12 (sub=%d) at PC:%04x\n", sub, GETPC() );
 			}
@@ -1175,9 +1234,13 @@ static int mb86233_execute(int cycles)
 				UINT32	sub = (opcode>>24) & 0x03;
 				UINT32	imm = opcode & 0xffffff;
 
-				if ( sub == 1 ) /* A.e */
+				if ( sub == 0 ) /* A */
 				{
-					GETA().u = (imm & 0x7f) << 23;
+					GETA().u = imm;
+				}
+				else if ( sub == 1 ) /* A.e */
+				{
+					GETA().u = (imm & 0xff) << 23;
 				}
 				else if ( sub == 2 ) /* A.m */
 				{
@@ -1195,11 +1258,15 @@ static int mb86233_execute(int cycles)
 				UINT32	sub = (opcode>>24) & 0x03;
 				UINT32	imm = opcode & 0xffffff;
 
-				if ( sub == 0 ) /* B.e */
+				if ( sub == 0 ) /* B ? */
 				{
-					GETB().u = (imm & 0x7f) << 23;
+					GETB().u = ((imm & 0x7f) << 23) | ((imm & 0xff) << 8) | ( imm & 0xff );
 				}
-				else if ( sub == 1 ) /* B.m */
+				else if ( sub == 1 ) /* B.e */
+				{
+					GETB().u = (imm & 0xff) << 23;
+				}
+				else if ( sub == 2 ) /* B.m */
 				{
 					GETB().u |= (imm & 0x7fffff ) | ((imm & 0x800000) << 8);
 				}
@@ -1215,9 +1282,13 @@ static int mb86233_execute(int cycles)
 				UINT32	sub = (opcode>>24) & 0x03;
 				UINT32	imm = opcode & 0xffffff;
 
-				if ( sub == 2 ) /* D.e */
+				if ( sub == 1 ) /* clear + D.m */
 				{
-					GETD().u = (imm & 0x7f) << 23;
+					GETD().u = (imm & 0x7fffff ) | ((imm & 0x800000) << 8);
+				}
+				else if ( sub == 2 ) /* D.e */
+				{
+					GETD().u = (imm & 0xff) << 23;
 				}
 				else if ( sub == 3 ) /* D.m */
 				{
@@ -1258,6 +1329,21 @@ static int mb86233_execute(int cycles)
 				else
 				{
 					logerror( "TGP: Unknown LDIMM external reg (sub=%d) at PC:%04x\n", sub, GETPC() );
+				}
+			}
+			break;
+
+			case 0x1d:	//LDIMM to Rep regs
+			{
+				UINT32 sub = (opcode>>24)&0x3;
+				UINT32 imm = opcode&0xffffff;
+				if(sub == 0x00)
+				{
+					GETREPCNT() = imm;
+				}
+				else
+				{
+					logerror( "TGP: Unknown LDIMM REPCnt (sub=%d) at PC:%04x\n", sub, GETPC() );
 				}
 			}
 			break;

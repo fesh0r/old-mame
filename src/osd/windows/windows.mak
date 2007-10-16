@@ -90,7 +90,11 @@ AR = @$(VCONV) ar
 RC = @$(VCONV) windres
 
 # make sure we use the multithreaded runtime
+ifdef DEBUG
+CC += /MTd
+else
 CC += /MT
+endif
 
 # turn on link-time codegen if the MAXOPT flag is also set
 ifdef MAXOPT
@@ -99,7 +103,7 @@ LD += /LTCG
 endif
 
 ifdef PTR64
-CC += /wd4267 /wd4312 /Wp64
+CC += /wd4267 /Wp64
 endif
 
 # add some VC++-specific defines
@@ -234,11 +238,7 @@ OSDOBJS += \
 endif
 
 # add a stub resource file
-ifdef PTR64
-RESFILE = $(WINOBJ)/mamex64.res
-else
 RESFILE = $(WINOBJ)/mame.res
-endif
 
 
 

@@ -20,7 +20,7 @@ CPUOBJ = $(EMUOBJ)/cpu
 
 ifdef PTR64
 
-DRCOBJ = $(CPUOBJ)/x64drc.o
+DRCOBJ = $(CPUOBJ)/x64drc.o $(CPUOBJ)/x86log.o $(CPUOBJ)/drcfe.o
 
 DRCDEPS = 	$(CPUSRC)/x86emit.h \
 			$(CPUSRC)/x64drc.c \
@@ -30,7 +30,7 @@ $(DRCOBJ): $(DRCDEPS)
 
 else
 
-DRCOBJ = $(CPUOBJ)/x86drc.o
+DRCOBJ = $(CPUOBJ)/x86drc.o $(CPUOBJ)/x86log.o $(CPUOBJ)/drcfe.o
 
 DRCDEPS = 	$(CPUSRC)/x86emit.h \
 			$(CPUSRC)/x86drc.c \
@@ -792,7 +792,7 @@ CPUOBJS += $(CPUOBJ)/mips/mips3com.o
 DBGOBJS += $(CPUOBJ)/mips/mips3dsm.o
 
 ifdef X86_MIPS3_DRC
-CPUOBJS += $(CPUOBJ)/mips/mips3drc.o $(DRCOBJ)
+CPUOBJS += $(CPUOBJ)/mips/mips3drc.o $(CPUOBJ)/mips/mips3fe.o $(DRCOBJ)
 else
 CPUOBJS += $(CPUOBJ)/mips/mips3.o
 endif
@@ -804,8 +804,10 @@ $(CPUOBJ)/mips/mips3.o:		$(CPUSRC)/mips/mips3.c \
 
 $(CPUOBJ)/mips/mips3drc.o:	$(CPUSRC)/mips/mips3drc.c \
 							$(CPUSRC)/mips/mdrcold.c \
+							$(CPUSRC)/mips/mdrc64.c \
 							$(CPUSRC)/mips/mips3.h \
 							$(CPUSRC)/mips/mips3com.h \
+							$(CPUSRC)/mips/mips3fe.h \
 							$(DRCDEPS)
 
 
@@ -1134,7 +1136,7 @@ DBGOBJS += $(CPUOBJ)/nec/necdasm.o
 endif
 
 ifneq ($(filter V30MZ,$(CPUS)),)
-OBJDIRS += $(CPUOBJ)/v30mz
+OBJDIRS += $(CPUOBJ)/v30mz $(CPUOBJ)/nec
 CPUOBJS += $(CPUOBJ)/v30mz/v30mz.o
 DBGOBJS += $(CPUOBJ)/nec/necdasm.o
 endif
@@ -1432,7 +1434,7 @@ endif
 $(CPUOBJ)/tms9900/tms9900.o:	$(CPUSRC)/tms9900/tms9900.c \
 								$(CPUSRC)/tms9900/tms9900.h \
 								$(CPUSRC)/tms9900/99xxcore.h \
-								$(CPUSRC)/tms9900/9900stat.h
+								$(CPUSRC)/tms9900/99xxstat.h
 
 $(CPUOBJ)/tms9900/tms9980a.o:	$(CPUSRC)/tms9900/tms9980a.c \
 								$(CPUSRC)/tms9900/tms9900.h \
@@ -1660,7 +1662,6 @@ endif
 
 $(CPUOBJ)/z80gb/z80gb.o:	$(CPUSRC)/z80gb/z80gb.c \
 							$(CPUSRC)/z80gb/z80gb.h \
-							$(CPUSRC)/z80gb/daa_tab.h \
 							$(CPUSRC)/z80gb/opc_cb.h \
 							$(CPUSRC)/z80gb/opc_main.h
 

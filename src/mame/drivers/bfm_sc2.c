@@ -521,6 +521,7 @@ static INTERRUPT_GEN( timer_irq )
 
 ///////////////////////////////////////////////////////////////////////////
 
+#ifdef UNUSED_FUNCTION
 static WRITE8_HANDLER( reel12_w )
 {
 	reel12_latch = data;
@@ -533,6 +534,7 @@ static WRITE8_HANDLER( reel12_w )
 	if ( Stepper_optic_state(1) ) optic_pattern |=  0x02;
 	else                          optic_pattern &= ~0x02;
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -792,6 +794,7 @@ static WRITE8_HANDLER( nec_latch_w )
 
 ///////////////////////////////////////////////////////////////////////////
 
+#ifdef UNUSED_FUNCTION
 static READ8_HANDLER( vfd_status_r )
 {
 	// b7 = NEC busy
@@ -804,6 +807,7 @@ static READ8_HANDLER( vfd_status_r )
 
 	return result;
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -945,10 +949,12 @@ static WRITE8_HANDLER( coininhib_w )
 
 ///////////////////////////////////////////////////////////////////////////
 
+#ifdef UNUSED_FUNCTION
 static READ8_HANDLER( direct_input_r )
 {
 	return 0;
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -3059,7 +3065,7 @@ static MACHINE_DRIVER_START( scorpion2_vid )
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_COLORTABLE_LENGTH(16)
 	MDRV_PALETTE_INIT(adder2)
-	MDRV_GFXDECODE(adder2_gfxdecodeinfo)
+	MDRV_GFXDECODE(adder2)
 
 	MDRV_CPU_ADD_TAG("adder2", M6809, 2000000 )			// adder2 board 6809 CPU at 2 Mhz
 	MDRV_CPU_PROGRAM_MAP(adder2_memmap,0)				// setup adder2 board memorymap

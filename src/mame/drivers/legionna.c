@@ -360,11 +360,13 @@ static void protection_move_jsr(UINT32 work_ram,UINT8 k)
 	program_write_word(work_ram+0x4,y_data);
 }
 
+#ifdef UNUSED_FUNCTION
 static void protection_move2_jsr(void)
 {
 //  static UINT32 move_data;
 //  popmessage("%08x %08x %08x %08x",ram_addr[0],ram_addr[1],rom_addr[0],rom_addr[1]);
 }
+#endif
 
 static UINT16 hit_check;
 
@@ -477,6 +479,7 @@ static void move2prot_jsr(void)
 	program_write_word(ram_addr[0]+0x36,res);
 }
 
+#ifdef UNUSED_FUNCTION
 /*"To point" movement protection*/
 static void move3x_prot_jsr(void)
 {
@@ -505,6 +508,7 @@ static void move3y_prot_jsr(void)
 	program_write_word(ram_addr[0]+0x36,-0x80);/*enable command*/
 	program_write_word(ram_addr[0]+0x10,y_dis);
 }
+#endif
 
 
 static READ16_HANDLER( mcu_r )
@@ -3426,38 +3430,32 @@ static const gfx_layout legionna_spritelayout =
 	128*8
 };
 
-static const gfx_decode legionna_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &legionna_charlayout,   48*16, 16 },
-	{ REGION_GFX3, 0, &legionna_tilelayout,    0*16, 16 },
-	{ REGION_GFX4, 0, &legionna_char2layout,  32*16, 16 },	/* example BK3 decode */
-	{ REGION_GFX2, 0, &legionna_spritelayout,  0*16, 8*16 },
-	{ REGION_GFX5, 0, &legionna_tilelayout,   32*16, 16 },	/* this should be the BK3 decode */
-	{ REGION_GFX6, 0, &legionna_tilelayout,   16*16, 16 },
-	{ -1 }
-};
+static GFXDECODE_START( legionna )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, legionna_charlayout,   48*16, 16 )
+	GFXDECODE_ENTRY( REGION_GFX3, 0, legionna_tilelayout,    0*16, 16 )
+	GFXDECODE_ENTRY( REGION_GFX4, 0, legionna_char2layout,  32*16, 16 )	/* example BK3 decode */
+	GFXDECODE_ENTRY( REGION_GFX2, 0, legionna_spritelayout,  0*16, 8*16 )
+	GFXDECODE_ENTRY( REGION_GFX5, 0, legionna_tilelayout,   32*16, 16 )	/* this should be the BK3 decode */
+	GFXDECODE_ENTRY( REGION_GFX6, 0, legionna_tilelayout,   16*16, 16 )
+GFXDECODE_END
 
-static const gfx_decode heatbrl_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &heatbrl_charlayout,    48*16, 16 },
-	{ REGION_GFX3, 0, &legionna_tilelayout,    0*16, 16 },
-	{ REGION_GFX4, 0, &legionna_char2layout,  32*16, 16 },	/* unused */
-	{ REGION_GFX2, 0, &legionna_spritelayout,  0*16, 8*16 },
-	{ REGION_GFX5, 0, &legionna_tilelayout,   32*16, 16 },
-	{ REGION_GFX6, 0, &legionna_tilelayout,   16*16, 16 },
-	{ -1 }
-};
+static GFXDECODE_START( heatbrl )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, heatbrl_charlayout,    48*16, 16 )
+	GFXDECODE_ENTRY( REGION_GFX3, 0, legionna_tilelayout,    0*16, 16 )
+	GFXDECODE_ENTRY( REGION_GFX4, 0, legionna_char2layout,  32*16, 16 )	/* unused */
+	GFXDECODE_ENTRY( REGION_GFX2, 0, legionna_spritelayout,  0*16, 8*16 )
+	GFXDECODE_ENTRY( REGION_GFX5, 0, legionna_tilelayout,   32*16, 16 )
+	GFXDECODE_ENTRY( REGION_GFX6, 0, legionna_tilelayout,   16*16, 16 )
+GFXDECODE_END
 
-static const gfx_decode sdgndmrb_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &heatbrl_charlayout,    48*16, 16 },
-	{ REGION_GFX3, 0, &legionna_tilelayout,    0*16, 16 },
-	{ REGION_GFX4, 0, &legionna_char2layout,  32*16, 16 },	/* unused */
-	{ REGION_GFX2, 0, &legionna_spritelayout,  0*16, 8*16 },
-	{ REGION_GFX5, 0, &legionna_tilelayout,   32*16, 16 },
-	{ REGION_GFX6, 0, &legionna_tilelayout,   16*16, 16 },
-	{ -1 }
-};
+static GFXDECODE_START( sdgndmrb )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, heatbrl_charlayout,    48*16, 16 )
+	GFXDECODE_ENTRY( REGION_GFX3, 0, legionna_tilelayout,    0*16, 16 )
+	GFXDECODE_ENTRY( REGION_GFX4, 0, legionna_char2layout,  32*16, 16 )	/* unused */
+	GFXDECODE_ENTRY( REGION_GFX2, 0, legionna_spritelayout,  0*16, 8*16 )
+	GFXDECODE_ENTRY( REGION_GFX5, 0, legionna_tilelayout,   32*16, 16 )
+	GFXDECODE_ENTRY( REGION_GFX6, 0, legionna_tilelayout,   16*16, 16 )
+GFXDECODE_END
 
 /*****************************************************************************/
 
@@ -3486,7 +3484,7 @@ static MACHINE_DRIVER_START( legionna )
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(legionna_gfxdecodeinfo)
+	MDRV_GFXDECODE(legionna)
 	MDRV_PALETTE_LENGTH(128*16)
 
 	MDRV_VIDEO_START(legionna)
@@ -3515,7 +3513,7 @@ static MACHINE_DRIVER_START( heatbrl )
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
-	MDRV_GFXDECODE(heatbrl_gfxdecodeinfo)
+	MDRV_GFXDECODE(heatbrl)
 	MDRV_PALETTE_LENGTH(128*16)
 
 	MDRV_VIDEO_START(legionna)
@@ -3543,7 +3541,7 @@ static MACHINE_DRIVER_START( godzilla )
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(heatbrl_gfxdecodeinfo)
+	MDRV_GFXDECODE(heatbrl)
 	MDRV_PALETTE_LENGTH(128*16)
 
 	MDRV_VIDEO_START(legionna)
@@ -3571,7 +3569,7 @@ static MACHINE_DRIVER_START( denjinmk )
 	MDRV_SCREEN_REFRESH_RATE(61)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 32*8-1)
-	MDRV_GFXDECODE(heatbrl_gfxdecodeinfo)
+	MDRV_GFXDECODE(heatbrl)
 	MDRV_PALETTE_LENGTH(128*16)
 
 	MDRV_VIDEO_START(denjinmk)
@@ -3599,7 +3597,7 @@ static MACHINE_DRIVER_START( sdgndmrb )
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 32*8-1)
-	MDRV_GFXDECODE(sdgndmrb_gfxdecodeinfo)
+	MDRV_GFXDECODE(sdgndmrb)
 	MDRV_PALETTE_LENGTH(128*16)
 
 	MDRV_VIDEO_START(legionna)
@@ -3628,7 +3626,7 @@ static MACHINE_DRIVER_START( cupsoc )
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(heatbrl_gfxdecodeinfo)
+	MDRV_GFXDECODE(heatbrl)
 	MDRV_PALETTE_LENGTH(128*16)
 
 	MDRV_VIDEO_START(cupsoc)
@@ -3661,7 +3659,7 @@ static MACHINE_DRIVER_START( cupsocbl )
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 32*8-1)
-	MDRV_GFXDECODE(heatbrl_gfxdecodeinfo)
+	MDRV_GFXDECODE(heatbrl)
 	MDRV_PALETTE_LENGTH(128*16)
 
 	MDRV_VIDEO_START(cupsoc)

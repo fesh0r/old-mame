@@ -1250,7 +1250,7 @@ static void handle_modrm(char* s)
 	if( address_size == 2 ) {
 		if ((rm & 7) == 4)
 			s = handle_sib_byte( s, mod );
-		else if (rm == 5 && mod == 0) {
+		else if ((rm & 7) == 5 && mod == 0) {
 			disp32 = FETCHD32();
 			s += sprintf( s, "rip%s", shexstring(disp32, 0, TRUE) );
 		} else
@@ -1267,7 +1267,7 @@ static void handle_modrm(char* s)
 	} else if (address_size == 1) {
 		if ((rm & 7) == 4)
 			s = handle_sib_byte( s, mod );
-		else if (rm == 5 && mod == 0) {
+		else if ((rm & 7) == 5 && mod == 0) {
 			disp32 = FETCHD32();
 			if (curmode == 64)
 				s += sprintf( s, "eip%s", shexstring(disp32, 0, TRUE) );
@@ -2000,6 +2000,7 @@ static void decode_opcode(char *s, const I386_OPCODE *op, UINT8 op1)
 			break;
 
 		case OP_SIZE:
+			rex = regex = sibex = rmex = 0;
 			if (operand_size < 2)
 				operand_size ^= 1;
 			op2 = FETCH();
@@ -2007,6 +2008,7 @@ static void decode_opcode(char *s, const I386_OPCODE *op, UINT8 op1)
 			return;
 
 		case ADDR_SIZE:
+			rex = regex = sibex = rmex = 0;
 			if (curmode != 64)
 				address_size ^= 1;
 			else
@@ -2028,6 +2030,7 @@ static void decode_opcode(char *s, const I386_OPCODE *op, UINT8 op1)
 		case SEG_FS:
 		case SEG_GS:
 		case SEG_SS:
+			rex = regex = sibex = rmex = 0;
 			segment = op->flags;
 			op2 = FETCH();
 			decode_opcode( s, &i386_opcode_table1[op2], op2 );

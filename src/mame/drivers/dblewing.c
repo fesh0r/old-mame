@@ -327,6 +327,7 @@ static ADDRESS_MAP_START( dblewing_map, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 
+#ifdef UNUSED_FUNCTION
 static WRITE8_HANDLER( YM2151_w )
 {
 	switch (offset) {
@@ -338,6 +339,7 @@ static WRITE8_HANDLER( YM2151_w )
 		break;
 	}
 }
+#endif
 
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -385,13 +387,11 @@ static const gfx_layout spritelayout =
 };
 
 
-static const gfx_decode gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &tile_8x8_layout,     0x000, 32 },	/* Tiles (8x8) */
-	{ REGION_GFX1, 0, &tile_16x16_layout,   0x000, 32 },	/* Tiles (16x16) */
-	{ REGION_GFX2, 0, &spritelayout,        0x200, 32 },	/* Sprites (16x16) */
-	{ -1 }
-};
+static GFXDECODE_START( dblewing )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, tile_8x8_layout,     0x000, 32 )	/* Tiles (8x8) */
+	GFXDECODE_ENTRY( REGION_GFX1, 0, tile_16x16_layout,   0x000, 32 )	/* Tiles (16x16) */
+	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout,        0x200, 32 )	/* Sprites (16x16) */
+GFXDECODE_END
 
 INPUT_PORTS_START( dblewing )
 	PORT_START	/* 16bit */
@@ -557,7 +557,7 @@ static MACHINE_DRIVER_START( dblewing )
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
 	MDRV_PALETTE_LENGTH(4096)
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(dblewing)
 
 	MDRV_VIDEO_START(dblewing)
 	MDRV_VIDEO_UPDATE(dblewing)

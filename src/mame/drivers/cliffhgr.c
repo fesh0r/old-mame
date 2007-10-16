@@ -208,10 +208,12 @@ static WRITE8_HANDLER( cliff_sound_overlay_w )
 	discrete_sound_w(CLIFF_ENABLE_SND_2, (sound>>1)&1);
 }
 
+#ifdef UNUSED_FUNCTION
 static WRITE8_HANDLER( cliff_irqack_w )
 {
 	phillips_code = 0;
 }
+#endif
 
 static WRITE8_HANDLER( cliff_ldwire_w )
 {
@@ -720,7 +722,7 @@ static const TMS9928a_interface tms9928a_interface =
 	vdp_interrupt
 };
 
-extern discrete_sound_block cliffhgr_discrete_interface[];
+extern const discrete_sound_block cliffhgr_discrete_interface[];
 
 
 
@@ -761,7 +763,7 @@ static MACHINE_DRIVER_START( cliffhgr )
 
 	/* discrete sounds */
 	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
-	MDRV_SOUND_CONFIG(cliffhgr_discrete_interface)
+	MDRV_SOUND_CONFIG_DISCRETE(cliffhgr)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 MACHINE_DRIVER_END
 

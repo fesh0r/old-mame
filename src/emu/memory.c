@@ -392,6 +392,7 @@ static address_map *assign_intersecting_blocks(addrspace_data *space, offs_t sta
 static void find_memory(void);
 static void *memory_find_base(int cpunum, int spacenum, int readwrite, offs_t offset);
 static genf *get_static_handler(int databits, int readorwrite, int spacenum, int which);
+static void memory_exit(running_machine *machine);
 
 static void mem_dump(void)
 {
@@ -458,7 +459,7 @@ void memory_init(running_machine *machine)
     memory_exit - free memory
 -------------------------------------------------*/
 
-void memory_exit(running_machine *machine)
+static void memory_exit(running_machine *machine)
 {
 	int cpunum, spacenum;
 
@@ -2369,8 +2370,9 @@ static void *memory_find_base(int cpunum, int spacenum, int readwrite, offs_t of
 -------------------------------------------------*/
 
 #define READBYTE8(name,spacenum)														\
-UINT8 name(offs_t address)																\
+UINT8 name(offs_t original_address)														\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~0);						\
@@ -2388,8 +2390,9 @@ UINT8 name(offs_t address)																\
 }																						\
 
 #define READBYTE(name,spacenum,xormacro,handlertype,ignorebits,shiftbytes,masktype)		\
-UINT8 name(offs_t address)																\
+UINT8 name(offs_t original_address)														\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~0);						\
@@ -2423,8 +2426,9 @@ UINT8 name(offs_t address)																\
 -------------------------------------------------*/
 
 #define READWORD16(name,spacenum)														\
-UINT16 name(offs_t address)																\
+UINT16 name(offs_t original_address)													\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~1);						\
@@ -2442,8 +2446,9 @@ UINT16 name(offs_t address)																\
 }																						\
 
 #define READWORD(name,spacenum,xormacro,handlertype,ignorebits,shiftbytes,masktype)		\
-UINT16 name(offs_t address)																\
+UINT16 name(offs_t original_address)													\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~1);						\
@@ -2475,8 +2480,9 @@ UINT16 name(offs_t address)																\
 -------------------------------------------------*/
 
 #define READDWORD32(name,spacenum)														\
-UINT32 name(offs_t address)																\
+UINT32 name(offs_t original_address)													\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~3);						\
@@ -2494,8 +2500,9 @@ UINT32 name(offs_t address)																\
 }																						\
 
 #define READMASKED32(name,spacenum)														\
-UINT32 name(offs_t address, UINT32 mem_mask)											\
+UINT32 name(offs_t original_address, UINT32 mem_mask)									\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~3);						\
@@ -2513,8 +2520,9 @@ UINT32 name(offs_t address, UINT32 mem_mask)											\
 }																						\
 
 #define READDWORD(name,spacenum,xormacro,handlertype,ignorebits,shiftbytes,masktype)	\
-UINT32 name(offs_t address)																\
+UINT32 name(offs_t original_address)													\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~3);						\
@@ -2544,8 +2552,9 @@ UINT32 name(offs_t address)																\
 -------------------------------------------------*/
 
 #define READQWORD64(name,spacenum)														\
-UINT64 name(offs_t address)																\
+UINT64 name(offs_t original_address)													\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~7);						\
@@ -2563,8 +2572,9 @@ UINT64 name(offs_t address)																\
 }																						\
 
 #define READMASKED64(name,spacenum)														\
-UINT64 name(offs_t address, UINT64 mem_mask)											\
+UINT64 name(offs_t original_address, UINT64 mem_mask)									\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMREADSTART();																		\
 	PERFORM_LOOKUP(readlookup,active_address_space[spacenum],~7);						\
@@ -2587,8 +2597,9 @@ UINT64 name(offs_t address, UINT64 mem_mask)											\
 -------------------------------------------------*/
 
 #define WRITEBYTE8(name,spacenum)														\
-void name(offs_t address, UINT8 data)													\
+void name(offs_t original_address, UINT8 data)											\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~0);						\
@@ -2605,8 +2616,9 @@ void name(offs_t address, UINT8 data)													\
 }																						\
 
 #define WRITEBYTE(name,spacenum,xormacro,handlertype,ignorebits,shiftbytes,masktype)	\
-void name(offs_t address, UINT8 data)													\
+void name(offs_t original_address, UINT8 data)											\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~0);						\
@@ -2639,8 +2651,9 @@ void name(offs_t address, UINT8 data)													\
 -------------------------------------------------*/
 
 #define WRITEWORD16(name,spacenum)														\
-void name(offs_t address, UINT16 data)													\
+void name(offs_t original_address, UINT16 data)											\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~1);						\
@@ -2657,8 +2670,9 @@ void name(offs_t address, UINT16 data)													\
 }																						\
 
 #define WRITEWORD(name,spacenum,xormacro,handlertype,ignorebits,shiftbytes,masktype)	\
-void name(offs_t address, UINT16 data)													\
+void name(offs_t original_address, UINT16 data)											\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~1);						\
@@ -2689,8 +2703,9 @@ void name(offs_t address, UINT16 data)													\
 -------------------------------------------------*/
 
 #define WRITEDWORD32(name,spacenum)														\
-void name(offs_t address, UINT32 data)													\
+void name(offs_t original_address, UINT32 data)											\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~3);						\
@@ -2707,8 +2722,9 @@ void name(offs_t address, UINT32 data)													\
 }																						\
 
 #define WRITEMASKED32(name,spacenum)													\
-void name(offs_t address, UINT32 data, UINT32 mem_mask)									\
+void name(offs_t original_address, UINT32 data, UINT32 mem_mask)						\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~3);						\
@@ -2728,8 +2744,9 @@ void name(offs_t address, UINT32 data, UINT32 mem_mask)									\
 }																						\
 
 #define WRITEDWORD(name,spacenum,xormacro,handlertype,ignorebits,shiftbytes,masktype)	\
-void name(offs_t address, UINT32 data)													\
+void name(offs_t original_address, UINT32 data)											\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~3);						\
@@ -2758,8 +2775,9 @@ void name(offs_t address, UINT32 data)													\
 -------------------------------------------------*/
 
 #define WRITEQWORD64(name,spacenum)														\
-void name(offs_t address, UINT64 data)													\
+void name(offs_t original_address, UINT64 data)											\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~7);						\
@@ -2776,8 +2794,9 @@ void name(offs_t address, UINT64 data)													\
 }																						\
 
 #define WRITEMASKED64(name,spacenum)													\
-void name(offs_t address, UINT64 data, UINT64 mem_mask)									\
+void name(offs_t original_address, UINT64 data, UINT64 mem_mask)						\
 {																						\
+	offs_t address = original_address;													\
 	UINT32 entry;																		\
 	MEMWRITESTART();																	\
 	PERFORM_LOOKUP(writelookup,active_address_space[spacenum],~7);						\

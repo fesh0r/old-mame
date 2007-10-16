@@ -46,9 +46,18 @@ Stephh's notes (based on the game M68000 code and some tests) :
   - Notice screen only if region = 0x0001
   - When "Language" Dip Switch is set to Japanese, you can also select your starting level;
     however, only the 4 first levels are available ! Correct behaviour ?
+  - There's code at 0x00e090 that tests contents of 0x03ffb2.w :
+    if it is 0x0000, the highscore isn't displayed, but value = 0x00ff
 
+2) 'opwolfa'
 
-2) 'opwolfb'
+  - Region stored at 0x03fffe.w
+  - Sets :
+      * 'opwolfa' : region = 0x0003
+  - There is only ONE byte of difference at 0x03fff5.b with 'opwolf'
+    but its effect is unknown as this adress doesn't seem to be read !
+
+3) 'opwolfb'
 
   - Region stored at 0x03fffe.w
   - Sets :
@@ -510,19 +519,15 @@ static const gfx_layout tilelayout_b =
 	128*8	/* every sprite takes 128 consecutive bytes */
 };
 
-static const gfx_decode opwolf_gfxdecodeinfo[] =
-{
-	{ REGION_GFX2, 0, &tilelayout,  0, 256 },	/* sprites */
-	{ REGION_GFX1, 0, &charlayout,  0, 256 },	/* scr tiles */
-	{ -1 }
-};
+static GFXDECODE_START( opwolf )
+	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout,  0, 256 )	/* sprites */
+	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,  0, 256 )	/* scr tiles */
+GFXDECODE_END
 
-static const gfx_decode opwolfb_gfxdecodeinfo[] =
-{
-	{ REGION_GFX2, 0, &tilelayout_b,  0, 256 },	/* sprites */
-	{ REGION_GFX1, 0, &charlayout_b,  0, 256 },	/* scr tiles */
-	{ -1 }
-};
+static GFXDECODE_START( opwolfb )
+	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout_b,  0, 256 )	/* sprites */
+	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout_b,  0, 256 )	/* scr tiles */
+GFXDECODE_END
 
 
 /**************************************************************
@@ -578,7 +583,7 @@ static MACHINE_DRIVER_START( opwolf )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MDRV_GFXDECODE(opwolf_gfxdecodeinfo)
+	MDRV_GFXDECODE(opwolf)
 	MDRV_PALETTE_LENGTH(8192)
 
 	MDRV_VIDEO_START(opwolf)
@@ -629,7 +634,7 @@ static MACHINE_DRIVER_START( opwolfb )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
-	MDRV_GFXDECODE(opwolfb_gfxdecodeinfo)
+	MDRV_GFXDECODE(opwolfb)
 	MDRV_PALETTE_LENGTH(8192)
 
 	MDRV_VIDEO_START(opwolf)

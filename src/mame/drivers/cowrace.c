@@ -45,11 +45,13 @@ VIDEO_UPDATE( cowrace )
 	return 0;
 }
 
+#ifdef UNUSED_FUNCTION
 static WRITE8_HANDLER( cowrace_soundlatch_w )
 {
 	soundlatch_w(0, data);
 	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
 }
+#endif
 
 static READ8_HANDLER( ret_ff )
 {
@@ -138,12 +140,10 @@ static const gfx_layout layout8x8x4 =
 	8*8
 };
 
-static const gfx_decode gfxdecodeinfo_cowrace[] =
-{
-	{ REGION_GFX1, 0x000000, &layout8x8x4, 0, 0x1 },
-	{ REGION_GFX2, 0x000000, &layout8x8x2, 0, 0x1 },
-	{ -1 }
-};
+static GFXDECODE_START( cowrace )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x000000, layout8x8x4, 0, 0x1 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0x000000, layout8x8x2, 0, 0x1 )
+GFXDECODE_END
 
 INPUT_PORTS_START( cowrace )
 	PORT_START	// IN0
@@ -178,7 +178,7 @@ static MACHINE_DRIVER_START( cowrace )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)
-	MDRV_GFXDECODE(gfxdecodeinfo_cowrace)
+	MDRV_GFXDECODE(cowrace)
 	MDRV_PALETTE_LENGTH(0x1000)
 
 	MDRV_VIDEO_START(cowrace)

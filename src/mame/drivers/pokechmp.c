@@ -85,10 +85,12 @@ static WRITE8_HANDLER( pokechmp_bank_w )
 	}
 }
 
+#ifdef UNUSED_FUNCTION
 static WRITE8_HANDLER( pokechmp_sound_bank_w )
 {
 	memory_set_bank(3, (data >> 2) & 1);
 }
+#endif
 
 static WRITE8_HANDLER( pokechmp_sound_w )
 {
@@ -236,12 +238,10 @@ static const gfx_layout pokechmp_spritelayout =
 };
 
 
-static const gfx_decode gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0x00000, &pokechmp_charlayout,   0x100, 32 }, /* chars */
-	{ REGION_GFX2, 0x00000, &pokechmp_spritelayout,   0,  32 }, /* sprites */
-	{ -1 }
-};
+static GFXDECODE_START( pokechmp )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x00000, pokechmp_charlayout,   0x100, 32 ) /* chars */
+	GFXDECODE_ENTRY( REGION_GFX2, 0x00000, pokechmp_spritelayout,   0,  32 ) /* sprites */
+GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( pokechmp )
@@ -263,7 +263,7 @@ static MACHINE_DRIVER_START( pokechmp )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(pokechmp)
 	MDRV_PALETTE_LENGTH(0x400)
 
 	MDRV_VIDEO_START(pokechmp)

@@ -244,7 +244,7 @@ typedef struct {
 	int base_cycles;
 	UINT8 opcode;
 
-	INT32 irq_line;
+	UINT8 irq_state;
 	int (*irq_callback)(int);
 	UINT32 a20_mask;
 
@@ -275,11 +275,6 @@ typedef struct {
 
 
 static I386_REGS I;
-
-
-/* Forward declarations */
-static void I386OP(decode_opcode)(void);
-static void I386OP(decode_two_byte)(void);
 
 
 extern int i386_parity_table[256];

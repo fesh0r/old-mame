@@ -383,10 +383,12 @@ static WRITE8_HANDLER( dunhuang_rombank_w )
 }
 
 
+#ifdef UNUSED_FUNCTION
 static WRITE8_HANDLER( dunhuang_82_w )
 {
 //  popmessage("82 = %02x",dunhuang_82);
 }
+#endif
 
 static ADDRESS_MAP_START( dunhuang_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x0000, 0x0000 ) AM_WRITE( dunhuang_pos_x_w )
@@ -651,12 +653,10 @@ static const gfx_layout layout_8x32 =
 	32*32
 };
 
-static const gfx_decode gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &layout_8x8,  0, 16 },
-	{ REGION_GFX2, 0, &layout_8x32, 0, 16 },
-	{ -1 }
-};
+static GFXDECODE_START( dunhuang )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_8x8,  0, 16 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0, layout_8x32, 0, 16 )
+GFXDECODE_END
 
 
 /***************************************************************************
@@ -686,7 +686,7 @@ static MACHINE_DRIVER_START( dunhuang )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0+8, 512-8-1, 0+16, 256-16-1)
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(dunhuang)
 	MDRV_PALETTE_LENGTH(0x100)
 
 	MDRV_VIDEO_START(dunhuang)

@@ -1131,7 +1131,11 @@ INLINE void emit_qword(x86code **emitptr, UINT64 qword)
 
 INLINE void emit_op(x86code **emitptr, UINT32 op, UINT8 opsize, UINT8 reg, UINT8 sib, UINT8 rm)
 {
+	if (opsize == OP_16BIT)
+		emit_byte(emitptr, PREFIX_OPSIZE);
+
 #ifdef PTR64
+{
 	UINT8 rex;
 
 	assert(opsize == OP_16BIT || opsize == OP_32BIT || opsize == OP_64BIT);
@@ -1139,12 +1143,11 @@ INLINE void emit_op(x86code **emitptr, UINT32 op, UINT8 opsize, UINT8 reg, UINT8
 	rex = (opsize & 8) | ((reg & 8) >> 1) | ((sib & 8) >> 2) | ((rm & 8) >> 3);
 	if (rex != 0 || ((op & OPFLAG_8BITREG) && reg >= 4) || ((op & OPFLAG_8BITRM) && rm >= 4))
 		emit_byte(emitptr, OP_REX + rex);
+}
 #else
 	assert(opsize != OP_64BIT);
 #endif
 
-	if (opsize == OP_16BIT)
-		emit_byte(emitptr, PREFIX_OPSIZE);
 	if ((op & 0xff0000) != 0)
 		emit_byte(emitptr, op >> 16);
 	if ((op & 0xff00) != 0)
@@ -1216,12 +1219,12 @@ INLINE void emit_op_modrm_mem(x86code **emitptr, UINT32 op, UINT8 opsize, UINT8 
 	}
 
 	/* base only case */
-	else if (index == REG_NONE && base != REG_ESP)
+	else if (index == REG_NONE && (base & 7) != REG_ESP)
 	{
 		emit_op(emitptr, op, opsize, reg, 0, base);
 
 		/* mode 0 for no offset */
-		if (disp == 0 && base != REG_EBP)
+		if (disp == 0 && (base & 7) != REG_EBP)
 			emit_byte(emitptr, make_modrm(0, reg, base));
 
 		/* mode 1 for 1-byte offset */
@@ -1258,7 +1261,7 @@ INLINE void emit_op_modrm_mem(x86code **emitptr, UINT32 op, UINT8 opsize, UINT8 
 		}
 
 		/* mode 0 for no offset */
-		else if (disp == 0 && base != REG_EBP)
+		else if (disp == 0 && (base & 7) != REG_EBP)
 		{
 			emit_byte(emitptr, make_modrm(0, reg, 4));
 			emit_byte(emitptr, make_sib(scale, index, base));
@@ -1714,7 +1717,12 @@ INLINE void emit_cmovcc_r32_m32(x86code **emitptr, UINT8 cond, UINT8 dreg, DECLA
 
 INLINE void emit_mov_r64_imm(x86code **emitptr, UINT8 dreg, UINT64 imm)
 {
-	if ((INT32)imm == (INT64)imm)
+	if ((UINT32)imm == imm)
+	{
+		emit_op_reg(emitptr, OP_MOV_rAX_Iv | (dreg & 7), OP_32BIT, dreg);
+		emit_dword(emitptr, imm);
+	}
+	else if ((INT32)imm == imm)
 		emit_op_modrm_reg_imm32(emitptr, OP_G11_Ev_Iz, OP_64BIT, 0, dreg, imm);
 	else
 	{
@@ -1996,17 +2004,17 @@ INLINE void emit_test_m64_r64(x86code **emitptr, DECLARE_MEMPARAMS, UINT8 sreg)	
 INLINE void emit_shift_reg_imm(x86code **emitptr, UINT32 op1, UINT32 opn, UINT8 opsize, UINT8 opindex, UINT8 dreg, UINT8 imm)
 {
 	if (imm == 1)
-		emit_op_modrm_reg(emitptr, op1, OP_32BIT, opindex, dreg);
+		emit_op_modrm_reg(emitptr, op1, opsize, opindex, dreg);
 	else
-		emit_op_modrm_reg_imm8(emitptr, opn, OP_32BIT, opindex, dreg, imm);
+		emit_op_modrm_reg_imm8(emitptr, opn, opsize, opindex, dreg, imm);
 }
 
 INLINE void emit_shift_mem_imm(x86code **emitptr, UINT32 op1, UINT32 opn, UINT8 opsize, UINT8 opindex, DECLARE_MEMPARAMS, UINT8 imm)
 {
 	if (imm == 1)
-		emit_op_modrm_mem(emitptr, op1, OP_32BIT, opindex, MEMPARAMS);
+		emit_op_modrm_mem(emitptr, op1, opsize, opindex, MEMPARAMS);
 	else
-		emit_op_modrm_mem_imm8(emitptr, opn, OP_32BIT, opindex, MEMPARAMS, imm);
+		emit_op_modrm_mem_imm8(emitptr, opn, opsize, opindex, MEMPARAMS, imm);
 }
 
 

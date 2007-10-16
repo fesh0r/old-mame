@@ -237,13 +237,6 @@ INLINE unsigned texel( unsigned x, unsigned y )
 	return mpTextureTileData[(tile<<8)|mXYAttrToPixel[mpTextureTileMapAttr[offs]][x&0xf][y&0xf]];
 } /* texel */
 
-typedef void drawscanline_t(
-	mame_bitmap *bitmap,
-	const rectangle *clip,
-	const edge *e1,
-	const edge *e2,
-	int sy );
-
 static void renderscanline_uvi_full(running_machine *machine, mame_bitmap *bitmap, const rectangle *clip, const edge *e1, const edge *e2, int sy, int color, int bn, UINT16 flags, int cmode )
 {
 	int fadeEnable = (mixer.target&1) && mixer.fadeFactor;
@@ -400,9 +393,9 @@ static void renderscanline_uvi_full(running_machine *machine, mame_bitmap *bitma
 							int tg = (color>>8)&0xff;
 							int tb = color&0xff;
 							int trans1 = 0x100 - mixer.poly_translucency;
-							r = (tr*mixer.poly_translucency + r*trans1)/0x100;
-							g = (tg*mixer.poly_translucency + g*trans1)/0x100;
-							b = (tb*mixer.poly_translucency + b*trans1)/0x100;
+							r = (tr*mixer.poly_translucency + r*trans1)>>8;
+							g = (tg*mixer.poly_translucency + g*trans1)>>8;
+							b = (tb*mixer.poly_translucency + b*trans1)>>8;
 						}
 						rgb = (r<<16)|(g<<8)|b;
 						pDest[x] = rgb;

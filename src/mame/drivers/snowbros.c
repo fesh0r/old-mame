@@ -1430,11 +1430,9 @@ static const gfx_layout tilelayout =
 	32*32
 };
 
-static const gfx_decode gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &tilelayout,  0, 16 },
-	{ -1 }
-};
+static GFXDECODE_START( snowbros )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout,  0, 16 )
+GFXDECODE_END
 
 /* Honey Doll */
 
@@ -1449,19 +1447,15 @@ static const gfx_layout honeydol_tilelayout8bpp =
 	32*32
 };
 
-static const gfx_decode honeydol_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &tilelayout,  0, 64 }, // how does it use 0-15
-	{ REGION_GFX2, 0, &honeydol_tilelayout8bpp,  0, 4 },
+static GFXDECODE_START( honeydol )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout,  0, 64 ) // how does it use 0-15
+	GFXDECODE_ENTRY( REGION_GFX2, 0, honeydol_tilelayout8bpp,  0, 4 )
 
-	{ -1 }
-};
+GFXDECODE_END
 
-static const gfx_decode twinadv_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &tilelayout,  0, 64 },
-	{ -1 }
-};
+static GFXDECODE_START( twinadv )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout,  0, 64 )
+GFXDECODE_END
 
 /* Winter Bobble */
 
@@ -1476,11 +1470,9 @@ static const gfx_layout tilelayout_wb =
 	16*64
 };
 
-static const gfx_decode gfxdecodeinfo_wb[] =
-{
-	{ REGION_GFX1, 0, &tilelayout_wb,  0, 16 },
-	{ -1 }
-};
+static GFXDECODE_START( wb )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout_wb,  0, 16 )
+GFXDECODE_END
 
 /* SemiCom */
 
@@ -1512,18 +1504,14 @@ static const gfx_layout sb3_tilebglayout =
 };
 
 
-static const gfx_decode sb3_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &tilelayout,  0, 16 },
-	{ REGION_GFX2, 0, &sb3_tilebglayout,  0, 2 },
-	{ -1 }
-};
+static GFXDECODE_START( sb3 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout,  0, 16 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0, sb3_tilebglayout,  0, 2 )
+GFXDECODE_END
 
-static const gfx_decode hyperpac_gfxdecodeinfo[] =
-{
-	{ REGION_GFX1, 0, &hyperpac_tilelayout,  0, 16 },
-	{ -1 }
-};
+static GFXDECODE_START( hyperpac )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, hyperpac_tilelayout,  0, 16 )
+GFXDECODE_END
 
 /* handler called by the 3812/2151 emulator when the internal timers cause an IRQ */
 static void irqhandler(int irq)
@@ -1584,7 +1572,7 @@ static MACHINE_DRIVER_START( snowbros )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(snowbros)
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(snowbros)
@@ -1603,11 +1591,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( wintbob )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(snowbros)
-	MDRV_CPU_REPLACE("main", M68000, 12000000) /* faster cpu on bootleg? otherwise the gfx and scroll break up */
+	MDRV_CPU_REPLACE("main", M68000, 10000000) /* 10mhz - Confirmed */
 	MDRV_CPU_PROGRAM_MAP(wintbob_readmem,wintbob_writemem)
 
 	/* video hardware */
-	MDRV_GFXDECODE(gfxdecodeinfo_wb)
+	MDRV_GFXDECODE(wb)
 	MDRV_VIDEO_UPDATE(wintbob)
 	MDRV_VIDEO_EOF(NULL)
 MACHINE_DRIVER_END
@@ -1624,7 +1612,7 @@ static MACHINE_DRIVER_START( semicom )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(hyperpac_sound_readmem,hyperpac_sound_writemem)
 
-	MDRV_GFXDECODE(hyperpac_gfxdecodeinfo)
+	MDRV_GFXDECODE(hyperpac)
 
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("3812", YM2151, 4000000)
@@ -1682,7 +1670,7 @@ static MACHINE_DRIVER_START( honeydol )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(honeydol_gfxdecodeinfo)
+	MDRV_GFXDECODE(honeydol)
 	MDRV_PALETTE_LENGTH(0x800/2)
 
 	MDRV_VIDEO_UPDATE(honeydol)
@@ -1723,7 +1711,7 @@ static MACHINE_DRIVER_START( twinadv )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(twinadv_gfxdecodeinfo)
+	MDRV_GFXDECODE(twinadv)
 	MDRV_PALETTE_LENGTH(0x100)
 
 	MDRV_VIDEO_UPDATE(twinadv)
@@ -1780,7 +1768,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( _4in1 )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(semicom)
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(snowbros)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( snowbro3 )
@@ -1798,7 +1786,7 @@ static MACHINE_DRIVER_START( snowbro3 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(sb3_gfxdecodeinfo)
+	MDRV_GFXDECODE(sb3)
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_VIDEO_UPDATE(snowbro3)
@@ -1885,8 +1873,18 @@ ROM_END
 
 ROM_START( wintbob )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 )	/* 6*64k for 68000 code */
-	ROM_LOAD16_BYTE( "wb03.bin", 0x00000, 0x10000, CRC(df56e168) SHA1(20dbabdd97e6f3d4bf6500bf9e8476942cb48ae3) )
-	ROM_LOAD16_BYTE( "wb01.bin", 0x00001, 0x10000, CRC(05722f17) SHA1(9356e2488ea35e0a2978689f2ca6dfa0d57fd2ed) )
+	ROM_LOAD16_BYTE( "wb3", 0x00000, 0x10000, CRC(b9719767) SHA1(431c97d409f2a5ff7f46116a4d8907e446434431) )
+	ROM_LOAD16_BYTE( "wb1", 0x00001, 0x10000, CRC(a4488998) SHA1(4e927e31c1b865dbdba2b985c7a819a07e2e81b8) )
+
+	/* The wb03.bin below is bad, the set has a different copyright message (IN KOREA is replaced with 1990)
+       but also clearly suffers from bitrot at the following addresses
+        4FC2, 5F02, 6642, D6C2, D742
+       in all cases bit 0x20 is incorrectly set in the bad rom
+    */
+
+//  ROM_LOAD16_BYTE( "wb03.bin", 0x00000, 0x10000, CRC(df56e168) SHA1(20dbabdd97e6f3d4bf6500bf9e8476942cb48ae3) )
+//  ROM_LOAD16_BYTE( "wb01.bin", 0x00001, 0x10000, CRC(05722f17) SHA1(9356e2488ea35e0a2978689f2ca6dfa0d57fd2ed) )
+
 	ROM_LOAD16_BYTE( "wb04.bin", 0x20000, 0x10000, CRC(53be758d) SHA1(56cf85ba23fe699031d73e8f367a1b8ac837d5f8) )
 	ROM_LOAD16_BYTE( "wb02.bin", 0x20001, 0x10000, CRC(fc8e292e) SHA1(857cfeb0be121e64e6117120514ae1f2ffeae4d6) )
 
@@ -2759,7 +2757,7 @@ GAME( 1990, snowbroa, snowbros, snowbros, snowbros, 0, ROT0, "Toaplan", "Snow Br
 GAME( 1990, snowbrob, snowbros, snowbros, snowbros, 0, ROT0, "Toaplan", "Snow Bros. - Nick & Tom (set 3)", 0 )
 GAME( 1990, snowbroc, snowbros, snowbros, snowbros, 0, ROT0, "Toaplan", "Snow Bros. - Nick & Tom (set 4)", 0 )
 GAME( 1990, snowbroj, snowbros, snowbros, snowbroj, 0, ROT0, "Toaplan", "Snow Bros. - Nick & Tom (Japan)", 0 )
-GAME( 1990, wintbob,  snowbros, wintbob,  snowbros, 0, ROT0, "bootleg", "The Winter Bobble", 0 )
+GAME( 1990, wintbob,  snowbros, wintbob,  snowbros, 0, ROT0, "[Toaplan] (Sakowa Project Korea bootleg)", "The Winter Bobble (bootleg of Snow Bros.)", 0 )
 
 GAME( 1995, honeydol, 0,        honeydol, honeydol, 0, ROT0, "Barko Corp.", "Honey Dolls", 0 ) // based on snowbros code..
 GAME( 1995, twinadv,  0,        twinadv,  twinadv,  0, ROT0, "Barko Corp.", "Twin Adventure (World)", 0 )

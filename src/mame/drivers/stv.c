@@ -2085,10 +2085,12 @@ extern READ32_HANDLER ( stv_vdp1_framebuffer0_r );
 extern WRITE32_HANDLER ( stv_vdp1_framebuffer1_w );
 extern READ32_HANDLER ( stv_vdp1_framebuffer1_r );
 
+#ifdef UNUSED_FUNCTION
 static READ32_HANDLER( stv_sh2_random_r )
 {
 	return 0xffffffff;
 }
+#endif
 
 static ADDRESS_MAP_START( stv_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0007ffff) AM_ROM   // bios
@@ -2484,7 +2486,7 @@ WRITE32_HANDLER ( w60ffc48_write )
 	//minit_w(offset,data,mem_mask);
 }
 
-#ifdef MAME_DEBUG
+#ifdef UNUSED_FUNCTION
 static void print_game_info(void);
 #endif
 
@@ -2537,7 +2539,7 @@ DRIVER_INIT ( stv )
 	for(dst_i=0;dst_i<0x100;dst_i++) \
 		STR[dst_i] = 0x00;
 
-#ifdef MAME_DEBUG
+#ifdef UNUSED_FUNCTION
 static void print_game_info(void)
 {
 	UINT8 *ROM = memory_region(REGION_USER1);
@@ -2626,21 +2628,19 @@ static const gfx_layout tiles16x16x8_layout =
 
 
 
-static const gfx_decode gfxdecodeinfo[] =
-{
-	{ 0, 0, &tiles8x8x4_layout,   0x00, (0x80*(2+1))  },
-	{ 0, 0, &tiles16x16x4_layout, 0x00, (0x80*(2+1))  },
-	{ 0, 0, &tiles8x8x8_layout,   0x00, (0x08*(2+1))  },
-	{ 0, 0, &tiles16x16x8_layout, 0x00, (0x08*(2+1))  },
+static GFXDECODE_START( stv )
+	GFXDECODE_ENTRY( 0, 0, tiles8x8x4_layout,   0x00, (0x80*(2+1))  )
+	GFXDECODE_ENTRY( 0, 0, tiles16x16x4_layout, 0x00, (0x80*(2+1))  )
+	GFXDECODE_ENTRY( 0, 0, tiles8x8x8_layout,   0x00, (0x08*(2+1))  )
+	GFXDECODE_ENTRY( 0, 0, tiles16x16x8_layout, 0x00, (0x08*(2+1))  )
 
 	/* vdp1 .. pointless for drawing but can help us debug */
-	{ 0, 0, &tiles8x8x4_layout,   0x00, 0x100  },
-	{ 0, 0, &tiles16x16x4_layout, 0x00, 0x100  },
-	{ 0, 0, &tiles8x8x8_layout,   0x00, 0x20  },
-	{ 0, 0, &tiles16x16x8_layout, 0x00, 0x20  },
+	GFXDECODE_ENTRY( 0, 0, tiles8x8x4_layout,   0x00, 0x100  )
+	GFXDECODE_ENTRY( 0, 0, tiles16x16x4_layout, 0x00, 0x100  )
+	GFXDECODE_ENTRY( 0, 0, tiles8x8x8_layout,   0x00, 0x20  )
+	GFXDECODE_ENTRY( 0, 0, tiles16x16x8_layout, 0x00, 0x20  )
 
-	{ -1 }
-};
+GFXDECODE_END
 
 struct sh2_config sh2_conf_master = { 0 };
 struct sh2_config sh2_conf_slave  = { 1 };
@@ -2755,7 +2755,7 @@ static MACHINE_DRIVER_START( stv )
 	MDRV_SCREEN_SIZE(1024, 1024)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 703, 0*8, 512) // we need to use a resolution as high as the max size it can change to
 	MDRV_PALETTE_LENGTH(2048+(2048*2))//standard palette + extra memory for rgb brightness.
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(stv)
 
 	MDRV_VIDEO_START(stv_vdp2)
 	MDRV_VIDEO_UPDATE(stv_vdp2)
