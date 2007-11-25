@@ -141,7 +141,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( tmc1800 )
+static INPUT_PORTS_START( tmc1800 )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CODE(KEYCODE_0_PAD) PORT_CHAR('0')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CODE(KEYCODE_1_PAD) PORT_CHAR('1')
@@ -420,17 +420,17 @@ static TIMER_CALLBACK(setup_beep)
 
 static DRIVER_INIT( tmc1800 )
 {
-	mame_timer_set(time_zero, 0, setup_beep);
+	timer_set(attotime_zero, 0, setup_beep);
 }
 
 static DRIVER_INIT( tmc2000 )
 {
-	mame_timer_set(time_zero, 0, setup_beep);
+	timer_set(attotime_zero, 0, setup_beep);
 	cdp1864_configure(&tmc2000_CDP1864_interface);
 }
 
 /* System Drivers */
 
-//	   YEAR  NAME 	  PARENT   BIOS		COMPAT	MACHINE		INPUT		INIT		CONFIG		COMPANY			FULLNAME
-COMP(  1977, tmc1800, 0,				0,		tmc1800,	tmc1800,	tmc1800,	tmc1800,	"Telercas Oy",	"Telmac 1800", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMPB( 1980, tmc2000, 0,       tmc2000, 0,		tmc2000,	tmc1800,	tmc2000,	tmc2000,	"Telercas Oy",	"Telmac 2000", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY         FULLNAME        FLAGS */
+COMP( 1977, tmc1800,    0,      0,      tmc1800,    tmc1800,    tmc1800,    tmc1800,    "Telercas Oy",  "Telmac 1800",  GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1980, tmc2000,    0,      0,      tmc2000,    tmc1800,    tmc2000,    tmc2000,    "Telercas Oy",  "Telmac 2000",  GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )

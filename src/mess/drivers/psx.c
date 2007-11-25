@@ -186,7 +186,7 @@ static TIMER_CALLBACK(psx_pad_ack)
 		if( !m_pad[ n_port ].b_ack )
 		{
 			m_pad[ n_port ].b_ack = 1;
-			mame_timer_set( MAME_TIME_IN_USEC( 2 ), n_port, psx_pad_ack );
+			timer_set( ATTOTIME_IN_USEC( 2 ), n_port, psx_pad_ack );
 		}
 	}
 }
@@ -299,7 +299,7 @@ static void psx_pad( int n_port, int n_data )
 	if( b_ack )
 	{
 		m_pad[ n_port ].b_ack = 0;
-		mame_timer_set( MAME_TIME_IN_USEC( 10 ), n_port, psx_pad_ack );
+		timer_set( ATTOTIME_IN_USEC( 10 ), n_port, psx_pad_ack );
 	}
 }
 
@@ -724,7 +724,7 @@ static DRIVER_INIT( psx )
 	psx_driver_init();
 }
 
-INPUT_PORTS_START( psx )
+static INPUT_PORTS_START( psx )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_PLAYER(1)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(1)
@@ -974,8 +974,8 @@ Version 4.3 E
 
 */
 
-/*     YEAR  NAME    PARENT  BIOS   COMPAT  MACHINE  INPUT  INIT  CONFIG  COMPANY                        FULLNAME */
-CONSB( 1994, psj,    0,      psj,   0,      psxntsc, psx,   psx,  psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (Japan)",        GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-CONSB( 1995, pse,    psj,    pse,   0,      psxpal,  psx,   psx,  psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (Europe)",       GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-CONSB( 1995, psu,    psj,    psu,   0,      psxntsc, psx,   psx,  psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (USA)",          GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-CONSB( 1995, psa,    psj,    psa,   0,      psxntsc, psx,   psx,  psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (Asia-Pacific)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY                             FULLNAME                            FLAGS */
+CONS( 1994, psj,    0,      0,      psxntsc,    psx,    psx,    psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (Japan)",         GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+CONS( 1995, pse,    psj,    0,      psxpal,     psx,    psx,    psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (Europe)",        GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+CONS( 1995, psu,    psj,    0,      psxntsc,    psx,    psx,    psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (USA)",           GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+CONS( 1995, psa,    psj,    0,      psxntsc,    psx,    psx,    psx,    "Sony Computer Entertainment Inc.", "Sony PlayStation (Asia-Pacific)",  GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )

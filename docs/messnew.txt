@@ -1,3 +1,90 @@
+0.121
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Acorn System 1  [Dirk Best] (not working)
+- Atari STBook [Curt Coder] (not working)
+- BBC Bridge Companion [Phil Bennet, incog] (not working)
+- HKT-0120 Sega Dreamcast Development Box [incog] (not working)
+- Osborne-1 [Wilbert Pol, Cowering]
+- Spectravideo SVI-318 (NTSC)  [Tomas Karlsson]
+- Spectravideo SVI-328 (NTSC)  [Tomas Karlsson]
+- Synertec Systems Corp. SYM-1  [Dirk Best] (not working)
+- VG-8020 [incog]
+
+
+
+System Driver Changes:
+----------------------
+- [ADAM] Input ports cleanup, natural keyboard support.  [Stefano Priore]
+
+- [ATARIST] Implemented iKBD<->68000 communications, so the keyboard is working
+  now. [Curt Coder]
+
+- [BEBOX] Fixed VGA regression introduced in 0.119.  [Tomas Karlsson]
+
+- [COCO] Updated to use MAME's 6242 RTC implementation.  [tim lindner]
+
+- [COCO] Modified the CoCo's keyboard handler to pass along the tri-state
+  buffer from port B to port A. [tim lindner]
+
+- [GAMEGEAR] Fixed graphics issues in Ax Battler.  (bug #1332) [Wilbert Pol]
+
+- [GAMEGEAR/SMS] Allow the VDP status bits to be read before an
+  interrupt is triggered and handled. Fixes hang in first level of
+  Zool.  (bug #1419) [Wilbert Pol]
+
+- [GAMEGEAR/SMS] The internal video data buffer should hold the data written
+  to the data port.  (bug #1378 and bug #1418) [Wilbert Pol]
+
+- [MEPHISTO] Implemented artwork/code for real chess board usage. [Ralf
+  Schäfer, Cowering]
+
+- [ORIC] Fixed floppy interface detection.  [Dirk Best]
+
+- [PET] Updated to use MAME's CRTC6548 implementation.  [Wilbert Pol]
+
+- [PET] Fixed keyboard regression introduced in 0.116.  (bug #1405) [Wilbert
+  Pol]
+
+- [QL] The system is now usable, except that microdrives don't work yet. [Curt
+  Coder]
+
+- [SVI318] Fixed borders. Added selectable bioses for all models.
+  Added serial port support. Added support for NTSC models.  [Tomas Karlsson]
+
+- [SVI318] Fixed a bug in banking for SVI-328 with 64KB RAM. Added SVI806
+  80 column card support.  [Wilbert Pol]
+
+- [SVI328] Fixed numeric pad input ports.  [Tomas Karlsson]
+
+- [SYM1] Rewrote, still many issues and doesn't fully work.  [Dirk Best]
+
+- [TI99] Fixed TI99 border regression.  [Michael Zapf]
+
+- [X68000] Raster effects, DMA and vblank improvements.  [Barry Rodewald]
+
+
+
+User Interface Changes:
+-----------------------
+(none)
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.121.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+
+
 0.120
 
 New System Drivers Supported (in no particular order):

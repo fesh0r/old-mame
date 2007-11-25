@@ -3,13 +3,9 @@
 
     peter.trauner@jk.uni-linz.ac.at
 ***************************************************************************/
-#include <ctype.h>
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/m6809/m6809.h"
-
-#include "video/generic.h"
-#include "mscommon.h"
 
 #define VERBOSE_DBG 1
 #include "includes/cbm.h"
@@ -19,10 +15,9 @@
 #include "includes/pet.h"
 #include "includes/cbmserb.h"
 #include "includes/cbmieeeb.h"
-#include "includes/crtc6845.h"
+#include "video/crtc6845.h"
 
 /* keyboard lines */
-static UINT8 pet_keyline[10] = { 0 };
 static int pet_basic1=0; /* basic version 1 for quickloader */
 static int superpet=0;
 static int cbm8096=0;
@@ -49,32 +44,42 @@ UINT8 *pet_videoram;
 */
 static  READ8_HANDLER ( pet_pia0_port_a_read )
 {
-	int data=0xff;
+	int data=0xf0 | pet_keyline_select;
 	if (!cbm_ieee_eoi_r()) data&=~0x40;
 	return data;
 }
 
 static WRITE8_HANDLER ( pet_pia0_port_a_write )
 {
-	pet_keyline_select=data;  /*data is actually line here! */
+	pet_keyline_select = data & 0x0f;
 }
 
+/* Keyboard reading/handling for regular keyboard */
 static  READ8_HANDLER ( pet_pia0_port_b_read )
 {
-	int data=0;
-	switch(pet_keyline_select) {
-	case 0: data|=pet_keyline[0];break;
-	case 1: data|=pet_keyline[1];break;
-	case 2: data|=pet_keyline[2];break;
-	case 3: data|=pet_keyline[3];break;
-	case 4: data|=pet_keyline[4];break;
-	case 5: data|=pet_keyline[5];break;
-	case 6: data|=pet_keyline[6];break;
-	case 7: data|=pet_keyline[7];break;
-	case 8: data|=pet_keyline[8];break;
-	case 9: data|=pet_keyline[9];break;
+	UINT8 data = 0xff;
+	if ( pet_keyline_select < 10 ) {
+		data = readinputport( pet_keyline_select );
+		/* Check for left-shift lock */
+		if ( pet_keyline_select == 8 && ( readinputport(10) & 0x80 ) ) {
+			data &= 0xFE;
+		}
 	}
-	return data^0xff;
+	return data;
+}
+
+/* Keyboard handling for business keyboard */
+static READ8_HANDLER( petb_pia0_port_b_read )
+{
+	UINT8 data = 0xff;
+	if ( pet_keyline_select < 10 ) {
+		data = readinputport( pet_keyline_select );
+		/* Check for left-shift lock */
+		if ( pet_keyline_select == 6 && ( readinputport(10) & 0x80 ) ) {
+			data &= 0xFE;
+		}
+	}
+	return data;
 }
 
 static WRITE8_HANDLER( pet_pia0_ca2_out )
@@ -138,6 +143,22 @@ static const pia6821_interface pet_pia0 =
 {
 	pet_pia0_port_a_read,		/* in_a_func */
 	pet_pia0_port_b_read,		/* in_b_func */
+	NULL,						/* in_ca1_func */
+	NULL,						/* in_cb1_func */
+	NULL,						/* in_ca2_func */
+	NULL,						/* in_cb2_func */
+	pet_pia0_port_a_write,		/* out_a_func */
+	NULL,						/* out_b_func */
+	pet_pia0_ca2_out,			/* out_ca2_func */
+	NULL,						/* out_cb2_func */
+	NULL,						/* irq_a_func */
+	pet_irq						/* irq_b_func */
+};
+
+static const pia6821_interface petb_pia0 =
+{
+	pet_pia0_port_a_read,		/* in_a_func */
+	petb_pia0_port_b_read,		/* in_b_func */
 	NULL,						/* in_ca1_func */
 	NULL,						/* in_cb1_func */
 	NULL,						/* in_ca2_func */
@@ -231,7 +252,8 @@ static WRITE8_HANDLER(cbm8096_io_w)
 	else if (offset<0x40) ;
 	else if (offset<0x50) via_0_w(offset&0xf,data);
 	else if (offset<0x80) ;
-	else if (offset<0x82) crtc6845_0_port_w(offset&1,data);
+	else if (offset == 0x80) crtc6845_0_address_w(offset&1, data);
+	else if (offset == 0x81) crtc6845_0_register_w(offset&1,data);
 }
 
 static  READ8_HANDLER(cbm8096_io_r)
@@ -244,7 +266,7 @@ static  READ8_HANDLER(cbm8096_io_r)
 	else if (offset<0x40) ;
 	else if (offset<0x50) data=via_0_r(offset&0xf);
 	else if (offset<0x80) ;
-	else if (offset<0x82) data=crtc6845_0_port_r(offset&1);
+	else if (offset == 0x81) data=crtc6845_0_register_r(offset&1);
 	return data;
 }
 
@@ -430,10 +452,9 @@ static void pet_common_driver_init (void)
 	}
 
 	/* pet clock */
-	mame_timer_pulse(MAME_TIME_IN_MSEC(10), 0, pet_interrupt);
+	timer_pulse(ATTOTIME_IN_MSEC(10), 0, pet_interrupt);
 
 	via_config(0, &pet_via);
-	pia_config(0, &pet_pia0);
 	pia_config(1, &pet_pia1);
 
 	cbm_ieee_open();
@@ -442,6 +463,14 @@ static void pet_common_driver_init (void)
 DRIVER_INIT( pet )
 {
 	pet_common_driver_init ();
+	pia_config(0, &pet_pia0);
+	pet_vh_init();
+}
+
+DRIVER_INIT( petb )
+{
+	pet_common_driver_init ();
+	pia_config(0, &petb_pia0);
 	pet_vh_init();
 }
 
@@ -449,16 +478,40 @@ DRIVER_INIT( pet1 )
 {
 	pet_basic1 = 1;
 	pet_common_driver_init ();
+	pia_config(0, &pet_pia0);
 	pet_vh_init();
 }
 
-static struct crtc6845_config crtc_pet = { 800000 /*?*/};
+//static struct mscrtc6845_config crtc_pet = { 800000 /*?*/};
+static void pet_display_enable_changed(int display_enabled) {
+}
+
+const static crtc6845_interface crtc_pet40 = {
+	0,
+	800000 /*?*/,
+	8 /*?*/,
+	NULL,
+	pet40_update_row,
+	NULL,
+	pet_display_enable_changed
+};
+
+const static crtc6845_interface crtc_pet80 = {
+	0,
+	800000 /*?*/,
+	16 /*?*/,
+	NULL,
+	pet80_update_row,
+	NULL,
+	pet_display_enable_changed
+};
 
 DRIVER_INIT( pet40 )
 {
 	pet_common_driver_init ();
+	pia_config(0, &pet_pia0);
 	pet_vh_init();
-	crtc6845_init(&crtc_pet);
+	crtc6845_config( 0, &crtc_pet40);
 }
 
 DRIVER_INIT( cbm80 )
@@ -467,16 +520,18 @@ DRIVER_INIT( cbm80 )
 	pet_memory = memory_region(REGION_CPU1);
 
 	pet_common_driver_init ();
+	pia_config(0, &petb_pia0);
 	videoram = &pet_memory[0x8000];
 	videoram_size = 0x800;
 	pet80_vh_init();
-	crtc6845_init(&crtc_pet);
+	crtc6845_config( 0, &crtc_pet80);
 }
 
 DRIVER_INIT( superpet )
 {
 	superpet = 1;
 	pet_common_driver_init ();
+	pia_config(0, &petb_pia0);
 
 	superpet_memory = auto_malloc(0x10000);
 
@@ -484,7 +539,7 @@ DRIVER_INIT( superpet )
 	memory_set_bank(1, 0);
 
 	superpet_vh_init();
-	crtc6845_init(&crtc_pet);
+	crtc6845_config( 0, &crtc_pet80);
 }
 
 MACHINE_RESET( pet )
@@ -540,275 +595,6 @@ void pet_rom_load(void)
 	}
 }
 
-static void pet_keyboard_business(void)
-{
-	int value;
-
-	value = 0;
-	/*if (KEY_ESCAPE) value|=0x80; // nothing, not blocking */
-	/*if (KEY_REVERSE) value|=0x40; // nothing, not blocking */
-	if (KEY_B_CURSOR_RIGHT) value |= 0x20;
-	if (KEY_B_PAD_8) value |= 0x10;
-	if (KEY_B_MINUS) value |= 8;
-	if (KEY_B_8) value |= 4;
-	if (KEY_B_5) value |= 2;
-	if (KEY_B_2) value |= 1;
-	pet_keyline[0] = value;
-
-	value = 0;
-	if (KEY_B_PAD_9) value |= 0x80;
-	/*if (KEY_ESCAPE) value|=0x40; // nothing, not blocking */
-	if (KEY_B_ARROW_UP) value |= 0x20;
-	if (KEY_B_PAD_7) value |= 0x10;
-	if (KEY_B_PAD_0) value |= 8;
-	if (KEY_B_7) value |= 4;
-	if (KEY_B_4) value |= 2;
-	if (KEY_B_1) value |= 1;
-	pet_keyline[1] = value;
-
-	value = 0;
-	if (KEY_B_PAD_5) value |= 0x80;
-	if (KEY_B_SEMICOLON) value |= 0x40;
-	if (KEY_B_K) value |= 0x20;
-	if (KEY_B_CLOSEBRACE) value |= 0x10;
-	if (KEY_B_H) value |= 8;
-	if (KEY_B_F) value |= 4;
-	if (KEY_B_S) value |= 2;
-	if (KEY_B_ESCAPE) value |= 1; /* upper case */
-	pet_keyline[2] = value;
-
-	value = 0;
-	if (KEY_B_PAD_6) value |= 0x80;
-	if (KEY_B_ATSIGN) value |= 0x40;
-	if (KEY_B_L) value |= 0x20;
-	if (KEY_B_RETURN) value |= 0x10;
-	if (KEY_B_J) value |= 8;
-	if (KEY_B_G) value |= 4;
-	if (KEY_B_D) value |= 2;
-	if (KEY_B_A) value |= 1;
-	pet_keyline[3] = value;
-
-	value = 0;
-	if (KEY_B_DEL) value |= 0x80;
-	if (KEY_B_P) value |= 0x40;
-	if (KEY_B_I) value |= 0x20;
-	if (KEY_B_BACKSLASH) value |= 0x10;
-	if (KEY_B_Y) value |= 8;
-	if (KEY_B_R) value |= 4;
-	if (KEY_B_W) value |= 2;
-	if (KEY_B_TAB) value |= 1;
-	pet_keyline[4] = value;
-
-	value = 0;
-	if (KEY_B_PAD_4) value |= 0x80;
-	if (KEY_B_OPENBRACE) value |= 0x40;
-	if (KEY_B_O) value |= 0x20;
-	if (KEY_B_CURSOR_DOWN) value |= 0x10;
-	if (KEY_B_U) value |= 8;
-	if (KEY_B_T) value |= 4;
-	if (KEY_B_E) value |= 2;
-	if (KEY_B_Q) value |= 1;
-	pet_keyline[5] = value;
-
-	value = 0;
-	if (KEY_B_PAD_3) value |= 0x80;
-	if (KEY_B_RIGHT_SHIFT) value |= 0x40;
-	/*if (KEY_REVERSE) value |= 0x20; // clear line */
-	if (KEY_B_PAD_POINT) value |= 0x10;
-	if (KEY_B_POINT) value |= 8;
-	if (KEY_B_B) value |= 4;
-	if (KEY_B_C) value |= 2;
-	if (KEY_B_LEFT_SHIFT) value |= 1;
-	pet_keyline[6] = value;
-
-	value = 0;
-	if (KEY_B_PAD_2) value |= 0x80;
-	if (KEY_B_REPEAT) value |= 0x40;
-	/*if (KEY_REVERSE) value |= 0x20; // blocking */
-	if (KEY_B_0) value |= 0x10;
-	if (KEY_B_COMMA) value |= 8;
-	if (KEY_B_N) value |= 4;
-	if (KEY_B_V) value |= 2;
-	if (KEY_B_Z) value |= 1;
-	pet_keyline[7] = value;
-
-	value = 0;
-	if (KEY_B_PAD_1) value |= 0x80;
-	if (KEY_B_SLASH) value |= 0x40;
-	/*if (KEY_ESCAPE) value |= 0x20; // special clear */
-	if (KEY_B_HOME) value |= 0x10;
-	if (KEY_B_M) value |= 8;
-	if (KEY_B_SPACE) value |= 4;
-	if (KEY_B_X) value |= 2;
-	if (KEY_B_REVERSE) value |= 1; /* lower case */
-	pet_keyline[8] = value;
-
-	value = 0;
-	/*if (KEY_ESCAPE) value |= 0x80; // blocking */
-	/*if (KEY_REVERSE) value |= 0x40; // blocking */
-	if (KEY_B_COLON) value |= 0x20;
-	if (KEY_B_STOP) value |= 0x10;
-	if (KEY_B_9) value |= 8;
-	if (KEY_B_6) value |= 4;
-	if (KEY_B_3) value |= 2;
-	if (KEY_B_ARROW_LEFT) value |= 1;
-	pet_keyline[9] = value;
-}
-
-static void pet_keyboard_normal(void)
-{
-	int value;
-	value = 0;
-	if (KEY_CURSOR_RIGHT) value |= 0x80;
-	if (KEY_HOME) value |= 0x40;
-	if (KEY_ARROW_LEFT) value |= 0x20;
-	if (KEY_9) value |= 0x10;
-	if (KEY_7) value |= 8;
-	if (KEY_5) value |= 4;
-	if (KEY_3) value |= 2;
-	if (KEY_1) value |= 1;
-	pet_keyline[0] = value;
-
-	value = 0;
-	if (KEY_PAD_DEL) value |= 0x80;
-	if (KEY_CURSOR_DOWN) value |= 0x40;
-	/*if (KEY_3) value |= 0x20; // not blocking */
-	if (KEY_0) value |= 0x10;
-	if (KEY_8) value |= 8;
-	if (KEY_6) value |= 4;
-	if (KEY_4) value |= 2;
-	if (KEY_2) value |= 1;
-	pet_keyline[1] = value;
-
-	value = 0;
-	if (KEY_PAD_9)
-		value |= 0x80;
-	if (KEY_PAD_7)
-		value |= 0x40;
-	if (KEY_ARROW_UP) value |= 0x20;
-	if (KEY_O)
-		value |= 0x10;
-	if (KEY_U)
-		value |= 8;
-	if (KEY_T)
-		value |= 4;
-	if (KEY_E)
-		value |= 2;
-	if (KEY_Q)
-		value |= 1;
-	pet_keyline[2] = value;
-
-	value = 0;
-	if (KEY_PAD_SLASH) value |= 0x80;
-	if (KEY_PAD_8)
-		value |= 0x40;
-	/*if (KEY_5) value |= 0x20; // not blocking */
-	if (KEY_P)
-		value |= 0x10;
-	if (KEY_I)
-		value |= 8;
-	if (KEY_Y)
-		value |= 4;
-	if (KEY_R)
-		value |= 2;
-	if (KEY_W)
-		value |= 1;
-	pet_keyline[3] = value;
-
-	value = 0;
-	if (KEY_PAD_6)
-		value |= 0x80;
-	if (KEY_PAD_4)
-		value |= 0x40;
-	/* if (KEY_6) value |= 0x20; // not blocking */
-	if (KEY_L)
-		value |= 0x10;
-	if (KEY_J)
-		value |= 8;
-	if (KEY_G)
-		value |= 4;
-	if (KEY_D)
-		value |= 2;
-	if (KEY_A)
-		value |= 1;
-	pet_keyline[4] = value;
-
-	value = 0;
-	if (KEY_PAD_ASTERIX) value |= 0x80;
-	if (KEY_PAD_5)
-		value |= 0x40;
-	/*if (KEY_8) value |= 0x20; // not blocking */
-	if (KEY_COLON) value |= 0x10;
-	if (KEY_K)
-		value |= 8;
-	if (KEY_H)
-		value |= 4;
-	if (KEY_F)
-		value |= 2;
-	if (KEY_S)
-		value |= 1;
-	pet_keyline[5] = value;
-
-	value = 0;
-	if (KEY_PAD_3)
-		value |= 0x80;
-	if (KEY_PAD_1) value |= 0x40;
-	if (KEY_RETURN)
-		value |= 0x20;
-	if (KEY_SEMICOLON)
-		value |= 0x10;
-	if (KEY_M)
-		value |= 8;
-	if (KEY_B)
-		value |= 4;
-	if (KEY_C)
-		value |= 2;
-	if (KEY_Z)
-		value |= 1;
-	pet_keyline[6] = value;
-
-	value = 0;
-	if (KEY_PAD_PLUS) value |= 0x80;
-	if (KEY_PAD_2)
-		value |= 0x40;
-	/*if (KEY_2) value |= 0x20; // non blocking */
-	if (KEY_QUESTIONMARK) value |= 0x10;
-	if (KEY_COMMA)
-		value |= 8;
-	if (KEY_N)
-		value |= 4;
-	if (KEY_V)
-		value |= 2;
-	if (KEY_X)
-		value |= 1;
-	pet_keyline[7] = value;
-
-	value = 0;
-	if (KEY_PAD_MINUS)
-		value |= 0x80;
-	if (KEY_PAD_0) value |= 0x40;
-    if (KEY_RIGHT_SHIFT) value |= 0x20;
-	if (KEY_BIGGER) value |= 0x10;
-	/*if (KEY_5) value |= 8; // non blocking */
-	if (KEY_CLOSEBRACE) value |= 4;
-	if (KEY_ATSIGN) value |= 2;
-	if (KEY_LEFT_SHIFT) value |= 1;
-	pet_keyline[8] = value;
-
-	value = 0;
-	if (KEY_PAD_EQUALS) value |= 0x80;
-	if (KEY_PAD_POINT)
-		value |= 0x40;
-	/*if (KEY_6) value |= 0x20; // non blocking */
-	if (KEY_STOP) value |= 0x10;
-	if (KEY_SMALLER) value |= 8;
-	if (KEY_SPACE) value |= 4;
-	if (KEY_OPENBRACE)
-		value |= 2;
-	if (KEY_REVERSE) value |= 1;
-	pet_keyline[9] = value;
-}
-
 INTERRUPT_GEN( pet_frame_interrupt )
 {
 	if (superpet)
@@ -824,10 +610,5 @@ INTERRUPT_GEN( pet_frame_interrupt )
 		}
 	}
 
-	if (BUSINESS_KEYBOARD)
-		pet_keyboard_business();
-	else
-		pet_keyboard_normal();
-
-	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , KEY_B_SHIFTLOCK ? 1 : 0);
+	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , readinputport(10) & 0x80 ? 1 : 0);
 }

@@ -3,6 +3,7 @@
 
 #include "driver.h"
 #include "timer.h"
+#include "cpu/m68000/m68000.h"
 
 #define MAX_MFP	4
 
@@ -17,7 +18,7 @@ typedef struct
 
 	void (*to_w)(int which, int timer, int value);
 
-	void (*irq_callback)(int which, int state, int vector);
+	void (*irq_callback)(int which, int state);
 
 	read8_handler gpio_r;
 	write8_handler gpio_w;
@@ -69,6 +70,18 @@ enum
 	MFP68901_INT_TIMER_A,
 	MFP68901_INT_GPI6,
 	MFP68901_INT_GPI7
+};
+
+enum
+{
+	MFP68901_GPIP_0 = 0,
+	MFP68901_GPIP_1,
+	MFP68901_GPIP_2,
+	MFP68901_GPIP_3,
+	MFP68901_GPIP_4,
+	MFP68901_GPIP_5,
+	MFP68901_GPIP_6,
+	MFP68901_GPIP_7
 };
 
 enum
@@ -185,10 +198,18 @@ enum
 #define MFP68901_TSR_UNDERRUN_ERROR		0x40
 #define MFP68901_TSR_BUFFER_EMPTY		0x80
 
-void mfp68901_config(int which, const mfp68901_interface *intf);
+/* External Interface */
 
 void mfp68901_tai_w(int which, int value);
 void mfp68901_tbi_w(int which, int value);
+
+int mfp68901_get_vector(int which);
+
+void mfp68901_reset(int which);
+
+void mfp68901_config(int which, const mfp68901_interface *intf);
+
+/* Read/Write Handlers */
 
 READ16_HANDLER( mfp68901_0_register_msb_r );
 READ16_HANDLER( mfp68901_1_register_msb_r );

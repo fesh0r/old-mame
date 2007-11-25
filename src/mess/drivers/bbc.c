@@ -313,7 +313,7 @@ static PALETTE_INIT( bbc )
 	memcpy(colortable,bbc_colour_table,sizeof(bbc_colour_table));
 }
 
-INPUT_PORTS_START(bbca)
+static INPUT_PORTS_START(bbca)
 
 	/* KEYBOARD COLUMN 0 */
 	PORT_START
@@ -728,7 +728,7 @@ static MACHINE_DRIVER_START( bbca )
 	MDRV_CPU_VBLANK_INT(bbcb_vsync, 1)				/* screen refresh interrupts */
 	MDRV_CPU_PERIODIC_INT(bbcb_keyscan, 1000)		/* scan keyboard */
 	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(128))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(128))
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( bbca )
@@ -792,7 +792,7 @@ static MACHINE_DRIVER_START( bbcm )
 	MDRV_CPU_VBLANK_INT(bbcb_vsync, 1)				/* screen refresh interrupts */
 	MDRV_CPU_PERIODIC_INT(bbcm_keyscan, 1000)		/* scan keyboard */
 	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(128))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(128))
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( bbcm )

@@ -278,7 +278,7 @@ static MACHINE_RESET( z88 )
 {
 	memset(mess_ram, 0x0ff, mess_ram_size);
 
-	mame_timer_pulse(MAME_TIME_IN_MSEC(5), 0, z88_rtc_timer_callback);
+	timer_pulse(ATTOTIME_IN_MSEC(5), 0, z88_rtc_timer_callback);
 
 	blink_reset();
 
@@ -623,7 +623,7 @@ A8  (#0) | DEL    ENTER   6       Y       H       N       7       8
 -------------------------------------------------------------------------
 */
 
-INPUT_PORTS_START(z88)
+static INPUT_PORTS_START(z88)
 	/* 0 */
 	PORT_START
 	PORT_BIT(0x080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("DEL") PORT_CODE(KEYCODE_BACKSPACE)

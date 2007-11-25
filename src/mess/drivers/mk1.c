@@ -107,7 +107,7 @@ static ADDRESS_MAP_START( mk1_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0xc, 0xf ) AM_READWRITE( f3853_r, f3853_w )
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( mk1 )
+static INPUT_PORTS_START( mk1 )
 	PORT_START	/* 0 */
 	PORT_DIPNAME ( 0x01, 0x01, "Switch")
 	PORT_DIPSETTING(  0, "L" )
@@ -158,7 +158,7 @@ static TIMER_CALLBACK( mk1_update_leds ) {
 
 
 static MACHINE_START( mk1 ) {
-	mame_timer_pulse( MAME_TIME_IN_HZ(30), 0, mk1_update_leds );
+	timer_pulse( ATTOTIME_IN_HZ(30), 0, mk1_update_leds );
 }
 
 static MACHINE_DRIVER_START( mk1 )

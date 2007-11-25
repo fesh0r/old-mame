@@ -4,30 +4,82 @@
 ** Sean Young, Tomas Karlsson
 **
 ** Todo:
-** - serial ports
+** - modem port
 ** - svi_cas format
-** - 80 column cartridge
 */
 
 #include "driver.h"
-#include "video/generic.h"
-#include "cpu/z80/z80.h"
-#include "machine/wd17xx.h"
 #include "includes/svi318.h"
-#include "formats/svi_cas.h"
-#include "machine/8255ppi.h"
+#include "cpu/z80/z80.h"
+#include "video/generic.h"
+#include "video/crtc6845.h"
 #include "video/tms9928a.h"
+#include "machine/8255ppi.h"
+#include "machine/uart8250.h"
+#include "machine/wd17xx.h"
 #include "devices/basicdsk.h"
 #include "devices/printer.h"
 #include "devices/cassette.h"
+#include "formats/svi_cas.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
 #include "image.h"
 
+enum {
+	SVI_INTERNAL	= 0,
+	SVI_CART		= 1,
+	SVI_EXPRAM2		= 2,
+	SVI_EXPRAM3		= 3
+};
+
+typedef struct {
+	/* general */
+	UINT8	svi318;					/* Are we dealing with an SVI-318 or a SVI-328 model. 0 = 328, 1 = 318 */
+	/* memory */
+	UINT8	*empty_bank;
+	UINT8	bank_switch;
+	UINT8	bank1;
+	UINT8	bank2;
+	UINT8	*bank1_ptr;
+	UINT8	bank1_read_only;
+	UINT8	*bank2_ptr;
+	UINT8	bank2_read_only;
+	UINT8	*bank3_ptr;
+	UINT8	bank3_read_only;
+	/* printer */
+	UINT8	prn_data;
+	UINT8	prn_strobe;
+	/* SVI-806 80 column card */
+	UINT8	svi806_present;
+	UINT8	svi806_ram_enabled;
+	UINT8	*svi806_ram;
+	UINT8	*svi806_gfx;
+} SVI_318;
+
 static SVI_318 svi;
 static UINT8 *pcart;
+static UINT32 pcart_rom_size;
 
 static void svi318_set_banks (void);
+
+/* Serial ports */
+
+static void svi318_uart8250_interrupt(int nr, int state)
+{
+	cpunum_set_input_line(0, 0, (state ? HOLD_LINE : CLEAR_LINE));
+}
+
+static uart8250_interface svi318_uart8250_interface[1] =
+{
+	{
+		TYPE8250,
+		3072000,
+		svi318_uart8250_interrupt,
+		NULL,
+		NULL,
+		NULL
+	},
+};
 
 /* Cartridge */
 
@@ -40,16 +92,27 @@ static int svi318_verify_cart (UINT8 magic[2])
 		return IMAGE_VERIFY_FAIL;
 }
 
+DEVICE_INIT( svi318_cart ) {
+	pcart = NULL;
+	pcart_rom_size = 0;
+
+	return INIT_PASS;
+}
+
 DEVICE_LOAD( svi318_cart )
 {
 	UINT8 *p;
-	int size;
+	UINT32 size;
 
-	p = image_malloc(image, 0x8000);
+	size = MAX(0x8000,image_length(image));
+
+	p = image_malloc(image, size);
 	if (!p)
 		return INIT_FAIL;
 
-	memset(p, 0xff, 0x8000);
+	pcart_rom_size = size;
+	memset(p, 0xff, size);
+
 	size = image_length(image);
 	if (image_fread(image, p, size) != size)
 	{
@@ -60,14 +123,14 @@ DEVICE_LOAD( svi318_cart )
 	if (svi318_verify_cart(p)==IMAGE_VERIFY_FAIL)
 		return INIT_FAIL;
 	pcart = p;
-	svi.banks[0][1] = p;
 
 	return INIT_PASS;
 }
 
 DEVICE_UNLOAD( svi318_cart )
 {
-	pcart = svi.banks[0][1] = NULL;
+	pcart = NULL;
+	pcart_rom_size = 0;
 }
 
 /* PPI */
@@ -91,7 +154,7 @@ static READ8_HANDLER ( svi318_ppi_port_a_r )
 
 	if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.0038)
 		data |= 0x80;
-	if (!svi318_cassette_present(0) )
+	if (!svi318_cassette_present(0))
 		data |= 0x40;
 	data |= readinputport(12) & 0x30;
 
@@ -149,7 +212,7 @@ static WRITE8_HANDLER ( svi318_ppi_port_c_w )
 	DAC_signed_data_w (0, val);
 
 	/* cassette motor on/off */
-	if (svi318_cassette_present (0) )
+	if (svi318_cassette_present(0))
 	{
 		cassette_change_state(
 			image_from_devtype_and_index(IO_CASSETTE, 0),
@@ -365,175 +428,113 @@ DEVICE_LOAD( svi318_floppy )
 	return INIT_PASS;
 }
 
-/* 80 column card */
+static void svi806_crtc6845_update_row(mame_bitmap *bitmap, const rectangle *cliprect, UINT16 ma,
+									   UINT8 ra, UINT16 y, UINT8 x_count, void *param ) {
+	int i;
 
-#include "video/m6845.h"
-static int svi318_80col_state;
-static char *svi318_80col_ram = NULL;
+	for( i = 0; i < x_count; i++ ) {
+		int j;
+		UINT8	data = svi.svi806_gfx[ svi.svi806_ram[ ( ma + i ) & 0x7FF ] * 16 + ra ];
 
-static int svi318_6845_RA = 0;
-static int svi318_scr_x = 0;
-static int svi318_scr_y = 0;
-static int svi318_HSync = 0;
-static int svi318_VSync = 0;
-static int svi318_DE = 0;
-
-// called when the 6845 changes the character row
-static void svi318_Set_RA(int offset, int data)
-{
-	svi318_6845_RA=data;
-}
-
-
-// called when the 6845 changes the HSync
-static void svi318_Set_HSync(int offset, int data)
-{
-	svi318_HSync=data;
-	if(!svi318_HSync)
-	{
-		svi318_scr_y++;
-		svi318_scr_x = -40;
+		for( j=0; j < 8; j++ ) {
+			*BITMAP_ADDR16(bitmap, y, i * 8 + j ) = TMS9928A_PALETTE_SIZE + ( ( data & 0x80 ) ? 1 : 0 );
+			data = data << 1;
+		}
 	}
 }
 
-// called when the 6845 changes the VSync
-static void svi318_Set_VSync(int offset, int data)
-{
-	svi318_VSync=data;
-	if (!svi318_VSync)
-	{
-		svi318_scr_y = 0;
-	}
-}
-
-static void svi318_Set_DE(int offset, int data)
-{
-	svi318_DE = data;
-}
-
-static struct crtc6845_interface
-svi318_crtc6845_interface= {
-	0,// Memory Address register
-	svi318_Set_RA,// Row Address register
-	svi318_Set_HSync,// Horizontal status
-	svi318_Set_VSync,// Vertical status
-	svi318_Set_DE,// Display Enabled status
-	0,// Cursor status
+static const crtc6845_interface svi806_crtc6845_interface = {
+	1,
+	3579545 /*?*/,
+	8 /*?*/,
+	NULL,
+	svi806_crtc6845_update_row,
+	NULL,
+	NULL
 };
+
+static void svi806_set_crtc_register(UINT8 reg, UINT8 data) {
+	crtc6845_0_address_w(0, reg);
+	crtc6845_0_register_w(0, data);
+}
 
 /* 80 column card init */
 static void svi318_80col_init(void)
 {
-	/* 2K RAM */
-	svi318_80col_ram = auto_malloc(0x800);
-memset(svi318_80col_ram, 0x40, 0x400);
+	/* 2K RAM, but allocating 4KB to make banking easier */
+	/* The upper 2KB will be set to FFs and will never be written to */
+	svi.svi806_ram = new_memory_region( Machine, REGION_GFX2, 0x1000, 0 );
+	memset( svi.svi806_ram, 0x00, 0x800 );
+	memset( svi.svi806_ram + 0x800, 0xFF, 0x800 );
+	svi.svi806_gfx = memory_region(REGION_GFX1);
 	/* initialise 6845 */
-	crtc6845_config(&svi318_crtc6845_interface);
-
-	svi318_80col_state=(1<<2)|(1<<1);
+	crtc6845_config( 0, &svi806_crtc6845_interface);
+	/* set some default values for the 6845 controller */
+	svi806_set_crtc_register(  0, 109 );
+	svi806_set_crtc_register(  1,  80 );
+	svi806_set_crtc_register(  2,  89 );
+	svi806_set_crtc_register(  3,  12 );
+	svi806_set_crtc_register(  4,  31 );
+	svi806_set_crtc_register(  5,   2 );
+	svi806_set_crtc_register(  6,  24 );
+	svi806_set_crtc_register(  7,  26 );
+	svi806_set_crtc_register(  8,   0 );
+	svi806_set_crtc_register(  9,   7 );
+	svi806_set_crtc_register( 10,  96 );
+	svi806_set_crtc_register( 11,   7 );
+	svi806_set_crtc_register( 12,   0 );
+	svi806_set_crtc_register( 13,   0 );
+	svi806_set_crtc_register( 14,   0 );
+	svi806_set_crtc_register( 15,   0 );
 }
 
-READ8_HANDLER( svi318_crtc_r )
+READ8_HANDLER( svi806_r )
 {
-	return 0xff;
+	return crtc6845_0_register_r( offset );
 }
 
-WRITE8_HANDLER( svi318_crtc_w )
+WRITE8_HANDLER( svi806_w )
 {
-}
-
-WRITE8_HANDLER( svi318_crtcbank_w )
-{
-}
-
-static void svi318_80col_plot_char_line(int x,int y, mame_bitmap *bitmap)
-{
-	int w;
-	if (svi318_DE)
-	{
-		unsigned char *data = memory_region(REGION_GFX1);
-		unsigned char data_byte;
-		int char_code;
-
-		char_code = svi318_80col_ram[crtc6845_memory_address_r(0)&0x07ff];
-		
-		data_byte = data[(char_code<<3) + svi318_6845_RA];
-
-		for (w=0; w<8;w++)
-		{
-			*BITMAP_ADDR16(bitmap, y, x+w) = (data_byte & 0x080) ? 1 : 0;
-
-			data_byte = data_byte<<1;
-
-		}
+	switch( offset ) {
+	case 0:
+		crtc6845_0_address_w( offset, data );
+		break;
+	case 1:
+		crtc6845_0_register_w( offset, data );
+		break;
 	}
-	else
-	{
-		for (w=0; w<8;w++)
-			*BITMAP_ADDR16(bitmap, y, x+w) = 0;
-	}
-
 }
 
-static VIDEO_UPDATE( svi318_80col )
+WRITE8_HANDLER( svi806_ram_enable_w )
 {
-	long c=0; // this is used to time out the screen redraw, in the case that the 6845 is in some way out state.
+	svi.svi806_ram_enabled = ( data & 0x01 );
+	svi318_set_banks();
+}
 
-	c=0;
-
-	// loop until the end of the Vertical Sync pulse
-	while((svi318_VSync)&&(c<33274))
-	{
-		// Clock the 6845
-		crtc6845_clock();
-		c++;
-	}
-
-	// loop until the Vertical Sync pulse goes high
-	// or until a timeout (this catches the 6845 with silly register values that would not give a VSYNC signal)
-	while((!svi318_VSync)&&(c<33274))
-	{
-		while ((svi318_HSync)&&(c<33274))
-		{
-			crtc6845_clock();
-			c++;
-		}
-		// Do all the clever split mode changes in here before the next while loop
-
-		while ((!svi318_HSync)&&(c<33274))
-		{
-			// check that we are on the emulated screen area.
-			if ((svi318_scr_x>=0) && (svi318_scr_x<640) && (svi318_scr_y>=0) && (svi318_scr_y<400))
-			{
-				svi318_80col_plot_char_line(svi318_scr_x, svi318_scr_y, bitmap);
-			}
-
-			svi318_scr_x+=8;
-
-			// Clock the 6845
-			crtc6845_clock();
-			c++;
-		}
-	}
+VIDEO_UPDATE( svi328_806 )
+{
+	if ( screen == 0 )
+		video_update_tms9928a(machine, screen, bitmap, cliprect);
+	if ( screen == 1 )
+		video_update_crtc6845(machine, screen, bitmap, cliprect);
 	return 0;
 }
 
-VIDEO_UPDATE( svi328b )
-{
-	video_update_tms9928a(machine, screen, bitmap, cliprect);
-	video_update_svi318_80col(machine, screen, bitmap, cliprect);
-	return 0;
-}
-
-MACHINE_RESET( svi328b )
+MACHINE_RESET( svi328_806 )
 {
 	machine_reset_svi318(machine);
 	svi318_80col_init();
+	svi.svi806_present = 1;
+	svi318_set_banks();
+
+	/* Set SVI-806 80 column card palette */
+	palette_set_color_rgb( machine, TMS9928A_PALETTE_SIZE, 0, 0, 0 );		/* Monochrome black */
+	palette_set_color_rgb( machine, TMS9928A_PALETTE_SIZE+1, 0, 224, 0 );	/* Monochrome green */
 }
 
 /* Init functions */
 
-void svi318_vdp_interrupt (int i)
+void svi318_vdp_interrupt(int i)
 {
 	cpunum_set_input_line(0, 0, (i ? HOLD_LINE : CLEAR_LINE));
 }
@@ -551,7 +552,9 @@ DRIVER_INIT( svi318 )
 
 	memset(&svi, 0, sizeof (svi) );
 
-	svi.svi318 = !strcmp (Machine->gamedrv->name, "svi318");
+	if ( ! strcmp( Machine->gamedrv->name, "svi318" ) || ! strcmp( Machine->gamedrv->name, "svi318n" ) ) {
+		svi.svi318 = 1;
+	}
 
 	cpunum_set_input_line_vector (0, 0, 0xff);
 	ppi8255_init (&svi318_ppi8255_interface);
@@ -559,18 +562,6 @@ DRIVER_INIT( svi318 )
 	/* memory */
 	svi.empty_bank = auto_malloc (0x8000);
 	memset (svi.empty_bank, 0xff, 0x8000);
-	svi.banks[0][0] = memory_region(REGION_CPU1);
-	svi.banks[1][0] = auto_malloc (0x8000);
-	memset (svi.banks[1][0], 0, 0x8000);
-
-	/* should also be allocated via dip-switches ... redundant? */
-	if (!svi.svi318)
-	{
-		svi.banks[1][2] = auto_malloc (0x8000);
-		memset (svi.banks[1][2], 0, 0x8000);
-	}
-
-	svi.banks[0][1] = pcart;
 
 	/* adjust z80 cycles for the M1 wait state */
 	for (i = 0; i < sizeof(z80_cycle_table) / sizeof(z80_cycle_table[0]); i++)
@@ -604,19 +595,37 @@ DRIVER_INIT( svi318 )
 
 	/* floppy */
 	wd17xx_init(WD_TYPE_179X, svi_fdc_callback, NULL);
+
+	/* serial */
+	uart8250_init(0, svi318_uart8250_interface);
 }
 
-static const TMS9928a_interface tms9928a_interface =
+static const TMS9928a_interface svi318_tms9928a_interface =
 {
-	TMS9929A,
+	TMS99x8A,
 	0x4000,
-	0, 0,
+	15,
+	15,
 	svi318_vdp_interrupt
 };
 
-MACHINE_START( svi318 )
+static const TMS9928a_interface svi318_tms9929a_interface =
 {
-	TMS9928A_configure(&tms9928a_interface);
+	TMS9929A,
+	0x4000,
+	13,
+	13,
+	svi318_vdp_interrupt
+};
+
+MACHINE_START( svi318_ntsc )
+{
+	TMS9928A_configure(&svi318_tms9928a_interface);
+}
+
+MACHINE_START( svi318_pal )
+{
+	TMS9928A_configure(&svi318_tms9929a_interface);
 }
 
 MACHINE_RESET( svi318 )
@@ -631,67 +640,56 @@ MACHINE_RESET( svi318 )
 	svi318_set_banks();
 
 	wd17xx_reset();
+
+	uart8250_reset(0);
 }
 
 INTERRUPT_GEN( svi318_interrupt )
 {
-	int set, i, p, b, bit;
+	int set;
 
 	set = readinputport (13);
 	TMS9928A_set_spriteslimit (set & 0x20);
 	TMS9928A_interrupt();
-
-	/* memory banks */
-	for (i=0;i<4;i++)
-	{
-		bit = set & (1 << i);
-		p = (i & 1);
-		b = i / 2 + 2;
-
-		if (bit && !svi.banks[p][b])
-		{
-			svi.banks[p][b] = malloc (0x8000);
-			if (!svi.banks[p][b])
-				logerror ("Cannot malloc bank%d%d!\n", b, p + 1);
-			else
-			{
-				memset (svi.banks[p][b], 0, 0x8000);
-				logerror ("bank%d%d allocated.\n", b, p + 1);
-			}
-		}
-		else if (!bit && svi.banks[p][b])
-		{
-			free (svi.banks[p][b]);
-			svi.banks[p][b] = NULL;
-			logerror ("bank%d%d freed.\n", b, p + 1);
-		}
-	}
 }
 
 /* Memory */
 
-WRITE8_HANDLER( svi318_writemem0 )
-{
-	if (svi.bank1 < 2) return;
-
-	if (svi.banks[0][svi.bank1])
-		svi.banks[0][svi.bank1][offset] = data;
-}
-
 WRITE8_HANDLER( svi318_writemem1 )
 {
-	switch (svi.bank2)
-	{
-	case 0:
-		if (!svi.svi318 || offset >= 0x4000)
-			svi.banks[1][0][offset] = data;
+	if ( svi.bank1_read_only )
+		return;
 
-		break;
-	case 2:
-	case 3:
-		if (svi.banks[1][svi.bank2])
-			svi.banks[1][svi.bank2][offset] = data;
-		break;
+	svi.bank1_ptr[offset] = data;
+}
+
+WRITE8_HANDLER( svi318_writemem2 )
+{
+	if ( svi.bank2_read_only)
+		return;
+
+	svi.bank2_ptr[offset] = data;
+}
+
+WRITE8_HANDLER( svi318_writemem3 )
+{
+	if ( svi.bank3_read_only)
+		return;
+
+	svi.bank3_ptr[offset] = data;
+}
+
+WRITE8_HANDLER( svi318_writemem4 )
+{
+	if ( svi.svi806_ram_enabled ) {
+		if ( offset < 0x800 ) {
+			svi.svi806_ram[ offset ] = data;
+		}
+	} else {
+		if ( svi.bank3_read_only )
+			return;
+
+		svi.bank3_ptr[ 0x3000 + offset] = data;
 	}
 }
 
@@ -699,39 +697,99 @@ static void svi318_set_banks ()
 {
 	const UINT8 v = svi.bank_switch;
 
-	svi.bank1 = (v&1)?(v&2)?(v&8)?0:3:2:1;
-	svi.bank2 = (v&4)?(v&16)?0:3:2;
+	svi.bank1 = ( v & 1 ) ? ( ( v & 2 ) ? ( ( v & 8 ) ? SVI_INTERNAL : SVI_EXPRAM3 ) : SVI_EXPRAM2 ) : SVI_CART;
+	svi.bank2 = ( v & 4 ) ? ( ( v & 16 ) ? SVI_INTERNAL : SVI_EXPRAM3 ) : SVI_EXPRAM2;
 
-	if (svi.banks[0][svi.bank1])
-		memory_set_bankptr (1, svi.banks[0][svi.bank1]);
-	else
-		memory_set_bankptr (1, svi.empty_bank);
+	svi.bank1_ptr = svi.empty_bank;
+	svi.bank1_read_only = 1;
 
-	if (svi.banks[1][svi.bank2])
-	{
-		memory_set_bankptr (2, svi.banks[1][svi.bank2]);
-		memory_set_bankptr (3, svi.banks[1][svi.bank2] + 0x4000);
+	switch( svi.bank1 ) {
+	case SVI_INTERNAL:
+		svi.bank1_ptr = memory_region(REGION_CPU1);
+		break;
+	case SVI_CART:
+		if ( pcart ) {
+			svi.bank1_ptr = pcart;
+		}
+		break;
+	case SVI_EXPRAM2:
+		if ( mess_ram_size >= 64 * 1024 ) {
+			svi.bank1_ptr = mess_ram + mess_ram_size - 64 * 1024;
+			svi.bank1_read_only = 0;
+		}
+		break;
+	case SVI_EXPRAM3:
+		if ( mess_ram_size > 128 * 1024 ) {
+			svi.bank1_ptr = mess_ram + mess_ram_size - 128 * 1024;
+			svi.bank1_read_only = 0;
+		}
+		break;
+	}
 
-		/* SVI-318 has only 16kB RAM -- not 32kb! */
-		if (!svi.bank2 && svi.svi318)
-			memory_set_bankptr (2, svi.empty_bank);
+	svi.bank2_ptr = svi.bank3_ptr = svi.empty_bank;
+	svi.bank2_read_only = svi.bank3_read_only = 1;
 
-		if ((svi.bank1 == 1) && ( (v & 0xc0) != 0xc0))
-		{
-			memory_set_bankptr (2, (v&80)?svi.empty_bank:svi.banks[1][1] + 0x4000);
-			memory_set_bankptr (3, (v&40)?svi.empty_bank:svi.banks[1][1]);
+	switch( svi.bank2 ) {
+	case SVI_INTERNAL:
+		if ( mess_ram_size == 16 * 1024 ) {
+			svi.bank3_ptr = mess_ram;
+			svi.bank3_read_only = 0;
+		} else {
+			svi.bank2_ptr = mess_ram;
+			svi.bank2_read_only = 0;
+			svi.bank3_ptr = mess_ram + 0x4000;
+			svi.bank3_read_only = 0;
+		}
+		break;
+	case SVI_EXPRAM2:
+		if ( mess_ram_size > 64 * 1024 ) {
+			svi.bank2_ptr = mess_ram + mess_ram_size - 64 * 1024 + 32 * 1024;
+			svi.bank2_read_only = 0;
+			svi.bank3_ptr = mess_ram + mess_ram_size - 64 * 1024 + 48 * 1024;
+			svi.bank3_read_only = 0;
+		}
+		break;
+	case SVI_EXPRAM3:
+		if ( mess_ram_size > 128 * 1024 ) {
+			svi.bank2_ptr = mess_ram + mess_ram_size - 128 * 1024 + 32 * 1024;
+			svi.bank2_read_only = 0;
+			svi.bank3_ptr = mess_ram + mess_ram_size - 128 * 1024 + 48 * 1024;
+			svi.bank3_read_only = 0;
+		}
+		break;
+	}
+
+	/* Check for special CART based banking */
+	if ( svi.bank1 == SVI_CART && ( v & 0xc0 ) != 0xc0 ) {
+		svi.bank2_ptr = svi.empty_bank;
+		svi.bank2_read_only = 1;
+		svi.bank3_ptr = svi.empty_bank;
+		svi.bank3_read_only = 1;
+		if ( pcart && ! ( v & 0x80 ) ) {
+			svi.bank3_ptr = pcart + 0x4000;
+		}
+		if ( pcart && ! ( v & 0x40 ) ) {
+			svi.bank2_ptr = pcart;
 		}
 	}
-	else
-	{
-		memory_set_bankptr (2, svi.empty_bank);
-		memory_set_bankptr (3, svi.empty_bank);
+
+	memory_set_bankptr( 1, svi.bank1_ptr );
+	memory_set_bankptr( 2, svi.bank2_ptr );
+	memory_set_bankptr( 3, svi.bank3_ptr );
+
+	/* SVI-806 80 column card specific banking */
+	if ( svi.svi806_present ) {
+		if ( svi.svi806_ram_enabled ) {
+			memory_set_bankptr( 4, svi.svi806_ram );
+		} else {
+			memory_set_bankptr( 4, svi.bank3_ptr + 0x3000 );
+		}
 	}
 }
 
 /* Cassette */
 
-int svi318_cassette_present (int id)
+int svi318_cassette_present(int id)
 {
 	return image_exists(image_from_devtype_and_index(IO_CASSETTE, id));
 }

@@ -84,7 +84,7 @@
 #include "machine/abcbus.h"
 #include "video/abc80x.h"
 
-static mame_timer *abc800_ctc_timer;
+static emu_timer *abc800_ctc_timer;
 
 /* Read/Write Handlers */
 
@@ -347,7 +347,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( abc77 )
+static INPUT_PORTS_START( abc77 )
 	PORT_START_TAG("X0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -486,15 +486,15 @@ INPUT_PORTS_START( abc77 )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( abc800 )
+static INPUT_PORTS_START( abc800 )
 	PORT_INCLUDE(abc77)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( abc802 )
+static INPUT_PORTS_START( abc802 )
 	PORT_INCLUDE(abc77)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( abc806 )
+static INPUT_PORTS_START( abc806 )
 	PORT_INCLUDE(abc77)
 INPUT_PORTS_END
 
@@ -651,8 +651,8 @@ static MACHINE_START( abc800 )
 	state_save_register_global(abc77_keylatch);
 	state_save_register_global(abc77_clock);
 
-	abc800_ctc_timer = mame_timer_alloc(abc800_ctc_tick);
-	mame_timer_adjust(abc800_ctc_timer, time_zero, 0, MAME_TIME_IN_HZ(ABC800_X01/2/2/2));
+	abc800_ctc_timer = timer_alloc(abc800_ctc_tick);
+	timer_adjust(abc800_ctc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(ABC800_X01/2/2/2));
 
 	z80ctc_init(0, &abc800_ctc_intf);
 	z80sio_init(0, &abc800_sio_intf);
@@ -1025,8 +1025,8 @@ static DRIVER_INIT( abc800 )
 
 /* System Drivers */
 
-//	   YEAR  NAME		PARENT		BIOS	COMPAT	MACHINE		INPUT		INIT	CONFIG		COMPANY			FULLNAME
-COMP ( 1981, abc800c,	0,					0,		abc800c,	abc800,		abc800,	abc800,		"Luxor Datorer AB", "ABC 800C", GAME_NOT_WORKING )
-COMP ( 1981, abc800m,	abc800c,			0,		abc800m,	abc800,		abc800,	abc800,		"Luxor Datorer AB", "ABC 800M", GAME_NOT_WORKING )
-COMPB( 1983, abc802,	0,			abc802,	0,		abc802,		abc802,		abc800,	abc802,		"Luxor Datorer AB", "ABC 802", GAME_NOT_WORKING )
-COMPB( 1983, abc806,	0,			abc806,	0,		abc806,		abc806,		abc800,	abc806,		"Luxor Datorer AB", "ABC 806", GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY             FULLNAME    FLAGS */
+COMP( 1981, abc800c,    0,          0,      abc800c,    abc800, abc800, abc800, "Luxor Datorer AB", "ABC 800C", GAME_NOT_WORKING )
+COMP( 1981, abc800m,    abc800c,    0,      abc800m,    abc800, abc800, abc800, "Luxor Datorer AB", "ABC 800M", GAME_NOT_WORKING )
+COMP( 1983, abc802,     0,          0,      abc802,     abc802, abc800, abc802, "Luxor Datorer AB", "ABC 802",  GAME_NOT_WORKING )
+COMP( 1983, abc806,     0,          0,      abc806,     abc806, abc800, abc806, "Luxor Datorer AB", "ABC 806",  GAME_NOT_WORKING )

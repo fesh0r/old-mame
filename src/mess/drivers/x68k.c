@@ -148,7 +148,7 @@ UINT16* sram;   // SRAM
 extern UINT16* x68k_spriteram;  // sprite/background RAM
 extern UINT16* x68k_spritereg;  // sprite/background registers
 UINT8 ppi_port[3];
-UINT8 current_vector[8];
+int current_vector[8];
 UINT8 current_irq_line;
 unsigned int x68k_scanline;
 
@@ -168,28 +168,28 @@ extern tilemap* x68k_bg1_8;
 extern tilemap* x68k_bg0_16;  // two 64x64 tilemaps, 16x16 characters
 extern tilemap* x68k_bg1_16;
 
-mame_timer* kb_timer;
-//mame_timer* mfp_timer[4];
-//mame_timer* mfp_irq;
-mame_timer* scanline_timer;
-mame_timer* raster_irq;
-mame_timer* vblank_irq;
-mame_timer* mouse_timer;  // to set off the mouse interrupts via the SCC
+emu_timer* kb_timer;
+//emu_timer* mfp_timer[4];
+//emu_timer* mfp_irq;
+emu_timer* scanline_timer;
+emu_timer* raster_irq;
+emu_timer* vblank_irq;
+emu_timer* mouse_timer;  // to set off the mouse interrupts via the SCC
 
 // MFP is clocked at 4MHz, so at /4 prescaler the timer is triggered after 1us (4 cycles)
 // No longer necessary with the new MFP core
-/*static mame_time prescale(int val)
+/*static attotime prescale(int val)
 {
 	switch(val)
 	{
-		case 0:	return MAME_TIME_IN_NSEC(0);
-		case 1:	return MAME_TIME_IN_NSEC(1000);
-		case 2:	return MAME_TIME_IN_NSEC(2500);
-		case 3:	return MAME_TIME_IN_NSEC(4000);
-		case 4:	return MAME_TIME_IN_NSEC(12500);
-		case 5:	return MAME_TIME_IN_NSEC(16000);
-		case 6:	return MAME_TIME_IN_NSEC(25000);
-		case 7:	return MAME_TIME_IN_NSEC(50000);
+		case 0:	return ATTOTIME_IN_NSEC(0);
+		case 1:	return ATTOTIME_IN_NSEC(1000);
+		case 2:	return ATTOTIME_IN_NSEC(2500);
+		case 3:	return ATTOTIME_IN_NSEC(4000);
+		case 4:	return ATTOTIME_IN_NSEC(12500);
+		case 5:	return ATTOTIME_IN_NSEC(16000);
+		case 6:	return ATTOTIME_IN_NSEC(25000);
+		case 7:	return ATTOTIME_IN_NSEC(50000);
 		default:
 			fatalerror("out of range");
 	}
@@ -205,12 +205,12 @@ void mfp_init()
 	sys.mfp.irqline = 6;  // MFP is connected to 68000 IRQ line 6
 	sys.mfp.current_irq = -1;  // No current interrupt
 
-/*	mfp_timer[0] = mame_timer_alloc(mfp_timer_a_callback);
-	mfp_timer[1] = mame_timer_alloc(mfp_timer_b_callback);
-	mfp_timer[2] = mame_timer_alloc(mfp_timer_c_callback);
-	mfp_timer[3] = mame_timer_alloc(mfp_timer_d_callback);
-	mfp_irq = mame_timer_alloc(mfp_update_irq);
-	mame_timer_adjust(mfp_irq, time_zero, 0, MAME_TIME_IN_USEC(32));
+/*	mfp_timer[0] = timer_alloc(mfp_timer_a_callback);
+	mfp_timer[1] = timer_alloc(mfp_timer_b_callback);
+	mfp_timer[2] = timer_alloc(mfp_timer_c_callback);
+	mfp_timer[3] = timer_alloc(mfp_timer_d_callback);
+	mfp_irq = timer_alloc(mfp_update_irq);
+	timer_adjust(mfp_irq, attotime_zero, 0, ATTOTIME_IN_USEC(32));
 */
 }
 /*
@@ -331,16 +331,17 @@ void mfp_set_timer(int timer, unsigned char data)
 {
 	if((data & 0x07) == 0x0000)
 	{  // Timer stop
-		mame_timer_adjust(mfp_timer[timer],time_zero,0,time_zero);
+		timer_adjust(mfp_timer[timer],attotime_zero,0,attotime_zero);
 		logerror("MFP: Timer #%i stopped. \n",timer);
 		return;
 	}
 
-	mame_timer_adjust(mfp_timer[timer], time_zero, 0, prescale(data & 0x07));
-	logerror("MFP: Timer #%i set to %2.1fus\n",timer, mame_time_to_double(prescale(data & 0x07)) * 1000000);
+	timer_adjust(mfp_timer[timer], attotime_zero, 0, prescale(data & 0x07));
+	logerror("MFP: Timer #%i set to %2.1fus\n",timer, attotime_to_double(prescale(data & 0x07)) * 1000000);
 
 }
 */
+
 // 4 channel DMA controller (Hitachi HD63450)
 WRITE16_HANDLER( x68k_dmac_w )
 {
@@ -764,7 +765,7 @@ void fdc_irq(int state)
 		sys.ioc.irqstatus |= 0x80;
 		current_irq_line = 1;
 		logerror("FDC: IRQ triggered\n");
-		cpunum_set_input_line_and_vector(0,1,ASSERT_LINE,current_vector[1]);
+		cpunum_set_input_line_and_vector(0,1,HOLD_LINE,current_vector[1]);
 	}
 }
 
@@ -1328,7 +1329,7 @@ READ16_HANDLER( x68k_exp_r )
 		offset *= 2;
 		if(ACCESSING_LSB)
 			offset++;
-		mame_timer_set(MAME_TIME_IN_CYCLES(16,0),0xeafa00+offset,x68k_fake_bus_error);
+		timer_set(ATTOTIME_IN_CYCLES(16,0),0xeafa00+offset,x68k_fake_bus_error);
 //		cpunum_set_input_line_and_vector(0,2,ASSERT_LINE,current_vector[2]);
 	}
 	return 0xffff;
@@ -1344,7 +1345,7 @@ WRITE16_HANDLER( x68k_exp_w )
 		offset *= 2;
 		if(ACCESSING_LSB)
 			offset++;
-		mame_timer_set(MAME_TIME_IN_CYCLES(16,0),0xeafa00+offset,x68k_fake_bus_error);
+		timer_set(ATTOTIME_IN_CYCLES(16,0),0xeafa00+offset,x68k_fake_bus_error);
 //		cpunum_set_input_line_and_vector(0,2,ASSERT_LINE,current_vector[2]);
 	}
 }
@@ -1401,30 +1402,15 @@ READ8_HANDLER(mfp_gpio_r)
 	return data;
 }
 
-TIMER_CALLBACK( x68k_delayed_irq )
+void mfp_irq_callback(int which, int state)
 {
-	if((sys.ioc.irqstatus & 0xc0) != 0)  // if the FDC is busy, then we don't want to miss that IRQ
-	{
-		mame_timer_set(MAME_TIME_IN_CYCLES(32,0),param,x68k_delayed_irq);
+	static int prev;
+	if(prev == CLEAR_LINE && state == CLEAR_LINE)  // eliminate unnecessary calls to set the IRQ line for speed reasons
 		return;
-	}
-	current_vector[6] = param;
-	cpunum_set_input_line_and_vector(0,6,HOLD_LINE,param);
-}
-
-void mfp_irq_callback(int which, int state, int vector)
-{
-	if(state == HOLD_LINE)
-	{
-		if((sys.ioc.irqstatus & 0xc0) != 0)  // if the FDC is busy, then we don't want to miss that IRQ
-		{
-			mame_timer_set(MAME_TIME_IN_CYCLES(32,0),vector,x68k_delayed_irq);
-			return;
-		}
-		current_vector[6] = vector;
-		cpunum_set_input_line_and_vector(0,6,state,vector);
-//		logerror("MFP IRQ callback: state=%i,vector=0x%02x\n",state,vector);
-	}
+	if((sys.ioc.irqstatus & 0xc0) != 0)  // if the FDC is busy, then we don't want to miss that IRQ
+		return;
+	cpunum_set_input_line(0,6,state);
+	prev = state;
 }
 
 static INTERRUPT_GEN( x68k_vsync_irq )
@@ -1445,15 +1431,6 @@ static INTERRUPT_GEN( x68k_vsync_irq )
 
 static int x68k_int_ack(int line)
 {
-	cpunum_set_input_line_and_vector(0,line,CLEAR_LINE,current_vector[line]);
-	if(line == 1)  // IOSC
-	{
-		sys.ioc.irqstatus &= ~0xf0;
-	}
-	if(line == 5)  // SCC
-	{
-		sys.mouse.irqactive = 0;
-	}
 	if(line == 6)  // MFP
 	{
 //		if(sys.mfp.isra & 0x10)
@@ -1476,6 +1453,19 @@ static int x68k_int_ack(int line)
 //				sys.mfp.isra |= (1 << (sys.mfp.current_irq - 8));
 //		}
 		sys.mfp.current_irq = -1;
+		current_vector[6] = mfp68901_get_vector(0);
+		logerror("SYS: IRQ acknowledged (vector=0x%02x, line = %i)\n",current_vector[6],line);
+		return current_vector[6];
+	}
+
+	cpunum_set_input_line_and_vector(0,line,CLEAR_LINE,current_vector[line]);
+	if(line == 1)  // IOSC
+	{
+		sys.ioc.irqstatus &= ~0xf0;
+	}
+	if(line == 5)  // SCC
+	{
+		sys.mouse.irqactive = 0;
 	}
 
 	logerror("SYS: IRQ acknowledged (vector=0x%02x, line = %i)\n",current_vector[line],line);
@@ -1517,9 +1507,9 @@ ADDRESS_MAP_END
 
 static mfp68901_interface mfp_interface =
 {
-	4000000, // 4MHz clock
-	4000000,
-	0,
+	2000000, // 4MHz clock
+	2000000,
+	MFP68901_TDO_LOOPBACK,
 	0,
 	&mfp_key,  // Rx
 	NULL,      // Tx
@@ -1575,7 +1565,7 @@ static struct rp5c15_interface rtc_intf =
 	x68k_rtc_alarm_irq
 };
 
-INPUT_PORTS_START( x68000 )
+static INPUT_PORTS_START( x68000 )
 	PORT_START_TAG( "joy1" )
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CODE(JOYCODE_Y_UP_SWITCH)	 PORT_PLAYER(1)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)	 PORT_PLAYER(1)
@@ -1863,7 +1853,7 @@ MACHINE_RESET( x68000 )
 
 	int drive;
 	UINT8* romdata = memory_region(REGION_USER2);
-	mame_time irq_time;
+	attotime irq_time;
 
 	memset(mess_ram,0,mess_ram_size);
 	memcpy(mess_ram,romdata,8);
@@ -1900,10 +1890,10 @@ MACHINE_RESET( x68000 )
 	// start VBlank timer
 	sys.crtc.vblank = 1;
 	irq_time = video_screen_get_time_until_pos(0,sys.crtc.reg[6],2);
-	mame_timer_adjust(vblank_irq,irq_time,0,time_never);
+	timer_adjust(vblank_irq,irq_time,0,attotime_never);
 	
 	// start HBlank timer
-	mame_timer_adjust(scanline_timer,video_screen_get_scan_period(0),1,time_never);
+	timer_adjust(scanline_timer,video_screen_get_scan_period(0),1,attotime_never);
 
 	sys.mfp.gpio = 0xfb;
 }
@@ -1926,10 +1916,10 @@ MACHINE_START( x68000 )
 	memory_set_bankptr(4,generic_nvram16);  // so that code in SRAM is executable, there is an option for booting from SRAM
 
 	// start keyboard timer
-	mame_timer_adjust(kb_timer,time_zero,0,MAME_TIME_IN_MSEC(5));  // every 5ms
+	timer_adjust(kb_timer,attotime_zero,0,ATTOTIME_IN_MSEC(5));  // every 5ms
 
 	// start mouse timer
-	mame_timer_adjust(mouse_timer,time_zero,0,MAME_TIME_IN_MSEC(2));  // a guess for now
+	timer_adjust(mouse_timer,attotime_zero,0,ATTOTIME_IN_MSEC(2));  // a guess for now
 	sys.mouse.inputtype = 0;
 }
 
@@ -1973,11 +1963,11 @@ DRIVER_INIT( x68000 )
 	// init keyboard
 	sys.keyboard.delay = 500;  // 3*100+200 
 	sys.keyboard.repeat = 110;  // 4^2*5+30
-	kb_timer = mame_timer_alloc(x68k_keyboard_poll);
-	scanline_timer = mame_timer_alloc(x68k_hsync);
-	raster_irq = mame_timer_alloc(x68k_crtc_raster_irq);
-	vblank_irq = mame_timer_alloc(x68k_crtc_vblank_irq);
-	mouse_timer = mame_timer_alloc(x68k_scc_ack);
+	kb_timer = timer_alloc(x68k_keyboard_poll);
+	scanline_timer = timer_alloc(x68k_hsync);
+	raster_irq = timer_alloc(x68k_crtc_raster_irq);
+	vblank_irq = timer_alloc(x68k_crtc_vblank_irq);
+	mouse_timer = timer_alloc(x68k_scc_ack);
 }
 
 
@@ -2053,5 +2043,5 @@ ROM_START( x68000 )
 ROM_END
 
 
-/*	   YEAR		NAME	PARENT	BIOS		COMPAT	MACHINE		INPUT	INIT		CONFIG		COMPANY				FULLNAME */
-COMPB( 1987,    x68000,	0,		x68000,		0,		x68000,		x68000,	x68000,	    x68000,		"Sharp",			"Sharp X68000",  GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY     FULLNAME        FLAGS */
+COMP( 1987, x68000, 0,      0,      x68000, x68000, x68000, x68000, "Sharp",    "Sharp X68000", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )

@@ -126,7 +126,7 @@ ADDRESS_MAP_END
 #define CYBIKO_PORT_BIT_U( mask)  \
 	PORT_BIT( mask, IP_ACTIVE_LOW, IPT_UNUSED)
 
-INPUT_PORTS_START( cybiko)
+static INPUT_PORTS_START( cybiko)
 	PORT_START // A1
 	CYBIKO_PORT_BIT_K( 0x01) PORT_NAME( "F7"    ) PORT_CODE( KEYCODE_F7        ) PORT_CHAR( UCHAR_MAMEKEY( F7    ))
 	CYBIKO_PORT_BIT_K( 0x02) PORT_NAME( "Esc"   ) PORT_CODE( KEYCODE_ESC       ) PORT_CHAR( UCHAR_MAMEKEY( ESC   ))
@@ -316,7 +316,7 @@ MACHINE_DRIVER_END
 // COMPUTER //
 //////////////
 
-// YEAR - NAME - PARENT - BIOS - COMPAT - MACHINE - INPUT - INIT - CONFIG - COMPANY - FULLNAME - FLAGS
-COMPB( 2000, cybikov1, 0,        0, 0, cybikov1, cybiko, cybikov1, cybikov1, "Cybiko, Inc.", "Cybiko Classic (V1)", GAME_IMPERFECT_SOUND)
-COMPB( 2000, cybikov2, cybikov1, 0, 0, cybikov2, cybiko, cybikov2, cybikov2, "Cybiko, Inc.", "Cybiko Classic (V2)", GAME_IMPERFECT_SOUND)
-COMPB( 2001, cybikoxt, cybikov1, 0, 0, cybikoxt, cybiko, cybikoxt, cybikoxt, "Cybiko, Inc.", "Cybiko Xtreme",       GAME_NO_SOUND | GAME_NOT_WORKING)
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT        CONFIG      COMPANY         FULLNAME                FLAGS */
+COMP( 2000, cybikov1,   0,          0,      cybikov1,   cybiko, cybikov1,   cybikov1,   "Cybiko, Inc.", "Cybiko Classic (V1)",  GAME_IMPERFECT_SOUND )
+COMP( 2000, cybikov2,   cybikov1,   0,      cybikov2,   cybiko, cybikov2,   cybikov2,   "Cybiko, Inc.", "Cybiko Classic (V2)",  GAME_IMPERFECT_SOUND )
+COMP( 2001, cybikoxt,   cybikov1,   0,      cybikoxt,   cybiko, cybikoxt,   cybikoxt,   "Cybiko, Inc.", "Cybiko Xtreme",        GAME_NO_SOUND | GAME_NOT_WORKING )

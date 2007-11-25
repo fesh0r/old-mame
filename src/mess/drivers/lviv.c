@@ -311,7 +311,7 @@ ADDRESS_MAP_END
 
 
 /* keyboard input */
-INPUT_PORTS_START (lviv)
+static INPUT_PORTS_START (lviv)
 	PORT_START /* 2nd PPI port A bit 0 low */
 		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("6  &") PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('&')
 		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7  '") PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('\'')
@@ -503,5 +503,5 @@ SYSTEM_CONFIG_START(lviv)
 SYSTEM_CONFIG_END
 
 
-/*    YEAR  NAME      PARENT    BIOS    COMPAT  MACHINE   INPUT     INIT                CONFIG          COMPANY          FULLNAME */
-COMPB( 1989,	lviv,	0,      lviv,      0,		lviv,      lviv,     0,       lviv,    "V. I. Lenin",	"Lviv" , 0)
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY         FULLNAME    FLAGS */
+COMP( 1989, lviv,   0,      0,      lviv,   lviv,   0,      lviv,   "V. I. Lenin",  "Lviv" ,    0 )

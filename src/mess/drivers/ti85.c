@@ -197,7 +197,7 @@ ADDRESS_MAP_START( ti86_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
         
 /* keyboard input */
-INPUT_PORTS_START (ti81)
+static INPUT_PORTS_START (ti81)
 	PORT_START   /* bit 0 */
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Down") PORT_CODE(KEYCODE_DOWN)
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ENTER") PORT_CODE(KEYCODE_ENTER)
@@ -259,7 +259,7 @@ INPUT_PORTS_START (ti81)
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON/OFF") PORT_CODE(KEYCODE_Q)
 INPUT_PORTS_END
 
-INPUT_PORTS_START (ti85)
+static INPUT_PORTS_START (ti85)
 	PORT_START   /* bit 0 */
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Down") PORT_CODE(KEYCODE_DOWN)
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ENTER") PORT_CODE(KEYCODE_ENTER)
@@ -548,15 +548,15 @@ SYSTEM_CONFIG_START(ti86)
 	CONFIG_DEVICE(ti86_snapshot_getinfo)
 SYSTEM_CONFIG_END
 
-/*     YEAR  NAME		PARENT	BIOS		COMPAT	MACHINE INPUT	INIT	CONFIG	COMPANY					FULLNAME */
-COMPB( 1990, ti81,		0,		ti81,		0,		ti81,	ti81,	0,		NULL,	"Texas Instruments",	"TI-81", 0 )
-COMPB( 1992, ti85,		0,		ti85,		0,		ti85,	ti85,	0,		ti85,	"Texas Instruments",	"TI-85", 0 )
-COMPB( 1993, ti82,		0,		ti82,		0,		ti85,	ti85,	0,		NULL,	"Texas Instruments",	"TI-82", GAME_NOT_WORKING )
-COMPB( 1996, ti83,		0,		ti83,		0,		ti85,	ti85,	0,		NULL,	"Texas Instruments",	"TI-83", GAME_NOT_WORKING )
-COMPB( 1997, ti86,		0,		ti86,		0,		ti86,	ti85,	0,		ti86,	"Texas Instruments",	"TI-86", 0 )
-COMPB( 1999, ti83p,		0,		ti83p,		0,		ti85,	ti85,	0,		NULL,	"Texas Instruments",	"TI-83 Plus", GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                 FULLNAME                        FLAGS */
+COMP( 1990, ti81,       0,      0,      ti81,   ti81,   0,      NULL,   "Texas Instruments",    "TI-81",                        0 )
+COMP( 1992, ti85,       0,      0,      ti85,   ti85,   0,      ti85,   "Texas Instruments",    "TI-85",                        0 )
+COMP( 1993, ti82,       0,      0,      ti85,   ti85,   0,      NULL,   "Texas Instruments",    "TI-82",                        GAME_NOT_WORKING )
+COMP( 1996, ti83,       0,      0,      ti85,   ti85,   0,      NULL,   "Texas Instruments",    "TI-83",                        GAME_NOT_WORKING )
+COMP( 1997, ti86,       0,      0,      ti86,   ti85,   0,      ti86,   "Texas Instruments",    "TI-86",                        0 )
+COMP( 1999, ti83p,      0,      0,      ti85,   ti85,   0,      NULL,   "Texas Instruments",    "TI-83 Plus",                   GAME_NOT_WORKING )
 /*
-COMPB( 2001, ti83pse,	0,		ti83pse,	0,		ti85,	ti85,	0,		NULL,	"Texas Instruments",	"TI-83 Plus Silver Edition", 0 )
-COMPB( 2004, ti84p,		0,		ti84p,		0,		ti85,	ti85,	0,		NULL,	"Texas Instruments",	"TI-84 Plus", 0 )
-COMPB( 2004, ti84pse,	0,		ti84pse,	0,		ti85,	ti85,	0,		NULL,	"Texas Instruments",	"TI-84 Plus Silver Edition", 0 )
+COMP( 2001, ti83pse,    0,      0,      ti85,   ti85,   0,      NULL,   "Texas Instruments",    "TI-83 Plus Silver Edition",    0 )
+COMP( 2004, ti84p,      0,      0,      ti85,   ti85,   0,      NULL,   "Texas Instruments",    "TI-84 Plus",                   0 )
+COMP( 2004, ti84pse,    0,      0,      ti85,   ti85,   0,      NULL,   "Texas Instruments",    "TI-84 Plus Silver Edition",    0 )
 */

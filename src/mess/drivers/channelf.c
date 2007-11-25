@@ -201,7 +201,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( channelf )
+static INPUT_PORTS_START( channelf )
 	PORT_START /* Front panel buttons */
 	PORT_BIT ( 0x01, IP_ACTIVE_HIGH, IPT_START )	/* TIME  (1) */
 	PORT_BIT ( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON5 )	/* HOLD  (2) */
@@ -285,7 +285,5 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*     YEAR  NAME      PARENT    BIOS      COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY      FULLNAME */
-CONSB( 1976, channelf, 0,        channelf, 0,        channelf, channelf, 0,        channelf, "Fairchild", "Channel F" , 0)
-
-
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY         FULLNAME        FLAGS */
+CONS( 1976, channelf,   0,      0,      channelf,   channelf,   0,      channelf,   "Fairchild",    "Channel F",    0 )

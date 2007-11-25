@@ -42,7 +42,6 @@ documentation still exists.
 #include "inputx.h"
 #include "machine/6821pia.h"
 #include "video/generic.h"
-#include "video/m6845.h"
 #include "includes/coco.h"
 #include "includes/dgn_beta.h"
 #include "devices/basicdsk.h"
@@ -173,7 +172,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( dgnbeta )
+static INPUT_PORTS_START( dgnbeta )
 	PORT_START /* Key ROw 0 */
 	/* Return shift if either shift key pressed */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("L-SHIFT") PORT_CODE(KEYCODE_LSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
@@ -334,7 +333,7 @@ static MACHINE_DRIVER_START( dgnbeta )
 	MDRV_CPU_PROGRAM_MAP(dgnbeta_map,0)
 
 	MDRV_SCREEN_REFRESH_RATE(DGNBETA_FRAMES_PER_SECOND)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(100))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
 	
 	MDRV_MACHINE_START( dgnbeta )
 
@@ -380,5 +379,5 @@ SYSTEM_CONFIG_START(dgnbeta)
 	CONFIG_DEVICE( dgnbeta_floppy_getinfo )
 SYSTEM_CONFIG_END
 
-/*      YEAR	NAME		PARENT	BIOS		COMPAT		MACHINE    	INPUT		INIT    CONFIG		COMPANY			FULLNAME */
-COMPB(  1984,	dgnbeta,	0,	dgnbeta,	0,		dgnbeta,	dgnbeta,	0,	dgnbeta,	"Dragon Data Ltd",    "Dragon Beta Prototype" , 0)
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY             FULLNAME                    FLAGS */
+COMP( 1984, dgnbeta,    0,      0,      dgnbeta,    dgnbeta,    0,      dgnbeta,    "Dragon Data Ltd",  "Dragon Beta Prototype",    0 )

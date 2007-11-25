@@ -17,8 +17,18 @@
 		  what happens on the real hardware, this has fixed the NitrOS9 boot
 		  problems.
   
+	2007-Nov-01 Wilbert Pol:
+		Needed these changes to get the MB8877 for Osborne-1 to work:
+		- Added support for multiple record read
+		- Changed the wd17xx_read_id to not return after DATADONEDELAY, but
+		  the host should read the id data through the data register. This
+		  was accomplished by making this change in the wd17xx_read_id
+		  function:
+			-               wd17xx_complete_command(w, DELAY_DATADONE);
+			+               wd17xx_set_data_request();
+
 	TODO:
-		- Multiple record read/write
+		- Multiple record write
 		- What happens if a track is read that doesn't have any id's on it?
 	     (e.g. unformatted disc)
 
@@ -164,7 +174,7 @@ struct _wd17xx_info
 
 	UINT8	ddam;					/* ddam of sector found - used when reading */
 	UINT8	sector_data_id;
-	mame_timer	*timer, *timer_rs, *timer_ws, *timer_rid;
+	emu_timer	*timer, *timer_rs, *timer_ws, *timer_rid;
 	int		data_direction;
 
 	UINT8   ipl;					/* index pulse */
@@ -235,7 +245,7 @@ static void wd17xx_clear_data_request(void);
 static void wd17xx_set_data_request(void);
 static void wd17xx_timed_data_request(void);
 static void wd17xx_set_irq(wd17xx_info *);
-static mame_timer *busy_timer = NULL;
+static emu_timer *busy_timer = NULL;
 
 /* one wd controlling multiple drives */
 static wd17xx_info wd;
@@ -294,15 +304,15 @@ static TIMER_CALLBACK_PTR(wd17xx_busy_callback)
 {
 	wd17xx_info *info = (wd17xx_info *) param;
 	wd17xx_set_irq(info);			
-	mame_timer_reset(busy_timer, time_never);
+	timer_reset(busy_timer, attotime_never);
 }
 
 
 
-static void wd17xx_set_busy(wd17xx_info *w, mame_time duration)
+static void wd17xx_set_busy(wd17xx_info *w, attotime duration)
 {
 	w->status |= STA_1_BUSY;
-	mame_timer_adjust_ptr(busy_timer, duration, time_zero);
+	timer_adjust_ptr(busy_timer, duration, attotime_zero);
 }
 
 
@@ -351,7 +361,7 @@ static void wd17xx_restore(wd17xx_info *w)
 	/* when command completes set irq */
 	wd17xx_set_irq(w);
 #endif
-	wd17xx_set_busy(w, MAME_TIME_IN_USEC(100));
+	wd17xx_set_busy(w, ATTOTIME_IN_USEC(100));
 }
 
 
@@ -387,10 +397,10 @@ void wd17xx_init(wd17xx_type_t type, void (*callback)(wd17xx_state_t, void *), v
 	wd.callback_param = param;
 //	wd.status_ipl = STA_1_IPL;
 	wd.density = DEN_MFM_LO;
-	busy_timer = mame_timer_alloc_ptr(wd17xx_busy_callback, &wd);
-	wd.timer = mame_timer_alloc(wd17xx_misc_timer_callback);
-	wd.timer_rs = mame_timer_alloc(wd17xx_read_sector_callback);
-	wd.timer_ws = mame_timer_alloc(wd17xx_write_sector_callback);
+	busy_timer = timer_alloc_ptr(wd17xx_busy_callback, &wd);
+	wd.timer = timer_alloc(wd17xx_misc_timer_callback);
+	wd.timer_rs = timer_alloc(wd17xx_read_sector_callback);
+	wd.timer_ws = timer_alloc(wd17xx_write_sector_callback);
 
 	wd17xx_reset();
 }
@@ -623,7 +633,7 @@ static void wd17xx_read_id(wd17xx_info * w)
 		w->status |= STA_2_BUSY;
 		w->busy_count = 0;
 
-		wd17xx_complete_command(w, DELAY_DATADONE);
+		wd17xx_set_data_request();
 
 		logerror("read id succeeded.\n");
 	}
@@ -657,7 +667,7 @@ static int wd17xx_has_side_select(void)
 
 
 
-static int wd17xx_find_sector(wd17xx_info *w)
+static int wd17xx_locate_sector(wd17xx_info *w)
 {
 	UINT8 revolution_count;
 	chrn_id id;
@@ -698,6 +708,16 @@ static int wd17xx_find_sector(wd17xx_info *w)
 			/* update revolution count */
 			revolution_count++;
 		}
+	}
+	return 0;
+}
+
+
+static int wd17xx_find_sector(wd17xx_info *w)
+{
+	if ( wd17xx_locate_sector(w) )
+	{
+		return 1;
 	}
 
 	/* record not found */
@@ -785,7 +805,7 @@ static TIMER_CALLBACK(wd17xx_misc_timer_callback)
 	}
 
 	/* stop it, but don't allow it to be free'd */
-	mame_timer_reset(w->timer, time_never); 
+	timer_reset(w->timer, attotime_never); 
 }
 
 
@@ -810,7 +830,7 @@ static void wd17xx_complete_command(wd17xx_info *w, int delay)
 	usecs *= delay;
 
 	/* set new timer */
-	mame_timer_adjust(w->timer, MAME_TIME_IN_USEC(usecs), MISCCALLBACK_COMMAND, time_zero);
+	timer_adjust(w->timer, ATTOTIME_IN_USEC(usecs), MISCCALLBACK_COMMAND, attotime_zero);
 }
 
 
@@ -875,7 +895,7 @@ static void wd17xx_verify_seek(wd17xx_info *w)
 
 	w->status |= STA_1_SEEK_ERR;
 
-	logerror("failed seek verify!");
+	logerror("failed seek verify!\n");
 }
 
 
@@ -927,7 +947,7 @@ static TIMER_CALLBACK(wd17xx_read_sector_callback)
 		wd17xx_read_sector(w);
 
 	/* stop it, but don't allow it to be free'd */
-	mame_timer_reset(w->timer_rs, time_never); 
+	timer_reset(w->timer_rs, attotime_never); 
 }
 
 
@@ -978,7 +998,7 @@ static TIMER_CALLBACK(wd17xx_write_sector_callback)
 	}
 
 	/* stop it, but don't allow it to be free'd */
-	mame_timer_reset(w->timer_ws, time_never); 
+	timer_reset(w->timer_ws, attotime_never); 
 }
 
 
@@ -992,7 +1012,7 @@ static void wd17xx_timed_data_request(void)
 	usecs = floppy_drive_get_datarate_in_us(w->density);
 
 	/* set new timer */
-	mame_timer_adjust(w->timer, MAME_TIME_IN_USEC(usecs), MISCCALLBACK_DATA, time_zero);
+	timer_adjust(w->timer, ATTOTIME_IN_USEC(usecs), MISCCALLBACK_DATA, attotime_zero);
 }
 
 
@@ -1006,7 +1026,7 @@ static void wd17xx_timed_read_sector_request(void)
 	usecs = 40; /* How long should we wait? How about 40 micro seconds? */
 
 	/* set new timer */
-	mame_timer_reset(w->timer_rs, MAME_TIME_IN_USEC(usecs));
+	timer_reset(w->timer_rs, ATTOTIME_IN_USEC(usecs));
 }
 
 
@@ -1020,7 +1040,7 @@ static void wd17xx_timed_write_sector_request(void)
 	usecs = 40; /* How long should we wait? How about 40 micro seconds? */
 
 	/* set new timer */
-	mame_timer_reset(w->timer_ws, MAME_TIME_IN_USEC(usecs));
+	timer_reset(w->timer_ws, ATTOTIME_IN_USEC(usecs));
 }
 
 
@@ -1137,15 +1157,34 @@ READ8_HANDLER ( wd17xx_sector_r )
 				w->status |= STA_2_REC_TYPE;
 			}
 
-			/* not incremented after each sector - only incremented in multi-sector
-			operation. If this remained as it was oric software would not run! */
-		//	w->sector++;
-			/* Delay the INTRQ 3 byte times becuase we need to read two CRC bytes and
-			   compare them with a calculated CRC */
-			wd17xx_complete_command(w, DELAY_DATADONE);
+			/* Check we should handle the next sector for a multi record read */
+			if ( w->command_type == TYPE_II && w->command == FDC_READ_SEC && ( w->read_cmd & 0x10 ) ) {
+				w->sector++;
+				if (wd17xx_locate_sector(w))
+				{
+					w->data_count = w->sector_length;
 
-			if (VERBOSE)
-				logerror("wd17xx_data_r(): data read completed\n");
+					/* read data */
+					floppy_drive_read_sector_data(wd17xx_current_image(), hd, w->sector_data_id, (char *)w->buffer, w->sector_length);
+
+					wd17xx_timed_data_request();
+
+					w->status |= STA_2_BUSY;
+					w->busy_count = 0;
+				} else {
+					wd17xx_complete_command(w, DELAY_DATADONE);
+
+					if (VERBOSE)
+						logerror("wd17xx_data_r(): multi data read completed\n");
+				}
+			} else {
+				/* Delay the INTRQ 3 byte times becuase we need to read two CRC bytes and
+				   compare them with a calculated CRC */
+				wd17xx_complete_command(w, DELAY_DATADONE);
+
+				if (VERBOSE)
+					logerror("wd17xx_data_r(): data read completed\n");
+			}
 		}
 		else
 		{
@@ -1380,7 +1419,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 #if 0
 		wd17xx_set_irq(w);
 #endif
-		wd17xx_set_busy(w, MAME_TIME_IN_USEC(100));
+		wd17xx_set_busy(w, ATTOTIME_IN_USEC(100));
 
 	}
 
@@ -1402,7 +1441,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 #if 0
 		wd17xx_set_irq(w);
 #endif
-		wd17xx_set_busy(w, MAME_TIME_IN_USEC(100));
+		wd17xx_set_busy(w, ATTOTIME_IN_USEC(100));
 
 
 	}
@@ -1424,7 +1463,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 #if 0
 		wd17xx_set_irq(w);
 #endif
-		wd17xx_set_busy(w, MAME_TIME_IN_USEC(100));
+		wd17xx_set_busy(w, ATTOTIME_IN_USEC(100));
 
 	}
 
@@ -1447,7 +1486,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 #if 0
 		wd17xx_set_irq(w);
 #endif
-		wd17xx_set_busy(w, MAME_TIME_IN_USEC(100));
+		wd17xx_set_busy(w, ATTOTIME_IN_USEC(100));
 	}
 
 //	if (w->busy_count==0)

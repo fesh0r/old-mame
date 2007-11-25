@@ -31,7 +31,7 @@ static UINT8 *svision_reg;
 
 struct
 {
-	mame_timer *timer1;
+	emu_timer *timer1;
 	int timer_shot;
 } svision;
 
@@ -40,7 +40,7 @@ struct
 	int state;
 	int on, clock, data;
 	UINT8 input;
-	mame_timer *timer;
+	emu_timer *timer;
 } svision_pet;
 
 struct
@@ -86,7 +86,7 @@ void svision_irq(void)
 static TIMER_CALLBACK(svision_timer)
 {
     svision.timer_shot = TRUE;
-    mame_timer_enable(svision.timer1, FALSE);
+    timer_enable(svision.timer1, FALSE);
     svision_irq();
 }
 
@@ -125,7 +125,7 @@ static READ8_HANDLER(svision_r)
 			svision_irq();
 			break;
 		default:
-			logerror("%.6f svision read %04x %02x\n", mame_time_to_double(mame_timer_get_time()),offset,data);
+			logerror("%.6f svision read %04x %02x\n", attotime_to_double(timer_get_time()),offset,data);
 			break;
 	}
 
@@ -145,7 +145,7 @@ static WRITE8_HANDLER(svision_w)
 		case 3:
 			break;
 		case 0x26: /* bits 5,6 memory management for a000? */
-			logerror("%.6f svision write %04x %02x\n", mame_time_to_double(mame_timer_get_time()),offset,data);
+			logerror("%.6f svision write %04x %02x\n", attotime_to_double(timer_get_time()),offset,data);
 			memory_set_bankptr(1, memory_region(REGION_USER1) + ((svision_reg[0x26] & 0xe0) << 9));
 			svision_irq();
 			break;
@@ -157,8 +157,8 @@ static WRITE8_HANDLER(svision_w)
 				delay = 16384;
 			else
 				delay = 256;
-			mame_timer_enable(svision.timer1, TRUE);
-			mame_timer_reset(svision.timer1, MAME_TIME_IN_CYCLES(value * delay, 0));
+			timer_enable(svision.timer1, TRUE);
+			timer_reset(svision.timer1, ATTOTIME_IN_CYCLES(value * delay, 0));
 			break;
 		case 0x10: case 0x11: case 0x12: case 0x13:
 			svision_soundport_w(svision_channel + 0, offset & 3, data);
@@ -173,7 +173,7 @@ static WRITE8_HANDLER(svision_w)
 			svision_noise_w(offset - 0x28, data);
 			break;
 		default:
-			logerror("%.6f svision write %04x %02x\n", mame_time_to_double(mame_timer_get_time()), offset, data);
+			logerror("%.6f svision write %04x %02x\n", attotime_to_double(timer_get_time()), offset, data);
 			break;
 	}
 }
@@ -265,7 +265,7 @@ static ADDRESS_MAP_START( tvlink_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0xc000, 0xffff) AM_ROMBANK(2)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( svision )
+static INPUT_PORTS_START( svision )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
@@ -277,7 +277,7 @@ INPUT_PORTS_START( svision )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START) PORT_NAME("Start/Pause") 
 INPUT_PORTS_END
 
-INPUT_PORTS_START( svisions )
+static INPUT_PORTS_START( svisions )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
@@ -432,19 +432,19 @@ static INTERRUPT_GEN( svision_frame_int )
 
 static DRIVER_INIT( svision )
 {
-	svision.timer1 = mame_timer_alloc(svision_timer);
+	svision.timer1 = timer_alloc(svision_timer);
 	svision_pet.on = FALSE;
 	memory_set_bankptr(2, memory_region(REGION_USER1) + 0x1c000);
 }
 
 static DRIVER_INIT( svisions )
 {
-	svision.timer1 = mame_timer_alloc(svision_timer);
+	svision.timer1 = timer_alloc(svision_timer);
 	memory_set_bankptr(2, memory_region(REGION_USER1) + 0x1c000);
-	svision.timer1 = mame_timer_alloc(svision_timer);
+	svision.timer1 = timer_alloc(svision_timer);
 	svision_pet.on = TRUE;
-	svision_pet.timer = mame_timer_alloc(svision_pet_timer);
-	mame_timer_pulse(scale_up_mame_time(MAME_TIME_IN_SEC(8), 256/Machine->drv->cpu[0].cpu_clock), 0, svision_pet_timer);  
+	svision_pet.timer = timer_alloc(svision_pet_timer);
+	timer_pulse(attotime_mul(ATTOTIME_IN_SEC(8), 256/Machine->drv->cpu[0].clock), 0, svision_pet_timer);  
 }
 
 static MACHINE_RESET( svision )

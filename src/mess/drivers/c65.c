@@ -72,7 +72,7 @@ ADDRESS_MAP_END
 	 PORT_DIPSETTING (1, "Floppy Drive Simulation")
 
 
-INPUT_PORTS_START (c65)
+static INPUT_PORTS_START (c65)
 	C64_DIPS
 	C65_DIPS
 	PORT_START
@@ -163,7 +163,7 @@ INPUT_PORTS_START (c65)
 	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(C65)HELP") PORT_CODE(KEYCODE_F12)
 INPUT_PORTS_END
 
-INPUT_PORTS_START (c65ger)
+static INPUT_PORTS_START (c65ger)
 	 C64_DIPS
      C65_DIPS
 	 PORT_START
@@ -372,6 +372,6 @@ SYSTEM_CONFIG_START(c65)
 	CONFIG_RAM((128 + 4096) * 1024)
 SYSTEM_CONFIG_END
 
-/*		YEAR	NAME	PARENT	BIOS	COMPAT	MACHINE INPUT	INIT		CONFIG  COMPANY 							FULLNAME */
-COMPB( 1991,	c65,	0,		c65,    0,		c65,	c65,	c65,		c65,	"Commodore Electronics, Ltd.",  "The Commodore 65 Development System (Prototype, NTSC)",			GAME_NOT_WORKING )
-COMP ( 1991,	c64dx,  c65,			0,		c65pal, c65ger, c65pal, 	c65,	"Commodore Electronics, Ltd.",  "The Commodore 64DX Development System (Prototype, PAL, German)",	GAME_NOT_WORKING )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                         FULLNAME                                                            FLAGS */
+COMP( 1991, c65,    0,      0,      c65,    c65,    c65,    c65,    "Commodore Electronics, Ltd.",  "The Commodore 65 Development System (Prototype, NTSC)",            GAME_NOT_WORKING )
+COMP( 1991, c64dx,  c65,    0,      c65pal, c65ger, c65pal, c65,    "Commodore Electronics, Ltd.",  "The Commodore 64DX Development System (Prototype, PAL, German)",   GAME_NOT_WORKING )

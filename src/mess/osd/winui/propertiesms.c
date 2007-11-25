@@ -31,6 +31,7 @@
 #include "ms32util.h"
 #include "messopts.h"
 #include "strconv.h"
+#include "winutf8.h"
 
 static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCTSTR lpItem);
 static BOOL SoftwareDirectories_OnDelete(HWND hDlg);
@@ -157,8 +158,8 @@ static BOOL SoftwareDirectories_OnBeginLabelEdit(HWND hDlg, NMHDR* pNMHDR)
 	/* Last item is placeholder for append */
 	if (pItem->iItem == ListView_GetItemCount(hList) - 1)
 	{
-		HWND hEdit = (HWND) (int) SendMessage(hList, LVM_GETEDITCONTROL, 0, 0);
-		Edit_SetText(hEdit, TEXT(""));
+		HWND hEdit = (HWND) (FPTR) SendMessage(hList, LVM_GETEDITCONTROL, 0, 0);
+		win_set_window_text_utf8(hEdit, "");
 	}
 
 	return bResult;
@@ -190,7 +191,7 @@ static BOOL SoftwareDirectories_OnEndLabelEdit(HWND hDlg, NMHDR* pNMHDR)
         }
         else
         {
-            if (MessageBox(NULL, TEXT("Directory does not exist, continue anyway?"), TEXT(MAME32NAME), MB_OKCANCEL) == IDOK)
+            if (win_message_box_utf8(NULL, "Directory does not exist, continue anyway?", MAME32NAME, MB_OKCANCEL) == IDOK)
                 bResult = TRUE;
         }
     }

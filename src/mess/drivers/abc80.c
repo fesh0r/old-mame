@@ -82,7 +82,7 @@ Notes:
 #include "machine/abcbus.h"
 #include "video/abc80.h"
 
-static mame_timer *abc80_keyboard_timer;
+static emu_timer *abc80_keyboard_timer;
 
 /* Read/Write Handlers */
 
@@ -269,7 +269,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( abc80 )
+static INPUT_PORTS_START( abc80 )
 	PORT_START_TAG("ROW0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('"')
@@ -441,8 +441,8 @@ static MACHINE_START( abc80 )
 {
 	state_save_register_global(keylatch);
 
-	abc80_keyboard_timer = mame_timer_alloc(abc80_keyboard_tick);
-	mame_timer_adjust(abc80_keyboard_timer, time_zero, 0, MAME_TIME_IN_USEC(2500));
+	abc80_keyboard_timer = timer_alloc(abc80_keyboard_tick);
+	timer_adjust(abc80_keyboard_timer, attotime_zero, 0, ATTOTIME_IN_USEC(2500));
 }
 
 /* Machine Drivers */
@@ -570,5 +570,5 @@ SYSTEM_CONFIG_END
 
 /* Drivers */
 
-//	   YEAR  NAME		PARENT		BIOS	COMPAT	MACHINE		INPUT		INIT	CONFIG		COMPANY				FULLNAME
-COMPB( 1978, abc80,		0,			abc80,	0,		abc80,		abc80,		0,		abc80,		"Luxor Datorer AB", "ABC 80", GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY             FULLNAME    FLAGS */
+COMP( 1978, abc80,  0,      0,      abc80,  abc80,  0,      abc80,  "Luxor Datorer AB", "ABC 80",   GAME_SUPPORTS_SAVE )

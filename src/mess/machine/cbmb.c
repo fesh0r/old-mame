@@ -17,7 +17,7 @@
 #include "includes/vc20tape.h"
 #include "includes/cbmieeeb.h"
 #include "includes/vic6567.h"
-#include "includes/crtc6845.h"
+#include "video/crtc6845.h"
 #include "mscommon.h"
 
 #include "includes/cbmb.h"
@@ -25,10 +25,11 @@
 static TIMER_CALLBACK(cbmb_frame_interrupt);
 
 /* keyboard lines */
-static UINT8 cbmb_keyline[12] = { 0 };
 static int cbmb_keyline_a, cbmb_keyline_b, cbmb_keyline_c;
 
 static int cbm500=0;
+static int cbm700;
+static int cbm_ntsc;
 UINT8 *cbmb_basic;
 UINT8 *cbmb_kernal;
 static UINT8 *cbmb_chargen;
@@ -109,12 +110,12 @@ static void cbmb_keyboard_line_select_c(int line)
 static int cbmb_keyboard_line_a(void)
 {
 	int data=0;
-	if (!(cbmb_keyline_c&1)) data|=cbmb_keyline[0];
-	if (!(cbmb_keyline_c&2)) data|=cbmb_keyline[2];
-	if (!(cbmb_keyline_c&4)) data|=cbmb_keyline[4];
-	if (!(cbmb_keyline_c&8)) data|=cbmb_keyline[6];
-	if (!(cbmb_keyline_c&0x10)) data|=cbmb_keyline[8];
-	if (!(cbmb_keyline_c&0x20)) data|=cbmb_keyline[10];
+	if (!(cbmb_keyline_c&1)) data|=readinputport(0);
+	if (!(cbmb_keyline_c&2)) data|=readinputport(2);
+	if (!(cbmb_keyline_c&4)) data|=readinputport(4);
+	if (!(cbmb_keyline_c&8)) data|=readinputport(6);
+	if (!(cbmb_keyline_c&0x10)) data|=readinputport(8);
+	if (!(cbmb_keyline_c&0x20)) data|=readinputport(10);
 
 	return data^0xff;
 }
@@ -122,12 +123,12 @@ static int cbmb_keyboard_line_a(void)
 static int cbmb_keyboard_line_b(void)
 {
 	int data=0;
-	if (!(cbmb_keyline_c&1)) data|=cbmb_keyline[1];
-	if (!(cbmb_keyline_c&2)) data|=cbmb_keyline[3];
-	if (!(cbmb_keyline_c&4)) data|=cbmb_keyline[5];
-	if (!(cbmb_keyline_c&8)) data|=cbmb_keyline[7];
-	if (!(cbmb_keyline_c&0x10)) data|=cbmb_keyline[9];
-	if (!(cbmb_keyline_c&0x20)) data|=cbmb_keyline[11];
+	if (!(cbmb_keyline_c&1)) data|=readinputport(1);
+	if (!(cbmb_keyline_c&2)) data|=readinputport(3);
+	if (!(cbmb_keyline_c&4)) data|=readinputport(5);
+	if (!(cbmb_keyline_c&8)) data|=readinputport(7);
+	if (!(cbmb_keyline_c&0x10)) data|=readinputport(9) | ((readinputport(12)&0x04) ? 1 : 0 );
+	if (!(cbmb_keyline_c&0x20)) data|=readinputport(11);
 
 	return data^0xff;
 }
@@ -136,22 +137,22 @@ static int cbmb_keyboard_line_c(void)
 {
 	int data=0;
 
-	if ( (cbmb_keyline[0]&~cbmb_keyline_a)||
-		 (cbmb_keyline[1]&~cbmb_keyline_b)) data|=1;
-	if ( (cbmb_keyline[2]&~cbmb_keyline_a)||
-		 (cbmb_keyline[3]&~cbmb_keyline_b)) data|=2;
-	if ( (cbmb_keyline[4]&~cbmb_keyline_a)||
-		 (cbmb_keyline[5]&~cbmb_keyline_b)) data|=4;
-	if ( (cbmb_keyline[6]&~cbmb_keyline_a)||
-		 (cbmb_keyline[7]&~cbmb_keyline_b)) data|=8;
-	if ( (cbmb_keyline[8]&~cbmb_keyline_a)||
-		 (cbmb_keyline[9]&~cbmb_keyline_b)) data|=0x10;
-	if ( (cbmb_keyline[10]&~cbmb_keyline_a)||
-		 (cbmb_keyline[11]&~cbmb_keyline_b)) data|=0x20;
+	if ( (readinputport(0)&~cbmb_keyline_a)||
+		 (readinputport(1)&~cbmb_keyline_b)) data|=1;
+	if ( (readinputport(2)&~cbmb_keyline_a)||
+		 (readinputport(3)&~cbmb_keyline_b)) data|=2;
+	if ( (readinputport(4)&~cbmb_keyline_a)||
+		 (readinputport(5)&~cbmb_keyline_b)) data|=4;
+	if ( (readinputport(6)&~cbmb_keyline_a)||
+		 (readinputport(7)&~cbmb_keyline_b)) data|=8;
+	if ( (readinputport(8)&~cbmb_keyline_a)||
+		 ((readinputport(9)|((readinputport(12)&0x04)?1:0))&~cbmb_keyline_b)) data|=0x10;
+	if ( (readinputport(10)&~cbmb_keyline_a)||
+		 (readinputport(11)&~cbmb_keyline_b)) data|=0x20;
 
 	if (!cbm500) {
-		if (!VIDEO_NTSC) data|=0x40;
-		if (!MODELL_700) data|=0x80;
+		if (!cbm_ntsc) data|=0x40;
+		if (!cbm700) data|=0x80;
 	}
 	return data^0xff;
 }
@@ -239,46 +240,75 @@ static void cbmb_common_driver_init (void)
 	tpi6525[1].a.output=cbmb_keyboard_line_select_a;
 	tpi6525[1].b.output=cbmb_keyboard_line_select_b;
 	tpi6525[1].c.output=cbmb_keyboard_line_select_c;
-	mame_timer_pulse(MAME_TIME_IN_MSEC(10), 0, cbmb_frame_interrupt);
+	timer_pulse(ATTOTIME_IN_MSEC(10), 0, cbmb_frame_interrupt);
 
+	cbm500 = 0;
+	cbm700 = 0;
 	cbm_ieee_open();
 }
 
-static struct crtc6845_config cbm600_crtc= { 1600000 /*?*/, cbmb_vh_cursor };
+static void cbmb_display_enable_changed(int display_enabled) {
+}
+
+//static struct mscrtc6845_config cbm600_crtc= { 1600000 /*?*/, cbmb_vh_cursor };
+const static crtc6845_interface cbm600_crtc = {
+	0,
+	1600000 /*?*/,
+	8 /*?*/,
+	NULL,
+	cbm600_update_row,
+	NULL,
+	cbmb_display_enable_changed
+};
 
 void cbm600_driver_init (void)
 {
 	cbmb_common_driver_init ();
+	cbm_ntsc = 1;
 	cbm600_vh_init();
-	crtc6845_init(&cbm600_crtc);
+	crtc6845_config( 0, &cbm600_crtc);
 }
 
 void cbm600pal_driver_init (void)
 {
 	cbmb_common_driver_init ();
+	cbm_ntsc = 0;
 	cbm600_vh_init();
-	crtc6845_init(&cbm600_crtc);
+	crtc6845_config( 0, &cbm600_crtc);
 }
 
 void cbm600hu_driver_init (void)
 {
 	cbmb_common_driver_init ();
-	crtc6845_init(&cbm600_crtc);
+	cbm_ntsc = 0;
+	crtc6845_config( 0, &cbm600_crtc);
 }
 
-static struct crtc6845_config cbm700_crtc= { 2000000 /*?*/, cbmb_vh_cursor };
+//static struct mscrtc6845_config cbm700_crtc= { 2000000 /*?*/, cbmb_vh_cursor };
+const static crtc6845_interface cbm700_crtc = {
+	0,
+	2000000 /*?*/,
+	9 /*?*/,
+	NULL,
+	cbm700_update_row,
+	NULL,
+	cbmb_display_enable_changed
+};
 
 void cbm700_driver_init (void)
 {
 	cbmb_common_driver_init ();
+	cbm700 = 1;
+	cbm_ntsc = 0;
 	cbm700_vh_init();
-	crtc6845_init(&cbm700_crtc);
+	crtc6845_config( 0, &cbm700_crtc);
 }
 
 void cbm500_driver_init (void)
 {
 	cbmb_common_driver_init ();
 	cbm500=1;
+	cbm_ntsc = 1;
 	vic6567_init (0, 0, cbmb_dma_read, cbmb_dma_read_color, NULL);
 }
 
@@ -307,231 +337,10 @@ void cbmb_rom_load(void)
 static TIMER_CALLBACK(cbmb_frame_interrupt)
 {
 	static int level = 0;
-	int value;
 
 	tpi6525_0_irq0_level(level);
 	level=!level;
 	if (level) return ;
-
-	value = 0;
-	if (KEY_STOP)
-		value |= 0x80;
-	if (KEY_GRAPH)
-		value |= 0x40;
-	if (KEY_REVERSE)
-		value |= 0x20;
-	if (KEY_HOME)
-		value |= 0x10;
-	if (KEY_CURSOR_UP)
-		value |= 8;
-	if (KEY_CURSOR_DOWN)
-		value |= 4;
-	if (KEY_F10)
-		value |= 2;
-	if (KEY_F9)
-		value |= 1;
-	cbmb_keyline[0] = value;
-
-	value = 0;
-	if (KEY_F8)
-		value |= 0x80;
-	if (KEY_F7)
-		value |= 0x40;
-	if (KEY_F6)
-		value |= 0x20;
-	if (KEY_F5)
-		value |= 0x10;
-	if (KEY_F4)
-		value |= 8;
-	if (KEY_F3)
-		value |= 4;
-	if (KEY_F2)
-		value |= 2;
-	if (KEY_F1)
-		value |= 1;
-	cbmb_keyline[1] = value;
-
-	value = 0;
-	if (KEY_PAD_SLASH)
-		value |= 0x80;
-	if (KEY_PAD_ASTERIX)
-		value |= 0x40;
-	if (KEY_PAD_CE)
-		value |= 0x20;
-	if (KEY_PAD_HELP)
-		value |= 0x10;
-	if (KEY_CURSOR_LEFT)
-		value |= 8;
-	if (KEY_EQUALS)
-		value |= 4;
-	if (KEY_0)
-		value |= 2;
-	if (KEY_9)
-		value |= 1;
-	cbmb_keyline[2] = value;
-
-	value = 0;
-	if (KEY_8)
-		value |= 0x80;
-	if (KEY_7)
-		value |= 0x40;
-	if (KEY_5)
-		value |= 0x20;
-	if (KEY_4)
-		value |= 0x10;
-	if (KEY_3)
-		value |= 8;
-	if (KEY_2)
-		value |= 4;
-	if (KEY_1)
-		value |= 2;
-	if (KEY_ESC)
-		value |= 1;
-	cbmb_keyline[3] = value;
-
-	value = 0;
-	if (KEY_PAD_MINUS)
-		value |= 0x80;
-	if (KEY_PAD_9)
-		value |= 0x40;
-	if (KEY_PAD_8)
-		value |= 0x20;
-	if (KEY_PAD_7)
-		value |= 0x10;
-	if (KEY_CURSOR_RIGHT)
-		value |= 8;
-	if (KEY_ARROW_LEFT)
-		value |= 4;
-	if (KEY_MINUS)
-		value |= 2;
-	if (KEY_O)
-		value |= 1;
-	cbmb_keyline[4] = value;
-
-	value = 0;
-	if (KEY_I)
-		value |= 0x80;
-	if (KEY_U)
-		value |= 0x40;
-	if (KEY_6)
-		value |= 0x20;
-	if (KEY_R)
-		value |= 0x10;
-	if (KEY_E)
-		value |= 8;
-	if (KEY_W)
-		value |= 4;
-	if (KEY_Q)
-		value |= 2;
-	if (KEY_TAB)
-		value |= 1;
-	cbmb_keyline[5] = value;
-
-	value = 0;
-	if (KEY_PAD_PLUS)
-		value |= 0x80;
-	if (KEY_PAD_6)
-		value |= 0x40;
-	if (KEY_PAD_5)
-		value |= 0x20;
-	if (KEY_PAD_4)
-		value |= 0x10;
-	if (KEY_DEL)
-		value |= 8;
-	if (KEY_CLOSEBRACE)
-		value |= 4;
-	if (KEY_P)
-		value |= 2;
-	if (KEY_L)
-		value |= 1;
-	cbmb_keyline[6] = value;
-
-	value = 0;
-	if (KEY_K)
-		value |= 0x80;
-	if (KEY_J)
-		value |= 0x40;
-	if (KEY_Y)
-		value |= 0x20;
-	if (KEY_T)
-		value |= 0x10;
-	if (KEY_D)
-		value |= 8;
-	if (KEY_S)
-		value |= 4;
-	if (KEY_A)
-		value |= 2;
-	cbmb_keyline[7] = value;
-
-	value = 0;
-	if (KEY_PAD_ENTER)
-		value |= 0x80;
-	if (KEY_PAD_3)
-		value |= 0x40;
-	if (KEY_PAD_2)
-		value |= 0x20;
-	if (KEY_PAD_1)
-		value |= 0x10;
-	if (KEY_CBM)
-		value |= 8;
-	if (KEY_RETURN)
-		value |= 4;
-	if (KEY_OPENBRACE)
-		value |= 2;
-	if (KEY_SEMICOLON)
-		value |= 1;
-	cbmb_keyline[8] = value;
-
-	value = 0;
-	if (KEY_COMMA)
-		value |= 0x80;
-	if (KEY_M)
-		value |= 0x40;
-	if (KEY_H)
-		value |= 0x20;
-	if (KEY_G)
-		value |= 0x10;
-	if (KEY_F)
-		value |= 8;
-	if (KEY_X)
-		value |= 4;
-	if (KEY_Z)
-		value |= 2;
-	if (KEY_SHIFT)
-		value |= 1;
-	cbmb_keyline[9] = value;
-
-	value = 0;
-	if (KEY_PAD_00)
-		value |= 0x40;
-	if (KEY_PAD_POINT)
-		value |= 0x20;
-	if (KEY_PAD_0)
-		value |= 0x10;
-	if (KEY_PI)
-		value |= 4;
-	if (KEY_APOSTROPH)
-		value |= 2;
-	if (KEY_SLASH)
-		value |= 1;
-	cbmb_keyline[10] = value;
-
-	value = 0;
-	if (KEY_POINT)
-		value |= 0x80;
-	if (KEY_SPACE)
-		value |= 0x40;
-	if (KEY_N)
-		value |= 0x20;
-	if (KEY_B)
-		value |= 0x10;
-	if (KEY_V)
-		value |= 8;
-	if (KEY_C)
-		value |= 4;
-	if (KEY_CTRL)
-		value |= 1;
-	cbmb_keyline[11] = value;
 
 #if 0
 	value = 0xff;
@@ -587,7 +396,7 @@ static TIMER_CALLBACK(cbmb_frame_interrupt)
 
 	vic2_frame_interrupt ();
 
-	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , KEY_SHIFTLOCK ? 1 : 0);
+	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , (readinputport(12)&0x04) ? 1 : 0);
 #if 0
 	set_led_status (0 /*KB_NUMLOCK_FLAG */ , JOYSTICK_SWAP ? 1 : 0);
 #endif

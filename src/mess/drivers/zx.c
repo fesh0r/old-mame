@@ -54,7 +54,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( zx80 )
+static INPUT_PORTS_START( zx80 )
 	PORT_START_TAG("IN0")
 
 	PORT_START_TAG("IN1")	// KEY ROW 0
@@ -135,7 +135,7 @@ INPUT_PORTS_START( zx80 )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( zx81 )
+static INPUT_PORTS_START( zx81 )
     PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x80, 0x00, "16K RAM module" )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
@@ -220,7 +220,7 @@ INPUT_PORTS_START( zx81 )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( pow3000 )
+static INPUT_PORTS_START( pow3000 )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0xfe, 0x0f, IPT_UNUSED )
 
@@ -401,7 +401,7 @@ static MACHINE_DRIVER_START( zx80 )
 	MDRV_CPU_PROGRAM_MAP(zx80_map, 0)
 	MDRV_CPU_IO_MAP(zx80_io_map, 0)
 	MDRV_SCREEN_REFRESH_RATE(ZX81_PAL_FRAMES_PER_SECOND)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(ZX81_VBLANK_DURATION))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(ZX81_VBLANK_DURATION))
 
 	MDRV_MACHINE_RESET(zx80)
 
@@ -596,13 +596,13 @@ SYSTEM_CONFIG_END
 
 /* Game Drivers */
 
-//   YEAR   	NAME	 PARENT	BIOS	COMPAT  MACHINE	INPUT	INIT	CONFIG	COMPANY				FULLNAME
-COMP( 1980,	zx80,    0,     	0,      zx80,   zx80,	zx,     zx80,	"Sinclair Research",		"ZX-80" , 0)
-COMP( 1981,	aszmic,  zx80,		0,      zx80,	zx80,   zx,     zx80,	"Sinclair Research",		"ZX.Aszmic" , 0)
-COMPB(1981,	zx81,    0, 	zx81, 	0,    	zx81,   zx81,   zx,     zx81,	"Sinclair Research",		"ZX-81" , 0)
-COMP( 198?,	h4th,    zx81,		0,      zx81,	zx81,	zx,     zx81,	"Sinclair Research",		"Sinclair ZX-81 Forth by David Husband",	GAME_NOT_WORKING)
-COMP( 198?,	tree4th, zx81,		0,      zx81,	zx81,	zx,	zx81,	"Sinclair Research",		"Sinclair ZX-81 Tree-Forth by Tree Systems",	GAME_NOT_WORKING)
-COMP( 1982,	ts1000,  zx81,		0,      ts1000,	zx81,	zx,	zx81,	"Timex Sinclair",		"Timex Sinclair 1000" , 0)
-COMP( 1984,	pc8300,  zx81,		0,      pc8300,	pow3000,zx,     pc8300,	"Your Computer",		"PC8300" , 0)
-COMP( 1983,	pow3000, zx81,		0,      pow3000,pow3000,zx,     pc8300,	"Creon Enterprises",		"Power 3000" , 0)
-COMP( 1982,	lambda,  zx81,		0,      pc8300,	pow3000,zx,     zx81,	"Lambda Electronics Ltd",	"Lambda 8300" , 0)
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG  COMPANY                     FULLNAME                                        FLAGS */
+COMP( 1980, zx80,       0,      0,      zx80,       zx80,       zx,     zx80,   "Sinclair Research",        "ZX-80",                                        0 )
+COMP( 1981, aszmic,     zx80,   0,      zx80,       zx80,       zx,     zx80,   "Sinclair Research",        "ZX.Aszmic",                                    0 )
+COMP( 1981, zx81,       0,      0,      zx81,       zx81,       zx,     zx81,   "Sinclair Research",        "ZX-81",                                        0 )
+COMP( 198?, h4th,       zx81,   0,      zx81,       zx81,       zx,     zx81,   "Sinclair Research",        "Sinclair ZX-81 Forth by David Husband",        GAME_NOT_WORKING )
+COMP( 198?, tree4th,    zx81,   0,      zx81,       zx81,       zx,     zx81,   "Sinclair Research",        "Sinclair ZX-81 Tree-Forth by Tree Systems",    GAME_NOT_WORKING )
+COMP( 1982, ts1000,     zx81,   0,      ts1000,     zx81,       zx,     zx81,   "Timex Sinclair",           "Timex Sinclair 1000",                          0 )
+COMP( 1984, pc8300,     zx81,   0,      pc8300,     pow3000,    zx,     pc8300, "Your Computer",            "PC8300",                                       0 )
+COMP( 1983, pow3000,    zx81,   0,      pow3000,    pow3000,    zx,     pc8300, "Creon Enterprises",        "Power 3000",                                   0 )
+COMP( 1982, lambda,     zx81,   0,      pc8300,     pow3000,    zx,     zx81,   "Lambda Electronics Ltd",   "Lambda 8300",                                  0 )

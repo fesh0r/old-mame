@@ -54,8 +54,8 @@ static VIDEO_START( vga );
 static VIDEO_RESET( ega );
 static VIDEO_RESET( vga );
 
-static pc_video_update_proc pc_vga_choosevideomode(int *width, int *height, struct crtc6845 *crtc);
-static pc_video_update_proc pc_ega_choosevideomode(int *width, int *height, struct crtc6845 *crtc);
+static pc_video_update_proc pc_vga_choosevideomode(int *width, int *height, struct mscrtc6845 *crtc);
+static pc_video_update_proc pc_ega_choosevideomode(int *width, int *height, struct mscrtc6845 *crtc);
 
 /***************************************************************************
 
@@ -64,7 +64,7 @@ static pc_video_update_proc pc_ega_choosevideomode(int *width, int *height, stru
 ***************************************************************************/
 
 /* grabbed from dac inited by et4000 bios */
-static unsigned char ega_palette[] =
+static const unsigned char ega_palette[] =
 {
 	0x00, 0x00, 0x00,
 	0x00, 0x00, 0xa8,
@@ -132,7 +132,7 @@ static unsigned char ega_palette[] =
 	0xfc, 0xfc, 0xfc
 };
 
-static unsigned short vga_colortable[] =
+static const unsigned short vga_colortable[] =
 {
      0, 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0,10, 0,11, 0,12, 0,13, 0,14, 0,15,
      1, 0, 1, 1, 1, 2, 1, 3, 1, 4, 1, 5, 1, 6, 1, 7, 1, 8, 1, 9, 1,10, 1,11, 1,12, 1,13, 1,14, 1,15,
@@ -254,7 +254,7 @@ static struct
 		int (*get_columns)(void);
 		int (*get_sync_columns)(void);
 
-		mame_time start_time;
+		attotime start_time;
 		int retrace;
 	} monitor;
 
@@ -265,7 +265,7 @@ static struct
 } vga;
 
 
-// to use the crtc6845 macros
+// to use the mscrtc6845 macros
 #define REG(x) vga.crtc.data[x]
 
 #define DOUBLESCAN ((vga.crtc.data[9]&0x80)||((vga.crtc.data[9]&0x1f)!=0) )
@@ -428,7 +428,7 @@ INLINE UINT8 ega_bitplane_to_packed(UINT8 *latch, int number)
 		|color_bitplane_to_packed[3][number][latch[3]];
 }
 
-static  READ8_HANDLER(vga_ega_r)
+static READ8_HANDLER(vga_ega_r)
 {
 	int data;
 	vga.gc.latch[0]=vga.memory[(offset<<2)];
@@ -526,11 +526,18 @@ static WRITE8_HANDLER(vga_vga_w)
 	vga_dirty_font_w(((offset&~3)<<2)|(offset&3),data);
 }
 
+static READ64_HANDLER( vga_text64_r ) { return read64be_with_read8_handler(vga_text_r, offset, mem_mask); }
+static READ64_HANDLER( vga_vga64_r ) { return read64be_with_read8_handler(vga_vga_r, offset, mem_mask); }
+static WRITE64_HANDLER( vga_text64_w ) { write64be_with_write8_handler(vga_text_w, offset, data, mem_mask); }
+static WRITE64_HANDLER( vga_vga64_w ) { write64be_with_write8_handler(vga_vga_w, offset, data, mem_mask); }
+
 static void vga_cpu_interface(void)
 {
 	static int sequencer, gc;
 	read8_handler read_handler;
 	write8_handler write_handler;
+	read64_handler read_handler64;
+	write64_handler write_handler64;
 	UINT8 sel;
 	int buswidth;
 
@@ -543,16 +550,22 @@ static void vga_cpu_interface(void)
 	{
 		read_handler = vga_vga_r;
 		write_handler = vga_vga_w;
+		read_handler64 = vga_vga64_r;
+		write_handler64 = vga_vga64_w;
 	}
 	else if (vga.sequencer.data[4] & 4)
 	{
 		read_handler = vga_ega_r;
 		write_handler = vga_ega_w;
+		read_handler64 = NULL;	/* FIXME */
+		write_handler64 = NULL;	/* FIXME */
 	}
 	else
 	{
 		read_handler = vga_text_r;
 		write_handler = vga_text_w;
+		read_handler64 = vga_text64_r;
+		write_handler64 = vga_text64_w;
 	}
 
 	/* remap the VGA memory */
@@ -590,7 +603,7 @@ static void vga_cpu_interface(void)
 		}
 	}
 
-	buswidth = cputype_databus_width(Machine->drv->cpu[0].cpu_type, ADDRESS_SPACE_PROGRAM);
+	buswidth = cputype_databus_width(Machine->drv->cpu[0].type, ADDRESS_SPACE_PROGRAM);
 	switch(buswidth)
 	{
 		case 8:
@@ -612,6 +625,25 @@ static void vga_cpu_interface(void)
 			}
 			break;
 
+		case 64:
+			sel = vga.gc.data[6] & 0x0c;
+			if (sel)
+			{
+				memory_install_read64_handler(0, ADDRESS_SPACE_PROGRAM,  0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? read_handler64  : MRA64_NOP);
+				memory_install_read64_handler(0, ADDRESS_SPACE_PROGRAM,  0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? read_handler64  : MRA64_NOP);
+				memory_install_read64_handler(0, ADDRESS_SPACE_PROGRAM,  0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? read_handler64  : MRA64_NOP);
+				memory_install_write64_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? write_handler64 : MWA64_NOP);
+				memory_install_write64_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? write_handler64 : MWA64_NOP);
+				memory_install_write64_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? write_handler64 : MWA64_NOP);
+			}
+			else
+			{
+				memory_set_bankptr(1, vga.memory);
+				memory_install_read64_handler(0, ADDRESS_SPACE_PROGRAM,  0xa0000, 0xbffff, 0, 0, MRA64_BANK1 );
+				memory_install_write64_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xbffff, 0, 0, MWA64_BANK1 );
+			}
+			break;
+			
 		default:
 			fatalerror("VGA:  Bus width %d not supported\n", buswidth);
 			break;
@@ -638,7 +670,7 @@ static READ8_HANDLER(vga_crtc_r)
 			int clock=vga.monitor.get_clock();
 			int lines=vga.monitor.get_lines();
 			int columns=vga.monitor.get_columns();
-			int diff = (scale_up_mame_time(sub_mame_times(mame_timer_get_time(), vga.monitor.start_time), clock).seconds)
+			int diff = (attotime_mul(attotime_sub(timer_get_time(), vga.monitor.start_time), clock).seconds)
 				%(lines*columns);
 			if (diff<columns*vga.monitor.get_sync_lines()) data|=8;
 			diff=diff/lines;
@@ -648,7 +680,7 @@ static READ8_HANDLER(vga_crtc_r)
 		if (vga.monitor.retrace) 
 		{
 			data |= 1;
-			if (compare_mame_times(sub_mame_times(mame_timer_get_time(), vga.monitor.start_time), MAME_TIME_IN_USEC(300)) > 0)
+			if (attotime_compare(attotime_sub(timer_get_time(), vga.monitor.start_time), ATTOTIME_IN_USEC(300)) > 0)
 			{
 				data |= 8;
 				vga.monitor.retrace=0;
@@ -656,9 +688,9 @@ static READ8_HANDLER(vga_crtc_r)
 		} 
 		else 
 		{
-			if (compare_mame_times(sub_mame_times(mame_timer_get_time(), vga.monitor.start_time), MAME_TIME_IN_MSEC(15)) > 0)
+			if (attotime_compare(attotime_sub(timer_get_time(), vga.monitor.start_time), ATTOTIME_IN_MSEC(15)) > 0)
 				vga.monitor.retrace=1;
-			vga.monitor.start_time=mame_timer_get_time();
+			vga.monitor.start_time=timer_get_time();
 		}
 #else
 		// not working with ps2m30
@@ -913,7 +945,7 @@ WRITE8_HANDLER(vga_port_03c0_w)
 			vga_cpu_interface();
 	
 			if (vga.sequencer.index == 0)
-				vga.monitor.start_time = mame_timer_get_time();
+				vga.monitor.start_time = timer_get_time();
 		}
 		break;
 	case 6:
@@ -1106,7 +1138,7 @@ void pc_vga_init(const struct pc_vga_interface *vga_intf, const struct pc_svga_i
 	memset(vga.crtc.data, '\0', vga.svga_intf.crtc_regcount);
 	memset(vga.gc.data, '\0', vga.svga_intf.gc_regcount);
 
-	buswidth = cputype_databus_width(Machine->drv->cpu[0].cpu_type, ADDRESS_SPACE_PROGRAM);
+	buswidth = cputype_databus_width(Machine->drv->cpu[0].type, ADDRESS_SPACE_PROGRAM);
 	switch(buswidth)
 	{
 		case 8:
@@ -1148,7 +1180,7 @@ static VIDEO_START( ega )
 	vga.monitor.get_columns = ega_get_crtc_columns;
 	vga.monitor.get_sync_lines = vga_get_crtc_sync_lines;
 	vga.monitor.get_sync_columns = vga_get_crtc_sync_columns;
-	mame_timer_pulse(MAME_TIME_IN_HZ(60), 0, vga_timer);
+	timer_pulse(ATTOTIME_IN_HZ(60), 0, vga_timer);
 	pc_video_start(NULL, pc_ega_choosevideomode, 0);
 }
 
@@ -1163,7 +1195,7 @@ static VIDEO_START( vga )
 	vga.monitor.get_columns=vga_get_crtc_columns;
 	vga.monitor.get_sync_lines=vga_get_crtc_sync_lines;
 	vga.monitor.get_sync_columns=vga_get_crtc_sync_columns;
-	mame_timer_pulse(MAME_TIME_IN_HZ(60), 0, vga_timer);
+	timer_pulse(ATTOTIME_IN_HZ(60), 0, vga_timer);
 	pc_video_start(NULL, pc_vga_choosevideomode, 0);
 }
 
@@ -1172,7 +1204,7 @@ static VIDEO_RESET( vga )
 	pc_vga_reset();
 }
 
-static void vga_vh_text(mame_bitmap *bitmap, struct crtc6845 *crtc)
+static void vga_vh_text(mame_bitmap *bitmap, struct mscrtc6845 *crtc)
 {
 	UINT8 ch, attr;
 	UINT8 bits;
@@ -1239,7 +1271,7 @@ static void vga_vh_text(mame_bitmap *bitmap, struct crtc6845 *crtc)
 	}
 }
 
-static void vga_vh_ega(mame_bitmap *bitmap, struct crtc6845 *crtc)
+static void vga_vh_ega(mame_bitmap *bitmap, struct mscrtc6845 *crtc)
 {
 	int pos, line, column, c, addr, i;
 	int height = CRTC6845_CHAR_HEIGHT;
@@ -1284,7 +1316,7 @@ static void vga_vh_ega(mame_bitmap *bitmap, struct crtc6845 *crtc)
 	}
 }
 
-static void vga_vh_vga(mame_bitmap *bitmap, struct crtc6845 *crtc)
+static void vga_vh_vga(mame_bitmap *bitmap, struct mscrtc6845 *crtc)
 {
 	int pos, line, column, c, addr, curr_addr;
 	UINT16 *bitmapline;
@@ -1342,7 +1374,7 @@ static void vga_vh_vga(mame_bitmap *bitmap, struct crtc6845 *crtc)
 	}
 }
 
-static pc_video_update_proc pc_ega_choosevideomode(int *width, int *height, struct crtc6845 *crtc)
+static pc_video_update_proc pc_ega_choosevideomode(int *width, int *height, struct mscrtc6845 *crtc)
 {
 	pc_video_update_proc proc = NULL;
 	int i;
@@ -1368,7 +1400,7 @@ static pc_video_update_proc pc_ega_choosevideomode(int *width, int *height, stru
 	return proc;
 }
 
-static pc_video_update_proc pc_vga_choosevideomode(int *width, int *height, struct crtc6845 *crtc)
+static pc_video_update_proc pc_vga_choosevideomode(int *width, int *height, struct mscrtc6845 *crtc)
 {
 	pc_video_update_proc proc = NULL;
 	int i;

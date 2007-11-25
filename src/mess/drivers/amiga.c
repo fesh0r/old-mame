@@ -101,7 +101,7 @@ ADDRESS_MAP_END
   Inputs
 ***************************************************************************/
 
-INPUT_PORTS_START( amiga_common )
+static INPUT_PORTS_START( amiga_common )
 	PORT_START_TAG("input")
 	PORT_CONFNAME( 0x20, 0x00, "Input Port 0 Device")
 	PORT_CONFSETTING( 0x00, "Mouse" )
@@ -159,7 +159,7 @@ INPUT_PORTS_START( amiga_common )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( amiga )
+static INPUT_PORTS_START( amiga )
 	PORT_START_TAG("hardware")
 	PORT_CONFNAME( 0x08, 0x08, "Battery backed-up RTC")
 	PORT_CONFSETTING( 0x00, "Not Installed" )
@@ -170,7 +170,7 @@ INPUT_PORTS_END
 
 
 /* TODO: Support for the CDTV remote control */
-INPUT_PORTS_START( cdtv )
+static INPUT_PORTS_START( cdtv )
 	PORT_INCLUDE( amiga_common )
 INPUT_PORTS_END
 
@@ -191,7 +191,7 @@ static MACHINE_DRIVER_START( ntsc )
 	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 262)
 
 	MDRV_SCREEN_REFRESH_RATE(59.997)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MDRV_MACHINE_RESET( amiga )
 
@@ -524,9 +524,9 @@ SYSTEM_CONFIG_END
   Game drivers
 ***************************************************************************/
 
-/*     YEAR  NAME      PARENT   BIOS     COMPAT   MACHINE  INPUT    INIT       CONFIG   COMPANY                             FULLNAME             FLAGS */
-COMP(  1985, a1000n,   0,                0,       a1000n,  amiga,   amiga,     a1000,   "Commodore Business Machines Co.",  "Commodore Amiga 1000 (NTSC-OCS)", GAME_IMPERFECT_GRAPHICS )
-COMP(  1985, a1000p,   a1000n,           0,       a1000p,  amiga,   amiga,     a1000,   "Commodore Business Machines Co.",  "Commodore Amiga 1000 (PAL-OCS)", GAME_IMPERFECT_GRAPHICS )
-COMPB( 1987, a500n,    0,       amiga,   0,       ntsc,    amiga,   amiga,     amiga,   "Commodore Business Machines Co.",  "Commodore Amiga 500 (NTSC-OCS)", GAME_IMPERFECT_GRAPHICS )
-COMPB( 1987, a500p,    a500n,   amiga,   0,       pal,     amiga,   amiga,     amiga,   "Commodore Business Machines Co.",  "Commodore Amiga 500 (PAL-OCS)", GAME_IMPERFECT_GRAPHICS )
-COMP(  1991, cdtv,     0,                0,       cdtv,    cdtv,    cdtv,      cdtv,    "Commodore Business Machines Co.",  "Commodore Amiga CDTV 1.0 (NTSC)", GAME_IMPERFECT_GRAPHICS )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                             FULLNAME                            FLAGS */
+COMP( 1985, a1000n, 0,      0,      a1000n, amiga,  amiga,  a1000,  "Commodore Business Machines Co.",  "Commodore Amiga 1000 (NTSC-OCS)",  GAME_IMPERFECT_GRAPHICS )
+COMP( 1985, a1000p, a1000n, 0,      a1000p, amiga,  amiga,  a1000,  "Commodore Business Machines Co.",  "Commodore Amiga 1000 (PAL-OCS)",   GAME_IMPERFECT_GRAPHICS )
+COMP( 1987, a500n,  0,      0,      ntsc,   amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Commodore Amiga 500 (NTSC-OCS)",   GAME_IMPERFECT_GRAPHICS )
+COMP( 1987, a500p,  a500n,  0,      pal,    amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Commodore Amiga 500 (PAL-OCS)",    GAME_IMPERFECT_GRAPHICS )
+COMP( 1991, cdtv,   0,      0,      cdtv,   cdtv,   cdtv,   cdtv,   "Commodore Business Machines Co.",  "Commodore Amiga CDTV 1.0 (NTSC)",  GAME_IMPERFECT_GRAPHICS )

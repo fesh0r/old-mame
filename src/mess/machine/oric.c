@@ -1101,7 +1101,7 @@ static void oric_common_init_machine(void)
 	oric_irqs = 0;
 	oric_ram_0x0c000 = NULL;
 
-    mame_timer_pulse(MAME_TIME_IN_HZ(4800), 0, oric_refresh_tape);
+    timer_pulse(ATTOTIME_IN_HZ(4800), 0, oric_refresh_tape);
 
 	via_reset();
 	via_config(0, &oric_6522_interface);
@@ -1115,15 +1115,19 @@ static void oric_common_init_machine(void)
 
 MACHINE_START( oric )
 {
-	int disc_interface_id;
-
 	oric_common_init_machine();
 	
 	oric_is_telestrat = 0;
 
 	oric_ram_0x0c000 = auto_malloc(16384);
 
-	disc_interface_id = readinputport(9) & 0x07;
+	wd17xx_init(WD_TYPE_179X,oric_wd179x_callback, NULL);
+}
+
+
+MACHINE_RESET( oric )
+{
+	int disc_interface_id = readinputportbytag("oric_floppy_interface") & 0x07;
 
 	switch (disc_interface_id)
 	{
@@ -1177,11 +1181,7 @@ MACHINE_START( oric )
 		}
 		break;
 	}
-
-
-	wd17xx_init(WD_TYPE_179X,oric_wd179x_callback, NULL);
 }
-
 
 
 READ8_HANDLER ( oric_IO_r )

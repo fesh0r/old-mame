@@ -103,7 +103,7 @@ LD += /LTCG
 endif
 
 ifdef PTR64
-CC += /wd4267 /wd4312 /Wp64
+CC += /wd4267 /Wp64
 endif
 
 # add some VC++-specific defines
@@ -152,10 +152,8 @@ DEFS += -Dmain=utf8_main
 
 # debug build: enable guard pages on all memory allocations
 ifdef DEBUG
-ifndef WINUI
 DEFS += -DMALLOC_DEBUG
 LDFLAGS += -Wl,--allow-multiple-definition
-endif
 endif
 
 # enable UNICODE flags for unicode builds
@@ -238,11 +236,7 @@ OSDOBJS += \
 endif
 
 # add a stub resource file
-ifdef PTR64
-RESFILE = $(WINOBJ)/mamex64.res
-else
 RESFILE = $(WINOBJ)/mame.res
-endif
 
 
 

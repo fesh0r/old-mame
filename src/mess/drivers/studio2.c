@@ -149,7 +149,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( studio2 )
+static INPUT_PORTS_START( studio2 )
 	PORT_START
 	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 0") PORT_CODE(KEYCODE_0) PORT_CODE(KEYCODE_X)
 	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 1") PORT_CODE(KEYCODE_1)
@@ -400,8 +400,8 @@ static TIMER_CALLBACK(setup_beep)
 
 static DRIVER_INIT( studio2 )
 {
-	mame_timer_set(time_zero, 0, setup_beep);
-	mame_timer_set(MAME_TIME_IN_MSEC(200), 0, set_cpu_mode);
+	timer_set(attotime_zero, 0, setup_beep);
+	timer_set(ATTOTIME_IN_MSEC(200), 0, set_cpu_mode);
 }
 
 static int mpt02_colorram_r(UINT16 addr)
@@ -426,7 +426,7 @@ static TIMER_CALLBACK(mpt02_setup_beep)
 
 static DRIVER_INIT( mpt02 )
 {
-	mame_timer_set(time_zero, 0, mpt02_setup_beep);
+	timer_set(attotime_zero, 0, mpt02_setup_beep);
 	cdp1864_configure(&mpt02_CDP1864_interface);
 }
 

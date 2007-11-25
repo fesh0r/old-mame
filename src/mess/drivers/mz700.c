@@ -74,7 +74,7 @@
 
 #if VERBOSE
 #define LOG(N,M,A)	\
-	if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",mame_timer_get_time(),(char*)M ); logerror A; }
+	if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",timer_get_time(),(char*)M ); logerror A; }
 #else
 #define LOG(N,M,A)
 #endif
@@ -127,7 +127,7 @@ ADDRESS_MAP_START(mz800_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0xf0, 0xf0) AM_WRITE( mz800_palette_w )
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( mz700 )
+static INPUT_PORTS_START( mz700 )
 	PORT_START /* status */
 	PORT_BIT(0x80, 0x80, IPT_VBLANK)
 	PORT_BIT(0x7f, 0x00, IPT_UNUSED)

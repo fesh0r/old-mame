@@ -75,7 +75,7 @@ $F000-$FFFF:	ROM address space
 #include "devices/snapquik.h"
 #include "devices/cassette.h"
 #include "inputx.h"
-#include "mslegacy.h"
+
 
 /* port i/o functions */
 
@@ -134,10 +134,10 @@ GFXDECODE_END
    modulator.  Thus white seems like a more accurate foreground color
    than green. */
 
-static unsigned char apple1_palette[] =
+static const rgb_t apple1_palette[] =
 {
-	0x00, 0x00, 0x00,	/* Black */
-	0xff, 0xff, 0xff	/* White */
+	RGB_BLACK,
+	RGB_WHITE
 };
 
 static unsigned short apple1_colortable[] =
@@ -147,13 +147,22 @@ static unsigned short apple1_colortable[] =
 
 static PALETTE_INIT( apple1 )
 {
-	palette_set_colors_rgb(machine, 0, apple1_palette, sizeof(apple1_palette) / 3);
+	palette_set_colors(machine, 0, apple1_palette, ARRAY_LENGTH(apple1_palette));
 	memcpy(colortable, apple1_colortable, sizeof (apple1_colortable));
 }
 
 /* keyboard input */
+/*
+   It's very likely that the keyboard assgnments are totally wrong: the code in machine/apple1.c
+   makes arbitrary assumptions about the mapping of the keys. The schematics that are available
+   on the web can help revealing the real layout.
+   The large picture of Woz's Apple I at http://home.earthlink.net/~judgementcall/apple1.jpg
+   show probably how the real keyboard was meant to be: note how the shifted symbols on the digits
+   and on some letters are different from the ones produced by current emulation and the presence
+   of the gray keys.
+*/
 
-INPUT_PORTS_START( apple1 )
+static INPUT_PORTS_START( apple1 )
 	PORT_START	/* 0: first sixteen keys */
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("0") PORT_CODE(KEYCODE_0) PORT_CHAR('0')
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1) PORT_CHAR('1')
@@ -233,7 +242,7 @@ static MACHINE_DRIVER_START( apple1 )
 	   are visible, and each character time is 7 dot times; a dot time
 	   is 2 cycles of the fundamental 14.31818 MHz oscillator.  The
 	   total blanking time is about 4450 microseconds. */
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS((int) (70 * 65 * 7 * 2 / 14.31818)))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC((int) (70 * 65 * 7 * 2 / 14.31818)))
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( apple1 )
@@ -245,7 +254,7 @@ static MACHINE_DRIVER_START( apple1 )
 	MDRV_SCREEN_SIZE(40 * 7, 24 * 8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40 * 7 - 1, 0, 24 * 8 - 1)
 	MDRV_GFXDECODE(apple1_gfxdecodeinfo)
-	MDRV_PALETTE_LENGTH(sizeof (apple1_palette) / 3)
+	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(apple1_palette))
 	MDRV_COLORTABLE_LENGTH(sizeof(apple1_colortable)/sizeof(unsigned short))
 	MDRV_PALETTE_INIT(apple1)
 

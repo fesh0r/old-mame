@@ -58,7 +58,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( vip )
+static INPUT_PORTS_START( vip )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("0 MW") PORT_CODE(KEYCODE_0) PORT_CODE(KEYCODE_0_PAD)
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1) PORT_CODE(KEYCODE_1_PAD)
@@ -278,7 +278,7 @@ static DRIVER_INIT( vip )
 	// turn on power led
 	set_led_status(0, 1);
 
-	mame_timer_set(time_zero, 0, setup_beep);
+	timer_set(attotime_zero, 0, setup_beep);
 }
 
 /* System Drivers */

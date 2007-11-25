@@ -85,7 +85,7 @@ static ADDRESS_MAP_START( coleco_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xe0, 0xff) AM_READWRITE(coleco_paddle_r, SN76496_0_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( coleco )
+static INPUT_PORTS_START( coleco )
     PORT_START_TAG("IN0")
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("0 (pad 1)") PORT_CODE(KEYCODE_0)
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("1 (pad 1)") PORT_CODE(KEYCODE_1)
@@ -228,7 +228,7 @@ static MACHINE_RESET(coleco)
 {
     cpunum_set_input_line_vector(0, 0, 0xff);
 	memset(&memory_region(REGION_CPU1)[0x6000], 0xff, 0x400);	// initialize RAM
-    mame_timer_pulse(MAME_TIME_IN_MSEC(20), 0, paddle_callback);
+    timer_pulse(ATTOTIME_IN_MSEC(20), 0, paddle_callback);
 }
 
 static MACHINE_DRIVER_START( coleco )

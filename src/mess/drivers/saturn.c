@@ -200,7 +200,7 @@ static UINT8 *smpc_ram;
 UINT32* stv_workram_l;
 UINT32* stv_workram_h;
 UINT32* stv_backupram;
-UINT32* stv_scu;
+extern UINT32* stv_scu;
 static UINT16* scsp_regs;
 static UINT16* sound_ram;
 
@@ -1862,7 +1862,7 @@ static WRITE32_HANDLER( stv_scsp_regs_w32 )
 static WRITE32_HANDLER( minit_w )
 {
 	logerror("cpu #%d (PC=%08X) MINIT write = %08x\n",cpu_getactivecpu(), activecpu_get_pc(),data);
-	cpu_boost_interleave(double_to_mame_time(minit_boost_timeslice), MAME_TIME_IN_USEC(minit_boost));
+	cpu_boost_interleave(double_to_attotime(minit_boost_timeslice), ATTOTIME_IN_USEC(minit_boost));
 	cpu_trigger(1000);
 	cpunum_set_info_int(1, CPUINFO_INT_SH2_FRT_INPUT, PULSE_LINE);
 }
@@ -1870,7 +1870,7 @@ static WRITE32_HANDLER( minit_w )
 static WRITE32_HANDLER( sinit_w )
 {
 	logerror("cpu #%d (PC=%08X) SINIT write = %08x\n",cpu_getactivecpu(), activecpu_get_pc(),data);
-	cpu_boost_interleave(double_to_mame_time(sinit_boost_timeslice), MAME_TIME_IN_USEC(sinit_boost));
+	cpu_boost_interleave(double_to_attotime(sinit_boost_timeslice), ATTOTIME_IN_USEC(sinit_boost));
 	cpunum_set_info_int(0, CPUINFO_INT_SH2_FRT_INPUT, PULSE_LINE);
 }
 
@@ -1972,7 +1972,7 @@ static ADDRESS_MAP_START( sound_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(SCSP_0_r, SCSP_0_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( saturn )
+static INPUT_PORTS_START( saturn )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, "PDR1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2288,7 +2288,7 @@ static MACHINE_DRIVER_START( saturn )
 	MDRV_CPU_PROGRAM_MAP(sound_mem, 0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(192))	// guess, needed to force video update after V-Blank OUT interrupt
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(192))	// guess, needed to force video update after V-Blank OUT interrupt
 
 	MDRV_MACHINE_START(saturn)
 	MDRV_MACHINE_RESET(saturn)
@@ -2399,9 +2399,9 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT  BIOS      COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY    FULLNAME          FLAGS */
-CONSB(1994, saturn,        0,   saturn,      0, saturn, saturn, saturnus, saturn, "Sega",    "Saturn (USA)",   GAME_NOT_WORKING)
-CONSB(1994, saturnjp, saturn, saturnjp,      0, saturn, saturn, saturnjp, saturn, "Sega",    "Saturn (Japan)", GAME_NOT_WORKING)
-CONSB(1994, saturneu, saturn,   saturn,      0, saturn, saturn, saturneu, saturn, "Sega",    "Saturn (PAL)",   GAME_NOT_WORKING)
-CONS( 1995, vsaturn,  saturn,                0, saturn, saturn, saturnjp, saturn, "JVC",     "V-Saturn",       GAME_NOT_WORKING)
-CONS( 1995, hisaturn, saturn,                0, saturn, saturn, saturnjp, saturn, "Hitachi", "HiSaturn",       GAME_NOT_WORKING)
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE INPUT   INIT        CONFIG  COMPANY     FULLNAME            FLAGS */
+CONS( 1994, saturn,     0,      0,      saturn, saturn, saturnus,   saturn, "Sega",     "Saturn (USA)",     GAME_NOT_WORKING )
+CONS( 1994, saturnjp,   saturn, 0,      saturn, saturn, saturnjp,   saturn, "Sega",     "Saturn (Japan)",   GAME_NOT_WORKING )
+CONS( 1994, saturneu,   saturn, 0,      saturn, saturn, saturneu,   saturn, "Sega",     "Saturn (PAL)",     GAME_NOT_WORKING )
+CONS( 1995, vsaturn,    saturn, 0,      saturn, saturn, saturnjp,   saturn, "JVC",      "V-Saturn",         GAME_NOT_WORKING )
+CONS( 1995, hisaturn,   saturn, 0,      saturn, saturn, saturnjp,   saturn, "Hitachi",  "HiSaturn",         GAME_NOT_WORKING )

@@ -2,8 +2,27 @@
 
 	TODO:
 
+	- poll TAI/TBI pins
 	- daisy chaining
 	- correct irq_timer period
+	- disable GPIO3/4 interrupts when timer A/B in pulse mode
+	- spurious interrupt
+
+		If you look at the MFP datasheet it is obvious that it can generate the conditions for a spurious interrupt. 
+		However the fact that they indeed happen in the ST is quite interesting.
+
+		The MFP will generate a spurious interrupt if interrupts are disabled (by changing the IERA/IERB registers) 
+		at the “precise point”. The precise point would be after the system (but not necessarily the CPU, see below) 
+		triggered an MFP interrupt, and before the CPU drives the interrupt acknowledge cycle.
+
+		If the MFP was connected directly to the CPU, spurious interrupts probably couldn’t happen. However in the 
+		ST, GLUE seats in the middle and handles all the interrupt timing. It is possible that GLUE introduces a 
+		delay between detecting a change in the MFP interrupt request signal and actually propagating the change to
+		the CPU IPL signals (it is even possible that GLUE make some kind of latching). This would create a window 
+		long enough for the “precise point” described above. 
+
+		"yes, the spurious interrupt occurs when i mask a timer. i did not notice an occurance of the SPI when changing data and control registers.
+		if i kill interrupts with the status reg before masking the timer interrupt, then the SPI occurs as soon as the status register is set to re-enable interrupts."
 	
 	- divide serial clock by 16
 	- synchronous mode
@@ -26,14 +45,14 @@ typedef struct
 
 	UINT16 ier, ipr, isr, imr;
 	UINT8 vr;
-	mame_timer *irq_timer;
+	emu_timer *irq_timer;
 
 	UINT8 tacr, tbcr, tcdcr;
 	UINT8 tdr[MFP68901_MAX_TIMERS];
 	UINT8 tmc[MFP68901_MAX_TIMERS];
 	int to[MFP68901_MAX_TIMERS];
 	int ti[MFP68901_MAX_TIMERS];
-	mame_timer *timer[MFP68901_MAX_TIMERS];
+	emu_timer *timer[MFP68901_MAX_TIMERS];
 
 	UINT8 ucr;
 	UINT8 udr;
@@ -44,18 +63,42 @@ typedef struct
 	int	rx_parity, tx_parity;
 	int	rx_state, tx_state, xmit_state;
 	int rxtx_word, rxtx_start, rxtx_stop;
-	mame_timer *rx_timer, *tx_timer;
+
+	emu_timer *rx_timer, *tx_timer;
 } mfp_68901;
 
 static mfp_68901 mfp[MAX_MFP];
 
-static const int GPIO_MASK[] =
+static const int MFP68901_INT_MASK_GPIO[] =
 { 
 	MFP68901_IR_GPIP_0, MFP68901_IR_GPIP_1, MFP68901_IR_GPIP_2, MFP68901_IR_GPIP_3, 
 	MFP68901_IR_GPIP_4, MFP68901_IR_GPIP_5, MFP68901_IR_GPIP_6, MFP68901_IR_GPIP_7 
 };
 
+static const int MFP68901_INT_MASK_TIMER[] =
+{
+	MFP68901_IR_TIMER_A, MFP68901_IR_TIMER_B, MFP68901_IR_TIMER_C, MFP68901_IR_TIMER_D
+};
+
+static const int MFP68901_LOOPBACK_TIMER[] =
+{
+	MFP68901_TAO_LOOPBACK, MFP68901_TBO_LOOPBACK, MFP68901_TCO_LOOPBACK, MFP68901_TDO_LOOPBACK
+};
+
+static const int MFP68901_GPIO_TIMER[] =
+{
+	MFP68901_GPIP_4, MFP68901_GPIP_3
+};
+
 static const int PRESCALER[] = { 0, 4, 10, 16, 50, 64, 100, 200 };
+
+static void mfp68901_check_interrupts(int which)
+{
+	mfp_68901 *mfp_p = &mfp[which];
+
+	int intr = (mfp_p->ipr & mfp_p->imr) ? HOLD_LINE : CLEAR_LINE;
+	mfp_p->intf->irq_callback(which, intr);
+}
 
 static void mfp68901_poll_gpio(int which)
 {
@@ -76,9 +119,13 @@ static void mfp68901_poll_gpio(int which)
 	{
 		if ((BIT(gpold, bit) == 1) && (BIT(gpnew, bit) == 0)) // if transition from 1 to 0 is detected...
 		{
-			if (mfp_p->ier & GPIO_MASK[bit]) // AND interrupt enabled bit is set...
+			logerror("MFP68901 #%u Edge Transition Detected on GPIO%u\n", which, bit);
+
+			if (mfp_p->ier & MFP68901_INT_MASK_GPIO[bit]) // AND interrupt enabled bit is set...
 			{
-				mfp_p->ipr |= GPIO_MASK[bit]; // set interrupt pending bit
+				logerror("MFP68901 #%u Interrupt Pending for GPIO%u\n", which, bit);
+
+				mfp_p->ipr |= MFP68901_INT_MASK_GPIO[bit]; // set interrupt pending bit
 			}
 		}
 	}
@@ -86,42 +133,10 @@ static void mfp68901_poll_gpio(int which)
 	mfp_p->gpip = (gpio & ~mfp_p->ddr) | (mfp_p->gpip & mfp_p->ddr);
 }
 
-static void mfp68901_irq_ack(int which)
-{
-	mfp_68901 *mfp_p = &mfp[which];
-
-	int ch;
-
-	if (!mfp_p->isr) // if no interrupts are currently in service...
-	{
-		for (ch = 15; ch >= 0; ch--) // loop thru each channel from 15 to 0
-		{
-			if (BIT(mfp_p->imr, ch)) // if interrupt mask bit is set...
-			{
-				if (BIT(mfp_p->ipr, ch)) // AND interrupt pending bit is set...
-				{
-					logerror("MFP68901 #%u Interrupt Fired on Channel %u\n", which, ch);
-
-					mfp_p->ipr &= ~(1 << ch); // clear interrupt pending bit
-
-					if (mfp_p->vr & MFP68901_VR_S) // if software end-of-interrupt mode is enabled...
-					{
-						mfp_p->isr |= (1 << ch); // set interrupt in service bit (bit will be cleared later by the interrupt service routine)
-					}
-
-					mfp_p->intf->irq_callback(which, HOLD_LINE, (mfp_p->vr & 0xf0) | ch); // fire interrupt callback
-
-					return;
-				}
-			}
-		}
-	}
-}
-
 static TIMER_CALLBACK( mfp68901_tick )
 {
 	mfp68901_poll_gpio(param);
-	mfp68901_irq_ack(param);
+	mfp68901_check_interrupts(param);
 }
 
 /* USART */
@@ -536,7 +551,6 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 	case MFP68901_REGISTER_AER:
 		logerror("MFP68901 #%u Active Edge Register : %x\n", which, data);
 		mfp_p->aer = data;
-		// check transition and trigger interrupt if necessary
 		break;
 
 	case MFP68901_REGISTER_DDR:
@@ -548,42 +562,50 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 		logerror("MFP68901 #%u Interrupt Enable Register A : %x\n", which, data);
 		mfp_p->ier = (data << 8) | (mfp_p->ier & 0xff);
 		mfp_p->ipr &= mfp_p->ier;
+		mfp68901_check_interrupts(which);
 		break;
 
 	case MFP68901_REGISTER_IERB:
 		logerror("MFP68901 #%u Interrupt Enable Register B : %x\n", which, data);
 		mfp_p->ier = (mfp_p->ier & 0xff00) | data;
 		mfp_p->ipr &= mfp_p->ier;
+		mfp68901_check_interrupts(which);
 		break;
 
 	case MFP68901_REGISTER_IPRA:
 		logerror("MFP68901 #%u Interrupt Pending Register A : %x\n", which, data);
-		mfp_p->ier &= (data << 8) | (mfp_p->ier & 0xff);
+		mfp_p->ipr &= (data << 8) | (mfp_p->ipr & 0xff);
+		mfp68901_check_interrupts(which);
 		break;
 
 	case MFP68901_REGISTER_IPRB:
 		logerror("MFP68901 #%u Interrupt Pending Register B : %x\n", which, data);
 		mfp_p->ipr &= (mfp_p->ipr & 0xff00) | data;
+		mfp68901_check_interrupts(which);
 		break;
 
 	case MFP68901_REGISTER_ISRA:
 		logerror("MFP68901 #%u Interrupt In-Service Register A : %x\n", which, data);
-		mfp_p->isr = (data << 8) | (mfp_p->isr & 0xff);
+		mfp_p->isr &= (data << 8) | (mfp_p->isr & 0xff);
 		break;
 
 	case MFP68901_REGISTER_ISRB:
 		logerror("MFP68901 #%u Interrupt In-Service Register B : %x\n", which, data);
-		mfp_p->isr = (mfp_p->isr & 0xff00) | data;
+		mfp_p->isr &= (mfp_p->isr & 0xff00) | data;
 		break;
 
 	case MFP68901_REGISTER_IMRA:
 		logerror("MFP68901 #%u Interrupt Mask Register A : %x\n", which, data);
 		mfp_p->imr = (data << 8) | (mfp_p->imr & 0xff);
+		mfp_p->isr &= mfp_p->imr;
+		mfp68901_check_interrupts(which);
 		break;
 
 	case MFP68901_REGISTER_IMRB:
 		logerror("MFP68901 #%u Interrupt Mask Register B : %x\n", which, data);
 		mfp_p->imr = (mfp_p->imr & 0xff00) | data;
+		mfp_p->isr &= mfp_p->imr;
+		mfp68901_check_interrupts(which);
 		break;
 
 	case MFP68901_REGISTER_VR:
@@ -591,15 +613,15 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 
 		mfp_p->vr = data & 0xf8;
 
-		if ((mfp_p->vr & MFP68901_VR_S) == 0)
+		if (mfp_p->vr & MFP68901_VR_S)
+		{
+			logerror("MFP68901 #%u Software End-Of-Interrupt Mode\n", which);
+		}
+		else
 		{
 			logerror("MFP68901 #%u Automatic End-Of-Interrupt Mode\n", which);
 
 			mfp_p->isr = 0;
-		}
-		else
-		{
-			logerror("MFP68901 #%u Software End-Of-Interrupt Mode\n", which);
 		}
 		break;
 
@@ -610,7 +632,7 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 		{
 		case MFP68901_TCR_TIMER_STOPPED:
 			logerror("MFP68901 #%u Timer A Stopped\n", which);
-			mame_timer_enable(mfp_p->timer[MFP68901_TIMER_A], 0);
+			timer_enable(mfp_p->timer[MFP68901_TIMER_A], 0);
 			break;
 
 		case MFP68901_TCR_TIMER_DELAY_4:
@@ -623,12 +645,13 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 			{
 			int divisor = PRESCALER[mfp_p->tacr & 0x07];
 			logerror("MFP68901 #%u Timer A Delay Mode : %u Prescale\n", which, divisor);
-			mame_timer_adjust(mfp_p->timer[MFP68901_TIMER_A], MAME_TIME_IN_HZ(mfp_p->intf->timer_clock / divisor), which, MAME_TIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
+			timer_adjust(mfp_p->timer[MFP68901_TIMER_A], ATTOTIME_IN_HZ(mfp_p->intf->timer_clock / divisor), which, ATTOTIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
 			}
+			break;
 
 		case MFP68901_TCR_TIMER_EVENT:
 			logerror("MFP68901 #%u Timer A Event Count Mode\n", which);
-			mame_timer_enable(mfp_p->timer[MFP68901_TIMER_A], 0);
+			timer_enable(mfp_p->timer[MFP68901_TIMER_A], 0);
 			break;
 
 		case MFP68901_TCR_TIMER_PULSE_4:
@@ -641,8 +664,8 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 			{
 			int divisor = PRESCALER[mfp_p->tacr & 0x07];
 			logerror("MFP68901 #%u Timer A Pulse Width Mode : %u Prescale\n", which, divisor);
-			mame_timer_adjust(mfp_p->timer[MFP68901_TIMER_A], time_never, which, MAME_TIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
-			mame_timer_enable(mfp_p->timer[MFP68901_TIMER_A], 0);
+			timer_adjust(mfp_p->timer[MFP68901_TIMER_A], attotime_never, which, ATTOTIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
+			timer_enable(mfp_p->timer[MFP68901_TIMER_A], 0);
 			}
 			break;
 		}
@@ -667,7 +690,7 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 		{
 		case MFP68901_TCR_TIMER_STOPPED:
 			logerror("MFP68901 #%u Timer B Stopped\n", which);
-			mame_timer_enable(mfp_p->timer[MFP68901_TIMER_B], 0);
+			timer_enable(mfp_p->timer[MFP68901_TIMER_B], 0);
 			break;
 
 		case MFP68901_TCR_TIMER_DELAY_4:
@@ -680,13 +703,13 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 			{
 			int divisor = PRESCALER[mfp_p->tbcr & 0x07];
 			logerror("MFP68901 #%u Timer B Delay Mode : %u Prescale\n", which, divisor);
-			mame_timer_adjust(mfp_p->timer[MFP68901_TIMER_B], MAME_TIME_IN_HZ(mfp_p->intf->timer_clock / divisor), which, MAME_TIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
+			timer_adjust(mfp_p->timer[MFP68901_TIMER_B], ATTOTIME_IN_HZ(mfp_p->intf->timer_clock / divisor), which, ATTOTIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
 			}
 			break;
 
 		case MFP68901_TCR_TIMER_EVENT:
 			logerror("MFP68901 #%u Timer B Event Count Mode\n", which);
-			mame_timer_enable(mfp_p->timer[MFP68901_TIMER_B], 0);
+			timer_enable(mfp_p->timer[MFP68901_TIMER_B], 0);
 			break;
 
 		case MFP68901_TCR_TIMER_PULSE_4:
@@ -699,8 +722,8 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 			{
 			int divisor = PRESCALER[mfp_p->tbcr & 0x07];
 			logerror("MFP68901 #%u Timer B Pulse Width Mode : %u Prescale\n", which, DIVISOR);
-			mame_timer_adjust(mfp_p->timer[MFP68901_TIMER_B], time_never, which, MAME_TIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
-			mame_timer_enable(mfp_p->timer[MFP68901_TIMER_B], 0);
+			timer_adjust(mfp_p->timer[MFP68901_TIMER_B], attotime_never, which, ATTOTIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
+			timer_enable(mfp_p->timer[MFP68901_TIMER_B], 0);
 			}
 			break;
 		}
@@ -725,7 +748,7 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 		{
 		case MFP68901_TCR_TIMER_STOPPED:
 			logerror("MFP68901 #%u Timer D Stopped\n", which);
-			mame_timer_enable(mfp_p->timer[MFP68901_TIMER_D], 0);
+			timer_enable(mfp_p->timer[MFP68901_TIMER_D], 0);
 			break;
 
 		case MFP68901_TCR_TIMER_DELAY_4:
@@ -738,7 +761,7 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 			{
 			int divisor = PRESCALER[mfp_p->tcdcr & 0x07];
 			logerror("MFP68901 #%u Timer D Delay Mode : %u Prescale\n", which, divisor);
-			mame_timer_adjust(mfp_p->timer[MFP68901_TIMER_D], MAME_TIME_IN_HZ(mfp_p->intf->timer_clock / divisor), which, MAME_TIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
+			timer_adjust(mfp_p->timer[MFP68901_TIMER_D], ATTOTIME_IN_HZ(mfp_p->intf->timer_clock / divisor), which, ATTOTIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
 			}
 			break;
 		}
@@ -747,7 +770,7 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 		{
 		case MFP68901_TCR_TIMER_STOPPED:
 			logerror("MFP68901 #%u Timer C Stopped\n", which);
-			mame_timer_enable(mfp_p->timer[MFP68901_TIMER_C], 0);
+			timer_enable(mfp_p->timer[MFP68901_TIMER_C], 0);
 			break;
 
 		case MFP68901_TCR_TIMER_DELAY_4:
@@ -760,7 +783,7 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 			{
 			int divisor = PRESCALER[(mfp_p->tcdcr >> 4) & 0x07];
 			logerror("MFP68901 #%u Timer C Delay Mode : %u Prescale\n", which, divisor);
-			mame_timer_adjust(mfp_p->timer[MFP68901_TIMER_C], MAME_TIME_IN_HZ(mfp_p->intf->timer_clock / divisor), which, MAME_TIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
+			timer_adjust(mfp_p->timer[MFP68901_TIMER_C], ATTOTIME_IN_HZ(mfp_p->intf->timer_clock / divisor), which, ATTOTIME_IN_HZ(mfp_p->intf->timer_clock / divisor));
 			}
 			break;
 		}
@@ -771,7 +794,7 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 
 		mfp_p->tdr[MFP68901_TIMER_A] = data;
 
-		if (!mame_timer_enabled(mfp_p->timer[MFP68901_TIMER_A]))
+		if (!timer_enabled(mfp_p->timer[MFP68901_TIMER_A]))
 		{
 			mfp_p->tmc[MFP68901_TIMER_A] = data;
 		}
@@ -782,7 +805,7 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 
 		mfp_p->tdr[MFP68901_TIMER_B] = data;
 
-		if (!mame_timer_enabled(mfp_p->timer[MFP68901_TIMER_B]))
+		if (!timer_enabled(mfp_p->timer[MFP68901_TIMER_B]))
 		{
 			mfp_p->tmc[MFP68901_TIMER_B] = data;
 		}
@@ -793,7 +816,7 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 
 		mfp_p->tdr[MFP68901_TIMER_C] = data;
 
-		if (!mame_timer_enabled(mfp_p->timer[MFP68901_TIMER_C]))
+		if (!timer_enabled(mfp_p->timer[MFP68901_TIMER_C]))
 		{
 			mfp_p->tmc[MFP68901_TIMER_C] = data;
 		}
@@ -804,7 +827,7 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 
 		mfp_p->tdr[MFP68901_TIMER_D] = data;
 
-		if (!mame_timer_enabled(mfp_p->timer[MFP68901_TIMER_D]))
+		if (!timer_enabled(mfp_p->timer[MFP68901_TIMER_D]))
 		{
 			mfp_p->tmc[MFP68901_TIMER_D] = data;
 		}
@@ -953,174 +976,61 @@ static void mfp68901_register_w(int which, int reg, UINT8 data)
 	}
 }
 
-void mfp68901_timer_count_a(int which)
+void mfp68901_timer_count(int which, int index)
 {
 	mfp_68901 *mfp_p = &mfp[which];
 
-	if (mfp_p->tmc[MFP68901_TIMER_A] == 0x01)
+	if (mfp_p->tmc[index] == 0x01)
 	{
-		mfp_p->to[MFP68901_TIMER_A] = mfp_p->to[MFP68901_TIMER_A] ? 0 : 1;
+		mfp_p->to[index] = mfp_p->to[index] ? 0 : 1;
 
-		if (mfp_p->to[MFP68901_TIMER_A])
+		if (mfp_p->to[index])
 		{
-			if (mfp_p->intf->rx_clock == MFP68901_TAO_LOOPBACK)
+			if (mfp_p->intf->rx_clock == MFP68901_LOOPBACK_TIMER[index])
 			{
-				mame_timer_adjust(mfp_p->rx_timer, time_zero, which, time_never);
+				timer_adjust(mfp_p->rx_timer, attotime_zero, which, attotime_never);
 			}
 
-			if (mfp_p->intf->tx_clock == MFP68901_TAO_LOOPBACK)
+			if (mfp_p->intf->tx_clock == MFP68901_LOOPBACK_TIMER[index])
 			{
-				mame_timer_adjust(mfp_p->tx_timer, time_zero, which, time_never);
+				timer_adjust(mfp_p->tx_timer, attotime_zero, which, attotime_never);
 			}
 		}
 
 		if (mfp_p->intf->to_w)
 		{
-			mfp_p->intf->to_w(which, MFP68901_TIMER_A, mfp_p->to[MFP68901_TIMER_A]);
+			mfp_p->intf->to_w(which, index, mfp_p->to[index]);
 		}
 
-		if (mfp_p->ier & MFP68901_IR_TIMER_A)
+		if (mfp_p->ier & MFP68901_INT_MASK_TIMER[index])
 		{
-			mfp_p->ipr |= MFP68901_IR_TIMER_A;
+			mfp_p->ipr |= MFP68901_INT_MASK_TIMER[index];
 		}
 
-		mfp_p->tmc[MFP68901_TIMER_A] = mfp_p->tdr[MFP68901_TIMER_A];
+		mfp_p->tmc[index] = mfp_p->tdr[index];
 	}
 	else
 	{
-		mfp_p->tmc[MFP68901_TIMER_A]--;
+		mfp_p->tmc[index]--;
 	}
 }
 
-void mfp68901_timer_count_b(int which)
+void mfp68901_ti_w(int which, int index, int value)
 {
 	mfp_68901 *mfp_p = &mfp[which];
+	int bit = MFP68901_GPIO_TIMER[index];
+	int aer = BIT(mfp_p->aer, bit);
+	int cr = index ? mfp_p->tbcr : mfp_p->tacr;
 
-	if (mfp_p->tmc[MFP68901_TIMER_B] == 0x01)
-	{
-		mfp_p->to[MFP68901_TIMER_B] = mfp_p->to[MFP68901_TIMER_B] ? 0 : 1;
-
-		if (mfp_p->to[MFP68901_TIMER_B])
-		{
-			if (mfp_p->intf->rx_clock == MFP68901_TBO_LOOPBACK)
-			{
-				mame_timer_adjust(mfp_p->rx_timer, time_zero, which, time_never);
-			}
-
-			if (mfp_p->intf->tx_clock == MFP68901_TBO_LOOPBACK)
-			{
-				mame_timer_adjust(mfp_p->tx_timer, time_zero, which, time_never);
-			}
-		}
-
-		if (mfp_p->intf->to_w)
-		{
-			mfp_p->intf->to_w(which, MFP68901_TIMER_B, mfp_p->to[MFP68901_TIMER_B]);
-		}
-
-		if (mfp_p->ier & MFP68901_IR_TIMER_B)
-		{
-			mfp_p->ipr |= MFP68901_IR_TIMER_B;
-		}
-
-		mfp_p->tmc[MFP68901_TIMER_B] = mfp_p->tdr[MFP68901_TIMER_B];
-	}
-	else
-	{
-		mfp_p->tmc[MFP68901_TIMER_B]--;
-	}
-}
-
-void mfp68901_timer_count_c(int which)
-{
-	mfp_68901 *mfp_p = &mfp[which];
-
-	if (mfp_p->tmc[MFP68901_TIMER_C] == 0x01)
-	{
-		mfp_p->to[MFP68901_TIMER_C] = mfp_p->to[MFP68901_TIMER_C] ? 0 : 1;
-
-		if (mfp_p->to[MFP68901_TIMER_C])
-		{
-			if (mfp_p->intf->rx_clock == MFP68901_TCO_LOOPBACK)
-			{
-				mame_timer_adjust(mfp_p->rx_timer, time_zero, which, time_never);
-			}
-
-			if (mfp_p->intf->tx_clock == MFP68901_TCO_LOOPBACK)
-			{
-				mame_timer_adjust(mfp_p->tx_timer, time_zero, which, time_never);
-			}
-		}
-
-		if (mfp_p->intf->to_w)
-		{
-			mfp_p->intf->to_w(which, MFP68901_TIMER_C, mfp_p->to[MFP68901_TIMER_C]);
-		}
-
-		if (mfp_p->ier & MFP68901_IR_TIMER_C)
-		{
-			mfp_p->ipr |= MFP68901_IR_TIMER_C;
-		}
-
-		mfp_p->tmc[MFP68901_TIMER_C] = mfp_p->tdr[MFP68901_TIMER_C];
-	}
-	else
-	{
-		mfp_p->tmc[MFP68901_TIMER_C]--;
-	}
-}
-
-void mfp68901_timer_count_d(int which)
-{
-	mfp_68901 *mfp_p = &mfp[which];
-
-	if (mfp_p->tmc[MFP68901_TIMER_D] == 0x01)
-	{
-		mfp_p->to[MFP68901_TIMER_D] = mfp_p->to[MFP68901_TIMER_D] ? 0 : 1;
-
-		if (mfp_p->to[MFP68901_TIMER_D])
-		{
-			if (mfp_p->intf->rx_clock == MFP68901_TDO_LOOPBACK)
-			{
-				mame_timer_adjust(mfp_p->rx_timer, time_zero, which, time_never);
-			}
-
-			if (mfp_p->intf->tx_clock == MFP68901_TDO_LOOPBACK)
-			{
-				mame_timer_adjust(mfp_p->tx_timer, time_zero, which, time_never);
-			}
-		}
-
-		if (mfp_p->intf->to_w)
-		{
-			mfp_p->intf->to_w(which, MFP68901_TIMER_D, mfp_p->to[MFP68901_TIMER_D]);
-		}
-
-		if (mfp_p->ier & MFP68901_IR_TIMER_D)
-		{
-			mfp_p->ipr |= MFP68901_IR_TIMER_D;
-		}
-
-		mfp_p->tmc[MFP68901_TIMER_D] = mfp_p->tdr[MFP68901_TIMER_D];
-	}
-	else
-	{
-		mfp_p->tmc[MFP68901_TIMER_D]--;
-	}
-}
-
-void mfp68901_tai_w(int which, int value)
-{
-	mfp_68901 *mfp_p = &mfp[which];
-
-	switch (mfp_p->tacr & 0x0f)
+	switch (cr & 0x0f)
 	{
 	case MFP68901_TCR_TIMER_EVENT:
-		if (((mfp_p->ti[MFP68901_TIMER_A] ^ BIT(mfp_p->aer, 4)) == 1) && ((value ^ BIT(mfp_p->aer, 4)) == 0))
+		if (((mfp_p->ti[index] ^ aer) == 1) && ((value ^ aer) == 0))
 		{
-			mfp68901_timer_count_a(which);
+			mfp68901_timer_count(which, index);
 		}
-		mfp_p->ti[MFP68901_TIMER_A] = value;
+
+		mfp_p->ti[index] = value;
 		break;
 
 	case MFP68901_TCR_TIMER_PULSE_4:
@@ -1130,75 +1040,99 @@ void mfp68901_tai_w(int which, int value)
 	case MFP68901_TCR_TIMER_PULSE_64:
 	case MFP68901_TCR_TIMER_PULSE_100:
 	case MFP68901_TCR_TIMER_PULSE_200:
-		mame_timer_enable(mfp_p->timer[MFP68901_TIMER_A], (BIT(mfp_p->aer, 4) == value) ? 1 : 0);
+		timer_enable(mfp_p->timer[index], (value == aer) ? 1 : 0);
 
-		if (((mfp_p->ti[MFP68901_TIMER_A] ^ BIT(mfp_p->aer, 4)) == 0) && ((value ^ BIT(mfp_p->aer, 4)) == 1))
+		if (((mfp_p->ti[index] ^ aer) == 0) && ((value ^ aer) == 1))
 		{
-			if (mfp_p->ier & MFP68901_IR_GPIP_4)
+			if (mfp_p->ier & MFP68901_INT_MASK_GPIO[bit])
 			{
-				mfp_p->ipr |= MFP68901_IR_GPIP_4;
+				mfp_p->ipr |= MFP68901_INT_MASK_GPIO[bit];
 			}
 		}
 
-		mfp_p->ti[MFP68901_TIMER_A] = value;
-		break;
-	}
-}
-
-void mfp68901_tbi_w(int which, int value)
-{
-	mfp_68901 *mfp_p = &mfp[which];
-
-	switch (mfp_p->tbcr & 0x0f)
-	{
-	case MFP68901_TCR_TIMER_EVENT:
-		if (((mfp_p->ti[MFP68901_TIMER_B] ^ BIT(mfp_p->aer, 3)) == 1) && ((value ^ BIT(mfp_p->aer, 3)) == 0))
-		{
-			mfp68901_timer_count_b(which);
-		}
-		mfp_p->ti[MFP68901_TIMER_B] = value;
-		break;
-
-	case MFP68901_TCR_TIMER_PULSE_4:
-	case MFP68901_TCR_TIMER_PULSE_10:
-	case MFP68901_TCR_TIMER_PULSE_16:
-	case MFP68901_TCR_TIMER_PULSE_50:
-	case MFP68901_TCR_TIMER_PULSE_64:
-	case MFP68901_TCR_TIMER_PULSE_100:
-	case MFP68901_TCR_TIMER_PULSE_200:
-		mame_timer_enable(mfp_p->timer[MFP68901_TIMER_B], (BIT(mfp_p->aer, 3) == value) ? 1 : 0);
-
-		if (((mfp_p->ti[MFP68901_TIMER_B] ^ BIT(mfp_p->aer, 3)) == 0) && ((value ^ BIT(mfp_p->aer, 3)) == 1))
-		{
-			if (mfp_p->ier & MFP68901_IR_GPIP_3)
-			{
-				mfp_p->ipr |= MFP68901_IR_GPIP_3;
-			}
-		}
-
-		mfp_p->ti[MFP68901_TIMER_B] = value;
+		mfp_p->ti[index] = value;
 		break;
 	}
 }
 
 static TIMER_CALLBACK( timer_a )
 {
-	mfp68901_timer_count_a(param);
+	mfp68901_timer_count(param, MFP68901_TIMER_A);
 }
 
 static TIMER_CALLBACK( timer_b )
 {
-	mfp68901_timer_count_b(param);
+	mfp68901_timer_count(param, MFP68901_TIMER_B);
 }
 
 static TIMER_CALLBACK( timer_c )
 {
-	mfp68901_timer_count_c(param);
+	mfp68901_timer_count(param, MFP68901_TIMER_C);
 }
 
 static TIMER_CALLBACK( timer_d )
 {
-	mfp68901_timer_count_d(param);
+	mfp68901_timer_count(param, MFP68901_TIMER_D);
+}
+
+/* External Interface */
+
+void mfp68901_tai_w(int which, int value)
+{
+	mfp68901_ti_w(which, MFP68901_TIMER_A, value);
+}
+
+void mfp68901_tbi_w(int which, int value)
+{
+	mfp68901_ti_w(which, MFP68901_TIMER_B, value);
+}
+
+int mfp68901_get_vector(int which)
+{
+	mfp_68901 *mfp_p = &mfp[which];
+
+	int ch;
+
+	for (ch = 15; ch >= 0; ch--)
+	{
+		if (BIT(mfp_p->imr, ch) && BIT(mfp_p->ipr, ch))
+		{
+			if (mfp_p->vr & MFP68901_VR_S)
+			{
+				mfp_p->isr |= (1 << ch);
+			}
+
+			mfp_p->ipr &= ~(1 << ch);
+
+			mfp68901_check_interrupts(which);
+
+			return (mfp_p->vr & 0xf0) | ch;
+		}
+	}
+
+	return MC68000_INT_ACK_SPURIOUS;
+}
+
+void mfp68901_reset(int which)
+{
+	mfp68901_register_w(which, MFP68901_REGISTER_GPIP, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_AER, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_DDR, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_IERA, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_IERB, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_IPRA, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_IPRB, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_ISRA, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_ISRB, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_IMRA, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_IMRB, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_VR, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_TACR, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_TBCR, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_TCDCR, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_SCR, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_UCR, 0);
+	mfp68901_register_w(which, MFP68901_REGISTER_RSR, 0);
 }
 
 void mfp68901_config(int which, const mfp68901_interface *intf)
@@ -1216,27 +1150,27 @@ void mfp68901_config(int which, const mfp68901_interface *intf)
 
 	mfp_p->intf = intf;
 
-	mfp_p->timer[MFP68901_TIMER_A] = mame_timer_alloc(timer_a);
-	mfp_p->timer[MFP68901_TIMER_B] = mame_timer_alloc(timer_b);
-	mfp_p->timer[MFP68901_TIMER_C] = mame_timer_alloc(timer_c);
-	mfp_p->timer[MFP68901_TIMER_D] = mame_timer_alloc(timer_d);
+	mfp_p->timer[MFP68901_TIMER_A] = timer_alloc(timer_a);
+	mfp_p->timer[MFP68901_TIMER_B] = timer_alloc(timer_b);
+	mfp_p->timer[MFP68901_TIMER_C] = timer_alloc(timer_c);
+	mfp_p->timer[MFP68901_TIMER_D] = timer_alloc(timer_d);
 
-	mfp_p->rx_timer = mame_timer_alloc(rx_tick);
+	mfp_p->rx_timer = timer_alloc(rx_tick);
 	
 	if (mfp_p->intf->rx_clock > 0)
 	{
-		mame_timer_adjust(mfp_p->rx_timer, time_zero, which, MAME_TIME_IN_HZ(mfp_p->intf->rx_clock));
+		timer_adjust(mfp_p->rx_timer, attotime_zero, which, ATTOTIME_IN_HZ(mfp_p->intf->rx_clock));
 	}
 	
-	mfp_p->tx_timer = mame_timer_alloc(tx_tick);
+	mfp_p->tx_timer = timer_alloc(tx_tick);
 
 	if (mfp_p->intf->tx_clock > 0)
 	{
-		mame_timer_adjust(mfp_p->tx_timer, time_zero, which, MAME_TIME_IN_HZ(mfp_p->intf->tx_clock));
+		timer_adjust(mfp_p->tx_timer, attotime_zero, which, ATTOTIME_IN_HZ(mfp_p->intf->tx_clock));
 	}
 
-	mfp_p->irq_timer = mame_timer_alloc(mfp68901_tick);
-	mame_timer_adjust(mfp_p->irq_timer, time_zero, which, MAME_TIME_IN_HZ(mfp_p->intf->chip_clock / 4));
+	mfp_p->irq_timer = timer_alloc(mfp68901_tick);
+	timer_adjust(mfp_p->irq_timer, attotime_zero, which, ATTOTIME_IN_HZ(mfp_p->intf->chip_clock / 4));
 
 	state_save_register_item("mfp68901", which, mfp_p->gpip);
 	state_save_register_item("mfp68901", which, mfp_p->aer);
@@ -1273,6 +1207,8 @@ void mfp68901_config(int which, const mfp68901_interface *intf)
 	state_save_register_item("mfp68901", which, mfp_p->rsr_read);
 	state_save_register_item("mfp68901", which, mfp_p->next_rsr);
 }
+
+/* Read/Write Handlers */
 
 READ16_HANDLER( mfp68901_0_register_msb_r ) { return mfp68901_register_r(0, offset) << 8; }
 READ16_HANDLER( mfp68901_1_register_msb_r ) { return mfp68901_register_r(1, offset) << 8; }

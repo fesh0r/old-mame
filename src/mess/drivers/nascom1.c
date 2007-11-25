@@ -128,7 +128,7 @@ static PALETTE_INIT( nascom1 )
 
 /* Keyboard input */
 
-INPUT_PORTS_START (nascom1)
+static INPUT_PORTS_START (nascom1)
 	PORT_START	/* 0: count = 0 */
 	PORT_BIT(0x6f, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT)
@@ -337,6 +337,6 @@ SYSTEM_CONFIG_START(nascom2)
 	CONFIG_DEVICE(nascom2_cassette_getinfo)
 SYSTEM_CONFIG_END
 
-/*	  YEAR	NAME		PARENT		BIOS,		COMPAT	MACHINE		INPUT		INIT		CONFIG		COMPANY				FULLNAME */
-COMPB( 1978,	nascom1,	0,		nascom1,	0,	nascom1,	nascom1,	0,		nascom1,	"Nascom Microcomputers",	"Nascom 1" , 0)
-COMPB( 1979,	nascom2,	nascom1,	nascom2,	0,	nascom2,	nascom1,	0,		nascom2,	"Nascom Microcomputers",	"Nascom 2" , 0)
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY                     FULLNAME        FLAGS */
+COMP( 1978, nascom1,    0,          0,      nascom1,    nascom1,    0,      nascom1,    "Nascom Microcomputers",    "Nascom 1",     0 )
+COMP( 1979, nascom2,    nascom1,    0,      nascom2,    nascom1,    0,      nascom2,    "Nascom Microcomputers",    "Nascom 2",     0 )

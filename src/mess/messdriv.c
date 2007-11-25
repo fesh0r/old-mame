@@ -70,10 +70,10 @@ TESTDRIVER( 3do_pal )
 	DRIVER( jaguar )	/* Atari Jaguar										*/
 	DRIVER( atarist )	/* Atari ST											*/
 	DRIVER( megast )	/* Atari Mega ST									*/
+//	DRIVER( stacy )		/* Atari STacy										*/
 	DRIVER( atariste )	/* Atari STe										*/
 	DRIVER( megaste )	/* Atari Mega STe									*/
-//	DRIVER( stacy )		/* Atari STacy										*/
-//	DRIVER( stbook )	/* Atari ST Book									*/
+	DRIVER( stbook )	/* Atari STBook										*/
 //	DRIVER( tt030 )		/* Atari TT030										*/
 //	DRIVER( falcon )	/* Atari Falcon030									*/
 
@@ -123,6 +123,7 @@ TESTDRIVER( 3do_pal )
 	DRIVER( dcjp )		/* 1998 Sega Dreamcast (Japan) */
 	DRIVER( dc )		/* 1999 Sega Dreamcast (USA) */
 	DRIVER( dceu )		/* 1999 Sega Dreamcast (Europe) */
+	DRIVER( dcdev )		/* 1998 Sega HKT-0120 Sega Dreamcast Development Box 					*/
 
 	/* BALLY */
 	DRIVER( astrocde )	/* Bally Astrocade									*/
@@ -186,6 +187,7 @@ TESTDRIVER( tvlinkp )
 
 /****************COMPUTERS***************************************************/
     /* ACORN */
+	DRIVER( acrnsys1 )  /* 1979 Acorn System 1 (Microcomputer Kit)          */
 	DRIVER( atom )		/* 1979 Acorn Atom									*/
 	DRIVER( atomeb )	/* 1979 Acorn Atom									*/
 	DRIVER( bbca )		/* 1981 BBC Micro Model A							*/
@@ -193,6 +195,7 @@ TESTDRIVER( tvlinkp )
 	DRIVER( bbcbp )		/* 198? BBC Micro Model B+ 64K						*/
 	DRIVER( bbcbp128 )	/* 198? BBC Micro Model B+ 128K						*/
 	DRIVER( bbcm)		/* 198? BBC Master									*/
+	DRIVER( bbcbc )		/* 1985 BBC Bridge Companion						*/
 	DRIVER( electron )	/* 1983 Acorn Electron								*/
 TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 
@@ -287,7 +290,7 @@ XL/XE 16kB OS roms
 
 	/* COMMODORE */
 	DRIVER( kim1 )		/* Commodore (MOS) KIM-1 1975						*/
-TESTDRIVER( sym1 )		/* Synertek SYM1									*/
+	DRIVER( sym1 )		/* Synertek SYM-1									*/
 	DRIVER( aim65 )		/* Rockwell AIM65									*/
 
 	DRIVER( pet )		/* PET2001/CBM20xx Series (Basic 1)					*/
@@ -391,6 +394,9 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	DRIVER( at486 )		/* 19?? IBM AT 486									*/
 	DRIVER( at586 )		/* 19?? AT 586										*/
 
+	/* OSBORNE */
+	DRIVER( osborne1 )	/* 1981 Osborne-1									*/
+
 	/* SINCLAIR RESEARCH */
 	DRIVER( zx80 )		/* 1980 Sinclair ZX-80								*/
 	DRIVER( zx81 )		/* 1981 Sinclair ZX-81								*/
@@ -431,13 +437,14 @@ TESTDRIVER( scorpion )
 TESTDRIVER( pentagon )
 
 	DRIVER( ql )		/* 1984 Sinclair QL	(UK)							*/
-	DRIVER( ql_jsu )	/* 1984 Sinclair QL	(USA)							*/
-	DRIVER( ql_mge )	/* 1984 Sinclair QL	(Spain)							*/
-	DRIVER( ql_mgf )	/* 1984 Sinclair QL	(France)						*/
-	DRIVER( ql_mgg )	/* 1984 Sinclair QL	(Germany)						*/
-	DRIVER( ql_mgi )	/* 1984 Sinclair QL	(Italy)							*/
-	DRIVER( ql_mgs )	/* 1984 Sinclair QL	(Sweden)						*/
-	DRIVER( ql_efp )	/* 1984 Sinclair QL	(Mexico)						*/
+	DRIVER( ql_us )		/* 1984 Sinclair QL	(USA)							*/
+	DRIVER( ql_es )		/* 1984 Sinclair QL	(Spain)							*/
+	DRIVER( ql_fr )		/* 1984 Sinclair QL	(France)						*/
+	DRIVER( ql_de )		/* 1984 Sinclair QL	(Germany)						*/
+	DRIVER( ql_it )		/* 1984 Sinclair QL	(Italy)							*/
+	DRIVER( ql_se )		/* 1984 Sinclair QL	(Sweden)						*/
+	DRIVER( ql_dk )		/* 1984 Sinclair QL	(Denmark)						*/
+	DRIVER( ql_gr )		/* 1984 Sinclair QL	(Greece)						*/
 
 	/* SHARP */
 	DRIVER( pc1251 )	/* Pocket Computer 1251								*/
@@ -621,7 +628,8 @@ TESTDRIVER( trs80m4 )
 	DRIVER( svi738 )	/* 1985 MSX											*/
 	DRIVER( hotbit11 )	/* 1985 MSX Brazil									*/
 	DRIVER( hotbit12 )	/* 1985 MSX	Brazil									*/
-	DRIVER( hx10 )		/* 1984 MSX	Brazil									*/
+	DRIVER( hx10 )		/* 1984 MSX										*/
+	DRIVER( vg8020 )	/* 1985 MSX										*/
 	DRIVER( expert10 )	/* 1983 MSX Brazil									*/
 	DRIVER( expert11 )	/* 1984 MSX Brazil									*/
 	DRIVER( expertdp )	/* 1985 MSX Brazil									*/
@@ -735,9 +743,12 @@ TESTDRIVER( hp48s )		/* HP48 S/SX										*/
 TESTDRIVER( hp48g )		/* HP48 G/GX										*/
 
 	/* SpectraVideo */
-	DRIVER( svi318 )	/* SVI-318 (SV BASIC v1.0)							*/
-	DRIVER( svi328 )	/* SVI-328 (SV BASIC v1.1)							*/
-TESTDRIVER( svi328b )	/* SVI-328 + 80 column card							*/
+	DRIVER( svi318 )	/* SVI-318 (PAL)									*/
+	DRIVER( svi318n )	/* SVI-318 (NTSC)									*/
+	DRIVER( svi328 )	/* SVI-328 (PAL)									*/
+	DRIVER( svi328n )	/* SVI-328 (NTSC)									*/
+	DRIVER( sv328p80 )	/* SVI-328 (PAL) + SVI-806 80 column card			*/
+	DRIVER( sv328n80 )	/* SVI-328 (NTSC) + SVI-806 80 column card			*/
 
 	/* Andrew Donald Booth (this is the name of the designer, not a company) */
 	DRIVER( apexc )		/* 1951(?) APEXC: All-Purpose Electronic X-ray Computer */

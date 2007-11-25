@@ -32,7 +32,7 @@ static ADDRESS_MAP_START( lynx_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfffa, 0xffff) AM_READWRITE( MRA8_BANK4, MWA8_RAM ) AM_BASE(&lynx_mem_fffa)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( lynx )
+static INPUT_PORTS_START( lynx )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("A")
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_NAME("B")
@@ -438,6 +438,6 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*     YEAR  NAME     PARENT	BIOS	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY   FULLNAME */
-CONSB( 1989, lynx,	  0, 		lynx,	0,		lynx,	lynx,	0,		lynx,	"Atari",  "Lynx", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
-CONS ( 1991, lynx2,	  lynx, 			0,		lynx2,	lynx,	0,		lynx,	"Atari",  "Lynx II", GAME_NOT_WORKING|GAME_IMPERFECT_SOUND)
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY   FULLNAME      FLAGS */
+CONS( 1989, lynx,   0,      0,      lynx,   lynx,   0,      lynx,   "Atari",  "Lynx",       GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
+CONS( 1991, lynx2,  lynx,   0,      lynx2,  lynx,   0,      lynx,   "Atari",  "Lynx II",    GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
