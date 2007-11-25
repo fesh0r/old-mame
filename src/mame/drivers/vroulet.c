@@ -84,13 +84,13 @@ static TILE_GET_INFO( get_bg_tile_info )
 	SET_TILE_INFO(0, code, color, 0);
 }
 
-VIDEO_START(vroulet)
+static VIDEO_START(vroulet)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 }
 
-VIDEO_UPDATE(vroulet)
+static VIDEO_UPDATE(vroulet)
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	drawgfx(bitmap, machine->gfx[0], 0x320, 1, 0, 0,
@@ -121,7 +121,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( vroulet )
+static INPUT_PORTS_START( vroulet )
 	PORT_START_TAG("IN0")
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_TILT )

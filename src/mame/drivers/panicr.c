@@ -66,7 +66,7 @@ static tilemap *bgtilemap, *txttilemap;
 static UINT8 *scrollram;
 static UINT8 *mainram;
 
-PALETTE_INIT( panicr )
+static PALETTE_INIT( panicr )
 {
 	int i;
 
@@ -164,7 +164,7 @@ static ADDRESS_MAP_START( panicr_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf0000, 0xfffff) AM_ROM
 ADDRESS_MAP_END
 
-VIDEO_START( panicr )
+static VIDEO_START( panicr )
 {
 	bgtilemap = tilemap_create( get_bgtile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,1024,16 );
 	txttilemap = tilemap_create( get_txttile_info,tilemap_scan_rows,TILEMAP_TYPE_COLORTABLE,8,8,32,32 );
@@ -194,7 +194,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 	}
 }
 
-VIDEO_UPDATE( panicr)
+static VIDEO_UPDATE( panicr)
 {
 	fillbitmap(bitmap,get_black_pen(machine),cliprect);
 	tilemap_mark_all_tiles_dirty( txttilemap );
@@ -214,7 +214,7 @@ static INTERRUPT_GEN( panicr_interrupt )
 		cpunum_set_input_line_and_vector(cpu_getactivecpu(), 0, HOLD_LINE, 0xc4/4);
 }
 
-INPUT_PORTS_START( panicr )
+static INPUT_PORTS_START( panicr )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) //left
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) //right

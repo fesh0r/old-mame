@@ -54,9 +54,9 @@ WRITE8_HANDLER( senjyo_volume_w )
 static TIMER_CALLBACK( senjyo_sh_update )
 {
 	/* ctc2 timer single tone generator frequency */
-	mame_time period = z80ctc_getperiod (0, 2);
-	if (compare_mame_times(period, time_zero) != 0 )
-		single_rate = SUBSECONDS_TO_HZ(period.subseconds);
+	attotime period = z80ctc_getperiod (0, 2);
+	if (attotime_compare(period, attotime_zero) != 0 )
+		single_rate = ATTOSECONDS_TO_HZ(period.attoseconds);
 	else
 		single_rate = 0;
 
@@ -69,7 +69,7 @@ void senjyo_sh_start(void)
     int i;
 
 	/* z80 ctc init */
-	ctc_intf.baseclock = Machine->drv->cpu[1].cpu_clock;
+	ctc_intf.baseclock = Machine->drv->cpu[1].clock;
 	z80ctc_init (0, &ctc_intf);
 
 	/* z80 pio init */
@@ -84,5 +84,5 @@ void senjyo_sh_start(void)
 	sample_set_volume(0,0);
 	sample_start_raw(0,_single,SINGLE_LENGTH,single_rate,1);
 
-	mame_timer_pulse(make_mame_time(0, Machine->screen[0].refresh), 0, senjyo_sh_update);
+	timer_pulse(attotime_make(0, Machine->screen[0].refresh), 0, senjyo_sh_update);
 }

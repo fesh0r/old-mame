@@ -42,7 +42,7 @@ extern VIDEO_EOF( redclash );
   Interrupts are still used, but they are related to coin
   slots. Left slot generates an IRQ, Right slot a NMI.
 */
-INTERRUPT_GEN( redclash_interrupt )
+static INTERRUPT_GEN( redclash_interrupt )
 {
 	if (readinputport(4) & 1)	/* Left Coin */
 		cpunum_set_input_line(0,0,ASSERT_LINE);
@@ -111,7 +111,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( redclash )
+static INPUT_PORTS_START( redclash )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -204,7 +204,7 @@ INPUT_PORTS_START( redclash )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(1)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( zerohour )
+static INPUT_PORTS_START( zerohour )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY

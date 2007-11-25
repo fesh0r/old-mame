@@ -806,7 +806,7 @@ static UINT16 eep_latch = 0;
 //static UINT16 *motor_ram;
 
 static size_t taitoz_sharedram_size;
-UINT16 *taitoz_sharedram;	/* read externally to draw Spacegun crosshair */
+static UINT16 *taitoz_sharedram;	/* read externally to draw Spacegun crosshair */
 
 static READ16_HANDLER( sharedram_r )
 {
@@ -911,7 +911,7 @@ static INTERRUPT_GEN( sci_interrupt )
 	sci_int6 = !sci_int6;
 
 	if (sci_int6)
-		mame_timer_set(MAME_TIME_IN_CYCLES(200000-500,0),0, taitoz_interrupt6);
+		timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, taitoz_interrupt6);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -926,7 +926,7 @@ static INTERRUPT_GEN( dblaxle_interrupt )
 	dblaxle_int6 = !dblaxle_int6;
 
 	if (dblaxle_int6)
-		mame_timer_set(MAME_TIME_IN_CYCLES(200000-500,0),0, taitoz_interrupt6);
+		timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, taitoz_interrupt6);
 
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
@@ -934,7 +934,7 @@ static INTERRUPT_GEN( dblaxle_interrupt )
 static INTERRUPT_GEN( dblaxle_cpub_interrupt )
 {
 	// Unsure how many int6's per frame
-	mame_timer_set(MAME_TIME_IN_CYCLES(200000-500,0),0, taitoz_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, taitoz_interrupt6);
 	cpunum_set_input_line(2, 4, HOLD_LINE);
 }
 
@@ -1175,7 +1175,7 @@ static WRITE16_HANDLER( bshark_stick_w )
        but we don't want CPUA to have an int6 before int4 is over (?)
     */
 
-	mame_timer_set(MAME_TIME_IN_CYCLES(10000,0),0, taitoz_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0),0, taitoz_interrupt6);
 }
 
 
@@ -1258,7 +1258,7 @@ static WRITE16_HANDLER( spacegun_lightgun_w )
        Four lightgun interrupts happen before the collected coords
        are moved to shared ram where CPUA can use them. */
 
-	mame_timer_set(MAME_TIME_IN_CYCLES(10000,0),0, taitoz_sg_cpub_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0),0, taitoz_sg_cpub_interrupt5);
 }
 
 
@@ -1958,7 +1958,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 
 
-INPUT_PORTS_START( contcirc )
+static INPUT_PORTS_START( contcirc )
 	PORT_START_TAG("DSW1") /* DSW A */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )
@@ -2029,14 +2029,14 @@ INPUT_PORTS_START( contcirc )
 	PORT_DIPSETTING(    0x00, "Analogue" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( contcrcu )
+static INPUT_PORTS_START( contcrcu )
 	PORT_INCLUDE(contcirc)
 
 	PORT_MODIFY("DSW1")
 	TAITO_Z_COINAGE_JAPAN_8		// confirmed
 INPUT_PORTS_END
 
-INPUT_PORTS_START( chasehq )	// IN3-6 perhaps used with cockpit setup? //
+static INPUT_PORTS_START( chasehq )	// IN3-6 perhaps used with cockpit setup? //
 	PORT_START_TAG("DSW1") /* DSW A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Cabinet ) )	/* US Manual states DIPS 1 & 2 "MUST REMAIN OFF" */
 	PORT_DIPSETTING(    0x03, "Upright / Steering Lock" )
@@ -2142,14 +2142,14 @@ INPUT_PORTS_START( chasehq )	// IN3-6 perhaps used with cockpit setup? //
 	PORT_DIPSETTING(    0x00, "Analogue" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( chasehqj )
+static INPUT_PORTS_START( chasehqj )
 	PORT_INCLUDE(chasehq)
 
 	PORT_MODIFY("DSW1")
 	TAITO_Z_COINAGE_JAPAN_8
 INPUT_PORTS_END
 
-INPUT_PORTS_START( enforce )
+static INPUT_PORTS_START( enforce )
 	PORT_START /* DSW A */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -2205,7 +2205,7 @@ INPUT_PORTS_START( enforce )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( bshark )
+static INPUT_PORTS_START( bshark )
 	PORT_START_TAG("DSW1") /* DSW A */
 	PORT_DIPNAME( 0x01, 0x01, "Mirror screen" )	// manual says first two must be off
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2274,14 +2274,14 @@ INPUT_PORTS_START( bshark )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( bsharkj )
+static INPUT_PORTS_START( bsharkj )
 	PORT_INCLUDE(bshark)
 
 	PORT_MODIFY("DSW1")
 	TAITO_Z_COINAGE_JAPAN_8
 INPUT_PORTS_END
 
-INPUT_PORTS_START( sci )
+static INPUT_PORTS_START( sci )
 	PORT_START_TAG("DSW1") /* DSW A */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x01, "Cockpit" )
@@ -2348,21 +2348,21 @@ INPUT_PORTS_START( sci )
 	PORT_DIPSETTING(    0x00, "Analogue" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( sciu )
+static INPUT_PORTS_START( sciu )
 	PORT_INCLUDE(sci)
 
 	PORT_MODIFY("DSW1")
 	TAITO_Z_COINAGE_US_8
 INPUT_PORTS_END
 
-INPUT_PORTS_START( scij )
+static INPUT_PORTS_START( scij )
 	PORT_INCLUDE(sci)
 
 	PORT_MODIFY("DSW1")
 	TAITO_Z_COINAGE_JAPAN_8
 INPUT_PORTS_END
 
-INPUT_PORTS_START( nightstr )
+static INPUT_PORTS_START( nightstr )
 	PORT_START /* DSW A */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x01, "Cockpit" )
@@ -2430,7 +2430,7 @@ INPUT_PORTS_START( nightstr )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( aquajack )
+static INPUT_PORTS_START( aquajack )
 	PORT_START_TAG("DSW1") /* DSW A */
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x80, "Cockpit" )
@@ -2500,7 +2500,7 @@ INPUT_PORTS_START( aquajack )
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(1)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( aquajckj )
+static INPUT_PORTS_START( aquajckj )
 	PORT_INCLUDE(aquajack)
 
 	PORT_MODIFY("DSW1")
@@ -2516,7 +2516,7 @@ INPUT_PORTS_START( aquajckj )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( spacegun )
+static INPUT_PORTS_START( spacegun )
 	PORT_START /* DSW A */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )	// Manual says Always Off
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2586,7 +2586,7 @@ INPUT_PORTS_START( spacegun )
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(22) PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( dblaxle )
+static INPUT_PORTS_START( dblaxle )
 	PORT_START_TAG("DSW1") /* DSW A */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2654,7 +2654,7 @@ INPUT_PORTS_START( dblaxle )
 	PORT_DIPSETTING(    0x00, "Analogue" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( pwheelsj )
+static INPUT_PORTS_START( pwheelsj )
 	PORT_INCLUDE(dblaxle)
 
 	PORT_MODIFY("DSW1")
@@ -2906,8 +2906,8 @@ static MACHINE_DRIVER_START( chasehq )
 	MDRV_VIDEO_UPDATE(chasehq)
 
 	/* sound hardware */
-	MDRV_SPEAKER_ADD("front",  0.0, 0.0, 0.7);
-	MDRV_SPEAKER_ADD("rear",   0.0, 0.0, 1.3);
+	MDRV_SPEAKER_ADD("front",  0.0, 0.0, 0.7)
+	MDRV_SPEAKER_ADD("rear",   0.0, 0.0, 1.3)
 
 	MDRV_SOUND_ADD(YM2610, 16000000/2)
 	MDRV_SOUND_CONFIG(ym2610_interface)
@@ -3081,8 +3081,8 @@ static MACHINE_DRIVER_START( nightstr )
 	MDRV_VIDEO_UPDATE(chasehq)
 
 	/* sound hardware */
-	MDRV_SPEAKER_ADD("front",  0.0, 0.0, 0.7);
-	MDRV_SPEAKER_ADD("rear",   0.0, 0.0, 1.3);
+	MDRV_SPEAKER_ADD("front",  0.0, 0.0, 0.7)
+	MDRV_SPEAKER_ADD("rear",   0.0, 0.0, 1.3)
 
 	MDRV_SOUND_ADD(YM2610, 16000000/2)
 	MDRV_SOUND_CONFIG(ym2610_interface)

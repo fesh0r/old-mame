@@ -36,9 +36,9 @@
 
 static int counter = 0;
 
-MACHINE_RESET( dealer );
+static MACHINE_RESET( dealer );
 
-WRITE8_HANDLER( dealer_decrypt_rom )
+static WRITE8_HANDLER( dealer_decrypt_rom )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 
@@ -141,7 +141,7 @@ static ppi8255_interface ppi8255_intf =
    so that ROMs couldn't be simply swapped.  Each game checks these bits and halts
    the processor if an unexpected value is read. */
 
-INPUT_PORTS_START( megadon )
+static INPUT_PORTS_START( megadon )
 	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -189,7 +189,7 @@ INPUT_PORTS_START( megadon )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( suprglob )
+static INPUT_PORTS_START( suprglob )
 	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -240,7 +240,7 @@ INPUT_PORTS_START( suprglob )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( igmo )
+static INPUT_PORTS_START( igmo )
 	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -289,7 +289,7 @@ INPUT_PORTS_START( igmo )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( dealer )
+static INPUT_PORTS_START( dealer )
 	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -555,14 +555,14 @@ ROM_START( revenger )
 	ROM_LOAD( "82s123.u66",		0x0000, 0x0020, NO_DUMP )	/* missing */
 ROM_END
 
-MACHINE_RESET( dealer )
+static MACHINE_RESET( dealer )
 {
 	memory_set_bankptr(1, memory_region(REGION_CPU1));
 
 	ppi8255_init(&ppi8255_intf);
 }
 
-DRIVER_INIT( dealer )
+static DRIVER_INIT( dealer )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int A;

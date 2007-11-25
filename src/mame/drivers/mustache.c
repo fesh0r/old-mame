@@ -81,7 +81,7 @@ ADDRESS_MAP_END
 
 /******************************************************************************/
 
-INPUT_PORTS_START( mustache )
+static INPUT_PORTS_START( mustache )
 	PORT_START	/* IN 1 */
 
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP  )
@@ -189,7 +189,7 @@ static TIMER_CALLBACK( clear_irq_cb )
 static void assert_irq(void)
 {
 	cpunum_set_input_line(0, 0, ASSERT_LINE);
-	mame_timer_set(MAME_TIME_IN_CYCLES(14288, 0), 0, clear_irq_cb);
+	timer_set(ATTOTIME_IN_CYCLES(14288, 0), 0, clear_irq_cb);
        /* Timing here is an educated GUESS, Z80 /INT must stay high so the irq
           fires no less than TWICE per frame, else game doesn't work right.
       6000000 / 56.747 = 105732.4616 cycles per frame, we'll call it A

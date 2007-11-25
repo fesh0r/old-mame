@@ -47,13 +47,13 @@ static TIMER_CALLBACK( periodic_callback )
 		scanline = 0;
 	}
 
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, periodic_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, periodic_callback);
 }
 
 
 static MACHINE_RESET( wolfpack )
 {
-	mame_timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, periodic_callback);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, periodic_callback);
 }
 
 
@@ -224,7 +224,7 @@ static ADDRESS_MAP_START( wolfpack_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( wolfpack )
+static INPUT_PORTS_START( wolfpack )
 
 	PORT_START
 	PORT_BIT ( 0x03, IP_ACTIVE_HIGH, IPT_UNUSED ) /* dial connects here */

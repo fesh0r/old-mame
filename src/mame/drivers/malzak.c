@@ -55,22 +55,22 @@ VIDEO_START( malzak );
 VIDEO_UPDATE( malzak );
 WRITE8_HANDLER( playfield_w );
 
-READ8_HANDLER( malzak_s2636_1_r )
+static READ8_HANDLER( malzak_s2636_1_r )
 {
 	return s2636_1_ram[offset];
 }
 
-READ8_HANDLER( malzak_s2636_2_r )
+static READ8_HANDLER( malzak_s2636_2_r )
 {
 	return s2636_2_ram[offset];
 }
 
-WRITE8_HANDLER( malzak_s2636_1_w )
+static WRITE8_HANDLER( malzak_s2636_1_w )
 {
 	s2636_w(s2636_1_ram,offset,data,s2636_1_dirty);
 }
 
-WRITE8_HANDLER( malzak_s2636_2_w )
+static WRITE8_HANDLER( malzak_s2636_2_w )
 {
 	s2636_w(s2636_2_ram,offset,data,s2636_2_dirty);
 }
@@ -279,7 +279,7 @@ static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(portc0_w)  // possibly playfield row selection for writing and/or collisions
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( malzak )
+static INPUT_PORTS_START( malzak )
 
 	/* Malzak has an 8-way stick
        and only one button (firing and bomb dropping on the same button) */
@@ -302,7 +302,7 @@ INPUT_PORTS_START( malzak )
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START( malzak2 )
+static INPUT_PORTS_START( malzak2 )
 
 	/* Same as Malzak, but with additional POT switch, and
        possibly a reset button too. */
@@ -470,7 +470,7 @@ static MACHINE_DRIVER_START( malzak )
 	MDRV_CPU_IO_MAP(readport,writeport)
 
 	MDRV_SCREEN_REFRESH_RATE(50)
-	//MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(SAA5050_VBLANK))
+	//MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(SAA5050_VBLANK))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

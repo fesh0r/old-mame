@@ -18,7 +18,7 @@ static READ8_HANDLER( unk_r )
 	return mame_rand(Machine);
 }
 
-UINT8 *intrscti_ram;
+static UINT8 *intrscti_ram;
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
@@ -41,7 +41,7 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( intrscti )
+static INPUT_PORTS_START( intrscti )
 INPUT_PORTS_END
 
 static const gfx_layout tiles8x8_layout =
@@ -59,11 +59,11 @@ static GFXDECODE_START( intrscti )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout, 0, 16 )
 GFXDECODE_END
 
-VIDEO_START(intrscti)
+static VIDEO_START(intrscti)
 {
 }
 
-VIDEO_UPDATE(intrscti)
+static VIDEO_UPDATE(intrscti)
 {
 	int y,x;
 	int count;
@@ -124,7 +124,7 @@ ROM_START( intrscti )
 	ROM_LOAD( "b.5a", 0x2000, 0x1000, CRC(8951fb7e) SHA1(c423bf0536e3a09453814172e31b47f9c3c3324c) )
 ROM_END
 
-DRIVER_INIT( intrscti )
+static DRIVER_INIT( intrscti )
 {
 	UINT8 *cpu = memory_region( REGION_CPU1 );
 	int i;

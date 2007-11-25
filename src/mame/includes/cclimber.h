@@ -4,6 +4,7 @@ DRIVER_INIT( cclimber );
 DRIVER_INIT( cclimbrj );
 DRIVER_INIT( mshuttle );
 DRIVER_INIT( cannonb );
+DRIVER_INIT( cannonb2 );
 DRIVER_INIT( ckongb );
 
 /*----------- defined in video/cclimber.c -----------*/
@@ -38,7 +39,7 @@ WRITE8_HANDLER( swimmer_sidepanel_enable_w );
 /*----------- defined in audio/cclimber.c -----------*/
 
 extern struct AY8910interface cclimber_ay8910_interface;
-extern struct Samplesinterface cclimber_custom_interface;
+extern struct Samplesinterface cclimber_samples_interface;
 WRITE8_HANDLER( cclimber_sample_trigger_w );
 WRITE8_HANDLER( cclimber_sample_rate_w );
 WRITE8_HANDLER( cclimber_sample_volume_w );

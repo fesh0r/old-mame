@@ -187,7 +187,7 @@ extern WRITE8_HANDLER( gottlieb_cause_dac_nmi_w );
 
 static UINT8 *audiobuffer_region;
 
-MACHINE_RESET( gottlieb )
+static MACHINE_RESET( gottlieb )
 {
 	audiobuffer_region = memory_region(REGION_USER1);
 }
@@ -195,17 +195,17 @@ MACHINE_RESET( gottlieb )
 
 static int track[2];
 
-READ8_HANDLER( gottlieb_track_0_r )
+static READ8_HANDLER( gottlieb_track_0_r )
 {
 	return input_port_2_r(offset) - track[0];
 }
 
-READ8_HANDLER( gottlieb_track_1_r )
+static READ8_HANDLER( gottlieb_track_1_r )
 {
 	return input_port_3_r(offset) - track[1];
 }
 
-WRITE8_HANDLER( gottlieb_track_reset_w )
+static WRITE8_HANDLER( gottlieb_track_reset_w )
 {
 	/* reset the trackball counters */
 	track[0] = input_port_2_r(offset);
@@ -214,7 +214,7 @@ WRITE8_HANDLER( gottlieb_track_reset_w )
 
 static int joympx;
 
-READ8_HANDLER( stooges_IN4_r )
+static READ8_HANDLER( stooges_IN4_r )
 {
 	int joy;
 
@@ -235,7 +235,7 @@ READ8_HANDLER( stooges_IN4_r )
 	return joy | (readinputportbytag("IN4") & 0xf0);
 }
 
-WRITE8_HANDLER( reactor_output_w )
+static WRITE8_HANDLER( reactor_output_w )
 {
 	set_led_status(0,data & 0x20);
 	set_led_status(1,data & 0x40);
@@ -243,7 +243,7 @@ WRITE8_HANDLER( reactor_output_w )
 	gottlieb_video_outputs_w(offset,data);
 }
 
-WRITE8_HANDLER( stooges_output_w )
+static WRITE8_HANDLER( stooges_output_w )
 {
 	joympx = (data >> 5) & 0x03;
 	gottlieb_video_outputs_w(offset,data);
@@ -276,7 +276,7 @@ static int access_time;
  * This gives a total of 1+3+3+19*53=1014 bytes, the 10 last bytes are ignored
  */
 
-READ8_HANDLER( gottlieb_laserdisc_status_r )
+static READ8_HANDLER( gottlieb_laserdisc_status_r )
 {
 	int tmp;
 	switch (offset)
@@ -317,13 +317,13 @@ READ8_HANDLER( gottlieb_laserdisc_status_r )
 	return 0;
 }
 
-WRITE8_HANDLER( gottlieb_laserdisc_mpx_w )
+static WRITE8_HANDLER( gottlieb_laserdisc_mpx_w )
 {
 	lasermpx = data & 1;
 	if (lasermpx==0) skipfirstbyte=1;	/* first byte of the 1K buffer (0x67) is not returned... */
 }
 
-WRITE8_HANDLER( gottlieb_laserdisc_command_w )
+static WRITE8_HANDLER( gottlieb_laserdisc_command_w )
 {
 	static int loop;
 	int cmd;
@@ -381,7 +381,7 @@ logerror("laserdisc command %02x -> %02x\n",data,cmd);
 	}
 }
 
-INTERRUPT_GEN( gottlieb_interrupt )
+static INTERRUPT_GEN( gottlieb_interrupt )
 {
 	if (access_time > 0) {
 		access_time--;
@@ -444,7 +444,7 @@ static ADDRESS_MAP_START( gottlieb_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-ADDRESS_MAP_START( gottlieb_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( gottlieb_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_READ(riot_ram_r)
 	AM_RANGE(0x0200, 0x03ff) AM_READ(gottlieb_riot_r)
 	AM_RANGE(0x6000, 0x7fff) AM_READ(MRA8_ROM)
@@ -454,7 +454,7 @@ ADDRESS_MAP_START( gottlieb_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( gottlieb_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( gottlieb_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_WRITE(riot_ram_w) AM_BASE(&riot_ram)
 	AM_RANGE(0x0200, 0x03ff) AM_WRITE(gottlieb_riot_w)
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(DAC_0_data_w)
@@ -477,7 +477,7 @@ static ADDRESS_MAP_START( stooges_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( stooges_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( stooges_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x4000, 0x4001) AM_WRITE(DAC_0_data_w)
 	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_ROM)
@@ -491,7 +491,7 @@ static ADDRESS_MAP_START( stooges_sound2_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xffff) AM_READ(MRA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( stooges_sound2_writemem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( stooges_sound2_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(stooges_sp0250_latch_w)	/* speech chip. The game sends strings */
 									/* of 15 bytes (clocked by 4000). The chip also */
@@ -505,7 +505,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( reactor )
+static INPUT_PORTS_START( reactor )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x01, "Sound with Logos" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -552,7 +552,7 @@ INPUT_PORTS_START( reactor )
 	PORT_BIT ( 0xc0, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mplanets )
+static INPUT_PORTS_START( mplanets )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -601,7 +601,7 @@ INPUT_PORTS_START( mplanets )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON2 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( tylz )
+static INPUT_PORTS_START( tylz )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -663,7 +663,7 @@ INPUT_PORTS_START( tylz )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( qbert )
+static INPUT_PORTS_START( qbert )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -719,7 +719,7 @@ INPUT_PORTS_START( qbert )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
 INPUT_PORTS_END
 
-INPUT_PORTS_START( qbertqub )
+static INPUT_PORTS_START( qbertqub )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
@@ -778,7 +778,7 @@ INPUT_PORTS_START( qbertqub )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( krull )
+static INPUT_PORTS_START( krull )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -830,7 +830,7 @@ INPUT_PORTS_START( krull )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICKLEFT_LEFT ) PORT_8WAY
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mach3 )
+static INPUT_PORTS_START( mach3 )
 	PORT_START_TAG("DSW")
 	/* TODO: values are different for 5 lives */
 	PORT_DIPNAME( 0x09, 0x08, DEF_STR( Coinage ) )
@@ -883,7 +883,7 @@ INPUT_PORTS_START( mach3 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( usvsthem )
+static INPUT_PORTS_START( usvsthem )
 	PORT_START_TAG("DSW")
 	/* TODO: values are different for 5 lives */
 	PORT_DIPNAME( 0x09, 0x00, DEF_STR( Coinage ) )
@@ -937,7 +937,7 @@ INPUT_PORTS_START( usvsthem )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( 3stooges )
+static INPUT_PORTS_START( 3stooges )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME (0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING (   0x01, DEF_STR( Off ) )
@@ -1002,7 +1002,7 @@ INPUT_PORTS_START( 3stooges )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( curvebal )
+static INPUT_PORTS_START( curvebal )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x08, 0x00, "2 Players Game" )
 	PORT_DIPSETTING(    0x08, "1 Credit" )
@@ -1065,7 +1065,7 @@ PORT_DIPSETTING(    0xc2, DEF_STR( Free_Play ) ) */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( screwloo )
+static INPUT_PORTS_START( screwloo )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -1118,7 +1118,7 @@ INPUT_PORTS_START( screwloo )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( insector )
+static INPUT_PORTS_START( insector )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x00, "25000" )
@@ -1171,7 +1171,7 @@ INPUT_PORTS_START( insector )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 INPUT_PORTS_END
 
-INPUT_PORTS_START( vidvince )
+static INPUT_PORTS_START( vidvince )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x09, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x09, DEF_STR( 3C_1C ) )
@@ -1223,7 +1223,7 @@ INPUT_PORTS_START( vidvince )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( wizwarz )
+static INPUT_PORTS_START( wizwarz )
 /* TODO: Bonus Life and Bonus Mine values are dependent upon each other */
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Bonus_Life ) )
@@ -1278,7 +1278,7 @@ INPUT_PORTS_START( wizwarz )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START2 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( argusg )
+static INPUT_PORTS_START( argusg )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -1331,7 +1331,7 @@ INPUT_PORTS_START( argusg )
 	PORT_BIT ( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( kngtmare )
+static INPUT_PORTS_START( kngtmare )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x11, 0x11, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
@@ -1555,7 +1555,7 @@ static MACHINE_DRIVER_START( gottlieb )
 	MDRV_CPU_PROGRAM_MAP(gottlieb_sound_readmem,gottlieb_sound_writemem)
 								/* NMIs are triggered by the Votrax SC-01 */
 	MDRV_SCREEN_REFRESH_RATE(61)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(1018)	/* frames per second, vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1018)	/* frames per second, vblank duration */)
 
 	MDRV_MACHINE_RESET(gottlieb)
 	MDRV_NVRAM_HANDLER(generic_1fill)
@@ -1636,7 +1636,7 @@ static MACHINE_DRIVER_START( gottlieb2 )
 	MDRV_CPU_PROGRAM_MAP(stooges_sound2_readmem,stooges_sound2_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(61)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(1018)	/* frames per second, vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1018)	/* frames per second, vblank duration */)
 
 	MDRV_MACHINE_RESET(gottlieb)
 	MDRV_NVRAM_HANDLER(generic_1fill)

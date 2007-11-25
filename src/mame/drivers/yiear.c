@@ -79,7 +79,7 @@ static WRITE8_HANDLER( yiear_VLM5030_control_w )
 	VLM5030_RST( ( data >> 2 ) & 1 );
 }
 
-INTERRUPT_GEN( yiear_nmi_interrupt )
+static INTERRUPT_GEN( yiear_nmi_interrupt )
 {
 	/* can't use nmi_line_pulse() because interrupt_enable_w() effects it */
 	if (yiear_nmi_enable) cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
@@ -115,7 +115,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( yiear )
+static INPUT_PORTS_START( yiear )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )

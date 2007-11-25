@@ -867,7 +867,7 @@ static READ16_HANDLER( snd_68k_ready_r )
 
 	if ((sr & 0x0700) > 0x0100)
 	{
-		cpu_spinuntil_time(MAME_TIME_IN_USEC(40));
+		cpu_spinuntil_time(ATTOTIME_IN_USEC(40));
 		return 0;	// not ready yet, interrupts disabled
 	}
 
@@ -883,7 +883,7 @@ static WRITE16_HANDLER( snd_latch_to_68k_w )
 	// signal the 68000 that there's data waiting
 	cpunum_set_input_line(1, 2, HOLD_LINE);
 	// give the 68k time to reply
-	cpu_spinuntil_time(MAME_TIME_IN_USEC(40));
+	cpu_spinuntil_time(ATTOTIME_IN_USEC(40));
 }
 
 static ADDRESS_MAP_START( model1_mem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1087,7 +1087,7 @@ static struct MultiPCM_interface m1_multipcm_interface_2 =
 	REGION_SOUND2
 };
 
-INPUT_PORTS_START( vf )
+static INPUT_PORTS_START( vf )
 	PORT_START_TAG("AN0")  /* Unused analog port 0 */
 	PORT_START_TAG("AN1")  /* Unused analog port 1 */
 	PORT_START_TAG("AN2")  /* Unused analog port 2 */
@@ -1128,7 +1128,7 @@ INPUT_PORTS_START( vf )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( vr )
+static INPUT_PORTS_START( vr )
 	PORT_START_TAG("AN0")	/* Steering */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE ) PORT_SENSITIVITY(100) PORT_KEYDELTA(3)
 
@@ -1168,7 +1168,7 @@ INPUT_PORTS_START( vr )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( wingwar )
+static INPUT_PORTS_START( wingwar )
 	PORT_START_TAG("AN0")	/* X */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(4)
 
@@ -1208,7 +1208,7 @@ INPUT_PORTS_START( wingwar )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( swa )
+static INPUT_PORTS_START( swa )
 	PORT_START_TAG("AN0")	/* X */
 	PORT_BIT( 0xff, 127, IPT_AD_STICK_X ) PORT_MINMAX(27,227) PORT_SENSITIVITY(100) PORT_KEYDELTA(4) PORT_REVERSE
 

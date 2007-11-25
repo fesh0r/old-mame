@@ -31,7 +31,7 @@ VIDEO_UPDATE( vigilant );
 VIDEO_UPDATE( kikcubic );
 
 
-WRITE8_HANDLER( vigilant_bank_select_w )
+static WRITE8_HANDLER( vigilant_bank_select_w )
 {
 	int bankaddress;
 	UINT8 *RAM = memory_region(REGION_CPU1);
@@ -43,7 +43,7 @@ WRITE8_HANDLER( vigilant_bank_select_w )
 /***************************************************************************
  vigilant_out2_w
  **************************************************************************/
-WRITE8_HANDLER( vigilant_out2_w )
+static WRITE8_HANDLER( vigilant_out2_w )
 {
 	/* D0 = FILP = Flip screen? */
 	/* D1 = COA1 = Coin Counter A? */
@@ -56,7 +56,7 @@ WRITE8_HANDLER( vigilant_out2_w )
 //  data & 0x01 cocktail mode
 }
 
-WRITE8_HANDLER( kikcubic_coin_w )
+static WRITE8_HANDLER( kikcubic_coin_w )
 {
 	/* bits 0 is flip screen */
 
@@ -198,7 +198,7 @@ static ADDRESS_MAP_START( buccanrs_sound_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( vigilant )
+static INPUT_PORTS_START( vigilant )
 	PORT_START_TAG("IN0")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_START2 )
@@ -286,7 +286,7 @@ INPUT_PORTS_START( vigilant )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( kikcubic )
+static INPUT_PORTS_START( kikcubic )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
@@ -373,7 +373,7 @@ INPUT_PORTS_START( kikcubic )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( buccanrs )
+static INPUT_PORTS_START( buccanrs )
 	PORT_START_TAG("IN0")
 	PORT_SERVICE( 0x2f, IP_ACTIVE_LOW ) // any of these bits while booting will enable service mode
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -453,7 +453,7 @@ INPUT_PORTS_START( buccanrs )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( buccanra )
+static INPUT_PORTS_START( buccanra )
 	PORT_INCLUDE( buccanrs )
 
 	PORT_MODIFY("IN0") /* this port is reversed on this set.. */

@@ -173,7 +173,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( karianx )
+static INPUT_PORTS_START( karianx )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -228,7 +228,7 @@ INPUT_PORTS_START( karianx )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( logicpr2 )
+static INPUT_PORTS_START( logicpr2 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -307,7 +307,7 @@ GFXDECODE_END
 static void irqhandler(int linestate)
 {
 	/* system 16c doesn't have the sound CPU */
-	if (Machine->drv->cpu[1].cpu_type != CPU_DUMMY)
+	if (Machine->drv->cpu[1].type != CPU_DUMMY)
 		cpunum_set_input_line(1,0,linestate);
 }
 

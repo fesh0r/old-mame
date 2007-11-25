@@ -199,8 +199,8 @@ rumbling on a subwoofer in the cabinet.)
 
 extern const char layout_darius[];
 
-MACHINE_START( ninjaw );
-MACHINE_RESET( ninjaw );
+static MACHINE_START( ninjaw );
+static MACHINE_RESET( ninjaw );
 
 VIDEO_START( ninjaw );
 VIDEO_UPDATE( ninjaw );
@@ -282,7 +282,7 @@ static READ16_HANDLER( ninjaw_sound_r )
 
 /**** sound pan control ****/
 static int ninjaw_pandata[4];
-WRITE8_HANDLER( ninjaw_pancontrol )
+static WRITE8_HANDLER( ninjaw_pancontrol )
 {
   offset = offset&3;
   ninjaw_pandata[offset] = (float)data * (100.f / 255.0f);
@@ -458,7 +458,7 @@ ADDRESS_MAP_END
              INPUT PORTS, DIPs
 ***********************************************************/
 
-INPUT_PORTS_START( ninjaw )
+static INPUT_PORTS_START( ninjaw )
 	/* 0x200000 (port 0) -> 0x0c2291.b and 0x24122c (shared RAM) */
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Allow_Continue ) ) PORT_DIPLOCATION("SW1:1")
@@ -503,7 +503,7 @@ INPUT_PORTS_START( ninjaw )
 INPUT_PORTS_END
 
 /* Can't use PORT_INCLUDE because of PORT_DIPLOCATION */
-INPUT_PORTS_START( ninjawj )
+static INPUT_PORTS_START( ninjawj )
 	PORT_INCLUDE(ninjaw)
 
 	PORT_MODIFY("DSWA")
@@ -511,7 +511,7 @@ INPUT_PORTS_START( ninjawj )
 INPUT_PORTS_END
 
 /* Can't use PORT_INCLUDE because of PORT_DIPLOCATION */
-INPUT_PORTS_START( darius2 )
+static INPUT_PORTS_START( darius2 )
 	PORT_INCLUDE(ninjaw)
 
 	/* 0x200000 (port 0) -> 0x0c2002 (-$5ffe,A5) and 0x0c2006 (-$5ffa,A5) */
@@ -951,7 +951,7 @@ ROM_START( darius2 )
 ROM_END
 
 
-MACHINE_START( ninjaw )
+static MACHINE_START( ninjaw )
 {
 	cpua_ctrl = 0xff;
 	state_save_register_global(cpua_ctrl);
@@ -961,7 +961,7 @@ MACHINE_START( ninjaw )
 	state_save_register_func_postload(reset_sound_region);
 }
 
-MACHINE_RESET( ninjaw )
+static MACHINE_RESET( ninjaw )
 {
   /**** mixer control enable ****/
   sound_global_enable( 1 );	/* mixer enabled */

@@ -99,13 +99,13 @@ extern void decrypt156(void);
 #include "deco16ic.h"
 
 static UINT32 *simpl156_systemram;
-UINT8 *simpl156_default_eeprom;
+static UINT8 *simpl156_default_eeprom;
 
 extern VIDEO_START( simpl156 );
 extern VIDEO_UPDATE( simpl156 );
 
 
-INPUT_PORTS_START( simpl156 )
+static INPUT_PORTS_START( simpl156 )
 	PORT_START	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -135,7 +135,7 @@ INPUT_PORTS_START( simpl156 )
 INPUT_PORTS_END
 
 
-READ32_HANDLER( simpl156_inputs_read )
+static READ32_HANDLER( simpl156_inputs_read )
 {
 	int eep = EEPROM_read_bit();
 	UINT32 returndata;
@@ -146,12 +146,12 @@ READ32_HANDLER( simpl156_inputs_read )
 	return returndata;
 }
 
-READ32_HANDLER( simpl156_palette_r )
+static READ32_HANDLER( simpl156_palette_r )
 {
 	return paletteram16[offset]^0xffff0000;
 }
 
-WRITE32_HANDLER( simpl156_palette_w )
+static WRITE32_HANDLER( simpl156_palette_w )
 {
 	UINT16 dat;
 	int color;
@@ -212,12 +212,12 @@ static WRITE32_HANDLER( oki2_w )
 
 /* we need to throw away bits for all ram accesses as the devices are connected as 16-bit */
 
-READ32_HANDLER( simpl156_spriteram_r )
+static READ32_HANDLER( simpl156_spriteram_r )
 {
 	return spriteram32[offset]^0xffff0000;
 }
 
-WRITE32_HANDLER( simpl156_spriteram_w )
+static WRITE32_HANDLER( simpl156_spriteram_w )
 {
 	data &=0x0000ffff;
 	mem_mask &=0x0000ffff;
@@ -228,12 +228,12 @@ WRITE32_HANDLER( simpl156_spriteram_w )
 static UINT32*simpl156_mainram;
 
 
-READ32_HANDLER( simpl156_mainram_r )
+static READ32_HANDLER( simpl156_mainram_r )
 {
 	return simpl156_mainram[offset]^0xffff0000;
 }
 
-WRITE32_HANDLER( simpl156_mainram_w )
+static WRITE32_HANDLER( simpl156_mainram_w )
 {
 	data &=0x0000ffff;
 	mem_mask &=0x0000ffff;
@@ -241,12 +241,12 @@ WRITE32_HANDLER( simpl156_mainram_w )
 	COMBINE_DATA(&simpl156_mainram[offset]);
 }
 
-READ32_HANDLER( simpl156_pf1_rowscroll_r )
+static READ32_HANDLER( simpl156_pf1_rowscroll_r )
 {
 	return deco16_pf1_rowscroll[offset]^0xffff0000;
 }
 
-WRITE32_HANDLER( simpl156_pf1_rowscroll_w )
+static WRITE32_HANDLER( simpl156_pf1_rowscroll_w )
 {
 	data &=0x0000ffff;
 	mem_mask &=0x0000ffff;
@@ -254,12 +254,12 @@ WRITE32_HANDLER( simpl156_pf1_rowscroll_w )
 	COMBINE_DATA(&deco16_pf1_rowscroll[offset]);
 }
 
-READ32_HANDLER( simpl156_pf2_rowscroll_r )
+static READ32_HANDLER( simpl156_pf2_rowscroll_r )
 {
 	return deco16_pf2_rowscroll[offset]^0xffff0000;
 }
 
-WRITE32_HANDLER( simpl156_pf2_rowscroll_w )
+static WRITE32_HANDLER( simpl156_pf2_rowscroll_w )
 {
 	data &=0x0000ffff;
 	mem_mask &=0x0000ffff;
@@ -267,12 +267,12 @@ WRITE32_HANDLER( simpl156_pf2_rowscroll_w )
 	COMBINE_DATA(&deco16_pf2_rowscroll[offset]);
 }
 
-READ32_HANDLER ( simpl156_pf12_control_r )
+static READ32_HANDLER ( simpl156_pf12_control_r )
 {
 	return deco16_pf12_control[offset]^0xffff0000;
 }
 
-WRITE32_HANDLER( simpl156_pf12_control_w )
+static WRITE32_HANDLER( simpl156_pf12_control_w )
 {
 	data &=0x0000ffff;
 	mem_mask &=0x0000ffff;
@@ -281,12 +281,12 @@ WRITE32_HANDLER( simpl156_pf12_control_w )
 }
 
 
-READ32_HANDLER( simpl156_pf1_data_r )
+static READ32_HANDLER( simpl156_pf1_data_r )
 {
 	return deco16_pf1_data[offset]^0xffff0000;
 }
 
-WRITE32_HANDLER( simpl156_pf1_data_w )
+static WRITE32_HANDLER( simpl156_pf1_data_w )
 {
 	data &=0x0000ffff;
 	mem_mask &=0x0000ffff;
@@ -294,13 +294,13 @@ WRITE32_HANDLER( simpl156_pf1_data_w )
 	deco16_pf1_data_w(offset,data,mem_mask);
 }
 
-READ32_HANDLER( simpl156_pf2_data_r )
+static READ32_HANDLER( simpl156_pf2_data_r )
 {
 	return deco16_pf2_data[offset]^0xffff0000;
 }
 
 
-WRITE32_HANDLER( simpl156_pf2_data_w )
+static WRITE32_HANDLER( simpl156_pf2_data_w )
 {
 	data &=0x0000ffff;
 	mem_mask &=0x0000ffff;
@@ -455,7 +455,7 @@ static GFXDECODE_START( simpl156 )
 
 GFXDECODE_END
 
-NVRAM_HANDLER( simpl156 )
+static NVRAM_HANDLER( simpl156 )
 {
 	if (read_or_write)
 		EEPROM_save(file);
@@ -486,7 +486,7 @@ static MACHINE_DRIVER_START( chainrec )
 	MDRV_CPU_VBLANK_INT(simpl156_vbl_interrupt,1)
 
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(800))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(800))
 	MDRV_NVRAM_HANDLER(simpl156) // 93C45
 
 	/* video hardware */
@@ -549,7 +549,7 @@ static MACHINE_DRIVER_START( mitchell156 )
 MACHINE_DRIVER_END
 
 
-DRIVER_INIT(simpl156)
+static DRIVER_INIT(simpl156)
 {
 	UINT8 *rom = memory_region(REGION_SOUND2);
 	int length = memory_region_length(REGION_SOUND2);
@@ -1040,7 +1040,7 @@ ROM_END
 
 /* some default eeproms */
 
-UINT8 chainrec_eeprom[128] = {
+static UINT8 chainrec_eeprom[128] = {
 	0x52, 0x54, 0x00, 0x50, 0x00, 0x00, 0x39, 0x11, 0x41, 0x54, 0x00, 0x43, 0x00, 0x50, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -1109,7 +1109,7 @@ UINT8 chainrec_eeprom[128] = {
 
 */
 
-UINT8 osman_eeprom[128] = {
+static UINT8 osman_eeprom[128] = {
 	0xFF, 0xBE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -1119,7 +1119,7 @@ UINT8 osman_eeprom[128] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xBE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
-UINT8 candance_eeprom[128] = {
+static UINT8 candance_eeprom[128] = {
 	0xFF, 0xBF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -1129,7 +1129,7 @@ UINT8 candance_eeprom[128] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xBF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
-UINT8 prtytime_eeprom[128] = {
+static UINT8 prtytime_eeprom[128] = {
 	0xAF, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -1140,7 +1140,7 @@ UINT8 prtytime_eeprom[128] = {
 	0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xAF, 0x7F, 0xFF, 0xFF, 0x7F, 0xFE, 0xFF, 0xFF
 };
 
-UINT8 gangonta_eeprom[128] = {
+static UINT8 gangonta_eeprom[128] = {
 	0x2F, 0xFF, 0x2F, 0xFF, 0xFF, 0xFE, 0xFF, 0xFE, 0xFF, 0xFE, 0xED, 0xCB, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -1154,7 +1154,7 @@ UINT8 gangonta_eeprom[128] = {
 /* Everything seems more stable if we run the CPU speed x4 and use Idle skips.. maybe it has an internal multipler? */
 static READ32_HANDLER( joemacr_speedup_r )
 {
-	if (activecpu_get_pc()==0x284)  cpu_spinuntil_time(MAME_TIME_IN_USEC(400));
+	if (activecpu_get_pc()==0x284)  cpu_spinuntil_time(ATTOTIME_IN_USEC(400));
 	return simpl156_systemram[0x18/4];
 }
 
@@ -1167,7 +1167,7 @@ static DRIVER_INIT (joemacr)
 
 static READ32_HANDLER( chainrec_speedup_r )
 {
-	if (activecpu_get_pc()==0x2d4)  cpu_spinuntil_time(MAME_TIME_IN_USEC(400));
+	if (activecpu_get_pc()==0x2d4)  cpu_spinuntil_time(ATTOTIME_IN_USEC(400));
 	return simpl156_systemram[0x18/4];
 }
 
@@ -1180,7 +1180,7 @@ static DRIVER_INIT (chainrec)
 
 static READ32_HANDLER( prtytime_speedup_r )
 {
-	if (activecpu_get_pc()==0x4f0)  cpu_spinuntil_time(MAME_TIME_IN_USEC(400));
+	if (activecpu_get_pc()==0x4f0)  cpu_spinuntil_time(ATTOTIME_IN_USEC(400));
 	return simpl156_systemram[0xae0/4];
 }
 
@@ -1201,7 +1201,7 @@ static DRIVER_INIT (gangonta)
 
 static READ32_HANDLER( charlien_speedup_r )
 {
-	if (activecpu_get_pc()==0xc8c8)  cpu_spinuntil_time(MAME_TIME_IN_USEC(400));
+	if (activecpu_get_pc()==0xc8c8)  cpu_spinuntil_time(ATTOTIME_IN_USEC(400));
 	return simpl156_systemram[0x10/4];
 }
 
@@ -1213,7 +1213,7 @@ static DRIVER_INIT (charlien)
 
 static READ32_HANDLER( osman_speedup_r )
 {
-	if (activecpu_get_pc()==0x5974)  cpu_spinuntil_time(MAME_TIME_IN_USEC(400));
+	if (activecpu_get_pc()==0x5974)  cpu_spinuntil_time(ATTOTIME_IN_USEC(400));
 	return simpl156_systemram[0x10/4];
 }
 

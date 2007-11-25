@@ -122,7 +122,7 @@ static UINT8 sound_command;
  *
  *************************************/
 
-MACHINE_RESET( pipedrm )
+static MACHINE_RESET( pipedrm )
 {
 	/* initialize main Z80 bank */
 	memory_configure_bank(1, 0, 8, memory_region(REGION_CPU1) + 0x10000, 0x2000);
@@ -293,7 +293,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( pipedrm )
+static INPUT_PORTS_START( pipedrm )
 	PORT_START	/* $20 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -384,7 +384,7 @@ INPUT_PORTS_START( pipedrm )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( hatris )
+static INPUT_PORTS_START( hatris )
 	PORT_START	/* $20 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)

@@ -74,7 +74,7 @@ static TILE_GET_INFO( get_k3_bg_tile_info )
 	SET_TILE_INFO(1,tileno,0,0);
 }
 
-VIDEO_START(k3)
+static VIDEO_START(k3)
 {
 	k3_bg_tilemap = tilemap_create(get_k3_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,      16, 16, 32,64);
 }
@@ -103,7 +103,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-VIDEO_UPDATE(k3)
+static VIDEO_UPDATE(k3)
 {
 	tilemap_draw(bitmap,cliprect,k3_bg_tilemap,0,0);
 	draw_sprites(machine,bitmap,cliprect);
@@ -111,17 +111,17 @@ VIDEO_UPDATE(k3)
 }
 
 
-WRITE16_HANDLER( k3_scrollx_w )
+static WRITE16_HANDLER( k3_scrollx_w )
 {
 	tilemap_set_scrollx( k3_bg_tilemap,0, data);
 }
 
-WRITE16_HANDLER( k3_scrolly_w )
+static WRITE16_HANDLER( k3_scrolly_w )
 {
 	tilemap_set_scrolly( k3_bg_tilemap,0, data);
 }
 
-WRITE16_HANDLER( k3_soundbanks_w )
+static WRITE16_HANDLER( k3_soundbanks_w )
 {
 	OKIM6295_set_bank_base(0, (data & 4) ? 0x40000 : 0);
 	OKIM6295_set_bank_base(1, (data & 2) ? 0x40000 : 0);
@@ -162,7 +162,7 @@ static ADDRESS_MAP_START( k3_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x8c0000, 0x8cffff) AM_WRITE(MWA16_RAM) // not used?
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( k3 )
+static INPUT_PORTS_START( k3 )
 	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)

@@ -94,7 +94,7 @@ PALETTE_INIT( cvs );
 VIDEO_UPDATE( cvs );
 VIDEO_START( cvs );
 
-extern UINT8 *bullet_ram;
+extern UINT8 *cvs_bullet_ram;
 
 WRITE8_HANDLER( cvs_videoram_w );
 WRITE8_HANDLER( cvs_bullet_w );
@@ -148,7 +148,7 @@ static void reset_talking (void)
     speech_rom_bit     = 0x0;
 }
 
-WRITE8_HANDLER( control_port_w )
+static WRITE8_HANDLER( control_port_w )
 {
 	/* Controls both Speech and Effects */
 
@@ -182,7 +182,7 @@ WRITE8_HANDLER( control_port_w )
     }
 }
 
-int cvs_speech_rom_read_bit(void)
+static int cvs_speech_rom_read_bit(void)
 {
 	UINT8 *ROM = memory_region(REGION_SOUND1);
     int bit;
@@ -201,7 +201,7 @@ int cvs_speech_rom_read_bit(void)
 	return bit;
 }
 
-WRITE8_HANDLER( cvs_DAC2_w )
+static WRITE8_HANDLER( cvs_DAC2_w )
 {
     /* 4 Bit DAC - 4 memory locations used */
 
@@ -213,7 +213,7 @@ WRITE8_HANDLER( cvs_DAC2_w )
 	DAC_1_data_w(0,DAC_Value);
 }
 
-READ8_HANDLER( CVS_393hz_Clock_r )
+static READ8_HANDLER( cvs_393hz_Clock_r )
 {
   	if(cpu_scalebyfcount(6) & 1) return 0x80;
     else return 0;
@@ -227,7 +227,7 @@ static struct TMS5110interface tms5110_interface =
 
 static ADDRESS_MAP_START( cvs_cpu1_program, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x13ff) AM_ROM
-    AM_RANGE(0x1400, 0x14ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_bullet_r, cvs_bullet_w) AM_BASE(&bullet_ram)
+    AM_RANGE(0x1400, 0x14ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_bullet_r, cvs_bullet_w) AM_BASE(&cvs_bullet_ram)
     AM_RANGE(0x1500, 0x15ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_2636_3_r, cvs_2636_3_w) AM_BASE(&s2636_3_ram)
     AM_RANGE(0x1600, 0x16ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_2636_2_r, cvs_2636_2_w) AM_BASE(&s2636_2_ram)
     AM_RANGE(0x1700, 0x17ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_2636_1_r, cvs_2636_1_w) AM_BASE(&s2636_1_ram)
@@ -263,10 +263,10 @@ static ADDRESS_MAP_START( cvs_cpu2_program, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cvs_cpu2_io, ADDRESS_SPACE_IO, 8 )
-    AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(CVS_393hz_Clock_r)
+    AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(cvs_393hz_Clock_r)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( cvs )
+static INPUT_PORTS_START( cvs )
 
 	PORT_START	/* Matrix 0 */
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )				/* Confirmed */
@@ -381,7 +381,7 @@ static MACHINE_DRIVER_START( cvs )
 	MDRV_CPU_IO_MAP(cvs_cpu2_io,0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(1000))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1000))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

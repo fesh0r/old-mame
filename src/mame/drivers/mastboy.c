@@ -438,30 +438,30 @@
 #include "sound/msm5205.h"
 
 /* RAM areas */
-UINT8* mastboy_tileram;
-UINT8* mastboy_vram;
-UINT8* mastboy_colram;
-UINT8* mastboy_workram;
+static UINT8* mastboy_tileram;
+static UINT8* mastboy_vram;
+static UINT8* mastboy_colram;
+static UINT8* mastboy_workram;
 
 /* Bank Control */
-UINT8 mastboy_bank;
+static UINT8 mastboy_bank;
 
 /* General */
-int mastboy_irq0_ack;
-int mastboy_backupram_enabled;
+static int mastboy_irq0_ack;
+static int mastboy_backupram_enabled;
 
 /* MSM5205 */
-int mastboy_m5205_next;
-int mastboy_m5205_part;
-int mastboy_m5205_sambit0, mastboy_m5205_sambit1;
+static int mastboy_m5205_next;
+static int mastboy_m5205_part;
+static int mastboy_m5205_sambit0, mastboy_m5205_sambit1;
 
 /* VIDEO EMULATION */
 
-VIDEO_START(mastboy)
+static VIDEO_START(mastboy)
 {
 }
 
-VIDEO_UPDATE(mastboy)
+static VIDEO_UPDATE(mastboy)
 {
 	int y,x,i;
 	int count = 0x000;
@@ -571,7 +571,7 @@ static WRITE8_HANDLER( banked_ram_w )
 	}
 }
 
-WRITE8_HANDLER( mastboy_bank_w )
+static WRITE8_HANDLER( mastboy_bank_w )
 {
 	// controls access to banked ram / rom
 	mastboy_bank = data;
@@ -579,12 +579,12 @@ WRITE8_HANDLER( mastboy_bank_w )
 
 /* Backup RAM access */
 
-READ8_HANDLER( mastboy_backupram_r )
+static READ8_HANDLER( mastboy_backupram_r )
 {
 	return generic_nvram[offset];
 }
 
-WRITE8_HANDLER( mastboy_backupram_w )
+static WRITE8_HANDLER( mastboy_backupram_w )
 {
 //  if (mastboy_backupram_enabled)
 //  {
@@ -628,7 +628,7 @@ static WRITE8_HANDLER( msm5205_reset_w )
 	MSM5205_reset_w(0,data&1);
 }
 
-WRITE8_HANDLER( mastboy_msm5205_data_w )
+static WRITE8_HANDLER( mastboy_msm5205_data_w )
 {
 	mastboy_m5205_next = data;
 }
@@ -652,13 +652,13 @@ static struct MSM5205interface msm5205_interface =
 
 /* Interrupt Handling */
 
-WRITE8_HANDLER( mastboy_irq0_ack_w )
+static WRITE8_HANDLER( mastboy_irq0_ack_w )
 {
 	mastboy_irq0_ack = data;
 	if ((data&1)==1) cpunum_set_input_line(0,0, CLEAR_LINE);
 }
 
-INTERRUPT_GEN( mastboy_interrupt )
+static INTERRUPT_GEN( mastboy_interrupt )
 {
 	if ((mastboy_irq0_ack&1)==1)
 	{
@@ -708,12 +708,12 @@ ADDRESS_MAP_END
 
 /* Ports */
 
-READ8_HANDLER( mastboy_port_38_read )
+static READ8_HANDLER( mastboy_port_38_read )
 {
 	return 0x00;
 }
 
-READ8_HANDLER( mastboy_nmi_read )
+static READ8_HANDLER( mastboy_nmi_read )
 {
 	// this is read in the NMI, it's related to the Z180 MMU I think, must return right value or game jumps to 0000
 	return 0x00;
@@ -726,7 +726,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( mastboy )
+static INPUT_PORTS_START( mastboy )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN1 )
 	PORT_BIT( 0x1e, IP_ACTIVE_LOW,  IPT_UNUSED )
@@ -842,7 +842,7 @@ GFXDECODE_END
 
 /* Machine Functions / Driver */
 
-MACHINE_RESET( mastboy )
+static MACHINE_RESET( mastboy )
 {
 	/* clear some ram */
 	memset( mastboy_workram,   0x00, 0x01000);
@@ -970,7 +970,7 @@ ROM_START( mastboyi )
 	/*                  0x1c0000 to 0x1fffff EMPTY */
 ROM_END
 
-DRIVER_INIT( mastboy )
+static DRIVER_INIT( mastboy )
 {
 	mastboy_vram = memory_region( REGION_GFX1 ); // makes decoding the RAM based tiles easier this way
 }

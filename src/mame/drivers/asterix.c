@@ -127,7 +127,7 @@ static TIMER_CALLBACK( nmi_callback )
 static WRITE8_HANDLER( sound_arm_nmi_w )
 {
 	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
-	mame_timer_set(MAME_TIME_IN_USEC(5),0,nmi_callback);
+	timer_set(ATTOTIME_IN_USEC(5),0,nmi_callback);
 }
 
 static WRITE16_HANDLER( sound_irq_w )
@@ -236,7 +236,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( asterix )
+static INPUT_PORTS_START( asterix )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)

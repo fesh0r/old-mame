@@ -335,19 +335,19 @@ static TIMER_CALLBACK( arm_irq )
 }
 #endif
 
-//static mame_timer *   arm_comms_timer;
+//static emu_timer *   arm_comms_timer;
 static WRITE32_HANDLER( arm7_latch_arm_w )
 {
 	if (PGMARM7LOGERROR) logerror("ARM7: Latch write: %08x (%08x) (%06x)\n", data, mem_mask, activecpu_get_pc() );
 	COMBINE_DATA(&arm7_latch);
 
 #ifdef PGMARM7SPEEDHACK
-//  cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(100));
+//  cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
 	if (data!=0xaa) cpu_spinuntil_trigger(1000);
 	cpu_trigger(1002);
 #else
-	cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(100));
-	cpu_spinuntil_time(MAME_TIME_IN_CYCLES(100, 0));
+	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
+	cpu_spinuntil_time(ATTOTIME_IN_CYCLES(100, 0));
 #endif
 }
 
@@ -376,12 +376,12 @@ static WRITE16_HANDLER( arm7_latch_68k_w )
 
 #ifdef PGMARM7SPEEDHACK
 	cpu_trigger(1000);
-	mame_timer_set(MAME_TIME_IN_USEC(50), 0, arm_irq); // i don't know how long..
+	timer_set(ATTOTIME_IN_USEC(50), 0, arm_irq); // i don't know how long..
 	cpu_spinuntil_trigger(1002);
 #else
 	cpunum_set_input_line(2, ARM7_FIRQ_LINE, PULSE_LINE);
-	cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(200));
-	cpu_spinuntil_time(MAME_TIME_IN_CYCLES(200, 2)); // give the arm time to respond (just boosting the interleave doesn't help
+	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(200));
+	cpu_spinuntil_time(ATTOTIME_IN_CYCLES(200, 2)); // give the arm time to respond (just boosting the interleave doesn't help
 #endif
 }
 
@@ -474,7 +474,7 @@ static UINT8 bcd(UINT8 data)
 	return ((data / 10) << 4) | (data % 10);
 }
 
-READ16_HANDLER( pgm_calendar_r )
+static READ16_HANDLER( pgm_calendar_r )
 {
 	UINT8 calr;
 	calr = (CalVal & CalMask) ? 1 : 0;
@@ -482,7 +482,7 @@ READ16_HANDLER( pgm_calendar_r )
 	return calr;
 }
 
-WRITE16_HANDLER( pgm_calendar_w )
+static WRITE16_HANDLER( pgm_calendar_w )
 {
 	static mame_system_time systime;
 
@@ -608,7 +608,7 @@ static ADDRESS_MAP_START( killbld_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xc10000, 0xc1ffff) AM_READWRITE(z80_ram_r, z80_ram_w) /* Z80 Program */
 ADDRESS_MAP_END
 
-UINT16*olds_sharedprotram;
+static UINT16 *olds_sharedprotram;
 
 static ADDRESS_MAP_START( olds_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x000000, 0x01ffff) AM_ROM   /* BIOS ROM */
@@ -727,9 +727,9 @@ ADDRESS_MAP_END
 
 /* Kov Superheroes */
 
-UINT16 kovsh_highlatch, kovsh_lowlatch;
+static UINT16 kovsh_highlatch, kovsh_lowlatch;
 
-READ32_HANDLER( kovsh_arm7_protlatch_r )
+static READ32_HANDLER( kovsh_arm7_protlatch_r )
 {
 //  return 0x00880000;
 //  return 0x0088ff66;
@@ -737,7 +737,7 @@ READ32_HANDLER( kovsh_arm7_protlatch_r )
 	return (kovsh_highlatch << 16) | (kovsh_lowlatch);
 }
 
-WRITE32_HANDLER( kovsh_arm7_protlatch_w )
+static WRITE32_HANDLER( kovsh_arm7_protlatch_w )
 {
 	if (!(mem_mask & 0xffff0000))
 	{
@@ -748,14 +748,14 @@ WRITE32_HANDLER( kovsh_arm7_protlatch_w )
 		kovsh_lowlatch = data;
 	}
 
-//  cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(100));
-//  cpu_spinuntil_time(MAME_TIME_IN_CYCLES(100, 0));
+//  cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
+//  cpu_spinuntil_time(ATTOTIME_IN_CYCLES(100, 0));
 }
 
-READ16_HANDLER( kovsh_68k_protlatch_r )
+static READ16_HANDLER( kovsh_68k_protlatch_r )
 {
-	//cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(200));
-	cpu_spinuntil_time(MAME_TIME_IN_CYCLES(600, 0));
+	//cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(200));
+	cpu_spinuntil_time(ATTOTIME_IN_CYCLES(600, 0));
 
 	switch (offset)
 	{
@@ -765,7 +765,7 @@ READ16_HANDLER( kovsh_68k_protlatch_r )
 	return -1;
 }
 
-WRITE16_HANDLER( kovsh_68k_protlatch_w )
+static WRITE16_HANDLER( kovsh_68k_protlatch_w )
 {
 	switch (offset)
 	{
@@ -805,7 +805,7 @@ static ADDRESS_MAP_START( kovsh_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x500000, 0x500003) AM_READWRITE(kovsh_68k_protlatch_r, kovsh_68k_protlatch_w) /* ARM7 Latch */
 ADDRESS_MAP_END
 
-READ32_HANDLER( kovsh_arm7_unk_r )
+static READ32_HANDLER( kovsh_arm7_unk_r )
 {
 	return 0x00000000;
 }
@@ -924,7 +924,7 @@ static INPUT_PORTS_START( orld105k )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) ) // "incorrect version" error
 INPUT_PORTS_END
 
-INPUT_PORTS_START( sango )
+static INPUT_PORTS_START( sango )
 	PORT_START	/* DSW */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1                       )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -1014,7 +1014,7 @@ INPUT_PORTS_START( sango )
 	PORT_DIPSETTING(      0x0005, DEF_STR( World ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( olds )
+static INPUT_PORTS_START( olds )
 	PORT_START	/* DSW */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1                       )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -1105,7 +1105,7 @@ INPUT_PORTS_START( olds )
 	PORT_DIPSETTING(      0x0006, DEF_STR( World ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( killbld )
+static INPUT_PORTS_START( killbld )
 	PORT_START	/* DSW */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1                       )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -1202,7 +1202,7 @@ INPUT_PORTS_START( killbld )
 	PORT_DIPSETTING(      0x0021, DEF_STR( World ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( photoy2k )
+static INPUT_PORTS_START( photoy2k )
 	PORT_START	/* DSW */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1                       )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -1292,7 +1292,7 @@ INPUT_PORTS_START( photoy2k )
 	PORT_DIPSETTING(      0x0005, "Hong Kong" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ddp2 )
+static INPUT_PORTS_START( ddp2 )
 	PORT_START	/* P1 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1                       )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -1866,7 +1866,7 @@ static int kb_cmd;
 static int reg;
 static int ptr;
 
-WRITE16_HANDLER( killbld_prot_w )
+static WRITE16_HANDLER( killbld_prot_w )
 {
 //  mame_printf_debug("killbrd prot r\n");
 //  return 0;
@@ -2027,7 +2027,7 @@ WRITE16_HANDLER( killbld_prot_w )
 	}
 }
 
-READ16_HANDLER( killbld_prot_r )
+static READ16_HANDLER( killbld_prot_r )
 {
 //  mame_printf_debug("killbld prot w\n");
 	UINT16 res ;
@@ -2102,7 +2102,7 @@ static DRIVER_INIT( killbld )
 
 /* ddp2 rubbish */
 
-UINT16 *ddp2_protram;
+static UINT16 *ddp2_protram;
 static int ddp2_asic27_0xd10000 = 0;
 
 static WRITE16_HANDLER ( ddp2_asic27_0xd10000_w )
@@ -2119,7 +2119,7 @@ static READ16_HANDLER ( ddp2_asic27_0xd10000_r )
 }
 
 
-READ16_HANDLER(ddp2_protram_r)
+static READ16_HANDLER(ddp2_protram_r)
 {
 	if (PGMLOGERROR) logerror("prot_r %04x, %04x\n", offset,ddp2_protram[offset]);
 
@@ -2130,7 +2130,7 @@ READ16_HANDLER(ddp2_protram_r)
 	return ddp2_protram[offset];
 }
 
-WRITE16_HANDLER(ddp2_protram_w)
+static WRITE16_HANDLER(ddp2_protram_w)
 {
 	if (PGMLOGERROR) logerror("prot_w %04x, %02x\n", offset,data);
 	COMBINE_DATA(&ddp2_protram[offset]);
@@ -2215,11 +2215,11 @@ static MACHINE_RESET( olds )
 }
 
 
-UINT16 olds_bs,olds_cmd3;
+static UINT16 olds_bs,olds_cmd3;
 
 
 //UINT16 olds_r16(UINT32 addr)
-READ16_HANDLER( olds_r16 )
+static READ16_HANDLER( olds_r16 )
 {
 //  int offset=addr&0xf;
 	UINT16 res ;
@@ -2245,7 +2245,7 @@ READ16_HANDLER( olds_r16 )
 }
 
 //void olds_w16(UINT32 addr,UINT16 data)
-WRITE16_HANDLER( olds_w16 )
+static WRITE16_HANDLER( olds_w16 )
 {
 //  int offset=addr&0xf;
 

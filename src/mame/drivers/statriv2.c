@@ -65,7 +65,7 @@ PROM use is unknown
 /* Default NVram, we seem to need one or statriv2 crashes during attract
    attempting to display an unterminated message */
 
-UINT8 statriv2_default_eeprom[256] = {
+static UINT8 statriv2_default_eeprom[256] = {
 	0x24,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x06,0x00,0x00,0x11,0x00,
 	0x00,0x00,0x00,0x00,0x01,0x02,0x01,0x05,0x00,0x00,0x11,0x49,0x41,0x41,0x00,0x00,
@@ -84,7 +84,7 @@ UINT8 statriv2_default_eeprom[256] = {
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
-UINT8 quaquiz2_default_eeprom[256] = {
+static UINT8 quaquiz2_default_eeprom[256] = {
 	0x6f,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x02,0x00,0x10,0x00,0x10,0x00,0x00,0x00,0x00,0x00,0xa5,0x6e,0x03,0xff,
 	0x50,0x03,0xff,0xa0,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -103,7 +103,7 @@ UINT8 quaquiz2_default_eeprom[256] = {
 	0x20,0x49,0x49,0xff,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
-UINT8 *statriv2_videoram;
+static UINT8 *statriv2_videoram;
 static tilemap* statriv2_tilemap;
 
 /* Video Related, move to video later */
@@ -117,25 +117,25 @@ static TILE_GET_INFO( get_statriv2_tile_info )
 }
 
 
-WRITE8_HANDLER( statriv2_videoram_w )
+static WRITE8_HANDLER( statriv2_videoram_w )
 {
 	statriv2_videoram[offset] = data;
 	tilemap_mark_tile_dirty(statriv2_tilemap,offset & 0x3ff);
 }
 
 
-VIDEO_START (statriv2)
+static VIDEO_START (statriv2)
 {
 	statriv2_tilemap = tilemap_create(get_statriv2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,16,64, 16);
 }
 
-VIDEO_UPDATE (statriv2)
+static VIDEO_UPDATE (statriv2)
 {
 	tilemap_draw(bitmap,cliprect,statriv2_tilemap,0,0);
 	return 0;
 }
 
-PALETTE_INIT(statriv2)
+static PALETTE_INIT(statriv2)
 {
 	int i;
 
@@ -416,7 +416,7 @@ static ADDRESS_MAP_START( hangman_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xce, 0xce) AM_READ(MRA8_NOP)			// ???
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( statriv2 )
+static INPUT_PORTS_START( statriv2 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_SERVICE3 ) PORT_NAME("Play All")
@@ -444,7 +444,7 @@ INPUT_PORTS_START( statriv2 )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( statriv4 )
+static INPUT_PORTS_START( statriv4 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_SERVICE3 ) PORT_NAME("Play All")
@@ -470,7 +470,7 @@ INPUT_PORTS_START( statriv4 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( supertr2 )
+static INPUT_PORTS_START( supertr2 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_SERVICE3 ) PORT_NAME("Play All")
@@ -492,7 +492,7 @@ INPUT_PORTS_START( supertr2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( quaquiz2 )
+static INPUT_PORTS_START( quaquiz2 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_SERVICE3 ) PORT_NAME("Play All")
@@ -524,7 +524,7 @@ INPUT_PORTS_START( quaquiz2 )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hangman )
+static INPUT_PORTS_START( hangman )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 ) PORT_IMPULSE(8)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_IMPULSE(8) PORT_NAME("Choose")
@@ -554,7 +554,7 @@ INPUT_PORTS_START( hangman )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( sextriv )
+static INPUT_PORTS_START( sextriv )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_SERVICE3 ) PORT_NAME("Play All")

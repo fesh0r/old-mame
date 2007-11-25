@@ -35,7 +35,7 @@ WRITE8_HANDLER( momoko_fg_select_w);
 WRITE8_HANDLER( momoko_bg_select_w);
 WRITE8_HANDLER( momoko_bg_priority_w);
 
-WRITE8_HANDLER( momoko_bg_read_bank_w )
+static WRITE8_HANDLER( momoko_bg_read_bank_w )
 {
 	UINT8 *BG_MAP = memory_region(REGION_USER1);
 	int bank_address = (data & 0x1f) * 0x1000;
@@ -112,7 +112,7 @@ ADDRESS_MAP_END
 
 /****************************************************************************/
 
-INPUT_PORTS_START( momoko )
+static INPUT_PORTS_START( momoko )
     PORT_START_TAG("IN0")
     PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
     PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )

@@ -113,13 +113,13 @@ static WRITE8_HANDLER( high_offset_w )
 	question_address = (question_address & 0x00ffff) | (offset << 16);
 }
 
-WRITE8_HANDLER( phrcraze_attr_w )
+static WRITE8_HANDLER( phrcraze_attr_w )
 {
 	phrcraze_attr[offset] = data;
 	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
-WRITE8_HANDLER( phrcraze_bg_w )
+static WRITE8_HANDLER( phrcraze_bg_w )
 {
 	videoram[offset] = data;
 	tilemap_mark_tile_dirty(bg_tilemap,offset);
@@ -279,7 +279,7 @@ ADDRESS_MAP_END
 // keep service test button pressed to clear the coin counter.
 // keep it pressed for 10 seconds to clear all the memory.
 // to enter hidden test mode enable "Enable Test Mode", enable "Reset High Scores"
-INPUT_PORTS_START( phrcraze )
+static INPUT_PORTS_START( phrcraze )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -352,7 +352,7 @@ INPUT_PORTS_END
 // keep service test button pressed to clear the coin counter.
 // keep it pressed for 10 seconds to clear all the memory.
 // to enter hidden test mode enable "Enable Test Mode", enable "Reset High Scores"
-INPUT_PORTS_START( phrcrazs )
+static INPUT_PORTS_START( phrcrazs )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -422,7 +422,7 @@ INPUT_PORTS_END
 // keep service test button pressed to clear the coin counter.
 // To enter hidden test-mode in service mode:
 // enable "Reset High Scores" then press "Service Mode"
-INPUT_PORTS_START( tictac )
+static INPUT_PORTS_START( tictac )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -489,7 +489,7 @@ INPUT_PORTS_START( tictac )
 //  PORT_DIPSETTING(    0x40, "Upright 1 Player" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( trivia )
+static INPUT_PORTS_START( trivia )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -561,7 +561,7 @@ INPUT_PORTS_END
 // keep service test button pressed to clear the coin counter.
 // keep it pressed for 10 seconds to clear all the memory.
 // to enter hidden test mode enable "Enable Test Mode", enable "Reset High Scores"
-INPUT_PORTS_START( trvwhziv )
+static INPUT_PORTS_START( trvwhziv )
 	PORT_INCLUDE( trivia )
 
 	PORT_MODIFY("DSWA")
@@ -570,7 +570,7 @@ INPUT_PORTS_START( trvwhziv )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( pitboss )
+static INPUT_PORTS_START( pitboss )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_DIPNAME( 0x02, 0x02, "0-1" )
@@ -610,7 +610,7 @@ INPUT_PORTS_START( pitboss )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( bigappg )
+static INPUT_PORTS_START( bigappg )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, "1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -729,12 +729,12 @@ static TILE_GET_INFO( get_tile_info_bg )
 }
 
 
-VIDEO_START( merit )
+static VIDEO_START( merit )
 {
 	bg_tilemap = tilemap_create(get_tile_info_bg,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
 }
 
-VIDEO_UPDATE( merit )
+static VIDEO_UPDATE( merit )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	return 0;
@@ -1189,27 +1189,27 @@ ROM_START( phrcrazs )
 ROM_END
 
 
-DRIVER_INIT( key_0 )
+static DRIVER_INIT( key_0 )
 {
 	decryption_key = 0;
 }
 
-DRIVER_INIT( key_2 )
+static DRIVER_INIT( key_2 )
 {
 	decryption_key = 2;
 }
 
-DRIVER_INIT( key_4 )
+static DRIVER_INIT( key_4 )
 {
 	decryption_key = 4;
 }
 
-DRIVER_INIT( key_5 )
+static DRIVER_INIT( key_5 )
 {
 	decryption_key = 5;
 }
 
-DRIVER_INIT( key_7 )
+static DRIVER_INIT( key_7 )
 {
 	decryption_key = 7;
 }

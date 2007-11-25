@@ -118,13 +118,13 @@ static TIMER_CALLBACK( soundlatch_callback )
 	latch = param;
 }
 
-WRITE8_HANDLER( bombjack_soundlatch_w )
+static WRITE8_HANDLER( bombjack_soundlatch_w )
 {
 	/* make all the CPUs synchronize, and only AFTER that write the new command to the latch */
 	timer_call_after_resynch(data,soundlatch_callback);
 }
 
-READ8_HANDLER( bombjack_soundlatch_r )
+static READ8_HANDLER( bombjack_soundlatch_r )
 {
 	int res;
 
@@ -186,7 +186,7 @@ static ADDRESS_MAP_START( bombjack_sound_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( bombjack )
+static INPUT_PORTS_START( bombjack )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY

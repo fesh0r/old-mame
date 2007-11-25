@@ -54,7 +54,7 @@ extern UINT16 *splash_videoram;
 extern UINT16 *splash_spriteram;
 extern UINT16 *splash_pixelram;
 extern UINT16 *roldfrog_bitmap_mode;
-UINT16 *roldfrog_protdata;
+static UINT16 *roldfrog_protdata;
 
 extern int splash_bitmap_type;
 extern int splash_sprite_attr2_shift;
@@ -81,7 +81,7 @@ static WRITE16_HANDLER( roldf_sh_irqtrigger_w )
 	}
 
 	// give the z80 time to see it
-	cpu_spinuntil_time(MAME_TIME_IN_USEC(40));
+	cpu_spinuntil_time(ATTOTIME_IN_USEC(40));
 }
 
 static ADDRESS_MAP_START( splash_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -99,7 +99,7 @@ static ADDRESS_MAP_START( splash_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xffc000, 0xffffff) AM_READ(MRA16_RAM)			/* Work RAM */
 ADDRESS_MAP_END
 
-WRITE16_HANDLER( splash_coin_w )
+static WRITE16_HANDLER( splash_coin_w )
 {
 	if (ACCESSING_MSB){
 		switch ((offset >> 3)){
@@ -249,7 +249,7 @@ static ADDRESS_MAP_START( funystrp_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(MWA16_RAM)										/* Work RAM */
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( splash )
+static INPUT_PORTS_START( splash )
 	PORT_START	/* DSW #1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 5C_1C ) )
@@ -321,7 +321,7 @@ INPUT_PORTS_START( splash )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( funystrp )
+static INPUT_PORTS_START( funystrp )
 	PORT_START	/* DSW #1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 5C_1C ) )
@@ -877,25 +877,25 @@ ROM_END
 
 /* DRIVER INITs */
 
-DRIVER_INIT( splash )
+static DRIVER_INIT( splash )
 {
 	splash_bitmap_type = 0;
 	splash_sprite_attr2_shift = 8;
 }
 
-DRIVER_INIT( splash10 )
+static DRIVER_INIT( splash10 )
 {
 	splash_bitmap_type = 0;
 	splash_sprite_attr2_shift = 0;
 }
 
-DRIVER_INIT( roldfrog )
+static DRIVER_INIT( roldfrog )
 {
 	splash_bitmap_type = 1;
 	splash_sprite_attr2_shift = 8;
 }
 
-DRIVER_INIT( rebus )
+static DRIVER_INIT( rebus )
 {
 	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU1);
 	splash_bitmap_type = 1;
@@ -923,7 +923,7 @@ DRIVER_INIT( rebus )
 
 
 
-DRIVER_INIT( funystrp )
+static DRIVER_INIT( funystrp )
 {
 	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU1);
 

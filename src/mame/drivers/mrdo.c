@@ -31,7 +31,7 @@ VIDEO_UPDATE( mrdo );
 
 /* this looks like some kind of protection. The game doesn't clear the screen */
 /* if a read from this address doesn't return the value it expects. */
-READ8_HANDLER( mrdo_SECRE_r )
+static READ8_HANDLER( mrdo_SECRE_r )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	return RAM[ activecpu_get_reg(Z80_HL) ];
@@ -64,7 +64,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( mrdo )
+static INPUT_PORTS_START( mrdo )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
@@ -181,7 +181,7 @@ static MACHINE_DRIVER_START( mrdo )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_SCREEN_REFRESH_RATE(5000000.0/312/262)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(4368))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(4368))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

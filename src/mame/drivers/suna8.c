@@ -82,7 +82,7 @@ void suna8_sh_start(void);
                                 Hard Head
 ***************************************************************************/
 
-DRIVER_INIT( hardhead )
+static DRIVER_INIT( hardhead )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int i;
@@ -157,7 +157,7 @@ static UINT8 *brickzn_decrypt(void)
 	return decrypt;
 }
 
-DRIVER_INIT( brickzn )
+static DRIVER_INIT( brickzn )
 {
 	UINT8	*RAM	=	memory_region(REGION_CPU1);
 	UINT8   *decrypt = brickzn_decrypt();
@@ -188,7 +188,7 @@ DRIVER_INIT( brickzn )
 	memory_configure_bank_decrypted(1, 0, 16, decrypt + 0x10000, 0x4000);
 }
 
-DRIVER_INIT( brickzn3 )
+static DRIVER_INIT( brickzn3 )
 {
 	UINT8	*RAM	=	memory_region(REGION_CPU1);
 	UINT8   *decrypt = brickzn_decrypt();
@@ -224,7 +224,7 @@ DRIVER_INIT( brickzn3 )
                                 Hard Head 2
 ***************************************************************************/
 
-DRIVER_INIT( hardhea2 )
+static DRIVER_INIT( hardhea2 )
 {
 	UINT8	*RAM	=	memory_region(REGION_CPU1);
 	size_t	size	=	memory_region_length(REGION_CPU1);
@@ -310,7 +310,7 @@ rom13:  0?, 1y, 2n, 3n      ?,?,?,? (palettes)
                                 Star Fighter
 ***************************************************************************/
 
-DRIVER_INIT( starfigh )
+static DRIVER_INIT( starfigh )
 {
 	UINT8	*RAM	=	memory_region(REGION_CPU1);
 	size_t	size	=	memory_region_length(REGION_CPU1);
@@ -751,7 +751,7 @@ static WRITE8_HANDLER( hardhea2_flipscreen_w )
 	if (data & ~0x01) 	logerror("CPU #0 - PC %04X: unknown flipscreen bits: %02X\n",activecpu_get_pc(),data);
 }
 
-WRITE8_HANDLER( hardhea2_leds_w )
+static WRITE8_HANDLER( hardhea2_leds_w )
 {
 	set_led_status(0, data & 0x01);
 	set_led_status(1, data & 0x02);
@@ -924,7 +924,7 @@ static WRITE8_HANDLER( sparkman_flipscreen_w )
 	if (data & ~0x01) 	logerror("CPU #0 - PC %04X: unknown flipscreen bits: %02X\n",activecpu_get_pc(),data);
 }
 
-WRITE8_HANDLER( sparkman_leds_w )
+static WRITE8_HANDLER( sparkman_leds_w )
 {
 	set_led_status(0, data & 0x01);
 	set_led_status(1, data & 0x02);
@@ -1137,7 +1137,7 @@ ADDRESS_MAP_END
                                 Hard Head
 ***************************************************************************/
 
-INPUT_PORTS_START( hardhead )
+static INPUT_PORTS_START( hardhead )
 
 	PORT_START_TAG("IN0")	// Player 1 - $da00 (ip = 0)
 	JOY(1)
@@ -1201,7 +1201,7 @@ INPUT_PORTS_END
                                 Rough Ranger
 ***************************************************************************/
 
-INPUT_PORTS_START( rranger )
+static INPUT_PORTS_START( rranger )
 
 	PORT_START_TAG("IN0")	// Player 1 - $c002
 	JOY(1)
@@ -1266,7 +1266,7 @@ INPUT_PORTS_END
                                 Brick Zone
 ***************************************************************************/
 
-INPUT_PORTS_START( brickzn )
+static INPUT_PORTS_START( brickzn )
 
 	PORT_START_TAG("IN0") // Player 1 - $c100
 	JOY(1)
@@ -1339,7 +1339,7 @@ INPUT_PORTS_END
                         Hard Head 2 / Star Fighter
 ***************************************************************************/
 
-INPUT_PORTS_START( hardhea2 )
+static INPUT_PORTS_START( hardhea2 )
 
 	PORT_START_TAG("IN0") // Player 1 - $c000
 	JOY(1)
@@ -1413,7 +1413,7 @@ INPUT_PORTS_END
                                 Spark Man
 ***************************************************************************/
 
-INPUT_PORTS_START( sparkman )
+static INPUT_PORTS_START( sparkman )
 
 	PORT_START_TAG("IN0") // Player 1 - $c000
 	JOY(1)
@@ -1539,7 +1539,7 @@ static struct AY8910interface hardhead_ay8910_interface =
 	suna8_samples_number_w
 };
 
-static struct Samplesinterface custom_interface =
+static struct Samplesinterface suna8_samples_interface =
 {
 	1,
 	NULL,
@@ -1587,7 +1587,7 @@ static MACHINE_DRIVER_START( hardhead )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
+	MDRV_SOUND_CONFIG(suna8_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
@@ -1653,7 +1653,7 @@ static struct YM3812interface brickzn_ym3812_interface =
 	soundirq	/* IRQ Line */
 };
 
-INTERRUPT_GEN( brickzn_interrupt )
+static INTERRUPT_GEN( brickzn_interrupt )
 {
 	if (cpu_getiloops()) cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 	else				 cpunum_set_input_line(0, 0, HOLD_LINE);
@@ -1724,7 +1724,7 @@ MACHINE_DRIVER_END
 
 /* 1 x 24 MHz crystal */
 
-INTERRUPT_GEN( hardhea2_interrupt )
+static INTERRUPT_GEN( hardhea2_interrupt )
 {
 	if (cpu_getiloops())
 	{
@@ -1804,7 +1804,7 @@ static MACHINE_DRIVER_START( starfigh )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
+	MDRV_SOUND_CONFIG(suna8_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
@@ -1863,7 +1863,7 @@ static MACHINE_DRIVER_START( sparkman )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
+	MDRV_SOUND_CONFIG(suna8_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END

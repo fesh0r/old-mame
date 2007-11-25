@@ -135,7 +135,7 @@
 static UINT8 joystick_type;
 static UINT8 trackball_type;
 
-static mame_timer *joystick_timer;
+static emu_timer *joystick_timer;
 static UINT8 joystick_int;
 static UINT8 joystick_int_enable;
 static UINT8 joystick_value;
@@ -186,7 +186,7 @@ static MACHINE_RESET( atarisy1 )
 
 	/* reset the joystick parameters */
 	joystick_value = 0;
-	joystick_timer = mame_timer_alloc(delayed_joystick_int);
+	joystick_timer = timer_alloc(delayed_joystick_int);
 	joystick_int = 0;
 	joystick_int_enable = 0;
 }
@@ -228,7 +228,7 @@ static READ16_HANDLER( joystick_r )
 
 	/* clear any existing interrupt and set a timer for a new one */
 	joystick_int = 0;
-	mame_timer_adjust(joystick_timer, MAME_TIME_IN_USEC(50), newval, time_zero);
+	timer_adjust(joystick_timer, ATTOTIME_IN_USEC(50), newval, attotime_zero);
 	atarigen_update_interrupts();
 
 	return joystick_value;
@@ -505,7 +505,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( marble )
+static INPUT_PORTS_START( marble )
 	PORT_START  /* F20000 */
     PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(30) PORT_KEYDELTA(30) PORT_REVERSE PORT_PLAYER(1)
 
@@ -540,7 +540,7 @@ INPUT_PORTS_START( marble )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( peterpak )
+static INPUT_PORTS_START( peterpak )
 	PORT_START	/* F40000 */
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )
@@ -580,7 +580,7 @@ INPUT_PORTS_START( peterpak )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( indytemp )
+static INPUT_PORTS_START( indytemp )
 	PORT_START	/* F40000 */
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )
@@ -620,7 +620,7 @@ INPUT_PORTS_START( indytemp )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( roadrunn )
+static INPUT_PORTS_START( roadrunn )
 	PORT_START	/* F40000 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
@@ -656,7 +656,7 @@ INPUT_PORTS_START( roadrunn )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( roadblst )
+static INPUT_PORTS_START( roadblst )
 	PORT_START	/* F20000 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(10) PORT_REVERSE
 

@@ -132,21 +132,21 @@ one for shoot and one for select.
 
 
 static tilemap *ppmast93_fg_tilemap, *ppmast93_bg_tilemap;
-UINT8 *ppmast93_fgram, *ppmast93_bgram;
+static UINT8 *ppmast93_fgram, *ppmast93_bgram;
 
-WRITE8_HANDLER( ppmast93_fgram_w )
+static WRITE8_HANDLER( ppmast93_fgram_w )
 {
 	ppmast93_fgram[offset] = data;
 	tilemap_mark_tile_dirty(ppmast93_fg_tilemap,offset/2);
 }
 
-WRITE8_HANDLER( ppmast93_bgram_w )
+static WRITE8_HANDLER( ppmast93_bgram_w )
 {
 	ppmast93_bgram[offset] = data;
 	tilemap_mark_tile_dirty(ppmast93_bg_tilemap,offset/2);
 }
 
-WRITE8_HANDLER( ppmast93_port4_w )
+static WRITE8_HANDLER( ppmast93_port4_w )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 	int bank;
@@ -201,7 +201,7 @@ static ADDRESS_MAP_START( ppmast93_cpu2_io, ADDRESS_SPACE_IO, 8 )
 	  AM_RANGE(0x0000, 0xffff) AM_READ(MRA8_ROM) AM_WRITE(ppmast_sound_w) AM_REGION(REGION_CPU2, 0x20000)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( ppmast93 )
+static INPUT_PORTS_START( ppmast93 )
 	PORT_START	/* 8bit */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_PLAYER(1)
@@ -327,7 +327,7 @@ static TILE_GET_INFO( get_ppmast93_fg_tile_info )
 			0);
 }
 
-VIDEO_START( ppmast93 )
+static VIDEO_START( ppmast93 )
 {
 	ppmast93_bg_tilemap = tilemap_create(get_ppmast93_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32, 32);
 	ppmast93_fg_tilemap = tilemap_create(get_ppmast93_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32, 32);
@@ -335,7 +335,7 @@ VIDEO_START( ppmast93 )
 	tilemap_set_transparent_pen(ppmast93_fg_tilemap,0);
 }
 
-VIDEO_UPDATE( ppmast93 )
+static VIDEO_UPDATE( ppmast93 )
 {
 	tilemap_draw(bitmap,cliprect,ppmast93_bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,ppmast93_fg_tilemap,0,0);

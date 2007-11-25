@@ -39,17 +39,17 @@ Notes:
 #include "sound/msm5205.h"
 #include "sound/3812intf.h"
 
-UINT8* discoboy_ram_part1;
-UINT8* discoboy_ram_part2;
-UINT8* discoboy_ram_part3;
-UINT8* discoboy_ram_part4;
-UINT8* discoboy_ram_att;
+static UINT8* discoboy_ram_part1;
+static UINT8* discoboy_ram_part2;
+static UINT8* discoboy_ram_part3;
+static UINT8* discoboy_ram_part4;
+static UINT8* discoboy_ram_att;
 
-UINT8 discoboy_ram_bank;
+static UINT8 discoboy_ram_bank;
 static UINT8 port_00;
-UINT8 discoboy_gfxbank;
+static UINT8 discoboy_gfxbank;
 
-VIDEO_START( discoboy )
+static VIDEO_START( discoboy )
 {
 }
 
@@ -102,7 +102,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 
 
-VIDEO_UPDATE( discoboy )
+static VIDEO_UPDATE( discoboy )
 {
 	UINT16 x,y;
 	int i;
@@ -163,12 +163,14 @@ VIDEO_UPDATE( discoboy )
 	return 0;
 }
 
+#ifdef UNUSED_FUNCTION
 void discoboy_setrombank(UINT8 data)
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 	data &=0x2f;
 	memory_set_bankptr(1, &ROM[0x6000+(data*0x1000)] );
 }
+#endif
 
 static WRITE8_HANDLER( rambank_select_w )
 {
@@ -299,7 +301,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_RAM)
 ADDRESS_MAP_END
 
-READ8_HANDLER( discoboy_port_06_r )
+static READ8_HANDLER( discoboy_port_06_r )
 {
 	return 0x00;
 }
@@ -364,7 +366,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( discoboy )
+static INPUT_PORTS_START( discoboy )
     PORT_START      /* DSWA */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )          PORT_DIPLOCATION("SWA:6,7,8")
     PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )
@@ -508,7 +510,7 @@ static MACHINE_DRIVER_START( discoboy )
 
 MACHINE_DRIVER_END
 
-DRIVER_INIT( discoboy )
+static DRIVER_INIT( discoboy )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 

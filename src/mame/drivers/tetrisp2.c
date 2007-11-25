@@ -38,14 +38,14 @@ Notes:
 #include "rocknms.lh"
 
 UINT16 tetrisp2_systemregs[0x10];
-UINT16 rocknms_sub_systemregs[0x10];
+static UINT16 rocknms_sub_systemregs[0x10];
 
-UINT16 rockn_protectdata;
-UINT16 rockn_adpcmbank;
-UINT16 rockn_soundvolume;
+static UINT16 rockn_protectdata;
+static UINT16 rockn_adpcmbank;
+static UINT16 rockn_soundvolume;
 
-static mame_timer *rockn_timer_l4;
-static mame_timer *rockn_timer_sub_l4;
+static emu_timer *rockn_timer_l4;
+static emu_timer *rockn_timer_sub_l4;
 
 /* Variables defined in video: */
 
@@ -102,7 +102,7 @@ static WRITE16_HANDLER( tetrisp2_systemregs_w )
 	}
 }
 
-#define ROCKN_TIMER_BASE MAME_TIME_IN_NSEC(500000)
+#define ROCKN_TIMER_BASE ATTOTIME_IN_NSEC(500000)
 
 static WRITE16_HANDLER( rockn_systemregs_w )
 {
@@ -111,8 +111,8 @@ static WRITE16_HANDLER( rockn_systemregs_w )
 		tetrisp2_systemregs[offset] = data;
 		if (offset == 0x0c)
 		{
-			mame_time timer = scale_up_mame_time(ROCKN_TIMER_BASE, 4096 - data);
-			mame_timer_adjust(rockn_timer_l4, timer, 0, timer);
+			attotime timer = attotime_mul(ROCKN_TIMER_BASE, 4096 - data);
+			timer_adjust(rockn_timer_l4, timer, 0, timer);
 		}
 	}
 }
@@ -125,8 +125,8 @@ static WRITE16_HANDLER( rocknms_sub_systemregs_w )
 		rocknms_sub_systemregs[offset] = data;
 		if (offset == 0x0c)
 		{
-			mame_time timer = scale_up_mame_time(ROCKN_TIMER_BASE, 4096 - data);
-			mame_timer_adjust(rockn_timer_sub_l4, timer, 0, timer);
+			attotime timer = attotime_mul(ROCKN_TIMER_BASE, 4096 - data);
+			timer_adjust(rockn_timer_sub_l4, timer, 0, timer);
 		}
 	}
 }
@@ -246,7 +246,7 @@ static READ16_HANDLER( tetrisp2_ip_1_word_r )
 static UINT16 *tetrisp2_nvram;
 static size_t tetrisp2_nvram_size;
 
-NVRAM_HANDLER( tetrisp2 )
+static NVRAM_HANDLER( tetrisp2 )
 {
 	if (read_or_write)
 		mame_fwrite(file,tetrisp2_nvram,tetrisp2_nvram_size);
@@ -264,18 +264,18 @@ NVRAM_HANDLER( tetrisp2 )
 
 
 /* The game only ever writes even bytes and reads odd bytes */
-READ16_HANDLER( tetrisp2_nvram_r )
+static READ16_HANDLER( tetrisp2_nvram_r )
 {
 	return	( (tetrisp2_nvram[offset] >> 8) & 0x00ff ) |
 			( (tetrisp2_nvram[offset] << 8) & 0xff00 ) ;
 }
 
-WRITE16_HANDLER( tetrisp2_nvram_w )
+static WRITE16_HANDLER( tetrisp2_nvram_w )
 {
 	COMBINE_DATA(&tetrisp2_nvram[offset]);
 }
 
-READ16_HANDLER( rockn_nvram_r )
+static READ16_HANDLER( rockn_nvram_r )
 {
 	return	tetrisp2_nvram[offset];
 }
@@ -292,30 +292,30 @@ READ16_HANDLER( rockn_nvram_r )
 static UINT16 rocknms_main2sub;
 static UINT16 rocknms_sub2main;
 
-READ16_HANDLER( rocknms_main2sub_r )
+static READ16_HANDLER( rocknms_main2sub_r )
 {
 	return rocknms_main2sub;
 }
 
-WRITE16_HANDLER( rocknms_main2sub_w )
+static WRITE16_HANDLER( rocknms_main2sub_w )
 {
 	if (ACCESSING_LSB)
 		rocknms_main2sub = (data ^ 0xffff);
 }
 
-READ16_HANDLER( rocknms_port_0_r )
+static READ16_HANDLER( rocknms_port_0_r )
 {
 	return ((readinputport(0) & 0xfffc ) | (rocknms_sub2main & 0x0003));
 }
 
-WRITE16_HANDLER( rocknms_sub2main_w )
+static WRITE16_HANDLER( rocknms_sub2main_w )
 {
 	if (ACCESSING_LSB)
 		rocknms_sub2main = (data ^ 0xffff);
 }
 
 
-WRITE16_HANDLER( tetrisp2_coincounter_w )
+static WRITE16_HANDLER( tetrisp2_coincounter_w )
 {
 	coin_counter_w( 0, (data & 0x0001));
 }
@@ -631,7 +631,7 @@ ADDRESS_MAP_END
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 
 
-INPUT_PORTS_START( tetrisp2 )
+static INPUT_PORTS_START( tetrisp2 )
 TETPLUS2_COMMON
 
 	PORT_START_TAG("IN2") //$be0008.w
@@ -689,7 +689,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 
-INPUT_PORTS_START( teplus2j )
+static INPUT_PORTS_START( teplus2j )
 TETPLUS2_COMMON
 
 /*
@@ -751,7 +751,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 
-INPUT_PORTS_START( rockn )
+static INPUT_PORTS_START( rockn )
 	PORT_START_TAG("IN0")	//$be0002.w
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -841,7 +841,7 @@ INPUT_PORTS_START( rockn )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( rocknms )
+static INPUT_PORTS_START( rocknms )
 	PORT_START	// IN0 - $be0002.w
 
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_SPECIAL )		// MAIN -> SUB Communication
@@ -1024,8 +1024,8 @@ static TIMER_CALLBACK( rockn_timer_sub_level1_callback )
 
 static void init_rockn_timer(running_machine *machine)
 {
-	mame_timer_pulse(MAME_TIME_IN_MSEC(32), 0, rockn_timer_level1_callback);
-	rockn_timer_l4 = mame_timer_alloc(rockn_timer_level4_callback);
+	timer_pulse(ATTOTIME_IN_MSEC(32), 0, rockn_timer_level1_callback);
+	rockn_timer_l4 = timer_alloc(rockn_timer_level4_callback);
 
 	state_save_register_global_array(tetrisp2_systemregs);
 	state_save_register_global_array(rocknms_sub_systemregs);
@@ -1034,36 +1034,36 @@ static void init_rockn_timer(running_machine *machine)
 	state_save_register_global(rockn_soundvolume);
 }
 
-DRIVER_INIT( rockn )
+static DRIVER_INIT( rockn )
 {
 	init_rockn_timer(machine);
 	rockn_protectdata = 1;
 }
 
-DRIVER_INIT( rockn1 )
+static DRIVER_INIT( rockn1 )
 {
 	init_rockn_timer(machine);
 	rockn_protectdata = 1;
 }
 
-DRIVER_INIT( rockn2 )
+static DRIVER_INIT( rockn2 )
 {
 	init_rockn_timer(machine);
 	rockn_protectdata = 2;
 }
 
-DRIVER_INIT( rocknms )
+static DRIVER_INIT( rocknms )
 {
 	init_rockn_timer(machine);
 
-	mame_timer_pulse(MAME_TIME_IN_MSEC(32), 0, rockn_timer_sub_level1_callback);
-	rockn_timer_sub_l4 = mame_timer_alloc(rockn_timer_sub_level4_callback);
+	timer_pulse(ATTOTIME_IN_MSEC(32), 0, rockn_timer_sub_level1_callback);
+	rockn_timer_sub_l4 = timer_alloc(rockn_timer_sub_level4_callback);
 
 	rockn_protectdata = 3;
 
 }
 
-DRIVER_INIT( rockn3 )
+static DRIVER_INIT( rockn3 )
 {
 	init_rockn_timer(machine);
 	rockn_protectdata = 4;

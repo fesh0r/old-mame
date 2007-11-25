@@ -110,10 +110,10 @@ static MACHINE_START( mario )
 #define ACTIVEHIGH_PORT_BIT(P,A,D)   ((P & (~(1 << A))) | (D << A))
 
 
-WRITE8_HANDLER( mario_sh_getcoin_w )    { t[0] = data; }
-WRITE8_HANDLER( mario_sh_crab_w )       { p[1] = ACTIVEHIGH_PORT_BIT(p[1],0,data); }
-WRITE8_HANDLER( mario_sh_turtle_w )     { p[1] = ACTIVEHIGH_PORT_BIT(p[1],1,data); }
-WRITE8_HANDLER( mario_sh_fly_w )        { p[1] = ACTIVEHIGH_PORT_BIT(p[1],2,data); }
+static WRITE8_HANDLER( mario_sh_getcoin_w )    { t[0] = data; }
+static WRITE8_HANDLER( mario_sh_crab_w )       { p[1] = ACTIVEHIGH_PORT_BIT(p[1],0,data); }
+static WRITE8_HANDLER( mario_sh_turtle_w )     { p[1] = ACTIVEHIGH_PORT_BIT(p[1],1,data); }
+static WRITE8_HANDLER( mario_sh_fly_w )        { p[1] = ACTIVEHIGH_PORT_BIT(p[1],2,data); }
 static WRITE8_HANDLER( mario_sh_tuneselect_w ) { soundlatch_w(offset,data); }
 
 static READ8_HANDLER( mario_sh_p1_r )   { return p[1]; }
@@ -134,7 +134,7 @@ static WRITE8_HANDLER( mario_sh_p2_w )
 {
 	p[2] = data;
 }
-WRITE8_HANDLER( masao_sh_irqtrigger_w )
+static WRITE8_HANDLER( masao_sh_irqtrigger_w )
 {
 	if (last == 1 && data == 0)
 	{
@@ -226,7 +226,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( mario )
+static INPUT_PORTS_START( mario )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(1)
@@ -248,29 +248,29 @@ INPUT_PORTS_START( mario )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START_TAG("DSW")
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW1:1,2")
+	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )		PORT_DIPLOCATION("SW1:!1,!2")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
 	PORT_DIPSETTING(    0x02, "5" )
 	PORT_DIPSETTING(    0x03, "6" )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:3,4")
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) )		PORT_DIPLOCATION("SW1:!3,!4")
 	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW1:5,6")
+	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SW1:!5,!6")
 	PORT_DIPSETTING(    0x00, "20k only" )
 	PORT_DIPSETTING(    0x10, "30k only" )
 	PORT_DIPSETTING(    0x20, "40k only" )
 	PORT_DIPSETTING(    0x30, DEF_STR( None ) )
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:7,8")
+	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW1:!7,!8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Medium ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0xc0, DEF_STR( Hardest ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( marioo )
+static INPUT_PORTS_START( marioo )
 	PORT_INCLUDE( mario )
 
 	PORT_MODIFY( "IN1" )
@@ -278,16 +278,16 @@ INPUT_PORTS_START( marioo )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_COIN1 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( marioj )
+static INPUT_PORTS_START( marioj )
 	PORT_INCLUDE( mario )
 
 	PORT_MODIFY( "DSW" )
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW1:1,2")
+	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )		PORT_DIPLOCATION("SW1:!1,!2")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
 	PORT_DIPSETTING(    0x02, "5" )
 	PORT_DIPSETTING(    0x03, "6" )
-	PORT_DIPNAME( 0x1c, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:3,4,5")
+	PORT_DIPNAME( 0x1c, 0x00, DEF_STR( Coinage ) )		PORT_DIPLOCATION("SW1:!3,!4,!5")
 	PORT_DIPSETTING(    0x08, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -296,21 +296,21 @@ INPUT_PORTS_START( marioj )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(    0x14, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(    0x1c, DEF_STR( 1C_6C ) )
-	PORT_DIPNAME( 0x20, 0x20, "2 Players Game" ) PORT_DIPLOCATION("SW1:6")
+	PORT_DIPNAME( 0x20, 0x20, "2 Players Game" )		PORT_DIPLOCATION("SW1:!6")
 	PORT_DIPSETTING(    0x00, "1 Credit" )
 	PORT_DIPSETTING(    0x20, "2 Credits" )
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW1:7,8")
+	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SW1:!7,!8")
 	PORT_DIPSETTING(    0x00, "20k 50k 30k+" )
 	PORT_DIPSETTING(    0x40, "30k 60k 30k+" )
 	PORT_DIPSETTING(    0x80, "40k 70k 30k+" )
 	PORT_DIPSETTING(    0xc0, DEF_STR( None ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( masao )
+static INPUT_PORTS_START( masao )
 	PORT_INCLUDE( marioo )
 
 	PORT_MODIFY( "DSW" )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW1:5,6")
+	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SW1:!5,!6")
 	PORT_DIPSETTING(    0x00, "20k 40k 20k+" )
 	PORT_DIPSETTING(    0x10, "30k 50k 20k+" )
 	PORT_DIPSETTING(    0x20, "40k 60k 20k+" )

@@ -179,7 +179,7 @@ static ADDRESS_MAP_START( supnudg2_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xc0, 0xc3) AM_WRITENOP
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( quizmstr )
+static INPUT_PORTS_START( quizmstr )
 	PORT_START
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
  	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_SERVICE1) PORT_NAME("Bookkeeping") PORT_TOGGLE /* Button 2 for second page, Button 3 erases data */
@@ -281,7 +281,7 @@ INPUT_PORTS_START( quizmstr )
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ))
 INPUT_PORTS_END
 
-INPUT_PORTS_START( trailblz )
+static INPUT_PORTS_START( trailblz )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -393,7 +393,7 @@ INPUT_PORTS_START( trailblz )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( supnudg2 )
+static INPUT_PORTS_START( supnudg2 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -531,12 +531,12 @@ static TILE_GET_INFO( get_bg_tile_info )
 	SET_TILE_INFO(0,tile,color,0);
 }
 
-VIDEO_START( coinmstr )
+static VIDEO_START( coinmstr )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8, 46, 64);
 }
 
-VIDEO_UPDATE( coinmstr )
+static VIDEO_UPDATE( coinmstr )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	return 0;
@@ -799,7 +799,7 @@ ROM_START( supnudg2 )
 	ROM_LOAD( "q20.bin",      0x98000, 0x8000, CRC(0845b450) SHA1(c373839ee1ad983e2df41cb22f625c14972372b0) )
 ROM_END
 
-DRIVER_INIT( coinmstr )
+static DRIVER_INIT( coinmstr )
 {
 	UINT8 *rom = memory_region(REGION_USER1);
 	int length = memory_region_length(REGION_USER1);

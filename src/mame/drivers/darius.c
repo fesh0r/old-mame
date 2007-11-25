@@ -139,8 +139,8 @@ sounds.
 #include "darius.lh"
 
 
-MACHINE_START( darius );
-MACHINE_RESET( darius );
+static MACHINE_START( darius );
+static MACHINE_RESET( darius );
 
 VIDEO_START( darius );
 VIDEO_UPDATE( darius );
@@ -661,7 +661,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 
 
-INPUT_PORTS_START( darius )
+static INPUT_PORTS_START( darius )
 	DARIUS_PLAYERS_INPUT( 1 )
 
 	DARIUS_PLAYERS_INPUT( 2 )
@@ -699,7 +699,7 @@ INPUT_PORTS_START( darius )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( dariuse )
+static INPUT_PORTS_START( dariuse )
 	DARIUS_PLAYERS_INPUT( 1 )
 
 	DARIUS_PLAYERS_INPUT( 2 )
@@ -737,7 +737,7 @@ INPUT_PORTS_START( dariuse )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( dariusj )
+static INPUT_PORTS_START( dariusj )
 	DARIUS_PLAYERS_INPUT( 1 )
 
 	DARIUS_PLAYERS_INPUT( 2 )
@@ -1219,7 +1219,7 @@ static DRIVER_INIT( darius )
 }
 
 
-MACHINE_START( darius )
+static MACHINE_START( darius )
 {
 	state_save_register_global(cpua_ctrl);
 	state_save_register_func_postload(parse_control);
@@ -1232,7 +1232,7 @@ MACHINE_START( darius )
 }
 
 
-MACHINE_RESET( darius )
+static MACHINE_RESET( darius )
 {
 	int  i;
 

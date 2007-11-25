@@ -135,7 +135,7 @@ static ADDRESS_MAP_START( sound_cpu_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(soundlatch_clear_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( onetwo )
+static INPUT_PORTS_START( onetwo )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -239,12 +239,12 @@ static GFXDECODE_START( onetwo )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8x6_layout, 0, 2 )
 GFXDECODE_END
 
-VIDEO_START( onetwo )
+static VIDEO_START( onetwo )
 {
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
 }
 
-VIDEO_UPDATE( onetwo )
+static VIDEO_UPDATE( onetwo )
 {
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	return 0;
@@ -273,7 +273,7 @@ static MACHINE_DRIVER_START( onetwo )
 	MDRV_CPU_IO_MAP(sound_cpu_io,0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(16))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(16))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

@@ -51,13 +51,13 @@ static TILE_GET_INFO( get_bg_tile_info )
 	SET_TILE_INFO(0, code, color, 0);
 }
 
-VIDEO_START(cm2)
+static VIDEO_START(cm2)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 }
 
-VIDEO_UPDATE(cm2)
+static VIDEO_UPDATE(cm2)
 {
   tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	return 0;
@@ -82,7 +82,7 @@ static ADDRESS_MAP_START( cm_io_map, ADDRESS_SPACE_IO, 8 )
   AM_RANGE(0x0a, 0x0a) AM_READ(input_port_2_r)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( cm2v841 )
+static INPUT_PORTS_START( cm2v841 )
 	PORT_START_TAG("PLAYER")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Bit 0") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Bit 1") PORT_CODE(KEYCODE_W)

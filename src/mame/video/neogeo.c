@@ -24,16 +24,15 @@ static UINT16 videoram_modulo;
 static UINT16 videoram_offset;
 
 static UINT8 fixed_layer_source;
-static int *blank_fixed_layer_chars[2];	/* no need to state save */
 int neogeo_fixed_layer_bank_type;		/* no need to state save */
 
 static UINT8 auto_animation_speed;
 static UINT8 auto_animation_disabled;
 static UINT8 auto_animation_counter;
 static UINT8 auto_animation_frame_counter;
-static mame_timer *auto_animation_timer;
+static emu_timer *auto_animation_timer;
 
-static mame_timer *sprite_line_timer;
+static emu_timer *sprite_line_timer;
 
 
 
@@ -251,19 +250,19 @@ static TIMER_CALLBACK( auto_animation_timer_callback )
 	else
 		auto_animation_frame_counter = auto_animation_frame_counter - 1;
 
-	mame_timer_adjust(auto_animation_timer, video_screen_get_time_until_pos(0, NEOGEO_VSSTART, 0), 0, time_zero);
+	timer_adjust(auto_animation_timer, video_screen_get_time_until_pos(0, NEOGEO_VSSTART, 0), 0, attotime_zero);
 }
 
 
 static void create_auto_animation_timer(void)
 {
-	auto_animation_timer = mame_timer_alloc(auto_animation_timer_callback);
+	auto_animation_timer = timer_alloc(auto_animation_timer_callback);
 }
 
 
 static void start_auto_animation_timer(void)
 {
-	mame_timer_adjust(auto_animation_timer, video_screen_get_time_until_pos(0, NEOGEO_VSSTART, 0), 0, time_zero);
+	timer_adjust(auto_animation_timer, video_screen_get_time_until_pos(0, NEOGEO_VSSTART, 0), 0, attotime_zero);
 }
 
 
@@ -277,37 +276,6 @@ static void start_auto_animation_timer(void)
 void neogeo_set_fixed_layer_source(UINT8 data)
 {
 	fixed_layer_source = data;
-}
-
-
-static void scan_for_blank_fixed_layer_chars_common(int region, int which)
-{
-	offs_t offs;
-
-	UINT8* gfx_base = memory_region(region);
-	int length = memory_region_length(region);
-
-	/* allocate bit array */
-	blank_fixed_layer_chars[which] = auto_malloc((length >> 5) * sizeof(int));
-
-	for (offs = 0; offs < length; offs += 0x20)
-	{
-		int i;
-		int blank = 1;
-
-		for (i = 0; i < 0x20; i++)
-			if (gfx_base[offs + i] != 0)
-				blank = 0;
-
-		blank_fixed_layer_chars[which][offs >> 5] = blank;
-	}
-}
-
-
-static void scan_for_blank_fixed_layer_chars(void)
-{
-	scan_for_blank_fixed_layer_chars_common(NEOGEO_REGION_FIXED_LAYER_CARTRIDGE, 1);
-	scan_for_blank_fixed_layer_chars_common(NEOGEO_REGION_FIXED_LAYER_BIOS, 0);
 }
 
 
@@ -363,10 +331,7 @@ if (banked)
 		break;
 	}
 }
-		/* optimization - skip if all blank */
-		if (blank_fixed_layer_chars[fixed_layer_source][code])
-			pixel_addr = pixel_addr + 8;
-		else
+
 		{
 			UINT8 data = 0;
 			int i;
@@ -707,19 +672,19 @@ static TIMER_CALLBACK( sprite_line_timer_callback )
 	/* let's come back at the beginning of the next line */
 	scanline = (scanline + 1) % NEOGEO_VTOTAL;
 
-	mame_timer_adjust(sprite_line_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, time_zero);
+	timer_adjust(sprite_line_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
 }
 
 
 static void create_sprite_line_timer(void)
 {
-	sprite_line_timer = mame_timer_alloc(sprite_line_timer_callback);
+	sprite_line_timer = timer_alloc(sprite_line_timer_callback);
 }
 
 
 static void start_sprite_line_timer(void)
 {
-	mame_timer_adjust(sprite_line_timer, video_screen_get_time_until_pos(0, 0, 0), 0, time_zero);
+	timer_adjust(sprite_line_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
 }
 
 
@@ -900,7 +865,6 @@ VIDEO_START( neogeo )
 	neogeo_videoram = auto_malloc(0x20000);
 
 	compute_rgb_weights();
-	scan_for_blank_fixed_layer_chars();
 	create_sprite_line_timer();
 	create_auto_animation_timer();
 	optimize_sprite_data();

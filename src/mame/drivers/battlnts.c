@@ -27,7 +27,7 @@ static INTERRUPT_GEN( battlnts_interrupt )
 		cpunum_set_input_line(0, HD6309_IRQ_LINE, HOLD_LINE);
 }
 
-WRITE8_HANDLER( battlnts_sh_irqtrigger_w )
+static WRITE8_HANDLER( battlnts_sh_irqtrigger_w )
 {
 	cpunum_set_input_line_and_vector(1, 0, HOLD_LINE, 0xff);
 }
@@ -100,7 +100,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( battlnts )
+static INPUT_PORTS_START( battlnts )
 	PORT_START	/* DSW #1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(	0x02, DEF_STR( 4C_1C ) )
@@ -197,7 +197,7 @@ INPUT_PORTS_START( battlnts )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( thehustj )
+static INPUT_PORTS_START( thehustj )
 	PORT_START	/* DSW #1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(	0x02, DEF_STR( 4C_1C ) )

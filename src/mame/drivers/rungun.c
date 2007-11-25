@@ -45,7 +45,7 @@
 
 VIDEO_START( rng );
 VIDEO_UPDATE( rng );
-MACHINE_RESET( rng );
+static MACHINE_RESET( rng );
 READ16_HANDLER( ttl_ram_r );
 WRITE16_HANDLER( ttl_ram_w );
 WRITE16_HANDLER( rng_936_videoram_w );
@@ -370,7 +370,7 @@ static MACHINE_DRIVER_START( rng )
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
-INPUT_PORTS_START( rng )
+static INPUT_PORTS_START( rng )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -642,7 +642,7 @@ static DRIVER_INIT( rng )
 {
 }
 
-MACHINE_RESET( rng )
+static MACHINE_RESET( rng )
 {
 	K054539_init_flags(0, K054539_REVERSE_STEREO);
 

@@ -30,7 +30,7 @@ extern void drmicro_flip_w( int flip );
 
 static int drmicro_nmi_enable;
 
-INTERRUPT_GEN( drmicro_interrupt )
+static INTERRUPT_GEN( drmicro_interrupt )
 {
 	if (drmicro_nmi_enable)
 		 cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
@@ -109,7 +109,7 @@ ADDRESS_MAP_END
 
 /****************************************************************************/
 
-INPUT_PORTS_START( drmicro )
+static INPUT_PORTS_START( drmicro )
 	PORT_START // 1P (0)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SERVICE1 )

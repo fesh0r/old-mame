@@ -49,18 +49,18 @@ static TIMER_CALLBACK( destroyr_frame_callback )
 
 	/* PCB supports two dials, but cab has only got one */
 
-	mame_timer_set(video_screen_get_time_until_pos(0, readinputport(3), 0), 0, destroyr_dial_callback);
-	mame_timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, destroyr_frame_callback);
+	timer_set(video_screen_get_time_until_pos(0, readinputport(3), 0), 0, destroyr_dial_callback);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, destroyr_frame_callback);
 }
 
 
 static MACHINE_RESET( destroyr )
 {
-	mame_timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, destroyr_frame_callback);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, destroyr_frame_callback);
 }
 
 
-WRITE8_HANDLER( destroyr_misc_w )
+static WRITE8_HANDLER( destroyr_misc_w )
 {
 	/* bits 0 to 2 connect to the sound circuits */
 
@@ -76,7 +76,7 @@ WRITE8_HANDLER( destroyr_misc_w )
 }
 
 
-WRITE8_HANDLER( destroyr_cursor_load_w )
+static WRITE8_HANDLER( destroyr_cursor_load_w )
 {
 	destroyr_cursor = data;
 
@@ -84,13 +84,13 @@ WRITE8_HANDLER( destroyr_cursor_load_w )
 }
 
 
-WRITE8_HANDLER( destroyr_interrupt_ack_w )
+static WRITE8_HANDLER( destroyr_interrupt_ack_w )
 {
 	cpunum_set_input_line(0, 0, CLEAR_LINE);
 }
 
 
-WRITE8_HANDLER( destroyr_output_w )
+static WRITE8_HANDLER( destroyr_output_w )
 {
 	offset &= 15;
 
@@ -130,7 +130,7 @@ WRITE8_HANDLER( destroyr_output_w )
 }
 
 
-READ8_HANDLER( destroyr_input_r )
+static READ8_HANDLER( destroyr_input_r )
 {
 	offset &= 15;
 
@@ -157,7 +157,7 @@ READ8_HANDLER( destroyr_input_r )
 }
 
 
-READ8_HANDLER( destroyr_scanline_r )
+static READ8_HANDLER( destroyr_scanline_r )
 {
 	return video_screen_get_vpos(0);
 }
@@ -179,7 +179,7 @@ static ADDRESS_MAP_START( destroyr_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( destroyr )
+static INPUT_PORTS_START( destroyr )
 	PORT_START /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_UNUSED ) /* call 7400 */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_UNUSED )

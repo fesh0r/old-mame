@@ -1146,7 +1146,7 @@ ADDRESS_MAP_END
 
 /********************************************************************/
 
-INPUT_PORTS_START( spi_2button )
+static INPUT_PORTS_START( spi_2button )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1186,7 +1186,7 @@ INPUT_PORTS_START( spi_2button )
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( spi_3button )
+static INPUT_PORTS_START( spi_3button )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1226,7 +1226,7 @@ INPUT_PORTS_START( spi_3button )
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( seibu386_2button )
+static INPUT_PORTS_START( seibu386_2button )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1287,7 +1287,7 @@ INPUT_PORTS_END
    Start - 000111 port 0
 */
 
-INPUT_PORTS_START( spi_ejanhs )
+static INPUT_PORTS_START( spi_ejanhs )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 A") PORT_CODE(KEYCODE_A)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 B") PORT_CODE(KEYCODE_B)
@@ -1785,7 +1785,7 @@ static MACHINE_DRIVER_START( spi )
 	MDRV_CPU_PROGRAM_MAP(spisound_map, 0)
 
 	MDRV_SCREEN_REFRESH_RATE(54)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_INTERLEAVE(200)
 
 	MDRV_MACHINE_RESET(spi)
@@ -1855,19 +1855,19 @@ static MACHINE_DRIVER_START( sxx2g ) /* single board version using measured cloc
 
 MACHINE_DRIVER_END
 
-READ32_HANDLER ( senkyu_speedup_r )
+static READ32_HANDLER ( senkyu_speedup_r )
 {
 	if (activecpu_get_pc()==0x00305bb2) cpu_spinuntil_int(); // idle
 	return spimainram[(0x0018cb4-0x800)/4];
 }
 
-READ32_HANDLER( senkyua_speedup_r )
+static READ32_HANDLER( senkyua_speedup_r )
 {
 	if (activecpu_get_pc()== 0x30582e) cpu_spinuntil_int(); // idle
 	return spimainram[(0x0018c9c-0x800)/4];
 }
 
-READ32_HANDLER ( batlball_speedup_r )
+static READ32_HANDLER ( batlball_speedup_r )
 {
 //  printf("activecpu_get_pc() %06x\n", activecpu_get_pc());
 
@@ -1880,7 +1880,7 @@ READ32_HANDLER ( batlball_speedup_r )
 	return spimainram[(0x0018db4-0x800)/4];
 }
 
-READ32_HANDLER ( rdft_speedup_r )
+static READ32_HANDLER ( rdft_speedup_r )
 {
 	/* rdft */
 	if (activecpu_get_pc()==0x0203f0a) cpu_spinuntil_int(); // idle
@@ -1902,7 +1902,7 @@ READ32_HANDLER ( rdft_speedup_r )
 	return spimainram[(0x00298d0-0x800)/4];
 }
 
-READ32_HANDLER ( viprp1_speedup_r )
+static READ32_HANDLER ( viprp1_speedup_r )
 {
 	/* viprp1 */
 	if (activecpu_get_pc()==0x0202769) cpu_spinuntil_int(); // idle
@@ -1918,7 +1918,7 @@ READ32_HANDLER ( viprp1_speedup_r )
 	return spimainram[(0x001e2e0-0x800)/4];
 }
 
-READ32_HANDLER ( viprp1o_speedup_r )
+static READ32_HANDLER ( viprp1o_speedup_r )
 {
 	/* viperp1o */
 	if (activecpu_get_pc()==0x0201f99) cpu_spinuntil_int(); // idle
@@ -1936,7 +1936,7 @@ READ32_HANDLER ( ejanhs_speedup_r )
 }
 */
 
-READ32_HANDLER ( rf2_speedup_r )
+static READ32_HANDLER ( rf2_speedup_r )
 {
 
 	/* rdft22kc */
@@ -1956,7 +1956,7 @@ READ32_HANDLER ( rf2_speedup_r )
 	return spimainram[(0x0282AC-0x800)/4];
 }
 
-READ32_HANDLER ( rfjet_speedup_r )
+static READ32_HANDLER ( rfjet_speedup_r )
 {
 	/* rfjet, rfjetu, rfjeta */
 	if (activecpu_get_pc()==0x0206082) cpu_spinuntil_int(); // idle
@@ -2099,7 +2099,7 @@ static MACHINE_DRIVER_START( seibu386 )
 	MDRV_CPU_VBLANK_INT(spi_interrupt, 1)
 
 	MDRV_SCREEN_REFRESH_RATE(54)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MDRV_NVRAM_HANDLER(sxx2f)
 	MDRV_MACHINE_RESET(seibu386)

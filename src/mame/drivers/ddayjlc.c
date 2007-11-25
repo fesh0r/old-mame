@@ -241,7 +241,7 @@ static ADDRESS_MAP_START( sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( ddayjlc )
+static INPUT_PORTS_START( ddayjlc )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -339,12 +339,12 @@ static TILE_GET_INFO( get_tile_info_bg )
 	SET_TILE_INFO(2, code, 0, 0);
 }
 
-VIDEO_START( ddayjlc )
+static VIDEO_START( ddayjlc )
 {
 	bg_tilemap = tilemap_create(get_tile_info_bg,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
 }
 
-VIDEO_UPDATE( ddayjlc )
+static VIDEO_UPDATE( ddayjlc )
 {
 	UINT32 i;
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);

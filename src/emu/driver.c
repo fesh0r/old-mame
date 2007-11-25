@@ -51,7 +51,7 @@ void expand_machine_driver(void (*constructor)(machine_config *), machine_config
 {
 	/* initialize the tag on the first screen */
 	memset(output, 0, sizeof(*output));
-	output->watchdog_time = time_zero;
+	output->watchdog_time = attotime_zero;
 
 	/* keeping this function allows us to pre-init the driver before constructing it */
 	(*constructor)(output);
@@ -62,7 +62,7 @@ void expand_machine_driver(void (*constructor)(machine_config *), machine_config
 
 	/* if no screens, set a dummy refresh for the main screen */
 	if (output->screen[0].tag == NULL)
-		output->screen[0].defstate.refresh = HZ_TO_SUBSECONDS(60);
+		output->screen[0].defstate.refresh = HZ_TO_ATTOSECONDS(60);
 }
 
 
@@ -71,16 +71,16 @@ void expand_machine_driver(void (*constructor)(machine_config *), machine_config
     driver expansion
 -------------------------------------------------*/
 
-cpu_config *driver_add_cpu(machine_config *machine, const char *tag, int type, int cpuclock)
+cpu_config *driver_add_cpu(machine_config *machine, const char *tag, cpu_type type, int cpuclock)
 {
 	int cpunum;
 
 	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
-		if (machine->cpu[cpunum].cpu_type == CPU_DUMMY)
+		if (machine->cpu[cpunum].type == CPU_DUMMY)
 		{
 			machine->cpu[cpunum].tag = tag;
-			machine->cpu[cpunum].cpu_type = type;
-			machine->cpu[cpunum].cpu_clock = cpuclock;
+			machine->cpu[cpunum].type = type;
+			machine->cpu[cpunum].clock = cpuclock;
 			return &machine->cpu[cpunum];
 		}
 
@@ -196,15 +196,15 @@ void driver_remove_speaker(machine_config *machine, const char *tag)
     machine driver expansion
 -------------------------------------------------*/
 
-sound_config *driver_add_sound(machine_config *machine, const char *tag, int type, int clock)
+sound_config *driver_add_sound(machine_config *machine, const char *tag, sound_type type, int clock)
 {
 	int soundnum;
 
 	for (soundnum = 0; soundnum < MAX_SOUND; soundnum++)
-		if (machine->sound[soundnum].sound_type == SOUND_DUMMY)
+		if (machine->sound[soundnum].type == SOUND_DUMMY)
 		{
 			machine->sound[soundnum].tag = tag;
-			machine->sound[soundnum].sound_type = type;
+			machine->sound[soundnum].type = type;
 			machine->sound[soundnum].clock = clock;
 			machine->sound[soundnum].config = NULL;
 			machine->sound[soundnum].routes = 0;

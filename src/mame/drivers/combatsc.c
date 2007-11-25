@@ -231,7 +231,7 @@ static WRITE8_HANDLER( combasc_portA_w )
 	/* unknown. always write 0 */
 }
 
-static mame_timer *combasc_interleave_timer;
+static emu_timer *combasc_interleave_timer;
 
 static READ8_HANDLER ( combasc_YM2203_status_port_0_r )
 {
@@ -243,12 +243,12 @@ static READ8_HANDLER ( combasc_YM2203_status_port_0_r )
 		if (boost)
 		{
 			boost = 0;
-			mame_timer_adjust(combasc_interleave_timer, time_zero, 0, MAME_TIME_IN_CYCLES(80,1));
+			timer_adjust(combasc_interleave_timer, attotime_zero, 0, ATTOTIME_IN_CYCLES(80,1));
 		}
 		else if (status & 2)
 		{
 			boost = 1;
-			mame_timer_adjust(combasc_interleave_timer, time_zero, 0, time_never);
+			timer_adjust(combasc_interleave_timer, attotime_zero, 0, attotime_never);
 		}
 	}
 
@@ -390,7 +390,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) ) \
 	PORT_DIPSETTING(    0x00, "coin 2 invalidity" )
 
-INPUT_PORTS_START( combasc )
+static INPUT_PORTS_START( combasc )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -465,7 +465,7 @@ INPUT_PORTS_START( combasc )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( combasct )
+static INPUT_PORTS_START( combasct )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -535,7 +535,7 @@ INPUT_PORTS_START( combasct )
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(10) PORT_KEYDELTA(10) PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( combascb )
+static INPUT_PORTS_START( combascb )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -904,7 +904,7 @@ ROM_END
 
 static void combasc_init_common(void)
 {
-	combasc_interleave_timer = mame_timer_alloc(NULL);
+	combasc_interleave_timer = timer_alloc(NULL);
 }
 
 static DRIVER_INIT( combasct )

@@ -153,7 +153,7 @@ static READ8_HANDLER( mrflea_io_status_r ){
 	return mrflea_status^0x01;
 }
 
-INTERRUPT_GEN( mrflea_io_interrupt ){
+static INTERRUPT_GEN( mrflea_io_interrupt ){
 	if( cpu_getiloops()==0 || (mrflea_status&0x08) )
 		cpunum_set_input_line(1, 0, HOLD_LINE);
 }
@@ -347,7 +347,7 @@ ROM_START( mrflea )
 	ROM_LOAD( "vd_l4",	0xe000, 0x2000, CRC(423735a5) SHA1(4ee93f93cd2b08560e148525e08880d64c64fcd2) )
 ROM_END
 
-INPUT_PORTS_START( mrflea )
+static INPUT_PORTS_START( mrflea )
 	PORT_START
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY

@@ -132,7 +132,7 @@ static INTERRUPT_GEN( tagteam_interrupt )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )\
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-INPUT_PORTS_START( bigprowr )
+static INPUT_PORTS_START( bigprowr )
 	TAGTEAM_PLAYERS
 
 	PORT_START_TAG("DSW1")
@@ -184,7 +184,7 @@ INPUT_PORTS_START( bigprowr )
 INPUT_PORTS_END
 
 /* Same as 'bigprowr', but additional "Coin Mode" Dip Switch */
-INPUT_PORTS_START( tagteam )
+static INPUT_PORTS_START( tagteam )
 	TAGTEAM_PLAYERS
 	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
@@ -279,7 +279,7 @@ static MACHINE_DRIVER_START( tagteam )
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,16)   /* IRQs are triggered by the main CPU */
 
 	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(3072))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3072))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

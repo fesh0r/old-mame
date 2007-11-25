@@ -59,7 +59,7 @@ static READ8_HANDLER( ace_objpos_r )
 }
 #endif
 
-VIDEO_UPDATE( ace )
+static VIDEO_UPDATE( ace )
 {
 	int offs;
 
@@ -202,7 +202,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( ace )
+static INPUT_PORTS_START( ace )
 
 	PORT_START_TAG("c008")	/* player thrust */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(1) PORT_NAME("P1 Thrust")

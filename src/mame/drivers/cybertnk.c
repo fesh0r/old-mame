@@ -190,18 +190,18 @@ static TILE_GET_INFO( get_tx_tile_info )
 			0);
 }
 
-VIDEO_START( cybertnk )
+static VIDEO_START( cybertnk )
 {
 	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,128,32);
 }
 
-VIDEO_UPDATE( cybertnk )
+static VIDEO_UPDATE( cybertnk )
 {
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }
 
-DRIVER_INIT( cybertnk )
+static DRIVER_INIT( cybertnk )
 {
 #ifdef IGNORE_MISSING_ROM
 	UINT16 *ROM = (UINT16*)memory_region(REGION_CPU1);
@@ -395,7 +395,7 @@ static ADDRESS_MAP_START( sound_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc001, 0xc001 ) AM_WRITE(Y8950_write_port_1_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( cybertnk )
+static INPUT_PORTS_START( cybertnk )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )

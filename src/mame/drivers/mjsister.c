@@ -39,7 +39,7 @@ static TIMER_CALLBACK( dac_callback )
 	DAC_data_w(0,DACROM[(dac_bank * 0x10000 + dac_adr++) & 0x1ffff]);
 
 	if (((dac_adr & 0xff00 ) >> 8) !=  dac_adr_e )
-		mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(MCLK), 1024),0,dac_callback);
+		timer_set(attotime_mul(ATTOTIME_IN_HZ(MCLK), 1024),0,dac_callback);
 	else
 		dac_busy = 0;
 }
@@ -182,7 +182,7 @@ ADDRESS_MAP_END
 
 /****************************************************************************/
 
-INPUT_PORTS_START( mjsister )
+static INPUT_PORTS_START( mjsister )
 
 	PORT_START	/* DSW1 (0) */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )

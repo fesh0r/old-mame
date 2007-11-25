@@ -187,7 +187,7 @@ static TIMER_CALLBACK( slapshot_interrupt6 )
 
 static INTERRUPT_GEN( slapshot_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(200000-500,0),0, slapshot_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, slapshot_interrupt6);
 	cpunum_set_input_line(0,5,HOLD_LINE);
 }
 
@@ -361,7 +361,7 @@ ADDRESS_MAP_END
              INPUT PORTS (DIPs in nvram)
 ***********************************************************/
 
-INPUT_PORTS_START( slapshot )
+static INPUT_PORTS_START( slapshot )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -416,7 +416,7 @@ INPUT_PORTS_START( slapshot )
 	PORT_SERVICE_NO_TOGGLE(0x10, IP_ACTIVE_LOW)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( opwolf3 )
+static INPUT_PORTS_START( opwolf3 )
 	PORT_START_TAG("IN0")      /* IN0, all bogus */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )

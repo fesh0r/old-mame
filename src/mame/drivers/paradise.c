@@ -130,7 +130,7 @@ ADDRESS_MAP_END
                                 Paradise
 ***************************************************************************/
 
-INPUT_PORTS_START( paradise )
+static INPUT_PORTS_START( paradise )
 	PORT_START	// IN0 - port $2020 - DSW 1
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Easy ) )
@@ -211,7 +211,7 @@ INPUT_PORTS_START( paradise )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( tgtball )
+static INPUT_PORTS_START( tgtball )
 	PORT_START	// IN0 - port $2020 - DSW 1
 	PORT_DIPNAME( 0x03, 0x02, "Time" )
 	PORT_DIPSETTING(    0x03, "60" )
@@ -290,7 +290,7 @@ INPUT_PORTS_START( tgtball )
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( torus )
+static INPUT_PORTS_START( torus )
 
 	PORT_START	// IN0 - port $2020 - DSW 1
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
@@ -375,7 +375,7 @@ INPUT_PORTS_START( torus )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( madball )
+static INPUT_PORTS_START( madball )
 	PORT_START	/* 8bit DSW 1 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
@@ -906,19 +906,19 @@ ROM_START( madballn ) /* Even numbered stages show topless models.  Is nudity co
 	ROM_LOAD( "s.u28",     0x00000, 0x80000, CRC(78f02584) SHA1(70542e126db73a573db9ef41399d3a07fb7ea94b) )
 ROM_END
 
-DRIVER_INIT (paradise)
+static DRIVER_INIT (paradise)
 {
 	paradise_sprite_inc = 0x20;
 }
 
 // Inverted flipscreen and sprites are packed in less memory (same number though)
-DRIVER_INIT (tgtball)
+static DRIVER_INIT (tgtball)
 {
 	paradise_sprite_inc = 4;
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x2001, 0x2001, 0, 0, tgtball_flipscreen_w );
 }
 
-DRIVER_INIT (torus)
+static DRIVER_INIT (torus)
 {
 	paradise_sprite_inc = 4;
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x2070, 0x2070, 0, 0, torus_coin_counter_w);

@@ -409,7 +409,7 @@ static WRITE8_HANDLER( ghostb_bank_w )
 	flip_screen_set(data & 0x08);
 }
 
-WRITE8_HANDLER( csilver_control_w )
+static WRITE8_HANDLER( csilver_control_w )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 
@@ -1029,7 +1029,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL \
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 
-INPUT_PORTS_START( cobracom )
+static INPUT_PORTS_START( cobracom )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -1103,7 +1103,7 @@ INPUT_PORTS_START( cobracom )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ghostb )
+static INPUT_PORTS_START( ghostb )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -1176,7 +1176,7 @@ INPUT_PORTS_START( ghostb )
 	PORT_DIPSETTING(    0x80, DEF_STR( Normal ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ghostb3 )
+static INPUT_PORTS_START( ghostb3 )
 	PORT_INCLUDE(ghostb)
 
 	PORT_MODIFY("IN2")
@@ -1191,7 +1191,7 @@ INPUT_PORTS_START( ghostb3 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( srdarwin )
+static INPUT_PORTS_START( srdarwin )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -1264,7 +1264,7 @@ INPUT_PORTS_START( srdarwin )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 ) /* Fake */
 INPUT_PORTS_END
 
-INPUT_PORTS_START( gondo )
+static INPUT_PORTS_START( gondo )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
 	/* Top 4 bits are rotary controller */
@@ -1352,7 +1352,7 @@ INPUT_PORTS_START( gondo )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( oscar )
+static INPUT_PORTS_START( oscar )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -1425,7 +1425,7 @@ INPUT_PORTS_START( oscar )
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( oscarj0 )
+static INPUT_PORTS_START( oscarj0 )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -1498,7 +1498,7 @@ INPUT_PORTS_START( oscarj0 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( lastmisn )
+static INPUT_PORTS_START( lastmisn )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -1572,7 +1572,7 @@ INPUT_PORTS_START( lastmisn )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( lastmsnj )
+static INPUT_PORTS_START( lastmsnj )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -1646,7 +1646,7 @@ INPUT_PORTS_START( lastmsnj )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( shackled )
+static INPUT_PORTS_START( shackled )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -1725,7 +1725,7 @@ INPUT_PORTS_START( shackled )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( csilver )
+static INPUT_PORTS_START( csilver )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -1799,7 +1799,7 @@ INPUT_PORTS_START( csilver )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( garyoret )
+static INPUT_PORTS_START( garyoret )
 	PORT_START_TAG("IN0")
 	PLAYER1_JOYSTICK
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -2093,7 +2093,7 @@ static MACHINE_DRIVER_START( cobracom )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,dec8_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529) /* 58Hz, 529ms Vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -2132,7 +2132,7 @@ static MACHINE_DRIVER_START( ghostb )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,dec8_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(2500) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* 58Hz, 529ms Vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -2173,7 +2173,7 @@ static MACHINE_DRIVER_START( srdarwin )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,dec8_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529) /* 58Hz, 529ms Vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -2212,7 +2212,7 @@ static MACHINE_DRIVER_START( gondo )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,oscar_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529) /* 58Hz, 529ms Vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -2255,7 +2255,7 @@ static MACHINE_DRIVER_START( oscar )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,oscar_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(2500) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* 58Hz, 529ms Vblank duration */)
 	MDRV_INTERLEAVE(40) /* 40 CPU slices per frame */
 
 	/* video hardware */
@@ -2297,7 +2297,7 @@ static MACHINE_DRIVER_START( lastmiss )
 	MDRV_CPU_PROGRAM_MAP(ym3526_s_readmem,ym3526_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(2500) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* 58Hz, 529ms Vblank duration */)
 	MDRV_INTERLEAVE(200)
 
 	/* video hardware */
@@ -2339,7 +2339,7 @@ static MACHINE_DRIVER_START( shackled )
 	MDRV_CPU_PROGRAM_MAP(ym3526_s_readmem,ym3526_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(2500) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* 58Hz, 529ms Vblank duration */)
 	MDRV_INTERLEAVE(80)
 
 	/* video hardware */
@@ -2382,7 +2382,7 @@ static MACHINE_DRIVER_START( csilver )
 	MDRV_CPU_PROGRAM_MAP(csilver_s_readmem,csilver_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529) /* 58Hz, 529ms Vblank duration */)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
@@ -2426,7 +2426,7 @@ static MACHINE_DRIVER_START( garyoret )
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,oscar_s_writemem)
 								/* NMIs are caused by the main CPU */
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529) /* 58Hz, 529ms Vblank duration */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529) /* 58Hz, 529ms Vblank duration */)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
@@ -3386,7 +3386,7 @@ static DRIVER_INIT( deco222 )
 
 	sound_cpu = 1;
 	/* Oscar has three CPUs */
-	if (machine->drv->cpu[2].cpu_type != CPU_DUMMY) sound_cpu = 2;
+	if (machine->drv->cpu[2].type != CPU_DUMMY) sound_cpu = 2;
 
 	/* bits 5 and 6 of the opcodes are swapped */
 	rom = memory_region(REGION_CPU1+sound_cpu);

@@ -90,7 +90,7 @@ static WRITE16_HANDLER( sandscrp_irq_cause_w )
                                 Sand Scorpion
 ***************************************************************************/
 
-WRITE16_HANDLER( sandscrp_coin_counter_w )
+static WRITE16_HANDLER( sandscrp_coin_counter_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -130,7 +130,7 @@ static WRITE16_HANDLER( sandscrp_soundlatch_word_w )
 		latch1_full = 1;
 		soundlatch_w(0, data & 0xff);
 		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
-		cpu_spinuntil_time(MAME_TIME_IN_USEC(100));	// Allow the other cpu to reply
+		cpu_spinuntil_time(ATTOTIME_IN_USEC(100));	// Allow the other cpu to reply
 	}
 }
 
@@ -164,7 +164,7 @@ ADDRESS_MAP_END
                                 Sand Scorpion
 ***************************************************************************/
 
-WRITE8_HANDLER( sandscrp_bankswitch_w )
+static WRITE8_HANDLER( sandscrp_bankswitch_w )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	int bank = data & 0x07;
@@ -217,7 +217,7 @@ ADDRESS_MAP_END
                                 Sand Scorpion
 ***************************************************************************/
 
-INPUT_PORTS_START( sandscrp )
+static INPUT_PORTS_START( sandscrp )
 	PORT_START	// IN0 - $b00000.w
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)

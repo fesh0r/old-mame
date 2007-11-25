@@ -37,7 +37,7 @@
 ***************************************************************************/
 
 #define MAX_MIXER_CHANNELS		100
-#define SOUND_UPDATE_FREQUENCY	MAME_TIME_IN_HZ(50)
+#define SOUND_UPDATE_FREQUENCY	ATTOTIME_IN_HZ(50)
 
 
 
@@ -91,7 +91,7 @@ struct _speaker_info
     GLOBAL VARIABLES
 ***************************************************************************/
 
-static mame_timer *sound_update_timer;
+static emu_timer *sound_update_timer;
 
 static int totalsnd;
 static sound_info sound[MAX_SOUND];
@@ -176,7 +176,7 @@ INLINE sound_info *find_sound_by_tag(const char *tag)
 
 void sound_init(running_machine *machine)
 {
-	mame_time update_frequency = SOUND_UPDATE_FREQUENCY;
+	attotime update_frequency = SOUND_UPDATE_FREQUENCY;
 	const char *filename;
 
 	/* handle -nosound */
@@ -194,12 +194,12 @@ void sound_init(running_machine *machine)
 	finalmix = auto_malloc(Machine->sample_rate * sizeof(*finalmix));
 
 	/* allocate a global timer for sound timing */
-	sound_update_timer = mame_timer_alloc(sound_update);
-	mame_timer_adjust(sound_update_timer, update_frequency, 0, update_frequency);
+	sound_update_timer = timer_alloc(sound_update);
+	timer_adjust(sound_update_timer, update_frequency, 0, update_frequency);
 
 	/* initialize the streams engine */
 	VPRINTF(("streams_init\n"));
-	streams_init(machine, update_frequency.subseconds);
+	streams_init(machine, update_frequency.attoseconds);
 
 	/* now start up the sound chips and tag their streams */
 	VPRINTF(("start_sound_chips\n"));
@@ -259,7 +259,7 @@ static void sound_exit(running_machine *machine)
 
 	/* stop all the sound chips */
 	for (sndnum = 0; sndnum < MAX_SOUND; sndnum++)
-		if (Machine->drv->sound[sndnum].sound_type != SOUND_DUMMY)
+		if (Machine->drv->sound[sndnum].type != SOUND_DUMMY)
 			sndintrf_exit_sound(sndnum);
 
 	/* reset variables */
@@ -296,7 +296,7 @@ static void start_sound_chips(void)
 		int index;
 
 		/* stop when we hit an empty entry */
-		if (msound->sound_type == SOUND_DUMMY)
+		if (msound->type == SOUND_DUMMY)
 			break;
 		totalsnd++;
 
@@ -308,10 +308,10 @@ static void start_sound_chips(void)
 		info->sound = msound;
 
 		/* start the chip, tagging all its streams */
-		VPRINTF(("sndnum = %d -- sound_type = %d\n", sndnum, msound->sound_type));
+		VPRINTF(("sndnum = %d -- sound_type = %d\n", sndnum, msound->type));
 		num_regs = state_save_get_reg_count();
 		streams_set_tag(Machine, info);
-		if (sndintrf_init_sound(sndnum, msound->sound_type, msound->clock, msound->config) != 0)
+		if (sndintrf_init_sound(sndnum, msound->type, msound->clock, msound->config) != 0)
 			fatalerror("Sound chip #%d (%s) failed to initialize!", sndnum, sndnum_name(sndnum));
 
 		/* if no state registered for saving, we can't save */
@@ -517,7 +517,7 @@ static void sound_reset(running_machine *machine)
 
 	/* reset all the sound chips */
 	for (sndnum = 0; sndnum < MAX_SOUND; sndnum++)
-		if (Machine->drv->sound[sndnum].sound_type != SOUND_DUMMY)
+		if (Machine->drv->sound[sndnum].type != SOUND_DUMMY)
 			sndnum_reset(sndnum);
 }
 
@@ -815,7 +815,7 @@ static void mixer_update(void *param, stream_sample_t **inputs, stream_sample_t 
     particular output
 -------------------------------------------------*/
 
-void sndti_set_output_gain(int type, int index, int output, float gain)
+void sndti_set_output_gain(sound_type type, int index, int output, float gain)
 {
 	int sndnum = sndti_to_sndnum(type, index);
 

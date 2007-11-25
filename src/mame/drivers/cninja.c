@@ -44,7 +44,7 @@ Caveman Ninja Issues:
 #include "sound/okim6295.h"
 
 static int cninja_scanline, cninja_irq_mask;
-static mame_timer *raster_irq_timer;
+static emu_timer *raster_irq_timer;
 static UINT16 *cninja_ram;
 
 /**********************************************************************************/
@@ -77,7 +77,7 @@ static TIMER_CALLBACK( interrupt_gen )
 	deco16_raster_display_list[deco16_raster_display_position++]=deco16_pf34_control[4]&0xffff;
 
 	cpunum_set_input_line(0, (cninja_irq_mask&0x10) ? 3 : 4, ASSERT_LINE);
-	mame_timer_adjust(raster_irq_timer,time_never,0,time_zero);
+	timer_adjust(raster_irq_timer,attotime_never,0,attotime_zero);
 }
 
 static READ16_HANDLER( cninja_irq_r )
@@ -113,9 +113,9 @@ static WRITE16_HANDLER( cninja_irq_w )
 	case 1: /* Raster IRQ scanline position, only valid for values between 1 & 239 (0 and 240-256 do NOT generate IRQ's) */
 		cninja_scanline=data&0xff;
 		if ((cninja_irq_mask&0x2)==0 && cninja_scanline>0 && cninja_scanline<240)
-			mame_timer_adjust(raster_irq_timer, video_screen_get_time_until_pos(0, cninja_scanline, 0), cninja_scanline, time_never);
+			timer_adjust(raster_irq_timer, video_screen_get_time_until_pos(0, cninja_scanline, 0), cninja_scanline, attotime_never);
 		else
-			mame_timer_adjust(raster_irq_timer,time_never,0,time_zero);
+			timer_adjust(raster_irq_timer,attotime_never,0,attotime_zero);
 		return;
 
 	case 2: /* VBL irq ack */
@@ -377,7 +377,7 @@ ADDRESS_MAP_END
 
 /**********************************************************************************/
 
-INPUT_PORTS_START( edrandy )
+static INPUT_PORTS_START( edrandy )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -451,7 +451,7 @@ INPUT_PORTS_START( edrandy )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( cninja )
+static INPUT_PORTS_START( cninja )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -525,7 +525,7 @@ INPUT_PORTS_START( cninja )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( cninjau )
+static INPUT_PORTS_START( cninjau )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -599,7 +599,7 @@ INPUT_PORTS_START( cninjau )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( robocop2 )
+static INPUT_PORTS_START( robocop2 )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -673,7 +673,7 @@ INPUT_PORTS_START( robocop2 )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mutantf )
+static INPUT_PORTS_START( mutantf )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -825,7 +825,7 @@ GFXDECODE_END
 
 static MACHINE_RESET( cninja )
 {
-	raster_irq_timer = mame_timer_alloc(interrupt_gen);
+	raster_irq_timer = timer_alloc(interrupt_gen);
 	cninja_scanline=0;
 	cninja_irq_mask=0;
 }

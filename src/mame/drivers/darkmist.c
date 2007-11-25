@@ -35,7 +35,7 @@ VIDEO_UPDATE(darkmist);
 PALETTE_INIT(darkmist);
 
 UINT8 * darkmist_scroll;
-UINT8 * darkmist_workram;
+static UINT8 * darkmist_workram;
 
 int darkmist_hw;
 
@@ -82,7 +82,7 @@ static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( darkmist )
+static INPUT_PORTS_START( darkmist )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -236,7 +236,7 @@ static GFXDECODE_START( darkmist )
 	GFXDECODE_ENTRY( REGION_GFX3, 0, tilelayout,  0, 16*4 )
 GFXDECODE_END
 
-INTERRUPT_GEN( darkmist_interrupt )
+static INTERRUPT_GEN( darkmist_interrupt )
 {
 	if(cpu_getiloops())
 	{

@@ -195,7 +195,7 @@ ADDRESS_MAP_END
 
 /*** INPUT PORTS *************************************************************/
 
-INPUT_PORTS_START( suprslam )
+static INPUT_PORTS_START( suprslam )
 
 	PORT_START      /* IN1 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
@@ -336,7 +336,7 @@ static MACHINE_DRIVER_START( suprslam )
 	MDRV_CPU_IO_MAP(suprslam_sound_readport,suprslam_sound_writeport)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(2300) /* hand-tuned */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2300) /* hand-tuned */)
 
 	MDRV_GFXDECODE(suprslam)
 

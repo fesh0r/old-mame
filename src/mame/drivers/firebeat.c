@@ -111,7 +111,7 @@
 #include "driver.h"
 #include "cpu/powerpc/ppc.h"
 #include "machine/intelfsh.h"
-#include "machine/scsidev.h"
+#include "machine/scsicd.h"
 #include "machine/rtc65271.h"
 #include "machine/pc16552d.h"
 #include "sound/ymz280b.h"
@@ -133,7 +133,7 @@ static UINT8 xram[4096];
 static UINT8 extend_board_irq_enable;
 static UINT8 extend_board_irq_active;
 
-static mame_timer *keyboard_timer;
+static emu_timer *keyboard_timer;
 
 static GCU_REGS gcu[2];
 
@@ -817,8 +817,7 @@ static WRITE32_HANDLER(soundflash_w)
 #define ATAPI_CYCLES_PER_SECTOR (32000)	// plenty of time to allow DMA setup etc.  BIOS requires this be at least 2000, individual games may vary.
 
 static UINT8 atapi_regs[16];
-static pSCSIDispatch atapi_device[2];
-static void *atapi_device_data[2];
+static SCSIInstance *atapi_device_data[2];
 
 #define ATAPI_STAT_BSY	   0x80
 #define ATAPI_STAT_DRDY    0x40
@@ -864,11 +863,9 @@ static void atapi_init(void)
 	atapi_cdata_wait = 0;
 
 	// allocate two SCSI CD-ROM devices
-	atapi_device[0] = SCSI_DEVICE_CDROM;
-	atapi_device[0](SCSIOP_ALLOC_INSTANCE, &atapi_device_data[0], 0, (UINT8 *)NULL);
+	SCSIAllocInstance( SCSI_DEVICE_CDROM, &atapi_device_data[0], 0 );
 	// TODO: the slave drive can be either CD-ROM, DVD-ROM or HDD
-	atapi_device[1] = SCSI_DEVICE_CDROM;
-	atapi_device[1](SCSIOP_ALLOC_INSTANCE, &atapi_device_data[1], 1, (UINT8 *)NULL);
+	SCSIAllocInstance( SCSI_DEVICE_CDROM, &atapi_device_data[1], 1 );
 }
 
 static void atapi_reset(void)
@@ -903,7 +900,7 @@ static UINT16 atapi_command_reg_r(int reg)
 			atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
 
 			// get the data from the device
-			atapi_device[atapi_drivesel](SCSIOP_READ_DATA, atapi_device_data[atapi_drivesel], atapi_xferlen, temp_data);
+			SCSIReadData( atapi_device_data[atapi_drivesel], temp_data, atapi_xferlen );
 
 			// fix it up in an endian-safe way
 			for (i = 0; i < atapi_xferlen; i += 2)
@@ -970,7 +967,7 @@ static void atapi_command_reg_w(int reg, UINT16 data)
 				}
 
 				// send it to the device
-				atapi_device[atapi_drivesel](SCSIOP_WRITE_DATA, atapi_device_data[atapi_drivesel], atapi_cdata_wait, atapi_scsi_packet);
+				SCSIWriteData( atapi_device_data[atapi_drivesel], atapi_scsi_packet, atapi_cdata_wait );
 
 				// assert IRQ
 				atapi_cause_irq();
@@ -982,6 +979,8 @@ static void atapi_command_reg_w(int reg, UINT16 data)
 
 		if ((!atapi_cdata_wait) && (atapi_data_ptr == 6))
 		{
+			int phase;
+
 			// reset data pointer for reading SCSI results
 			atapi_data_ptr = 0;
 
@@ -998,7 +997,9 @@ static void atapi_command_reg_w(int reg, UINT16 data)
 			}
 
 			// send it to the SCSI device
-			atapi_xferlen = atapi_device[atapi_drivesel](SCSIOP_EXEC_COMMAND, atapi_device_data[atapi_drivesel], 0, atapi_scsi_packet);
+			SCSISetCommand( atapi_device_data[atapi_drivesel], atapi_scsi_packet, 12 );
+			SCSIExecCommand( atapi_device_data[atapi_drivesel], &atapi_xferlen );
+			SCSIGetPhase( atapi_device_data[atapi_drivesel], &phase );
 
 			if (atapi_xferlen != -1)
 			{
@@ -1019,15 +1020,18 @@ static void atapi_command_reg_w(int reg, UINT16 data)
 				atapi_regs[ATAPI_REG_COUNTLOW] = atapi_xferlen & 0xff;
 				atapi_regs[ATAPI_REG_COUNTHIGH] = (atapi_xferlen>>8)&0xff;
 
+				switch( phase )
+				{
+				case SCSI_PHASE_DATAOUT:
+					atapi_data_ptr = 0;
+					atapi_cdata_wait = atapi_xferlen;
+					logerror("ATAPI: Waiting for %x bytes of data\n", atapi_cdata_wait);
+					break;
+				}
+
 				// perform special ATAPI processing of certain commands
 				switch (atapi_data[0]&0xff)
 				{
-					case 0x55:	// MODE SELECT
-						atapi_cdata_wait = atapi_data[4]/2;
-						atapi_data_ptr = 0;
-						logerror("ATAPI: Waiting for %x bytes of MODE SELECT data\n", atapi_cdata_wait);
-						break;
-
 					case 0xa8:	// READ (12)
 						// indicate data ready: set DRQ and DMA ready, and IO in INTREASON
 						atapi_regs[ATAPI_REG_CMDSTATUS] = ATAPI_STAT_DRQ | ATAPI_STAT_SERVDSC;
@@ -1036,22 +1040,10 @@ static void atapi_command_reg_w(int reg, UINT16 data)
 						fatalerror("ATAPI: DMA read command attempted\n");
 						break;
 
-					case 0x00:	// BUS RESET / TEST UNIT READY
-						atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
-						break;
-
-					case 0xbb:	// SET CD SPEED
-						atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
-						break;
-
-					case 0xa5:	// PLAY AUDIO
-						atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
-						break;
-
+					case 0x00: // BUS RESET / TEST UNIT READY
+					case 0xbb: // SET CD SPEED
+					case 0xa5: // PLAY AUDIO
 					case 0x1b:
-						atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
-						break;
-
 					case 0x4e:
 						atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
 						break;
@@ -1820,7 +1812,7 @@ static NVRAM_HANDLER(firebeat)
 	}
 }
 
-INPUT_PORTS_START(ppp)
+static INPUT_PORTS_START(ppp)
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )			// Left
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )			// Right
@@ -1853,7 +1845,7 @@ INPUT_PORTS_START(ppp)
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START(kbm)
+static INPUT_PORTS_START(kbm)
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )				// Start P1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )				// Start P2
@@ -1929,7 +1921,7 @@ INPUT_PORTS_START(kbm)
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START(popn)
+static INPUT_PORTS_START(popn)
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )			// Switch 1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )			// Switch 2
@@ -1978,7 +1970,7 @@ static MACHINE_RESET( firebeat )
 		sound[i+0x200000] = intelflash_read(2, i);
 	}
 
-	atapi_device[1](SCSIOP_GET_DEVICE, atapi_device_data[1], 0, (UINT8 *)&cd);
+	SCSIGetDevice( atapi_device_data[1], &cd );
 	cdda_set_cdrom(0, cd);
 }
 
@@ -2100,7 +2092,7 @@ enum
 {
 	DS1991_STATE_NORMAL,
 	DS1991_STATE_READ_SUBKEY,
-} DS1991_STATE;
+};
 
 static IBUTTON ibutton;
 
@@ -2291,8 +2283,8 @@ static DRIVER_INIT(ppd)
 static void init_keyboard(void)
 {
 	// set keyboard timer
-	keyboard_timer = mame_timer_alloc(keyboard_timer_callback);
-	mame_timer_adjust(keyboard_timer, MAME_TIME_IN_MSEC(10), 0, MAME_TIME_IN_MSEC(10));
+	keyboard_timer = timer_alloc(keyboard_timer_callback);
+	timer_adjust(keyboard_timer, ATTOTIME_IN_MSEC(10), 0, ATTOTIME_IN_MSEC(10));
 }
 
 static DRIVER_INIT(kbm)

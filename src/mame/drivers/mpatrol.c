@@ -66,7 +66,7 @@ static READ8_HANDLER( mpatrol_protection_r )
 }
 
 
-READ8_HANDLER( mpatrol_input_port_3_r )
+static READ8_HANDLER( mpatrol_input_port_3_r )
 {
 	int ret = input_port_3_r(0);
 
@@ -226,7 +226,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x40, DEF_STR( 1C_5C ) )\
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) )
 
-INPUT_PORTS_START( mpatrol )
+static INPUT_PORTS_START( mpatrol )
 MPATROL_COMMON
 
 	PORT_START_TAG("DSW0")
@@ -246,7 +246,7 @@ MPATROL_COMMON2
 INPUT_PORTS_END
 
 /* Identical to mpatrol, the only difference is the number of lives */
-INPUT_PORTS_START( mpatrolw )
+static INPUT_PORTS_START( mpatrolw )
 MPATROL_COMMON
 
 	PORT_START_TAG("DSW0")
@@ -266,7 +266,7 @@ MPATROL_COMMON2
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( alpha1v )
+static INPUT_PORTS_START( alpha1v )
 	PORT_START_TAG("IN0")\
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
@@ -411,7 +411,7 @@ static MACHINE_DRIVER_START( mpatrol )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(1790)	/* accurate frequency, measured on a real board, is 56.75Hz. */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1790)	/* accurate frequency, measured on a real board, is 56.75Hz. */)
 				/* the Lode Runner manual (similar but different hardware) */
 				/* talks about 55Hz and 1790ms vblank duration. */
 
@@ -442,7 +442,7 @@ static MACHINE_DRIVER_START( alpha1v )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(1790)	/* accurate frequency, measured on a real board, is 56.75Hz. */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1790)	/* accurate frequency, measured on a real board, is 56.75Hz. */)
 				/* the Lode Runner manual (similar but different hardware) */
 				/* talks about 55Hz and 1790ms vblank duration. */
 

@@ -29,14 +29,14 @@ TODO:
 extern void fghtbskt_sh_start(void);
 extern WRITE8_HANDLER( fghtbskt_samples_w );
 
-UINT8 *wilytowr_videoram2, *wilytowr_scrollram;
+static UINT8 *wilytowr_videoram2, *wilytowr_scrollram;
 
 static int pal_bank, fg_flag, sy_offset;
 
 static tilemap *bg_tilemap, *fg_tilemap;
 
 
-PALETTE_INIT( wilytowr )
+static PALETTE_INIT( wilytowr )
 {
 	int i;
 
@@ -119,7 +119,7 @@ static WRITE8_HANDLER( wilytwr_palbank_w )
 	}
 }
 
-WRITE8_HANDLER( wilytwr_flipscreen_w )
+static WRITE8_HANDLER( wilytwr_flipscreen_w )
 {
 	if (flip_screen != (~data & 0x01))
 	{
@@ -128,7 +128,7 @@ WRITE8_HANDLER( wilytwr_flipscreen_w )
 	}
 }
 
-WRITE8_HANDLER( fghtbskt_flipscreen_w )
+static WRITE8_HANDLER( fghtbskt_flipscreen_w )
 {
 	flip_screen_set(data);
 	fg_flag = flip_screen ? TILE_FLIPX : 0;
@@ -151,7 +151,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 	SET_TILE_INFO(0, code, 0, fg_flag);
 }
 
-VIDEO_START( wilytowr )
+static VIDEO_START( wilytowr )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
@@ -195,7 +195,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-VIDEO_UPDATE( wilytowr )
+static VIDEO_UPDATE( wilytowr )
 {
 	int col;
 
@@ -327,7 +327,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( wilytowr )
+static INPUT_PORTS_START( wilytowr )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
@@ -405,7 +405,7 @@ INPUT_PORTS_START( wilytowr )
 	PORT_SERVICE( 0x80, IP_ACTIVE_HIGH )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( fghtbskt )
+static INPUT_PORTS_START( fghtbskt )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )  PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )    PORT_8WAY
@@ -501,7 +501,7 @@ static GFXDECODE_START( fghtbskt )
 GFXDECODE_END
 
 
-static struct Samplesinterface custom_interface =
+static struct Samplesinterface fghtbskt_samples_interface =
 {
 	1,
 	NULL,
@@ -580,7 +580,7 @@ static MACHINE_DRIVER_START( fghtbskt )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
+	MDRV_SOUND_CONFIG(fghtbskt_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -716,12 +716,12 @@ ROM_START( fghtbskt )
 	ROM_LOAD( "fb_b.11e",     0x0200, 0x0100, CRC(fca5bf0e) SHA1(5846f43aa2906cac58e300fdab197b99f896e3ef) )
 ROM_END
 
-DRIVER_INIT( wilytowr )
+static DRIVER_INIT( wilytowr )
 {
 	sy_offset = 238;
 }
 
-DRIVER_INIT( fghtbskt )
+static DRIVER_INIT( fghtbskt )
 {
 	sy_offset = 240;
 }

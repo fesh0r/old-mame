@@ -48,7 +48,7 @@ static INTERRUPT_GEN( ssozumo_interrupt )
 }
 
 
-WRITE8_HANDLER( ssozumo_sh_command_w )
+static WRITE8_HANDLER( ssozumo_sh_command_w )
 {
 	soundlatch_w(offset, data);
 	cpunum_set_input_line(1, M6502_IRQ_LINE, HOLD_LINE);
@@ -110,7 +110,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( ssozumo )
+static INPUT_PORTS_START( ssozumo )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY

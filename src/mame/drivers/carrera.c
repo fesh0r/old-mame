@@ -45,7 +45,7 @@ Emulation Notes:
 #include "sound/ay8910.h"
 #include "video/crtc6845.h"
 
-UINT8* carrera_tileram;
+static UINT8* carrera_tileram;
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x4fff) AM_READ(MRA8_ROM)
@@ -80,7 +80,7 @@ static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( carrera )
+static INPUT_PORTS_START( carrera )
 	PORT_START_TAG("IN0")	/* Port 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_JOYSTICK_UP )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_JOYSTICK_DOWN )
@@ -242,11 +242,11 @@ static GFXDECODE_START( carrera )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout, 0, 16 )
 GFXDECODE_END
 
-VIDEO_START(carrera)
+static VIDEO_START(carrera)
 {
 }
 
-VIDEO_UPDATE(carrera)
+static VIDEO_UPDATE(carrera)
 {
 
 	int x,y;
@@ -277,7 +277,7 @@ static struct AY8910interface ay8910_interface =
 	unknown_r,
 };
 
-PALETTE_INIT(carrera)
+static PALETTE_INIT(carrera)
 {
 	int x;
 	UINT8 *src = memory_region ( REGION_PROMS );

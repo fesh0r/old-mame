@@ -60,7 +60,7 @@ extern PALETTE_INIT( sonson );
 extern VIDEO_START( sonson );
 extern VIDEO_UPDATE( sonson );
 
-WRITE8_HANDLER( sonson_sh_irqtrigger_w )
+static WRITE8_HANDLER( sonson_sh_irqtrigger_w )
 {
 	static int last;
 
@@ -115,7 +115,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( sonson )
+static INPUT_PORTS_START( sonson )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* probably unused */

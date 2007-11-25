@@ -136,7 +136,7 @@ static UINT8 requested_int[8];
 
 static UINT16 *metro_irq_levels, *metro_irq_vectors, *metro_irq_enable;
 
-READ16_HANDLER( metro_irq_cause_r )
+static READ16_HANDLER( metro_irq_cause_r )
 {
 	return	requested_int[0] * 0x01 +	// vblank
 			requested_int[1] * 0x02 +
@@ -186,20 +186,20 @@ static void update_irq_state(void)
 
 
 /* For games that supply an *IRQ Vector* on the data bus */
-int metro_irq_callback(int int_level)
+static int metro_irq_callback(int int_level)
 {
 //  logerror("CPU #0 PC %06X: irq callback returns %04X\n",activecpu_get_pc(),metro_irq_vectors[int_level]);
 	return metro_irq_vectors[int_level]&0xff;
 }
 
-MACHINE_RESET( metro )
+static MACHINE_RESET( metro )
 {
 	if (irq_line == -1)
 		cpunum_set_irq_callback(0, metro_irq_callback);
 }
 
 
-WRITE16_HANDLER( metro_irq_cause_w )
+static WRITE16_HANDLER( metro_irq_cause_w )
 {
 //if (data & ~0x15) logerror("CPU #0 PC %06X : unknown bits of irqcause written: %04X\n",activecpu_get_pc(),data);
 
@@ -220,7 +220,7 @@ WRITE16_HANDLER( metro_irq_cause_w )
 }
 
 
-INTERRUPT_GEN( metro_interrupt )
+static INTERRUPT_GEN( metro_interrupt )
 {
 	switch ( cpu_getiloops() )
 	{
@@ -237,7 +237,7 @@ INTERRUPT_GEN( metro_interrupt )
 }
 
 /* Lev 1. Lev 2 seems sound related */
-INTERRUPT_GEN( bangball_interrupt )
+static INTERRUPT_GEN( bangball_interrupt )
 {
 	requested_int[0] = 1;	// set scroll regs if a flag is set
 	requested_int[4] = 1;	// clear that flag
@@ -251,7 +251,7 @@ static TIMER_CALLBACK( vblank_end_callback )
 }
 
 /* lev 2-7 (lev 1 seems sound related) */
-INTERRUPT_GEN( karatour_interrupt )
+static INTERRUPT_GEN( karatour_interrupt )
 {
 	switch ( cpu_getiloops() )
 	{
@@ -259,7 +259,7 @@ INTERRUPT_GEN( karatour_interrupt )
 			requested_int[0] = 1;
 			requested_int[5] = 1;	// write the scroll registers
 			/* the duration is a guess */
-			mame_timer_set(MAME_TIME_IN_USEC(2500), 0, vblank_end_callback);
+			timer_set(ATTOTIME_IN_USEC(2500), 0, vblank_end_callback);
 			update_irq_state();
 			break;
 
@@ -270,7 +270,7 @@ INTERRUPT_GEN( karatour_interrupt )
 	}
 }
 
-static mame_timer *mouja_irq_timer;
+static emu_timer *mouja_irq_timer;
 
 static TIMER_CALLBACK( mouja_irq_callback )
 {
@@ -281,17 +281,17 @@ static TIMER_CALLBACK( mouja_irq_callback )
 static WRITE16_HANDLER( mouja_irq_timer_ctrl_w )
 {
 	double freq = 58.0 + (0xff - (data & 0xff)) / 2.2;					/* 0xff=58Hz, 0x80=116Hz? */
-	mame_timer_adjust(mouja_irq_timer, time_zero, 0, MAME_TIME_IN_HZ(freq));
+	timer_adjust(mouja_irq_timer, attotime_zero, 0, ATTOTIME_IN_HZ(freq));
 }
 
-INTERRUPT_GEN( mouja_interrupt )
+static INTERRUPT_GEN( mouja_interrupt )
 {
 	requested_int[1] = 1;
 	update_irq_state();
 }
 
 
-INTERRUPT_GEN( gakusai_interrupt )
+static INTERRUPT_GEN( gakusai_interrupt )
 {
 	switch ( cpu_getiloops() )
 	{
@@ -302,7 +302,7 @@ INTERRUPT_GEN( gakusai_interrupt )
 	}
 }
 
-INTERRUPT_GEN( dokyusei_interrupt )
+static INTERRUPT_GEN( dokyusei_interrupt )
 {
 	switch ( cpu_getiloops() )
 	{
@@ -572,7 +572,7 @@ static struct YMF278B_interface ymf278b_interface =
 
 /* IT DOESN'T WORK PROPERLY */
 
-WRITE16_HANDLER( metro_coin_lockout_1word_w )
+static WRITE16_HANDLER( metro_coin_lockout_1word_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -583,7 +583,7 @@ WRITE16_HANDLER( metro_coin_lockout_1word_w )
 }
 
 
-WRITE16_HANDLER( metro_coin_lockout_4words_w )
+static WRITE16_HANDLER( metro_coin_lockout_4words_w )
 {
 //  coin_lockout_w( (offset >> 1) & 1, offset & 1 );
 	if (data & ~1)	logerror("CPU #0 PC %06X : unknown bits of coin lockout written: %04X\n",activecpu_get_pc(),data);
@@ -610,7 +610,7 @@ WRITE16_HANDLER( metro_coin_lockout_4words_w )
 
 static UINT16 *metro_rombank;
 
-READ16_HANDLER( metro_bankedrom_r )
+static READ16_HANDLER( metro_bankedrom_r )
 {
 	const int region = REGION_GFX1;
 
@@ -672,7 +672,7 @@ READ16_HANDLER( metro_bankedrom_r )
 
 ***************************************************************************/
 
-UINT16 *metro_blitter_regs;
+static UINT16 *metro_blitter_regs;
 
 static TIMER_CALLBACK( metro_blit_done )
 {
@@ -697,7 +697,7 @@ INLINE void blt_write(const int tmap, const offs_t offs, const UINT16 data, cons
 }
 
 
-WRITE16_HANDLER( metro_blitter_w )
+static WRITE16_HANDLER( metro_blitter_w )
 {
 	COMBINE_DATA( &metro_blitter_regs[offset] );
 
@@ -754,7 +754,7 @@ WRITE16_HANDLER( metro_blitter_w )
                        another blit. */
 					if (b1 == 0)
 					{
-						mame_timer_set(MAME_TIME_IN_USEC(500),0,metro_blit_done);
+						timer_set(ATTOTIME_IN_USEC(500),0,metro_blit_done);
 						return;
 					}
 
@@ -1381,7 +1381,7 @@ ADDRESS_MAP_END
 
 static int gakusai_oki_bank_lo, gakusai_oki_bank_hi;
 
-void gakusai_oki_bank_set(void)
+static void gakusai_oki_bank_set(void)
 {
 	int bank = (gakusai_oki_bank_lo & 7) + (gakusai_oki_bank_hi & 1) * 8;
 	OKIM6295_set_bank_base(0, bank * 0x40000);
@@ -1419,12 +1419,12 @@ static READ16_HANDLER( gakusai_input_r )
 	return 0xffff;
 }
 
-READ16_HANDLER( gakusai_eeprom_r )
+static READ16_HANDLER( gakusai_eeprom_r )
 {
 	return EEPROM_read_bit() & 1;
 }
 
-WRITE16_HANDLER( gakusai_eeprom_w )
+static WRITE16_HANDLER( gakusai_eeprom_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -1547,7 +1547,7 @@ ADDRESS_MAP_END
                         Mahjong Doukyuusei Special
 ***************************************************************************/
 
-READ16_HANDLER( dokyusp_eeprom_r )
+static READ16_HANDLER( dokyusp_eeprom_r )
 {
 	// clock line asserted: write latch or select next bit to read
 	EEPROM_set_clock_line(CLEAR_LINE);
@@ -1556,7 +1556,7 @@ READ16_HANDLER( dokyusp_eeprom_r )
 	return EEPROM_read_bit() & 1;
 }
 
-WRITE16_HANDLER( dokyusp_eeprom_bit_w )
+static WRITE16_HANDLER( dokyusp_eeprom_bit_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -1569,7 +1569,7 @@ WRITE16_HANDLER( dokyusp_eeprom_bit_w )
 	}
 }
 
-WRITE16_HANDLER( dokyusp_eeprom_reset_w )
+static WRITE16_HANDLER( dokyusp_eeprom_reset_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -2159,7 +2159,7 @@ ADDRESS_MAP_END
                                     Bal Cube
 ***************************************************************************/
 
-INPUT_PORTS_START( balcube )
+static INPUT_PORTS_START( balcube )
 	PORT_START_TAG("IN0")	// $500000
 	COINS
 
@@ -2202,7 +2202,7 @@ INPUT_PORTS_END
                                 Bang Bang Ball
 ***************************************************************************/
 
-INPUT_PORTS_START( bangball )
+static INPUT_PORTS_START( bangball )
 	PORT_START_TAG("IN0")	// $d00000
 	COINS
 
@@ -2243,7 +2243,7 @@ INPUT_PORTS_END
                                 Battle Bubble
 ***************************************************************************/
 
-INPUT_PORTS_START( batlbubl )
+static INPUT_PORTS_START( batlbubl )
 	PORT_START_TAG("IN0")
 	JOY_LSB(1, BUTTON1, UNKNOWN, UNKNOWN, UNKNOWN)
 	JOY_MSB(2, BUTTON1, UNKNOWN, UNKNOWN, UNKNOWN)
@@ -2352,7 +2352,7 @@ INPUT_PORTS_END
                             Blazing Tornado
 ***************************************************************************/
 
-INPUT_PORTS_START( blzntrnd )
+static INPUT_PORTS_START( blzntrnd )
 	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x0007, 0x0004, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x0007, "Beginner" )
@@ -2469,7 +2469,7 @@ INPUT_PORTS_END
                             Grand Striker 2
 ***************************************************************************/
 
-INPUT_PORTS_START( gstrik2 )
+static INPUT_PORTS_START( gstrik2 )
 	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x0003, 0x0003, "Player Vs Com" )
 	PORT_DIPSETTING(      0x0003, "1:00" )
@@ -2614,7 +2614,7 @@ INPUT_PORTS_END
      On  On    Continue, Retry level
 
 */
-INPUT_PORTS_START( daitorid )
+static INPUT_PORTS_START( daitorid )
 	PORT_START_TAG("IN0") // $c00000
 	COINS
 
@@ -2665,7 +2665,7 @@ INPUT_PORTS_END
 
    Even if there are 4 "tables" the 2 first ones and the 2 last ones
    contains the same values for the timer. */
-INPUT_PORTS_START( dharma )
+static INPUT_PORTS_START( dharma )
 	PORT_START_TAG("IN0") //$c00000
 	COINS
 
@@ -2707,7 +2707,7 @@ INPUT_PORTS_END
                                 Gun Master
 ***************************************************************************/
 
-INPUT_PORTS_START( gunmast )
+static INPUT_PORTS_START( gunmast )
 	PORT_START_TAG("IN0") //$400000
 	COINS
 
@@ -2752,7 +2752,7 @@ INPUT_PORTS_END
                                 Karate Tournament
 ***************************************************************************/
 
-INPUT_PORTS_START( karatour )
+static INPUT_PORTS_START( karatour )
 	PORT_START_TAG("IN0") // $400002
 	JOY_LSB(2, BUTTON1, BUTTON2, UNKNOWN, UNKNOWN)
 
@@ -2851,7 +2851,7 @@ INPUT_PORTS_END
 	PORT_START_TAG("IN4") /*$40000c*/\
 	JOY_LSB(1, BUTTON1, BUTTON2, UNKNOWN, UNKNOWN)
 
-INPUT_PORTS_START( ladykill )
+static INPUT_PORTS_START( ladykill )
 	LKILL_COMMON1
 	PORT_START_TAG("IN2") // $400006
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Lives ) )
@@ -2879,7 +2879,7 @@ INPUT_PORTS_START( ladykill )
 INPUT_PORTS_END
 
 /* Same as 'ladykill' but NO "Nudity" Dip Switch */
-INPUT_PORTS_START( moegonta )
+static INPUT_PORTS_START( moegonta )
 	LKILL_COMMON1
 
 	PORT_START_TAG("IN2")	// $400006
@@ -2927,7 +2927,7 @@ INPUT_PORTS_START( moegonta )
 	COINAGE_DSW\
 
 
-INPUT_PORTS_START( lastfort )
+static INPUT_PORTS_START( lastfort )
 	LFORT_COMMON
 
 	PORT_START_TAG("IN4")// $c0000c
@@ -2965,7 +2965,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 /* Same as 'lastfort' but WORKING "Tiles" Dip Switch */
-INPUT_PORTS_START( lastfero )
+static INPUT_PORTS_START( lastfero )
 	LFORT_COMMON
 
 	PORT_START	// IN4 - $c0000c
@@ -3058,7 +3058,7 @@ INPUT_PORTS_END
 
 
 
-INPUT_PORTS_START( dokyusei )
+static INPUT_PORTS_START( dokyusei )
 	MAHJONG_PANEL
 
 	PORT_START_TAG("IN6")	// $478884.w
@@ -3118,7 +3118,7 @@ INPUT_PORTS_END
 
 /* Same as dokyusei, without the DSWs (these games have an eeprom) */
 
-INPUT_PORTS_START( gakusai )
+static INPUT_PORTS_START( gakusai )
 
 MAHJONG_PANEL
 
@@ -3129,7 +3129,7 @@ INPUT_PORTS_END
                                     Mouja
 ***************************************************************************/
 
-INPUT_PORTS_START( mouja )
+static INPUT_PORTS_START( mouja )
 	PORT_START_TAG("IN0") //$478880
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -3214,7 +3214,7 @@ INPUT_PORTS_END
                                 Pang Poms
 ***************************************************************************/
 
-INPUT_PORTS_START( pangpoms )
+static INPUT_PORTS_START( pangpoms )
 	PORT_START_TAG("IN0") //$800004
 	COINS
 
@@ -3259,7 +3259,7 @@ INPUT_PORTS_END
                                 Poitto!
 ***************************************************************************/
 
-INPUT_PORTS_START( poitto )
+static INPUT_PORTS_START( poitto )
 	PORT_START_TAG("IN0") //$800000
 	COINS
 
@@ -3303,7 +3303,7 @@ INPUT_PORTS_END
                                 Puzzli
 ***************************************************************************/
 
-INPUT_PORTS_START( puzzli )
+static INPUT_PORTS_START( puzzli )
 	PORT_START_TAG("IN0") //$c00000
 	COINS
 
@@ -3347,7 +3347,7 @@ INPUT_PORTS_END
                                 Sankokushi
 ***************************************************************************/
 
-INPUT_PORTS_START( 3kokushi )
+static INPUT_PORTS_START( 3kokushi )
 	PORT_START_TAG("IN0") //$c00000
 	COINS
 
@@ -3409,7 +3409,7 @@ INPUT_PORTS_END
                                 Pururun
 ***************************************************************************/
 
-INPUT_PORTS_START( pururun )
+static INPUT_PORTS_START( pururun )
 	PORT_START_TAG("IN0") //$400000
 	COINS
 
@@ -3468,7 +3468,7 @@ INPUT_PORTS_END
        "none"       "none"
 
 */
-INPUT_PORTS_START( skyalert )
+static INPUT_PORTS_START( skyalert )
 	PORT_START_TAG("IN0") //$400004
 	COINS
 
@@ -3517,7 +3517,7 @@ INPUT_PORTS_END
    All I can tell is that is that it affects the levels which are
    proposed, but there is no evidence that one "table" is harder
    than another. */
-INPUT_PORTS_START( toride2g )
+static INPUT_PORTS_START( toride2g )
 	PORT_START_TAG("IN0") //$800000
 	COINS
 
@@ -4076,7 +4076,7 @@ static MACHINE_DRIVER_START( dokyusei )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.90)
 MACHINE_DRIVER_END
 
-NVRAM_HANDLER( dokyusp )
+static NVRAM_HANDLER( dokyusp )
 {
 	static const UINT8 def_data[] = {0x00,0xe0};
 
@@ -4638,7 +4638,7 @@ static DRIVER_INIT( balcube )
 }
 
 
-DRIVER_INIT( dharmak )
+static DRIVER_INIT( dharmak )
 {
 	UINT8 *src = memory_region( REGION_GFX1 );
 	int i;
@@ -4667,7 +4667,7 @@ static DRIVER_INIT( mouja )
 {
 	metro_common();
 	irq_line = -1;	/* split interrupt handlers */
-	mouja_irq_timer = mame_timer_alloc(mouja_irq_callback);
+	mouja_irq_timer = timer_alloc(mouja_irq_callback);
 }
 
 static DRIVER_INIT( gakusai )
@@ -5927,7 +5927,7 @@ GAME( 1994, lastfero, lastfort, lastfort, lastfero, metro,    ROT0,   "Metro",  
 GAME( 1994, lastforg, lastfort, lastforg, ladykill, metro,    ROT0,   "Metro",                      "Last Fortress - Toride (German)"    , 0 )
 GAME( 1994, toride2g, 0,        toride2g, toride2g, metro,    ROT0,   "Metro",                      "Toride II Adauchi Gaiden",        GAME_IMPERFECT_GRAPHICS )
 GAME( 1994, torid2gg, toride2g, toride2g, toride2g, metro,    ROT0,   "Metro",                      "Toride II Adauchi Gaiden (German)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1994, toride2j, toride2g, toride2g, toride2g, metro,    ROT0,   "Metro",                      "Toride II Adauchi Gaiden (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, toride2j, toride2g, toride2g, toride2g, metro,    ROT0,   "Metro",                      "Toride II (Japan)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1994, gunmast,  0,        pururun,  gunmast,  daitorid, ROT0,   "Metro",                      "Gun Master"                      , 0 )
 GAME( 1995, daitorid, 0,        daitorid, daitorid, daitorid, ROT0,   "Metro",                      "Daitoride",                       GAME_IMPERFECT_GRAPHICS )
 GAME( 1995, dokyusei, 0,        dokyusei, dokyusei, gakusai,  ROT0,   "Make Software / Elf / Media Trading", "Mahjong Doukyuusei"        , 0 )

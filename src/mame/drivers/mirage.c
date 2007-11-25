@@ -107,7 +107,7 @@ static int mirage_bank_callback(const int bank)
 	return ((bank>>4)&0x7) * 0x1000;
 }
 
-VIDEO_START(mirage)
+static VIDEO_START(mirage)
 {
 	deco16_1_video_init();
 
@@ -115,7 +115,7 @@ VIDEO_START(mirage)
 	deco16_set_tilemap_bank_callback(1, mirage_bank_callback);
 }
 
-VIDEO_UPDATE(mirage)
+static VIDEO_UPDATE(mirage)
 {
 	flip_screen_set( deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
@@ -135,12 +135,12 @@ static READ16_HANDLER( mirage_controls_r )
 	return readinputportbytag("SYSTEM_IN");
 }
 
-READ16_HANDLER( random_readers )
+static READ16_HANDLER( random_readers )
 {
 	return mame_rand(Machine);
 }
 
-READ16_HANDLER( mirage_input_r )
+static READ16_HANDLER( mirage_input_r )
 {
 	UINT16 port = readinputportbytag("MIRAGE0");
 	return port;
@@ -205,7 +205,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( mirage )
+static INPUT_PORTS_START( mirage )
 	PORT_START_TAG("SYSTEM_IN")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -353,7 +353,7 @@ static MACHINE_DRIVER_START( mirage )
 	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
 
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

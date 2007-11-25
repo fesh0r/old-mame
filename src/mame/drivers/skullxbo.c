@@ -62,8 +62,8 @@ static void alpha_row_update(running_machine *machine, int scrnum, int scanline)
 	/* the interrupt occurs on the HBLANK of the 6th scanline following */
 	if (check < &atarigen_alpha[0x7c0] && (*check & 0x8000))
 	{
-		mame_time period = video_screen_get_time_until_pos(scrnum, video_screen_get_vpos(scrnum) + 6, machine->screen[scrnum].width * 0.9);
-		mame_timer_set(period, 0, irq_gen);
+		attotime period = video_screen_get_time_until_pos(scrnum, video_screen_get_vpos(scrnum) + 6, machine->screen[scrnum].width * 0.9);
+		timer_set(period, 0, irq_gen);
 	}
 
 	/* update the playfield and motion objects */
@@ -156,7 +156,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( skullxbo )
+static INPUT_PORTS_START( skullxbo )
 	PORT_START      /* ff5800 */
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)

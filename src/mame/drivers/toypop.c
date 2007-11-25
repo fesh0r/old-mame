@@ -128,12 +128,12 @@ static int interrupt_enable_68k;
 static UINT8 *toypop_m68000_sharedram;
 
 
-READ8_HANDLER( toypop_sound_sharedram_r )
+static READ8_HANDLER( toypop_sound_sharedram_r )
 {
 	return namco_soundregs[offset];
 }
 
-WRITE8_HANDLER( toypop_sound_sharedram_w )
+static WRITE8_HANDLER( toypop_sound_sharedram_w )
 {
 	if (offset < 0x40)
 		namco_15xx_w(offset,data);
@@ -141,46 +141,46 @@ WRITE8_HANDLER( toypop_sound_sharedram_w )
 		namco_soundregs[offset] = data;
 }
 
-READ16_HANDLER( toypop_m68000_sharedram_r )
+static READ16_HANDLER( toypop_m68000_sharedram_r )
 {
 	return toypop_m68000_sharedram[offset];
 }
 
-WRITE16_HANDLER( toypop_m68000_sharedram_w )
+static WRITE16_HANDLER( toypop_m68000_sharedram_w )
 {
 	if (ACCESSING_LSB)
 		toypop_m68000_sharedram[offset] = data & 0xff;
 }
 
-READ8_HANDLER( toypop_main_interrupt_enable_r )
+static READ8_HANDLER( toypop_main_interrupt_enable_r )
 {
 	cpu_interrupt_enable(0,1);
 	return 0;
 }
 
-WRITE8_HANDLER( toypop_main_interrupt_enable_w )
+static WRITE8_HANDLER( toypop_main_interrupt_enable_w )
 {
 	cpu_interrupt_enable(0,1);
 	cpunum_set_input_line(0, 0, CLEAR_LINE);
 }
 
-WRITE8_HANDLER( toypop_main_interrupt_disable_w )
+static WRITE8_HANDLER( toypop_main_interrupt_disable_w )
 {
 	cpu_interrupt_enable(0,0);
 }
 
-WRITE8_HANDLER( toypop_sound_interrupt_enable_acknowledge_w )
+static WRITE8_HANDLER( toypop_sound_interrupt_enable_acknowledge_w )
 {
 	cpu_interrupt_enable(1,1);
 	cpunum_set_input_line(1, 0, CLEAR_LINE);
 }
 
-WRITE8_HANDLER( toypop_sound_interrupt_disable_w )
+static WRITE8_HANDLER( toypop_sound_interrupt_disable_w )
 {
 	cpu_interrupt_enable(1,0);
 }
 
-INTERRUPT_GEN( toypop_main_interrupt )
+static INTERRUPT_GEN( toypop_main_interrupt )
 {
 	irq0_line_assert();	// this also checks if irq is enabled - IMPORTANT!
 						// so don't replace with cpunum_set_input_line(0, 0, ASSERT_LINE);
@@ -190,22 +190,22 @@ INTERRUPT_GEN( toypop_main_interrupt )
 	namcoio_set_irq_line(2,PULSE_LINE);
 }
 
-WRITE8_HANDLER( toypop_sound_clear_w )
+static WRITE8_HANDLER( toypop_sound_clear_w )
 {
 	cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
 }
 
-WRITE8_HANDLER( toypop_sound_assert_w )
+static WRITE8_HANDLER( toypop_sound_assert_w )
 {
 	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
 }
 
-WRITE8_HANDLER( toypop_m68000_clear_w )
+static WRITE8_HANDLER( toypop_m68000_clear_w )
 {
 	cpunum_set_input_line(2, INPUT_LINE_RESET, CLEAR_LINE);
 }
 
-WRITE8_HANDLER( toypop_m68000_assert_w )
+static WRITE8_HANDLER( toypop_m68000_assert_w )
 {
 	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
 }
@@ -219,25 +219,25 @@ static TIMER_CALLBACK( disable_interrupts )
 	interrupt_enable_68k = 0;
 }
 
-MACHINE_RESET( toypop )
+static MACHINE_RESET( toypop )
 {
 	/* we must do this on a timer in order to have it take effect */
 	/* otherwise, the reset process will override our changes */
 	timer_call_after_resynch(0, disable_interrupts);
 }
 
-INTERRUPT_GEN( toypop_m68000_interrupt )
+static INTERRUPT_GEN( toypop_m68000_interrupt )
 {
 	if (interrupt_enable_68k)
 		cpunum_set_input_line(2, 6, HOLD_LINE);
 }
 
-WRITE16_HANDLER( toypop_m68000_interrupt_enable_w )
+static WRITE16_HANDLER( toypop_m68000_interrupt_enable_w )
 {
 	interrupt_enable_68k = 1;
 }
 
-WRITE16_HANDLER( toypop_m68000_interrupt_disable_w )
+static WRITE16_HANDLER( toypop_m68000_interrupt_disable_w )
 {
 	interrupt_enable_68k = 0;
 }
@@ -356,7 +356,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( liblrabl )
+static INPUT_PORTS_START( liblrabl )
 	/* The inputs are not memory mapped, they are handled by three I/O chips. */
 	PORT_START	/* 58XX #0 pins 22-29 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_UP ) PORT_8WAY
@@ -446,7 +446,7 @@ INPUT_PORTS_START( liblrabl )
 	PORT_SERVICE( 0x08, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( toypop )
+static INPUT_PORTS_START( toypop )
 	/* The inputs are not memory mapped, they are handled by three I/O chips. */
 	PORT_START	/* 58XX #0 pins 22-29 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY

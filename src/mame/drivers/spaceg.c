@@ -174,7 +174,7 @@ static UINT8 unkram[65536];
 static int io9400;
 static int io9401;
 
-VIDEO_UPDATE( spaceg )
+static VIDEO_UPDATE( spaceg )
 {
 	copybitmap(bitmap,tmpbitmap,0,0,0,0,cliprect,TRANSPARENCY_NONE,0);
 
@@ -382,7 +382,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( spaceg )
+static INPUT_PORTS_START( spaceg )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON1 )

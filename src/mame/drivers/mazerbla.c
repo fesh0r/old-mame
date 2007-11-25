@@ -101,7 +101,7 @@ static PALETTE_INIT( mazerbla )
 
 static mame_bitmap * tmpbitmaps[4];
 
-VIDEO_START( mazerbla )
+static VIDEO_START( mazerbla )
 {
 	tmpbitmaps[0] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
 	tmpbitmaps[1] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
@@ -236,7 +236,7 @@ VIDEO_UPDATE( test_vcu )
 
 
 /* these two VIDEO_UPDATE()s will be joined one day */
-VIDEO_UPDATE( greatgun )
+static VIDEO_UPDATE( greatgun )
 {
 
 	UINT32 color_base=0;
@@ -256,7 +256,7 @@ VIDEO_UPDATE( greatgun )
 	return 0;
 }
 
-VIDEO_UPDATE( mazerbla )
+static VIDEO_UPDATE( mazerbla )
 {
 
 	UINT32 color_base=0;
@@ -1150,7 +1150,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( mazerbla )
+static INPUT_PORTS_START( mazerbla )
 	PORT_START	/* Strobe 0: ZPU Switches */
 	PORT_DIPNAME( 0x40, 0x40, "ZPU Switch 1" )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
@@ -1292,7 +1292,7 @@ INPUT_PORTS_START( mazerbla )
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(7) PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( greatgun )
+static INPUT_PORTS_START( greatgun )
 	PORT_START	/* Strobe 0: ZPU Switches */
 	PORT_DIPNAME( 0x40, 0x40, "ZPU Switch 1" )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )

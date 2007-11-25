@@ -169,7 +169,7 @@ static ADDRESS_MAP_START( cbasebal_portmap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( cbasebal )
+static INPUT_PORTS_START( cbasebal )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )
@@ -314,7 +314,7 @@ ROM_START( cbasebal )
 ROM_END
 
 
-DRIVER_INIT( cbasebal )
+static DRIVER_INIT( cbasebal )
 {
 	memory_configure_bank(1, 0, 32, memory_region(REGION_CPU1) + 0x10000, 0x4000);
 	pang_decode();

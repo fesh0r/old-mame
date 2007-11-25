@@ -41,13 +41,13 @@ static TIMER_CALLBACK( interrupt_callback )
 		scanline = 16;
 	}
 
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, interrupt_callback);
 }
 
 
 static MACHINE_RESET( runaway )
 {
-	mame_timer_set(video_screen_get_time_until_pos(0, 16, 0), 16, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, 16, 0), 16, interrupt_callback);
 }
 
 
@@ -117,7 +117,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( qwak )
+static INPUT_PORTS_START( qwak )
 	PORT_START	/* 3000 D7 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_VBLANK )
@@ -169,7 +169,7 @@ INPUT_PORTS_START( qwak )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( runaway )
+static INPUT_PORTS_START( runaway )
 	PORT_START /* 3000 D7 */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x02, IP_ACTIVE_HIGH, IPT_VBLANK )

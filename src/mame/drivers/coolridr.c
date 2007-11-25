@@ -74,19 +74,19 @@ SEGA CUSTOM IC :
 
 /* video */
 
-VIDEO_START(coolridr)
+static VIDEO_START(coolridr)
 {
 }
 
-VIDEO_UPDATE(coolridr)
+static VIDEO_UPDATE(coolridr)
 {
 	return 0;
 }
 
 /* end video */
 
-UINT32* sysh1_workram_h;
-UINT16* sysh1_soundram;
+static UINT32* sysh1_workram_h;
+//UINT16* sysh1_soundram;
 
 // what's wrong:
 //
@@ -118,7 +118,7 @@ static ADDRESS_MAP_START( system_h1_sound_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x300000, 0x300fff) AM_READWRITE(SCSP_1_r, SCSP_1_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( coolridr )
+static INPUT_PORTS_START( coolridr )
 INPUT_PORTS_END
 
 static const gfx_layout tiles8x8_layout =
@@ -171,7 +171,7 @@ static INTERRUPT_GEN( system_h1_sub )
 	}
 }
 
-MACHINE_RESET ( coolridr )
+static MACHINE_RESET ( coolridr )
 {
 
 //  cpunum_set_input_line(0, INPUT_LINE_HALT, ASSERT_LINE);

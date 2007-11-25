@@ -173,7 +173,7 @@ number 0 on each voice. That sample is 00000-00000.
 	}
 }
 
-DRIVER_INIT( magicbub )
+static DRIVER_INIT( magicbub )
 {
 //  remove_mem_write16_handler (0, 0x800180, 0x800181 );
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800188, 0x800189, 0, 0, magicbub_sound_command_w);
@@ -225,7 +225,7 @@ ADDRESS_MAP_END
                                 Magic Bubble
 ***************************************************************************/
 
-INPUT_PORTS_START( magicbub )
+static INPUT_PORTS_START( magicbub )
 	PORT_START_TAG("IN0")	// $800000.w
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
@@ -295,7 +295,7 @@ INPUT_PORTS_END
                         Magic Bubble (Adult version)
 ***************************************************************************/
 
-INPUT_PORTS_START( magicbua )
+static INPUT_PORTS_START( magicbua )
 	PORT_INCLUDE(magicbub)
 
 	PORT_MODIFY("DSW2")
@@ -310,7 +310,7 @@ INPUT_PORTS_END
                                 Shocking
 ***************************************************************************/
 
-INPUT_PORTS_START( shocking )
+static INPUT_PORTS_START( shocking )
 	PORT_START_TAG("IN0")	// $800000.w
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
@@ -383,7 +383,7 @@ INPUT_PORTS_END
                                 Bomb Kick
 ***************************************************************************/
 
-INPUT_PORTS_START( bombkick )
+static INPUT_PORTS_START( bombkick )
 	PORT_START_TAG("IN0")	// $800000.w
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)

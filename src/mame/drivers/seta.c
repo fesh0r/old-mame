@@ -1238,7 +1238,7 @@ static UINT8 *sharedram;
     timer(uPD71054) struct
 ------------------------------*/
 static struct st_chip {
-	mame_timer *timer[3];			// Timer
+	emu_timer *timer[3];			// Timer
 	UINT16	max[3];				// Max counter
 	UINT16	write_select;		// Max counter write select
 	UINT8	reg[4];				//
@@ -1247,15 +1247,15 @@ static struct st_chip {
 /*------------------------------
     uppdate timer
 ------------------------------*/
-void uPD71054_update_timer( int no )
+static void uPD71054_update_timer( int no )
 {
 	UINT16 max = uPD71054.max[no]&0xffff;
 
 	if( max != 0 ) {
-		mame_time period = scale_up_mame_time(MAME_TIME_IN_HZ(Machine->drv->cpu[0].cpu_clock), 16 * max);
-		mame_timer_adjust( uPD71054.timer[no], period, no, time_zero );
+		attotime period = attotime_mul(ATTOTIME_IN_HZ(Machine->drv->cpu[0].clock), 16 * max);
+		timer_adjust( uPD71054.timer[no], period, no, attotime_zero );
 	} else {
-		mame_timer_adjust( uPD71054.timer[no], time_never, no, time_never);
+		timer_adjust( uPD71054.timer[no], attotime_never, no, attotime_never);
 		logerror( "CPU #0 PC %06X: uPD71054 error, timer %d duration is 0\n",
 				activecpu_get_pc(), no );
 	}
@@ -1277,7 +1277,7 @@ static TIMER_CALLBACK( uPD71054_timer_callback )
 /*------------------------------
     initialize
 ------------------------------*/
-void uPD71054_timer_init( void )
+static void uPD71054_timer_init( void )
 {
 	int no;
 
@@ -1287,7 +1287,7 @@ void uPD71054_timer_init( void )
 		uPD71054.max[no] = 0xffff;
 	}
 	for( no = 0; no < USED_TIMER_NUM; no++ ) {
-		uPD71054.timer[no] = mame_timer_alloc( uPD71054_timer_callback );
+		uPD71054.timer[no] = timer_alloc( uPD71054_timer_callback );
 	}
 }
 
@@ -1472,7 +1472,7 @@ static READ8_HANDLER( dsw2_r )
  Sprites Buffering
 
 */
-VIDEO_EOF( seta_buffer_sprites )
+static VIDEO_EOF( seta_buffer_sprites )
 {
 	int ctrl2	=	spriteram16[ 0x602/2 ];
 	if (~ctrl2 & 0x20)
@@ -1580,7 +1580,7 @@ ADDRESS_MAP_END
                                 Caliber 50
 ***************************************************************************/
 
-READ16_HANDLER ( calibr50_ip_r )
+static READ16_HANDLER ( calibr50_ip_r )
 {
 	int dir1 = readinputportbytag("IN4") & 0xfff;	// analog port
 	int dir2 = readinputportbytag("IN5") & 0xfff;	// analog port
@@ -1603,13 +1603,13 @@ READ16_HANDLER ( calibr50_ip_r )
 	}
 }
 
-WRITE16_HANDLER( calibr50_soundlatch_w )
+static WRITE16_HANDLER( calibr50_soundlatch_w )
 {
 	if (ACCESSING_LSB)
 	{
 		soundlatch_word_w(0,data,mem_mask);
 		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
-		cpu_spinuntil_time(MAME_TIME_IN_USEC(50));	// Allow the other cpu to reply
+		cpu_spinuntil_time(ATTOTIME_IN_USEC(50));	// Allow the other cpu to reply
 	}
 }
 
@@ -1653,7 +1653,7 @@ ADDRESS_MAP_END
                                 U.S. Classic
 ***************************************************************************/
 
-READ16_HANDLER( usclssic_dsw_r )
+static READ16_HANDLER( usclssic_dsw_r )
 {
 	switch (offset)
 	{
@@ -1665,7 +1665,7 @@ READ16_HANDLER( usclssic_dsw_r )
 	return 0;
 }
 
-READ16_HANDLER( usclssic_trackball_x_r )
+static READ16_HANDLER( usclssic_trackball_x_r )
 {
 	switch (offset)
 	{
@@ -1675,7 +1675,7 @@ READ16_HANDLER( usclssic_trackball_x_r )
 	return 0;
 }
 
-READ16_HANDLER( usclssic_trackball_y_r )
+static READ16_HANDLER( usclssic_trackball_y_r )
 {
 	switch (offset)
 	{
@@ -1686,7 +1686,7 @@ READ16_HANDLER( usclssic_trackball_y_r )
 }
 
 
-WRITE16_HANDLER( usclssic_lockout_w )
+static WRITE16_HANDLER( usclssic_lockout_w )
 {
 	static int old_tiles_offset = 0;
 
@@ -1708,7 +1708,7 @@ INLINE void usc_changecolor_xRRRRRGGGGGBBBBB(pen_t color,int data)
 	else palette_set_color_rgb(Machine,color+0x200,pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
 }
 
-WRITE16_HANDLER( usclssic_paletteram16_xRRRRRGGGGGBBBBB_word_w )
+static WRITE16_HANDLER( usclssic_paletteram16_xRRRRRGGGGGBBBBB_word_w )
 {
 	COMBINE_DATA(&paletteram16[offset]);
 	usc_changecolor_xRRRRRGGGGGBBBBB(offset,paletteram16[offset]);
@@ -2338,7 +2338,7 @@ ADDRESS_MAP_END
                             Mobile Suit Gundam
 ***************************************************************************/
 
-WRITE16_HANDLER( msgundam_vregs_w )
+static WRITE16_HANDLER( msgundam_vregs_w )
 {
 	// swap $500002 with $500004
 	switch( offset )
@@ -2489,19 +2489,19 @@ ADDRESS_MAP_END
                             Pro Mahjong Kiwame
 ***************************************************************************/
 
-UINT16 *kiwame_nvram;
+static UINT16 *kiwame_nvram;
 
-READ16_HANDLER( kiwame_nvram_r )
+static READ16_HANDLER( kiwame_nvram_r )
 {
 	return kiwame_nvram[offset] & 0xff;
 }
 
-WRITE16_HANDLER( kiwame_nvram_w )
+static WRITE16_HANDLER( kiwame_nvram_w )
 {
 	if (ACCESSING_LSB)	COMBINE_DATA( &kiwame_nvram[offset] );
 }
 
-READ16_HANDLER( kiwame_input_r )
+static READ16_HANDLER( kiwame_input_r )
 {
 	int row_select = kiwame_nvram_r( 0x10a/2,0 ) & 0x1f;
 	int i;
@@ -2605,7 +2605,7 @@ ADDRESS_MAP_END
 
 static int wiggie_soundlatch;
 
-READ8_HANDLER( wiggie_soundlatch_r )
+static READ8_HANDLER( wiggie_soundlatch_r )
 {
 	return wiggie_soundlatch;
 }
@@ -2792,7 +2792,7 @@ ADDRESS_MAP_END
                                 DownTown
 ***************************************************************************/
 
-READ8_HANDLER( downtown_ip_r )
+static READ8_HANDLER( downtown_ip_r )
 {
 	int dir1 = readinputport(4);	// analog port
 	int dir2 = readinputport(5);	// analog port
@@ -2837,10 +2837,10 @@ ADDRESS_MAP_END
                         Caliber 50 / U.S. Classic
 ***************************************************************************/
 
-WRITE8_HANDLER( calibr50_soundlatch2_w )
+static WRITE8_HANDLER( calibr50_soundlatch2_w )
 {
 	soundlatch2_w(0,data);
-	cpu_spinuntil_time(MAME_TIME_IN_USEC(50));	// Allow the other cpu to reply
+	cpu_spinuntil_time(ATTOTIME_IN_USEC(50));	// Allow the other cpu to reply
 }
 
 static ADDRESS_MAP_START( calibr50_sub_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -2919,7 +2919,7 @@ ADDRESS_MAP_END
 static UINT16 pairslove_protram[0x200];
 static UINT16 pairslove_protram_old[0x200];
 
-READ16_HANDLER( pairlove_prot_r )
+static READ16_HANDLER( pairlove_prot_r )
 {
 	int retdata;
 	retdata = pairslove_protram[offset];
@@ -2928,7 +2928,7 @@ READ16_HANDLER( pairlove_prot_r )
 	return retdata;
 }
 
-WRITE16_HANDLER( pairlove_prot_w )
+static WRITE16_HANDLER( pairlove_prot_w )
 {
 //  mame_printf_debug("pairs love protection? write %06x %04x %04x\n",activecpu_get_pc(), offset,data);
 	pairslove_protram_old[offset]=pairslove_protram[offset];
@@ -3080,7 +3080,7 @@ ADDRESS_MAP_END
                                 Arbalester
 ***************************************************************************/
 
-INPUT_PORTS_START( arbalest )
+static INPUT_PORTS_START( arbalest )
 	PORT_START_TAG("IN0")	// Player 1
 	JOY_TYPE2_2BUTTONS(1)
 
@@ -3147,7 +3147,7 @@ INPUT_PORTS_END
                                 Athena no Hatena?
 ***************************************************************************/
 
-INPUT_PORTS_START( atehate )
+static INPUT_PORTS_START( atehate )
 	PORT_START_TAG("IN0")	// Player 1
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
@@ -3230,7 +3230,7 @@ INPUT_PORTS_END
                                 Blandia
 ***************************************************************************/
 
-INPUT_PORTS_START( blandia )
+static INPUT_PORTS_START( blandia )
 	PORT_START_TAG("IN0")	//Player 1 - $400000.w
 	JOY_TYPE1_3BUTTONS(1)
 
@@ -3301,7 +3301,7 @@ INPUT_PORTS_END
                                 Block Carnival
 ***************************************************************************/
 
-INPUT_PORTS_START( blockcar )
+static INPUT_PORTS_START( blockcar )
 	PORT_START_TAG("IN0")	//Player 1 - $500001.b
 	JOY_TYPE1_2BUTTONS(1)	// button2 = speed up
 
@@ -3370,7 +3370,7 @@ INPUT_PORTS_END
                                 Caliber 50
 ***************************************************************************/
 
-INPUT_PORTS_START( calibr50 )
+static INPUT_PORTS_START( calibr50 )
 	PORT_START_TAG("IN0")	//Player 1
 	JOY_TYPE2_2BUTTONS(1)
 
@@ -3444,7 +3444,7 @@ INPUT_PORTS_END
                                 Daioh
 ***************************************************************************/
 
-INPUT_PORTS_START( daioh )
+static INPUT_PORTS_START( daioh )
 	PORT_START_TAG("IN0")
 	JOY_TYPE1_3BUTTONS(1)
 
@@ -3531,7 +3531,7 @@ INPUT_PORTS_END
                                 Dragon Unit
 ***************************************************************************/
 
-INPUT_PORTS_START( drgnunit )
+static INPUT_PORTS_START( drgnunit )
 	PORT_START_TAG("IN0")	//Player 1
 	JOY_TYPE1_3BUTTONS(1)
 
@@ -3606,7 +3606,7 @@ INPUT_PORTS_END
                                 DownTown
 ***************************************************************************/
 
-INPUT_PORTS_START( downtown )
+static INPUT_PORTS_START( downtown )
 	PORT_START_TAG("IN0")	//Player 1
 	JOY_TYPE2_2BUTTONS(1)
 
@@ -3693,7 +3693,7 @@ INPUT_PORTS_END
                                 Eight Force
 ***************************************************************************/
 
-INPUT_PORTS_START( eightfrc )
+static INPUT_PORTS_START( eightfrc )
 	PORT_START_TAG("IN0")	//Player 1
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -3764,7 +3764,7 @@ INPUT_PORTS_END
                                 Extreme Downhill
 ***************************************************************************/
 
-INPUT_PORTS_START( extdwnhl )
+static INPUT_PORTS_START( extdwnhl )
 	PORT_START_TAG("IN0") //Player 1
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(1)
@@ -3858,7 +3858,7 @@ INPUT_PORTS_END
                                 Gundhara
 ***************************************************************************/
 
-INPUT_PORTS_START( gundhara )
+static INPUT_PORTS_START( gundhara )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_3BUTTONS(1)
 
@@ -3927,7 +3927,7 @@ INPUT_PORTS_END
                                 Zombie Raid
 ***************************************************************************/
 
-INPUT_PORTS_START( zombraid )
+static INPUT_PORTS_START( zombraid )
 	PORT_START_TAG("IN0") //Player 1
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -4023,7 +4023,7 @@ INPUT_PORTS_END
                                 J.J.Squawkers
 ***************************************************************************/
 
-INPUT_PORTS_START( jjsquawk )
+static INPUT_PORTS_START( jjsquawk )
 	PORT_START_TAG("IN0") //Player 1 - $400000.w
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -4091,7 +4091,7 @@ INPUT_PORTS_END
                 (Kamen) Masked Riders Club Battle Race
 ***************************************************************************/
 
-INPUT_PORTS_START( kamenrid )
+static INPUT_PORTS_START( kamenrid )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_2BUTTONS(1)	// BUTTON3 in "test mode" only
 
@@ -4177,7 +4177,7 @@ INPUT_PORTS_END
 #define KRZYBOWL_TRACKBALL(_dir_, _n_ ) \
 	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_##_dir_ ) PORT_PLAYER(_n_) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_REVERSE
 
-INPUT_PORTS_START( krzybowl )
+static INPUT_PORTS_START( krzybowl )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_3BUTTONS(1)
 
@@ -4260,7 +4260,7 @@ INPUT_PORTS_END
                                 Mad Shark
 ***************************************************************************/
 
-INPUT_PORTS_START( madshark )
+static INPUT_PORTS_START( madshark )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -4338,7 +4338,7 @@ INPUT_PORTS_END
                                 Meta Fox
 ***************************************************************************/
 
-INPUT_PORTS_START( metafox )
+static INPUT_PORTS_START( metafox )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE2_2BUTTONS(1)
 
@@ -4407,7 +4407,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 
-INPUT_PORTS_START( msgundam )
+static INPUT_PORTS_START( msgundam )
 	PORT_START_TAG("IN0") //Player 1 - $400000.w
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -4475,7 +4475,7 @@ INPUT_PORTS_START( msgundam )
 	PORT_SERVICE( 0x8000, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( msgunda1 )
+static INPUT_PORTS_START( msgunda1 )
 	PORT_START_TAG("IN0") //Player 1 - $400000.w
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -4549,7 +4549,7 @@ INPUT_PORTS_END
                             Oishii Puzzle
 ***************************************************************************/
 
-INPUT_PORTS_START( oisipuzl )
+static INPUT_PORTS_START( oisipuzl )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -4618,7 +4618,7 @@ INPUT_PORTS_END
                             Pro Mahjong Kiwame
 ***************************************************************************/
 
-INPUT_PORTS_START( kiwame )
+static INPUT_PORTS_START( kiwame )
 	PORT_START_TAG("IN0") //Unused
 	PORT_START_TAG("IN1") //Unused
 
@@ -4733,7 +4733,7 @@ INPUT_PORTS_END
                                 Quiz Kokology
 ***************************************************************************/
 
-INPUT_PORTS_START( qzkklogy )
+static INPUT_PORTS_START( qzkklogy )
 	PORT_START_TAG("IN0") //Player 1 - $b00001.b
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
@@ -4813,7 +4813,7 @@ INPUT_PORTS_END
                                 Quiz Kokology 2
 ***************************************************************************/
 
-INPUT_PORTS_START( qzkklgy2 )
+static INPUT_PORTS_START( qzkklgy2 )
 	PORT_START_TAG("IN0") //Player 1 - $b00001.b
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
@@ -4892,7 +4892,7 @@ INPUT_PORTS_END
                                     Rezon
 ***************************************************************************/
 
-INPUT_PORTS_START( rezon )
+static INPUT_PORTS_START( rezon )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_3BUTTONS(1)	// 1 used??
 
@@ -4961,7 +4961,7 @@ INPUT_PORTS_START( rezon )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( rezont )
+static INPUT_PORTS_START( rezont )
 
 	PORT_INCLUDE( rezon )
 
@@ -4977,7 +4977,7 @@ INPUT_PORTS_END
     When the "Stage Select" dip switch is on and button1 is pressed during boot,
     pressing P1's button3 freezes the game (pressing P2's button3 resumes it).
 */
-INPUT_PORTS_START( neobattl )
+static INPUT_PORTS_START( neobattl )
 	PORT_START_TAG("IN0") // Player 1 - $400000.w
 	JOY_TYPE1_1BUTTON(1)	// bump to 3 buttons for freezing to work
 
@@ -5053,7 +5053,7 @@ INPUT_PORTS_END
                                 Sokonuke
 ***************************************************************************/
 
-INPUT_PORTS_START( sokonuke )
+static INPUT_PORTS_START( sokonuke )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_1BUTTON(1)
 
@@ -5125,7 +5125,7 @@ INPUT_PORTS_END
                                 Strike Gunner
 ***************************************************************************/
 
-INPUT_PORTS_START( stg )
+static INPUT_PORTS_START( stg )
 	PORT_START_TAG("IN0") //Player 1 - $b00001.b
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -5194,7 +5194,7 @@ INPUT_PORTS_END
                             Thunder & Lightning
 ***************************************************************************/
 
-INPUT_PORTS_START( thunderl )
+static INPUT_PORTS_START( thunderl )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_2BUTTONS(1)	// button2 = speed up
 
@@ -5284,7 +5284,7 @@ INPUT_PORTS_END
                                 Thundercade (US)
 ***************************************************************************/
 
-INPUT_PORTS_START( tndrcade )
+static INPUT_PORTS_START( tndrcade )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -5351,7 +5351,7 @@ INPUT_PORTS_END
                                 Thundercade (Japan)
 ***************************************************************************/
 
-INPUT_PORTS_START( tndrcadj )
+static INPUT_PORTS_START( tndrcadj )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -5419,7 +5419,7 @@ INPUT_PORTS_END
                                 Twin Eagle
 ***************************************************************************/
 
-INPUT_PORTS_START( twineagl )
+static INPUT_PORTS_START( twineagl )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -5485,7 +5485,7 @@ INPUT_PORTS_END
                                 Ultraman Club
 ***************************************************************************/
 
-INPUT_PORTS_START( umanclub )
+static INPUT_PORTS_START( umanclub )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -5560,7 +5560,7 @@ INPUT_PORTS_END
                             Ultra Toukon Densetsu
 ***************************************************************************/
 
-INPUT_PORTS_START( utoukond )
+static INPUT_PORTS_START( utoukond )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_3BUTTONS(1)
 
@@ -5651,7 +5651,7 @@ INPUT_PORTS_END
 #define TRACKBALL(_dir_) \
 	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_##_dir_ ) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_RESET
 
-INPUT_PORTS_START( usclssic )
+static INPUT_PORTS_START( usclssic )
 	PORT_START_TAG("IN0")
 	TRACKBALL(X)
 	PORT_BIT   ( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -5728,7 +5728,7 @@ INPUT_PORTS_END
                                 War of Aero
 ***************************************************************************/
 
-INPUT_PORTS_START( wrofaero )
+static INPUT_PORTS_START( wrofaero )
 	PORT_START_TAG("IN0") //Player 1 - $400000.w
 	JOY_TYPE1_3BUTTONS(1)	// 3rd button selects the weapon
 							// when the dsw for cheating is on
@@ -5805,7 +5805,7 @@ INPUT_PORTS_END
                                     Wit's
 ***************************************************************************/
 
-INPUT_PORTS_START( wits )
+static INPUT_PORTS_START( wits )
 	PORT_START_TAG("IN0") //Player 1
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -5885,7 +5885,7 @@ INPUT_PORTS_END
                                 Zing Zing Zip
 ***************************************************************************/
 
-INPUT_PORTS_START( zingzip )
+static INPUT_PORTS_START( zingzip )
 	PORT_START_TAG("IN0") //Player 1 - $400000.w
 	JOY_TYPE1_2BUTTONS(1)
 
@@ -5959,7 +5959,7 @@ INPUT_PORTS_END
   Pairs Love
 *************************************/
 
-INPUT_PORTS_START( pairlove )
+static INPUT_PORTS_START( pairlove )
 	PORT_START_TAG("IN0") //Player 1 - $500001.b
 	JOY_TYPE1_2BUTTONS(1)	// button2 = speed up
 
@@ -6031,7 +6031,7 @@ INPUT_PORTS_END
                                 Crazy Fight
 ***************************************************************************/
 
-INPUT_PORTS_START( crazyfgt )
+static INPUT_PORTS_START( crazyfgt )
 	PORT_START_TAG("IN0") //Coins - $610000.w
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -6533,7 +6533,7 @@ MACHINE_DRIVER_END
 */
 
 #define calibr50_INTERRUPTS_NUM (4+1)
-INTERRUPT_GEN( calibr50_interrupt )
+static INTERRUPT_GEN( calibr50_interrupt )
 {
 	switch (cpu_getiloops())
 	{
@@ -7016,7 +7016,7 @@ static INTERRUPT_GEN( wrofaero_interrupt )
 	cpunum_set_input_line( 0, 2, HOLD_LINE );
 }
 
-MACHINE_RESET( wrofaero ) { uPD71054_timer_init(); }
+static MACHINE_RESET( wrofaero ) { uPD71054_timer_init(); }
 #endif	// __uPD71054_TIMER
 
 
@@ -8801,7 +8801,7 @@ ROM_START( crazyfgt )
 ROM_END
 
 
-READ16_HANDLER( twineagl_debug_r )
+static READ16_HANDLER( twineagl_debug_r )
 {
 	/*  At several points in the code, the program checks if four
         consecutive bytes in this range are equal to a string, and if they
@@ -8834,19 +8834,19 @@ READ16_HANDLER( twineagl_debug_r )
 /* Extra RAM ? Check code at 0x00ba90 */
 /* 2000F8 = A3 enables it, 2000F8 = 00 disables? see downtown too */
 static UINT8 xram[8];
-READ16_HANDLER( twineagl_200100_r )
+static READ16_HANDLER( twineagl_200100_r )
 {
 logerror("%04x: twineagl_200100_r %d\n",activecpu_get_pc(),offset);
 	return xram[offset];
 }
-WRITE16_HANDLER( twineagl_200100_w )
+static WRITE16_HANDLER( twineagl_200100_w )
 {
 logerror("%04x: twineagl_200100_w %d = %02x\n",activecpu_get_pc(),offset,data);
 	if (ACCESSING_LSB)
 		xram[offset] = data & 0xff;
 }
 
-DRIVER_INIT( twineagl )
+static DRIVER_INIT( twineagl )
 {
 	/* debug? */
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x8000ff, 0, 0, twineagl_debug_r);
@@ -8858,7 +8858,7 @@ DRIVER_INIT( twineagl )
 
 
 /* Protection? NVRAM is handled writing commands here */
-UINT16 downtown_protection[0x200/2];
+static UINT16 downtown_protection[0x200/2];
 static READ16_HANDLER( downtown_protection_r )
 {
 	int job = downtown_protection[0xf8/2] & 0xff;
@@ -8881,14 +8881,14 @@ static WRITE16_HANDLER( downtown_protection_w )
 	COMBINE_DATA(&downtown_protection[offset]);
 }
 
-DRIVER_INIT( downtown )
+static DRIVER_INIT( downtown )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x2001ff, 0, 0, downtown_protection_r);
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x2001ff, 0, 0, downtown_protection_w);
 }
 
 
-READ16_HANDLER( arbalest_debug_r )
+static READ16_HANDLER( arbalest_debug_r )
 {
 	/*  At some points in the code, the program checks if four
         consecutive bytes in this range are equal to a string, and if they
@@ -8902,13 +8902,13 @@ READ16_HANDLER( arbalest_debug_r )
 	return 0;
 }
 
-DRIVER_INIT( arbalest )
+static DRIVER_INIT( arbalest )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80000, 0x8000f, 0, 0, arbalest_debug_r);
 }
 
 
-DRIVER_INIT( metafox )
+static DRIVER_INIT( metafox )
 {
 	UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);
 
@@ -8922,7 +8922,7 @@ DRIVER_INIT( metafox )
 }
 
 
-DRIVER_INIT ( blandia )
+static DRIVER_INIT ( blandia )
 {
 	/* rearrange the gfx data so it can be decoded in the same way as the other set */
 
@@ -8956,20 +8956,20 @@ DRIVER_INIT ( blandia )
 }
 
 
-DRIVER_INIT( eightfrc )
+static DRIVER_INIT( eightfrc )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x500004, 0x500005, 0, 0, MRA16_NOP);	// watchdog??
 }
 
 
-DRIVER_INIT( zombraid )
+static DRIVER_INIT( zombraid )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00002, 0xf00003, 0, 0, zombraid_gun_r);
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf00001, 0, 0, zombraid_gun_w);
 }
 
 
-DRIVER_INIT( kiwame )
+static DRIVER_INIT( kiwame )
 {
 	UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);
 
@@ -8981,7 +8981,7 @@ DRIVER_INIT( kiwame )
 }
 
 
-DRIVER_INIT( rezon )
+static DRIVER_INIT( rezon )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x500006, 0x500007, 0, 0, MRA16_NOP);	// irq ack?
 }
@@ -9022,7 +9022,7 @@ static DRIVER_INIT(wiggie)
 
 }
 
-DRIVER_INIT( crazyfgt )
+static DRIVER_INIT( crazyfgt )
 {
 	// protection check at boot
 	UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);

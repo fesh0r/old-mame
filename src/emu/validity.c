@@ -10,6 +10,7 @@
 ***************************************************************************/
 
 #include "osdepend.h"
+#include "eminline.h"
 #include "driver.h"
 #include "hash.h"
 #include <ctype.h>
@@ -208,6 +209,146 @@ static void build_quarks(void)
 
 /*************************************
  *
+ *  Validate inline functions
+ *
+ *************************************/
+
+static int validate_inlines(void)
+{
+#undef rand
+	UINT64 testu64a = rand() + (rand() << 15) + ((UINT64)rand() << 30) + ((UINT64)rand() << 45) + 1;
+	INT64 testi64a = rand() + (rand() << 15) + ((INT64)rand() << 30) + ((INT64)rand() << 45) + 1;
+#ifdef PTR64
+	INT64 testi64b = rand() + (rand() << 15) + ((INT64)rand() << 30) + ((INT64)rand() << 45) + 1;
+#endif
+	UINT32 testu32a = rand() + (rand() << 15) + 1;
+	UINT32 testu32b = rand() + (rand() << 15) + 1;
+	INT32 testi32a = rand() + (rand() << 15) + 1;
+	INT32 testi32b = rand() + (rand() << 15) + 1;
+	INT32 resulti32, expectedi32;
+	UINT32 resultu32, expectedu32;
+	INT64 resulti64, expectedi64;
+	UINT64 resultu64, expectedu64;
+	INT32 remainder, expremainder;
+	UINT32 uremainder, expuremainder;
+	int error = FALSE;
+
+	resulti64 = mul_32x32(testi32a, testi32b);
+	expectedi64 = (INT64)testi32a * (INT64)testi32b;
+	if (resulti64 != expectedi64)
+		{ mame_printf_error("Error testing mul_32x32 (%08X x %08X) = %08X%08X (expected %08X%08X)\n", testi32a, testi32b, (UINT32)(resulti64 >> 32), (UINT32)resulti64, (UINT32)(expectedi64 >> 32), (UINT32)expectedi64); error = TRUE; }
+
+	resultu64 = mulu_32x32(testu32a, testu32b);
+	expectedu64 = (UINT64)testu32a * (UINT64)testu32b;
+	if (resultu64 != expectedu64)
+		{ mame_printf_error("Error testing mulu_32x32 (%08X x %08X) = %08X%08X (expected %08X%08X)\n", testu32a, testu32b, (UINT32)(resultu64 >> 32), (UINT32)resultu64, (UINT32)(expectedu64 >> 32), (UINT32)expectedu64); error = TRUE; }
+
+	resulti32 = mul_32x32_hi(testi32a, testi32b);
+	expectedi32 = ((INT64)testi32a * (INT64)testi32b) >> 32;
+	if (resulti32 != expectedi32)
+		{ mame_printf_error("Error testing mul_32x32_hi (%08X x %08X) = %08X (expected %08X)\n", testi32a, testi32b, resulti32, expectedi32); error = TRUE; }
+
+	resultu32 = mulu_32x32_hi(testu32a, testu32b);
+	expectedu32 = ((INT64)testu32a * (INT64)testu32b) >> 32;
+	if (resultu32 != expectedu32)
+		{ mame_printf_error("Error testing mulu_32x32_hi (%08X x %08X) = %08X (expected %08X)\n", testu32a, testu32b, resultu32, expectedu32); error = TRUE; }
+
+	resulti32 = mul_32x32_shift(testi32a, testi32b, 7);
+	expectedi32 = ((INT64)testi32a * (INT64)testi32b) >> 7;
+	if (resulti32 != expectedi32)
+		{ mame_printf_error("Error testing mul_32x32_shift (%08X x %08X) >> 7 = %08X (expected %08X)\n", testi32a, testi32b, resulti32, expectedi32); error = TRUE; }
+
+	resultu32 = mulu_32x32_shift(testu32a, testu32b, 7);
+	expectedu32 = ((INT64)testu32a * (INT64)testu32b) >> 7;
+	if (resultu32 != expectedu32)
+		{ mame_printf_error("Error testing mulu_32x32_shift (%08X x %08X) >> 7 = %08X (expected %08X)\n", testu32a, testu32b, resultu32, expectedu32); error = TRUE; }
+
+	while ((INT64)testi32a * (INT64)0x7fffffff < testi64a)
+		testi64a /= 2;
+	while ((UINT64)testu32a * (UINT64)0xffffffff < testu64a)
+		testu64a /= 2;
+
+	resulti32 = div_64x32(testi64a, testi32a);
+	expectedi32 = testi64a / (INT64)testi32a;
+	if (resulti32 != expectedi32)
+		{ mame_printf_error("Error testing div_64x32 (%08X%08X / %08X) = %08X (expected %08X)\n", (UINT32)(testi64a >> 32), (UINT32)testi64a, testi32a, resulti32, expectedi32); error = TRUE; }
+
+	resultu32 = divu_64x32(testu64a, testu32a);
+	expectedu32 = testu64a / (UINT64)testu32a;
+	if (resultu32 != expectedu32)
+		{ mame_printf_error("Error testing divu_64x32 (%08X%08X / %08X) = %08X (expected %08X)\n", (UINT32)(testu64a >> 32), (UINT32)testu64a, testu32a, resultu32, expectedu32); error = TRUE; }
+
+	resulti32 = div_64x32_rem(testi64a, testi32a, &remainder);
+	expectedi32 = testi64a / (INT64)testi32a;
+	expremainder = testi64a % (INT64)testi32a;
+	if (resulti32 != expectedi32 || remainder != expremainder)
+		{ mame_printf_error("Error testing div_64x32_rem (%08X%08X / %08X) = %08X,%08X (expected %08X,%08X)\n", (UINT32)(testi64a >> 32), (UINT32)testi64a, testi32a, resulti32, remainder, expectedi32, expremainder); error = TRUE; }
+
+	resultu32 = divu_64x32_rem(testu64a, testu32a, &uremainder);
+	expectedu32 = testu64a / (UINT64)testu32a;
+	expuremainder = testu64a % (UINT64)testu32a;
+	if (resultu32 != expectedu32 || uremainder != expuremainder)
+		{ mame_printf_error("Error testing divu_64x32_rem (%08X%08X / %08X) = %08X,%08X (expected %08X,%08X)\n", (UINT32)(testu64a >> 32), (UINT32)testu64a, testu32a, resultu32, uremainder, expectedu32, expuremainder); error = TRUE; }
+
+	resulti32 = mod_64x32(testi64a, testi32a);
+	expectedi32 = testi64a % (INT64)testi32a;
+	if (resulti32 != expectedi32)
+		{ mame_printf_error("Error testing mod_64x32 (%08X%08X / %08X) = %08X (expected %08X)\n", (UINT32)(testi64a >> 32), (UINT32)testi64a, testi32a, resulti32, expectedi32); error = TRUE; }
+
+	resultu32 = modu_64x32(testu64a, testu32a);
+	expectedu32 = testu64a % (UINT64)testu32a;
+	if (resultu32 != expectedu32)
+		{ mame_printf_error("Error testing modu_64x32 (%08X%08X / %08X) = %08X (expected %08X)\n", (UINT32)(testu64a >> 32), (UINT32)testu64a, testu32a, resultu32, expectedu32); error = TRUE; }
+
+	while ((INT64)testi32a * (INT64)0x7fffffff < ((INT32)testi64a << 3))
+		testi64a /= 2;
+	while ((UINT64)testu32a * (UINT64)0xffffffff < ((UINT32)testu64a << 3))
+		testu64a /= 2;
+
+	resulti32 = div_32x32_shift((INT32)testi64a, testi32a, 3);
+	expectedi32 = ((INT64)(INT32)testi64a << 3) / (INT64)testi32a;
+	if (resulti32 != expectedi32)
+		{ mame_printf_error("Error testing div_32x32_shift (%08X << 3) / %08X = %08X (expected %08X)\n", (INT32)testi64a, testi32a, resulti32, expectedi32); error = TRUE; }
+
+	resultu32 = divu_32x32_shift((UINT32)testu64a, testu32a, 3);
+	expectedu32 = ((UINT64)(UINT32)testu64a << 3) / (UINT64)testu32a;
+	if (resultu32 != expectedu32)
+		{ mame_printf_error("Error testing divu_32x32_shift (%08X << 3) / %08X = %08X (expected %08X)\n", (UINT32)testu64a, testu32a, resultu32, expectedu32); error = TRUE; }
+
+	if (fabs(recip_approx(100.0) - 0.01) > 0.0001)
+		{ mame_printf_error("Error testing recip_approx\n"); error = TRUE; }
+
+	testi32a = (testi32a & 0x0000ffff) | 0x400000;
+	if (count_leading_zeros(testi32a) != 9)
+		{ mame_printf_error("Error testing count_leading_zeros\n"); error = TRUE; }
+	testi32a = (testi32a | 0xffff0000) & ~0x400000;
+	if (count_leading_ones(testi32a) != 9)
+		{ mame_printf_error("Error testing count_leading_ones\n"); error = TRUE; }
+
+	testi32b = testi32a;
+	if (compare_exchange32(&testi32a, testi32b, 1000) != testi32b || testi32a != 1000)
+		{ mame_printf_error("Error testing compare_exchange32\n"); error = TRUE; }
+#ifdef PTR64
+	testi64b = testi64a;
+	if (compare_exchange64(&testi64a, testi64b, 1000) != testi64b || testi64a != 1000)
+		{ mame_printf_error("Error testing compare_exchange64\n"); error = TRUE; }
+#endif
+	if (atomic_exchange32(&testi32a, testi32b) != 1000)
+		{ mame_printf_error("Error testing atomic_exchange32\n"); error = TRUE; }
+	if (atomic_add32(&testi32a, 45) != testi32b + 45)
+		{ mame_printf_error("Error testing atomic_add32\n"); error = TRUE; }
+	if (atomic_increment32(&testi32a) != testi32b + 46)
+		{ mame_printf_error("Error testing atomic_increment32\n"); error = TRUE; }
+	if (atomic_decrement32(&testi32a) != testi32b + 45)
+		{ mame_printf_error("Error testing atomic_decrement32\n"); error = TRUE; }
+
+	return error;
+}
+
+
+
+/*************************************
+ *
  *  Validate basic driver info
  *
  *************************************/
@@ -264,7 +405,7 @@ static int validate_driver(int drivnum, const machine_config *drv)
 
 #ifndef MESS
 	/* make sure sound-less drivers are flagged */
-	if ((driver->flags & GAME_IS_BIOS_ROOT) == 0 && drv->sound[0].sound_type == SOUND_DUMMY && (driver->flags & GAME_NO_SOUND) == 0 && strcmp(driver->name, "minivadr"))
+	if ((driver->flags & GAME_IS_BIOS_ROOT) == 0 && drv->sound[0].type == SOUND_DUMMY && (driver->flags & GAME_NO_SOUND) == 0 && strcmp(driver->name, "minivadr"))
 	{
 		mame_printf_error("%s: %s missing GAME_NO_SOUND flag\n", driver->source_file, driver->name);
 		error = TRUE;
@@ -471,11 +612,11 @@ static int validate_cpu(int drivnum, const machine_config *drv, const UINT32 *re
 		int spacenum;
 
 		/* skip empty entries */
-		if (cpu->cpu_type == CPU_DUMMY)
+		if (cpu->type == CPU_DUMMY)
 			continue;
 
 		/* checks to see if this driver is using a dummy CPU */
-		if (cputype_get_interface(cpu->cpu_type)->get_info == dummy_get_info)
+		if (cputype_get_interface(cpu->type)->get_info == dummy_get_info)
 		{
 			mame_printf_error("%s: %s uses non-present CPU\n", driver->source_file, driver->name);
 			error = TRUE;
@@ -483,10 +624,10 @@ static int validate_cpu(int drivnum, const machine_config *drv, const UINT32 *re
 		}
 
 		/* check the CPU for incompleteness */
-		if (!cputype_get_info_fct(cpu->cpu_type, CPUINFO_PTR_GET_CONTEXT)
-			|| !cputype_get_info_fct(cpu->cpu_type, CPUINFO_PTR_SET_CONTEXT)
-			|| !cputype_get_info_fct(cpu->cpu_type, CPUINFO_PTR_RESET)
-			|| !cputype_get_info_fct(cpu->cpu_type, CPUINFO_PTR_EXECUTE))
+		if (!cputype_get_info_fct(cpu->type, CPUINFO_PTR_GET_CONTEXT)
+			|| !cputype_get_info_fct(cpu->type, CPUINFO_PTR_SET_CONTEXT)
+			|| !cputype_get_info_fct(cpu->type, CPUINFO_PTR_RESET)
+			|| !cputype_get_info_fct(cpu->type, CPUINFO_PTR_EXECUTE))
 		{
 			mame_printf_error("%s: %s uses an incomplete CPU\n", driver->source_file, driver->name);
 			error = TRUE;
@@ -499,8 +640,8 @@ static int validate_cpu(int drivnum, const machine_config *drv, const UINT32 *re
 #define SPACE_SHIFT(a)		((addr_shift < 0) ? ((a) << -addr_shift) : ((a) >> addr_shift))
 #define SPACE_SHIFT_END(a)	((addr_shift < 0) ? (((a) << -addr_shift) | ((1 << -addr_shift) - 1)) : ((a) >> addr_shift))
 			static const char *spacename[] = { "program", "data", "I/O" };
-			int databus_width = cputype_databus_width(cpu->cpu_type, spacenum);
-			int addr_shift = cputype_addrbus_shift(cpu->cpu_type, spacenum);
+			int databus_width = cputype_databus_width(cpu->type, spacenum);
+			int addr_shift = cputype_addrbus_shift(cpu->type, spacenum);
 			int alignunit = databus_width/8;
 			address_map addrmap[MAX_ADDRESS_MAP_SIZE*2];
 			address_map *map;
@@ -1110,7 +1251,7 @@ static int validate_sound(int drivnum, const machine_config *drv)
 			}
 
 		/* make sure there are no sound chips with the same tag */
-		for (check = 0; check < MAX_SOUND && drv->sound[check].sound_type != SOUND_DUMMY; check++)
+		for (check = 0; check < MAX_SOUND && drv->sound[check].type != SOUND_DUMMY; check++)
 			if (drv->sound[check].tag && !strcmp(drv->speaker[speaknum].tag, drv->sound[check].tag))
 			{
 				mame_printf_error("%s: %s has both a speaker and a sound chip tagged as '%s'\n", driver->source_file, driver->name, drv->speaker[speaknum].tag);
@@ -1119,7 +1260,7 @@ static int validate_sound(int drivnum, const machine_config *drv)
 	}
 
 	/* make sure the sounds are wired to the speakers correctly */
-	for (sndnum = 0; sndnum < MAX_SOUND && drv->sound[sndnum].sound_type != SOUND_DUMMY; sndnum++)
+	for (sndnum = 0; sndnum < MAX_SOUND && drv->sound[sndnum].type != SOUND_DUMMY; sndnum++)
 	{
 		int routenum;
 
@@ -1136,12 +1277,12 @@ static int validate_sound(int drivnum, const machine_config *drv)
 			{
 				int check;
 
-				for (check = 0; check < MAX_SOUND && drv->sound[check].sound_type != SOUND_DUMMY; check++)
+				for (check = 0; check < MAX_SOUND && drv->sound[check].type != SOUND_DUMMY; check++)
 					if (check != sndnum && drv->sound[check].tag && !strcmp(drv->sound[check].tag, drv->sound[sndnum].route[routenum].target))
 						break;
 
 				/* if we didn't find one, it's an error */
-				if (check >= MAX_SOUND || drv->sound[check].sound_type == SOUND_DUMMY)
+				if (check >= MAX_SOUND || drv->sound[check].type == SOUND_DUMMY)
 				{
 					mame_printf_error("%s: %s attempting to route sound to non-existant speaker '%s'\n", driver->source_file, driver->name, drv->sound[sndnum].route[routenum].target);
 					error = TRUE;
@@ -1207,6 +1348,9 @@ int mame_validitychecks(const game_driver *curdriver)
 #else
 	if (lsbtest == 0x00ff)		{ mame_printf_error("LSB_FIRST not specified, but running on a little-endian machine\n"); error = TRUE; }
 #endif
+
+	/* validate inline function behavior */
+	error = validate_inlines() || error;
 
 	/* make sure the CPU and sound interfaces are up and running */
 	cpuintrf_init(NULL);

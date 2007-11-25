@@ -38,7 +38,7 @@ static INTERRUPT_GEN( fastlane_interrupt )
 	}
 }
 
-WRITE8_HANDLER( k007121_registers_w )
+static WRITE8_HANDLER( k007121_registers_w )
 {
 	if (offset < 8)
 		K007121_ctrl_0_w(offset,data);
@@ -125,7 +125,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( fastlane )
+static INPUT_PORTS_START( fastlane )
 	PORT_START	/* DSW #1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(	0x02, DEF_STR( 4C_1C ) )

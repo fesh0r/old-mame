@@ -351,7 +351,7 @@ static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x1c, 0x1c) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( nmg5 )
+static INPUT_PORTS_START( nmg5 )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x0001, 0x0001, "Game Title" )            PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(      0x0001, "Multi 5" )
@@ -426,7 +426,7 @@ INPUT_PORTS_START( nmg5 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( searchey )
+static INPUT_PORTS_START( searchey )
 	PORT_START
 	PORT_DIPNAME( 0x0003, 0x0003, "Timer Speed" )           PORT_DIPLOCATION("SW1:8,7")
 	PORT_DIPSETTING(      0x0003, "Slowest" )
@@ -486,7 +486,7 @@ INPUT_PORTS_START( searchey )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( searchp2 )
+static INPUT_PORTS_START( searchp2 )
 	PORT_START
 	PORT_DIPNAME( 0x0003, 0x0003, "Timer Speed" )           PORT_DIPLOCATION("SW1:8,7")
 	PORT_DIPSETTING(      0x0003, "Slowest" )
@@ -553,7 +553,7 @@ INPUT_PORTS_START( searchp2 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( pclubys )
+static INPUT_PORTS_START( pclubys )
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0000, "Lives (Mad Ball)" )      PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(      0x0000, "3" )
@@ -616,7 +616,7 @@ INPUT_PORTS_START( pclubys )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( garogun )
+static INPUT_PORTS_START( garogun )
 	PORT_START
 	PORT_DIPNAME( 0x0003, 0x0003, "Helps" )                 PORT_DIPLOCATION("SW1:8,7")
 	PORT_DIPSETTING(      0x0000, "1" )
@@ -665,7 +665,7 @@ INPUT_PORTS_START( garogun )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( 7ordi )
+static INPUT_PORTS_START( 7ordi )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x0001, 0x0001, "High-Low Error" )        PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(      0x0001, "-500" )
@@ -733,7 +733,7 @@ INPUT_PORTS_START( 7ordi )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE1 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( wondstck )
+static INPUT_PORTS_START( wondstck )
 	PORT_START_TAG("DSW")
 	PORT_DIPUNUSED_DIPLOC( 0x0001, IP_ACTIVE_LOW, "SW1:8" )
 	PORT_DIPUNUSED_DIPLOC( 0x0002, IP_ACTIVE_LOW, "SW1:7" )
@@ -796,7 +796,7 @@ INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_
 static TILE_GET_INFO( fg_get_tile_info ) { get_tile_info(machine,tileinfo,tile_index,fg_videoram, 0); }
 static TILE_GET_INFO( bg_get_tile_info ) { get_tile_info(machine,tileinfo,tile_index,bg_videoram, 1); }
 
-VIDEO_START( nmg5 )
+static VIDEO_START( nmg5 )
 {
 	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,64,64);
 	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
@@ -869,7 +869,7 @@ static void draw_bitmap(mame_bitmap *bitmap)
 }
 
 
-VIDEO_UPDATE( nmg5 )
+static VIDEO_UPDATE( nmg5 )
 {
 	tilemap_set_scrolly(bg_tilemap,0,scroll_ram[3]+9);
 	tilemap_set_scrollx(bg_tilemap,0,scroll_ram[2]+3);
@@ -1472,22 +1472,22 @@ ROM_START( 7ordi )
 	ROM_RELOAD(0x60000,0x20000)
 ROM_END
 
-DRIVER_INIT( prot_val_00 )
+static DRIVER_INIT( prot_val_00 )
 {
 	prot_val = 0x00;
 }
 
-DRIVER_INIT( prot_val_10 )
+static DRIVER_INIT( prot_val_10 )
 {
 	prot_val = 0x10;
 }
 
-DRIVER_INIT( prot_val_20 )
+static DRIVER_INIT( prot_val_20 )
 {
 	prot_val = 0x20;
 }
 
-DRIVER_INIT( prot_val_40 )
+static DRIVER_INIT( prot_val_40 )
 {
 	prot_val = 0x40;
 }

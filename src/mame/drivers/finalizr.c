@@ -19,7 +19,7 @@ extern UINT8 *finalizr_scroll;
 extern UINT8 *finalizr_videoram2,*finalizr_colorram2;
 static UINT8 *finalizr_interrupt_enable;
 
-int finalizr_T1_line;
+static int finalizr_T1_line;
 
 PALETTE_INIT( finalizr );
 VIDEO_START( finalizr );
@@ -48,7 +48,7 @@ static WRITE8_HANDLER( finalizr_coin_w )
 	coin_counter_w(1,data & 0x02);
 }
 
-WRITE8_HANDLER( finalizr_i8039_irq_w )
+static WRITE8_HANDLER( finalizr_i8039_irq_w )
 {
 	cpunum_set_input_line(1, 0, ASSERT_LINE);
 }
@@ -154,7 +154,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( finalizr )
+static INPUT_PORTS_START( finalizr )
 	PORT_START	/* IN2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -260,7 +260,7 @@ INPUT_PORTS_START( finalizr )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( finalizb )
+static INPUT_PORTS_START( finalizb )
 	PORT_START	/* IN2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )

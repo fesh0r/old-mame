@@ -58,7 +58,7 @@ static WRITE8_HANDLER( bankedram_w )
 		ram[offset] = data;
 }
 
-WRITE8_HANDLER( blockhl_sh_irqtrigger_w )
+static WRITE8_HANDLER( blockhl_sh_irqtrigger_w )
 {
 	cpunum_set_input_line_and_vector(1, 0, HOLD_LINE, 0xff);
 }
@@ -110,7 +110,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( blockhl )
+static INPUT_PORTS_START( blockhl )
 	PORT_START	/* PLAYER 1 INPUTS */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)

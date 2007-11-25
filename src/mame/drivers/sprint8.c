@@ -117,7 +117,7 @@ static MACHINE_RESET( sprint8 )
 	collision_reset = 0;
 	collision_index = 0;
 
-	mame_timer_pulse(video_screen_get_frame_period(0), 0, input_callback);
+	timer_pulse(video_screen_get_frame_period(0), 0, input_callback);
 }
 
 
@@ -210,7 +210,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( sprint8 )
+static INPUT_PORTS_START( sprint8 )
 
 	PORT_START
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW,  IPT_COIN1 )
@@ -345,7 +345,7 @@ INPUT_PORTS_START( sprint8 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( sprint8p )
+static INPUT_PORTS_START( sprint8p )
 
 	PORT_START
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW,  IPT_COIN1 )

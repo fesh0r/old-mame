@@ -173,9 +173,9 @@ static READ32_HANDLER( dipswitch_r )
 static ADDRESS_MAP_START( cd32_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
 	AM_RANGE(0x000000, 0x1fffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram32) AM_SIZE(&amiga_chip_ram_size)
-	AM_RANGE(0x800000, 0x800003) AM_READ( dipswitch_r );
+	AM_RANGE(0x800000, 0x800003) AM_READ( dipswitch_r )
 	AM_RANGE(0xb80000, 0xb8003f) AM_READWRITE(amiga_akiko32_r, amiga_akiko32_w)
-	AM_RANGE(0xbfa000, 0xbfa003) AM_WRITE(aga_overlay_w);
+	AM_RANGE(0xbfa000, 0xbfa003) AM_WRITE(aga_overlay_w)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE(amiga_cia32_r, amiga_cia32_w)
 	AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE(amiga_custom32_r, amiga_custom32_w) AM_BASE((UINT32**)&amiga_custom_regs)
 	AM_RANGE(0xe00000, 0xe7ffff) AM_ROM AM_REGION(REGION_USER1, 0x80000)	/* CD32 Extended ROM */
@@ -185,7 +185,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( cd32 )
+static INPUT_PORTS_START( cd32 )
 	PORT_START_TAG("CIA0PORTA")
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_SPECIAL )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -271,7 +271,7 @@ static MACHINE_DRIVER_START( cd32 )
 	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 312)
 
 	MDRV_SCREEN_REFRESH_RATE(59.997)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MDRV_MACHINE_RESET(amiga)
 	MDRV_NVRAM_HANDLER(cd32)
@@ -390,11 +390,11 @@ static DRIVER_INIT( cd32 )
 /***************************************************************************************************/
 
 /* BIOS */
-GAMEB( 1993, cd32, 0, cd32, cd32, cd32, cd32,   ROT0, "Commodore", "Amiga CD32 Bios", GAME_IS_BIOS_ROOT )
+GAME( 1993, cd32, 0, cd32, cd32, cd32,   ROT0, "Commodore", "Amiga CD32 Bios", GAME_IS_BIOS_ROOT )
 
-GAMEB( 1995, cndypuzl, cd32, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Candy Puzzle (v1.0)", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAMEB( 1995, haremchl, cd32, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Harem Challenge", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAMEB( 1995, lsrquiz,  cd32, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Laser Quiz", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAMEB( 1995, lsrquiz2, cd32, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Laser Quiz '2' Italy (v1.0)", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAMEB( 1996, mgprem11, cd32, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Magic Premium (v1.1)", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAMEB( 1995, lasstixx, cd32, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Laser Strixx", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 1995, cndypuzl, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Candy Puzzle (v1.0)", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 1995, haremchl, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Harem Challenge", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 1995, lsrquiz,  cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Laser Quiz", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 1995, lsrquiz2, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Laser Quiz '2' Italy (v1.0)", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 1996, mgprem11, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Magic Premium (v1.1)", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 1995, lasstixx, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Laser Strixx", GAME_NOT_WORKING|GAME_NO_SOUND )

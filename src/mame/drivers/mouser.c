@@ -15,8 +15,8 @@
 #include "driver.h"
 #include "sound/ay8910.h"
 
-UINT8 mouser_sound_byte;
-UINT8 mouser_nmi_enable;
+static UINT8 mouser_sound_byte;
+static UINT8 mouser_nmi_enable;
 
 /* From "video/mouser.c" */
 PALETTE_INIT( mouser );
@@ -29,12 +29,12 @@ VIDEO_UPDATE( mouser );
 /* Mouser has external masking circuitry around
  * the NMI input on the main CPU */
 
-WRITE8_HANDLER( mouser_nmi_enable_w )
+static WRITE8_HANDLER( mouser_nmi_enable_w )
 {
 	mouser_nmi_enable = data;
 }
 
-INTERRUPT_GEN( mouser_nmi_interrupt )
+static INTERRUPT_GEN( mouser_nmi_interrupt )
 {
 	if ((mouser_nmi_enable & 1) == 1)
 		nmi_line_pulse();
@@ -42,13 +42,13 @@ INTERRUPT_GEN( mouser_nmi_interrupt )
 
 /* Sound CPU interrupted on write */
 
-WRITE8_HANDLER( mouser_sound_interrupt_w )
+static WRITE8_HANDLER( mouser_sound_interrupt_w )
 {
 	mouser_sound_byte = data;
 	cpunum_set_input_line(1, 0, HOLD_LINE);
 }
 
-READ8_HANDLER( mouser_sound_byte_r )
+static READ8_HANDLER( mouser_sound_byte_r )
 {
 	return mouser_sound_byte;
 }
@@ -103,7 +103,7 @@ static ADDRESS_MAP_START( writeport2, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x81, 0x81) AM_WRITE(AY8910_control_port_1_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( mouser )
+static INPUT_PORTS_START( mouser )
     PORT_START
     PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNUSED )
     PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -283,7 +283,7 @@ ROM_START( mouserc )
 ROM_END
 
 
-DRIVER_INIT( mouser )
+static DRIVER_INIT( mouser )
 {
 	/* Decode the opcodes */
 

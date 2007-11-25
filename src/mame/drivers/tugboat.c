@@ -26,7 +26,8 @@ always false - counter was reloaded and incremented before interrupt occurs
 #include "sound/ay8910.h"
 
 
-UINT8 *tugboat_ram,*tugboat_score;
+static UINT8 *tugboat_ram;
+//UINT8 *tugboat_score;
 
 
 static UINT8 hd46505_0_reg[18],hd46505_1_reg[18];
@@ -34,7 +35,7 @@ static UINT8 hd46505_0_reg[18],hd46505_1_reg[18];
 
 /*  there isn't the usual resistor array anywhere near the color prom,
     just four 1k resistors. */
-PALETTE_INIT( tugboat )
+static PALETTE_INIT( tugboat )
 {
 	int i;
 
@@ -112,7 +113,7 @@ static void draw_tilemap(running_machine *machine, mame_bitmap *bitmap,const rec
 	}
 }
 
-VIDEO_UPDATE( tugboat )
+static VIDEO_UPDATE( tugboat )
 {
 	int startaddr0 = hd46505_0_reg[0x0c]*256 + hd46505_0_reg[0x0d];
 	int startaddr1 = hd46505_1_reg[0x0c]*256 + hd46505_1_reg[0x0d];
@@ -167,19 +168,19 @@ static const pia6821_interface pia1_intf =
 static TIMER_CALLBACK( interrupt_gen )
 {
 	cpunum_set_input_line(0, 0, HOLD_LINE);
-	mame_timer_set(video_screen_get_frame_period(0), 0, interrupt_gen);
+	timer_set(video_screen_get_frame_period(0), 0, interrupt_gen);
 }
 
-MACHINE_START( tugboat )
+static MACHINE_START( tugboat )
 {
 	pia_config(0, &pia0_intf);
 	pia_config(1, &pia1_intf);
 }
 
-MACHINE_RESET( tugboat )
+static MACHINE_RESET( tugboat )
 {
 	pia_reset();
-	mame_timer_set(video_screen_get_time_until_pos(0, 30*8+4, 0), 0, interrupt_gen);
+	timer_set(video_screen_get_time_until_pos(0, 30*8+4, 0), 0, interrupt_gen);
 }
 
 
@@ -208,7 +209,7 @@ static ADDRESS_MAP_START( tugboat_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( tugboat )
+static INPUT_PORTS_START( tugboat )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -279,7 +280,7 @@ INPUT_PORTS_START( tugboat )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( noahsark )
+static INPUT_PORTS_START( noahsark )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )

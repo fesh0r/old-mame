@@ -251,7 +251,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( upscope )
+static INPUT_PORTS_START( upscope )
 	PORT_START_TAG("POT1DAT")
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(25) PORT_MINMAX(0x02,0xfe) PORT_KEYDELTA(5) PORT_CENTERDELTA(0) PORT_REVERSE
 
@@ -293,7 +293,7 @@ static MACHINE_DRIVER_START( upscope )
 	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 262)
 
 	MDRV_SCREEN_REFRESH_RATE(59.997)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MDRV_MACHINE_RESET(amiga)
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -358,7 +358,7 @@ ROM_END
  *
  *************************************/
 
-DRIVER_INIT( upscope )
+static DRIVER_INIT( upscope )
 {
 	static const amiga_machine_interface upscope_intf =
 	{

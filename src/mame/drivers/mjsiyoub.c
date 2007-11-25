@@ -35,11 +35,11 @@ COLOR.BPR  color
 #include "sound/msm5205.h"
 
 
-VIDEO_START(mjsiyoub)
+static VIDEO_START(mjsiyoub)
 {
 }
 
-VIDEO_UPDATE(mjsiyoub)
+static VIDEO_UPDATE(mjsiyoub)
 {
 	return 0;
 }
@@ -61,7 +61,7 @@ static ADDRESS_MAP_START( writemem2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( mjsiyoub )
+static INPUT_PORTS_START( mjsiyoub )
 INPUT_PORTS_END
 
 

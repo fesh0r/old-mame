@@ -166,7 +166,7 @@ if ((data & 1) == 0) popmessage("bankswitch RAM bank 0");
 }
 
 //AT
-void spy_collision(void)
+static void spy_collision(void)
 {
 #define MAX_SPRITES 64
 #define DEF_NEAR_PLANE 0x6400
@@ -396,7 +396,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( spy )
+static INPUT_PORTS_START( spy )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)

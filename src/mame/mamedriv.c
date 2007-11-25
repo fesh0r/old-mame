@@ -369,6 +369,7 @@ const game_driver * const drivers[] =
 	DRIVER( clshroad )	/* (c) 1986 Woodplace Inc. */
 	DRIVER( clshrdst )	/* (c) 1986 Status Games */
 	DRIVER( tubep )		/* (c) 1984 + Fujitek */
+	DRIVER( tubepb )	/* (c) 1984 + bootleg */
 	DRIVER( rjammer )	/* (c) 1984 + Alice */
 	DRIVER( magmax )	/* (c) 1985 */
 	DRIVER( cop01 )		/* (c) 1985 */
@@ -1620,6 +1621,7 @@ const game_driver * const drivers[] =
 	DRIVER( kikikai )	/* A85 (c) 1986 Taito Corporation */
 	DRIVER( knightb )	/* bootleg */
 	DRIVER( kicknrun )	/* A87 (c) 1986 Taito Corporation */
+	DRIVER( kicknruu )	/* A87 (c) 1986 Taito Corporation */
 	DRIVER( mexico86 )	/* bootleg (Micro Research) */
 	DRIVER( darius )	/* A96 (c) 1986 Taito Corporation Japan (World) */
 	DRIVER( dariusj )	/* A96 (c) 1986 Taito Corporation (Japan) */
@@ -1721,6 +1723,7 @@ const game_driver * const drivers[] =
 	/* Taito "tnzs" (Seta) hardware */
 	DRIVER( plumppop )	/* A98 (c) 1987 Taito Corporation (Japan) */
 	DRIVER( extrmatn )	/* B06 (c) 1987 World Games */
+	DRIVER( extrmatj )	/* B06 (c) 1987 Taito Corporation (Japan)*/
 	DRIVER( arknoid2 )	/* B08 (c) 1987 Taito Corporation Japan (World) */
 	DRIVER( arknid2u )	/* B08 (c) 1987 Taito America Corporation + Romstar license (US) */
 	DRIVER( arknid2j )	/* B08 (c) 1987 Taito Corporation (Japan) */
@@ -2472,7 +2475,8 @@ V-V                           TP-027
 	DRIVER( ssf2tbr1 )	/* 11/09/1993 (c) 1993 (World) */
 	DRIVER( ssf2tbj )	/* 11/09/1993 (c) 1993 (Japan) */
 	DRIVER( ecofghtr )	/* 03/12/1993 (c) 1993 (World) */
-	DRIVER( ecofghtu )	/* 03/12/1993 (c) 1993 (US) */
+	DRIVER( ecofghtu )	/* 15/02/1994 (c) 1993 (US) */
+	DRIVER( ecofgtu1 )	/* 03/12/1993 (c) 1993 (US) */
 	DRIVER( ecofghta )	/* 03/12/1993 (c) 1993 (Asia) */
 	DRIVER( uecology ) 	/* 03/12/1993 (c) 1993 (Japan) */
 	DRIVER( ddtod )		/* 12/04/1994 (c) 1993 (Euro) */
@@ -2895,6 +2899,8 @@ V-V                           TP-027
 	DRIVER( ddr2mc2 )	/* 1999 - Dance Dance Revolution 2nd Mix with beatmaniaIIDX substream CLUB VERSiON 2 (GE984 VER. JAA) */
 	DRIVER( gtrfrk2m )	/* 1999 - Guitar Freaks 2nd Mix Ver 1.01 (GQ883 VER. JAD) */
 	DRIVER( dsftkd )	/* 1999 - Dancing Stage featuring TRUE KiSS DESTiNATiON (G*884 VER. JAA) */
+	DRIVER( cr589fw )	/* 1999 - CR-589 Firmware (700B04) */
+	DRIVER( cr589fwa )	/* 1999 - CR-589 Firmware (700A04) */
 	DRIVER( ddr3mk )	/* 2000 - Dance Dance Revolution 3rd Mix - Ver.Korea2 (GN887 VER. KBA) */
 	DRIVER( ddr3mka )	/* 2000 - Dance Dance Revolution 3rd Mix - Ver.Korea (GN887 VER. KAA) */
 	DRIVER( ddr3ma )	/* 1999 - Dance Dance Revolution 3rd Mix (GN887 VER. AAA) */
@@ -2926,6 +2932,7 @@ V-V                           TP-027
 	DRIVER( ddr5m )		/* 2001 - Dance Dance Revolution 5th Mix (G*A27 VER. JAA) */
 	DRIVER( dmx2majp )	/* 2001 - Dance Maniax 2nd Mix Append J-Paradise (G*A38 VER. JAA ) */
 	DRIVER( gtrfrk6m )	/* 2001 - Guitar Freaks 6th Mix (G*B06 VER. JAA) */
+	DRIVER( gtrfrk7m )	/* 2001 - Guitar Freaks 6th Mix (G*B17 VER. JAA) */
 	DRIVER( ddrmax )	/* 2001 - DDR Max - Dance Dance Revolution 6th Mix (G*B19 VER. JAA) */
 	DRIVER( ddrmax2 )	/* 2002 - DDR Max 2 - Dance Dance Revolution 7th Mix (G*B20 VER. JAA) */
 	DRIVER( dsem2 )		/* 2002 - Dancing Stage Euro Mix 2 (G*C23 VER. EAA) */
@@ -3615,6 +3622,7 @@ Sep.1994 Quiz Ghost Hunter
 	DRIVER( darkedge )	/* (c) 1992 */
 	DRIVER( darkedgj )	/* (c) 1992 (Japan) */
 	DRIVER( slipstrm )	/* (c) 1995 Capcom */
+	DRIVER( slipstrh )	/* (c) 1995 Capcom */
 
 	/* Sega Multi System 32 games */
 	DRIVER( orunners )	/* (c) 1992 (World) */
@@ -4496,6 +4504,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( konami88 )	/* GX861 (c) 1988 */
 	DRIVER( hypsptsp )	/* GX861 (c) 1988 (Japan) */
 	DRIVER( gbusters )	/* GX878 (c) 1988 */
+	DRIVER( gbustera )	/* GX878 (c) 1988 */
 	DRIVER( crazycop )	/* GX878 (c) 1988 (Japan) */
 	DRIVER( crimfght )	/* GX821 (c) 1989 (US) */
 	DRIVER( crimfgt2 )	/* GX821 (c) 1989 (World) */
@@ -4774,6 +4783,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( gticlubj )	/* GX688 (c)1996 */
 	DRIVER( hangplt )	/* GX685 (c)1997 */
 	DRIVER( nbapbp )	/* GX778 (c)1998 */
+	DRIVER( terabrst )	/* GX??? (c)1998 */
 	DRIVER( gradius4 )	/* GX837 (c)1999 */
 	DRIVER( sscope )	/* GX830 (c)1999 */
 	DRIVER( sscopea )	/* GX830 (c)1999 */
@@ -4783,6 +4793,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( thrilld )	/* GX713 (c)1998 */
 	DRIVER( midnrun )	/* GX??? (c)1995 */
 	DRIVER( windheat )	/* GX677 (c)1996 */
+	DRIVER( jetwave )	/* GX??? (c)1996 */
 
 	/* Konami M2 games */
 	DRIVER( polystar )	/* GX623 (c)1997 */
@@ -4915,6 +4926,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( asteroib )	/* (bootleg) */
 	DRIVER( asterock )	/* Sidam bootleg    (c) 1979 */
 	DRIVER( meteorts )	/* VCC bootleg      (c) 1979 */
+	DRIVER( meteorho )	/* Hoei? bootleg    (c) 1980 */
 	DRIVER( astdelux )	/* 0351xx           (c) 1980 */
 	DRIVER( astdelu2 )	/* 0351xx           (c) 1980 */
 	DRIVER( astdelu1 )	/* 0351xx           (c) 1980 */
@@ -5902,6 +5914,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( narc )		/* (c) 1988 Williams */
 	DRIVER( narc3 )		/* (c) 1988 Williams */
 	DRIVER( trog )		/* (c) 1990 Midway */
+	DRIVER( trog4 )		/* (c) 1990 Midway */
 	DRIVER( trog3 )		/* (c) 1990 Midway */
 	DRIVER( trogpa6 )	/* (c) 1990 Midway */
 	DRIVER( trogp )		/* (c) 1990 Midway */
@@ -5972,6 +5985,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 
 	/* Midway Zeus games */
 	DRIVER( mk4 )		/* (c) 1997 Midway */
+	DRIVER( mk4a )		/* (c) 1997 Midway */
 	DRIVER( invasn )	/* (c) 1999 Midway */
 	DRIVER( crusnexo )	/* (c) 1999 Midway */
 	DRIVER( thegrid )	/* (c) 2001 Midway */
@@ -6128,6 +6142,9 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( sdgndmps )	/* (c) Banpresto / Bandai (Japan) */
 	DRIVER( dcon )		/* (c) 1992 Success */
 	DRIVER( sengokmj )	/* (c) 1991 Sigma */
+	DRIVER( totmejan )	/* (c) 1991 Seibu/Tecmo */
+	DRIVER( goodejan )	/* (c) 1991 Seibu/Tecmo */
+	DRIVER( goodejaa )	/* (c) 1991 Seibu/Tecmo */
 
 
 	DRIVER( raiden2 )	/* (c) 1993 Seibu Kaihatsu + Fabtek license */
@@ -6356,7 +6373,7 @@ BOMULEUL CHAJARA SEGA ST-V  1997/04/11
 	DRIVER( welltrij )	/* (c) 1991 Video System Co. (Japan) */
 	DRIVER( quiz18k )	/* (c) 1992 EIM (Welltris hardware) */
 	DRIVER( f1gp )		/* (c) 1991 Video System Co. */
-	DRIVER( sf1gp )		/* bootleg */
+	DRIVER( f1gpb )		/* bootleg */
 	DRIVER( f1gp2 )		/* (c) 1992 Video System Co. */
 	DRIVER( crshrace )	/* (c) 1993 Video System Co. */
 	DRIVER( crshrac2 )	/* (c) 1993 Video System Co. */
@@ -6764,6 +6781,7 @@ Other Sun games
 	DRIVER( hardhea2 )	/* (c) 1991 SunA */
 	DRIVER( brickzn )	/* (c) 1992 SunA */
 	DRIVER( brickzn3 )	/* (c) 1992 SunA */
+	DRIVER( bestbest )	/* (c) 1994 SunA */
 	DRIVER( sunaq )		/* (c) 1994 SunA */
 	DRIVER( bssoccer )	/* (c) 1996 SunA */
 	DRIVER( uballoon )	/* (c) 1996 SunA */
@@ -7339,6 +7357,10 @@ Other Sun games
 	DRIVER( evosocc )	/* 2001 Evoga. Evolution Soccer */
 
 	/* Bell Fruit Cobra Hardware */
+	DRIVER( inquiztr )	/* 1989 BFM */
+	DRIVER( escounts )	/* 1990 BFM */
+	DRIVER( trebltop )	/* 1991 BFM */
+	DRIVER( quizvadr )	/* 1991 BFM */
 	DRIVER( qos )		/* 1992 BFM */
 	DRIVER( qosa )		/* 1992 BFM */
 
@@ -7357,12 +7379,18 @@ Other Sun games
 	DRIVER( sltblgp1 )	/* 1996 */
 	DRIVER( gldncrwn )	/* 1997 */
 
+	/* MPU4 Diagnostic ROMs */
+	DRIVER( mpu4utst )
+	DRIVER( mpu4tst2 )
+	DRIVER( mpu4met0 )
+
 	/* MPU4 Non-Video SWPs */
 	DRIVER( connect4 )	/* Dolbeck Systems */
 
 	/* MPU4+Video Board Games */
 	DRIVER( bctvidbs )
-	DRIVER( dealem )
+	DRIVER( dealem )	/* 1987 */
+	DRIVER( timemchn )	/* 1990 */
 	DRIVER( crmaze )	/* 1994 */
 	DRIVER( crmazea )	/* 1994 */
 	DRIVER( crmazeb )	/* 1994 */
@@ -7370,6 +7398,7 @@ Other Sun games
 	DRIVER( skiltrek )	/* 1992 */
 	DRIVER( mating )	/* 199? */
 	DRIVER( matinga )	/* 199? */
+	DRIVER( vgpoker )	/* 199? */
 
 	/* ADP games */
 	DRIVER( backgamn )	/* (c) 1990 */
@@ -7381,6 +7410,7 @@ Other Sun games
 	/* JMP Impact Games */
 	DRIVER( cluedo )	/* (c) 1995 */
 	DRIVER( cluedo2c )	/* (c) 1995 */
+	DRIVER( cluedo2 )	/* (c) 1995 */
 	DRIVER( trivialp )	/* (c) 1996 */
 	DRIVER( scrabble )	/* (c) 1997 */
 	DRIVER( hngmnjpm )	/* (c) 1998 */
@@ -7718,10 +7748,14 @@ Other Sun games
 	DRIVER( cmv801 )	/* (c) 198? Corsica */
 	DRIVER( cm2v841 )	/* (c) 198? Dyna Electronics */
 	DRIVER( cm2841a )	/* (c) 198? Dyna Electronics */
-	DRIVER( ampoker2 )	/* (c) 198? Novomatic */
-	DRIVER( ampokr2a )	/* (c) 198? Novomatic */
-	DRIVER( ampokr2b )	/* (c) 198? Novomatic */
-	DRIVER( ampokr2c )	/* (c) 198? Novomatic */
+	DRIVER( ampoker2 )	/* (c) 1990 Novomatic */
+	DRIVER( ampkr2b1 )	/* 1990 bootleg */
+	DRIVER( ampkr2b2 )	/* 1990 bootleg */
+	DRIVER( ampkr2b3 )	/* 1994 bootleg */
+	DRIVER( pkrdewin )	/* 1990 bootleg */
+	DRIVER( ampkr95 )	/* 1995 bootleg */
+	DRIVER( sigmapkr )	/* (c) 1995 Sigma */
+	DRIVER( sigma2k )	/* (c) 2000 Sigma */
 	DRIVER( lucky8 )	/* (c) 1989 Falcon */
 	DRIVER( sidewndr )	/* (c) 1981? ACE */
 	DRIVER( spellbnd )	/* (c) 1981? ACE */
@@ -7811,9 +7845,19 @@ Other Sun games
 	DRIVER( eshb )		/* (c) 1984 Funai / Gakken */
 	DRIVER( comebaby )	/* (c) 2000 ExPotato */
 	DRIVER( peplus )	/* (c) 1987 IGT - International Gaming Technology */
+	DRIVER( pepp0158 )	/* (c) 1987 IGT - International Gaming Technology */
+	DRIVER( pepp0188 )	/* (c) 1987 IGT - International Gaming Technology */
+	DRIVER( peset038 )	/* (c) 1987 IGT - International Gaming Technology */
+    DRIVER( pebe0014 )	/* (c) 1994 IGT - International Gaming Technology */
+    DRIVER( peke1012 )	/* (c) 1994 IGT - International Gaming Technology */
+    DRIVER( peps0615 )	/* (c) 1996 IGT - International Gaming Technology */
+	DRIVER( peps0716 )	/* (c) 1996 IGT - International Gaming Technology */
+    DRIVER( pexp0019 )	/* (c) 1995 IGT - International Gaming Technology */
+    DRIVER( pexs0006 )	/* (c) 1997 IGT - International Gaming Technology */
 	DRIVER( mirage )	/* (c) 1994 Mitchell */
 	DRIVER( dominob )	/* (c) 1990 Wonwoo Systems */
 	DRIVER( jongkyo )	/* (c) 1985 Kiwako */
 	DRIVER( gtipoker )	/* (c) 1983 GTI Inc */
+	DRIVER( gamecstl )	/* MAME based bootleg */
 
 #endif	/* DRIVER_RECURSIVE */

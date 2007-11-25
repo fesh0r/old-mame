@@ -822,10 +822,10 @@ static struct
 static DRIVER_INIT( namcos11 )
 {
 	int n_game;
-	mame_timer *timer;
+	emu_timer *timer;
 
-	timer = mame_timer_alloc( mcu_timer );
-	mame_timer_adjust( timer, MAME_TIME_IN_HZ( 600 ), 0, MAME_TIME_IN_HZ( 600 ) );
+	timer = timer_alloc( mcu_timer );
+	timer_adjust( timer, ATTOTIME_IN_HZ( 600 ), 0, ATTOTIME_IN_HZ( 600 ) );
 
 	psx_driver_init();
 	namcoc7x_on_driver_init();
@@ -883,7 +883,7 @@ static DRIVER_INIT( namcos11 )
 	state_save_register_global( m_n_oldcoin );
 }
 
-MACHINE_RESET( namcos11 )
+static MACHINE_RESET( namcos11 )
 {
 	memset( namcos11_keycus, 0, namcos11_keycus_size );
 	psx_machine_init();
@@ -924,7 +924,7 @@ static MACHINE_DRIVER_START( coh110 )
 	MDRV_VIDEO_START( psx_type2 )
 MACHINE_DRIVER_END
 
-INPUT_PORTS_START( namcos11 )
+static INPUT_PORTS_START( namcos11 )
 	PORT_START_TAG( "SWITCH" )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN ) /* read by pocket racer */
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -987,7 +987,7 @@ INPUT_PORTS_START( namcos11 )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN4 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( tekken )
+static INPUT_PORTS_START( tekken )
 	PORT_INCLUDE( namcos11 )
 
 	PORT_MODIFY( "PLAYER1" )
@@ -1017,7 +1017,7 @@ INPUT_PORTS_START( tekken )
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( souledge )
+static INPUT_PORTS_START( souledge )
 	PORT_INCLUDE( namcos11 )
 
 	PORT_MODIFY( "PLAYER3" )
@@ -1041,7 +1041,7 @@ INPUT_PORTS_START( souledge )
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( myangel3 )
+static INPUT_PORTS_START( myangel3 )
 	PORT_INCLUDE( namcos11 )
 
 	PORT_MODIFY( "PLAYER1" )
@@ -1083,7 +1083,7 @@ INPUT_PORTS_START( myangel3 )
 	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ptblnk2a )
+static INPUT_PORTS_START( ptblnk2a )
 	PORT_INCLUDE( namcos11 )
 
 	PORT_MODIFY( "PLAYER1" )
@@ -1135,7 +1135,7 @@ INPUT_PORTS_START( ptblnk2a )
 	PORT_BIT( 0xffff, 0x00a8, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX( 0x2c, 0x11b ) PORT_SENSITIVITY( 50 ) PORT_KEYDELTA( 15 ) PORT_PLAYER( 2 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( pocketrc )
+static INPUT_PORTS_START( pocketrc )
 	PORT_INCLUDE( namcos11 )
 
 	PORT_MODIFY( "PLAYER1" )

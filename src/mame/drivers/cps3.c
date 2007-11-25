@@ -345,36 +345,36 @@ Notes:
 	#define DMA_XOR(a)	((a) ^ 2)
 #endif
 
-int cps3_use_fastboot;
+static int cps3_use_fastboot;
 
-UINT32* decrypted_bios;
-UINT32* decrypted_gamerom;
-UINT32 cram_gfxflash_bank;
-UINT32* cps3_nops;
+static UINT32* decrypted_bios;
+static UINT32* decrypted_gamerom;
+static UINT32 cram_gfxflash_bank;
+static UINT32* cps3_nops;
 
-UINT32*tilemap20_regs_base;
-UINT32*tilemap30_regs_base;
-UINT32*tilemap40_regs_base;
-UINT32*tilemap50_regs_base;
+static UINT32* tilemap20_regs_base;
+static UINT32* tilemap30_regs_base;
+static UINT32* tilemap40_regs_base;
+static UINT32* tilemap50_regs_base;
 
-UINT32* cps3_0xc0000000_ram;
-UINT32* cps3_0xc0000000_ram_decrypted;
+static UINT32* cps3_0xc0000000_ram;
+static UINT32* cps3_0xc0000000_ram_decrypted;
 
-UINT32* cps3_char_ram;
+static UINT32* cps3_char_ram;
 
-UINT32* cps3_spriteram;
-UINT32* cps3_eeprom;
-UINT32* cps3_fullscreenzoom;
+static UINT32* cps3_spriteram;
+static UINT32* cps3_eeprom;
+static UINT32* cps3_fullscreenzoom;
 
 UINT32 cps3_ss_pal_base = 0;
-UINT32* cps3_colourram;
-UINT32 cps3_unk_vidregs[0x20/4];
+static UINT32* cps3_colourram;
+static UINT32 cps3_unk_vidregs[0x20/4];
 UINT32 cps3_ss_bank_base = 0;
 
-UINT32 cps3_screenwidth;
-cdrom_file* cps3_cd;
+static UINT32 cps3_screenwidth;
+//cdrom_file* cps3_cd;
 
-UINT32* cps3_mame_colours;//[0x20000]; // actual values to write to 32-bit bitmap
+static UINT32* cps3_mame_colours;//[0x20000]; // actual values to write to 32-bit bitmap
 
 static mame_bitmap *renderbuffer_bitmap;
 static rectangle renderbuffer_clip;
@@ -686,7 +686,7 @@ static const struct game_keys2 keys_table2[] =
 	{ 0 }	// end of table
 };
 
-void cps3_decrypt_bios(void)
+static void cps3_decrypt_bios(void)
 {
 	int i;
 	UINT32 *coderegion = (UINT32*)memory_region(REGION_USER1);
@@ -729,7 +729,7 @@ void cps3_decrypt_bios(void)
 
 
 
-DRIVER_INIT( cps3crpt )
+static DRIVER_INIT( cps3crpt )
 {
 	const char *gamename = machine->gamedrv->name;
 	const struct game_keys2 *k = &keys_table2[0];
@@ -804,14 +804,14 @@ static const gfx_layout cps3_tiles8x8_layout =
 	64*8
 };
 
-UINT32* cps3_ss_ram;
-UINT8* cps3_ss_ram_dirty;
-int cps3_ss_ram_is_dirty;
+static UINT32* cps3_ss_ram;
+static UINT8* cps3_ss_ram_dirty;
+static int cps3_ss_ram_is_dirty;
 
-UINT8* cps3_char_ram_dirty;
-int cps3_char_ram_is_dirty;
+static UINT8* cps3_char_ram_dirty;
+static int cps3_char_ram_is_dirty;
 
-void cps3_set_mame_colours( int colournum, UINT16 data, UINT32 fadeval )
+static void cps3_set_mame_colours( int colournum, UINT16 data, UINT32 fadeval )
 {
 	int r,g,b;
 	UINT16* dst = (UINT16*)cps3_colourram;
@@ -849,7 +849,8 @@ void cps3_set_mame_colours( int colournum, UINT16 data, UINT32 fadeval )
 	if (colournum<0x10000) palette_set_color(Machine,colournum,cps3_mame_colours[colournum]/* MAKE_RGB(r<<3,g<<3,b<<3)*/);//cps3_mame_colours[colournum]);
 }
 
-void decode_ssram(void)
+#ifdef UNUSED_FUNCTION
+static void decode_ssram(void)
 {
 	if (cps3_ss_ram_dirty)
 	{
@@ -869,7 +870,7 @@ void decode_ssram(void)
 	return;
 }
 
-void decode_charram(void)
+static void decode_charram(void)
 {
 	if (cps3_char_ram_is_dirty)
 	{
@@ -888,8 +889,9 @@ void decode_charram(void)
 
 	return;
 }
+#endif
 
-VIDEO_START(cps3)
+static VIDEO_START(cps3)
 {
 	cps3_ss_ram       = auto_malloc(0x10000);
 	cps3_ss_ram_dirty = auto_malloc(0x400);
@@ -938,7 +940,7 @@ VIDEO_START(cps3)
 
 // the 0x400 bit in the tilemap regs is "draw it upside-down"  (bios tilemap during flashing, otherwise capcom logo is flipped)
 
-void cps3_draw_tilemapsprite_line(int tmnum, int drawline, mame_bitmap *bitmap, const rectangle *cliprect )
+static void cps3_draw_tilemapsprite_line(int tmnum, int drawline, mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	UINT32* tmapregs[4] = { tilemap20_regs_base, tilemap30_regs_base, tilemap40_regs_base, tilemap50_regs_base };
 	UINT32* regs;
@@ -1026,7 +1028,7 @@ void cps3_draw_tilemapsprite_line(int tmnum, int drawline, mame_bitmap *bitmap, 
 	}
 }
 
-VIDEO_UPDATE(cps3)
+static VIDEO_UPDATE(cps3)
 {
 	int y,x, count;
 //  int offset;
@@ -1358,7 +1360,7 @@ VIDEO_UPDATE(cps3)
 	return 0;
 }
 
-READ32_HANDLER( cps3_ssram_r )
+static READ32_HANDLER( cps3_ssram_r )
 {
 	if (offset>0x8000/4)
 		return LITTLE_ENDIANIZE_INT32(cps3_ss_ram[offset]);
@@ -1366,7 +1368,7 @@ READ32_HANDLER( cps3_ssram_r )
 		return cps3_ss_ram[offset];
 }
 
-WRITE32_HANDLER( cps3_ssram_w )
+static WRITE32_HANDLER( cps3_ssram_w )
 {
 	if (offset>0x8000/4)
 	{
@@ -1381,7 +1383,7 @@ WRITE32_HANDLER( cps3_ssram_w )
 	COMBINE_DATA(&cps3_ss_ram[offset]);
 }
 
-WRITE32_HANDLER( cps3_0xc0000000_ram_w )
+static WRITE32_HANDLER( cps3_0xc0000000_ram_w )
 {
 	COMBINE_DATA( &cps3_0xc0000000_ram[offset] );
 	// store a decrypted copy
@@ -1425,9 +1427,9 @@ static offs_t cps3_opbase_handler(offs_t address)
 	return ~0;
 }
 
-UINT32 cram_bank = 0;
+static UINT32 cram_bank = 0;
 
-WRITE32_HANDLER( cram_bank_w )
+static WRITE32_HANDLER( cram_bank_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -1456,14 +1458,14 @@ WRITE32_HANDLER( cram_bank_w )
 	}
 }
 
-READ32_HANDLER( cram_data_r )
+static READ32_HANDLER( cram_data_r )
 {
 	UINT32 fulloffset = (((cram_bank&0x7)*0x100000)/4) + offset;
 
 	return LITTLE_ENDIANIZE_INT32(cps3_char_ram[fulloffset]);
 }
 
-WRITE32_HANDLER( cram_data_w )
+static WRITE32_HANDLER( cram_data_w )
 {
 	UINT32 fulloffset = (((cram_bank&0x7)*0x100000)/4) + offset;
 	mem_mask = LITTLE_ENDIANIZE_INT32(mem_mask);
@@ -1475,7 +1477,7 @@ WRITE32_HANDLER( cram_data_w )
 
 /* FLASH ROM ACCESS */
 
-READ32_HANDLER( cps3_gfxflash_r )
+static READ32_HANDLER( cps3_gfxflash_r )
 {
 	UINT32 result = 0;
 	int flash1 = 8;
@@ -1513,7 +1515,7 @@ READ32_HANDLER( cps3_gfxflash_r )
 	return result;
 }
 
-WRITE32_HANDLER( cps3_gfxflash_w )
+static WRITE32_HANDLER( cps3_gfxflash_w )
 {
 	int command;
 	int flash1 = 8;
@@ -1574,7 +1576,7 @@ WRITE32_HANDLER( cps3_gfxflash_w )
 
 
 
-UINT32 cps3_flashmain_r(int base, UINT32 offset, UINT32 mem_mask)
+static UINT32 cps3_flashmain_r(int base, UINT32 offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
 
@@ -1607,8 +1609,8 @@ UINT32 cps3_flashmain_r(int base, UINT32 offset, UINT32 mem_mask)
 /* In certain situations (SH2 DMA?) the reads must bypass the encryption device,
    this is used when checking the flash roms, and performing rom tests.  Without
    modification to the SH2 core this requires PC based hacks to work correctly */
-UINT32 cps3_bios_test_hack;
-UINT32 cps3_game_test_hack;
+static UINT32 cps3_bios_test_hack;
+static UINT32 cps3_game_test_hack;
 
 struct cps3_test_hacks
 {
@@ -1642,7 +1644,7 @@ static const struct cps3_test_hacks testhack_table[] =
 	{ 0 }	// end of table
 };
 
-DRIVER_INIT( cps3_testhacks )
+static DRIVER_INIT( cps3_testhacks )
 {
 	const char *gamename = machine->gamedrv->name;
 	const struct cps3_test_hacks *k = &testhack_table[0];
@@ -1664,7 +1666,7 @@ DRIVER_INIT( cps3_testhacks )
 }
 
 
-READ32_HANDLER( cps3_flash1_r )
+static READ32_HANDLER( cps3_flash1_r )
 {
 	UINT32 retvalue = cps3_flashmain_r(0, offset,mem_mask);
 
@@ -1676,7 +1678,7 @@ READ32_HANDLER( cps3_flash1_r )
 	return retvalue;
 }
 
-READ32_HANDLER( cps3_flash2_r )
+static READ32_HANDLER( cps3_flash2_r )
 {
 	UINT32 retvalue = cps3_flashmain_r(4, offset,mem_mask);
 
@@ -1688,7 +1690,7 @@ READ32_HANDLER( cps3_flash2_r )
 	return retvalue;
 }
 
-void cps3_flashmain_w(int base, UINT32 offset, UINT32 data, UINT32 mem_mask)
+static void cps3_flashmain_w(int base, UINT32 offset, UINT32 data, UINT32 mem_mask)
 {
 	int command;
 	if (!(mem_mask & 0xff000000))	// Flash 1
@@ -1757,17 +1759,17 @@ void cps3_flashmain_w(int base, UINT32 offset, UINT32 data, UINT32 mem_mask)
 */
 
 }
-WRITE32_HANDLER( cps3_flash1_w )
+static WRITE32_HANDLER( cps3_flash1_w )
 {
 	cps3_flashmain_w(0, offset,data,mem_mask);
 }
 
-WRITE32_HANDLER( cps3_flash2_w )
+static WRITE32_HANDLER( cps3_flash2_w )
 {
 	cps3_flashmain_w(4, offset,data,mem_mask);
 }
 
-WRITE32_HANDLER( cram_gfxflash_bank_w )
+static WRITE32_HANDLER( cram_gfxflash_bank_w )
 {
 	if (ACCESSING_MSB32)
 	{
@@ -1822,43 +1824,43 @@ WRITE32_HANDLER( cram_gfxflash_bank_w )
 	}
 }
 
-READ32_HANDLER( cps3_io1_r )
+static READ32_HANDLER( cps3_io1_r )
 {
 	return readinputport(0);
 }
 
-READ32_HANDLER( cps3_io2_r )
+static READ32_HANDLER( cps3_io2_r )
 {
 	return readinputport(1);
 }
 
 // this seems to be dma active flags, and maybe vblank... not if it is anything else
-READ32_HANDLER( cps3_vbl_r )
+static READ32_HANDLER( cps3_vbl_r )
 {
 	return 0x00000000;
 }
 
-READ32_HANDLER( cps3_unk_io_r )
+static READ32_HANDLER( cps3_unk_io_r )
 {
 	//  warzard will crash before booting if you return anything here
 	return 0xffffffff;
 }
 
-READ32_HANDLER( cps3_40C0000_r )
+static READ32_HANDLER( cps3_40C0000_r )
 {
 	return 0x00000000;
 }
 
-READ32_HANDLER( cps3_40C0004_r )
+static READ32_HANDLER( cps3_40C0004_r )
 {
 	return 0x00000000;
 }
 
 /* EEPROM access is a little odd, I think it accesses eeprom through some kind of
    additional interface, as these writes aren't normal for the type of eeprom we have */
-UINT16 cps3_current_eeprom_read;
+static UINT16 cps3_current_eeprom_read;
 
-READ32_HANDLER( cps3_eeprom_r )
+static READ32_HANDLER( cps3_eeprom_r )
 {
 	int addr = offset*4;
 
@@ -1887,7 +1889,7 @@ READ32_HANDLER( cps3_eeprom_r )
 	return 0x00000000;
 }
 
-WRITE32_HANDLER( cps3_eeprom_w )
+static WRITE32_HANDLER( cps3_eeprom_w )
 {
 	int addr = offset*4;
 
@@ -1909,7 +1911,7 @@ WRITE32_HANDLER( cps3_eeprom_w )
 
 }
 
-READ32_HANDLER( cps3_cdrom_r )
+static READ32_HANDLER( cps3_cdrom_r )
 {
 
 	UINT32 retval = 0;
@@ -1927,7 +1929,7 @@ READ32_HANDLER( cps3_cdrom_r )
 	return retval;
 }
 
-WRITE32_HANDLER( cps3_cdrom_w )
+static WRITE32_HANDLER( cps3_cdrom_w )
 {
 	if (ACCESSING_MSB32)
 	{
@@ -1940,7 +1942,7 @@ WRITE32_HANDLER( cps3_cdrom_w )
 	}
 }
 
-WRITE32_HANDLER( cps3_ss_bank_base_w )
+static WRITE32_HANDLER( cps3_ss_bank_base_w )
 {
 	// might be scroll registers or something else..
 	// used to display bank with 'insert coin' on during sfiii2 attract intro
@@ -1949,7 +1951,7 @@ WRITE32_HANDLER( cps3_ss_bank_base_w )
 //  printf("cps3_ss_bank_base_w %08x %08x\n", data, mem_mask);
 }
 
-WRITE32_HANDLER( cps3_ss_pal_base_w )
+static WRITE32_HANDLER( cps3_ss_pal_base_w )
 {
 	 if(DEBUG_PRINTF) printf ("cps3_ss_pal_base_w %08x %08x\n", data, mem_mask);
 
@@ -1965,22 +1967,22 @@ WRITE32_HANDLER( cps3_ss_pal_base_w )
 	}
 }
 
-UINT32*tilemap20_regs_base;
-UINT32*tilemap30_regs_base;
-UINT32*tilemap40_regs_base;
-UINT32*tilemap50_regs_base;
+static UINT32* tilemap20_regs_base;
+static UINT32* tilemap30_regs_base;
+static UINT32* tilemap40_regs_base;
+static UINT32* tilemap50_regs_base;
 
 //<ElSemi> +0 X  +2 Y +4 unknown +6 enable (&0x8000) +8 low part tilemap base, high part linescroll base
 //<ElSemi> (a word each)
 
-UINT32 paldma_source;
-UINT32 paldma_realsource;
-UINT32 paldma_dest;
-UINT32 paldma_fade;
-UINT32 paldma_other2;
-UINT32 paldma_length;
+static UINT32 paldma_source;
+static UINT32 paldma_realsource;
+static UINT32 paldma_dest;
+static UINT32 paldma_fade;
+static UINT32 paldma_other2;
+static UINT32 paldma_length;
 
-WRITE32_HANDLER( cps3_palettedma_w )
+static WRITE32_HANDLER( cps3_palettedma_w )
 {
 	if (offset==0)
 	{
@@ -2030,18 +2032,18 @@ WRITE32_HANDLER( cps3_palettedma_w )
 
 }
 
-UINT32 chardma_source;
-UINT32 chardma_other;
+static UINT32 chardma_source;
+static UINT32 chardma_other;
 
-UINT8* current_table;
-UINT32 current_table_address = -1;
+//static UINT8* current_table;
+static UINT32 current_table_address = -1;
 
 int cps3_rle_length = 0;
 
-int last_normal_byte = 0;
+static int last_normal_byte = 0;
 
 
-UINT32 process_byte( UINT8 real_byte, UINT32 destination, int max_length )
+static UINT32 process_byte( UINT8 real_byte, UINT32 destination, int max_length )
 {
 	UINT8* dest       = (UINT8*)cps3_char_ram;
 
@@ -2087,7 +2089,7 @@ UINT32 process_byte( UINT8 real_byte, UINT32 destination, int max_length )
 	}
 }
 
-void cps3_do_char_dma( UINT32 real_source, UINT32 real_destination, UINT32 real_length )
+static void cps3_do_char_dma( UINT32 real_source, UINT32 real_destination, UINT32 real_length )
 {
 	UINT8* sourcedata = (UINT8*)memory_region(REGION_USER5);
 	int length_remaining;
@@ -2138,9 +2140,9 @@ void cps3_do_char_dma( UINT32 real_source, UINT32 real_destination, UINT32 real_
 	}
 }
 
-unsigned short lastb;
-unsigned short lastb2;
-UINT32 ProcessByte8(UINT8 b,UINT32 dst_offset)
+static unsigned short lastb;
+static unsigned short lastb2;
+static UINT32 ProcessByte8(UINT8 b,UINT32 dst_offset)
 {
 	UINT8* destRAM = (UINT8*)cps3_char_ram;
  	int l=0;
@@ -2174,7 +2176,7 @@ UINT32 ProcessByte8(UINT8 b,UINT32 dst_offset)
  	}
  }
 
-void cps3_do_alt_char_dma( UINT32 src, UINT32 real_dest, UINT32 real_length )
+static void cps3_do_alt_char_dma( UINT32 src, UINT32 real_dest, UINT32 real_length )
 {
 	UINT8* px = (UINT8*)memory_region(REGION_USER5);
 	UINT32 start = real_dest;
@@ -2215,7 +2217,7 @@ void cps3_do_alt_char_dma( UINT32 src, UINT32 real_dest, UINT32 real_length )
 	}
 }
 
-void cps3_process_character_dma(UINT32 address)
+static void cps3_process_character_dma(UINT32 address)
 {
 	int i;
 
@@ -2267,7 +2269,7 @@ void cps3_process_character_dma(UINT32 address)
 	}
 }
 
-WRITE32_HANDLER( cps3_characterdma_w )
+static WRITE32_HANDLER( cps3_characterdma_w )
 {
 	if(DEBUG_PRINTF) printf("chardma_w %08x %08x %08x\n", offset, data, mem_mask);
 
@@ -2312,29 +2314,29 @@ WRITE32_HANDLER( cps3_characterdma_w )
 	}
 }
 
-WRITE32_HANDLER( cps3_irq10_ack_w )
+static WRITE32_HANDLER( cps3_irq10_ack_w )
 {
 	cpunum_set_input_line(0,10, CLEAR_LINE); return;
 }
 
-WRITE32_HANDLER( cps3_irq12_ack_w )
+static WRITE32_HANDLER( cps3_irq12_ack_w )
 {
 	cpunum_set_input_line(0,12, CLEAR_LINE); return;
 }
 
-WRITE32_HANDLER( cps3_unk_vidregs_w )
+static WRITE32_HANDLER( cps3_unk_vidregs_w )
 {
 	COMBINE_DATA(&cps3_unk_vidregs[offset]);
 }
 
-READ32_HANDLER( cps3_colourram_r )
+static READ32_HANDLER( cps3_colourram_r )
 {
 	UINT16* src = (UINT16*)cps3_colourram;
 
 	return src[offset*2+1] | (src[offset*2+0]<<16);
 }
 
-WRITE32_HANDLER( cps3_colourram_w )
+static WRITE32_HANDLER( cps3_colourram_w )
 {
 //  COMBINE_DATA(&cps3_colourram[offset]);
 
@@ -2349,7 +2351,7 @@ WRITE32_HANDLER( cps3_colourram_w )
 	}
 }
 
-UINT32* cps3_mainram;
+static UINT32* cps3_mainram;
 
 /* there are more unknown writes, but you get the idea */
 static ADDRESS_MAP_START( cps3_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -2420,7 +2422,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( cps3 )
+static INPUT_PORTS_START( cps3 )
 	PORT_START
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -2473,7 +2475,7 @@ static INTERRUPT_GEN(cps3_other_interrupt)
 }
 
 
-struct sh2_config sh2cp_conf_slave  = { 1 };
+//static struct sh2_config sh2cp_conf_slave  = { 1 };
 
 
 static struct CustomSound_interface custom_interface =
@@ -2482,7 +2484,7 @@ static struct CustomSound_interface custom_interface =
 };
 
 
-static mame_timer* fastboot_timer;
+static emu_timer* fastboot_timer;
 
 static TIMER_CALLBACK( fastboot_timer_callback )
 {
@@ -2507,15 +2509,15 @@ static struct WD33C93interface scsi_intf =
 	NULL			/* command completion IRQ */
 };
 
-MACHINE_RESET( cps3 )
+static MACHINE_RESET( cps3 )
 {
 	wd33c93_init(&scsi_intf);
 
 	if (cps3_use_fastboot)
 	{
-		fastboot_timer = mame_timer_alloc(fastboot_timer_callback);
+		fastboot_timer = timer_alloc(fastboot_timer_callback);
 	//  printf("reset\n");
-		mame_timer_adjust(fastboot_timer, time_zero, 0, time_zero);
+		timer_adjust(fastboot_timer, attotime_zero, 0, attotime_zero);
 	}
 }
 
@@ -2523,7 +2525,7 @@ MACHINE_RESET( cps3 )
 
 
 
-void precopy_to_flash(void)
+static void precopy_to_flash(void)
 {
 	int i;
 	/* precopy program roms, ok, sfiii2 tests pass, others fail because of how the decryption affects testing */
@@ -2590,7 +2592,7 @@ void precopy_to_flash(void)
 
 
 // make a copy in the regions we execute code / draw gfx from
-void copy_from_nvram(void)
+static void copy_from_nvram(void)
 {
 
 	int i;
@@ -3020,8 +3022,8 @@ ROM_START( redeartn )
 ROM_END
 
 /* Idle loop skipping speedups */
-UINT32 cps3_speedup_ram_address;
-UINT32 cps3_speedup_code_address;
+static UINT32 cps3_speedup_ram_address;
+static UINT32 cps3_speedup_code_address;
 
 struct cps3_speedups
 {
@@ -3055,7 +3057,7 @@ static const struct cps3_speedups speedup_table[] =
 	{ 0 }	// end of table
 };
 
-READ32_HANDLER(cps3_speedup_r)
+static READ32_HANDLER(cps3_speedup_r)
 {
 //  printf("speedup read %08x %d\n",activecpu_get_pc(), cpu_getexecutingcpu());
 	if (cpu_getexecutingcpu()>=0) // prevent cheat search crash..
@@ -3064,7 +3066,7 @@ READ32_HANDLER(cps3_speedup_r)
 	return cps3_mainram[cps3_speedup_ram_address/4];
 }
 
-DRIVER_INIT( cps3_speedups )
+static DRIVER_INIT( cps3_speedups )
 {
 	const char *gamename = machine->gamedrv->name;
 	const struct cps3_speedups *k = &speedup_table[0];
@@ -3092,7 +3094,7 @@ DRIVER_INIT( cps3_speedups )
 /* PLEASE leave the region / NOCD information here even once CD emulation is done, its useful for debugging */
 
 
-DRIVER_INIT( jojo )
+static DRIVER_INIT( jojo )
 {
 	// XXXXXX 0
 	// JAPAN 1
@@ -3120,7 +3122,7 @@ DRIVER_INIT( jojo )
 
 }
 
-DRIVER_INIT (jojoba)
+static DRIVER_INIT (jojoba)
 {
 	// XXXXXX 0
 	// JAPAN 1
@@ -3147,7 +3149,7 @@ DRIVER_INIT (jojoba)
 }
 
 
-DRIVER_INIT( warzard )
+static DRIVER_INIT( warzard )
 {
 	// JAPAN 1
 	// ASIA 2
@@ -3173,7 +3175,7 @@ DRIVER_INIT( warzard )
 }
 
 
-DRIVER_INIT( sfiii )
+static DRIVER_INIT( sfiii )
 {
 	// JAPAN 1
 	// ASIA NCD 2
@@ -3199,7 +3201,7 @@ DRIVER_INIT( sfiii )
 
 }
 
-DRIVER_INIT( sfiii2 )
+static DRIVER_INIT( sfiii2 )
 {
 	// JAPAN 1
 	// ASIA NCD 2
@@ -3223,7 +3225,7 @@ DRIVER_INIT( sfiii2 )
 }
 
 
-DRIVER_INIT( sfiii3 )
+static DRIVER_INIT( sfiii3 )
 {
 	// JAPAN 1
 	// ASIA 2

@@ -426,7 +426,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( meadows )
+static INPUT_PORTS_START( meadows )
 	PORT_START		/* IN0 buttons */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START1  )
@@ -470,7 +470,7 @@ INPUT_PORTS_START( meadows )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( minferno )
+static INPUT_PORTS_START( minferno )
 	PORT_START		/* IN0 left joystick */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -578,7 +578,7 @@ GFXDECODE_END
  *
  *************************************/
 
-static struct Samplesinterface custom_interface =
+static struct Samplesinterface meadows_samples_interface =
 {
 	2,
 	NULL,
@@ -643,7 +643,7 @@ static MACHINE_DRIVER_START( meadows )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
+	MDRV_SOUND_CONFIG(meadows_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

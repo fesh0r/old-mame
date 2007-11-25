@@ -89,7 +89,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf800, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-READ8_HANDLER( suprgolf_random )
+static READ8_HANDLER( suprgolf_random )
 {
 	return mame_rand(Machine);
 }
@@ -107,7 +107,7 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x09, 0x09) AM_READ(YM2203_read_port_0_r) AM_WRITE(YM2203_write_port_0_w)
  ADDRESS_MAP_END
 
-INPUT_PORTS_START( suprgolf )
+static INPUT_PORTS_START( suprgolf )
 	PORT_START	/* PLAY1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -246,12 +246,12 @@ INPUT_PORTS_START( suprgolf )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-WRITE8_HANDLER( suprgolf_writeA )
+static WRITE8_HANDLER( suprgolf_writeA )
 {
 	mame_printf_debug("ymwA\n");
 }
 
-WRITE8_HANDLER( suprgolf_writeB )
+static WRITE8_HANDLER( suprgolf_writeB )
 {
 	mame_printf_debug("ymwA\n");
 }

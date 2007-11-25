@@ -56,7 +56,7 @@ logerror("CPU #0 PC %06x: warning - read unmapped memory address %06x\n",activec
 }
 
 
-WRITE16_HANDLER( zerozone_sound_w )
+static WRITE16_HANDLER( zerozone_sound_w )
 {
 	if (ACCESSING_MSB)
 	{
@@ -99,7 +99,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9800, 0x9800) AM_WRITE(OKIM6295_data_0_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( zerozone )
+static INPUT_PORTS_START( zerozone )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )

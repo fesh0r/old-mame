@@ -130,7 +130,7 @@ DRIVER_INIT( armwrest );
 
 
 
-READ8_HANDLER( punchout_input_3_r )
+static READ8_HANDLER( punchout_input_3_r )
 {
 	int data = input_port_3_r(offset);
 	/* bit 4 is busy pin level */
@@ -139,22 +139,22 @@ READ8_HANDLER( punchout_input_3_r )
 	return data;
 }
 
-WRITE8_HANDLER( punchout_speech_reset_w )
+static WRITE8_HANDLER( punchout_speech_reset_w )
 {
 	VLM5030_RST( data&0x01 );
 }
 
-WRITE8_HANDLER( punchout_speech_st_w )
+static WRITE8_HANDLER( punchout_speech_st_w )
 {
 	VLM5030_ST( data&0x01 );
 }
 
-WRITE8_HANDLER( punchout_speech_vcu_w )
+static WRITE8_HANDLER( punchout_speech_vcu_w )
 {
 	VLM5030_VCU( data & 0x01 );
 }
 
-WRITE8_HANDLER( punchout_2a03_reset_w )
+static WRITE8_HANDLER( punchout_2a03_reset_w )
 {
 	if (data & 1)
 		cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
@@ -488,7 +488,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( punchout )
+static INPUT_PORTS_START( punchout )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -559,7 +559,7 @@ INPUT_PORTS_START( punchout )
 INPUT_PORTS_END
 
 /* same as punchout with additional duck button */
-INPUT_PORTS_START( spnchout )
+static INPUT_PORTS_START( spnchout )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -629,7 +629,7 @@ INPUT_PORTS_START( spnchout )
 	PORT_START
 INPUT_PORTS_END
 
-INPUT_PORTS_START( armwrest )
+static INPUT_PORTS_START( armwrest )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )

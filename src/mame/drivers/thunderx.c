@@ -308,13 +308,13 @@ static WRITE8_HANDLER( thunderx_1f98_w )
 		calculate_collisions();
 
 		/* 100 cycle delay is arbitrary */
-		mame_timer_set(MAME_TIME_IN_CYCLES(100,0),0, thunderx_firq_callback);
+		timer_set(ATTOTIME_IN_CYCLES(100,0),0, thunderx_firq_callback);
 	}
 
 	thunderx_1f98_data = data;
 }
 
-WRITE8_HANDLER( scontra_bankswitch_w )
+static WRITE8_HANDLER( scontra_bankswitch_w )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	int offs;
@@ -463,7 +463,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( scontra )
+static INPUT_PORTS_START( scontra )
 	PORT_START	/* COINSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -567,7 +567,7 @@ INPUT_PORTS_START( scontra )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( thunderx )
+static INPUT_PORTS_START( thunderx )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )

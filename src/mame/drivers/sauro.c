@@ -208,7 +208,7 @@ static ADDRESS_MAP_START( trckydoc_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf83f, 0xf83f) AM_WRITE(MWA8_NOP)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( tecfri )
+static INPUT_PORTS_START( tecfri )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 )
@@ -339,7 +339,7 @@ static MACHINE_DRIVER_START( tecfri )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(5000))  // frames per second, vblank duration (otherwise sprites lag)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(5000))  // frames per second, vblank duration (otherwise sprites lag)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

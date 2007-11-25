@@ -67,7 +67,7 @@ static UINT8 cop_l_latch;
 
 
 /* VIDEO GOODS */
-VIDEO_UPDATE( thayers )
+static VIDEO_UPDATE( thayers )
 {
 	/* display disc information */
 	if (discinfo != NULL)
@@ -80,12 +80,12 @@ VIDEO_UPDATE( thayers )
 
 /* MEMORY HANDLERS */
 /* Z80 R/W */
-READ8_HANDLER(z80_irq_status_r)
+static READ8_HANDLER(z80_irq_status_r)
 {
 	return z80_irq_status;
 }
 
-READ8_HANDLER(ram_ic_read)
+static READ8_HANDLER(ram_ic_read)
 {
 	/* Daphne patches.
     if (offset == 0xbe07-0x8000)
@@ -116,24 +116,24 @@ static UINT32 laserdisc_command_r(void *param)
 	return (laserdisc_line_r(discinfo, LASERDISC_LINE_COMMAND) == ASSERT_LINE) ? 0 : 1;
 }
 
-WRITE8_HANDLER(ram_ic_write)
+static WRITE8_HANDLER(ram_ic_write)
 {
 	ram_ic[offset] = data;
 }
 
-WRITE8_HANDLER(data_ready_int_w)
+static WRITE8_HANDLER(data_ready_int_w)
 {
 	CLEAR_Z80_DATA_RDY_INT();
 	/* Hackaroo? */
 	/* cop_l_latch = 0x00; */
 }
 
-WRITE8_HANDLER(timer_int_w)
+static WRITE8_HANDLER(timer_int_w)
 {
 	CLEAR_Z80_TIMER_INT();
 }
 
-WRITE8_HANDLER(write_cop)
+static WRITE8_HANDLER(write_cop)
 {
 	logerror("Writing 0x%x to COP port G\n", data);
 
@@ -146,17 +146,19 @@ WRITE8_HANDLER(write_cop)
 	/* Bit 1 goes to CS128x? (illegible schems) */
 }
 
-WRITE8_HANDLER(data_write_cop)
+#ifdef UNUSED_FUNCTION
+static WRITE8_HANDLER(data_write_cop)
 {
 	cop_l_latch = data;
 }
+#endif
 
-WRITE8_HANDLER(intrq_w)
+static WRITE8_HANDLER(intrq_w)
 {
 	cpunum_set_input_line(0, 0, ASSERT_LINE);
 }
 
-WRITE8_HANDLER(sc01_register_w)
+static WRITE8_HANDLER(sc01_register_w)
 {
 	/* (Thank you Daphne) */
 	switch (offset)
@@ -226,26 +228,26 @@ WRITE8_HANDLER(sc01_register_w)
 
 /* COP R/W */
 /* All 8 l pins are hooked up here */
-READ8_HANDLER(cop_l_read)
+static READ8_HANDLER(cop_l_read)
 {
 	logerror("COP - Reading from L @ (0x%x)\n", activecpu_get_pc());
 	return cop_l_latch;
 }
 
 /* Pins g0, g1, g2, and g3 are all hooked up */
-READ8_HANDLER(cop_g_read)
+static READ8_HANDLER(cop_g_read)
 {
 	logerror("COP - Reading from G @ (0x%x)\n", activecpu_get_pc());
 	return cop_g_latch;
 }
 
-WRITE8_HANDLER(cop_l_write)
+static WRITE8_HANDLER(cop_l_write)
 {
 	logerror("COP - WRITING TO L 0x%x @ (0x%x)\n", data, activecpu_get_pc());
 	cop_l_latch = data;
 }
 
-WRITE8_HANDLER(cop_g_write)
+static WRITE8_HANDLER(cop_g_write)
 {
 	logerror("COP - WRITING TO G 0x%x @ (0x%x)\n", data, activecpu_get_pc());
 
@@ -254,7 +256,7 @@ WRITE8_HANDLER(cop_g_write)
 }
 
 /* Schematics say pins d0 and d1 are the only two that are hooked up */
-WRITE8_HANDLER(cop_d_write)
+static WRITE8_HANDLER(cop_d_write)
 {
 	int irq_flag = 0;
 
@@ -291,13 +293,13 @@ WRITE8_HANDLER(cop_d_write)
 	}
 }
 
-WRITE8_HANDLER(cop_sk_write)
+static WRITE8_HANDLER(cop_sk_write)
 {
 	/* I think this data falls off into a black hole - the pins aren't hooked up.
        The COP400 XAS instruction writes to both SK and SIO, that's why the CPU writes data here at all. */
 }
 
-WRITE8_HANDLER(cop_sio_write)
+static WRITE8_HANDLER(cop_sio_write)
 {
 	/* This data is sent to the CLK pin of the keyboard handling logic.  We don't need to emulate it here. */
 }
@@ -341,12 +343,12 @@ static ADDRESS_MAP_START( copio, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(COP400_PORT_G,  COP400_PORT_G)   AM_READWRITE(cop_g_read,cop_g_write)
 	AM_RANGE(COP400_PORT_D,  COP400_PORT_D)   AM_WRITE(cop_d_write)
 	AM_RANGE(COP400_PORT_SK, COP400_PORT_SK)  AM_WRITE(cop_sk_write)
-	AM_RANGE(COP400_PORT_SIO,COP400_PORT_SIO) AM_READWRITE(port_tag_to_handler8("THAYERS_LETTERS"),cop_sio_write)	/* Unemulated in COP40x core, so nothing happens ATM */
+	AM_RANGE(COP400_PORT_SIO,COP400_PORT_SIO) AM_READ_PORT("THAYERS_LETTERS") AM_WRITE(cop_sio_write)	/* Unemulated in COP40x core, so nothing happens ATM */
 ADDRESS_MAP_END																										/* This is also very wrong.  The keyboard interface needs to
                                                                                                                        be understood much better than what I have here */
 
 /* PORTS */
-INPUT_PORTS_START( thayers )
+static INPUT_PORTS_START( thayers )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x07, 0x07, "Time Per Coin" ) PORT_DIPLOCATION( "A:3,2,1" )
 	PORT_DIPSETTING(    0x07, "110 Seconds" )
@@ -461,7 +463,7 @@ static MACHINE_DRIVER_START( thayers )
 	MDRV_MACHINE_START(thayers)
 
 /*  io device cpu */
-	MDRV_CPU_ADD(COP420, SCHEMATIC_CLOCK/2/8);		/* Can't read the schematics, but this is what daphne says */
+	MDRV_CPU_ADD(COP420, SCHEMATIC_CLOCK/2/8)		/* Can't read the schematics, but this is what daphne says */
 	MDRV_CPU_PROGRAM_MAP(copmem,0)
 	MDRV_CPU_IO_MAP(copio,0)
 

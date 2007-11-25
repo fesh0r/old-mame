@@ -50,11 +50,11 @@ Notes:
 static UINT16 *unkram;
 static UINT16 *mainram;
 
-VIDEO_START( gunpey )
+static VIDEO_START( gunpey )
 {
 }
 
-VIDEO_UPDATE( gunpey )
+static VIDEO_UPDATE( gunpey )
 {
 
 	return 0;
@@ -143,7 +143,7 @@ MACHINE_DRIVER_END
 
 /***************************************************************************************/
 
-INPUT_PORTS_START( gunpey )
+static INPUT_PORTS_START( gunpey )
 
 INPUT_PORTS_END
 

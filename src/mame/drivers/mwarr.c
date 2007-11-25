@@ -151,7 +151,7 @@ static ADDRESS_MAP_START( mwarr_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x190000, 0x190001) AM_READWRITE(OKIM6295_status_1_lsb_r, OKIM6295_data_1_lsb_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( mwarr )
+static INPUT_PORTS_START( mwarr )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -307,7 +307,7 @@ static TILE_GET_INFO( get_tx_tile_info )
 	SET_TILE_INFO(1,tileno,colour,0);
 }
 
-VIDEO_START( mwarr )
+static VIDEO_START( mwarr )
 {
 	bg_tilemap    = tilemap_create(get_bg_tile_info,   tilemap_scan_cols,TILEMAP_TYPE_PEN,      16, 16,64,16);
 	mlow_tilemap  = tilemap_create(get_mlow_tile_info, tilemap_scan_cols,TILEMAP_TYPE_PEN, 16, 16,64,16);
@@ -395,7 +395,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-VIDEO_UPDATE( mwarr )
+static VIDEO_UPDATE( mwarr )
 {
 	int i;
 

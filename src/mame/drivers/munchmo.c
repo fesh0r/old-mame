@@ -57,7 +57,7 @@ static INTERRUPT_GEN( mnchmobl_interrupt )
 	else if( mnchmobl_nmi_enable ) cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
-WRITE8_HANDLER( mnchmobl_soundlatch_w )
+static WRITE8_HANDLER( mnchmobl_soundlatch_w )
 {
 	soundlatch_w( offset, data );
 	cpunum_set_input_line( 1, 0, HOLD_LINE );
@@ -126,7 +126,7 @@ static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( mnchmobl )
+static INPUT_PORTS_START( mnchmobl )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )

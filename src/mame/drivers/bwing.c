@@ -58,7 +58,7 @@ static int bwp3_nmimask, bwp3_u8F_d, ffcount, ffhead, fftail;
 //****************************************************************************
 // Interrupt Handlers
 
-INTERRUPT_GEN ( bwp1_interrupt )
+static INTERRUPT_GEN ( bwp1_interrupt )
 {
 	static int coin = 0;
 	UINT8 latch_data;
@@ -90,7 +90,7 @@ INTERRUPT_GEN ( bwp1_interrupt )
 }
 
 
-INTERRUPT_GEN ( bwp3_interrupt ) { if (!bwp3_nmimask) cpunum_set_input_line(2, INPUT_LINE_NMI, ASSERT_LINE); }
+static INTERRUPT_GEN ( bwp3_interrupt ) { if (!bwp3_nmimask) cpunum_set_input_line(2, INPUT_LINE_NMI, ASSERT_LINE); }
 
 //****************************************************************************
 // Memory and I/O Handlers
@@ -245,7 +245,7 @@ ADDRESS_MAP_END
 //****************************************************************************
 // I/O Port Maps
 
-INPUT_PORTS_START( bwing )
+static INPUT_PORTS_START( bwing )
 	PORT_START
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
@@ -378,7 +378,7 @@ GFXDECODE_END
 //****************************************************************************
 // Hardware Definitions
 
-MACHINE_RESET( bwing )
+static MACHINE_RESET( bwing )
 {
 	bwp3_nmimask = 0;
 	fftail = ffhead = ffcount = 0;
@@ -404,7 +404,7 @@ static MACHINE_DRIVER_START( bwing )
 	MDRV_CPU_PERIODIC_INT(bwp3_interrupt, 1000)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(600))	// must be long enough for polling
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(600))	// must be long enough for polling
 	MDRV_INTERLEAVE(300)		// high enough?
 
 	MDRV_MACHINE_RESET(bwing)

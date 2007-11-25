@@ -173,7 +173,7 @@ PALETTE_INIT( aso )
 	gfx_drawmode_table[7] = DRAWMODE_NONE;
 }
 
-VIDEO_START( aso )
+static VIDEO_START( aso )
 {
 	snk_blink_parity = 0;
 }
@@ -306,7 +306,7 @@ static void aso_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int
 	}
 }
 
-VIDEO_UPDATE( aso )
+static VIDEO_UPDATE( aso )
 {
 	int attr, msbs, spsy, spsx, bgsy, bgsx, bank, i;
 
@@ -340,7 +340,7 @@ VIDEO_UPDATE( aso )
 }
 
 
-INPUT_PORTS_START( hal21 )
+static INPUT_PORTS_START( hal21 )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -419,7 +419,7 @@ INPUT_PORTS_END
 
 /**************************************************************************/
 
-INPUT_PORTS_START( aso )
+static INPUT_PORTS_START( aso )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_SERVICE1 )
@@ -674,20 +674,20 @@ ADDRESS_MAP_END
 
 /**************************************************************************/
 
-DRIVER_INIT( aso )
+static DRIVER_INIT( aso )
 {
 	hal21_vreg = auto_malloc(16);
 	snk_gamegroup = 0;
 }
 
-DRIVER_INIT( hal21 )
+static DRIVER_INIT( hal21 )
 {
 	hal21_vreg = auto_malloc(24);
 	hal21_sndfifo = hal21_vreg + 8;
 	snk_gamegroup = 1;
 }
 
-MACHINE_RESET( aso )
+static MACHINE_RESET( aso )
 {
 	memset(hal21_vreg, 0, 8);
 	hal21_sound_scheduler(0, 0);

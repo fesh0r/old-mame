@@ -51,7 +51,7 @@ something is missing, currently needs a hack to boot
 #include "driver.h"
 static int toggle_bit;
 
-READ16_HANDLER( wheelfir_rand1 )
+static READ16_HANDLER( wheelfir_rand1 )
 {
 
 
@@ -60,13 +60,13 @@ READ16_HANDLER( wheelfir_rand1 )
 	return readinputport(0)^toggle_bit;// mame_rand(Machine);
 }
 
-READ16_HANDLER( wheelfir_rand2 )
+static READ16_HANDLER( wheelfir_rand2 )
 {
 	return readinputport(1);// mame_rand(Machine);
 }
 
 
-READ16_HANDLER( wheelfir_rand4 )
+static READ16_HANDLER( wheelfir_rand4 )
 {
 	return mame_rand(Machine);
 }
@@ -270,7 +270,7 @@ static WRITE16_HANDLER(wheelfir_blit_w)
 
 }
 
-VIDEO_START(wheelfir)
+static VIDEO_START(wheelfir)
 {
 
 	wheelfir_tmp_bitmap[0] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
@@ -284,7 +284,7 @@ VIDEO_START(wheelfir)
 static UINT8 wheelfir_palette[8192];
 static int wheelfir_palpos = 0;
 /* Press R to show a page of gfx, Q / E to move between pages, and W to clear the framebuffer */
-VIDEO_UPDATE(wheelfir)
+static VIDEO_UPDATE(wheelfir)
 {
 	/*
     int x,y;
@@ -404,7 +404,7 @@ static ADDRESS_MAP_START( wheelfir_sub, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( wheelfir )
+static INPUT_PORTS_START( wheelfir )
 	PORT_START	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0001, "0" )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -537,8 +537,8 @@ INPUT_PORTS_START( wheelfir )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-static mame_timer* frame_timer;
-static mame_timer* scanline_timer;
+static emu_timer* frame_timer;
+static emu_timer* scanline_timer;
 
 static TIMER_CALLBACK( frame_timer_callback )
 {
@@ -548,7 +548,7 @@ static TIMER_CALLBACK( frame_timer_callback )
 static int scanline_counter = 0;
 static int total_scanlines = 262;
 
-void render_background_to_render_buffer(int scanline)
+static void render_background_to_render_buffer(int scanline)
 {
 	int x;
 	UINT16 yscroll = (wheelfir_blitdata[0xb]&0x00ff) | (wheelfir_blitdata[0x8]&0x0080) << 1;
@@ -575,7 +575,7 @@ static TIMER_CALLBACK( scanline_timer_callback )
 	{
 		scanline_counter++;
 		cpunum_set_input_line(0, 5, HOLD_LINE); // raster IRQ, changes scroll values for road
-		mame_timer_adjust(scanline_timer, scale_down_mame_time(MAME_TIME_IN_HZ(60), total_scanlines), 0, time_zero);
+		timer_adjust(scanline_timer, attotime_div(ATTOTIME_IN_HZ(60), total_scanlines), 0, attotime_zero);
 
 		if (scanline_counter<256)
 		{
@@ -606,16 +606,16 @@ static VIDEO_EOF( wheelfir )
 	scanline_counter = -1;
 	fillbitmap(wheelfir_tmp_bitmap[0], 0,&machine->screen[0].visarea);
 
-	mame_timer_adjust(frame_timer,  time_zero, 0, time_zero);
-	mame_timer_adjust(scanline_timer,  time_zero, 0, time_zero);
+	timer_adjust(frame_timer,  attotime_zero, 0, attotime_zero);
+	timer_adjust(scanline_timer,  attotime_zero, 0, attotime_zero);
 }
 
 static MACHINE_RESET(wheelfir)
 {
-	frame_timer = mame_timer_alloc(frame_timer_callback);
-	scanline_timer = mame_timer_alloc(scanline_timer_callback);
-	mame_timer_adjust(frame_timer, time_zero, 0, time_zero);
-	mame_timer_adjust(scanline_timer,  time_zero, 0, time_zero);
+	frame_timer = timer_alloc(frame_timer_callback);
+	scanline_timer = timer_alloc(scanline_timer_callback);
+	timer_adjust(frame_timer, attotime_zero, 0, attotime_zero);
+	timer_adjust(scanline_timer,  attotime_zero, 0, attotime_zero);
 	scanline_counter = -1;
 }
 

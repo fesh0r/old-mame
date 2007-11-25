@@ -111,7 +111,7 @@ static ADDRESS_MAP_START( murogem_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( murogem )
+static INPUT_PORTS_START( murogem )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_CODE(KEYCODE_1) PORT_NAME("Bet (Replay)")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_CODE(KEYCODE_2) PORT_NAME("Deal")
@@ -162,14 +162,14 @@ static GFXDECODE_START( murogem )
 GFXDECODE_END
 
 
-PALETTE_INIT(murogem)
+static PALETTE_INIT(murogem)
 {}
 
-VIDEO_START(murogem)
+static VIDEO_START(murogem)
 {
 }
 
-VIDEO_UPDATE(murogem)
+static VIDEO_UPDATE(murogem)
 {
 	int xx,yy,count;
 	count = 0x000;

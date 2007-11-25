@@ -316,7 +316,7 @@ TODO:
 #include "sound/2610intf.h"
 
 UINT16 *welltris_spriteram;
-size_t welltris_spriteram_size;
+//size_t welltris_spriteram_size;
 UINT16 *welltris_pixelram;
 UINT16 *welltris_charvideoram;
 
@@ -431,7 +431,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( welltris )
+static INPUT_PORTS_START( welltris )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -591,7 +591,7 @@ INPUT_PORTS_START( welltris )
   	PORT_SERVICE( 0x0080, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( quiz18k )
+static INPUT_PORTS_START( quiz18k )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )

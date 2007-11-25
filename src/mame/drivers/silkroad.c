@@ -258,7 +258,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 32 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( silkroad )
+static INPUT_PORTS_START( silkroad )
 	PORT_START	/* Players inputs */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
@@ -412,7 +412,7 @@ MACHINE_DRIVER_END
   Game driver(s)
 
 ***************************************************************************/
-DRIVER_INIT( silkroad )
+static DRIVER_INIT( silkroad )
 {
 
 	/* why? rom04.bin looks like a bad dump, but it seems not since it was

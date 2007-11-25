@@ -18,11 +18,11 @@ All of these have encrypted program roms, which will need decrypting
 #include "driver.h"
 #include "sound/okim6295.h"
 
-VIDEO_START(igs_m68)
+static VIDEO_START(igs_m68)
 {
 }
 
-VIDEO_UPDATE(igs_m68)
+static VIDEO_UPDATE(igs_m68)
 {
 	return 0;
 }
@@ -32,7 +32,7 @@ static ADDRESS_MAP_START( igs_m68_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( igs_m68 )
+static INPUT_PORTS_START( igs_m68 )
 INPUT_PORTS_END
 
 

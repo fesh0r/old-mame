@@ -208,12 +208,12 @@ static WRITE8_HANDLER( to_main_w )
 }
 
 
-READ8_HANDLER(nycaptor_sharedram_r)
+static READ8_HANDLER(nycaptor_sharedram_r)
 {
 	return nycaptor_sharedram[offset];
 }
 
-WRITE8_HANDLER(nycaptor_sharedram_w)
+static WRITE8_HANDLER(nycaptor_sharedram_w)
 {
 	nycaptor_sharedram[offset]=data;
 }
@@ -608,7 +608,7 @@ ADDRESS_MAP_END
 /* Cycle Shooting */
 
 
-INPUT_PORTS_START( cyclshtg )
+static INPUT_PORTS_START( cyclshtg )
 	PORT_START_TAG("IN0")
   PORT_DIPNAME( 0x04, 0x04, "Test Mode" )
   PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
@@ -657,7 +657,7 @@ INPUT_PORTS_START( cyclshtg )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( nycaptor )
+static INPUT_PORTS_START( nycaptor )
 	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x02, "20k, 80k then every 80k" )

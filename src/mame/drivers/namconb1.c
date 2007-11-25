@@ -347,7 +347,7 @@ static INTERRUPT_GEN( namconb2_interrupt )
 	}
 	if( scanline < NAMCONB1_VBSTART )
 	{
-		mame_timer_set( video_screen_get_time_until_pos(0, scanline, 0), scanline, namconb2_TriggerPOSIRQ );
+		timer_set( video_screen_get_time_until_pos(0, scanline, 0), scanline, namconb2_TriggerPOSIRQ );
 	}
 } /* namconb2_interrupt */
 static INTERRUPT_GEN( namconb1_interrupt )
@@ -395,7 +395,7 @@ static INTERRUPT_GEN( namconb1_interrupt )
 	}
 	if( scanline < NAMCONB1_VBSTART )
 	{
-		mame_timer_set( video_screen_get_time_until_pos(0, scanline, 0), scanline, namconb1_TriggerPOSIRQ );
+		timer_set( video_screen_get_time_until_pos(0, scanline, 0), scanline, namconb1_TriggerPOSIRQ );
 	}
 } /* namconb1_interrupt */
 
@@ -1213,7 +1213,7 @@ ROM_END
 
 /***************************************************************/
 
-INPUT_PORTS_START( gunbulet )
+static INPUT_PORTS_START( gunbulet )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -1246,7 +1246,7 @@ INPUT_PORTS_START( gunbulet )
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(4) PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( machbrkr )
+static INPUT_PORTS_START( machbrkr )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -1298,7 +1298,7 @@ INPUT_PORTS_START( machbrkr )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START4 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( outfxies )
+static INPUT_PORTS_START( outfxies )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -1346,7 +1346,7 @@ INPUT_PORTS_START( outfxies )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START2 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( namconb1 )
+static INPUT_PORTS_START( namconb1 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )

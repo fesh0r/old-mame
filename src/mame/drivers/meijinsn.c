@@ -165,7 +165,7 @@ static ADDRESS_MAP_START( meijinsn_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x06, 0x06) AM_WRITE(MWA8_NOP)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( meijinsn )
+static INPUT_PORTS_START( meijinsn )
 PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  ) PORT_PLAYER(1)
@@ -212,11 +212,11 @@ PORT_START_TAG("IN0")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 INPUT_PORTS_END
 
-VIDEO_START(meijinsn)
+static VIDEO_START(meijinsn)
 {
 }
 
-PALETTE_INIT( meijinsn )
+static PALETTE_INIT( meijinsn )
 {
 	int i;
 	static const int resistances_b[2]  = { 470, 220 };
@@ -255,7 +255,7 @@ PALETTE_INIT( meijinsn )
 }
 
 
-VIDEO_UPDATE(meijinsn)
+static VIDEO_UPDATE(meijinsn)
 {
 	int offs;
 
@@ -293,7 +293,7 @@ static struct AY8910interface ay8910_interface =
 	soundlatch_r
 };
 
-MACHINE_RESET( meijinsn )
+static MACHINE_RESET( meijinsn )
 {
 	deposits1 = 0;
 	deposits2 = 0;

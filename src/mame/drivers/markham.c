@@ -24,17 +24,17 @@ static UINT8 *markham_sharedram;
 /****************************************************************************/
 
 
-WRITE8_HANDLER( markham_sharedram_w )
+static WRITE8_HANDLER( markham_sharedram_w )
 {
 	markham_sharedram[offset] = data;
 }
 
-READ8_HANDLER( markham_sharedram_r )
+static READ8_HANDLER( markham_sharedram_r )
 {
 	return markham_sharedram[offset];
 }
 
-READ8_HANDLER( markham_e004_r )
+static READ8_HANDLER( markham_e004_r )
 {
 	return 0;
 }
@@ -95,7 +95,7 @@ ADDRESS_MAP_END
 
 /****************************************************************************/
 
-INPUT_PORTS_START( markham )
+static INPUT_PORTS_START( markham )
 	PORT_START  /* dsw1 */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(    0x00, "3" )

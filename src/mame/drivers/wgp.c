@@ -488,7 +488,7 @@ static TIMER_CALLBACK( wgp_cpub_interrupt6 )
 
 static INTERRUPT_GEN( wgp_cpub_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(200000-500,0),0, wgp_cpub_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, wgp_cpub_interrupt6);
 	cpunum_set_input_line(2, 4, HOLD_LINE);
 }
 
@@ -611,7 +611,7 @@ static WRITE16_HANDLER( wgp_adinput_w )
        hardware has got the next a/d conversion ready. We set a token
        delay of 10000 cycles although our inputs are always ready. */
 
-	mame_timer_set(MAME_TIME_IN_CYCLES(10000,0),0, wgp_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0),0, wgp_interrupt6);
 }
 
 
@@ -632,7 +632,7 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 	reset_sound_region();
 }
 
-WRITE16_HANDLER( wgp_sound_w )
+static WRITE16_HANDLER( wgp_sound_w )
 {
 	if (offset == 0)
 		taitosound_port_w (0, data & 0xff);
@@ -640,7 +640,7 @@ WRITE16_HANDLER( wgp_sound_w )
 		taitosound_comm_w (0, data & 0xff);
 }
 
-READ16_HANDLER( wgp_sound_r )
+static READ16_HANDLER( wgp_sound_r )
 {
 	if (offset == 1)
 		return ((taitosound_comm_r (0) & 0xff));
@@ -741,7 +741,7 @@ ADDRESS_MAP_END
                       INPUT PORTS, DIPs
 ***********************************************************/
 
-INPUT_PORTS_START( wgp_joy_generic )
+static INPUT_PORTS_START( wgp_joy_generic )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, "Gear Shift" )                     /* see notes */
 	PORT_DIPSETTING(    0x01, DEF_STR( Normal ) )
@@ -803,7 +803,7 @@ INPUT_PORTS_START( wgp_joy_generic )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( wgp_no_joy_generic )
+static INPUT_PORTS_START( wgp_no_joy_generic )
 	PORT_INCLUDE(wgp_joy_generic)
 
 	PORT_MODIFY("DSWB")
@@ -852,7 +852,7 @@ INPUT_PORTS_START( wgp_no_joy_generic )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( wgp )
+static INPUT_PORTS_START( wgp )
 	PORT_INCLUDE(wgp_no_joy_generic)
 
 	/* 0x180000 -> 0x10bf16 and 0x140010 (shared RAM) */
@@ -866,14 +866,14 @@ INPUT_PORTS_START( wgp )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON6 ) PORT_PLAYER(1)	                 /* "brake lump" (lamp?) - test mode only */
 INPUT_PORTS_END
 
-INPUT_PORTS_START( wgpj )
+static INPUT_PORTS_START( wgpj )
 	PORT_INCLUDE(wgp)
 
 	PORT_MODIFY("DSWA")
 	TAITO_COINAGE_JAPAN_NEW
 INPUT_PORTS_END
 
-INPUT_PORTS_START( wgpjoy )
+static INPUT_PORTS_START( wgpjoy )
 	PORT_INCLUDE(wgp_joy_generic)
 
 	/* 0x180000 -> 0x10bf1a and 0x140010 (shared RAM) */
@@ -883,7 +883,7 @@ INPUT_PORTS_START( wgpjoy )
 	/* 0x180002 -> 0x10bf1c and 0x140012 (shared RAM) : DSWB*/
 INPUT_PORTS_END
 
-INPUT_PORTS_START( wgp2 )
+static INPUT_PORTS_START( wgp2 )
 	PORT_INCLUDE(wgp_no_joy_generic)
 
 	/* 0x180000 -> 0x107d3a.b (-$2c6,A5) and 0x140018 (shared RAM) */
@@ -1269,7 +1269,7 @@ ROM_START( wgp2 )
 ROM_END
 
 
-DRIVER_INIT( wgp )
+static DRIVER_INIT( wgp )
 {
 #if 0
 	/* Patch for coding error that causes corrupt data in
@@ -1282,7 +1282,7 @@ DRIVER_INIT( wgp )
 	cpua_ctrl = 0xff;
 }
 
-DRIVER_INIT( wgp2 )
+static DRIVER_INIT( wgp2 )
 {
 	/* Code patches to prevent failure in memory checks */
 	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU3);

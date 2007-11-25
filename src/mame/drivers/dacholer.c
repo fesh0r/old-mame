@@ -100,7 +100,7 @@ static ADDRESS_MAP_START( snd_io_map, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( dacholer )
+static INPUT_PORTS_START( dacholer )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
@@ -188,7 +188,7 @@ INPUT_PORTS_START( dacholer )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( kickboy )
+static INPUT_PORTS_START( kickboy )
 	PORT_INCLUDE(dacholer)
 
 	PORT_MODIFY("DSWA")
@@ -252,7 +252,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 	SET_TILE_INFO(0,fgvideoram[tile_index],0,0);
 }
 
-VIDEO_START( dacholer )
+static VIDEO_START( dacholer )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,32,32);
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
@@ -292,7 +292,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-VIDEO_UPDATE(dacholer)
+static VIDEO_UPDATE(dacholer)
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);

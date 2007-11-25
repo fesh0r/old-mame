@@ -66,12 +66,12 @@ The End
 static int nSndNum=0x10;
 static int nAyCtrl, nAyData;
 
-VIDEO_START(mirax)
+static VIDEO_START(mirax)
 {
 }
 
 
-VIDEO_UPDATE(mirax)
+static VIDEO_UPDATE(mirax)
 {
 #ifdef MAME_DEBUG
 	//audio tester
@@ -171,7 +171,7 @@ static GFXDECODE_START( mirax )
 	GFXDECODE_ENTRY( REGION_GFX3, 0, layout16,    0, 1 )
 GFXDECODE_END
 
-INPUT_PORTS_START( mirax )
+static INPUT_PORTS_START( mirax )
 
 INPUT_PORTS_END
 

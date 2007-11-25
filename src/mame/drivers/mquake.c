@@ -174,7 +174,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( mquake )
+static INPUT_PORTS_START( mquake )
 	PORT_START_TAG("CIA0PORTA")
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)			/* JS0SW */
@@ -355,7 +355,7 @@ static MACHINE_DRIVER_START( mquake )
 	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 262)
 
 	MDRV_SCREEN_REFRESH_RATE(59.997)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MDRV_MACHINE_RESET(mquake)
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -431,7 +431,7 @@ ROM_END
  *
  *************************************/
 
-DRIVER_INIT(mquake)
+static DRIVER_INIT(mquake)
 {
 	static const amiga_machine_interface mquake_intf =
 	{

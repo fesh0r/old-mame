@@ -141,7 +141,7 @@ static READ8_HANDLER( dsw0_port_r )
 
 //static int popflame_prot_count = 0;
 
-READ8_HANDLER( popflame_protection_r ) /* Not used by bootleg/hack */
+static READ8_HANDLER( popflame_protection_r ) /* Not used by bootleg/hack */
 {
 	static int values[4] = { 0x78, 0x68, 0x48, 0x38|0x80 };
 	static int count;
@@ -215,13 +215,13 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INTERRUPT_GEN( naughtyb_interrupt )
+static INTERRUPT_GEN( naughtyb_interrupt )
 {
 	if (readinputport(3) & 1)
 		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
-INPUT_PORTS_START( naughtyb )
+static INPUT_PORTS_START( naughtyb )
 	PORT_START_TAG(	"IN0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
@@ -276,7 +276,7 @@ INPUT_PORTS_START( naughtyb )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( trvmstr )
+static INPUT_PORTS_START( trvmstr )
 	PORT_START_TAG(	"IN0" )
 	PORT_SERVICE(0x0f, IP_ACTIVE_LOW )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON4 )
@@ -740,7 +740,7 @@ ROM_START( trvgns )
 ROM_END
 
 
-DRIVER_INIT( popflame )
+static DRIVER_INIT( popflame )
 {
 	/* install a handler to catch protection checks */
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x9000, 0, 0, popflame_protection_r);
@@ -769,7 +769,7 @@ static WRITE8_HANDLER( trvmstr_questions_w )
 	}
 }
 
-DRIVER_INIT( trvmstr )
+static DRIVER_INIT( trvmstr )
 {
 	/* install questions' handlers  */
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc000, 0, 0, trvmstr_questions_r);

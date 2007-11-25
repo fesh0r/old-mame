@@ -19,7 +19,7 @@ extern VIDEO_START( higemaru );
 extern VIDEO_UPDATE( higemaru );
 
 
-INTERRUPT_GEN( higemaru_interrupt )
+static INTERRUPT_GEN( higemaru_interrupt )
 {
 	if (cpu_getiloops() == 0)
 		cpunum_set_input_line_and_vector(0,0,HOLD_LINE,0xcf);	/* RST 08h */
@@ -53,7 +53,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( higemaru )
+static INPUT_PORTS_START( higemaru )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY

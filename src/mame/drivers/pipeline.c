@@ -87,7 +87,7 @@ static TILE_GET_INFO( get_tile_info2 )
 	);
 }
 
-VIDEO_START ( pipeline )
+static VIDEO_START ( pipeline )
 {
 	palram=auto_malloc(0x1000);
 	tilemap1 = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32 );
@@ -95,7 +95,7 @@ VIDEO_START ( pipeline )
 	tilemap_set_transparent_pen(tilemap2,0);
 }
 
-VIDEO_UPDATE ( pipeline)
+static VIDEO_UPDATE ( pipeline)
 {
 	tilemap_draw(bitmap,cliprect,tilemap1, 0,0);
 	tilemap_draw(bitmap,cliprect,tilemap2, 0,0);
@@ -103,7 +103,7 @@ VIDEO_UPDATE ( pipeline)
 }
 
 
-INPUT_PORTS_START( pipeline )
+static INPUT_PORTS_START( pipeline )
 	PORT_START
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -210,7 +210,7 @@ static TIMER_CALLBACK( protection_deferred_w )
 static WRITE8_HANDLER(protection_w)
 {
 	timer_call_after_resynch(data, protection_deferred_w);
-	cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(100));
+	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
 }
 
 static ADDRESS_MAP_START( cpu0_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -344,9 +344,9 @@ static PALETTE_INIT(pipeline)
 	}
 }
 
-MACHINE_RESET( pipeline )
+static MACHINE_RESET( pipeline )
 {
-	ctc_intf.baseclock = machine->drv->cpu[0].cpu_clock;
+	ctc_intf.baseclock = machine->drv->cpu[0].clock;
 	z80ctc_init(0, &ctc_intf);
 	ppi8255_init(&ppi8255_intf);
 }

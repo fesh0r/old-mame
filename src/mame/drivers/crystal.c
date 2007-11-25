@@ -249,12 +249,12 @@ static WRITE32_HANDLER(Timer0_w)
 	{
 		int PD=(data>>8)&0xff;
 		int TCV=program_read_dword_32le(0x01801404);
-		mame_time period = scale_up_mame_time(MAME_TIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
+		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
 
 		if(Timer0ctrl&2)
-			mame_timer_adjust(Timer0,period,0,period);
+			timer_adjust(Timer0,period,0,period);
 		else
-			mame_timer_adjust(Timer0,period,0,time_zero);
+			timer_adjust(Timer0,period,0,attotime_zero);
 	}
 	COMBINE_DATA(&Timer0ctrl);
 }
@@ -277,12 +277,12 @@ static WRITE32_HANDLER(Timer1_w)
 	{
 		int PD=(data>>8)&0xff;
 		int TCV=program_read_dword_32le(0x0180140C);
-		mame_time period = scale_up_mame_time(MAME_TIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
+		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
 
 		if(Timer1ctrl&2)
-			mame_timer_adjust(Timer1,period,0,period);
+			timer_adjust(Timer1,period,0,period);
 		else
-			mame_timer_adjust(Timer1,period,0,time_zero);
+			timer_adjust(Timer1,period,0,attotime_zero);
 	}
 	COMBINE_DATA(&Timer1ctrl);
 }
@@ -305,12 +305,12 @@ static WRITE32_HANDLER(Timer2_w)
 	{
 		int PD=(data>>8)&0xff;
 		int TCV=program_read_dword_32le(0x01801414);
-		mame_time period = scale_up_mame_time(MAME_TIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
+		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
 
 		if(Timer2ctrl&2)
-			mame_timer_adjust(Timer2,period,0,period);
+			timer_adjust(Timer2,period,0,period);
 		else
-			mame_timer_adjust(Timer2,period,0,time_zero);
+			timer_adjust(Timer2,period,0,attotime_zero);
 	}
 	COMBINE_DATA(&Timer2ctrl);
 }
@@ -333,12 +333,12 @@ static WRITE32_HANDLER(Timer3_w)
 	{
 		int PD=(data>>8)&0xff;
 		int TCV=program_read_dword_32le(0x0180141C);
-		mame_time period = scale_up_mame_time(MAME_TIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
+		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
 
 		if(Timer3ctrl&2)
-			mame_timer_adjust(Timer3,period,0,period);
+			timer_adjust(Timer3,period,0,period);
 		else
-			mame_timer_adjust(Timer3,period,0,time_zero);
+			timer_adjust(Timer3,period,0,attotime_zero);
 	}
 	COMBINE_DATA(&Timer3ctrl);
 }
@@ -593,17 +593,17 @@ static MACHINE_RESET(crystal)
 	Timer2ctrl=0;
 	Timer3ctrl=0;
 
-	Timer0=mame_timer_alloc(Timer0cb);
-	mame_timer_adjust(Timer0,time_never,0,time_never);
+	Timer0=timer_alloc(Timer0cb);
+	timer_adjust(Timer0,attotime_never,0,attotime_never);
 
-	Timer1=mame_timer_alloc(Timer1cb);
-	mame_timer_adjust(Timer1,time_never,0,time_never);
+	Timer1=timer_alloc(Timer1cb);
+	timer_adjust(Timer1,attotime_never,0,attotime_never);
 
-	Timer2=mame_timer_alloc(Timer2cb);
-	mame_timer_adjust(Timer2,time_never,0,time_never);
+	Timer2=timer_alloc(Timer2cb);
+	timer_adjust(Timer2,attotime_never,0,attotime_never);
 
-	Timer3=mame_timer_alloc(Timer3cb);
-	mame_timer_adjust(Timer3,time_never,0,time_never);
+	Timer3=timer_alloc(Timer3cb);
+	timer_adjust(Timer3,attotime_never,0,attotime_never);
 
 	VR0_Snd_Set_Areas(textureram,frameram);
 #ifdef IDLE_LOOP_SPEEDUP
@@ -704,7 +704,7 @@ static VIDEO_UPDATE(crystal)
 	return 0;
 }
 
-VIDEO_EOF(crystal)
+static VIDEO_EOF(crystal)
 {
 	UINT16 head,tail;
 	int DoFlip=0;
@@ -735,7 +735,7 @@ static INTERRUPT_GEN(crystal_interrupt)
 	IntReq(24);		//VRender0 VBlank
 }
 
-INPUT_PORTS_START(crystal)
+static INPUT_PORTS_START(crystal)
 	PORT_START
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -884,7 +884,7 @@ ROM_START( evosocc )
 ROM_END
 
 
-DRIVER_INIT(crysking)
+static DRIVER_INIT(crysking)
 {
 	UINT16 *Rom=(UINT16*) memory_region(REGION_USER1);
 
@@ -903,7 +903,7 @@ DRIVER_INIT(crysking)
 	Rom[WORD_XOR_LE(0x8a54/2)]=0x403c;	//NOP
 }
 
-DRIVER_INIT(evosocc)
+static DRIVER_INIT(evosocc)
 {
 	UINT16 *Rom=(UINT16*) memory_region(REGION_USER1);
 	Rom+=0x1000000*2/2;

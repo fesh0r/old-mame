@@ -132,7 +132,7 @@ VIDEO_UPDATE( superqix );
 /* pbillian sample playback */
 static INT16 *samplebuf;
 
-void pbillian_sh_start(void)
+static void pbillian_sh_start(void)
 {
 	UINT8 *src = memory_region(REGION_SOUND1);
 	int i;
@@ -345,7 +345,7 @@ logerror("Z80 sends command %02x\n",param);
 	from_z80 = param;
 	from_mcu_pending = 0;
 	cpunum_set_input_line(1, 0, HOLD_LINE);
-	cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(200));
+	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(200));
 }
 
 static TIMER_CALLBACK( delayed_mcu_z80_w )
@@ -375,23 +375,23 @@ logerror("68705 sends answer %02x\n",param);
 
 static UINT8 portA_in, portB_out, portC;
 
-READ8_HANDLER( hotsmash_68705_portA_r )
+static READ8_HANDLER( hotsmash_68705_portA_r )
 {
 //logerror("%04x: 68705 reads port A = %02x\n",activecpu_get_pc(),portA_in);
 	return portA_in;
 }
 
-WRITE8_HANDLER( hotsmash_68705_portB_w )
+static WRITE8_HANDLER( hotsmash_68705_portB_w )
 {
 	portB_out = data;
 }
 
-READ8_HANDLER( hotsmash_68705_portC_r )
+static READ8_HANDLER( hotsmash_68705_portC_r )
 {
 	return portC;
 }
 
-WRITE8_HANDLER( hotsmash_68705_portC_w )
+static WRITE8_HANDLER( hotsmash_68705_portC_w )
 {
 	portC = data;
 
@@ -580,7 +580,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( pbillian )
+static INPUT_PORTS_START( pbillian )
 	PORT_START
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 5C_1C ) )
@@ -665,7 +665,7 @@ INPUT_PORTS_START( pbillian )
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_COCKTAIL
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hotsmash )
+static INPUT_PORTS_START( hotsmash )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -733,7 +733,7 @@ INPUT_PORTS_START( hotsmash )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( superqix )
+static INPUT_PORTS_START( superqix )
 	PORT_START	/* DSW1 */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
@@ -862,7 +862,7 @@ GFXDECODE_END
 
 
 
-static struct Samplesinterface custom_interface =
+static struct Samplesinterface pbillian_samples_interface =
 {
 	1,
 	NULL,
@@ -909,14 +909,14 @@ static struct AY8910interface bootleg_ay8910_interface_2 =
 
 
 
-INTERRUPT_GEN( sqix_interrupt )
+static INTERRUPT_GEN( sqix_interrupt )
 {
 	/* highly suspicious... */
 	if (cpu_getiloops() <= 3)
 		nmi_line_assert();
 }
 
-INTERRUPT_GEN( bootleg_interrupt )
+static INTERRUPT_GEN( bootleg_interrupt )
 {
 	/* highly suspicious... */
 	if (cpu_getiloops() <= 3)
@@ -952,7 +952,7 @@ static MACHINE_DRIVER_START( pbillian )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
+	MDRV_SOUND_CONFIG(pbillian_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -986,7 +986,7 @@ static MACHINE_DRIVER_START( hotsmash )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
+	MDRV_SOUND_CONFIG(pbillian_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 

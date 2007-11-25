@@ -370,7 +370,7 @@ static DRIVER_INIT( gamshara )
 	decrypt_bios( 0x5, 0x4, 0x7, 0x6, 0x0, 0x1, 0x3, 0x2, 0xd, 0xf, 0xc, 0xe, 0x8, 0x9, 0xa, 0xb );
 }
 
-MACHINE_RESET( namcos10 )
+static MACHINE_RESET( namcos10 )
 {
 	psx_machine_init();
 }
@@ -401,7 +401,7 @@ static MACHINE_DRIVER_START( namcos10 )
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 MACHINE_DRIVER_END
 
-INPUT_PORTS_START( namcos10 )
+static INPUT_PORTS_START( namcos10 )
 	/* IN 0 */
 	PORT_START
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Test Switch") PORT_CODE(KEYCODE_F2)

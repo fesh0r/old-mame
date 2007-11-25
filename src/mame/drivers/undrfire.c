@@ -134,7 +134,7 @@ static UINT16 port_sel = 0;
 extern UINT16 undrfire_rotate_ctrl[8];
 static int frame_counter=0;
 
-UINT32 *undrfire_ram;	/* will be read in video for gun target calcs */
+static UINT32 *undrfire_ram;	/* will be read in video for gun target calcs */
 
 
 /***********************************************************
@@ -295,7 +295,7 @@ static READ32_HANDLER( unknown_hardware_r )
 static WRITE32_HANDLER( unknown_int_req_w )
 {
 	/* 10000 cycle delay is arbitrary */
-	mame_timer_set(MAME_TIME_IN_CYCLES(10000,0),0, undrfire_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0),0, undrfire_interrupt5);
 }
 
 
@@ -413,7 +413,7 @@ ADDRESS_MAP_END
              INPUT PORTS (dips in eprom)
 ***********************************************************/
 
-INPUT_PORTS_START( undrfire )
+static INPUT_PORTS_START( undrfire )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN )
@@ -704,7 +704,7 @@ static READ32_HANDLER( main_cycle_r )
 	return undrfire_ram[0x4f8/4];
 }
 
-DRIVER_INIT( undrfire )
+static DRIVER_INIT( undrfire )
 {
 	UINT32 offset,i;
 	UINT8 *gfx = memory_region(REGION_GFX3);

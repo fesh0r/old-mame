@@ -59,7 +59,7 @@ static UINT16 *sprram;
 #define SPRITE_DATA_GRANULARITY 0x80
 
 
-VIDEO_UPDATE( srmp5 )
+static VIDEO_UPDATE( srmp5 )
 {
 	// sprite/tile flipping is not implemented
 	int x,y,address,xs,ys,height,width,xw,yw,sprite,xb,yb,sizex,sizey;
@@ -220,7 +220,7 @@ static struct r3000_config config =
 	4096	/* data cache size */
 };
 
-INPUT_PORTS_START( srmp5 )
+static INPUT_PORTS_START( srmp5 )
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0001, "0-0" )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )

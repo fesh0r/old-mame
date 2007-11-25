@@ -395,7 +395,7 @@ static MACHINE_RESET( reikaids_upd7807 )
 	reikaids_upd7807_portc_w(0,0xff);
 }
 
-READ8_HANDLER( reikaids_io_r )
+static READ8_HANDLER( reikaids_io_r )
 {
 	int res = readinputport(2);	// bit 4 = coin, bit 5 = service
 
@@ -564,7 +564,7 @@ static WRITE8_HANDLER( bankswitch_w )
 /********************************************************************************/
 
 
-ADDRESS_MAP_START( mrokumei_readmem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( mrokumei_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_RAM) /* videoram */
 	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x6000, 0x6fff) AM_READ(MRA8_RAM) /* work ram */
@@ -578,7 +578,7 @@ ADDRESS_MAP_START( mrokumei_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( mrokumei_writemem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( mrokumei_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(mrokumei_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x6000, 0x6fff) AM_WRITE(MWA8_RAM)
@@ -594,11 +594,11 @@ ADDRESS_MAP_START( mrokumei_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( mrokumei_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( mrokumei_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( mrokumei_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( mrokumei_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0xfffc, 0xfffd) AM_WRITE(MWA8_NOP)	/* stack writes happen here, but there's no RAM */
 	AM_RANGE(0x8080, 0x8080) AM_WRITE(mrokumei_sound_bank_w)
@@ -614,7 +614,7 @@ ADDRESS_MAP_END
 
 /********************************************************************************/
 
-ADDRESS_MAP_START( reikaids_readmem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( reikaids_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_RAM) /* videoram */
 	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x6000, 0x6fff) AM_READ(MRA8_RAM) /* work ram */
@@ -626,7 +626,7 @@ ADDRESS_MAP_START( reikaids_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xffff) AM_READ(MRA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( reikaids_writemem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( reikaids_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(reikaids_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x6000, 0x6fff) AM_WRITE(MWA8_RAM)
@@ -666,7 +666,7 @@ ADDRESS_MAP_END
 /**************************************************************************/
 
 
-ADDRESS_MAP_START( pteacher_readmem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( pteacher_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x6000, 0x6fff) AM_READ(MRA8_RAM) /* work ram */
@@ -677,7 +677,7 @@ ADDRESS_MAP_START( pteacher_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xffff) AM_READ(MRA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( pteacher_writemem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( pteacher_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(pteacher_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x4000, 0x5eff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x5f00, 0x5fff) AM_WRITE(MWA8_RAM)
@@ -720,7 +720,7 @@ ADDRESS_MAP_END
 /**************************************************************************/
 
 
-INPUT_PORTS_START( mjhokite )
+static INPUT_PORTS_START( mjhokite )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -825,7 +825,7 @@ INPUT_PORTS_START( mjhokite )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( reikaids )
+static INPUT_PORTS_START( reikaids )
 	PORT_START	// IN0  - 0x7801
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_PLAYER(1)
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_PLAYER(1)
@@ -906,7 +906,7 @@ INPUT_PORTS_START( reikaids )
 	PORT_DIPSETTING(    0x60, DEF_STR( 1C_5C ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( battlcry )
+static INPUT_PORTS_START( battlcry )
 	PORT_START	// IN0  - 0x7801
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_PLAYER(1)
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_PLAYER(1)
@@ -1044,7 +1044,7 @@ INPUT_PORTS_END
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 
-INPUT_PORTS_START( pteacher )
+static INPUT_PORTS_START( pteacher )
 	PORT_START	/* dip switches (handled by pteacher_keyboard_r) */
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -1090,7 +1090,7 @@ INPUT_PORTS_START( pteacher )
 	MJ_KEYBOARD
 INPUT_PORTS_END
 
-INPUT_PORTS_START( jogakuen )
+static INPUT_PORTS_START( jogakuen )
 	PORT_START	/* dip switches (handled by pteacher_keyboard_r) */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -1136,7 +1136,7 @@ INPUT_PORTS_START( jogakuen )
 	MJ_KEYBOARD
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mjikaga )
+static INPUT_PORTS_START( mjikaga )
 	PORT_START	/* dip switches (handled by pteacher_keyboard_r) */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -1306,7 +1306,7 @@ static struct YM2203interface ym2203_interface =
 };
 
 
-UPD7810_CONFIG upd_config =
+static UPD7810_CONFIG upd_config =
 {
 	TYPE_7810,
 	NULL	/* io_callback */

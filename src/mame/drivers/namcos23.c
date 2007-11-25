@@ -355,19 +355,19 @@ static TILE_GET_INFO( TextTilemapGetInfo )
 	}
 } /* TextTilemapGetInfo */
 
-READ32_HANDLER( namcos23_textram_r )
+static READ32_HANDLER( namcos23_textram_r )
 {
 	return namcos23_textram[offset];
 }
 
-WRITE32_HANDLER( namcos23_textram_w )
+static WRITE32_HANDLER( namcos23_textram_w )
 {
 	COMBINE_DATA( &namcos23_textram[offset] );
 //  tilemap_mark_tile_dirty( bgtilemap, offset*2 );
 //  tilemap_mark_tile_dirty( bgtilemap, offset*2+1 );
 }
 
-VIDEO_START( ss23 )
+static VIDEO_START( ss23 )
 {
 	bgtilemap = tilemap_create( TextTilemapGetInfo,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64 );
 	tilemap_set_transparent_pen( bgtilemap, 0xf );
@@ -465,7 +465,7 @@ DrawPoly( mame_bitmap *bitmap, const UINT32 *pSource, int n, int bNew )
 }
 #endif
 
-VIDEO_UPDATE( ss23 )
+static VIDEO_UPDATE( ss23 )
 {
 	fillbitmap(bitmap, get_black_pen(machine), cliprect);
 	fillbitmap(priority_bitmap, 0, cliprect);
@@ -571,14 +571,14 @@ INLINE void UpdatePalette( int entry )
 	}
 }
 
-READ32_HANDLER( namcos23_paletteram_r )
+static READ32_HANDLER( namcos23_paletteram_r )
 {
 	return paletteram32[offset];
 }
 
 /* each LONGWORD is 2 colors.  each OFFSET is 2 colors */
 
-WRITE32_HANDLER( namcos23_paletteram_w )
+static WRITE32_HANDLER( namcos23_paletteram_w )
 {
 	COMBINE_DATA( &paletteram32[offset] );
 
@@ -789,11 +789,11 @@ static ADDRESS_MAP_START( s23h8iomap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(H8_ADC_3_H, H8_ADC_3_L) AM_NOP
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( ss23 )
+static INPUT_PORTS_START( ss23 )
 INPUT_PORTS_END
 
 
-DRIVER_INIT(ss23)
+static DRIVER_INIT(ss23)
 {
     }
 
@@ -852,7 +852,7 @@ static struct C352interface c352_interface =
 	REGION_SOUND1
 };
 
-MACHINE_DRIVER_START( s23 )
+static MACHINE_DRIVER_START( s23 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(R4650BE, 166000000)
@@ -862,7 +862,7 @@ MACHINE_DRIVER_START( s23 )
 	MDRV_CPU_ADD(H83002, 14745600 )
 	MDRV_CPU_PROGRAM_MAP( s23h8rwmap, 0 )
 	MDRV_CPU_IO_MAP( s23h8iomap, 0 )
-	MDRV_CPU_VBLANK_INT( irq1_line_pulse, 1 );
+	MDRV_CPU_VBLANK_INT( irq1_line_pulse, 1 )
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
@@ -889,7 +889,7 @@ MACHINE_DRIVER_START( s23 )
 	MDRV_SOUND_ROUTE(3, "left", 1.00)
 MACHINE_DRIVER_END
 
-MACHINE_DRIVER_START( ss23 )
+static MACHINE_DRIVER_START( ss23 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(R4650BE, 166000000)
@@ -900,7 +900,7 @@ MACHINE_DRIVER_START( ss23 )
 	MDRV_CPU_ADD(H83002, 14745600 )
 	MDRV_CPU_PROGRAM_MAP( s23h8rwmap, 0 )
 	MDRV_CPU_IO_MAP( s23h8iomap, 0 )
-	MDRV_CPU_VBLANK_INT( irq1_line_pulse, 1 );
+	MDRV_CPU_VBLANK_INT( irq1_line_pulse, 1 )
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
@@ -1090,6 +1090,7 @@ ROM_START( finfrl2j )
 ROM_END
 
 /* Games */
+//GAME( 199?, downhbkr,  0,         s23, ss23, ss23, ROT0, "Namco",  "Downhill Bikers (DH3 Ver.A)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
 GAME( 1997, timecrs2, 0,         s23, ss23, ss23, ROT0, "Namco", "Time Crisis 2", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
 GAME( 1999, gp500,    0,        ss23, ss23, ss23, ROT0, "Namco", "GP500", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
 GAME( 1999, finfurl2, 0,        ss23, ss23, ss23, ROT0, "Namco", "Final Furlong 2 (World)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )

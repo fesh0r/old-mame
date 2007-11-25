@@ -233,7 +233,7 @@ static ADDRESS_MAP_START( catnmous_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( laserbat )
+static INPUT_PORTS_START( laserbat )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
@@ -312,7 +312,7 @@ INPUT_PORTS_START( laserbat )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( lazarian )
+static INPUT_PORTS_START( lazarian )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
@@ -390,7 +390,7 @@ INPUT_PORTS_START( lazarian )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( catnmous )
+static INPUT_PORTS_START( catnmous )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
@@ -526,7 +526,7 @@ static TILE_GET_INFO( get_tile_info )
 	SET_TILE_INFO(0, videoram[tile_index], colorram[tile_index], 0);
 }
 
-VIDEO_START( laserbat )
+static VIDEO_START( laserbat )
 {
 	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
 
@@ -538,7 +538,7 @@ VIDEO_START( laserbat )
 	s2636_x_offset = -19;
 }
 
-VIDEO_UPDATE( laserbat )
+static VIDEO_UPDATE( laserbat )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 

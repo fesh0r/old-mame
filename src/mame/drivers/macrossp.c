@@ -281,7 +281,7 @@ static WRITE32_HANDLER( macrossp_soundcmd_w )
 		sndpending = 1;
 		cpunum_set_input_line(1,2,HOLD_LINE);
 		/* spin for a while to let the sound CPU read the command */
-		cpu_spinuntil_time(MAME_TIME_IN_USEC(50));
+		cpu_spinuntil_time(ATTOTIME_IN_USEC(50));
 	}
 }
 
@@ -368,7 +368,7 @@ ADDRESS_MAP_END
 
 /*** INPUT PORTS *************************************************************/
 
-INPUT_PORTS_START( macrossp )
+static INPUT_PORTS_START( macrossp )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -458,7 +458,7 @@ INPUT_PORTS_START( macrossp )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( quizmoon )
+static INPUT_PORTS_START( quizmoon )
 	PORT_INCLUDE(macrossp)
 
 	PORT_MODIFY("KEYS")

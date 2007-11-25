@@ -58,11 +58,11 @@
 
 #include "driver.h"
 
-VIDEO_START(comebaby)
+static VIDEO_START(comebaby)
 {
 }
 
-VIDEO_UPDATE(comebaby)
+static VIDEO_UPDATE(comebaby)
 {
 	return 0;
 }
@@ -71,7 +71,7 @@ static ADDRESS_MAP_START( comebaby_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0001ffff) AM_ROM
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( comebaby )
+static INPUT_PORTS_START( comebaby )
 INPUT_PORTS_END
 
 

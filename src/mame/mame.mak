@@ -107,6 +107,7 @@ CPUS += TMS32010
 CPUS += TMS32025
 CPUS += TMS32026
 CPUS += TMS32031
+CPUS += TMS32032
 CPUS += TMS32051
 CPUS += CCPU
 CPUS += ADSP2100
@@ -531,7 +532,7 @@ $(MAMEOBJ)/atlus.a: \
 	$(DRIVERS)/powerins.o $(VIDEO)/powerins.o \
 
 $(MAMEOBJ)/barcrest.a: \
-	$(MACHINE)/mmtr.o \
+	$(MACHINE)/meters.o \
 	$(DRIVERS)/mpu4.o \
 	$(MACHINE)/steppers.o \
 
@@ -929,7 +930,7 @@ $(MAMEOBJ)/midway.a: \
 	$(DRIVERS)/midwunit.o $(MACHINE)/midwunit.o \
 	$(DRIVERS)/midxunit.o \
 	$(DRIVERS)/midyunit.o $(MACHINE)/midyunit.o $(VIDEO)/midyunit.o \
-	$(DRIVERS)/midzeus.o \
+	$(DRIVERS)/midzeus.o $(VIDEO)/midzeus.o \
 	$(DRIVERS)/omegrace.o \
 	$(DRIVERS)/seattle.o \
 	$(DRIVERS)/tmaster.o \
@@ -1154,7 +1155,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/stv.o $(DRIVERS)/stvinit.o $(MACHINE)/stvprot.o $(MACHINE)/stvcd.o \
 	$(DRIVERS)/suprloco.o $(VIDEO)/suprloco.o \
 	$(DRIVERS)/system1.o $(VIDEO)/system1.o \
-	$(DRIVERS)/system16.o $(MACHINE)/system16.o $(AUDIO)/system16.o $(VIDEO)/system16.o $(VIDEO)/sys16spr.o \
+	$(DRIVERS)/system16.o $(MACHINE)/system16.o $(VIDEO)/system16.o $(VIDEO)/sys16spr.o \
 	$(DRIVERS)/system18.o \
 	$(DRIVERS)/system24.o $(MACHINE)/system24.o $(VIDEO)/system24.o \
 	$(DRIVERS)/topshoot.o \
@@ -1183,6 +1184,7 @@ $(MAMEOBJ)/seibu.a: \
 	$(DRIVERS)/dcon.o $(VIDEO)/dcon.o \
 	$(DRIVERS)/deadang.o $(VIDEO)/deadang.o \
 	$(DRIVERS)/dynduke.o $(VIDEO)/dynduke.o \
+	$(DRIVERS)/goodejan.o $(VIDEO)/goodejan.o \
 	$(DRIVERS)/kncljoe.o $(VIDEO)/kncljoe.o \
 	$(DRIVERS)/mustache.o $(VIDEO)/mustache.o \
 	$(DRIVERS)/panicr.o \
@@ -1487,7 +1489,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/adp.o \
 	$(DRIVERS)/afega.o $(VIDEO)/afega.o \
 	$(DRIVERS)/ambush.o $(VIDEO)/ambush.o \
-	$(DRIVERS)/ampoker.o \
+	$(DRIVERS)/ampoker.o $(VIDEO)/ampoker.o \
 	$(DRIVERS)/amspdwy.o $(VIDEO)/amspdwy.o \
 	$(DRIVERS)/artmagic.o $(VIDEO)/artmagic.o \
 	$(DRIVERS)/attckufo.o $(AUDIO)/attckufo.o $(VIDEO)/attckufo.o \
@@ -1523,6 +1525,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/fortecar.o \
 	$(DRIVERS)/freekick.o $(VIDEO)/freekick.o \
 	$(DRIVERS)/funworld.o $(VIDEO)/funworld.o \
+	$(DRIVERS)/gamecstl.o \
 	$(DRIVERS)/gdrawpkr.o $(VIDEO)/gdrawpkr.o \
 	$(DRIVERS)/gtipoker.o \
 	$(DRIVERS)/go2000.o \
@@ -1623,6 +1626,9 @@ $(DRIVERS)/8080bw.o:	$(LAYOUT)/invrvnge.lh
 
 $(DRIVERS)/acefruit.o:	$(LAYOUT)/sidewndr.lh
 
+$(DRIVERS)/ampoker.o:	$(LAYOUT)/ampoker.lh \
+						$(LAYOUT)/sigmapkr.lh \
+
 $(DRIVERS)/astrocde.o:	$(LAYOUT)/tenpindx.lh
 
 $(DRIVERS)/atarifb.o:	$(LAYOUT)/atarifb.lh \
@@ -1677,6 +1683,11 @@ $(DRIVERS)/meadows.o:	$(LAYOUT)/deadeye.lh \
 
 $(DRIVERS)/nbmj8688.o:	$(LAYOUT)/nbmj8688.lh
 
+$(DRIVERS)/peplus.o:	$(LAYOUT)/peplus.lh \
+						$(LAYOUT)/pepp0158.lh \
+						$(LAYOUT)/pepp0188.lh \
+						$(LAYOUT)/peset038.lh
+
 $(DRIVERS)/pmpoker.o:	$(LAYOUT)/pmpoker.lh \
 						$(LAYOUT)/goldnpkr.lh \
 						$(LAYOUT)/pottnpkr.lh
@@ -1705,3 +1716,4 @@ $(DRIVERS)/zac2650.o:	$(LAYOUT)/tinv2650.lh
 #-------------------------------------------------
 
 $(DRIVERS)/neogeo.o:	$(MAMESRC)/drivers/neodrvr.c
+$(DRIVERS)/mpu4.o:		$(MAMESRC)/drivers/mpu4drvr.c

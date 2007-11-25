@@ -59,7 +59,7 @@ static laserdisc_info *discinfo;
 
 
 /* VIDEO GOODS */
-void gpworld_draw_tiles(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void gpworld_draw_tiles(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	UINT8 characterX, characterY;
 
@@ -93,7 +93,7 @@ INLINE void draw_pixel(mame_bitmap *bitmap,const rectangle *cliprect,int x,int y
 	*BITMAP_ADDR32(bitmap, y, x) = color;
 }
 
-void gpworld_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
+static void gpworld_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	const int SPR_Y_TOP     = 0;
 	const int SPR_Y_BOTTOM  = 1;
@@ -202,7 +202,7 @@ void gpworld_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 }
 
 
-VIDEO_UPDATE( gpworld )
+static VIDEO_UPDATE( gpworld )
 {
 	fillbitmap(bitmap, 0, cliprect);
 
@@ -220,18 +220,18 @@ VIDEO_UPDATE( gpworld )
 
 /* MEMORY HANDLERS */
 /* READS */
-READ8_HANDLER(ldp_read)
+static READ8_HANDLER( ldp_read )
 {
 	return ldp_read_latch;
 }
 
 /* WRITES */
-WRITE8_HANDLER(ldp_write)
+static WRITE8_HANDLER( ldp_write )
 {
 	ldp_write_latch = data;
 }
 
-WRITE8_HANDLER(misc_io_write)
+static WRITE8_HANDLER( misc_io_write )
 {
 	start_lamp = (data & 0x04) >> 1;
 	nmi_enable = (data & 0x40) >> 6;
@@ -240,7 +240,7 @@ WRITE8_HANDLER(misc_io_write)
 	logerror("NMI : %x (0x%x)\n", nmi_enable, data);
 }
 
-WRITE8_HANDLER(palette_write)
+static WRITE8_HANDLER( palette_write )
 {
 	/* This is all just a (bad) guess */
 	int pal_index, r, g, b;
@@ -289,7 +289,7 @@ ADDRESS_MAP_END
 
 
 /* PORTS */
-INPUT_PORTS_START( gpworld )
+static INPUT_PORTS_START( gpworld )
 	PORT_START_TAG("IN0")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -408,7 +408,7 @@ static INTERRUPT_GEN( vblank_callback_gpworld )
 
 	/* The time the IRQ line stays high is set just long enough to happen after the NMI - hacky? */
 	cpunum_set_input_line(0, 0, ASSERT_LINE);
-	mame_timer_set(MAME_TIME_IN_USEC(100), 0, irq_stop);
+	timer_set(ATTOTIME_IN_USEC(100), 0, irq_stop);
 
 	laserdisc_vsync(discinfo);
 }

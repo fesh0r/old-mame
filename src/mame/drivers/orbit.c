@@ -66,7 +66,7 @@ static MACHINE_RESET( orbit )
 }
 
 
-WRITE8_HANDLER( orbit_misc_w )
+static WRITE8_HANDLER( orbit_misc_w )
 {
 	UINT8 bit = offset >> 1;
 
@@ -102,7 +102,7 @@ static ADDRESS_MAP_START( orbit_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( orbit )
+static INPUT_PORTS_START( orbit )
 	PORT_START /* 0800 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -270,7 +270,7 @@ static MACHINE_DRIVER_START( orbit )
 	MDRV_CPU_PERIODIC_INT(orbit_interrupt, 240)
 
 	MDRV_SCREEN_REFRESH_RATE(60) /* interlaced */
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS((int) ((22. * 1000000) / (262. * 60) + 0.5)))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC((int) ((22. * 1000000) / (262. * 60) + 0.5)))
 	MDRV_MACHINE_RESET(orbit)
 
 	/* video hardware */

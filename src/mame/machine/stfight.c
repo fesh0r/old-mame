@@ -12,7 +12,7 @@
 #include "sound/msm5205.h"
 
 // this prototype will move to the driver
-WRITE8_HANDLER( stfight_bank_w );
+static WRITE8_HANDLER( stfight_bank_w );
 
 
 /*
@@ -87,7 +87,7 @@ MACHINE_RESET( stfight )
 
 // It's entirely possible that this bank is never switched out
 // - in fact I don't even know how/where it's switched in!
-WRITE8_HANDLER( stfight_bank_w )
+static WRITE8_HANDLER( stfight_bank_w )
 {
 	UINT8   *ROM2 = memory_region(REGION_CPU1) + 0x10000;
 
@@ -108,7 +108,7 @@ INTERRUPT_GEN( stfight_vb_interrupt )
 {
     // Do a RST10
     cpunum_set_input_line_and_vector(0,0,HOLD_LINE,0xd7);
-   	mame_timer_set(MAME_TIME_IN_HZ(120), 0, stfight_interrupt_1);
+   	timer_set(ATTOTIME_IN_HZ(120), 0, stfight_interrupt_1);
 }
 
 /*

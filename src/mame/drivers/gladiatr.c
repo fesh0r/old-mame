@@ -205,7 +205,7 @@ VIDEO_UPDATE( gladiatr );
 
 
 /*Rom bankswitching*/
-WRITE8_HANDLER( gladiatr_bankswitch_w )
+static WRITE8_HANDLER( gladiatr_bankswitch_w )
 {
 	UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
 
@@ -326,7 +326,7 @@ static WRITE8_HANDLER( gladiatr_flipscreen_w )
 
 #if 1
 /* !!!!! patch to IRQ timming for 2nd CPU !!!!! */
-WRITE8_HANDLER( gladiatr_irq_patch_w )
+static WRITE8_HANDLER( gladiatr_irq_patch_w )
 {
 	cpunum_set_input_line(1,0,HOLD_LINE);
 }
@@ -468,12 +468,12 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( ppking )
+static INPUT_PORTS_START( ppking )
 
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( gladiatr )
+static INPUT_PORTS_START( gladiatr )
 	PORT_START_TAG("DSW1")		/* (8741-0 parallel port)*/
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Easy ) )

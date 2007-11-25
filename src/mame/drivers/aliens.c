@@ -70,7 +70,7 @@ static WRITE8_HANDLER( aliens_coin_counter_w )
 #endif
 }
 
-WRITE8_HANDLER( aliens_sh_irqtrigger_w )
+static WRITE8_HANDLER( aliens_sh_irqtrigger_w )
 {
 	soundlatch_w(offset,data);
 	cpunum_set_input_line_and_vector(1, 0, HOLD_LINE, 0xff);
@@ -134,7 +134,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( aliens )
+static INPUT_PORTS_START( aliens )
 	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )		PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )

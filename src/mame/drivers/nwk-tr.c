@@ -195,7 +195,8 @@ int K001604_vh_start(running_machine *machine, int chip)
 
 	/* HACK !!! To be removed */
 	if (mame_stricmp(gamename, "racingj") == 0 || mame_stricmp(gamename, "racingj2") == 0
-		|| mame_stricmp(gamename, "hangplt") == 0 || mame_stricmp(gamename, "slrasslt") == 0)
+		|| mame_stricmp(gamename, "hangplt") == 0 || mame_stricmp(gamename, "slrasslt") == 0
+		|| mame_stricmp(gamename, "jetwave") == 0)
 	{
 		K001604_layer_size = 0;		// width = 128 tiles
 	}
@@ -534,7 +535,7 @@ static void voodoo_vblank_0(int param)
 	cpunum_set_input_line(0, INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
-VIDEO_START( nwktr )
+static VIDEO_START( nwktr )
 {
 	voodoo_start(0, 0, VOODOO_1, 2, 2, 2);
 	voodoo_set_vblank_callback(0, voodoo_vblank_0);
@@ -543,7 +544,7 @@ VIDEO_START( nwktr )
 }
 
 
-VIDEO_UPDATE( nwktr )
+static VIDEO_UPDATE( nwktr )
 {
 	fillbitmap(bitmap, machine->remapped_colortable[0], cliprect);
 
@@ -820,7 +821,7 @@ ADDRESS_MAP_END
 
 /*****************************************************************************/
 
-INPUT_PORTS_START( nwktr )
+static INPUT_PORTS_START( nwktr )
 	PORT_START
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)

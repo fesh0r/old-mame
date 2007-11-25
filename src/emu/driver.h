@@ -109,12 +109,12 @@
 */
 
 /* The default is to have no VBLANK timing -- this is historical, and a bad idea */
-#define DEFAULT_60HZ_VBLANK_DURATION		USEC_TO_SUBSECONDS(0)
-#define DEFAULT_30HZ_VBLANK_DURATION		USEC_TO_SUBSECONDS(0)
+#define DEFAULT_60HZ_VBLANK_DURATION		ATTOSECONDS_IN_USEC(0)
+#define DEFAULT_30HZ_VBLANK_DURATION		ATTOSECONDS_IN_USEC(0)
 
 /* If you use IPT_VBLANK, you need a duration different from 0 */
-#define DEFAULT_REAL_60HZ_VBLANK_DURATION	USEC_TO_SUBSECONDS(2500)
-#define DEFAULT_REAL_30HZ_VBLANK_DURATION	USEC_TO_SUBSECONDS(2500)
+#define DEFAULT_REAL_60HZ_VBLANK_DURATION	ATTOSECONDS_IN_USEC(2500)
+#define DEFAULT_REAL_30HZ_VBLANK_DURATION	ATTOSECONDS_IN_USEC(2500)
 
 
 
@@ -184,7 +184,7 @@ struct _machine_config
 	cpu_config			cpu[MAX_CPU];				/* array of CPUs in the system */
 	UINT32				cpu_slices_per_frame;		/* number of times to interleave execution per frame */
 	INT32				watchdog_vblank_count;		/* number of VBLANKs until the watchdog kills us */
-	mame_time			watchdog_time;				/* length of time until the watchdog kills us */
+	attotime			watchdog_time;				/* length of time until the watchdog kills us */
 
 	void 				(*machine_start)(running_machine *machine);		/* one-time machine start callback */
 	void 				(*machine_reset)(running_machine *machine);		/* machine reset callback */
@@ -281,16 +281,16 @@ struct _game_driver
 	driver_remove_cpu(machine, tag);									\
 	cpu = NULL;															\
 
-#define MDRV_CPU_REPLACE(tag, type, clock)								\
+#define MDRV_CPU_REPLACE(tag, _type, _clock)								\
 	cpu = driver_find_cpu(machine, tag);								\
-	cpu->cpu_type = (CPU_##type);										\
-	cpu->cpu_clock = (clock);											\
+	cpu->type = (CPU_##_type);										\
+	cpu->clock = (_clock);											\
 
 
 /* CPU parameters */
-#define MDRV_CPU_FLAGS(flags)											\
+#define MDRV_CPU_FLAGS(_flags)											\
 	if (cpu)															\
-		cpu->cpu_flags = (flags);										\
+		cpu->flags = (_flags);										\
 
 #define MDRV_CPU_CONFIG(config)											\
 	if (cpu)															\
@@ -328,7 +328,7 @@ struct _game_driver
 	if (cpu)															\
 	{																	\
 		cpu->timed_interrupt = func;									\
-		cpu->timed_interrupt_period = HZ_TO_SUBSECONDS(rate);			\
+		cpu->timed_interrupt_period = HZ_TO_ATTOSECONDS(rate);			\
 	}																	\
 
 
@@ -408,7 +408,7 @@ struct _game_driver
 	screen->defstate.format = (_format);								\
 
 #define MDRV_SCREEN_RAW_PARAMS(pixclock, htotal, hbend, hbstart, vtotal, vbend, vbstart) \
-	screen->defstate.refresh = HZ_TO_SUBSECONDS(pixclock) * (htotal) * (vtotal); \
+	screen->defstate.refresh = HZ_TO_ATTOSECONDS(pixclock) * (htotal) * (vtotal); \
 	screen->defstate.vblank = (screen->defstate.refresh / (vtotal)) * ((vtotal) - ((vbstart) - (vbend))); \
 	screen->defstate.width = (htotal);									\
 	screen->defstate.height = (vtotal);									\
@@ -418,10 +418,10 @@ struct _game_driver
 	screen->defstate.visarea.max_y = (vbstart) - 1;						\
 
 #define MDRV_SCREEN_REFRESH_RATE(rate)									\
-	screen->defstate.refresh = HZ_TO_SUBSECONDS(rate);					\
+	screen->defstate.refresh = HZ_TO_ATTOSECONDS(rate);					\
 
 #define MDRV_SCREEN_VBLANK_TIME(time)									\
-	screen->defstate.vblank = time;				\
+	screen->defstate.vblank = time;										\
 	screen->defstate.oldstyle_vblank_supplied = 1;						\
 
 #define MDRV_SCREEN_SIZE(_width, _height)								\
@@ -482,11 +482,11 @@ struct _game_driver
 	if (sound)															\
 		sound->config = &(_config);										\
 
-#define MDRV_SOUND_REPLACE(tag, type, _clock)							\
+#define MDRV_SOUND_REPLACE(tag, _type, _clock)							\
 	sound = driver_find_sound(machine, tag);							\
 	if (sound)															\
 	{																	\
-		sound->sound_type = SOUND_##type;								\
+		sound->type = SOUND_##_type;								\
 		sound->clock = (_clock);										\
 		sound->config = NULL;											\
 		sound->routes = 0;												\
@@ -508,23 +508,6 @@ struct _game_driver
 ***************************************************************************/
 
 #define GAME(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,MONITOR,COMPANY,FULLNAME,FLAGS)	\
-game_driver driver_##NAME =					\
-{											\
-	__FILE__,								\
-	#PARENT,								\
-	#NAME,									\
-	FULLNAME,								\
-	#YEAR,									\
-	COMPANY,								\
-	construct_##MACHINE,					\
-	ipt_##INPUT,							\
-	driver_init_##INIT,						\
-	rom_##NAME,								\
-	(MONITOR)|(FLAGS),						\
-	NULL									\
-};
-
-#define GAMEB(YEAR,NAME,PARENT,BIOS,MACHINE,INPUT,INIT,MONITOR,COMPANY,FULLNAME,FLAGS)	\
 game_driver driver_##NAME =					\
 {											\
 	__FILE__,								\
@@ -578,7 +561,7 @@ extern game_driver driver_empty;
 
 void expand_machine_driver(void (*constructor)(machine_config *), machine_config *output);
 
-cpu_config *driver_add_cpu(machine_config *machine, const char *tag, int type, int cpuclock);
+cpu_config *driver_add_cpu(machine_config *machine, const char *tag, cpu_type type, int cpuclock);
 cpu_config *driver_find_cpu(machine_config *machine, const char *tag);
 void driver_remove_cpu(machine_config *machine, const char *tag);
 
@@ -586,7 +569,7 @@ speaker_config *driver_add_speaker(machine_config *machine, const char *tag, flo
 speaker_config *driver_find_speaker(machine_config *machine, const char *tag);
 void driver_remove_speaker(machine_config *machine, const char *tag);
 
-sound_config *driver_add_sound(machine_config *machine, const char *tag, int type, int clock);
+sound_config *driver_add_sound(machine_config *machine, const char *tag, sound_type type, int clock);
 sound_config *driver_find_sound(machine_config *machine, const char *tag);
 void driver_remove_sound(machine_config *machine, const char *tag);
 

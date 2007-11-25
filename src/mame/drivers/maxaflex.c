@@ -31,7 +31,7 @@ static UINT8 portA_in,portA_out,ddrA;
 static UINT8 portB_in,portB_out,ddrB;
 static UINT8 portC_in,portC_out,ddrC;
 static UINT8 tdr,tcr;
-static mame_timer *mcu_timer;
+static emu_timer *mcu_timer;
 
 /* Port A:
     0   (in)  DSW
@@ -182,7 +182,7 @@ static WRITE8_HANDLER( mcu_tcr_w )
 	if ( (tcr & 0x40) == 0 )
 	{
 		int divider;
-		mame_time period;
+		attotime period;
 
 		if ( !(tcr & 0x20) )
 		{
@@ -201,8 +201,8 @@ static WRITE8_HANDLER( mcu_tcr_w )
 			divider = divider * (1 << (tcr & 0x7));
 		}
 
-		period = scale_up_mame_time(MAME_TIME_IN_HZ(3579545), divider);
-		mame_timer_adjust( mcu_timer, period, 0, period);
+		period = attotime_mul(ATTOTIME_IN_HZ(3579545), divider);
+		timer_adjust( mcu_timer, period, 0, period);
 	}
 }
 
@@ -212,7 +212,7 @@ static MACHINE_RESET(supervisor_board)
 	portB_in = portB_out = ddrB	= 0;
 	portC_in = portC_out = ddrC	= 0;
 	tdr = tcr = 0;
-	mcu_timer = mame_timer_alloc( mcu_timer_proc );
+	mcu_timer = timer_alloc( mcu_timer_proc );
 
 	output_set_lamp_value(0, 0);
 	output_set_lamp_value(1, 0);
@@ -267,7 +267,7 @@ static ADDRESS_MAP_START( mcu_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( a600xl )
+static INPUT_PORTS_START( a600xl )
 
     PORT_START_TAG("console")  /* IN0 console keys & switch settings */
 	PORT_BIT(0x04, 0x04, IPT_KEYBOARD) PORT_NAME("Option") PORT_CODE(KEYCODE_F2)
@@ -434,7 +434,7 @@ static MACHINE_DRIVER_START( a600xl )
 	MDRV_CPU_ADD_TAG("main", M6502, FREQ_17_EXACT)
 	MDRV_CPU_PROGRAM_MAP(a600xl_mem, 0)
 	MDRV_CPU_VBLANK_INT(a800xl_interrupt, TOTAL_LINES_60HZ)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MDRV_CPU_ADD(M68705, 3579545/M68705_CLOCK_DIVIDER)
 	MDRV_CPU_PROGRAM_MAP(mcu_mem,0)
@@ -531,7 +531,7 @@ ROM_START(mf_flip)
 	ROM_LOAD("maxprom.prm", 0x0000, 0x0200, CRC(edf5c950) SHA1(9ad046ea41a61585dd8d2f2d4167a3cc39d2928f))	/* for simulating keystrokes ?*/
 ROM_END
 
-DRIVER_INIT( a600xl )
+static DRIVER_INIT( a600xl )
 {
 	memcpy( memory_region(REGION_CPU1) + 0x5000, memory_region(REGION_CPU1) + 0xd000, 0x800 );
 }

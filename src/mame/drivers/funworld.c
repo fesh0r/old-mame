@@ -773,7 +773,7 @@ extern VIDEO_UPDATE( funworld );
 * Read/Write Handlers *
 **********************/
 
-WRITE8_HANDLER(funworld_lamp_a_w)
+static WRITE8_HANDLER(funworld_lamp_a_w)
 {
 	coin_counter_w(0, data & 0x01);		// credit in counter
 
@@ -787,7 +787,7 @@ WRITE8_HANDLER(funworld_lamp_a_w)
 	output_set_lamp_value(3, (data >> 7) & 1);		// button hold4/high
 }
 
-WRITE8_HANDLER(funworld_lamp_b_w)
+static WRITE8_HANDLER(funworld_lamp_b_w)
 {
 	output_set_lamp_value(4, (data >> 0) & 1);		// button hold5/bet
 	output_set_lamp_value(6, (data >> 1) & 1);		// button 7 (start/play)
@@ -870,7 +870,7 @@ ADDRESS_MAP_END
 *      Input ports       *
 *************************/
 
-INPUT_PORTS_START( funworld )
+static INPUT_PORTS_START( funworld )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Remote") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_NAME("Halten (Hold) 1") PORT_CODE(KEYCODE_Z)
@@ -932,7 +932,7 @@ INPUT_PORTS_START( funworld )
 	PORT_DIPSETTING(    0x80, "Manual Payout SW" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( jolycdcr )
+static INPUT_PORTS_START( jolycdcr )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Navijanje (Remote)") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_NAME("Stop (Hold) 1") PORT_CODE(KEYCODE_Z)
@@ -994,7 +994,7 @@ INPUT_PORTS_START( jolycdcr )
 	PORT_DIPSETTING(    0x80, "Manual Payout SW" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( jolycdit )
+static INPUT_PORTS_START( jolycdit )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Remote") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_NAME("Stop (Hold) 1 / Alta (High)") PORT_CODE(KEYCODE_Z)
@@ -1055,7 +1055,7 @@ INPUT_PORTS_START( jolycdit )
 	PORT_DIPSETTING(    0x80, "Manual Payout SW" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( bigdeal )
+static INPUT_PORTS_START( bigdeal )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Remote") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Hold 1") PORT_CODE(KEYCODE_Z)
@@ -1118,7 +1118,7 @@ INPUT_PORTS_START( bigdeal )
 	PORT_DIPSETTING(    0x80, "Manual Payout SW" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( magiccrd )
+static INPUT_PORTS_START( magiccrd )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Remote") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Hold 1") PORT_CODE(KEYCODE_Z)
@@ -1180,7 +1180,7 @@ INPUT_PORTS_START( magiccrd )
 	PORT_DIPSETTING(    0x80, "Manual Payout SW" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( royalcrd )
+static INPUT_PORTS_START( royalcrd )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Remote") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Halten (Hold) 1 / Hoch (High)") PORT_CODE(KEYCODE_Z)
@@ -1242,7 +1242,7 @@ INPUT_PORTS_START( royalcrd )
 	PORT_DIPSETTING(    0x80, "Manual Payout SW" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( cuoreuno )
+static INPUT_PORTS_START( cuoreuno )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Stop 1 / Switch Bet (1-Max)") PORT_CODE(KEYCODE_Z)
@@ -1304,7 +1304,7 @@ INPUT_PORTS_START( cuoreuno )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( snookr10 )
+static INPUT_PORTS_START( snookr10 )
 INPUT_PORTS_END
 
 

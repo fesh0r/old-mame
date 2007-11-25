@@ -72,14 +72,14 @@ out of the sprite list at that point.. (verify on real hw)
 #include "video/kan_panb.h" // for bootlegs / non-original hw
 
 
-WRITE16_HANDLER( snowbros_flipscreen_w )
+static WRITE16_HANDLER( snowbros_flipscreen_w )
 {
 	if (ACCESSING_MSB)
 		flip_screen_set(~data & 0x8000);
 }
 
 
-VIDEO_UPDATE( snowbros )
+static VIDEO_UPDATE( snowbros )
 {
 	/* This clears & redraws the entire screen each pass */
 	fillbitmap(bitmap,0xf0,&machine->screen[0].visarea);
@@ -88,20 +88,20 @@ VIDEO_UPDATE( snowbros )
 }
 
 
-VIDEO_START( snowbros )
+static VIDEO_START( snowbros )
 {
 	pandora_start(0,0,0);
 }
 
-VIDEO_EOF( snowbros )
+static VIDEO_EOF( snowbros )
 {
 	pandora_eof(machine);
 }
 
 
 static UINT16 *hyperpac_ram;
-int sb3_music_is_playing;
-int sb3_music;
+static int sb3_music_is_playing;
+static int sb3_music;
 
 static INTERRUPT_GEN( snowbros_interrupt )
 {
@@ -136,7 +136,7 @@ static INTERRUPT_GEN( snowbro3_interrupt )
 
 /* Sound Routines */
 
-READ16_HANDLER( snowbros_68000_sound_r )
+static READ16_HANDLER( snowbros_68000_sound_r )
 {
 	return soundlatch_r(offset);
 }
@@ -330,7 +330,7 @@ static ADDRESS_MAP_START( twinadv_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 //  AM_RANGE(0xe010, 0xe010) AM_WRITE(OKIM6295_data_0_w)
 ADDRESS_MAP_END
 
-WRITE8_HANDLER( twinadv_oki_bank_w )
+static WRITE8_HANDLER( twinadv_oki_bank_w )
 {
 	int bank = (data &0x02)>>1;
 
@@ -403,12 +403,12 @@ ADDRESS_MAP_END
 
 /* Same volume used for all samples at the Moment, could be right, we have no
    way of knowing .. */
-READ16_HANDLER( sb3_sound_r )
+static READ16_HANDLER( sb3_sound_r )
 {
 	return 0x0003;
 }
 
-void sb3_play_music(int data)
+static void sb3_play_music(int data)
 {
 	/* sample is actually played in interrupt function so it loops */
 	sb3_music = data;
@@ -452,7 +452,7 @@ void sb3_play_music(int data)
 	}
 }
 
-void sb3_play_sound (int data)
+static void sb3_play_sound (int data)
 {
 	int status = OKIM6295_status_0_r(0);
 
@@ -475,7 +475,7 @@ void sb3_play_sound (int data)
 
 }
 
-WRITE16_HANDLER( sb3_sound_w )
+static WRITE16_HANDLER( sb3_sound_w )
 {
 	if (data == 0x00fe)
 	{
@@ -561,7 +561,7 @@ static ADDRESS_MAP_START( finalttr_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(MWA16_NOP)	/* IRQ 2 acknowledge? */
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( snowbros )
+static INPUT_PORTS_START( snowbros )
 	PORT_START_TAG("DSW")	/* 500001 */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Europe ) )
@@ -642,7 +642,7 @@ INPUT_PORTS_START( snowbros )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( snowbroj )
+static INPUT_PORTS_START( snowbroj )
 	PORT_START	/* 500001 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -716,7 +716,7 @@ INPUT_PORTS_START( snowbroj )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( honeydol )
+static INPUT_PORTS_START( honeydol )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
@@ -792,7 +792,7 @@ INPUT_PORTS_START( honeydol )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( twinadv )
+static INPUT_PORTS_START( twinadv )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
@@ -870,7 +870,7 @@ INPUT_PORTS_START( twinadv )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( 4in1boot )
+static INPUT_PORTS_START( 4in1boot )
 	PORT_START	/* 500001 */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -952,7 +952,7 @@ INPUT_PORTS_START( 4in1boot )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hyperpac )
+static INPUT_PORTS_START( hyperpac )
 	PORT_START	/* 500000.w */
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -1029,7 +1029,7 @@ INPUT_PORTS_START( hyperpac )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( cookbib2 )
+static INPUT_PORTS_START( cookbib2 )
 	PORT_START	/* 500000.w */
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -1106,7 +1106,7 @@ INPUT_PORTS_START( cookbib2 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( cookbib3 )
+static INPUT_PORTS_START( cookbib3 )
 	PORT_START	/* 500000.w */
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -1184,7 +1184,7 @@ INPUT_PORTS_START( cookbib3 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( moremore )
+static INPUT_PORTS_START( moremore )
 	PORT_START	/* 500000.w */
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -1262,7 +1262,7 @@ INPUT_PORTS_START( moremore )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( toppyrap )
+static INPUT_PORTS_START( toppyrap )
 	PORT_START	/* 500000.w */
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -1337,7 +1337,7 @@ INPUT_PORTS_START( toppyrap )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( finalttr )
+static INPUT_PORTS_START( finalttr )
 	PORT_START	/* 500001 */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
@@ -1534,7 +1534,7 @@ static struct YM2151interface ym2151_interface =
 };
 
 
-MACHINE_RESET (semiprot)
+static MACHINE_RESET (semiprot)
 {
 	UINT16 *PROTDATA = (UINT16*)memory_region(REGION_USER1);
 	int i;
@@ -1543,7 +1543,7 @@ MACHINE_RESET (semiprot)
 	hyperpac_ram[0xf000/2 + i] = PROTDATA[i];
 }
 
-MACHINE_RESET (finalttr)
+static MACHINE_RESET (finalttr)
 {
 	UINT16 *PROTDATA = (UINT16*)memory_region(REGION_USER1);
 	int i;
@@ -2301,7 +2301,7 @@ ROM_START( finalttr )
 	ROM_LOAD( "9.1h",     0xc0000, 0x40000, CRC(2ebd316d) SHA1(2f1249ebd2a0bb0cc15259f7187201576a365fa6) )
 ROM_END
 
-READ16_HANDLER ( moremorp_0a_read )
+static READ16_HANDLER ( moremorp_0a_read )
 {
 	return 0x000a;
 }
@@ -2676,7 +2676,7 @@ static DRIVER_INIT( hyperpac )
 	hyperpac_ram[0xe086/2] = 0x3210;
 }
 
-READ16_HANDLER ( _4in1_02_read )
+static READ16_HANDLER ( _4in1_02_read )
 {
 	return 0x0202;
 }

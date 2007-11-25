@@ -1183,7 +1183,7 @@ static WRITE32_HANDLER( namcos22_system_controller_w )
 		{ /* SUBCPU enable on System 22 (guessed, but too early crashes Rave Racer so it's a good test) */
 			if (data == 0xff00)
 			{
-				mame_timer_set(MAME_TIME_IN_MSEC(50), 0, start_subcpu);
+				timer_set(ATTOTIME_IN_MSEC(50), 0, start_subcpu);
 			}
 		}
 	}
@@ -1822,7 +1822,7 @@ static MACHINE_DRIVER_START( namcos22s )
 	MDRV_CPU_ADD(M37710, SS22_MASTER_CLOCK/3)
 	MDRV_CPU_PROGRAM_MAP(mcu_program, 0)
 	MDRV_CPU_IO_MAP( mcu_io, 0 )
-	MDRV_CPU_VBLANK_INT(mcu_interrupt, 3);
+	MDRV_CPU_VBLANK_INT(mcu_interrupt, 3)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
@@ -3476,7 +3476,7 @@ ROM_END
 
 /*******************************************************************/
 
-INPUT_PORTS_START( alpiner )
+static INPUT_PORTS_START( alpiner )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, "DIP4-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -3547,7 +3547,7 @@ INPUT_PORTS_START( alpiner )
 INPUT_PORTS_END /* Alpine Racer */
 
 
-INPUT_PORTS_START( airco22 )
+static INPUT_PORTS_START( airco22 )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, "DIP1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -3599,7 +3599,7 @@ INPUT_PORTS_START( airco22 )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_BUTTON3 )
 INPUT_PORTS_END /* Air Combat22 */
 
-INPUT_PORTS_START( cybrcycc )
+static INPUT_PORTS_START( cybrcycc )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, "DIP4-1 (Test Mode)" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -3649,7 +3649,7 @@ INPUT_PORTS_START( cybrcycc )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END /* Cyber Cycles */
 
-INPUT_PORTS_START( propcycl )
+static INPUT_PORTS_START( propcycl )
 	PORT_START /* DIP4 */
 	PORT_DIPNAME( 0x01, 0x01, "DIP1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -3711,7 +3711,7 @@ INPUT_PORTS_START( propcycl )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END /* Prop Cycle */
 
-INPUT_PORTS_START( cybrcomm )
+static INPUT_PORTS_START( cybrcomm )
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0001, "DIP2-1" )
 	PORT_DIPSETTING(    0x0001, DEF_STR( Off ) )
@@ -3790,7 +3790,7 @@ INPUT_PORTS_START( cybrcomm )
 	PORT_BIT( 0xff, 0x7f, IPT_AD_STICK_X ) PORT_SENSITIVITY(	100) PORT_KEYDELTA(4) PORT_PLAYER(2)   /* left joystick: horizontal */
 INPUT_PORTS_END /* Cyber Commando */
 
-INPUT_PORTS_START( timecris )
+static INPUT_PORTS_START( timecris )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, "DIP4-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -3836,7 +3836,7 @@ INPUT_PORTS_END /* Time Crisis */
 
 /*****************************************************************************************************/
 
-INPUT_PORTS_START( acedrvr )
+static INPUT_PORTS_START( acedrvr )
 	PORT_START /* 0: DIP2 and DIP3 */
 	PORT_DIPNAME( 0x0001, 0x0001, "DIP2-1" )
 	PORT_DIPSETTING(    0x0001, DEF_STR( Off ) )
@@ -3910,7 +3910,7 @@ INPUT_PORTS_START( acedrvr )
 	DRIVING_ANALOG_PORTS
 INPUT_PORTS_END /* Ace Driver */
 
-INPUT_PORTS_START( victlap )
+static INPUT_PORTS_START( victlap )
 	PORT_START /* 0: DIP2 and DIP3 */
 	PORT_DIPNAME( 0x0001, 0x0001, "DIP2-1" )
 	PORT_DIPSETTING(    0x0001, DEF_STR( Off ) )
@@ -3986,7 +3986,7 @@ INPUT_PORTS_START( victlap )
 	DRIVING_ANALOG_PORTS
 INPUT_PORTS_END /* Victory Lap */
 
-INPUT_PORTS_START( ridgera )
+static INPUT_PORTS_START( ridgera )
 	PORT_START /* 0: DIP2 and DIP3 */
 	PORT_DIPNAME( 0x0001, 0x0001, "DIP2-1 (test mode?)" )
 	PORT_DIPSETTING(    0x0001, DEF_STR( Off ) )
@@ -4061,7 +4061,7 @@ INPUT_PORTS_START( ridgera )
 	DRIVING_ANALOG_PORTS
 INPUT_PORTS_END /* Ridge Racer */
 
-INPUT_PORTS_START( raveracw )
+static INPUT_PORTS_START( raveracw )
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0001, "DIP2-1 (test mode)" )
 	PORT_DIPSETTING(    0x0001, DEF_STR( Off ) )
@@ -4211,7 +4211,7 @@ static void namcos22s_init( enum namcos22_gametype game_type )
 	mSpotRAM.RAM = auto_malloc(SPOTRAM_SIZE*2);
 }
 
-DRIVER_INIT( alpiner )
+static DRIVER_INIT( alpiner )
 {
 	namcos22s_init(NAMCOS22_ALPINE_RACER);
 
@@ -4220,7 +4220,7 @@ DRIVER_INIT( alpiner )
 	install_130_speedup();
 }
 
-DRIVER_INIT( alpiner2 )
+static DRIVER_INIT( alpiner2 )
 {
 	namcos22s_init(NAMCOS22_ALPINE_RACER_2);
 
@@ -4229,7 +4229,7 @@ DRIVER_INIT( alpiner2 )
 	install_130_speedup();
 }
 
-DRIVER_INIT( alpinesa )
+static DRIVER_INIT( alpinesa )
 {
 	namcos22s_init(NAMCOS22_ALPINE_SURFER);
 
@@ -4238,14 +4238,14 @@ DRIVER_INIT( alpinesa )
 	install_141_speedup();
 }
 
-DRIVER_INIT( airco22 )
+static DRIVER_INIT( airco22 )
 {
 	namcos22s_init(NAMCOS22_AIR_COMBAT22);
 
 	memory_install_read8_handler(3, ADDRESS_SPACE_IO, M37710_ADC0_L, M37710_ADC7_H, 0, 0, airco22_mcu_adc_r);
 }
 
-DRIVER_INIT( propcycl )
+static DRIVER_INIT( propcycl )
 {
    UINT32 *pROM = (UINT32 *)memory_region(REGION_CPU1);
 
@@ -4271,7 +4271,7 @@ DRIVER_INIT( propcycl )
 	install_141_speedup();
 }
 
-DRIVER_INIT( ridgeraj )
+static DRIVER_INIT( ridgeraj )
 {
 	namcos22_init(NAMCOS22_RIDGE_RACER);
 
@@ -4281,7 +4281,7 @@ DRIVER_INIT( ridgeraj )
 	credits1 = credits2 = 0;
 }
 
-DRIVER_INIT( ridger2j )
+static DRIVER_INIT( ridger2j )
 {
 	namcos22_init(NAMCOS22_RIDGE_RACER2);
 
@@ -4291,7 +4291,7 @@ DRIVER_INIT( ridger2j )
 	credits1 = credits2 = 0;
 }
 
-DRIVER_INIT( acedrvr )
+static DRIVER_INIT( acedrvr )
 {
 	namcos22_init(NAMCOS22_ACE_DRIVER);
 
@@ -4301,7 +4301,7 @@ DRIVER_INIT( acedrvr )
 	credits1 = credits2 = 0;
 }
 
-DRIVER_INIT( victlap )
+static DRIVER_INIT( victlap )
 {
 	namcos22_init(NAMCOS22_VICTORY_LAP);
 
@@ -4311,7 +4311,7 @@ DRIVER_INIT( victlap )
 	credits1 = credits2 = 0;
 }
 
-DRIVER_INIT( raveracw )
+static DRIVER_INIT( raveracw )
 {
 	namcos22_init(NAMCOS22_RAVE_RACER);
 
@@ -4321,7 +4321,7 @@ DRIVER_INIT( raveracw )
 	credits1 = credits2 = 0;
 }
 
-DRIVER_INIT( cybrcomm )
+static DRIVER_INIT( cybrcomm )
 {
 	UINT32 *pROM = (UINT32 *)memory_region(REGION_CPU1);
 	pROM[0x18ade8/4] = 0x4e714e71;
@@ -4338,7 +4338,7 @@ DRIVER_INIT( cybrcomm )
 	credits1 = credits2 = 0;
 }
 
-DRIVER_INIT( cybrcyc )
+static DRIVER_INIT( cybrcyc )
 {
 	/* patch DSP RAM test */
 	UINT32 *pROM = (UINT32 *)memory_region(REGION_CPU1);
@@ -4352,7 +4352,7 @@ DRIVER_INIT( cybrcyc )
 	install_130_speedup();
 }
 
-DRIVER_INIT( timecris )
+static DRIVER_INIT( timecris )
 {
 	namcos22s_init(NAMCOS22_TIME_CRISIS);
 
@@ -4389,4 +4389,3 @@ GAME( 1996, propcycl, 0,        namcos22s, propcycl, propcycl, ROT0, "Namco", "P
 //GAME( 1996, tokyowrx, "Tokyo Wars")
 //GAME( 1996, aquajetx, "Aqua Jet")
 //GAME( 1997, armdilox, "Armidillo Racing")
-//GAME( 199?, downhbkx, "Downhill Bikers")

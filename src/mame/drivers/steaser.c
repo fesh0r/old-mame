@@ -36,11 +36,11 @@ ROMs
 
 #include "driver.h"
 
-VIDEO_START(steaser)
+static VIDEO_START(steaser)
 {
 }
 
-VIDEO_UPDATE(steaser)
+static VIDEO_UPDATE(steaser)
 {
 	return 0;
 }
@@ -56,7 +56,7 @@ static ADDRESS_MAP_START( steaser_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x20ffff) AM_RAM
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( steaser )
+static INPUT_PORTS_START( steaser )
 INPUT_PORTS_END
 
 

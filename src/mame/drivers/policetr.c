@@ -128,7 +128,7 @@ static TIMER_CALLBACK( irq5_gen )
 static INTERRUPT_GEN( irq4_gen )
 {
 	cpunum_set_input_line(0, R3000_IRQ4, ASSERT_LINE);
-	mame_timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, irq5_gen);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, irq5_gen);
 }
 
 
@@ -345,7 +345,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( policetr )
+static INPUT_PORTS_START( policetr )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -423,7 +423,7 @@ INPUT_PORTS_START( policetr )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( polict10 )
+static INPUT_PORTS_START( polict10 )
 	PORT_INCLUDE( policetr )
 
 	PORT_MODIFY("GUNX1")				/* fake analog X */
@@ -440,7 +440,7 @@ INPUT_PORTS_START( polict10 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( sshoot11 )
+static INPUT_PORTS_START( sshoot11 )
 	PORT_INCLUDE( policetr )
 
 	PORT_MODIFY("GUNX1")				/* fake analog X */
@@ -472,7 +472,7 @@ static struct r3000_config config =
 };
 
 
-MACHINE_DRIVER_START( policetr )
+static MACHINE_DRIVER_START( policetr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", R3000BE, MASTER_CLOCK/2)
@@ -504,7 +504,7 @@ MACHINE_DRIVER_START( policetr )
 MACHINE_DRIVER_END
 
 
-MACHINE_DRIVER_START( sshooter )
+static MACHINE_DRIVER_START( sshooter )
 	MDRV_IMPORT_FROM(policetr)
 
 	/* basic machine hardware */

@@ -8,6 +8,7 @@
 
 #include "debugger.h"
 #include "tms32031.h"
+#include "eminline.h"
 
 
 #define LOG_OPCODE_USAGE	(0)
@@ -640,8 +641,12 @@ static void tms32031_set_info(UINT32 state, cpuinfo *info)
  * Internal memory map
  **************************************************************************/
 
-static ADDRESS_MAP_START( internal, ADDRESS_SPACE_PROGRAM, 32 )
+static ADDRESS_MAP_START( internal_32031, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x809800, 0x809fff) AM_RAM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( internal_32032, ADDRESS_SPACE_PROGRAM, 32 )
+	AM_RANGE(0x87fe00, 0x87ffff) AM_RAM
 ADDRESS_MAP_END
 
 
@@ -744,7 +749,7 @@ void tms32031_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = tms32031_dasm;		break;
 #endif /* MAME_DEBUG */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &tms32031_icount;		break;
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_internal; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_internal_32031; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "TMS32031");			break;
@@ -778,14 +783,14 @@ void tms32031_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_REGISTER + TMS32031_R5:		sprintf(info->s, " R5:%08X", tms32031.r[TMR_R5].i32[0]); break;
 		case CPUINFO_STR_REGISTER + TMS32031_R6:		sprintf(info->s, " R6:%08X", tms32031.r[TMR_R6].i32[0]); break;
 		case CPUINFO_STR_REGISTER + TMS32031_R7:		sprintf(info->s, " R7:%08X", tms32031.r[TMR_R7].i32[0]); break;
-		case CPUINFO_STR_REGISTER + TMS32031_R0F:		sprintf(info->s, "R0F:%8g", dsp_to_double(&tms32031.r[TMR_R0])); break;
-		case CPUINFO_STR_REGISTER + TMS32031_R1F:		sprintf(info->s, "R1F:%8g", dsp_to_double(&tms32031.r[TMR_R1])); break;
-		case CPUINFO_STR_REGISTER + TMS32031_R2F:		sprintf(info->s, "R2F:%8g", dsp_to_double(&tms32031.r[TMR_R2])); break;
-		case CPUINFO_STR_REGISTER + TMS32031_R3F:		sprintf(info->s, "R3F:%8g", dsp_to_double(&tms32031.r[TMR_R3])); break;
-		case CPUINFO_STR_REGISTER + TMS32031_R4F:		sprintf(info->s, "R4F:%8g", dsp_to_double(&tms32031.r[TMR_R4])); break;
-		case CPUINFO_STR_REGISTER + TMS32031_R5F:		sprintf(info->s, "R5F:%8g", dsp_to_double(&tms32031.r[TMR_R5])); break;
-		case CPUINFO_STR_REGISTER + TMS32031_R6F:		sprintf(info->s, "R6F:%8g", dsp_to_double(&tms32031.r[TMR_R6])); break;
-		case CPUINFO_STR_REGISTER + TMS32031_R7F:		sprintf(info->s, "R7F:%8g", dsp_to_double(&tms32031.r[TMR_R7])); break;
+		case CPUINFO_STR_REGISTER + TMS32031_R0F:		sprintf(info->s, "R0F:!%12g", dsp_to_double(&tms32031.r[TMR_R0])); break;
+		case CPUINFO_STR_REGISTER + TMS32031_R1F:		sprintf(info->s, "R1F:!%12g", dsp_to_double(&tms32031.r[TMR_R1])); break;
+		case CPUINFO_STR_REGISTER + TMS32031_R2F:		sprintf(info->s, "R2F:!%12g", dsp_to_double(&tms32031.r[TMR_R2])); break;
+		case CPUINFO_STR_REGISTER + TMS32031_R3F:		sprintf(info->s, "R3F:!%12g", dsp_to_double(&tms32031.r[TMR_R3])); break;
+		case CPUINFO_STR_REGISTER + TMS32031_R4F:		sprintf(info->s, "R4F:!%12g", dsp_to_double(&tms32031.r[TMR_R4])); break;
+		case CPUINFO_STR_REGISTER + TMS32031_R5F:		sprintf(info->s, "R5F:!%12g", dsp_to_double(&tms32031.r[TMR_R5])); break;
+		case CPUINFO_STR_REGISTER + TMS32031_R6F:		sprintf(info->s, "R6F:!%12g", dsp_to_double(&tms32031.r[TMR_R6])); break;
+		case CPUINFO_STR_REGISTER + TMS32031_R7F:		sprintf(info->s, "R7F:!%12g", dsp_to_double(&tms32031.r[TMR_R7])); break;
 		case CPUINFO_STR_REGISTER + TMS32031_AR0:		sprintf(info->s, "AR0:%08X", tms32031.r[TMR_AR0].i32[0]); break;
 		case CPUINFO_STR_REGISTER + TMS32031_AR1:		sprintf(info->s, "AR1:%08X", tms32031.r[TMR_AR1].i32[0]); break;
 		case CPUINFO_STR_REGISTER + TMS32031_AR2:		sprintf(info->s, "AR2:%08X", tms32031.r[TMR_AR2].i32[0]); break;
@@ -806,5 +811,19 @@ void tms32031_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_REGISTER + TMS32031_RS:		sprintf(info->s, " RS:%08X", tms32031.r[TMR_RS].i32[0]); break;
 		case CPUINFO_STR_REGISTER + TMS32031_RE:		sprintf(info->s, " RE:%08X", tms32031.r[TMR_RE].i32[0]); break;
 		case CPUINFO_STR_REGISTER + TMS32031_RC:		sprintf(info->s, " RC:%08X", tms32031.r[TMR_RC].i32[0]); break;
+	}
+}
+
+void tms32032_get_info(UINT32 state, cpuinfo *info)
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_internal_32032; break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case CPUINFO_STR_NAME:							strcpy(info->s, "TMS32032");			break;
+
+		default:										tms32031_get_info(state, info);			break;
 	}
 }

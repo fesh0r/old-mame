@@ -69,7 +69,7 @@ static TIMER_CALLBACK( gunbustr_interrupt5 )
 
 static INTERRUPT_GEN( gunbustr_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(200000-500,0),0, gunbustr_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, gunbustr_interrupt5);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -181,7 +181,7 @@ static READ32_HANDLER( gunbustr_gun_r )
 static WRITE32_HANDLER( gunbustr_gun_w )
 {
 	/* 10000 cycle delay is arbitrary */
-	mame_timer_set(MAME_TIME_IN_CYCLES(10000,0),0, gunbustr_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0),0, gunbustr_interrupt5);
 }
 
 
@@ -220,7 +220,7 @@ ADDRESS_MAP_END
              INPUT PORTS (dips in eprom)
 ***********************************************************/
 
-INPUT_PORTS_START( gunbustr )
+static INPUT_PORTS_START( gunbustr )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN )

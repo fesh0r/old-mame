@@ -135,7 +135,7 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( koikoi )
+static INPUT_PORTS_START( koikoi )
 	PORT_START	/* DSW */
 	PORT_DIPNAME( 0x03, 0x01, "Timer C" )
 	 PORT_DIPSETTING(    0x00, "50" )
@@ -188,7 +188,7 @@ INPUT_PORTS_START( koikoi )
 
 INPUT_PORTS_END
 
-PALETTE_INIT( koikoi ) //wrong
+static PALETTE_INIT( koikoi ) //wrong
 {
 	int i;
 
@@ -209,12 +209,12 @@ PALETTE_INIT( koikoi ) //wrong
 	}
 }
 
-VIDEO_START(koikoi)
+static VIDEO_START(koikoi)
 {
 	koikoi_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
 }
 
-VIDEO_UPDATE(koikoi)
+static VIDEO_UPDATE(koikoi)
 {
 	tilemap_draw(bitmap,cliprect,koikoi_tilemap,0,0);
 	return 0;

@@ -19,7 +19,7 @@ VIDEO_UPDATE( citycon );
 VIDEO_START( citycon );
 
 
-READ8_HANDLER( citycon_in_r )
+static READ8_HANDLER( citycon_in_r )
 {
 	return readinputport(flip_screen ? 1 : 0);
 }
@@ -66,7 +66,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( citycon )
+static INPUT_PORTS_START( citycon )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY

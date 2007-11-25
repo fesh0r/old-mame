@@ -298,7 +298,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xe80000, 0xe80001) AM_WRITE(reg_e80000_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( deroon )
+static INPUT_PORTS_START( deroon )
 	PORT_START
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_HIGH,IPT_UNKNOWN )
@@ -398,7 +398,7 @@ ADDRESS_MAP_END
 
 
 
-VIDEO_START(deroon)
+static VIDEO_START(deroon)
 {
 	txt_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32*2,32*2);
 	tilemap_set_transparent_pen(txt_tilemap,0);
@@ -407,7 +407,7 @@ VIDEO_START(deroon)
 
 
 
-VIDEO_UPDATE(deroon)
+static VIDEO_UPDATE(deroon)
 {
 
 
@@ -660,7 +660,7 @@ static DRIVER_INIT( deroon )
 	ROM[0x044A/2] = 0x4E71;
 	ROM[0x04bc/2] = 0x0000;
 	ROM[0x302c/2] = 0x60a4;
-	mame_timer_set(MAME_TIME_IN_SEC(2),0,reset_callback);
+	timer_set(ATTOTIME_IN_SEC(2),0,reset_callback);
 	gametype=0;
 }
 
@@ -682,7 +682,7 @@ static DRIVER_INIT( tkdensho )
 	ROM[0x04822/2] = 0x4E71;
 	ROM[0x04862/2] = 0x4E71;
 
-	mame_timer_set(MAME_TIME_IN_SEC(2),0,reset_callback);
+	timer_set(ATTOTIME_IN_SEC(2),0,reset_callback);
 	gametype=1;
 
 }

@@ -134,7 +134,7 @@ static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( trvquest )
+static INPUT_PORTS_START( trvquest )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -220,7 +220,7 @@ static void via_irq(int state)
 	/* Kaos sits in a tight loop polling the VIA irq flags register, but that register is
        cleared by the irq handler. Therefore, I wait a bit before triggering the irq to
        leave time for the program to see the flag change. */
-	mame_timer_set(MAME_TIME_IN_USEC(50), state, via_irq_delayed);
+	timer_set(ATTOTIME_IN_USEC(50), state, via_irq_delayed);
 }
 
 

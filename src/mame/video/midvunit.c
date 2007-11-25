@@ -13,18 +13,10 @@
 
 
 #define WATCH_RENDER		(0)
-#define KEEP_STATISTICS		(0)
 #define LOG_DMA				(0)
 
 
 #define DMA_CLOCK			40000000
-
-
-#if KEEP_STATISTICS
-#define ADD_TO_PIXEL_COUNT(a)	do { if ((a) > 0) pixelcount += (a); } while (0)
-#else
-#define ADD_TO_PIXEL_COUNT(a)
-#endif
 
 
 /* for when we implement DMA timing */
@@ -42,14 +34,17 @@ static UINT8 dma_data_index;
 static UINT16 page_control;
 static UINT8 video_changed;
 
-static mame_timer *scanline_timer;
+static emu_timer *scanline_timer;
+static poly_manager *poly;
 
-static struct poly_vertex vert[4];
-static UINT8 topleft, topright, botleft, botright;
+typedef struct _poly_extra_data poly_extra_data;
+struct _poly_extra_data
+{
+	UINT8 *		texbase;
+	UINT16 		pixdata;
+	UINT8		dither;
+};
 
-#if KEEP_STATISTICS
-static int polycount, pixelcount, lastfps, framecount, totalframes;
-#endif
 
 
 /*************************************
@@ -63,409 +58,21 @@ static TIMER_CALLBACK( scanline_timer_cb )
 	int scanline = param;
 
 	cpunum_set_input_line(0, 0, ASSERT_LINE);
-	mame_timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline + 1, 0), scanline, time_zero);
+	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline + 1, 0), scanline, attotime_zero);
+}
+
+
+static void midvunit_exit(running_machine *machine)
+{
+	poly_free(poly);
 }
 
 
 VIDEO_START( midvunit )
 {
-	scanline_timer = mame_timer_alloc(scanline_timer_cb);
-}
-
-
-
-/*************************************
- *
- *  Returns true if the quad is
- *  straight-on
- *
- *************************************/
-
-INLINE int quad_is_straight(void)
-{
-	INT32 x1, x2, y1, y2, t;
-
-	x1 = vert[0].x;
-	t = vert[1].x;
-
-	/* case 1: the first two verts are the two extremes */
-	if (t != x1)
-	{
-		x2 = t;
-		t = vert[2].x;
-		if (t != x1)
-		{
-			if (t != x2 || vert[3].x != x1)
-				return 0;
-		}
-		else
-		{
-			if (vert[3].x != x2)
-				return 0;
-		}
-	}
-
-	/* case 2: the first two verts are the same */
-	else
-	{
-		x2 = vert[2].x;
-		if (vert[3].x != x2)
-			return 0;
-	}
-
-	y1 = vert[0].y;
-	t = vert[1].y;
-
-	/* case 1: the first two verts are the two extremes */
-	if (t != y1)
-	{
-		y2 = t;
-		t = vert[2].y;
-		if (t != y1)
-		{
-			if (t != y2 || vert[3].y != y1)
-				return 0;
-		}
-		else
-		{
-			if (vert[3].y != y2)
-				return 0;
-		}
-	}
-
-	/* case 2: the first two verts are the same */
-	else
-	{
-		y2 = vert[2].y;
-		if (vert[3].y != y2)
-			return 0;
-	}
-
-	/* sort into min/max */
-	if (x1 > x2) { t = x1; x1 = x2; x2 = t; }
-	if (y1 > y2) { t = y1; y1 = y2; y2 = t; }
-
-	/* determine the corners */
-	for (t = 0; t < 4; t++)
-	{
-		if (vert[t].x == x1)
-		{
-			if (vert[t].y == y1)
-				topleft = t;
-			else
-				botleft = t;
-		}
-		else
-		{
-			if (vert[t].y == y1)
-				topright = t;
-			else
-				botright = t;
-		}
-	}
-
-	return 1;
-}
-
-
-
-/*************************************
- *
- *  Straight, flat quad renderers
- *
- *************************************/
-
-static void render_straight_flat_quad(running_machine *machine)
-{
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT16 pixdata = dma_data[1] | (dma_data[0] & 0x00ff);
-	INT32 sx, sy, ex, ey, x, y;
-
-	/* compute parameters */
-	sx = vert[topleft].x;
-	ex = vert[topright].x;
-	sy = vert[topleft].y;
-	ey = vert[botleft].y;
-
-	/* clip */
-	if (sx < machine->screen[0].visarea.min_x)
-		sx = machine->screen[0].visarea.min_x;
-	if (ex > machine->screen[0].visarea.max_x)
-		ex = machine->screen[0].visarea.max_x;
-	if (sy < machine->screen[0].visarea.min_y)
-		sy = machine->screen[0].visarea.min_y;
-	if (ey > machine->screen[0].visarea.max_y)
-		ey = machine->screen[0].visarea.max_y;
-
-	ADD_TO_PIXEL_COUNT((ey - sy + 1) * (ex - sx + 1));
-
-	/* loop over rows */
-	for (y = sy; y <= ey; y++)
-	{
-		UINT16 *d = dest + y * 512 + sx;
-		if (pixdata)
-			for (x = sx; x <= ex; x++)
-				*d++ = pixdata;
-		else
-			memset(d, 0, 2 * (ex - sx + 1));
-	}
-}
-
-
-static void render_straight_flat_dither_quad(running_machine *machine)
-{
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT16 pixdata = dma_data[1] | (dma_data[0] & 0x00ff);
-	INT32 sx, sy, ex, ey, x, y;
-
-	/* compute parameters */
-	sx = vert[topleft].x;
-	ex = vert[topright].x;
-	sy = vert[topleft].y;
-	ey = vert[botleft].y;
-
-	/* clip */
-	if (sx < machine->screen[0].visarea.min_x)
-		sx = machine->screen[0].visarea.min_x;
-	if (ex > machine->screen[0].visarea.max_x)
-		ex = machine->screen[0].visarea.max_x;
-	if (sy < machine->screen[0].visarea.min_y)
-		sy = machine->screen[0].visarea.min_y;
-	if (ey > machine->screen[0].visarea.max_y)
-		ey = machine->screen[0].visarea.max_y;
-
-	ADD_TO_PIXEL_COUNT((ey - sy + 1) * (ex - sx + 1));
-
-	/* loop over rows */
-	for (y = sy; y <= ey; y++)
-	{
-		UINT16 *d = dest + y * 512;
-		int tsx = sx + ((sx ^ y) & 1);
-		for (x = tsx; x <= ex; x += 2)
-			d[x] = pixdata;
-	}
-}
-
-
-
-/*************************************
- *
- *  Straight, textured quad renderers
- *
- *************************************/
-
-static void render_straight_tex_quad(running_machine *machine)
-{
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT8 *texbase = (UINT8 *)midvunit_textureram + (dma_data[14] * 256);
-	UINT16 pixdata = dma_data[1];
-	INT32 sx, sy, ex, ey, su, sv, dudx, dvdx, dudy, dvdy, x, y, u, v;
-
-	/* compute parameters */
-	sx = vert[topleft].x;
-	ex = vert[topright].x;
-	sy = vert[topleft].y;
-	ey = vert[botleft].y;
-	su = (dma_data[10 + topleft] & 0x00ff) << 16;
-	sv = (dma_data[10 + topleft] & 0xff00) << 8;
-
-	/* compute texture deltas */
-	if (ex != sx)
-	{
-		dudx = (((dma_data[10 + topright] & 0x00ff) << 16) - su) / (ex - sx);
-		dvdx = (((dma_data[10 + topright] & 0xff00) << 8 ) - sv) / (ex - sx);
-	}
-	else
-		dudx = dvdx = 1;
-	if (ey != sy)
-	{
-		dudy = (((dma_data[10 + botleft] & 0x00ff) << 16) - su) / (ey - sy);
-		dvdy = (((dma_data[10 + botleft] & 0xff00) << 8 ) - sv) / (ey - sy);
-	}
-	else
-		dudy = dvdy = 1;
-
-	/* clip */
-	if (sx < machine->screen[0].visarea.min_x)
-	{
-		su += (machine->screen[0].visarea.min_x - sx) * dudx;
-		sv += (machine->screen[0].visarea.min_x - sx) * dvdx;
-		sx = machine->screen[0].visarea.min_x;
-	}
-	if (ex > machine->screen[0].visarea.max_x)
-		ex = machine->screen[0].visarea.max_x;
-	if (sy < machine->screen[0].visarea.min_y)
-	{
-		su += (machine->screen[0].visarea.min_y - sy) * dudy;
-		sv += (machine->screen[0].visarea.min_y - sy) * dvdy;
-		sy = machine->screen[0].visarea.min_y;
-	}
-	if (ey > machine->screen[0].visarea.max_y)
-		ey = machine->screen[0].visarea.max_y;
-
-	ADD_TO_PIXEL_COUNT((ey - sy + 1) * (ex - sx + 1));
-
-	/* loop over rows */
-	for (y = sy; y <= ey; y++)
-	{
-		UINT16 *d = dest + y * 512;
-
-		u = su;
-		v = sv;
-		su += dudy;
-		sv += dvdy;
-
-		for (x = sx; x <= ex; x++)
-		{
-			d[x] = pixdata | texbase[((v >> 8) & 0xff00) + (u >> 16)];
-			u += dudx;
-			v += dvdx;
-		}
-	}
-}
-
-
-static void render_straight_textrans_quad(running_machine *machine)
-{
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT8 *texbase = (UINT8 *)midvunit_textureram + (dma_data[14] * 256);
-	UINT16 pixdata = dma_data[1];
-	INT32 sx, sy, ex, ey, su, sv, dudx, dvdx, dudy, dvdy, x, y, u, v;
-
-	/* compute parameters */
-	sx = vert[topleft].x;
-	ex = vert[topright].x;
-	sy = vert[topleft].y;
-	ey = vert[botleft].y;
-	su = (dma_data[10 + topleft] & 0x00ff) << 16;
-	sv = (dma_data[10 + topleft] & 0xff00) << 8;
-
-	/* compute texture deltas */
-	if (ex != sx)
-	{
-		dudx = (((dma_data[10 + topright] & 0x00ff) << 16) - su) / (ex - sx);
-		dvdx = (((dma_data[10 + topright] & 0xff00) << 8 ) - sv) / (ex - sx);
-	}
-	else
-		dudx = dvdx = 1;
-	if (ey != sy)
-	{
-		dudy = (((dma_data[10 + botleft] & 0x00ff) << 16) - su) / (ey - sy);
-		dvdy = (((dma_data[10 + botleft] & 0xff00) << 8 ) - sv) / (ey - sy);
-	}
-	else
-		dudy = dvdy = 1;
-
-	/* clip */
-	if (sx < machine->screen[0].visarea.min_x)
-	{
-		su += (machine->screen[0].visarea.min_x - sx) * dudx;
-		sv += (machine->screen[0].visarea.min_x - sx) * dvdx;
-		sx = machine->screen[0].visarea.min_x;
-	}
-	if (ex > machine->screen[0].visarea.max_x)
-		ex = machine->screen[0].visarea.max_x;
-	if (sy < machine->screen[0].visarea.min_y)
-	{
-		su += (machine->screen[0].visarea.min_y - sy) * dudy;
-		sv += (machine->screen[0].visarea.min_y - sy) * dvdy;
-		sy = machine->screen[0].visarea.min_y;
-	}
-	if (ey > machine->screen[0].visarea.max_y)
-		ey = machine->screen[0].visarea.max_y;
-
-	ADD_TO_PIXEL_COUNT((ey - sy + 1) * (ex - sx + 1));
-
-	/* loop over rows */
-	for (y = sy; y <= ey; y++)
-	{
-		UINT16 *d = dest + y * 512;
-
-		u = su;
-		v = sv;
-		su += dudy;
-		sv += dvdy;
-
-		for (x = sx; x <= ex; x++)
-		{
-			int pix = texbase[((v >> 8) & 0xff00) + (u >> 16)];
-			if (pix) d[x] = pixdata | pix;
-			u += dudx;
-			v += dvdx;
-		}
-	}
-}
-
-
-static void render_straight_textransmask_quad(running_machine *machine)
-{
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT8 *texbase = (UINT8 *)midvunit_textureram + (dma_data[14] * 256);
-	UINT16 pixdata = dma_data[1] | (dma_data[0] & 0x00ff);
-	INT32 sx, sy, ex, ey, su, sv, dudx, dvdx, dudy, dvdy, x, y, u, v;
-
-	/* compute parameters */
-	sx = vert[topleft].x;
-	ex = vert[topright].x;
-	sy = vert[topleft].y;
-	ey = vert[botleft].y;
-	su = (dma_data[10 + topleft] & 0x00ff) << 16;
-	sv = (dma_data[10 + topleft] & 0xff00) << 8;
-
-	/* compute texture deltas */
-	if (ex != sx)
-	{
-		dudx = (((dma_data[10 + topright] & 0x00ff) << 16) - su) / (ex - sx);
-		dvdx = (((dma_data[10 + topright] & 0xff00) << 8 ) - sv) / (ex - sx);
-	}
-	else
-		dudx = dvdx = 1;
-	if (ey != sy)
-	{
-		dudy = (((dma_data[10 + botleft] & 0x00ff) << 16) - su) / (ey - sy);
-		dvdy = (((dma_data[10 + botleft] & 0xff00) << 8 ) - sv) / (ey - sy);
-	}
-	else
-		dudy = dvdy = 1;
-
-	/* clip */
-	if (sx < machine->screen[0].visarea.min_x)
-	{
-		su += (machine->screen[0].visarea.min_x - sx) * dudx;
-		sv += (machine->screen[0].visarea.min_x - sx) * dvdx;
-		sx = machine->screen[0].visarea.min_x;
-	}
-	if (ex > machine->screen[0].visarea.max_x)
-		ex = machine->screen[0].visarea.max_x;
-	if (sy < machine->screen[0].visarea.min_y)
-	{
-		su += (machine->screen[0].visarea.min_y - sy) * dudy;
-		sv += (machine->screen[0].visarea.min_y - sy) * dvdy;
-		sy = machine->screen[0].visarea.min_y;
-	}
-	if (ey > machine->screen[0].visarea.max_y)
-		ey = machine->screen[0].visarea.max_y;
-
-	ADD_TO_PIXEL_COUNT((ey - sy + 1) * (ex - sx + 1));
-
-	/* loop over rows */
-	for (y = sy; y <= ey; y++)
-	{
-		UINT16 *d = dest + y * 512;
-
-		u = su;
-		v = sv;
-		su += dudy;
-		sv += dvdy;
-
-		for (x = sx; x <= ex; x++)
-		{
-			int pix = texbase[((v >> 8) & 0xff00) + (u >> 16)];
-			if (pix) d[x] = pixdata;
-			u += dudx;
-			v += dvdx;
-		}
-	}
+	scanline_timer = timer_alloc(scanline_timer_cb);
+	poly = poly_alloc(4000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
+	add_exit_callback(machine, midvunit_exit);
 }
 
 
@@ -476,72 +83,27 @@ static void render_straight_textransmask_quad(running_machine *machine)
  *
  *************************************/
 
-static void render_flat_quad(running_machine *machine)
+static void render_flat(void *destbase, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid)
 {
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT16 pixdata = dma_data[1] | (dma_data[0] & 0x00ff);
-	const struct poly_scanline_data *scans;
-	const struct poly_scanline *curscan;
-	int x, y, i;
+	const poly_extra_data *extra = extradata;
+	UINT16 pixdata = extra->pixdata;
+	int xstep = extra->dither + 1;
+	UINT16 *dest = (UINT16 *)destbase + scanline * 512;
+	int startx = extent->startx;
+	int x;
 
-	/* loop over two tris */
-	for (i = 0; i < 2; i++)
+	/* if dithering, ensure that we start on an appropriate pixel */
+	startx += (scanline ^ startx) & extra->dither;
+
+	/* non-dithered 0 pixels can use a memset */
+	if (pixdata == 0 && xstep == 1)
+		memset(&dest[startx], 0, 2 * (extent->stopx - startx + 1));
+
+	/* otherwise, we fill manually */
+	else
 	{
-		/* first tri is 0,1,2; second is 0,3,2 */
-		if (i == 0)
-			scans = setup_triangle_0(&vert[0], &vert[1], &vert[2], &machine->screen[0].visarea);
-		else
-			scans = setup_triangle_0(&vert[0], &vert[3], &vert[2], &machine->screen[0].visarea);
-
-		/* skip if we're clipped out */
-		if (!scans)
-			continue;
-
-		/* loop over scanlines */
-		curscan = scans->scanline;
-		for (y = scans->sy; y <= scans->ey; y++, curscan++)
-		{
-			UINT16 *d = dest + y * 512 + curscan->sx;
-			int width = curscan->ex - curscan->sx + 1;
-			ADD_TO_PIXEL_COUNT(curscan->ex - curscan->sx + 1);
-			for (x = 0; x < width; x++)
-				d[x] = pixdata;
-		}
-	}
-}
-
-
-static void render_flat_dither_quad(running_machine *machine)
-{
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT16 pixdata = dma_data[1] | (dma_data[0] & 0x00ff);
-	const struct poly_scanline_data *scans;
-	const struct poly_scanline *curscan;
-	int x, y, i;
-
-	/* loop over two tris */
-	for (i = 0; i < 2; i++)
-	{
-		/* first tri is 0,1,2; second is 0,3,2 */
-		if (i == 0)
-			scans = setup_triangle_0(&vert[0], &vert[1], &vert[2], &machine->screen[0].visarea);
-		else
-			scans = setup_triangle_0(&vert[0], &vert[3], &vert[2], &machine->screen[0].visarea);
-
-		/* skip if we're clipped out */
-		if (!scans)
-			continue;
-
-		/* loop over scanlines */
-		curscan = scans->scanline;
-		for (y = scans->sy; y <= scans->ey; y++, curscan++)
-		{
-			int tsx = curscan->sx + ((curscan->sx ^ y) & 1);
-			UINT16 *d = dest + y * 512;
-			ADD_TO_PIXEL_COUNT(curscan->ex - curscan->sx + 1);
-			for (x = tsx; x <= curscan->ex; x += 2)
-				d[x] = pixdata;
-		}
+		for (x = startx; x < extent->stopx; x += xstep)
+			dest[x] = pixdata;
 	}
 }
 
@@ -553,358 +115,120 @@ static void render_flat_dither_quad(running_machine *machine)
  *
  *************************************/
 
-static void render_tex_quad(running_machine *machine)
+static void render_tex(void *destbase, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid)
 {
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT8 *texbase = (UINT8 *)midvunit_textureram + (dma_data[14] * 256);
-	UINT16 pixdata = dma_data[1];
-	const struct poly_scanline_data *scans;
-	const struct poly_scanline *curscan;
-	int x, y, i;
+	const poly_extra_data *extra = extradata;
+	UINT16 pixdata = extra->pixdata & 0xff00;
+	const UINT8 *texbase = extra->texbase;
+	int xstep = extra->dither + 1;
+	UINT16 *dest = (UINT16 *)destbase + scanline * 512;
+	int startx = extent->startx;
+	int stopx = extent->stopx;
+	INT32 u = extent->param[0].start;
+	INT32 v = extent->param[1].start;
+	INT32 dudx = extent->param[0].dpdx;
+	INT32 dvdx = extent->param[1].dpdx;
+	int x;
 
-	/* fill in the vertex data */
-	vert[0].p[0] = dma_data[10] & 0xff;
-	vert[0].p[1] = dma_data[10] >> 8;
-	vert[1].p[0] = dma_data[11] & 0xff;
-	vert[1].p[1] = dma_data[11] >> 8;
-	vert[2].p[0] = dma_data[12] & 0xff;
-	vert[2].p[1] = dma_data[12] >> 8;
-	vert[3].p[0] = dma_data[13] & 0xff;
-	vert[3].p[1] = dma_data[13] >> 8;
-
-	/* loop over two tris */
-	for (i = 0; i < 2; i++)
+	/* if dithering, we advance by 2x; also ensure that we start on an appropriate pixel */
+	if (xstep == 2)
 	{
-		/* first tri is 0,1,2; second is 0,3,2 */
-		if (i == 0)
-			scans = setup_triangle_2(&vert[0], &vert[1], &vert[2], &machine->screen[0].visarea);
-		else
-			scans = setup_triangle_2(&vert[0], &vert[3], &vert[2], &machine->screen[0].visarea);
-
-		/* skip if we're clipped out */
-		if (!scans)
-			continue;
-
-		/* loop over scanlines */
-		curscan = scans->scanline;
-		for (y = scans->sy; y <= scans->ey; y++, curscan++)
+		if ((scanline ^ startx) & 1)
 		{
-			UINT16 *d = dest + y * 512 + curscan->sx;
-			int width = curscan->ex - curscan->sx + 1;
-			int u = curscan->p[0], dudx = scans->dp[0];
-			int v = curscan->p[1], dvdx = scans->dp[1];
-			ADD_TO_PIXEL_COUNT(curscan->ex - curscan->sx + 1);
-			for (x = 0; x < width; x++)
-			{
-				d[x] = pixdata | texbase[((v >> 8) & 0xff00) + (u >> 16)];
-				u += dudx;
-				v += dvdx;
-			}
+			startx++;
+			u += dudx;
+			v += dvdx;
 		}
+		dudx *= 2;
+		dvdx *= 2;
+	}
+
+	/* general case; render every pixel */
+	for (x = startx; x < stopx; x += xstep)
+	{
+		dest[x] = pixdata | texbase[((v >> 8) & 0xff00) + (u >> 16)];
+		u += dudx;
+		v += dvdx;
 	}
 }
 
 
-static void render_textrans_quad(running_machine *machine)
+static void render_textrans(void *destbase, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid)
 {
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT8 *texbase = (UINT8 *)midvunit_textureram + (dma_data[14] * 256);
-	UINT16 pixdata = dma_data[1];
-	const struct poly_scanline_data *scans;
-	const struct poly_scanline *curscan;
-	int x, y, i;
+	const poly_extra_data *extra = extradata;
+	UINT16 pixdata = extra->pixdata & 0xff00;
+	const UINT8 *texbase = extra->texbase;
+	int xstep = extra->dither + 1;
+	UINT16 *dest = (UINT16 *)destbase + scanline * 512;
+	int startx = extent->startx;
+	int stopx = extent->stopx;
+	INT32 u = extent->param[0].start;
+	INT32 v = extent->param[1].start;
+	INT32 dudx = extent->param[0].dpdx;
+	INT32 dvdx = extent->param[1].dpdx;
+	int x;
 
-	/* fill in the vertex data */
-	vert[0].p[0] = dma_data[10] & 0xff;
-	vert[0].p[1] = dma_data[10] >> 8;
-	vert[1].p[0] = dma_data[11] & 0xff;
-	vert[1].p[1] = dma_data[11] >> 8;
-	vert[2].p[0] = dma_data[12] & 0xff;
-	vert[2].p[1] = dma_data[12] >> 8;
-	vert[3].p[0] = dma_data[13] & 0xff;
-	vert[3].p[1] = dma_data[13] >> 8;
-
-	/* loop over two tris */
-	for (i = 0; i < 2; i++)
+	/* if dithering, we advance by 2x; also ensure that we start on an appropriate pixel */
+	if (xstep == 2)
 	{
-		/* first tri is 0,1,2; second is 0,3,2 */
-		if (i == 0)
-			scans = setup_triangle_2(&vert[0], &vert[1], &vert[2], &machine->screen[0].visarea);
-		else
-			scans = setup_triangle_2(&vert[0], &vert[3], &vert[2], &machine->screen[0].visarea);
-
-		/* skip if we're clipped out */
-		if (!scans)
-			continue;
-
-		/* loop over scanlines */
-		curscan = scans->scanline;
-		for (y = scans->sy; y <= scans->ey; y++, curscan++)
+		if ((scanline ^ startx) & 1)
 		{
-			UINT16 *d = dest + y * 512 + curscan->sx;
-			int width = curscan->ex - curscan->sx + 1;
-			int u = curscan->p[0], dudx = scans->dp[0];
-			int v = curscan->p[1], dvdx = scans->dp[1];
-			ADD_TO_PIXEL_COUNT(curscan->ex - curscan->sx + 1);
-			for (x = 0; x < width; x++)
-			{
-				int pix = texbase[((v >> 8) & 0xff00) + (u >> 16)];
-				if (pix) d[x] = pixdata | pix;
-				u += dudx;
-				v += dvdx;
-			}
+			startx++;
+			u += dudx;
+			v += dvdx;
 		}
+		dudx *= 2;
+		dvdx *= 2;
+	}
+
+	/* general case; render every non-zero texel */
+	for (x = startx; x < stopx; x += xstep)
+	{
+		UINT8 pix = texbase[((v >> 8) & 0xff00) + (u >> 16)];
+		if (pix != 0)
+			dest[x] = pixdata | pix;
+		u += dudx;
+		v += dvdx;
 	}
 }
 
 
-static void render_textransmask_quad(running_machine *machine)
+static void render_textransmask(void *destbase, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid)
 {
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT8 *texbase = (UINT8 *)midvunit_textureram + (dma_data[14] * 256);
-	UINT16 pixdata = dma_data[1] | (dma_data[0] & 0x00ff);
-	const struct poly_scanline_data *scans;
-	const struct poly_scanline *curscan;
-	int x, y, i;
+	const poly_extra_data *extra = extradata;
+	UINT16 pixdata = extra->pixdata;
+	const UINT8 *texbase = extra->texbase;
+	int xstep = extra->dither + 1;
+	UINT16 *dest = (UINT16 *)destbase + scanline * 512;
+	int startx = extent->startx;
+	int stopx = extent->stopx;
+	INT32 u = extent->param[0].start;
+	INT32 v = extent->param[1].start;
+	INT32 dudx = extent->param[0].dpdx;
+	INT32 dvdx = extent->param[1].dpdx;
+	int x;
 
-	/* fill in the vertex data */
-	vert[0].p[0] = dma_data[10] & 0xff;
-	vert[0].p[1] = dma_data[10] >> 8;
-	vert[1].p[0] = dma_data[11] & 0xff;
-	vert[1].p[1] = dma_data[11] >> 8;
-	vert[2].p[0] = dma_data[12] & 0xff;
-	vert[2].p[1] = dma_data[12] >> 8;
-	vert[3].p[0] = dma_data[13] & 0xff;
-	vert[3].p[1] = dma_data[13] >> 8;
-
-	/* loop over two tris */
-	for (i = 0; i < 2; i++)
+	/* if dithering, we advance by 2x; also ensure that we start on an appropriate pixel */
+	if (xstep == 2)
 	{
-		/* first tri is 0,1,2; second is 0,3,2 */
-		if (i == 0)
-			scans = setup_triangle_2(&vert[0], &vert[1], &vert[2], &machine->screen[0].visarea);
-		else
-			scans = setup_triangle_2(&vert[0], &vert[3], &vert[2], &machine->screen[0].visarea);
-
-		/* skip if we're clipped out */
-		if (!scans)
-			continue;
-
-		/* loop over scanlines */
-		curscan = scans->scanline;
-		for (y = scans->sy; y <= scans->ey; y++, curscan++)
+		if ((scanline ^ startx) & 1)
 		{
-			UINT16 *d = dest + y * 512 + curscan->sx;
-			int width = curscan->ex - curscan->sx + 1;
-			int u = curscan->p[0], dudx = scans->dp[0];
-			int v = curscan->p[1], dvdx = scans->dp[1];
-			ADD_TO_PIXEL_COUNT(curscan->ex - curscan->sx + 1);
-			for (x = 0; x < width; x++)
-			{
-				int pix = texbase[((v >> 8) & 0xff00) + (u >> 16)];
-				if (pix) d[x] = pixdata;
-				u += dudx;
-				v += dvdx;
-			}
+			startx++;
+			u += dudx;
+			v += dvdx;
 		}
+		dudx *= 2;
+		dvdx *= 2;
 	}
-}
 
-
-
-/*************************************
- *
- *  Generic dithered textured quad renderers
- *
- *************************************/
-
-static void render_tex_dither_quad(running_machine *machine)
-{
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT8 *texbase = (UINT8 *)midvunit_textureram + (dma_data[14] * 256);
-	UINT16 pixdata = dma_data[1];
-	const struct poly_scanline_data *scans;
-	const struct poly_scanline *curscan;
-	int x, y, i;
-
-	/* fill in the vertex data */
-	vert[0].p[0] = dma_data[10] & 0xff;
-	vert[0].p[1] = dma_data[10] >> 8;
-	vert[1].p[0] = dma_data[11] & 0xff;
-	vert[1].p[1] = dma_data[11] >> 8;
-	vert[2].p[0] = dma_data[12] & 0xff;
-	vert[2].p[1] = dma_data[12] >> 8;
-	vert[3].p[0] = dma_data[13] & 0xff;
-	vert[3].p[1] = dma_data[13] >> 8;
-
-	/* loop over two tris */
-	for (i = 0; i < 2; i++)
+	/* general case; every non-zero texel renders pixdata */
+	for (x = startx; x < stopx; x += xstep)
 	{
-		/* first tri is 0,1,2; second is 0,3,2 */
-		if (i == 0)
-			scans = setup_triangle_2(&vert[0], &vert[1], &vert[2], &machine->screen[0].visarea);
-		else
-			scans = setup_triangle_2(&vert[0], &vert[3], &vert[2], &machine->screen[0].visarea);
-
-		/* skip if we're clipped out */
-		if (!scans)
-			continue;
-
-		/* loop over scanlines */
-		curscan = scans->scanline;
-		for (y = scans->sy; y <= scans->ey; y++, curscan++)
-		{
-			int u = curscan->p[0], dudx = scans->dp[0];
-			int v = curscan->p[1], dvdx = scans->dp[1];
-			UINT16 *d = dest + y * 512;
-			int tsx = curscan->sx;
-
-			ADD_TO_PIXEL_COUNT(curscan->ex - curscan->sx + 1);
-			if ((tsx ^ y) & 1)
-			{
-				tsx++;
-				u += dudx;
-				v += dvdx;
-			}
-
-			dudx *= 2;
-			dvdx *= 2;
-
-			for (x = tsx; x <= curscan->ex; x += 2)
-			{
-				d[x] = pixdata | texbase[((v >> 8) & 0xff00) + (u >> 16)];
-				u += dudx;
-				v += dvdx;
-			}
-		}
-	}
-}
-
-
-static void render_textrans_dither_quad(running_machine *machine)
-{
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT8 *texbase = (UINT8 *)midvunit_textureram + (dma_data[14] * 256);
-	UINT16 pixdata = dma_data[1];
-	const struct poly_scanline_data *scans;
-	const struct poly_scanline *curscan;
-	int x, y, i;
-
-	/* fill in the vertex data */
-	vert[0].p[0] = dma_data[10] & 0xff;
-	vert[0].p[1] = dma_data[10] >> 8;
-	vert[1].p[0] = dma_data[11] & 0xff;
-	vert[1].p[1] = dma_data[11] >> 8;
-	vert[2].p[0] = dma_data[12] & 0xff;
-	vert[2].p[1] = dma_data[12] >> 8;
-	vert[3].p[0] = dma_data[13] & 0xff;
-	vert[3].p[1] = dma_data[13] >> 8;
-
-	/* loop over two tris */
-	for (i = 0; i < 2; i++)
-	{
-		/* first tri is 0,1,2; second is 0,3,2 */
-		if (i == 0)
-			scans = setup_triangle_2(&vert[0], &vert[1], &vert[2], &machine->screen[0].visarea);
-		else
-			scans = setup_triangle_2(&vert[0], &vert[3], &vert[2], &machine->screen[0].visarea);
-
-		/* skip if we're clipped out */
-		if (!scans)
-			continue;
-
-		/* loop over scanlines */
-		curscan = scans->scanline;
-		for (y = scans->sy; y <= scans->ey; y++, curscan++)
-		{
-			int u = curscan->p[0], dudx = scans->dp[0];
-			int v = curscan->p[1], dvdx = scans->dp[1];
-			UINT16 *d = dest + y * 512;
-			int tsx = curscan->sx;
-
-			ADD_TO_PIXEL_COUNT(curscan->ex - curscan->sx + 1);
-			if ((tsx ^ y) & 1)
-			{
-				tsx++;
-				u += dudx;
-				v += dvdx;
-			}
-
-			dudx *= 2;
-			dvdx *= 2;
-
-			for (x = tsx; x <= curscan->ex; x += 2)
-			{
-				int pix = texbase[((v >> 8) & 0xff00) + (u >> 16)];
-				if (pix) d[x] = pixdata | pix;
-				u += dudx;
-				v += dvdx;
-			}
-		}
-	}
-}
-
-
-static void render_textransmask_dither_quad(running_machine *machine)
-{
-	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
-	UINT8 *texbase = (UINT8 *)midvunit_textureram + (dma_data[14] * 256);
-	UINT16 pixdata = dma_data[1] | (dma_data[0] & 0x00ff);
-	const struct poly_scanline_data *scans;
-	const struct poly_scanline *curscan;
-	int x, y, i;
-
-	/* fill in the vertex data */
-	vert[0].p[0] = dma_data[10] & 0xff;
-	vert[0].p[1] = dma_data[10] >> 8;
-	vert[1].p[0] = dma_data[11] & 0xff;
-	vert[1].p[1] = dma_data[11] >> 8;
-	vert[2].p[0] = dma_data[12] & 0xff;
-	vert[2].p[1] = dma_data[12] >> 8;
-	vert[3].p[0] = dma_data[13] & 0xff;
-	vert[3].p[1] = dma_data[13] >> 8;
-
-	/* loop over two tris */
-	for (i = 0; i < 2; i++)
-	{
-		/* first tri is 0,1,2; second is 0,3,2 */
-		if (i == 0)
-			scans = setup_triangle_2(&vert[0], &vert[1], &vert[2], &machine->screen[0].visarea);
-		else
-			scans = setup_triangle_2(&vert[0], &vert[3], &vert[2], &machine->screen[0].visarea);
-
-		/* skip if we're clipped out */
-		if (!scans)
-			continue;
-
-		/* loop over scanlines */
-		curscan = scans->scanline;
-		for (y = scans->sy; y <= scans->ey; y++, curscan++)
-		{
-			int u = curscan->p[0], dudx = scans->dp[0];
-			int v = curscan->p[1], dvdx = scans->dp[1];
-			UINT16 *d = dest + y * 512;
-			int tsx = curscan->sx;
-
-			ADD_TO_PIXEL_COUNT(curscan->ex - curscan->sx + 1);
-			if ((tsx ^ y) & 1)
-			{
-				tsx++;
-				u += dudx;
-				v += dvdx;
-			}
-
-			dudx *= 2;
-			dvdx *= 2;
-
-			for (x = tsx; x <= curscan->ex; x += 2)
-			{
-				int pix = texbase[((v >> 8) & 0xff00) + (u >> 16)];
-				if (pix) d[x] = pixdata;
-				u += dudx;
-				v += dvdx;
-			}
-		}
+		UINT8 pix = texbase[((v >> 8) & 0xff00) + (u >> 16)];
+		if (pix != 0)
+			dest[x] = pixdata;
+		u += dudx;
+		v += dvdx;
 	}
 }
 
@@ -916,112 +240,120 @@ static void render_textransmask_dither_quad(running_machine *machine)
  *
  *************************************/
 
+static void make_vertices_inclusive(poly_vertex *vert)
+{
+	UINT8 rmask = 0, bmask = 0, eqmask = 0;
+	int vnum;
+
+	/* build up a mask of right and bottom points */
+	/* note we assume clockwise orientation here */
+	for (vnum = 0; vnum < 4; vnum++)
+	{
+		poly_vertex *currv = &vert[vnum];
+		poly_vertex *nextv = &vert[(vnum + 1) & 3];
+
+		/* if this vertex equals the next one, tag it */
+		if (nextv->y == currv->y && nextv->x == currv->x)
+			eqmask |= 1 << vnum;
+
+		/* if the next vertex is down from us, we are a right coordinate */
+		if (nextv->y > currv->y || (nextv->y == currv->y && nextv->x < currv->x))
+			rmask |= 1 << vnum;
+
+		/* if the next vertex is left from us, we are a bottom coordinate */
+		if (nextv->x < currv->x || (nextv->x == currv->x && nextv->y < currv->y))
+			bmask |= 1 << vnum;
+	}
+
+	/* bail on the edge case */
+	if (eqmask == 0x0f)
+		return;
+
+	/* adjust the right/bottom points so that they get included */
+	for (vnum = 0; vnum < 4; vnum++)
+	{
+		poly_vertex *currv = &vert[vnum];
+		int effvnum = vnum;
+
+		/* if we're equal to the next vertex, use that instead */
+		while (eqmask & (1 << effvnum))
+			effvnum = (effvnum + 1) & 3;
+
+		/* adjust the points */
+		if (rmask & (1 << effvnum))
+			currv->x += 0.001f;
+		if (bmask & (1 << effvnum))
+			currv->y += 0.001f;
+	}
+}
+
+
 static void process_dma_queue(running_machine *machine)
 {
+	poly_extra_data *extra = poly_get_extra_data(poly);
+	UINT16 *dest = &midvunit_videoram[(page_control & 4) ? 0x40000 : 0x00000];
 	int textured = ((dma_data[0] & 0x300) == 0x100);
-	int dithered = dma_data[0] & 0x2000;
-	int straight;
-
-#if KEEP_STATISTICS
-	polycount++;
-#endif
+	poly_draw_scanline callback;
+	poly_vertex vert[4];
 
 	/* if we're rendering to the same page we're viewing, it has changed */
 	if ((((page_control >> 2) ^ page_control) & 1) == 0)
 		video_changed = TRUE;
 
 	/* fill in the vertex data */
-	vert[0].x = (INT16)dma_data[2];
-	vert[0].y = (INT16)dma_data[3];
-	vert[1].x = (INT16)dma_data[4];
-	vert[1].y = (INT16)dma_data[5];
-	vert[2].x = (INT16)dma_data[6];
-	vert[2].y = (INT16)dma_data[7];
-	vert[3].x = (INT16)dma_data[8];
-	vert[3].y = (INT16)dma_data[9];
+	vert[0].x = (float)(INT16)dma_data[2] + 0.5f;
+	vert[0].y = (float)(INT16)dma_data[3] + 0.5f;
+	vert[1].x = (float)(INT16)dma_data[4] + 0.5f;
+	vert[1].y = (float)(INT16)dma_data[5] + 0.5f;
+	vert[2].x = (float)(INT16)dma_data[6] + 0.5f;
+	vert[2].y = (float)(INT16)dma_data[7] + 0.5f;
+	vert[3].x = (float)(INT16)dma_data[8] + 0.5f;
+	vert[3].y = (float)(INT16)dma_data[9] + 0.5f;
 
-	/* determine if it's straight-on or arbitrary */
-	straight = quad_is_straight();
+	/* make the vertices inclusive of right/bottom points */
+	make_vertices_inclusive(vert);
 
 	/* handle flat-shaded quads here */
 	if (!textured)
-	{
-		/* two cases: straight on and arbitrary */
-		if (straight)
-		{
-			if (!dithered)
-				render_straight_flat_quad(machine);
-			else
-				render_straight_flat_dither_quad(machine);
-		}
-		else
-		{
-			if (!dithered)
-				render_flat_quad(machine);
-			else
-				render_flat_dither_quad(machine);
-		}
-	}
+		callback = render_flat;
 
 	/* handle textured quads here */
 	else
 	{
-		/* three cases: straight on, non-dithered arbitrary, and dithered arbitrary */
-		if (straight && !dithered)
-		{
-			/* handle non-masked, non-transparent quads */
-			if ((dma_data[0] & 0xc00) == 0x000)
-				render_straight_tex_quad(machine);
+		/* if textured, add the texture info */
+		vert[0].p[0] = (float)(dma_data[10] & 0xff) * 65536.0f + 32768.0f;
+		vert[0].p[1] = (float)(dma_data[10] >> 8) * 65536.0f + 32768.0f;
+		vert[1].p[0] = (float)(dma_data[11] & 0xff) * 65536.0f + 32768.0f;
+		vert[1].p[1] = (float)(dma_data[11] >> 8) * 65536.0f + 32768.0f;
+		vert[2].p[0] = (float)(dma_data[12] & 0xff) * 65536.0f + 32768.0f;
+		vert[2].p[1] = (float)(dma_data[12] >> 8) * 65536.0f + 32768.0f;
+		vert[3].p[0] = (float)(dma_data[13] & 0xff) * 65536.0f + 32768.0f;
+		vert[3].p[1] = (float)(dma_data[13] >> 8) * 65536.0f + 32768.0f;
 
-			/* handle non-masked, transparent quads */
-			else if ((dma_data[0] & 0xc00) == 0x800)
-				render_straight_textrans_quad(machine);
+		/* handle non-masked, non-transparent quads */
+		if ((dma_data[0] & 0xc00) == 0x000)
+			callback = render_tex;
 
-			/* handle masked, transparent quads */
-			else if ((dma_data[0] & 0xc00) == 0xc00)
-				render_straight_textransmask_quad(machine);
+		/* handle non-masked, transparent quads */
+		else if ((dma_data[0] & 0xc00) == 0x800)
+			callback = render_textrans;
 
-			/* handle masked, non-transparent quads */
-			else
-				render_straight_flat_quad(machine);
-		}
-		else if (!dithered)
-		{
-			/* handle non-masked, non-transparent quads */
-			if ((dma_data[0] & 0xc00) == 0x000)
-				render_tex_quad(machine);
+		/* handle masked, transparent quads */
+		else if ((dma_data[0] & 0xc00) == 0xc00)
+			callback = render_textransmask;
 
-			/* handle non-masked, transparent quads */
-			else if ((dma_data[0] & 0xc00) == 0x800)
-				render_textrans_quad(machine);
-
-			/* handle masked, transparent quads */
-			else if ((dma_data[0] & 0xc00) == 0xc00)
-				render_textransmask_quad(machine);
-
-			/* handle masked, non-transparent quads */
-			else
-				render_flat_quad(machine);
-		}
+		/* handle masked, non-transparent quads */
 		else
-		{
-			/* handle non-masked, non-transparent quads */
-			if ((dma_data[0] & 0xc00) == 0x000)
-				render_tex_dither_quad(machine);
-
-			/* handle non-masked, transparent quads */
-			else if ((dma_data[0] & 0xc00) == 0x800)
-				render_textrans_dither_quad(machine);
-
-			/* handle masked, transparent quads */
-			else if ((dma_data[0] & 0xc00) == 0xc00)
-				render_textransmask_dither_quad(machine);
-
-			/* handle masked, non-transparent quads */
-			else
-				render_flat_dither_quad(machine);
-		}
+			callback = render_flat;
 	}
+
+	/* set up the extra data for this triangle */
+	extra->texbase = (UINT8 *)midvunit_textureram + (dma_data[14] * 256);
+	extra->pixdata = dma_data[1] | (dma_data[0] & 0x00ff);
+	extra->dither = ((dma_data[0] & 0x2000) != 0);
+
+	/* render as a quad */
+	poly_render_quad(poly, dest, &machine->screen[0].visarea, callback, textured ? 2 : 0, &vert[0], &vert[1], &vert[2], &vert[3]);
 }
 
 
@@ -1076,12 +408,6 @@ WRITE32_HANDLER( midvunit_page_control_w )
 		video_changed = TRUE;
 		if (LOG_DMA && input_code_pressed(KEYCODE_L))
 			logerror("##########################################################\n");
-#if KEEP_STATISTICS
-		popmessage("Polys:%d  Render:%d%%  FPS:%d",
-				polycount, pixelcount / (512*4), lastfps);
-		polycount = pixelcount = 0;
-		framecount++;
-#endif
 		video_screen_update_partial(0, video_screen_get_vpos(0) - 1);
 	}
 	page_control = data;
@@ -1110,7 +436,7 @@ WRITE32_HANDLER( midvunit_video_control_w )
 
 	/* update the scanline timer */
 	if (offset == 0)
-		mame_timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, (data & 0x1ff) + 1, 0), data & 0x1ff, time_zero);
+		timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, (data & 0x1ff) + 1, 0), data & 0x1ff, attotime_zero);
 
 	/* if something changed, update our parameters */
 	if (old != video_regs[offset] && video_regs[6] != 0 && video_regs[11] != 0)
@@ -1122,7 +448,7 @@ WRITE32_HANDLER( midvunit_video_control_w )
 		visarea.max_x = (video_regs[6] + video_regs[2] - video_regs[5]) % video_regs[6];
 		visarea.min_y = 0;
 		visarea.max_y = (video_regs[11] + video_regs[7] - video_regs[10]) % video_regs[11];
-		video_screen_configure(0, video_regs[6], video_regs[11], &visarea, HZ_TO_SUBSECONDS(MIDVUNIT_VIDEO_CLOCK / 2) * video_regs[6] * video_regs[11]);
+		video_screen_configure(0, video_regs[6], video_regs[11], &visarea, HZ_TO_ATTOSECONDS(MIDVUNIT_VIDEO_CLOCK / 2) * video_regs[6] * video_regs[11]);
 	}
 }
 
@@ -1142,6 +468,7 @@ READ32_HANDLER( midvunit_scanline_r )
 
 WRITE32_HANDLER( midvunit_videoram_w )
 {
+	poly_wait(poly, "Video RAM write");
 	if (!video_changed)
 	{
 		int visbase = (page_control & 1) ? 0x40000 : 0x00000;
@@ -1154,6 +481,7 @@ WRITE32_HANDLER( midvunit_videoram_w )
 
 READ32_HANDLER( midvunit_videoram_r )
 {
+	poly_wait(poly, "Video RAM read");
 	return midvunit_videoram[offset];
 }
 
@@ -1185,6 +513,7 @@ WRITE32_HANDLER( midvunit_paletteram_w )
 WRITE32_HANDLER( midvunit_textureram_w )
 {
 	UINT8 *base = (UINT8 *)midvunit_textureram;
+	poly_wait(poly, "Texture RAM write");
 	base[offset * 2] = data;
 	base[offset * 2 + 1] = data >> 8;
 }
@@ -1210,19 +539,12 @@ VIDEO_UPDATE( midvunit )
 	int x, y, width, xoffs;
 	UINT32 offset;
 
+	poly_wait(poly, "Refresh Time");
+
 	/* if the video didn't change, indicate as much */
 	if (!video_changed)
 		return UPDATE_HAS_NOT_CHANGED;
 	video_changed = FALSE;
-
-#if KEEP_STATISTICS
-	totalframes++;
-	if (totalframes == 57)
-	{
-		lastfps = framecount;
-		framecount = totalframes = 0;
-	}
-#endif
 
 	/* determine the base of the videoram */
 #if WATCH_RENDER

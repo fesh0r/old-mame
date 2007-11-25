@@ -123,8 +123,8 @@ static TIMER_CALLBACK( cave_vblank_end )
 /* Called once/frame to generate the VBLANK interrupt */
 static INTERRUPT_GEN( cave_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_USEC(17376-time_vblank_irq), 0, cave_vblank_start);
-	mame_timer_set(MAME_TIME_IN_USEC(17376-time_vblank_irq + 2000), 0, cave_vblank_end);
+	timer_set(ATTOTIME_IN_USEC(17376-time_vblank_irq), 0, cave_vblank_start);
+	timer_set(ATTOTIME_IN_USEC(17376-time_vblank_irq + 2000), 0, cave_vblank_end);
 }
 
 /* Called by the YMZ280B to set the IRQ state */
@@ -222,7 +222,7 @@ static WRITE16_HANDLER( sound_cmd_w )
 //  sound_flag2 = 1;
 	soundlatch_word_w(offset,data,mem_mask);
 	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
-	cpu_spinuntil_time(MAME_TIME_IN_USEC(50));	// Allow the other cpu to reply
+	cpu_spinuntil_time(ATTOTIME_IN_USEC(50));	// Allow the other cpu to reply
 }
 
 /* Sound CPU: read the low 8 bits of the 16 bit sound latch */
@@ -308,22 +308,22 @@ static UINT8 *cave_default_eeprom;
 static int cave_default_eeprom_length;
 static int cave_region_byte;
 
-READ16_HANDLER( cave_input1_r )
+static READ16_HANDLER( cave_input1_r )
 {
 	return readinputport(1) | ((EEPROM_read_bit() & 0x01) << 11);
 }
 
-READ16_HANDLER( guwange_input1_r )
+static READ16_HANDLER( guwange_input1_r )
 {
 	return readinputport(1) | ((EEPROM_read_bit() & 0x01) << 7);
 }
 
-READ16_HANDLER( gaia_dsw_r )
+static READ16_HANDLER( gaia_dsw_r )
 {
 	return readinputport(2) | (readinputport(3) << 8);
 }
 
-WRITE16_HANDLER( cave_eeprom_msb_w )
+static WRITE16_HANDLER( cave_eeprom_msb_w )
 {
 	if (data & ~0xfe00)
 		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
@@ -346,13 +346,13 @@ WRITE16_HANDLER( cave_eeprom_msb_w )
 	}
 }
 
-WRITE16_HANDLER( sailormn_eeprom_msb_w )
+static WRITE16_HANDLER( sailormn_eeprom_msb_w )
 {
 	sailormn_tilebank_w    ( data &  0x0100 );
 	cave_eeprom_msb_w(offset,data & ~0x0100,mem_mask);
 }
 
-WRITE16_HANDLER( hotdogst_eeprom_msb_w )
+static WRITE16_HANDLER( hotdogst_eeprom_msb_w )
 {
 	if ( ACCESSING_MSB )  // even address
 	{
@@ -367,7 +367,7 @@ WRITE16_HANDLER( hotdogst_eeprom_msb_w )
 	}
 }
 
-WRITE16_HANDLER( cave_eeprom_lsb_w )
+static WRITE16_HANDLER( cave_eeprom_lsb_w )
 {
 	if (data & ~0x00ef)
 		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
@@ -391,7 +391,7 @@ WRITE16_HANDLER( cave_eeprom_lsb_w )
 }
 
 /*  - No eeprom or lockouts */
-WRITE16_HANDLER( gaia_coin_lsb_w )
+static WRITE16_HANDLER( gaia_coin_lsb_w )
 {
 	if ( ACCESSING_LSB )  // odd address
 	{
@@ -402,7 +402,7 @@ WRITE16_HANDLER( gaia_coin_lsb_w )
 
 /*  - No coin lockouts
     - Writing 0xcf00 shouldn't send a 1 bit to the eeprom   */
-WRITE16_HANDLER( metmqstr_eeprom_msb_w )
+static WRITE16_HANDLER( metmqstr_eeprom_msb_w )
 {
 	if (data & ~0xff00)
 		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
@@ -426,7 +426,7 @@ WRITE16_HANDLER( metmqstr_eeprom_msb_w )
 	}
 }
 
-NVRAM_HANDLER( cave )
+static NVRAM_HANDLER( cave )
 {
 	if (read_or_write)
 		EEPROM_save(file);
@@ -457,7 +457,7 @@ static struct EEPROM_interface eeprom_interface_93C46_8bit =
 //  "*10010xxxx"    // erase all    1 00 10xxxx
 };
 
-NVRAM_HANDLER( korokoro )
+static NVRAM_HANDLER( korokoro )
 {
 	if (read_or_write)
 		EEPROM_save(file);
@@ -570,7 +570,7 @@ ADDRESS_MAP_END
                                     Donpachi
 ***************************************************************************/
 
-READ16_HANDLER( donpachi_videoregs_r )
+static READ16_HANDLER( donpachi_videoregs_r )
 {
 	switch( offset )
 	{
@@ -818,7 +818,7 @@ static void show_leds(void)
 #endif
 }
 
-WRITE16_HANDLER( korokoro_leds_w )
+static WRITE16_HANDLER( korokoro_leds_w )
 {
 	COMBINE_DATA( &leds[0] );
 
@@ -843,7 +843,7 @@ WRITE16_HANDLER( korokoro_leds_w )
 
 static int hopper;
 
-WRITE16_HANDLER( korokoro_eeprom_msb_w )
+static WRITE16_HANDLER( korokoro_eeprom_msb_w )
 {
 	if (data & ~0x7000)
 	{
@@ -867,12 +867,12 @@ WRITE16_HANDLER( korokoro_eeprom_msb_w )
 	}
 }
 
-READ16_HANDLER( korokoro_input0_r )
+static READ16_HANDLER( korokoro_input0_r )
 {
 	return readinputport(0) | (hopper ? 0 : 0x8000);
 }
 
-READ16_HANDLER( korokoro_input1_r )
+static READ16_HANDLER( korokoro_input1_r )
 {
 	return readinputport(1) | ((EEPROM_read_bit() & 0x01) << 12);
 }
@@ -1000,7 +1000,7 @@ ADDRESS_MAP_END
                                 Power Instinct 2
 ***************************************************************************/
 
-READ16_HANDLER( pwrinst2_eeprom_r )
+static READ16_HANDLER( pwrinst2_eeprom_r )
 {
 	return ~8 + ((EEPROM_read_bit() & 1) ? 8 : 0);
 }
@@ -1020,10 +1020,10 @@ INLINE void vctrl_w(UINT16 *VCTRL, ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT16
 	}
 	COMBINE_DATA(&VCTRL[offset]);
 }
-WRITE16_HANDLER( pwrinst2_vctrl_0_w )	{ vctrl_w(cave_vctrl_0, offset, data, mem_mask); }
-WRITE16_HANDLER( pwrinst2_vctrl_1_w )	{ vctrl_w(cave_vctrl_1, offset, data, mem_mask); }
-WRITE16_HANDLER( pwrinst2_vctrl_2_w )	{ vctrl_w(cave_vctrl_2, offset, data, mem_mask); }
-WRITE16_HANDLER( pwrinst2_vctrl_3_w )	{ vctrl_w(cave_vctrl_3, offset, data, mem_mask); }
+static WRITE16_HANDLER( pwrinst2_vctrl_0_w )	{ vctrl_w(cave_vctrl_0, offset, data, mem_mask); }
+static WRITE16_HANDLER( pwrinst2_vctrl_1_w )	{ vctrl_w(cave_vctrl_1, offset, data, mem_mask); }
+static WRITE16_HANDLER( pwrinst2_vctrl_2_w )	{ vctrl_w(cave_vctrl_2, offset, data, mem_mask); }
+static WRITE16_HANDLER( pwrinst2_vctrl_3_w )	{ vctrl_w(cave_vctrl_3, offset, data, mem_mask); }
 
 static ADDRESS_MAP_START( pwrinst2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA16_ROM					)	// ROM
@@ -1189,7 +1189,7 @@ ADDRESS_MAP_END
                                 Hotdog Storm
 ***************************************************************************/
 
-WRITE8_HANDLER( hotdogst_rombank_w )
+static WRITE8_HANDLER( hotdogst_rombank_w )
 {
 	UINT8 *RAM = memory_region(REGION_CPU2);
 	int bank = data & 0x0f;
@@ -1198,7 +1198,7 @@ WRITE8_HANDLER( hotdogst_rombank_w )
 	memory_set_bankptr(2, &RAM[ 0x4000 * bank ]);
 }
 
-WRITE8_HANDLER( hotdogst_okibank_w )
+static WRITE8_HANDLER( hotdogst_okibank_w )
 {
 	UINT8 *RAM = memory_region(REGION_SOUND1);
 	int bank1 = (data >> 0) & 0x3;
@@ -1242,7 +1242,7 @@ ADDRESS_MAP_END
                                 Mazinger Z
 ***************************************************************************/
 
-WRITE8_HANDLER( mazinger_rombank_w )
+static WRITE8_HANDLER( mazinger_rombank_w )
 {
 	UINT8 *RAM = memory_region(REGION_CPU2);
 	int bank = data & 0x07;
@@ -1286,7 +1286,7 @@ ADDRESS_MAP_END
                                 Metamoqester
 ***************************************************************************/
 
-WRITE8_HANDLER( metmqstr_rombank_w )
+static WRITE8_HANDLER( metmqstr_rombank_w )
 {
 	UINT8 *ROM = memory_region(REGION_CPU2);
 	int bank = data & 0xf;
@@ -1295,7 +1295,7 @@ WRITE8_HANDLER( metmqstr_rombank_w )
 	memory_set_bankptr(1, &ROM[ 0x4000 * bank ]);
 }
 
-WRITE8_HANDLER( metmqstr_okibank0_w )
+static WRITE8_HANDLER( metmqstr_okibank0_w )
 {
 	UINT8 *ROM = memory_region(REGION_SOUND1);
 	int bank1 = (data >> 0) & 0x7;
@@ -1304,7 +1304,7 @@ WRITE8_HANDLER( metmqstr_okibank0_w )
 	memcpy(ROM + 0x20000 * 1, ROM + 0x40000 + 0x20000 * bank2, 0x20000);
 }
 
-WRITE8_HANDLER( metmqstr_okibank1_w )
+static WRITE8_HANDLER( metmqstr_okibank1_w )
 {
 	UINT8 *ROM = memory_region(REGION_SOUND2);
 	int bank1 = (data >> 0) & 0x7;
@@ -1349,7 +1349,7 @@ ADDRESS_MAP_END
                                 Power Instinct 2
 ***************************************************************************/
 
-WRITE8_HANDLER( pwrinst2_rombank_w )
+static WRITE8_HANDLER( pwrinst2_rombank_w )
 {
 	UINT8 *ROM = memory_region(REGION_CPU2);
 	int bank = data & 0x07;
@@ -1407,7 +1407,7 @@ static WRITE8_HANDLER( mirror_ram_w )
 	mirror_ram[offset] = data;
 }
 
-WRITE8_HANDLER( sailormn_rombank_w )
+static WRITE8_HANDLER( sailormn_rombank_w )
 {
 	UINT8 *RAM = memory_region(REGION_CPU2);
 	int bank = data & 0x1f;
@@ -1416,7 +1416,7 @@ WRITE8_HANDLER( sailormn_rombank_w )
 	memory_set_bankptr(1, &RAM[ 0x4000 * bank ]);
 }
 
-WRITE8_HANDLER( sailormn_okibank0_w )
+static WRITE8_HANDLER( sailormn_okibank0_w )
 {
 	UINT8 *RAM = memory_region(REGION_SOUND1);
 	int bank1 = (data >> 0) & 0xf;
@@ -1425,7 +1425,7 @@ WRITE8_HANDLER( sailormn_okibank0_w )
 	memcpy(RAM + 0x20000 * 1, RAM + 0x40000 + 0x20000 * bank2, 0x20000);
 }
 
-WRITE8_HANDLER( sailormn_okibank1_w )
+static WRITE8_HANDLER( sailormn_okibank1_w )
 {
 	UINT8 *RAM = memory_region(REGION_SOUND2);
 	int bank1 = (data >> 0) & 0xf;
@@ -1487,7 +1487,7 @@ ADDRESS_MAP_END
 */
 
 /* Most games use this */
-INPUT_PORTS_START( cave )
+static INPUT_PORTS_START( cave )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
@@ -1528,7 +1528,7 @@ INPUT_PORTS_START( cave )
 INPUT_PORTS_END
 
 /* Gaia Crusaders, no EEPROM. Has DIPS */
-INPUT_PORTS_START( gaia )
+static INPUT_PORTS_START( gaia )
 	PORT_START	// IN0 - Player 1 + 2
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
@@ -1625,7 +1625,7 @@ INPUT_PORTS_START( gaia )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( theroes )
+static INPUT_PORTS_START( theroes )
 	PORT_INCLUDE(gaia)
 
 	PORT_MODIFY("DSW1")
@@ -1651,7 +1651,7 @@ INPUT_PORTS_START( theroes )
 INPUT_PORTS_END
 
 /* Mazinger Z (has region stored in Eeprom) */
-INPUT_PORTS_START( mazinger )
+static INPUT_PORTS_START( mazinger )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
@@ -1697,7 +1697,7 @@ INPUT_PORTS_START( mazinger )
 INPUT_PORTS_END
 
 /* Sailor Moon / Air Gallet (has region stored in Eeprom) */
-INPUT_PORTS_START( sailormn )
+static INPUT_PORTS_START( sailormn )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
@@ -1747,7 +1747,7 @@ INPUT_PORTS_START( sailormn )
 INPUT_PORTS_END
 
 /* Different layout */
-INPUT_PORTS_START( guwange )
+static INPUT_PORTS_START( guwange )
 	PORT_START	// IN0 - Player 1 & 2
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_START1  )
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	 ) PORT_PLAYER(1)
@@ -1788,7 +1788,7 @@ INPUT_PORTS_START( guwange )
 INPUT_PORTS_END
 
 /* Normal layout but with 4 buttons */
-INPUT_PORTS_START( metmqstr )
+static INPUT_PORTS_START( metmqstr )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
@@ -1829,7 +1829,7 @@ INPUT_PORTS_START( metmqstr )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( korokoro )
+static INPUT_PORTS_START( korokoro )
 	PORT_START	// IN0
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1   ) PORT_IMPULSE(10)	// bit 0x0010 of leds (coin)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_COIN2   ) PORT_IMPULSE(10)	// bit 0x0020 of leds (does coin sound)
@@ -2088,7 +2088,7 @@ GFXDECODE_END
 
 ***************************************************************************/
 
-MACHINE_RESET( cave )
+static MACHINE_RESET( cave )
 {
 	soundbuf.len = 0;
 
@@ -4177,7 +4177,7 @@ ROM_END
 
 /* Tiles are 6 bit, 4 bits stored in one rom, 2 bits in the other.
    Expand the 2 bit part into a 4 bit layout, so we can decode it */
-void sailormn_unpack_tiles( const int region )
+static void sailormn_unpack_tiles( const int region )
 {
 	UINT8 *src		=	memory_region(region) + (memory_region_length(region)/4)*3 - 1;
 	UINT8 *dst		=	memory_region(region) + (memory_region_length(region)/4)*4 - 2;
@@ -4207,7 +4207,7 @@ static void init_cave(running_machine *machine)
 	irq_level = 1;
 }
 
-DRIVER_INIT( agallet )
+static DRIVER_INIT( agallet )
 {
 	init_cave(machine);
 
@@ -4223,7 +4223,7 @@ DRIVER_INIT( agallet )
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb80000, 0xb80001, 0, 0, agallet_irq_cause_r);
 }
 
-DRIVER_INIT( dfeveron )
+static DRIVER_INIT( dfeveron )
 {
 	init_cave(machine);
 
@@ -4235,7 +4235,7 @@ DRIVER_INIT( dfeveron )
 	cave_kludge = 2;
 }
 
-DRIVER_INIT( feversos )
+static DRIVER_INIT( feversos )
 {
 	init_cave(machine);
 
@@ -4247,7 +4247,7 @@ DRIVER_INIT( feversos )
 	cave_kludge = 2;
 }
 
-DRIVER_INIT( ddonpach )
+static DRIVER_INIT( ddonpach )
 {
 	init_cave(machine);
 
@@ -4260,7 +4260,7 @@ DRIVER_INIT( ddonpach )
 	time_vblank_irq = 90;
 }
 
-DRIVER_INIT( donpachi )
+static DRIVER_INIT( donpachi )
 {
 	init_cave(machine);
 
@@ -4275,7 +4275,7 @@ DRIVER_INIT( donpachi )
 	NMK112_set_paged_table(0, 0);	// chip #0 (music) is not paged
 }
 
-DRIVER_INIT( esprade )
+static DRIVER_INIT( esprade )
 {
 	init_cave(machine);
 
@@ -4294,7 +4294,7 @@ DRIVER_INIT( esprade )
 #endif
 }
 
-DRIVER_INIT( gaia )
+static DRIVER_INIT( gaia )
 {
 	init_cave(machine);
 
@@ -4305,7 +4305,7 @@ DRIVER_INIT( gaia )
 	time_vblank_irq = 2000;	/**/
 }
 
-DRIVER_INIT( guwange )
+static DRIVER_INIT( guwange )
 {
 	init_cave(machine);
 
@@ -4317,7 +4317,7 @@ DRIVER_INIT( guwange )
 	time_vblank_irq = 2000;	/**/
 }
 
-DRIVER_INIT( hotdogst )
+static DRIVER_INIT( hotdogst )
 {
 	init_cave(machine);
 
@@ -4330,7 +4330,7 @@ DRIVER_INIT( hotdogst )
 	time_vblank_irq = 2000;	/**/
 }
 
-DRIVER_INIT( mazinger )
+static DRIVER_INIT( mazinger )
 {
 	UINT8 *buffer;
 	UINT8 *src = memory_region(REGION_GFX1);
@@ -4362,7 +4362,7 @@ DRIVER_INIT( mazinger )
 }
 
 
-DRIVER_INIT( metmqstr )
+static DRIVER_INIT( metmqstr )
 {
 	init_cave(machine);
 
@@ -4373,7 +4373,7 @@ DRIVER_INIT( metmqstr )
 }
 
 
-DRIVER_INIT( pwrins2j )
+static DRIVER_INIT( pwrins2j )
 {
 	UINT8 *buffer;
 	UINT8 *src = memory_region(REGION_GFX1);
@@ -4403,7 +4403,7 @@ DRIVER_INIT( pwrins2j )
 
 }
 
-DRIVER_INIT( pwrinst2 )
+static DRIVER_INIT( pwrinst2 )
 {
 	/* this patch fixes on of the moves, why is it needed? is the rom bad or is there another
        problem? does the Japan set need it or not? */
@@ -4419,7 +4419,7 @@ DRIVER_INIT( pwrinst2 )
 }
 
 
-DRIVER_INIT( sailormn )
+static DRIVER_INIT( sailormn )
 {
 	UINT8 *buffer;
 	UINT8 *src = memory_region(REGION_GFX1);
@@ -4449,7 +4449,7 @@ DRIVER_INIT( sailormn )
 	time_vblank_irq = 2000;
 }
 
-DRIVER_INIT( uopoko )
+static DRIVER_INIT( uopoko )
 {
 	init_cave(machine);
 
@@ -4462,7 +4462,7 @@ DRIVER_INIT( uopoko )
 	time_vblank_irq = 2000;	/**/
 }
 
-DRIVER_INIT( korokoro )
+static DRIVER_INIT( korokoro )
 {
 	init_cave(machine);
 

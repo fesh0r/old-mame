@@ -164,7 +164,7 @@ static void renegade_adpcm_callback(void *param, stream_sample_t **inputs, strea
 	}
 }
 
-void *renegade_adpcm_start(int clock, const struct CustomSound_interface *config)
+static void *renegade_adpcm_start(int clock, const struct CustomSound_interface *config)
 {
 	struct renegade_adpcm_state *state = &renegade_adpcm;
 	state->playing = 0;
@@ -253,14 +253,14 @@ static MACHINE_START( renegade )
 	state_save_register_func_postload(setbank);
 }
 
-DRIVER_INIT( kuniokun )
+static DRIVER_INIT( kuniokun )
 {
 	mcu_type = 0x85;
 	mcu_encrypt_table = kuniokun_xor_table;
 	mcu_encrypt_table_len = 0x2a;
 }
 
-DRIVER_INIT( renegade )
+static DRIVER_INIT( renegade )
 {
 	mcu_type = 0xda;
 	mcu_encrypt_table = renegade_xor_table;
@@ -566,7 +566,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( renegade )
+static INPUT_PORTS_START( renegade )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_8WAY PORT_PLAYER(1)

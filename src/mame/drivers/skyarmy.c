@@ -23,9 +23,9 @@
 #include "driver.h"
 #include "sound/ay8910.h"
 
-UINT8 *skyarmy_videoram;
-UINT8 *skyarmy_colorram;
-UINT8 *skyarmy_scrollram;
+static UINT8 *skyarmy_videoram;
+static UINT8 *skyarmy_colorram;
+static UINT8 *skyarmy_scrollram;
 static tilemap* skyarmy_tilemap;
 
 static TILE_GET_INFO( get_skyarmy_tile_info )
@@ -45,31 +45,31 @@ static TILE_GET_INFO( get_skyarmy_tile_info )
 	SET_TILE_INFO( 0, code, attr, 0);
 }
 
-WRITE8_HANDLER( skyarmy_videoram_w )
+static WRITE8_HANDLER( skyarmy_videoram_w )
 {
         skyarmy_videoram[offset] = data;
         tilemap_mark_tile_dirty(skyarmy_tilemap,offset);
 }
 
-WRITE8_HANDLER( skyarmy_colorram_w )
+static WRITE8_HANDLER( skyarmy_colorram_w )
 {
         skyarmy_colorram[offset] = data;
         tilemap_mark_tile_dirty(skyarmy_tilemap,offset);
 }
 
-WRITE8_HANDLER( skyarmy_scrollram_w )
+static WRITE8_HANDLER( skyarmy_scrollram_w )
 {
         skyarmy_scrollram[offset] = data;
 }
 
 
-READ8_HANDLER( skyarmy_scrollram_r )
+static READ8_HANDLER( skyarmy_scrollram_r )
 {
         return skyarmy_scrollram[offset];
 }
 
 
-PALETTE_INIT( skyarmy )
+static PALETTE_INIT( skyarmy )
 {
 	int i;
 
@@ -97,14 +97,14 @@ PALETTE_INIT( skyarmy )
 	}
 }
 
-VIDEO_START( skyarmy )
+static VIDEO_START( skyarmy )
 {
         skyarmy_tilemap = tilemap_create(get_skyarmy_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
         tilemap_set_scroll_cols(skyarmy_tilemap,32);
 }
 
 
-VIDEO_UPDATE( skyarmy )
+static VIDEO_UPDATE( skyarmy )
 {
         int sx, sy, flipx, flipy, offs,pal;
         int i;
@@ -178,7 +178,7 @@ static ADDRESS_MAP_START( skyarmy_writemem, ADDRESS_SPACE_PROGRAM, 8 )
         AM_RANGE(0xa007, 0xa007) AM_WRITE(MWA8_NOP)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( skyarmy )
+static INPUT_PORTS_START( skyarmy )
         PORT_START
         PORT_DIPNAME( 0x03, 0x02, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "2" )

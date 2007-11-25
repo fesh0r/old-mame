@@ -17,7 +17,7 @@ Puckman Pockimon - (c)2000 Genie? (there should be a way to show Sun Mixing copy
 
 static UINT16* main_ram;
 
-INPUT_PORTS_START( puckpkmn ) /* Puckman Pockimon Input Ports */
+static INPUT_PORTS_START( puckpkmn ) /* Puckman Pockimon Input Ports */
 	PORT_START	/* Player 2 Controls ($700011.b) */
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -266,7 +266,7 @@ Screenshots available on my site at http://unemulated.emuunlim.com (under PCB Sh
 
 ****************************************************************************/
 
-DRIVER_INIT( puckpkmn )
+static DRIVER_INIT( puckpkmn )
 {
 	UINT8 *rom	=	memory_region(REGION_CPU1);
 	size_t len		=	memory_region_length(REGION_CPU1);

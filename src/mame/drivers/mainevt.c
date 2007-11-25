@@ -56,7 +56,7 @@ static INTERRUPT_GEN( dv_interrupt )
 }
 
 
-WRITE8_HANDLER( mainevt_bankswitch_w )
+static WRITE8_HANDLER( mainevt_bankswitch_w )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	int bankaddress;
@@ -76,7 +76,7 @@ WRITE8_HANDLER( mainevt_bankswitch_w )
 	/* other bits unused */
 }
 
-WRITE8_HANDLER( mainevt_coin_w )
+static WRITE8_HANDLER( mainevt_coin_w )
 {
 	coin_counter_w(0,data & 0x10);
 	coin_counter_w(1,data & 0x20);
@@ -86,12 +86,12 @@ WRITE8_HANDLER( mainevt_coin_w )
 	set_led_status(3,data & 0x08);
 }
 
-WRITE8_HANDLER( mainevt_sh_irqtrigger_w )
+static WRITE8_HANDLER( mainevt_sh_irqtrigger_w )
 {
 	cpunum_set_input_line_and_vector(1,0,HOLD_LINE,0xff);
 }
 
-WRITE8_HANDLER( mainevt_sh_irqcontrol_w )
+static WRITE8_HANDLER( mainevt_sh_irqcontrol_w )
 {
 	upd7759_reset_w(0, data & 2);
 	upd7759_start_w(0, data & 1);
@@ -99,12 +99,12 @@ WRITE8_HANDLER( mainevt_sh_irqcontrol_w )
 	interrupt_enable_w(0,data & 4);
 }
 
-WRITE8_HANDLER( devstor_sh_irqcontrol_w )
+static WRITE8_HANDLER( devstor_sh_irqcontrol_w )
 {
 interrupt_enable_w(0,data & 4);
 }
 
-WRITE8_HANDLER( mainevt_sh_bankswitch_w )
+static WRITE8_HANDLER( mainevt_sh_bankswitch_w )
 {
 	int bank_A,bank_B;
 
@@ -119,7 +119,7 @@ WRITE8_HANDLER( mainevt_sh_bankswitch_w )
 	upd7759_set_bank_base(0, ((data >> 4) & 0x03) * 0x20000);
 }
 
-WRITE8_HANDLER( dv_sh_bankswitch_w )
+static WRITE8_HANDLER( dv_sh_bankswitch_w )
 {
 	int bank_A,bank_B;
 
@@ -231,7 +231,7 @@ ADDRESS_MAP_END
 
 /*****************************************************************************/
 
-INPUT_PORTS_START( mainevt )
+static INPUT_PORTS_START( mainevt )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -351,7 +351,7 @@ INPUT_PORTS_START( mainevt )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mainev2p )
+static INPUT_PORTS_START( mainev2p )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -462,7 +462,7 @@ INPUT_PORTS_START( mainev2p )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( devstors )
+static INPUT_PORTS_START( devstors )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -573,7 +573,7 @@ INPUT_PORTS_START( devstors )
 INPUT_PORTS_END
 
 /* Same as 'devstors', but additional "Cocktail" Dip Switch (even if I don't see the use) */
-INPUT_PORTS_START( devstor2 )
+static INPUT_PORTS_START( devstor2 )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )

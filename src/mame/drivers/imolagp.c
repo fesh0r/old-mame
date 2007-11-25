@@ -158,7 +158,7 @@ InitializeColors( void )
 	}
 }
 
-VIDEO_START( imolagp )
+static VIDEO_START( imolagp )
 {
 	int i;
 	for( i=0; i<3; i++ )
@@ -170,7 +170,7 @@ VIDEO_START( imolagp )
 }
 
 
-VIDEO_UPDATE( imolagp )
+static VIDEO_UPDATE( imolagp )
 {
 	int scroll2 = imola_scroll^0x03;
 	int pass;
@@ -417,7 +417,7 @@ static MACHINE_DRIVER_START( imolagp )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
-INPUT_PORTS_START( imolagp )
+static INPUT_PORTS_START( imolagp )
 	PORT_START_TAG("DSWA") /* 0x4000 */
 	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( 8C_1C ) )
@@ -521,7 +521,7 @@ static ppi8255_interface ppi8255_intf =
 	{0}, 		/* Port C write */
 };
 
-DRIVER_INIT( imolagp )
+static DRIVER_INIT( imolagp )
 {
 	ppi8255_init(&ppi8255_intf);
 }

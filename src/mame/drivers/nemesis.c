@@ -65,7 +65,7 @@ WRITE16_HANDLER( nemesis_characterram_word_w );
 VIDEO_UPDATE( nemesis );
 VIDEO_START( nemesis );
 VIDEO_UPDATE( salamand );
-MACHINE_RESET( nemesis );
+static MACHINE_RESET( nemesis );
 
 WRITE16_HANDLER( nemesis_gfx_flipx_w );
 WRITE16_HANDLER( nemesis_gfx_flipy_w );
@@ -81,7 +81,7 @@ static int irq2_on = 0;
 static int irq4_on = 0;
 
 
-MACHINE_RESET( nemesis )
+static MACHINE_RESET( nemesis )
 {
 	irq_on = 0;
 	irq1_on = 0;
@@ -91,14 +91,14 @@ MACHINE_RESET( nemesis )
 
 
 
-INTERRUPT_GEN( nemesis_interrupt )
+static INTERRUPT_GEN( nemesis_interrupt )
 {
 	if (irq_on)
 		cpunum_set_input_line(0, 1, HOLD_LINE);
 }
 
 
-WRITE16_HANDLER( salamand_soundlatch_word_w )
+static WRITE16_HANDLER( salamand_soundlatch_word_w )
 {
 	if(ACCESSING_LSB) {
 		soundlatch_w(offset,data & 0xff);
@@ -108,7 +108,7 @@ WRITE16_HANDLER( salamand_soundlatch_word_w )
 
 static int gx400_irq1_cnt;
 
-INTERRUPT_GEN( konamigt_interrupt )
+static INTERRUPT_GEN( konamigt_interrupt )
 {
 	if (cpu_getiloops() == 0)
 	{
@@ -120,7 +120,7 @@ INTERRUPT_GEN( konamigt_interrupt )
 	}
 }
 
-INTERRUPT_GEN( gx400_interrupt )
+static INTERRUPT_GEN( gx400_interrupt )
 {
 	switch (cpu_getiloops())
 	{
@@ -138,7 +138,7 @@ INTERRUPT_GEN( gx400_interrupt )
 	}
 }
 
-WRITE16_HANDLER( gx400_irq1_enable_word_w )
+static WRITE16_HANDLER( gx400_irq1_enable_word_w )
 {
 	if (ACCESSING_LSB)
 		irq1_on = data & 0x0001;
@@ -146,7 +146,7 @@ WRITE16_HANDLER( gx400_irq1_enable_word_w )
 logerror("irq1en = %08x\n",data);*/
 }
 
-WRITE16_HANDLER( gx400_irq2_enable_word_w )
+static WRITE16_HANDLER( gx400_irq2_enable_word_w )
 {
 	if (ACCESSING_LSB)
 		irq2_on = data & 0x0001;
@@ -154,7 +154,7 @@ WRITE16_HANDLER( gx400_irq2_enable_word_w )
 logerror("irq2en = %08x\n",data);*/
 }
 
-WRITE16_HANDLER( gx400_irq4_enable_word_w )
+static WRITE16_HANDLER( gx400_irq4_enable_word_w )
 {
 	if (ACCESSING_MSB)
 		irq4_on = data & 0x0100;
@@ -164,12 +164,12 @@ logerror("irq4en = %08x\n",data);*/
 
 static UINT8 *gx400_shared_ram;
 
-READ16_HANDLER( gx400_sharedram_word_r )
+static READ16_HANDLER( gx400_sharedram_word_r )
 {
 	return gx400_shared_ram[offset];
 }
 
-WRITE16_HANDLER( gx400_sharedram_word_w )
+static WRITE16_HANDLER( gx400_sharedram_word_w )
 {
 	if(ACCESSING_LSB)
 		gx400_shared_ram[offset] = data;
@@ -177,37 +177,37 @@ WRITE16_HANDLER( gx400_sharedram_word_w )
 
 
 
-INTERRUPT_GEN( salamand_interrupt )
+static INTERRUPT_GEN( salamand_interrupt )
 {
 	if (irq_on)
 		cpunum_set_input_line(0, 1, HOLD_LINE);
 }
 
-INTERRUPT_GEN( blkpnthr_interrupt )
+static INTERRUPT_GEN( blkpnthr_interrupt )
 {
 	if (irq_on)
 		cpunum_set_input_line(0, 2, HOLD_LINE);
 }
 
-WRITE16_HANDLER( nemesis_irq_enable_word_w )
+static WRITE16_HANDLER( nemesis_irq_enable_word_w )
 {
 	if(ACCESSING_LSB)
 		irq_on = data & 0xff;
 }
 
-WRITE16_HANDLER( konamigt_irq_enable_word_w )
+static WRITE16_HANDLER( konamigt_irq_enable_word_w )
 {
 	if(ACCESSING_LSB)
 		irq_on = data & 0xff;
 }
 
-WRITE16_HANDLER( konamigt_irq2_enable_word_w )
+static WRITE16_HANDLER( konamigt_irq2_enable_word_w )
 {
 	if(ACCESSING_LSB)
 		irq2_on = data & 0xff;
 }
 
-READ16_HANDLER( konamigt_input_word_r )
+static READ16_HANDLER( konamigt_input_word_r )
 {
 /*
     bit 0-7:   steering
@@ -253,7 +253,7 @@ static READ16_HANDLER( selected_ip_r )
 	}
 }
 
-WRITE16_HANDLER( nemesis_soundlatch_word_w )
+static WRITE16_HANDLER( nemesis_soundlatch_word_w )
 {
 	if(ACCESSING_LSB) {
 		soundlatch_w(offset,data & 0xff);
@@ -314,13 +314,13 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x060000, 0x067fff) AM_WRITE(MWA16_RAM) AM_BASE(&ram)	/* WORK RAM */
 ADDRESS_MAP_END
 
-WRITE8_HANDLER( salamand_speech_start_w )
+static WRITE8_HANDLER( salamand_speech_start_w )
 {
         VLM5030_ST ( 1 );
         VLM5030_ST ( 0 );
 }
 
-WRITE8_HANDLER( gx400_speech_start_w )
+static WRITE8_HANDLER( gx400_speech_start_w )
 {
 	/* the voice data is not in a rom but in sound RAM at $8000 */
 	VLM5030_set_rom (gx400_shared_ram + 0x4000);
@@ -867,7 +867,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x00, "Disabled" )
 
 
-INPUT_PORTS_START( nemesis )
+static INPUT_PORTS_START( nemesis )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -940,7 +940,7 @@ INPUT_PORTS_START( nemesis )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( nemesuk )
+static INPUT_PORTS_START( nemesuk )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -1014,7 +1014,7 @@ INPUT_PORTS_END
 
 
 /* This needs to be sorted */
-INPUT_PORTS_START( konamigt )
+static INPUT_PORTS_START( konamigt )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -1085,7 +1085,7 @@ INPUT_PORTS_END
 
 
 /* This needs to be sorted */
-INPUT_PORTS_START( rf2 )
+static INPUT_PORTS_START( rf2 )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1156,7 +1156,7 @@ INPUT_PORTS_START( rf2 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( gwarrior )
+static INPUT_PORTS_START( gwarrior )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1229,7 +1229,7 @@ INPUT_PORTS_START( gwarrior )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( twinbee )
+static INPUT_PORTS_START( twinbee )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1303,7 +1303,7 @@ INPUT_PORTS_START( twinbee )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( gradius )
+static INPUT_PORTS_START( gradius )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1376,7 +1376,7 @@ INPUT_PORTS_START( gradius )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( salamand )
+static INPUT_PORTS_START( salamand )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -1470,7 +1470,7 @@ INPUT_PORTS_START( salamand )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( lifefrcj )
+static INPUT_PORTS_START( lifefrcj )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -1568,7 +1568,7 @@ INPUT_PORTS_START( lifefrcj )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( blkpnthr )
+static INPUT_PORTS_START( blkpnthr )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -1665,7 +1665,7 @@ INPUT_PORTS_START( blkpnthr )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( citybomb )
+static INPUT_PORTS_START( citybomb )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1757,7 +1757,7 @@ INPUT_PORTS_START( citybomb )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( nyanpani )
+static INPUT_PORTS_START( nyanpani )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1842,7 +1842,7 @@ INPUT_PORTS_START( nyanpani )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hcrash )
+static INPUT_PORTS_START( hcrash )
 	PORT_START /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -2247,7 +2247,7 @@ static MACHINE_DRIVER_START( salamand )
 	MDRV_CPU_PROGRAM_MAP(sal_sound_readmem,sal_sound_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE((18432000.0/4)/(288*264))		/* 60.606060 Hz */
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS((264-256)*125/2))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC((264-256)*125/2))
 
 	MDRV_MACHINE_RESET(nemesis)
 

@@ -179,10 +179,10 @@ SOUND_START( cchasm )
     sound_flags = 0;
     output[0] = 0; output[1] = 0;
 
-	ctc_intf.baseclock = machine->drv->cpu[1].cpu_clock;
+	ctc_intf.baseclock = machine->drv->cpu[1].clock;
 	z80ctc_init (0, &ctc_intf);
 
-	mame_timer_pulse(make_mame_time(0, machine->screen[0].refresh), 0, cchasm_sh_update);
+	timer_pulse(attotime_make(0, machine->screen[0].refresh), 0, cchasm_sh_update);
 }
 
 

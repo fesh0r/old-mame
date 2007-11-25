@@ -61,7 +61,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( inports )
+static INPUT_PORTS_START( inports )
     PORT_START
     PORT_DIPNAME(   0x01, 0x01, DEF_STR( Unknown ) )
     PORT_DIPSETTING(      0x01, DEF_STR( Off ) )
@@ -104,11 +104,11 @@ static GFXDECODE_START( rcorsair )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout, 0, 16 )
 GFXDECODE_END
 
-VIDEO_START( rcorsair )
+static VIDEO_START( rcorsair )
 {
 }
 
-VIDEO_UPDATE( rcorsair )
+static VIDEO_UPDATE( rcorsair )
 {
 
 	return 0;

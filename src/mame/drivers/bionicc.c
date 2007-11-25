@@ -135,7 +135,7 @@ static READ16_HANDLER( hacked_soundcommand_r )
 
 ********************************************************************/
 
-INTERRUPT_GEN( bionicc_interrupt )
+static INTERRUPT_GEN( bionicc_interrupt )
 {
 	if (cpu_getiloops() == 0)
 		cpunum_set_input_line(0, 2, HOLD_LINE);
@@ -193,7 +193,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( bionicc )
+static INPUT_PORTS_START( bionicc )
 	PORT_START
 	PORT_BIT( 0x0fff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_START2 )

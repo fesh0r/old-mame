@@ -60,24 +60,24 @@ Dip sw.2
 
 #include "driver.h"
 
-UINT16 littlerb_vdp_address_low;
-UINT16 littlerb_vdp_address_high;
-UINT16 littlerb_vdp_writemode;
-UINT32 littlerb_write_address;
+static UINT16 littlerb_vdp_address_low;
+static UINT16 littlerb_vdp_address_high;
+static UINT16 littlerb_vdp_writemode;
+static UINT32 littlerb_write_address;
 
-void littlerb_recalc_regs(void)
+static void littlerb_recalc_regs(void)
 {
 	littlerb_vdp_address_low = littlerb_write_address&0xffff;
 	littlerb_vdp_address_high = (littlerb_write_address>>16)&0xffff;
 }
 
-UINT16* littlerb_region1;
-UINT16* littlerb_region2;
-UINT16* littlerb_region3;
-UINT16* littlerb_region4;
+static UINT16* littlerb_region1;
+static UINT16* littlerb_region2;
+static UINT16* littlerb_region3;
+static UINT16* littlerb_region4;
 
 
-void littlerb_data_write(UINT16 data)
+static void littlerb_data_write(UINT16 data)
 {
 	UINT32 addr = littlerb_write_address>>4; // is this right? should we shift?
 
@@ -133,12 +133,12 @@ void littlerb_data_write(UINT16 data)
 
 
 
-void littlerb_recalc_address(void)
+static void littlerb_recalc_address(void)
 {
 	littlerb_write_address = littlerb_vdp_address_low | littlerb_vdp_address_high<<16;
 }
 
-READ16_HANDLER( littlerb_vdp_r )
+static READ16_HANDLER( littlerb_vdp_r )
 {
 	switch (offset)
 	{
@@ -158,7 +158,7 @@ READ16_HANDLER( littlerb_vdp_r )
 	return -1;
 }
 
-WRITE16_HANDLER( littlerb_vdp_w )
+static WRITE16_HANDLER( littlerb_vdp_w )
 {
 	switch (offset)
 	{
@@ -210,7 +210,7 @@ static ADDRESS_MAP_START( littlerb_main, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( littlerb )
+static INPUT_PORTS_START( littlerb )
 	PORT_START	/* 16bit */
 	PORT_DIPNAME( 0x0003, 0x0001, DEF_STR( Lives ) )
 	PORT_DIPSETTING(      0x0003, "2" )
@@ -333,7 +333,7 @@ static void draw_sprite(mame_bitmap *bitmap, int xsize,int ysize, int offset, in
 	}
 }
 
-VIDEO_UPDATE(littlerb)
+static VIDEO_UPDATE(littlerb)
 {
 	int x,y,offs, code;
 	int xsize,ysize;

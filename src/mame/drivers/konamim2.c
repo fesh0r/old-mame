@@ -107,11 +107,11 @@ static UINT32 vdl1_address;
 static UINT32 irq_enable;
 static UINT32 irq_active;
 
-VIDEO_START( m2 )
+static VIDEO_START( m2 )
 {
 }
 
-VIDEO_UPDATE( m2 )
+static VIDEO_UPDATE( m2 )
 {
 	int i, j;
 
@@ -1015,7 +1015,7 @@ static ADDRESS_MAP_START( m2_main, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0xfff00000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(2)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( m2 )
+static INPUT_PORTS_START( m2 )
 INPUT_PORTS_END
 
 

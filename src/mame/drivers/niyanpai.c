@@ -202,7 +202,7 @@ static z80ctc_interface ctc_intf =
 static void tmpz84c011_init(running_machine *machine)
 {
 	// initialize the CTC
-	ctc_intf.baseclock = machine->drv->cpu[1].cpu_clock;
+	ctc_intf.baseclock = machine->drv->cpu[1].clock;
 	z80ctc_init(0, &ctc_intf);
 }
 
@@ -535,7 +535,7 @@ static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( niyanpai )
+static INPUT_PORTS_START( niyanpai )
 	PORT_START	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, "1" )
@@ -600,7 +600,7 @@ INPUT_PORTS_START( niyanpai )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( musobana )
+static INPUT_PORTS_START( musobana )
 
 	// I don't have manual for this game.
 
@@ -675,7 +675,7 @@ INPUT_PORTS_START( musobana )
 	NBMJCTRL_PORT10	/* (12) PORT 2-5 */
 INPUT_PORTS_END
 
-INPUT_PORTS_START( 4psimasy )
+static INPUT_PORTS_START( 4psimasy )
 
 	// I don't have manual for this game.
 
@@ -754,7 +754,7 @@ INPUT_PORTS_START( 4psimasy )
 	NBMJCTRL_PORT10	/* (12) PORT 2-5 */
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mhhonban )
+static INPUT_PORTS_START( mhhonban )
 
 	// I don't have manual for this game.
 

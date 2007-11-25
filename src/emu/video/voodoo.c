@@ -135,7 +135,10 @@ bits(7:4) and bit(24)), X, and Y:
 #define EXPAND_RASTERIZERS
 
 #include "driver.h"
+#include "eminline.h"
 #include "profiler.h"
+#include "video/poly.h"
+#include "video/rgbutil.h"
 #include "voodoo.h"
 #include "vooddefs.h"
 #include "ui.h"
@@ -155,6 +158,7 @@ bits(7:4) and bit(24)), X, and Y:
 #define LOG_FIFO			(0)
 #define LOG_FIFO_VERBOSE	(0)
 #define LOG_REGISTERS		(0)
+#define LOG_WAITS			(0)
 #define LOG_LFB				(0)
 #define LOG_TEXTURE_RAM		(0)
 #define LOG_RASTERIZERS		(0)
@@ -193,10 +197,10 @@ static void init_fbi(voodoo_state *v, fbi_state *f, void *memory, int fbmem);
 static void init_tmu_shared(tmu_shared_state *s);
 static void init_tmu(voodoo_state *v, tmu_state *t, int type, voodoo_reg *reg, void *memory, int tmem);
 static void soft_reset(voodoo_state *v);
-static void check_stalled_cpu(voodoo_state *v, mame_time current_time);
-static void flush_fifos(voodoo_state *v, mame_time current_time);
+static void check_stalled_cpu(voodoo_state *v, attotime current_time);
+static void flush_fifos(voodoo_state *v, attotime current_time);
 static TIMER_CALLBACK_PTR( stall_cpu_callback );
-static void stall_cpu(voodoo_state *v, int state, mame_time current_time);
+static void stall_cpu(voodoo_state *v, int state, attotime current_time);
 static TIMER_CALLBACK_PTR( vblank_callback );
 static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data);
 static INT32 lfb_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mask, int forcefront);
@@ -210,11 +214,6 @@ static UINT32 banshee_fb_r(voodoo_state *v, offs_t offset, UINT32 mem_mask);
 static void banshee_io_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mask);
 static UINT32 banshee_io_r(voodoo_state *v, offs_t offset, UINT32 mem_mask);
 static UINT32 banshee_rom_r(voodoo_state *v, offs_t offset, UINT32 mem_mask);
-
-/* work item management */
-static void work_item_enqueue(voodoo_state *v, work_info *work, int numitems);
-static void work_item_wait(voodoo_state *v);
-static void *work_item_callback(void *param);
 
 /* command handlers */
 static INT32 fastfill(voodoo_state *v);
@@ -233,10 +232,10 @@ static raster_info *find_rasterizer(voodoo_state *v, int texcount);
 static void dump_rasterizer_stats(voodoo_state *v);
 
 /* generic rasterizers */
-static void raster_fastfill(work_info *work, INT32 scanline, INT32 startx, INT32 stopx);
-static void raster_generic_0tmu(work_info *work, INT32 y, INT32 startx, INT32 stopx);
-static void raster_generic_1tmu(work_info *work, INT32 y, INT32 startx, INT32 stopx);
-static void raster_generic_2tmu(work_info *work, INT32 y, INT32 startx, INT32 stopx);
+static void raster_fastfill(void *dest, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid);
+static void raster_generic_0tmu(void *dest, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid);
+static void raster_generic_1tmu(void *dest, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid);
+static void raster_generic_2tmu(void *dest, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid);
 
 
 
@@ -282,6 +281,7 @@ static const raster_info predef_raster_table[] =
 
 void voodoo_start(int which, int scrnum, int type, int fbmem_in_mb, int tmem0_in_mb, int tmem1_in_mb)
 {
+	const raster_info *info;
 	void *fbmem, *tmumem[2];
 	voodoo_state *v;
 	int val;
@@ -292,7 +292,8 @@ void voodoo_start(int which, int scrnum, int type, int fbmem_in_mb, int tmem0_in
 	voodoo[which] = v;
 
 	/* create a multiprocessor work queue */
-	v->work_queue = osd_work_queue_alloc(WORK_QUEUE_FLAG_MULTI);
+	v->poly = poly_alloc(64, sizeof(poly_extra_data), 0);
+	v->thread_stats = auto_malloc(sizeof(v->thread_stats[0]) * WORK_MAX_THREADS);
 
 	/* create a table of precomputed 1/n and log2(n) values */
 	/* n ranges from 1.0000 to 2.0000 */
@@ -367,24 +368,19 @@ void voodoo_start(int which, int scrnum, int type, int fbmem_in_mb, int tmem0_in
 	v->index = which;
 	v->type = type;
 	v->chipmask = 0x01;
-	v->subseconds_per_cycle = MAX_SUBSECONDS / v->freq;
+	v->attoseconds_per_cycle = ATTOSECONDS_PER_SECOND / v->freq;
 	v->trigger = 51324 + which;
 
 	/* build the rasterizer table */
-#ifndef VOODOO_DRC
-{
-	const raster_info *info;
 	for (info = predef_raster_table; info->callback; info++)
 		add_rasterizer(v, info);
-}
-#endif
 
 	/* set up the PCI FIFO */
 	v->pci.fifo.base = v->pci.fifo_mem;
 	v->pci.fifo.size = 64*2;
 	v->pci.fifo.in = v->pci.fifo.out = 0;
 	v->pci.stall_state = NOT_STALLED;
-	v->pci.continue_timer = mame_timer_alloc_ptr(stall_cpu_callback, v);
+	v->pci.continue_timer = timer_alloc_ptr(stall_cpu_callback, v);
 
 	/* allocate memory */
 	if (type <= VOODOO_2)
@@ -448,8 +444,8 @@ void voodoo_start(int which, int scrnum, int type, int fbmem_in_mb, int tmem0_in
 void voodoo_exit(int which)
 {
 	/* release the work queue, ensuring all work is finished */
-	if (voodoo[which] != NULL && voodoo[which]->work_queue != NULL)
-		osd_work_queue_free(voodoo[which]->work_queue);
+	if (voodoo[which] != NULL && voodoo[which]->poly != NULL)
+		poly_free(voodoo[which]->poly);
 }
 
 
@@ -807,7 +803,7 @@ static void init_fbi(voodoo_state *v, fbi_state *f, void *memory, int fbmem)
 	}
 
 	/* allocate a VBLANK timer */
-	f->vblank_timer = mame_timer_alloc_ptr(vblank_callback, v);
+	f->vblank_timer = timer_alloc_ptr(vblank_callback, v);
 	f->vblank = FALSE;
 
 	/* initialize the memory FIFO */
@@ -919,6 +915,52 @@ static void init_tmu(voodoo_state *v, tmu_state *t, int type, voodoo_reg *reg, v
 
 /*************************************
  *
+ *  Statistics management
+ *
+ *************************************/
+
+static void accumulate_statistics(voodoo_state *v, const stats_block *stats)
+{
+	/* apply internal voodoo statistics */
+	v->reg[fbiPixelsIn].u += stats->pixels_in;
+	v->reg[fbiPixelsOut].u += stats->pixels_out;
+	v->reg[fbiChromaFail].u += stats->chroma_fail;
+	v->reg[fbiZfuncFail].u += stats->zfunc_fail;
+	v->reg[fbiAfuncFail].u += stats->afunc_fail;
+
+	/* apply emulation statistics */
+	v->stats.total_pixels_in += stats->pixels_in;
+	v->stats.total_pixels_out += stats->pixels_out;
+	v->stats.total_chroma_fail += stats->chroma_fail;
+	v->stats.total_zfunc_fail += stats->zfunc_fail;
+	v->stats.total_afunc_fail += stats->afunc_fail;
+	v->stats.total_clipped += stats->clip_fail;
+	v->stats.total_stippled += stats->stipple_count;
+}
+
+
+static void update_statistics(voodoo_state *v, int accumulate)
+{
+	int threadnum;
+
+	/* accumulate/reset statistics from all units */
+	for (threadnum = 0; threadnum < WORK_MAX_THREADS; threadnum++)
+	{
+		if (accumulate)
+			accumulate_statistics(v, &v->thread_stats[threadnum]);
+		memset(&v->thread_stats[threadnum], 0, sizeof(v->thread_stats[threadnum]));
+	}
+
+	/* accumulate/reset statistics from the LFB */
+	if (accumulate)
+		accumulate_statistics(v, &v->fbi.lfb_stats);
+	memset(&v->fbi.lfb_stats, 0, sizeof(v->fbi.lfb_stats));
+}
+
+
+
+/*************************************
+ *
  *  VBLANK management
  *
  *************************************/
@@ -971,13 +1013,13 @@ static void swap_buffers(voodoo_state *v)
 	/* reset the last_op_time to now and start processing the next command */
 	if (v->pci.op_pending)
 	{
-		v->pci.op_end_time = mame_timer_get_time();
+		v->pci.op_end_time = timer_get_time();
 		flush_fifos(v, v->pci.op_end_time);
 	}
 
 	/* we may be able to unstall now */
 	if (v->pci.stall_state != NOT_STALLED)
-		check_stalled_cpu(v, mame_timer_get_time());
+		check_stalled_cpu(v, timer_get_time());
 
 	/* periodically log rasterizer info */
 	v->stats.swaps++;
@@ -988,9 +1030,12 @@ static void swap_buffers(voodoo_state *v)
 	if (v->stats.display)
 	{
 		int screen_area = (Machine->screen[v->scrnum].visarea.max_x - Machine->screen[v->scrnum].visarea.min_x + 1) * (Machine->screen[v->scrnum].visarea.max_y - Machine->screen[v->scrnum].visarea.min_y + 1);
-		int pixelcount = v->stats.total_pixels_out;
 		char *statsptr = v->stats.buffer;
+		int pixelcount;
 		int i;
+
+		update_statistics(v, TRUE);
+		pixelcount = v->stats.total_pixels_out;
 
 		statsptr += sprintf(statsptr, "Swap:%6d\n", v->stats.swaps);
 		statsptr += sprintf(statsptr, "Hist:%08X\n", v->reg[fbiSwapHistory].u);
@@ -1037,12 +1082,12 @@ static void swap_buffers(voodoo_state *v)
 
 static void adjust_vblank_timer(voodoo_state *v)
 {
-	mame_time vblank_period = video_screen_get_time_until_pos(v->scrnum, v->fbi.vsyncscan, 0);
+	attotime vblank_period = video_screen_get_time_until_pos(v->scrnum, v->fbi.vsyncscan, 0);
 
 	/* if zero, adjust to next frame, otherwise we may get stuck in an infinite loop */
-	if (compare_mame_times(vblank_period, time_zero) == 0)
+	if (attotime_compare(vblank_period, attotime_zero) == 0)
 		vblank_period = video_screen_get_frame_period(v->scrnum);
-	mame_timer_adjust_ptr(v->fbi.vblank_timer, vblank_period, time_never);
+	timer_adjust_ptr(v->fbi.vblank_timer, vblank_period, attotime_never);
 }
 
 
@@ -1072,7 +1117,7 @@ static TIMER_CALLBACK_PTR( vblank_callback )
 	if (v->pci.op_pending)
 	{
 		if (LOG_VBLANK_SWAP) logerror("---- vblank flush begin\n");
-		flush_fifos(v, mame_timer_get_time());
+		flush_fifos(v, timer_get_time());
 		if (LOG_VBLANK_SWAP) logerror("---- vblank flush end\n");
 	}
 
@@ -1090,7 +1135,7 @@ static TIMER_CALLBACK_PTR( vblank_callback )
 		swap_buffers(v);
 
 	/* set a timer for the next off state */
-	mame_timer_set_ptr(video_screen_get_time_until_pos(v->scrnum, 0, 0), v, vblank_off_callback);
+	timer_set_ptr(video_screen_get_time_until_pos(v->scrnum, 0, 0), v, vblank_off_callback);
 
 	/* set internal state and call the client */
 	v->fbi.vblank = TRUE;
@@ -1108,6 +1153,7 @@ static TIMER_CALLBACK_PTR( vblank_callback )
 
 static void reset_counters(voodoo_state *v)
 {
+	update_statistics(v, FALSE);
 	v->reg[fbiPixelsIn].u = 0;
 	v->reg[fbiChromaFail].u = 0;
 	v->reg[fbiZfuncFail].u = 0;
@@ -1491,21 +1537,24 @@ static void recompute_texture_params(tmu_state *t)
 }
 
 
-INLINE void prepare_tmu(tmu_state *t)
+INLINE INT32 prepare_tmu(tmu_state *t)
 {
 	INT64 texdx, texdy;
+	INT32 lodbase;
 
 	/* if the texture parameters are dirty, update them */
 	if (t->regdirty)
+	{
 		recompute_texture_params(t);
 
-	/* ensure that the NCC tables are up to date */
-	if ((TEXMODE_FORMAT(t->reg[textureMode].u) & 7) == 1)
-	{
-		ncc_table *n = &t->ncc[TEXMODE_NCC_TABLE_SELECT(t->reg[textureMode].u)];
-		t->texel[1] = t->texel[9] = n->texel;
-		if (n->dirty)
-			ncc_table_update(n);
+		/* ensure that the NCC tables are up to date */
+		if ((TEXMODE_FORMAT(t->reg[textureMode].u) & 7) == 1)
+		{
+			ncc_table *n = &t->ncc[TEXMODE_NCC_TABLE_SELECT(t->reg[textureMode].u)];
+			t->texel[1] = t->texel[9] = n->texel;
+			if (n->dirty)
+				ncc_table_update(n);
+		}
 	}
 
 	/* compute (ds^2 + dt^2) in both X and Y as 28.36 numbers */
@@ -1522,8 +1571,8 @@ INLINE void prepare_tmu(tmu_state *t)
 	/* adjust the result: negative to get the log of the original value */
 	/* plus 12 to account for the extra exponent, and divided by 2 to */
 	/* get the log of the square root of texdx */
-	(void)fast_reciplog(texdx, &t->lodbase);
-	t->lodbase = (-t->lodbase + (12 << 8)) / 2;
+	(void)fast_reciplog(texdx, &lodbase);
+	return (-lodbase + (12 << 8)) / 2;
 }
 
 
@@ -2072,11 +2121,11 @@ static void cmdfifo_w(voodoo_state *v, cmdfifo_info *f, offs_t offset, UINT32 da
 		if (cycles > 0)
 		{
 			v->pci.op_pending = TRUE;
-			v->pci.op_end_time = add_subseconds_to_mame_time(mame_timer_get_time(), (subseconds_t)cycles * v->subseconds_per_cycle);
+			v->pci.op_end_time = attotime_add_attoseconds(timer_get_time(), (attoseconds_t)cycles * v->attoseconds_per_cycle);
 
 			if (LOG_FIFO_VERBOSE) logerror("VOODOO.%d.FIFO:direct write start at %d.%08X%08X end at %d.%08X%08X\n", v->index,
-				mame_timer_get_time().seconds, (UINT32)(mame_timer_get_time().subseconds >> 32), (UINT32)mame_timer_get_time().subseconds,
-				v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.subseconds >> 32), (UINT32)v->pci.op_end_time.subseconds);
+				timer_get_time().seconds, (UINT32)(timer_get_time().attoseconds >> 32), (UINT32)timer_get_time().attoseconds,
+				v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.attoseconds >> 32), (UINT32)v->pci.op_end_time.attoseconds);
 		}
 	}
 }
@@ -2092,11 +2141,11 @@ static void cmdfifo_w(voodoo_state *v, cmdfifo_info *f, offs_t offset, UINT32 da
 
 static TIMER_CALLBACK_PTR( stall_cpu_callback )
 {
-	check_stalled_cpu(param, mame_timer_get_time());
+	check_stalled_cpu(param, timer_get_time());
 }
 
 
-static void check_stalled_cpu(voodoo_state *v, mame_time current_time)
+static void check_stalled_cpu(voodoo_state *v, attotime current_time)
 {
 	int resume = FALSE;
 
@@ -2145,12 +2194,12 @@ static void check_stalled_cpu(voodoo_state *v, mame_time current_time)
 	/* if not, set a timer for the next one */
 	else
 	{
-		mame_timer_adjust_ptr(v->pci.continue_timer, sub_mame_times(v->pci.op_end_time, current_time), time_never);
+		timer_adjust_ptr(v->pci.continue_timer, attotime_sub(v->pci.op_end_time, current_time), attotime_never);
 	}
 }
 
 
-static void stall_cpu(voodoo_state *v, int state, mame_time current_time)
+static void stall_cpu(voodoo_state *v, int state, attotime current_time)
 {
 	/* sanity check */
 	if (!v->pci.op_pending) fatalerror("FIFOs not empty, no op pending!");
@@ -2166,7 +2215,7 @@ static void stall_cpu(voodoo_state *v, int state, mame_time current_time)
 		cpu_spinuntil_trigger(v->trigger);
 
 	/* set a timer to clear the stall */
-	mame_timer_adjust_ptr(v->pci.continue_timer, sub_mame_times(v->pci.op_end_time, current_time), time_never);
+	timer_adjust_ptr(v->pci.continue_timer, attotime_sub(v->pci.op_end_time, current_time), attotime_never);
 }
 
 
@@ -2206,10 +2255,6 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 		logerror("VOODOO.%d.ERROR:Invalid attempt to write %s\n", v->index, v->regnames[regnum]);
 		return 0;
 	}
-
-	/* wait for any outstanding work to finish */
-	if (regnum < vertexAx || regnum > fdWdY)
-		work_item_wait(v);
 
 	/* switch off the register */
 	switch (regnum)
@@ -2454,18 +2499,21 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 
 		/* mask off invalid bits for different cards */
 		case fbzColorPath:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (v->type < VOODOO_2)
 				data &= 0x0fffffff;
 			if (chips & 1) v->reg[fbzColorPath].u = data;
 			break;
 
 		case fbzMode:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (v->type < VOODOO_2)
 				data &= 0x001fffff;
 			if (chips & 1) v->reg[fbzMode].u = data;
 			break;
 
 		case fogMode:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (v->type < VOODOO_2)
 				data &= 0x0000003f;
 			if (chips & 1) v->reg[fogMode].u = data;
@@ -2494,6 +2542,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 
 		/* other commands */
 		case nopCMD:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (data & 1)
 				reset_counters(v);
 			if (data & 2)
@@ -2505,10 +2554,12 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 			break;
 
 		case swapbufferCMD:
+			poly_wait(v->poly, v->regnames[regnum]);
 			cycles = swapbuffer(v, data);
 			break;
 
 		case userIntrCMD:
+			poly_wait(v->poly, v->regnames[regnum]);
 			fatalerror("userIntrCMD");
 			break;
 
@@ -2516,6 +2567,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 		case clutData:
 			if (v->type <= VOODOO_2 && (chips & 1))
 			{
+				poly_wait(v->poly, v->regnames[regnum]);
 				if (!FBIINIT1_VIDEO_TIMING_RESET(v->reg[fbiInit1].u))
 				{
 					int index = data >> 24;
@@ -2534,6 +2586,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 		case dacData:
 			if (v->type <= VOODOO_2 && (chips & 1))
 			{
+				poly_wait(v->poly, v->regnames[regnum]);
 				if (!(data & 0x800))
 					dacdata_w(&v->dac, (data >> 8) & 7, data & 0xff);
 				else
@@ -2548,6 +2601,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 		case videoDimensions:
 			if (v->type <= VOODOO_2 && (chips & 1))
 			{
+				poly_wait(v->poly, v->regnames[regnum]);
 				v->reg[regnum].u = data;
 				if (v->reg[hSync].u != 0 && v->reg[vSync].u != 0 && v->reg[videoDimensions].u != 0)
 				{
@@ -2558,8 +2612,8 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 					int hbp = (v->reg[backPorch].u & 0xff) + 2;
 					int vbp = (v->reg[backPorch].u >> 16) & 0xff;
 					screen_state *state = &Machine->screen[v->scrnum];
-					subseconds_t stdperiod, medperiod, vgaperiod;
-					subseconds_t stddiff, meddiff, vgadiff;
+					attoseconds_t stdperiod, medperiod, vgaperiod;
+					attoseconds_t stddiff, meddiff, vgadiff;
 					rectangle visarea;
 
 					/* create a new visarea */
@@ -2573,9 +2627,9 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 					visarea.max_y = MIN(visarea.max_y, vtotal - 1);
 
 					/* compute the new period for standard res, medium res, and VGA res */
-					stdperiod = HZ_TO_SUBSECONDS(15750) * vtotal;
-					medperiod = HZ_TO_SUBSECONDS(25000) * vtotal;
-					vgaperiod = HZ_TO_SUBSECONDS(31500) * vtotal;
+					stdperiod = HZ_TO_ATTOSECONDS(15750) * vtotal;
+					medperiod = HZ_TO_ATTOSECONDS(25000) * vtotal;
+					vgaperiod = HZ_TO_ATTOSECONDS(31500) * vtotal;
 
 					/* compute a diff against the current refresh period */
 					stddiff = stdperiod - state->refresh;
@@ -2593,17 +2647,17 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 					if (stddiff < meddiff && stddiff < vgadiff)
 					{
 						video_screen_configure(v->scrnum, htotal, vtotal, &visarea, stdperiod);
-						mame_printf_debug("Standard resolution, %f Hz\n", SUBSECONDS_TO_HZ(stdperiod));
+						mame_printf_debug("Standard resolution, %f Hz\n", ATTOSECONDS_TO_HZ(stdperiod));
 					}
 					else if (meddiff < vgadiff)
 					{
 						video_screen_configure(v->scrnum, htotal, vtotal, &visarea, medperiod);
-						mame_printf_debug("Medium resolution, %f Hz\n", SUBSECONDS_TO_HZ(medperiod));
+						mame_printf_debug("Medium resolution, %f Hz\n", ATTOSECONDS_TO_HZ(medperiod));
 					}
 					else
 					{
 						video_screen_configure(v->scrnum, htotal, vtotal, &visarea, vgaperiod);
-						mame_printf_debug("VGA resolution, %f Hz\n", SUBSECONDS_TO_HZ(vgaperiod));
+						mame_printf_debug("VGA resolution, %f Hz\n", ATTOSECONDS_TO_HZ(vgaperiod));
 					}
 
 					/* configure the new framebuffer info */
@@ -2625,6 +2679,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 
 		/* fbiInit0 can only be written if initEnable says we can -- Voodoo/Voodoo2 only */
 		case fbiInit0:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (v->type <= VOODOO_2 && (chips & 1) && INITEN_ENABLE_HW_INIT(v->pci.init_enable))
 			{
 				v->reg[fbiInit0].u = data;
@@ -2648,6 +2703,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 		case fbiInit1:
 		case fbiInit2:
 		case fbiInit4:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (v->type <= VOODOO_2 && (chips & 1) && INITEN_ENABLE_HW_INIT(v->pci.init_enable))
 			{
 				v->reg[regnum].u = data;
@@ -2657,6 +2713,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 			break;
 
 		case fbiInit3:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (v->type <= VOODOO_2 && (chips & 1) && INITEN_ENABLE_HW_INIT(v->pci.init_enable))
 			{
 				v->reg[regnum].u = data;
@@ -2670,6 +2727,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 /*      case swapPending: -- Banshee */
 			if (v->type == VOODOO_2 && (chips & 1) && INITEN_ENABLE_HW_INIT(v->pci.init_enable))
 			{
+				poly_wait(v->poly, v->regnames[regnum]);
 				v->reg[regnum].u = data;
 				v->fbi.cmdfifo[0].enable = FBIINIT7_CMDFIFO_ENABLE(data);
 				v->fbi.cmdfifo[0].count_holes = !FBIINIT7_DISABLE_CMDFIFO_HOLES(data);
@@ -2682,6 +2740,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 		case cmdFifoBaseAddr:
 			if (v->type == VOODOO_2 && (chips & 1))
 			{
+				poly_wait(v->poly, v->regnames[regnum]);
 				v->reg[regnum].u = data;
 				v->fbi.cmdfifo[0].base = (data & 0x3ff) << 12;
 				v->fbi.cmdfifo[0].end = (((data >> 16) & 0x3ff) + 1) << 12;
@@ -2763,6 +2822,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 		case nccTable+9:
 		case nccTable+10:
 		case nccTable+11:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (chips & 2) ncc_table_write(&v->tmu[0].ncc[0], regnum - nccTable, data);
 			if (chips & 4) ncc_table_write(&v->tmu[1].ncc[0], regnum - nccTable, data);
 			break;
@@ -2779,6 +2839,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 		case nccTable+21:
 		case nccTable+22:
 		case nccTable+23:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (chips & 2) ncc_table_write(&v->tmu[0].ncc[1], regnum - (nccTable+12), data);
 			if (chips & 4) ncc_table_write(&v->tmu[1].ncc[1], regnum - (nccTable+12), data);
 			break;
@@ -2816,6 +2877,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 		case fogTable+29:
 		case fogTable+30:
 		case fogTable+31:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (chips & 1)
 			{
 				int base = 2 * (regnum - fogTable);
@@ -2834,6 +2896,7 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 		case texBaseAddr_1:
 		case texBaseAddr_2:
 		case texBaseAddr_3_8:
+			poly_wait(v->poly, v->regnames[regnum]);
 			if (chips & 2)
 			{
 				v->tmu[0].reg[regnum].u = data;
@@ -2845,6 +2908,20 @@ static INT32 register_w(voodoo_state *v, offs_t offset, UINT32 data)
 				v->tmu[1].regdirty = TRUE;
 			}
 			break;
+
+		/* these registers are referenced in the renderer; we must wait for pending work before changing */
+		case chromaRange:
+		case chromaKey:
+		case alphaMode:
+		case fogColor:
+		case stipple:
+		case zaColor:
+		case color1:
+		case color0:
+		case clipLowYHighY:
+		case clipLeftRight:
+			poly_wait(v->poly, v->regnames[regnum]);
+			/* fall through to default implementation */
 
 		/* by default, just feed the data to the chips */
 		default:
@@ -2880,7 +2957,7 @@ static INT32 lfb_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mask,
 	UINT32 destmax, depthmax;
 	int sr[2], sg[2], sb[2], sa[2], sw[2];
 	int x, y, scry, mask;
-	int pixel, destbuf;
+	int pix, destbuf;
 
 	/* statistics */
 	v->stats.lfb_writes++;
@@ -3106,7 +3183,7 @@ static INT32 lfb_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mask,
 	depthmax = v->fbi.auxmax;
 
 	/* wait for any outstanding work to finish */
-	work_item_wait(v);
+	poly_wait(v->poly, "LFB Write");
 
 	/* simple case: no pipeline */
 	if (!LFBMODE_ENABLE_PIXEL_PIPELINE(v->reg[lfbMode].u))
@@ -3128,7 +3205,7 @@ static INT32 lfb_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mask,
 		COMPUTE_DITHER_POINTERS(v->reg[fbzMode].u, y);
 
 		/* loop over up to two pixels */
-		for (pixel = 0; mask; pixel++)
+		for (pix = 0; mask; pix++)
 		{
 			/* make sure we care about this pixel */
 			if (mask & 0x0f)
@@ -3137,8 +3214,8 @@ static INT32 lfb_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mask,
 				if ((mask & LFB_RGB_PRESENT) && bufoffs < destmax)
 				{
 					/* apply dithering and write to the screen */
-					APPLY_DITHER(v->reg[fbzMode].u, x, dither_lookup, sr[pixel], sg[pixel], sb[pixel]);
-					dest[bufoffs] = (sr[pixel] << 11) | (sg[pixel] << 5) | sb[pixel];
+					APPLY_DITHER(v->reg[fbzMode].u, x, dither_lookup, sr[pix], sg[pix], sb[pix]);
+					dest[bufoffs] = (sr[pix] << 11) | (sg[pix] << 5) | sb[pix];
 				}
 
 				/* make sure we have an aux buffer to write to */
@@ -3146,11 +3223,11 @@ static INT32 lfb_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mask,
 				{
 					/* write to the alpha buffer */
 					if ((mask & LFB_ALPHA_PRESENT) && FBZMODE_ENABLE_ALPHA_PLANES(v->reg[fbzMode].u))
-						depth[bufoffs] = sa[pixel];
+						depth[bufoffs] = sa[pix];
 
 					/* write to the depth buffer */
 					if ((mask & (LFB_DEPTH_PRESENT | LFB_DEPTH_PRESENT_MSW)) && !FBZMODE_ENABLE_ALPHA_PLANES(v->reg[fbzMode].u))
-						depth[bufoffs] = sw[pixel];
+						depth[bufoffs] = sw[pix];
 				}
 
 				/* track pixel writes to the frame buffer regardless of mask */
@@ -3168,7 +3245,6 @@ static INT32 lfb_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mask,
 	else
 	{
 		DECLARE_DITHER_POINTERS;
-		DECLARE_STATISTICS;
 
 		if (LOG_LFB) logerror("VOODOO.%d.LFB:write pipelined mode %X (%d,%d) = %08X & %08X\n", v->index, LFBMODE_WRITE_FORMAT(v->reg[lfbMode].u), x, y, data, mem_mask);
 
@@ -3186,13 +3262,14 @@ static INT32 lfb_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mask,
 		COMPUTE_DITHER_POINTERS(v->reg[fbzMode].u, y);
 
 		/* loop over up to two pixels */
-		for (pixel = 0; mask; pixel++)
+		for (pix = 0; mask; pix++)
 		{
 			/* make sure we care about this pixel */
 			if (mask & 0x0f)
 			{
-				INT64 iterw = sw[pixel] << (30-16);
-				INT32 iterz = sw[pixel] << 12;
+				stats_block *stats = &v->fbi.lfb_stats;
+				INT64 iterw = sw[pix] << (30-16);
+				INT32 iterz = sw[pix] << 12;
 				rgb_union color;
 
 				/* apply clipping */
@@ -3203,36 +3280,34 @@ static INT32 lfb_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mask,
 						scry < ((v->reg[clipLowYHighY].u >> 16) & 0x3ff) ||
 						scry >= (v->reg[clipLowYHighY].u & 0x3ff))
 					{
-						pixin++;
-						v->stats.total_clipped++;
+						stats->pixels_in++;
+						stats->clip_fail++;
 						continue;
 					}
 				}
 
 				/* pixel pipeline part 1 handles depth testing and stippling */
-				PIXEL_PIPELINE_BEGIN(v, x, y, v->reg[fbzColorPath].u, v->reg[fbzMode].u, iterz, iterw);
+				PIXEL_PIPELINE_BEGIN(v, stats, x, y, v->reg[fbzColorPath].u, v->reg[fbzMode].u, iterz, iterw);
 
 				/* use the RGBA we stashed above */
-				color.rgb.r = r = sr[pixel];
-				color.rgb.g = g = sg[pixel];
-				color.rgb.b = b = sb[pixel];
-				color.rgb.a = a = sa[pixel];
+				color.rgb.r = r = sr[pix];
+				color.rgb.g = g = sg[pix];
+				color.rgb.b = b = sb[pix];
+				color.rgb.a = a = sa[pix];
 
 				/* apply chroma key, alpha mask, and alpha testing */
-				APPLY_CHROMAKEY(v, v->reg[fbzMode].u, color);
-				APPLY_ALPHAMASK(v, v->reg[fbzMode].u, color.rgb.a);
-				APPLY_ALPHATEST(v, v->reg[alphaMode].u, color.rgb.a);
+				APPLY_CHROMAKEY(v, stats, v->reg[fbzMode].u, color);
+				APPLY_ALPHAMASK(v, stats, v->reg[fbzMode].u, color.rgb.a);
+				APPLY_ALPHATEST(v, stats, v->reg[alphaMode].u, color.rgb.a);
 
 				/* pixel pipeline part 2 handles color combine, fog, alpha, and final output */
-				PIXEL_PIPELINE_END(v, dither, dither4, dither_lookup, x, dest, depth, v->reg[fbzMode].u, v->reg[fbzColorPath].u, v->reg[alphaMode].u, v->reg[fogMode].u, iterz, iterw, v->reg[zaColor]);
+				PIXEL_PIPELINE_END(v, stats, dither, dither4, dither_lookup, x, dest, depth, v->reg[fbzMode].u, v->reg[fbzColorPath].u, v->reg[alphaMode].u, v->reg[fogMode].u, iterz, iterw, v->reg[zaColor]);
 			}
 
 			/* advance our pointers */
 			x++;
 			mask >>= 4;
 		}
-
-		UPDATE_STATISTICS(v);
 	}
 
 	return 0;
@@ -3263,7 +3338,7 @@ static INT32 texture_w(voodoo_state *v, offs_t offset, UINT32 data)
 		fatalerror("Texture direct write!");
 
 	/* wait for any outstanding work to finish */
-	work_item_wait(v);
+	poly_wait(v->poly, "Texture write");
 
 	/* update texture info if dirty */
 	if (t->regdirty)
@@ -3371,7 +3446,7 @@ static INT32 texture_w(voodoo_state *v, offs_t offset, UINT32 data)
  *
  *************************************/
 
-static void flush_fifos(voodoo_state *v, mame_time current_time)
+static void flush_fifos(voodoo_state *v, attotime current_time)
 {
 	static UINT8 in_flush;
 
@@ -3383,11 +3458,11 @@ static void flush_fifos(voodoo_state *v, mame_time current_time)
 	if (!v->pci.op_pending) fatalerror("flush_fifos called with no pending operation");
 
 	if (LOG_FIFO_VERBOSE) logerror("VOODOO.%d.FIFO:flush_fifos start -- pending=%d.%08X%08X cur=%d.%08X%08X\n", v->index,
-		v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.subseconds >> 32), (UINT32)v->pci.op_end_time.subseconds,
-		current_time.seconds, (UINT32)(current_time.subseconds >> 32), (UINT32)current_time.subseconds);
+		v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.attoseconds >> 32), (UINT32)v->pci.op_end_time.attoseconds,
+		current_time.seconds, (UINT32)(current_time.attoseconds >> 32), (UINT32)current_time.attoseconds);
 
 	/* loop while we still have cycles to burn */
-	while (compare_mame_times(v->pci.op_end_time, current_time) <= 0)
+	while (attotime_compare(v->pci.op_end_time, current_time) <= 0)
 	{
 		INT32 extra_cycles = 0;
 		INT32 cycles;
@@ -3478,15 +3553,15 @@ static void flush_fifos(voodoo_state *v, mame_time current_time)
 		cycles += extra_cycles;
 
 		/* account for those cycles */
-		v->pci.op_end_time = add_subseconds_to_mame_time(v->pci.op_end_time, (subseconds_t)cycles * v->subseconds_per_cycle);
+		v->pci.op_end_time = attotime_add_attoseconds(v->pci.op_end_time, (attoseconds_t)cycles * v->attoseconds_per_cycle);
 
 		if (LOG_FIFO_VERBOSE) logerror("VOODOO.%d.FIFO:update -- pending=%d.%08X%08X cur=%d.%08X%08X\n", v->index,
-			v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.subseconds >> 32), (UINT32)v->pci.op_end_time.subseconds,
-			current_time.seconds, (UINT32)(current_time.subseconds >> 32), (UINT32)current_time.subseconds);
+			v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.attoseconds >> 32), (UINT32)v->pci.op_end_time.attoseconds,
+			current_time.seconds, (UINT32)(current_time.attoseconds >> 32), (UINT32)current_time.attoseconds);
 	}
 
 	if (LOG_FIFO_VERBOSE) logerror("VOODOO.%d.FIFO:flush_fifos end -- pending command complete at %d.%08X%08X\n", v->index,
-		v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.subseconds >> 32), (UINT32)v->pci.op_end_time.subseconds);
+		v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.attoseconds >> 32), (UINT32)v->pci.op_end_time.attoseconds);
 
 	in_flush = FALSE;
 }
@@ -3512,7 +3587,7 @@ static void voodoo_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mas
 
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, mame_timer_get_time());
+		flush_fifos(v, timer_get_time());
 
 	/* special handling for registers */
 	if ((offset & 0xc00000/4) == 0)
@@ -3592,11 +3667,11 @@ static void voodoo_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mas
 		if (cycles)
 		{
 			v->pci.op_pending = TRUE;
-			v->pci.op_end_time = add_subseconds_to_mame_time(mame_timer_get_time(), (subseconds_t)cycles * v->subseconds_per_cycle);
+			v->pci.op_end_time = attotime_add_attoseconds(timer_get_time(), (attoseconds_t)cycles * v->attoseconds_per_cycle);
 
 			if (LOG_FIFO_VERBOSE) logerror("VOODOO.%d.FIFO:direct write start at %d.%08X%08X end at %d.%08X%08X\n", v->index,
-				mame_timer_get_time().seconds, (UINT32)(mame_timer_get_time().subseconds >> 32), (UINT32)mame_timer_get_time().subseconds,
-				v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.subseconds >> 32), (UINT32)v->pci.op_end_time.subseconds);
+				timer_get_time().seconds, (UINT32)(timer_get_time().attoseconds >> 32), (UINT32)timer_get_time().attoseconds,
+				v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.attoseconds >> 32), (UINT32)v->pci.op_end_time.attoseconds);
 		}
 		profiler_mark(PROFILER_END);
 		return;
@@ -3645,7 +3720,7 @@ static void voodoo_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mas
 			fifo_items(&v->fbi.fifo) >= 2 * 32 * FBIINIT0_MEMORY_FIFO_HWM(v->reg[fbiInit0].u))
 		{
 			if (LOG_FIFO) logerror("VOODOO.%d.FIFO:voodoo_w hit memory FIFO HWM -- stalling\n", v->index);
-			stall_cpu(v, STALLED_UNTIL_FIFO_LWM, mame_timer_get_time());
+			stall_cpu(v, STALLED_UNTIL_FIFO_LWM, timer_get_time());
 		}
 	}
 
@@ -3654,14 +3729,14 @@ static void voodoo_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_mas
 		fifo_space(&v->pci.fifo) <= 2 * FBIINIT0_PCI_FIFO_LWM(v->reg[fbiInit0].u))
 	{
 		if (LOG_FIFO) logerror("VOODOO.%d.FIFO:voodoo_w hit PCI FIFO free LWM -- stalling\n", v->index);
-		stall_cpu(v, STALLED_UNTIL_FIFO_LWM, mame_timer_get_time());
+		stall_cpu(v, STALLED_UNTIL_FIFO_LWM, timer_get_time());
 	}
 
 	/* if we weren't ready, and this is a non-FIFO access, stall until the FIFOs are clear */
 	if (stall)
 	{
 		if (LOG_FIFO_VERBOSE) logerror("VOODOO.%d.FIFO:voodoo_w wrote non-FIFO register -- stalling until clear\n", v->index);
-		stall_cpu(v, STALLED_UNTIL_FIFO_EMPTY, mame_timer_get_time());
+		stall_cpu(v, STALLED_UNTIL_FIFO_EMPTY, timer_get_time());
 	}
 
 	profiler_mark(PROFILER_END);
@@ -3811,13 +3886,14 @@ static UINT32 register_r(voodoo_state *v, offs_t offset)
 			break;
 
 		/* all counters are 24-bit only */
-		case fbiTrianglesOut:
 		case fbiPixelsIn:
 		case fbiChromaFail:
 		case fbiZfuncFail:
 		case fbiAfuncFail:
 		case fbiPixelsOut:
-			result &= 0xffffff;
+			update_statistics(v, TRUE);
+		case fbiTrianglesOut:
+			result = v->reg[regnum].u & 0xffffff;
 			break;
 	}
 
@@ -3903,7 +3979,7 @@ static UINT32 lfb_r(voodoo_state *v, offs_t offset, int forcefront)
 		return 0xffffffff;
 
 	/* wait for any outstanding work to finish */
-	work_item_wait(v);
+	poly_wait(v->poly, "LFB read");
 
 	/* compute the data */
 	data = buffer[bufoffs + 0] | (buffer[bufoffs + 1] << 16);
@@ -3933,7 +4009,7 @@ static UINT32 voodoo_r(voodoo_state *v, offs_t offset)
 {
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, mame_timer_get_time());
+		flush_fifos(v, timer_get_time());
 
 	/* target the appropriate location */
 	if (!(offset & (0xc00000/4)))
@@ -4019,7 +4095,7 @@ static UINT32 banshee_r(voodoo_state *v, offs_t offset, UINT32 mem_mask)
 
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, mame_timer_get_time());
+		flush_fifos(v, timer_get_time());
 
 	if (offset < 0x80000/4)
 		result = banshee_io_r(v, offset, mem_mask);
@@ -4052,7 +4128,7 @@ static UINT32 banshee_fb_r(voodoo_state *v, offs_t offset, UINT32 mem_mask)
 
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, mame_timer_get_time());
+		flush_fifos(v, timer_get_time());
 
 	if (offset < v->fbi.lfb_base)
 	{
@@ -4308,7 +4384,7 @@ static void banshee_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem_ma
 {
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, mame_timer_get_time());
+		flush_fifos(v, timer_get_time());
 
 	if (offset < 0x80000/4)
 		banshee_io_w(v, offset, data, mem_mask);
@@ -4340,7 +4416,7 @@ static void banshee_fb_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem
 
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, mame_timer_get_time());
+		flush_fifos(v, timer_get_time());
 
 	if (offset < v->fbi.lfb_base)
 	{
@@ -4500,82 +4576,6 @@ static void banshee_io_w(voodoo_state *v, offs_t offset, UINT32 data, UINT32 mem
 
 
 /***************************************************************************
-    WORK ITEM MANAGEMENT
-***************************************************************************/
-
-/*-------------------------------------------------
-    work_item_enqueue - enqueue a new work item,
-    remembering starting statistics
--------------------------------------------------*/
-
-static void work_item_enqueue(voodoo_state *v, work_info *work, int numitems)
-{
-	/* remember the starting statistics values */
-	work->start_pixels_in = v->reg[fbiPixelsIn].u;
-	work->start_pixels_out = v->reg[fbiPixelsOut].u;
-	work->start_chroma_fail = v->reg[fbiChromaFail].u;
-	work->start_zfunc_fail = v->reg[fbiZfuncFail].u;
-	work->start_afunc_fail = v->reg[fbiAfuncFail].u;
-
-	/* set the state */
-	work->state = v;
-
-	/* enqueue the work item */
-	osd_work_item_queue_multiple(v->work_queue, work_item_callback, numitems, work->unit, sizeof(*work->unit), WORK_ITEM_FLAG_AUTO_RELEASE);
-}
-
-
-/*-------------------------------------------------
-    work_item_wait - wait for all pending work
-    items to complete, then update statistics
--------------------------------------------------*/
-
-static void work_item_wait(voodoo_state *v)
-{
-	work_info *work = &v->work;
-
-	/* wait for the work item to complete */
-	osd_work_queue_wait(v->work_queue, osd_ticks_per_second());
-
-	/* update our global stats based on the results */
-	v->stats.total_pixels_in += v->reg[fbiPixelsIn].u - work->start_pixels_in;
-	v->stats.total_pixels_out += v->reg[fbiPixelsOut].u - work->start_pixels_out;
-	v->stats.total_chroma_fail += v->reg[fbiChromaFail].u - work->start_chroma_fail;
-	v->stats.total_zfunc_fail += v->reg[fbiZfuncFail].u - work->start_zfunc_fail;
-	v->stats.total_afunc_fail += v->reg[fbiAfuncFail].u - work->start_afunc_fail;
-	if (work->info != NULL)
-		work->info->hits += v->reg[fbiPixelsIn].u - work->start_pixels_in;
-
-	/* remember the starting statistics values */
-	work->start_pixels_in = v->reg[fbiPixelsIn].u;
-	work->start_pixels_out = v->reg[fbiPixelsOut].u;
-	work->start_chroma_fail = v->reg[fbiChromaFail].u;
-	work->start_zfunc_fail = v->reg[fbiZfuncFail].u;
-	work->start_afunc_fail = v->reg[fbiAfuncFail].u;
-}
-
-
-/*-------------------------------------------------
-    work_item_callback - work item callback;
-    loop over scanlines and call the rasterizer
-    for each one
--------------------------------------------------*/
-
-static void *work_item_callback(void *param)
-{
-	work_unit *unit = param;
-	work_info *work = unit->work;
-	int extnum;
-
-	/* iterate over extents */
-	for (extnum = 0; extnum < unit->count; extnum++)
-		(*work->callback)(work, unit->scanline + extnum, unit->extent[extnum].startx, unit->extent[extnum].stopx);
-	return NULL;
-}
-
-
-
-/***************************************************************************
     COMMAND HANDLERS
 ***************************************************************************/
 
@@ -4590,9 +4590,11 @@ static INT32 fastfill(voodoo_state *v)
 	int ex = (v->reg[clipLeftRight].u >> 0) & 0x3ff;
 	int sy = (v->reg[clipLowYHighY].u >> 16) & 0x3ff;
 	int ey = (v->reg[clipLowYHighY].u >> 0) & 0x3ff;
-	work_info *work = &v->work;
-	work_unit *unit = work->unit;
-	int x, y;
+	poly_extent extents[64];
+	UINT16 dithermatrix[16];
+	UINT16 *drawbuf = NULL;
+	UINT32 pixels = 0;
+	int extnum, x, y;
 
 	/* if we're not clearing either, take no time */
 	if (!FBZMODE_RGB_BUFFER_MASK(v->reg[fbzMode].u) && !FBZMODE_AUX_BUFFER_MASK(v->reg[fbzMode].u))
@@ -4606,11 +4608,11 @@ static INT32 fastfill(voodoo_state *v)
 		switch (destbuf)
 		{
 			case 0:		/* front buffer */
-				work->drawbuf = v->fbi.rgb[v->fbi.frontbuf];
+				drawbuf = v->fbi.rgb[v->fbi.frontbuf];
 				break;
 
 			case 1:		/* back buffer */
-				work->drawbuf = v->fbi.rgb[v->fbi.backbuf];
+				drawbuf = v->fbi.rgb[v->fbi.backbuf];
 				break;
 
 			default:	/* reserved */
@@ -4624,42 +4626,36 @@ static INT32 fastfill(voodoo_state *v)
 			COMPUTE_DITHER_POINTERS(v->reg[fbzMode].u, y);
 			for (x = 0; x < 4; x++)
 			{
-				int r = RGB_RED(v->reg[color1].u);
-				int g = RGB_GREEN(v->reg[color1].u);
-				int b = RGB_BLUE(v->reg[color1].u);
+				int r = v->reg[color1].rgb.r;
+				int g = v->reg[color1].rgb.g;
+				int b = v->reg[color1].rgb.b;
 
 				APPLY_DITHER(v->reg[fbzMode].u, x, dither_lookup, r, g, b);
-				work->dither[y*4 + x] = (r << 11) | (g << 5) | b;
+				dithermatrix[y*4 + x] = (r << 11) | (g << 5) | b;
 			}
 		}
 	}
 
-	/* create a shared work item to actually perform the fill */
-	work->startscanline = sy;
-	work->callback = raster_fastfill;
-	work->info = NULL;
-	for (y = sy; y < ey; y += SCANLINES_PER_WORK)
+	/* fill in a block of extents */
+	extents[0].startx = sx;
+	extents[0].stopx = ex;
+	for (extnum = 1; extnum < ARRAY_LENGTH(extents); extnum++)
+		extents[extnum] = extents[0];
+
+	/* iterate over blocks of extents */
+	for (y = sy; y < ey; y += ARRAY_LENGTH(extents))
 	{
-		int extnum;
+		poly_extra_data *extra = poly_get_extra_data(v->poly);
+		int count = MIN(ey - y, ARRAY_LENGTH(extents));
 
-		unit->work = work;
-		unit->scanline = y;
-		unit->count = MIN(ey - y, SCANLINES_PER_WORK);
-		for (extnum = 0; extnum < unit->count; extnum++)
-		{
-			unit->extent[extnum].startx = sx;
-			unit->extent[extnum].stopx = ex;
-		}
-		unit++;
+		extra->state = v;
+		memcpy(extra->dither, dithermatrix, sizeof(extra->dither));
+
+		pixels += poly_render_triangle_custom(v->poly, drawbuf, NULL, raster_fastfill, y, count, extents);
 	}
-	work_item_enqueue(v, work, unit - work->unit);
-
-	/* track pixel writes to the frame buffer regardless of mask */
-	if (FBZMODE_RGB_BUFFER_MASK(v->reg[fbzMode].u))
-		v->reg[fbiPixelsOut].u += (ey - sy) * (ex - sx);
 
 	/* 2 pixels per clock */
-	return ((ey - sy) * (ex - sx)) / 2;
+	return pixels / 2;
 }
 
 
@@ -4695,7 +4691,7 @@ static INT32 swapbuffer(voodoo_state *v, UINT32 data)
 
 static INT32 triangle(voodoo_state *v)
 {
-	int texcount = 0, texnum;
+	int texcount = 0;
 	UINT16 *drawbuf;
 	int destbuf;
 	int pixels;
@@ -4723,7 +4719,7 @@ static INT32 triangle(voodoo_state *v)
 		v->fbi.startb += (dy * v->fbi.dbdy + dx * v->fbi.dbdx) >> 4;
 		v->fbi.starta += (dy * v->fbi.dady + dx * v->fbi.dadx) >> 4;
 		v->fbi.startw += (dy * v->fbi.dwdy + dx * v->fbi.dwdx) >> 4;
-		v->fbi.startz += fixed_mul_shift(dy, v->fbi.dzdy, 4) + fixed_mul_shift(dx, v->fbi.dzdx, 4);
+		v->fbi.startz += mul_32x32_shift(dy, v->fbi.dzdy, 4) + mul_32x32_shift(dx, v->fbi.dzdx, 4);
 
 		/* adjust iterated W/S/T for TMU 0 */
 		if (texcount >= 1)
@@ -4743,14 +4739,7 @@ static INT32 triangle(voodoo_state *v)
 	}
 
 	/* wait for any outstanding work to finish */
-	work_item_wait(v);
-
-	/* set up the textures */
-	for (texnum = 0; texnum < texcount; texnum++)
-	{
-		prepare_tmu(&v->tmu[texnum]);
-		v->stats.texture_mode[TEXMODE_FORMAT(v->tmu[texnum].reg[textureMode].u)]++;
-	}
+//  poly_wait(v->poly, "triangle");
 
 	/* determine the draw buffer */
 	destbuf = (v->type >= VOODOO_BANSHEE) ? 1 : FBZMODE_DRAW_BUFFER(v->reg[fbzMode].u);
@@ -4997,173 +4986,79 @@ static INT32 setup_and_draw_triangle(voodoo_state *v)
 
 static INT32 triangle_create_work_item(voodoo_state *v, UINT16 *drawbuf, int texcount)
 {
+	poly_extra_data *extra = poly_get_extra_data(v->poly);
 	raster_info *info = find_rasterizer(v, texcount);
-	work_info *work = &v->work;
-	work_unit *unit = work->unit;
-	int curscan, pixels = 0;
-	INT32 dxdy_minmid;
-	INT32 dxdy_minmax;
-	INT32 dxdy_midmax;
-	INT32 minx, miny;
-	INT32 midx, midy;
-	INT32 maxx, maxy;
-	INT32 endscanline;
+	poly_vertex vert[3];
 
-	/* sort the vertices */
-	/* note that this is not necessary on the Voodoo 1 as the card assumes the vertices */
-	/* are presorted such that ay <= by <= cy, but we do it anyway because it is cheap enough */
-	if (v->fbi.ay <= v->fbi.by)
-	{
-		if (v->fbi.by <= v->fbi.cy)
-		{
-			minx = v->fbi.ax;	miny = v->fbi.ay;
-			midx = v->fbi.bx;	midy = v->fbi.by;
-			maxx = v->fbi.cx;	maxy = v->fbi.cy;
-		}
-		else if (v->fbi.ay <= v->fbi.cy)
-		{
-			minx = v->fbi.ax;	miny = v->fbi.ay;
-			midx = v->fbi.cx;	midy = v->fbi.cy;
-			maxx = v->fbi.bx;	maxy = v->fbi.by;
-		}
-		else
-		{
-			minx = v->fbi.cx;	miny = v->fbi.cy;
-			midx = v->fbi.ax;	midy = v->fbi.ay;
-			maxx = v->fbi.bx;	maxy = v->fbi.by;
-		}
-	}
-	else
-	{
-		if (v->fbi.ay <= v->fbi.cy)
-		{
-			minx = v->fbi.bx;	miny = v->fbi.by;
-			midx = v->fbi.ax;	midy = v->fbi.ay;
-			maxx = v->fbi.cx;	maxy = v->fbi.cy;
-		}
-		else if (v->fbi.by <= v->fbi.cy)
-		{
-			minx = v->fbi.bx;	miny = v->fbi.by;
-			midx = v->fbi.cx;	midy = v->fbi.cy;
-			maxx = v->fbi.ax;	maxy = v->fbi.ay;
-		}
-		else
-		{
-			minx = v->fbi.cx;	miny = v->fbi.cy;
-			midx = v->fbi.bx;	midy = v->fbi.by;
-			maxx = v->fbi.ax;	maxy = v->fbi.ay;
-		}
-	}
+	/* fill in the vertex data */
+	vert[0].x = (float)v->fbi.ax * (1.0f / 16.0f);
+	vert[0].y = (float)v->fbi.ay * (1.0f / 16.0f);
+	vert[1].x = (float)v->fbi.bx * (1.0f / 16.0f);
+	vert[1].y = (float)v->fbi.by * (1.0f / 16.0f);
+	vert[2].x = (float)v->fbi.cx * (1.0f / 16.0f);
+	vert[2].y = (float)v->fbi.cy * (1.0f / 16.0f);
 
-	/* clamp to full pixels */
-	work->startscanline = (miny + 7) >> 4;
-	endscanline = (maxy + 7) >> 4;
-	if (work->startscanline >= endscanline)
-		return 0;
+	/* fill in the extra data */
+	extra->state = v;
+	extra->info = info;
 
-	/* compute the slopes as 16.16 numbers */
-	dxdy_minmid = (miny == midy) ? 0 : ((midx - minx) << 16) / (midy - miny);
-	dxdy_minmax = (miny == maxy) ? 0 : ((maxx - minx) << 16) / (maxy - miny);
-	dxdy_midmax = (midy == maxy) ? 0 : ((maxx - midx) << 16) / (maxy - midy);
+	/* fill in triangle parameters */
+	extra->ax = v->fbi.ax;
+	extra->ay = v->fbi.ay;
+	extra->startr = v->fbi.startr;
+	extra->startg = v->fbi.startg;
+	extra->startb = v->fbi.startb;
+	extra->starta = v->fbi.starta;
+	extra->startz = v->fbi.startz;
+	extra->startw = v->fbi.startw;
+	extra->drdx = v->fbi.drdx;
+	extra->dgdx = v->fbi.dgdx;
+	extra->dbdx = v->fbi.dbdx;
+	extra->dadx = v->fbi.dadx;
+	extra->dzdx = v->fbi.dzdx;
+	extra->dwdx = v->fbi.dwdx;
+	extra->drdy = v->fbi.drdy;
+	extra->dgdy = v->fbi.dgdy;
+	extra->dbdy = v->fbi.dbdy;
+	extra->dady = v->fbi.dady;
+	extra->dzdy = v->fbi.dzdy;
+	extra->dwdy = v->fbi.dwdy;
 
-	/* compute the X extents for each scanline */
-	for (curscan = work->startscanline; curscan < endscanline; curscan += SCANLINES_PER_WORK)
-	{
-		int extnum;
-
-		/* fill in the work unit basics */
-		unit->work = work;
-		unit->scanline = curscan;
-		unit->count = MIN(endscanline - curscan, SCANLINES_PER_WORK);
-
-		/* iterate over extents */
-		for (extnum = 0; extnum < unit->count; extnum++)
-		{
-			INT32 fully = ((curscan + extnum) << 4) + 8;
-			INT32 startx = minx + (((fully - miny) * dxdy_minmax) >> 16);
-			INT32 stopx;
-
-			/* compute the ending X based on which part of the triangle we're in */
-			if (fully < midy)
-				stopx = minx + (((fully - miny) * dxdy_minmid) >> 16);
-			else
-				stopx = midx + (((fully - midy) * dxdy_midmax) >> 16);
-
-			/* clamp to full pixels */
-			startx = (startx + 7) >> 4;
-			stopx = (stopx + 7) >> 4;
-
-			/* force start < stop */
-			if (startx > stopx)
-			{
-				int temp = startx;
-				startx = stopx;
-				stopx = temp;
-			}
-
-			/* set the extent and update the total pixel count */
-			unit->extent[extnum].startx = startx;
-			unit->extent[extnum].stopx = stopx;
-			pixels += stopx - startx;
-		}
-		unit++;
-	}
-
-	/* copy data */
-	work->ax = v->fbi.ax;
-	work->ay = v->fbi.ay;
-	work->startr = v->fbi.startr;
-	work->startg = v->fbi.startg;
-	work->startb = v->fbi.startb;
-	work->starta = v->fbi.starta;
-	work->startz = v->fbi.startz;
-	work->startw = v->fbi.startw;
-	work->drdx = v->fbi.drdx;
-	work->dgdx = v->fbi.dgdx;
-	work->dbdx = v->fbi.dbdx;
-	work->dadx = v->fbi.dadx;
-	work->dzdx = v->fbi.dzdx;
-	work->dwdx = v->fbi.dwdx;
-	work->drdy = v->fbi.drdy;
-	work->dgdy = v->fbi.dgdy;
-	work->dbdy = v->fbi.dbdy;
-	work->dady = v->fbi.dady;
-	work->dzdy = v->fbi.dzdy;
-	work->dwdy = v->fbi.dwdy;
+	/* fill in texture 0 parameters */
 	if (texcount > 0)
 	{
-		work->starts0 = v->tmu[0].starts;
-		work->startt0 = v->tmu[0].startt;
-		work->startw0 = v->tmu[0].startw;
-		work->ds0dx = v->tmu[0].dsdx;
-		work->dt0dx = v->tmu[0].dtdx;
-		work->dw0dx = v->tmu[0].dwdx;
-		work->ds0dy = v->tmu[0].dsdy;
-		work->dt0dy = v->tmu[0].dtdy;
-		work->dw0dy = v->tmu[0].dwdy;
+		extra->starts0 = v->tmu[0].starts;
+		extra->startt0 = v->tmu[0].startt;
+		extra->startw0 = v->tmu[0].startw;
+		extra->ds0dx = v->tmu[0].dsdx;
+		extra->dt0dx = v->tmu[0].dtdx;
+		extra->dw0dx = v->tmu[0].dwdx;
+		extra->ds0dy = v->tmu[0].dsdy;
+		extra->dt0dy = v->tmu[0].dtdy;
+		extra->dw0dy = v->tmu[0].dwdy;
+		extra->lodbase0 = prepare_tmu(&v->tmu[0]);
+		v->stats.texture_mode[TEXMODE_FORMAT(v->tmu[0].reg[textureMode].u)]++;
+
+		/* fill in texture 1 parameters */
 		if (texcount > 1)
 		{
-			work->starts1 = v->tmu[1].starts;
-			work->startt1 = v->tmu[1].startt;
-			work->startw1 = v->tmu[1].startw;
-			work->ds1dx = v->tmu[1].dsdx;
-			work->dt1dx = v->tmu[1].dtdx;
-			work->dw1dx = v->tmu[1].dwdx;
-			work->ds1dy = v->tmu[1].dsdy;
-			work->dt1dy = v->tmu[1].dtdy;
-			work->dw1dy = v->tmu[1].dwdy;
+			extra->starts1 = v->tmu[1].starts;
+			extra->startt1 = v->tmu[1].startt;
+			extra->startw1 = v->tmu[1].startw;
+			extra->ds1dx = v->tmu[1].dsdx;
+			extra->dt1dx = v->tmu[1].dtdx;
+			extra->dw1dx = v->tmu[1].dwdx;
+			extra->ds1dy = v->tmu[1].dsdy;
+			extra->dt1dy = v->tmu[1].dtdy;
+			extra->dw1dy = v->tmu[1].dwdy;
+			extra->lodbase1 = prepare_tmu(&v->tmu[1]);
+			v->stats.texture_mode[TEXMODE_FORMAT(v->tmu[1].reg[textureMode].u)]++;
 		}
 	}
 
 	/* farm the rasterization out to other threads */
-	work->callback = info->callback;
-	work->drawbuf = drawbuf;
-	work->info = info;
-	work_item_enqueue(v, work, unit - work->unit);
-
-	/* update statistics */
 	info->polys++;
-	return pixels;
+	return poly_render_triangle(v->poly, drawbuf, NULL, info->callback, 0, &vert[0], &vert[1], &vert[2]);
 }
 
 
@@ -5318,33 +5213,48 @@ static void dump_rasterizer_stats(voodoo_state *v)
     implementation of the 'fastfill' command
 -------------------------------------------------*/
 
-static void raster_fastfill(work_info *work, INT32 scanline, INT32 startx, INT32 stopx)
+static void raster_fastfill(void *destbase, INT32 y, const poly_extent *extent, const void *extradata, int threadid)
 {
-	voodoo_state *v = work->state;
+	const poly_extra_data *extra = extradata;
+	voodoo_state *v = extra->state;
+	stats_block *stats = &v->thread_stats[threadid];
+	INT32 startx = extent->startx;
+	INT32 stopx = extent->stopx;
 	int scry, x;
 
 	/* determine the screen Y */
-	scry = scanline;
+	scry = y;
 	if (FBZMODE_Y_ORIGIN(v->reg[fbzMode].u))
-		scry = (v->fbi.yorigin - scanline) & 0x3ff;
+		scry = (v->fbi.yorigin - y) & 0x3ff;
 
 	/* fill this RGB row */
 	if (FBZMODE_RGB_BUFFER_MASK(v->reg[fbzMode].u))
 	{
-		UINT16 *ditherow = &work->dither[(scanline & 3) * 4];
-		UINT16 *dest = work->drawbuf + scry * v->fbi.rowpixels;
+		const UINT16 *ditherow = &extra->dither[(y & 3) * 4];
+		UINT64 expanded = *(UINT64 *)ditherow;
+		UINT16 *dest = (UINT16 *)destbase + scry * v->fbi.rowpixels;
 
-		for (x = startx; x < stopx; x++)
+		for (x = startx; x < stopx && (x & 3) != 0; x++)
 			dest[x] = ditherow[x & 3];
+		for ( ; x < (stopx & ~3); x += 4)
+			*(UINT64 *)&dest[x] = expanded;
+		for ( ; x < stopx; x++)
+			dest[x] = ditherow[x & 3];
+		stats->pixels_out += stopx - startx;
 	}
 
 	/* fill this dest buffer row */
 	if (FBZMODE_AUX_BUFFER_MASK(v->reg[fbzMode].u) && v->fbi.aux)
 	{
 		UINT16 color = v->reg[zaColor].u;
+		UINT64 expanded = ((UINT64)color << 48) | ((UINT64)color << 32) | (color << 16) | color;
 		UINT16 *dest = v->fbi.aux + scry * v->fbi.rowpixels;
 
-		for (x = startx; x < stopx; x++)
+		for (x = startx; x < stopx && (x & 3) != 0; x++)
+			dest[x] = color;
+		for ( ; x < (stopx & ~3); x += 4)
+			*(UINT64 *)&dest[x] = expanded;
+		for ( ; x < stopx; x++)
 			dest[x] = color;
 	}
 }

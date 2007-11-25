@@ -19,7 +19,7 @@ VIDEO_UPDATE( ikki );
 WRITE8_HANDLER( ikki_scroll_w );
 WRITE8_HANDLER( ikki_scrn_ctrl_w );
 
-READ8_HANDLER( ikki_e000_r )
+static READ8_HANDLER( ikki_e000_r )
 {
 /* bit1: interrupt type?, bit0: CPU2 busack? */
 
@@ -28,7 +28,7 @@ READ8_HANDLER( ikki_e000_r )
 	return 2;
 }
 
-WRITE8_HANDLER( ikki_coin_counters )
+static WRITE8_HANDLER( ikki_coin_counters )
 {
 	coin_counter_w( 0, data & 0x01 );
 	coin_counter_w( 1, data & 0x02 );
@@ -63,7 +63,7 @@ ADDRESS_MAP_END
 
 /****************************************************************************/
 
-INPUT_PORTS_START( ikki )
+static INPUT_PORTS_START( ikki )
 	PORT_START  /* dsw1 */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
@@ -195,6 +195,8 @@ static MACHINE_DRIVER_START( ikki )
 	MDRV_CPU_ADD(Z80,8000000/2) /* 4.000MHz */
 	MDRV_CPU_PROGRAM_MAP(ikki_cpu2,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
+
+	MDRV_INTERLEAVE(10)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)

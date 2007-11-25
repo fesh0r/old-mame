@@ -423,7 +423,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( airbustr )
+static INPUT_PORTS_START( airbustr )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  ) PORT_8WAY
@@ -503,7 +503,7 @@ INPUT_PORTS_START( airbustr )
 	PORT_DIPUNUSED_DIPLOC( 0x80, IP_ACTIVE_LOW, "SW2:8" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( airbustj )
+static INPUT_PORTS_START( airbustj )
 	PORT_INCLUDE(airbustr)
 
 	PORT_MODIFY("DSW1")
@@ -750,7 +750,7 @@ ROM_END
 
 /* Driver Initialization */
 
-DRIVER_INIT( airbustr )
+static DRIVER_INIT( airbustr )
 {
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, devram_r); // protection device lives here
 }

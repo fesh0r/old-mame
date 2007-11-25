@@ -84,7 +84,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( lethalj )
+static INPUT_PORTS_START( lethalj )
 	PORT_START
 	PORT_BIT( 0x0003, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -146,7 +146,7 @@ INPUT_PORTS_START( lethalj )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( eggventr )
+static INPUT_PORTS_START( eggventr )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -200,7 +200,7 @@ INPUT_PORTS_START( eggventr )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( eggvntdx )
+static INPUT_PORTS_START( eggvntdx )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -252,7 +252,7 @@ INPUT_PORTS_START( eggvntdx )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( laigames )
+static INPUT_PORTS_START( laigames )
 	/* No Idea about the inputs */
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -360,7 +360,7 @@ INPUT_PORTS_START( laigames )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( ripribit )
+static INPUT_PORTS_START( ripribit )
 	/* No Idea about the inputs */
 	PORT_START
     PORT_DIPNAME( 0x0001, 0x0001, "0" )
@@ -501,7 +501,7 @@ static tms34010_config tms_config_lethalj =
  *
  *************************************/
 
-MACHINE_DRIVER_START( gameroom )
+static MACHINE_DRIVER_START( gameroom )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", TMS34010, 40000000/TMS34010_CLOCK_DIVIDER)
@@ -536,7 +536,7 @@ MACHINE_DRIVER_START( gameroom )
 MACHINE_DRIVER_END
 
 
-MACHINE_DRIVER_START( lethalj )
+static MACHINE_DRIVER_START( lethalj )
 	MDRV_IMPORT_FROM( gameroom )
 
 	MDRV_CPU_MODIFY("main")

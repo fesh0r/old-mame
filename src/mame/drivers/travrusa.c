@@ -144,7 +144,7 @@ ADDRESS_MAP_END
 	/* PORT_DIPSETTING( 0x10, "INVALID" ) */\
 	/* PORT_DIPSETTING( 0x00, "INVALID" ) */
 
-INPUT_PORTS_START( travrusa )
+static INPUT_PORTS_START( travrusa )
 TRAV_COMMON
 
 	PORT_START_TAG("DSW2")
@@ -174,7 +174,7 @@ TRAV_COMMON
 INPUT_PORTS_END
 
 /* same as travrusa, no "Title" switch */
-INPUT_PORTS_START( motorace )
+static INPUT_PORTS_START( motorace )
 TRAV_COMMON
 
 	PORT_START	/* DSW2 */
@@ -201,7 +201,7 @@ TRAV_COMMON
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( shtrider )
+static INPUT_PORTS_START( shtrider )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
@@ -337,7 +337,7 @@ static MACHINE_DRIVER_START( travrusa )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
 	MDRV_SCREEN_REFRESH_RATE(56.75)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(1790)	/* accurate frequency, measured on a Moon Patrol board, is 56.75Hz. */)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1790)	/* accurate frequency, measured on a Moon Patrol board, is 56.75Hz. */)
 				/* the Lode Runner manual (similar but different hardware) */
 				/* talks about 55Hz and 1790ms vblank duration. */
 
@@ -485,7 +485,7 @@ ROM_START( shtridra )
 	ROM_LOAD( "3.bpr",   0x0220, 0x0100, CRC(5db47092) SHA1(8e234ee88143755a4fd5ec86a03b55be5f9c5db8) )
 ROM_END
 
-DRIVER_INIT( motorace )
+static DRIVER_INIT( motorace )
 {
 	int A,j;
 	UINT8 *rom = memory_region(REGION_CPU1);

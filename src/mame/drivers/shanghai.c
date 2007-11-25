@@ -293,7 +293,7 @@ switch (OPM)										\
 
 
 
-void HD63484_command_w(UINT16 cmd)
+static void HD63484_command_w(UINT16 cmd)
 {
 	int len;
 
@@ -657,7 +657,7 @@ logerror("%05x: HD63484 read register %02x\n",activecpu_get_pc(),regno);
 
 
 
-PALETTE_INIT( shanghai )
+static PALETTE_INIT( shanghai )
 {
 	int i;
 
@@ -687,12 +687,12 @@ PALETTE_INIT( shanghai )
 	}
 }
 
-VIDEO_START( shanghai )
+static VIDEO_START( shanghai )
 {
 	HD63484_start();
 }
 
-VIDEO_UPDATE( shanghai )
+static VIDEO_UPDATE( shanghai )
 {
 	int x,y,b;
 
@@ -807,12 +807,12 @@ static ADDRESS_MAP_START( kothello_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x80000, 0xfffff) AM_ROM
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( kothello )
+static INPUT_PORTS_START( kothello )
 	SEIBU_COIN_INPUTS
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( shanghai )
+static INPUT_PORTS_START( shanghai )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -891,7 +891,7 @@ INPUT_PORTS_START( shanghai )
 	PORT_DIPSETTING(    0x00, "120" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( shangha2 )
+static INPUT_PORTS_START( shangha2 )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY

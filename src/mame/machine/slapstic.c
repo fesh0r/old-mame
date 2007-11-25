@@ -815,8 +815,8 @@ void slapstic_init(int chip)
 	slapstic_reset();
 
 	/* see if we're 68k or 6502/6809 based */
-	access_68k = (Machine->drv->cpu[0].cpu_type != CPU_M6809 &&
-				  Machine->drv->cpu[0].cpu_type != CPU_M6502);
+	access_68k = (Machine->drv->cpu[0].type != CPU_M6809 &&
+				  Machine->drv->cpu[0].type != CPU_M6502);
 }
 
 
@@ -1119,15 +1119,15 @@ int slapstic_tweak(offs_t offset)
 #if LOG_SLAPSTIC
 static void slapstic_log(offs_t offset)
 {
-	static mame_time last_time;
+	static attotime last_time;
 
 	if (!slapsticlog)
 		slapsticlog = fopen("slapstic.log", "w");
 	if (slapsticlog)
 	{
-		mame_time time = mame_timer_get_time();
+		attotime time = timer_get_time();
 
-		if (compare_mame_times(sub_mame_times(time, last_time), MAME_TIME_IN_SEC(1)) > 0)
+		if (attotime_compare(attotime_sub(time, last_time), ATTOTIME_IN_SEC(1)) > 0)
 			fprintf(slapsticlog, "------------------------------------\n");
 		last_time = time;
 

@@ -67,7 +67,7 @@ static TIMER_CALLBACK( nmi_callback )
 static WRITE8_HANDLER( sound_arm_nmi_w )
 {
 	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
-	mame_timer_set(MAME_TIME_IN_USEC(50),0,nmi_callback);	/* kludge until the K053260 is emulated correctly */
+	timer_set(ATTOTIME_IN_USEC(50),0,nmi_callback);	/* kludge until the K053260 is emulated correctly */
 }
 
 static READ8_HANDLER( pip_r )
@@ -131,7 +131,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( rollerg )
+static INPUT_PORTS_START( rollerg )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)

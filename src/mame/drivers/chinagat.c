@@ -112,7 +112,7 @@ static MACHINE_RESET( chinagat )
 	sound_irq = INPUT_LINE_NMI;
 }
 
-WRITE8_HANDLER( chinagat_video_ctrl_w )
+static WRITE8_HANDLER( chinagat_video_ctrl_w )
 {
 	/***************************
     ---- ---x   X Scroll MSB
@@ -350,7 +350,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( chinagat )
+static INPUT_PORTS_START( chinagat )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 )

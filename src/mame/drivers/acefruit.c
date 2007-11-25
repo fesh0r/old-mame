@@ -32,7 +32,7 @@ static void acefruit_update_irq( int vpos )
 	}
 }
 
-static mame_timer *acefruit_refresh_timer;
+static emu_timer *acefruit_refresh_timer;
 
 static TIMER_CALLBACK( acefruit_refresh )
 {
@@ -43,21 +43,21 @@ static TIMER_CALLBACK( acefruit_refresh )
 
 	vpos = ( ( vpos / 8 ) + 1 ) * 8;
 
-	mame_timer_adjust( acefruit_refresh_timer, video_screen_get_time_until_pos( 0, vpos, 0 ), 0, time_never );
+	timer_adjust( acefruit_refresh_timer, video_screen_get_time_until_pos( 0, vpos, 0 ), 0, attotime_never );
 }
 
-VIDEO_START( acefruit )
+static VIDEO_START( acefruit )
 {
-	acefruit_refresh_timer = mame_timer_alloc( acefruit_refresh );
+	acefruit_refresh_timer = timer_alloc( acefruit_refresh );
 }
 
-INTERRUPT_GEN( acefruit_vblank )
+static INTERRUPT_GEN( acefruit_vblank )
 {
 	cpunum_set_input_line( 0, 0, HOLD_LINE );
-	mame_timer_adjust( acefruit_refresh_timer, time_zero, 0, time_never );
+	timer_adjust( acefruit_refresh_timer, attotime_zero, 0, attotime_never );
 }
 
-VIDEO_UPDATE( acefruit )
+static VIDEO_UPDATE( acefruit )
 {
 	int startrow = cliprect->min_y / 8;
 	int endrow = cliprect->max_y / 8;
@@ -193,22 +193,22 @@ static UINT32 starspnr_payout_r(void *param)
 	}
 }
 
-WRITE8_HANDLER( acefruit_colorram_w )
+static WRITE8_HANDLER( acefruit_colorram_w )
 {
 	colorram[ offset ] = data & 0xf;
 }
 
-WRITE8_HANDLER( acefruit_coin_w )
+static WRITE8_HANDLER( acefruit_coin_w )
 {
 	/* TODO: ? */
 }
 
-WRITE8_HANDLER( acefruit_sound_w )
+static WRITE8_HANDLER( acefruit_sound_w )
 {
 	/* TODO: ? */
 }
 
-WRITE8_HANDLER( acefruit_lamp_w )
+static WRITE8_HANDLER( acefruit_lamp_w )
 {
 	int i;
 
@@ -218,7 +218,7 @@ WRITE8_HANDLER( acefruit_lamp_w )
 	}
 }
 
-WRITE8_HANDLER( acefruit_solenoid_w )
+static WRITE8_HANDLER( acefruit_solenoid_w )
 {
 	int i;
 
@@ -228,7 +228,7 @@ WRITE8_HANDLER( acefruit_solenoid_w )
 	}
 }
 
-PALETTE_INIT( acefruit )
+static PALETTE_INIT( acefruit )
 {
 	/* sprites */
 	palette_set_color( machine, 0, MAKE_RGB(0x00, 0x00, 0x00) );
@@ -292,7 +292,7 @@ static ADDRESS_MAP_START( acefruit_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_NOP /* ? */
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( sidewndr )
+static INPUT_PORTS_START( sidewndr )
 	PORT_START_TAG("IN0")	// 0
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME( "Stop Nudge/Nudge Up or Down" )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME( "Gamble" )
@@ -368,7 +368,7 @@ INPUT_PORTS_START( sidewndr )
 	PORT_DIPSETTING(    0x03, "86%" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( spellbnd )
+static INPUT_PORTS_START( spellbnd )
 	PORT_INCLUDE(sidewndr)
 
 	PORT_MODIFY("IN0")
@@ -412,7 +412,7 @@ INPUT_PORTS_START( spellbnd )
 INPUT_PORTS_END
 
 /* I've only mapped the known inputs after comparaison with 'spellbnd' and the ones known to do something */
-INPUT_PORTS_START( starspnr )
+static INPUT_PORTS_START( starspnr )
 	PORT_START_TAG("IN0")	// 0
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME( "Gamble" )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )

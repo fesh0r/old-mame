@@ -64,8 +64,8 @@ static INTERRUPT_GEN( gcpinbal_interrupt )
 {
 	/* Unsure of actual sequence */
 
-	mame_timer_set(MAME_TIME_IN_CYCLES(500,0),0, gcpinbal_interrupt1);
-//  mame_timer_set(MAME_TIME_IN_CYCLES(1000,0),0, gcpinbal_interrupt3);
+	timer_set(ATTOTIME_IN_CYCLES(500,0),0, gcpinbal_interrupt1);
+//  timer_set(ATTOTIME_IN_CYCLES(1000,0),0, gcpinbal_interrupt3);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -230,7 +230,7 @@ ADDRESS_MAP_END
                    INPUT PORTS, DIPs
 ***********************************************************/
 
-INPUT_PORTS_START( gcpinbal )
+static INPUT_PORTS_START( gcpinbal )
 	PORT_START	/* DSW */
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( Easy ) )

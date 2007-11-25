@@ -41,7 +41,7 @@ static UINT8 adc_shift;
 static UINT16 last_port0;
 static UINT8 shifter_state;
 
-static mame_timer *timer[2];
+static emu_timer *timer[2];
 static double timer_rate;
 
 static UINT32 *tms32031_control;
@@ -63,8 +63,8 @@ static MACHINE_RESET( midvunit )
 
 	memcpy(ram_base, memory_region(REGION_USER1), 0x20000*4);
 
-	timer[0] = mame_timer_alloc(NULL);
-	timer[1] = mame_timer_alloc(NULL);
+	timer[0] = timer_alloc(NULL);
+	timer[1] = timer_alloc(NULL);
 }
 
 
@@ -75,8 +75,8 @@ static MACHINE_RESET( midvplus )
 
 	memcpy(ram_base, memory_region(REGION_USER1), 0x20000*4);
 
-	timer[0] = mame_timer_alloc(NULL);
-	timer[1] = mame_timer_alloc(NULL);
+	timer[0] = timer_alloc(NULL);
+	timer[1] = timer_alloc(NULL);
 
 	ide_controller_reset(0);
 }
@@ -130,7 +130,7 @@ static READ32_HANDLER( port2_r )
  *
  *************************************/
 
-READ32_HANDLER( midvunit_adc_r )
+static READ32_HANDLER( midvunit_adc_r )
 {
 	if (!(control_data & 0x40))
 		return adc_data << adc_shift;
@@ -146,7 +146,7 @@ static TIMER_CALLBACK( adc_ready )
 }
 
 
-WRITE32_HANDLER( midvunit_adc_w )
+static WRITE32_HANDLER( midvunit_adc_w )
 {
 	if (!(control_data & 0x20))
 	{
@@ -154,7 +154,7 @@ WRITE32_HANDLER( midvunit_adc_w )
 		if (which < 0 || which > 2)
 			logerror("adc_w: unexpected which = %02X\n", which + 4);
 		adc_data = readinputport(3 + which);
-		mame_timer_set(MAME_TIME_IN_MSEC(1), 0, adc_ready);
+		timer_set(ATTOTIME_IN_MSEC(1), 0, adc_ready);
 	}
 	else
 		logerror("adc_w without enabling writes!\n");
@@ -194,7 +194,7 @@ static READ32_HANDLER( midvunit_cmos_r )
  *
  *************************************/
 
-WRITE32_HANDLER( midvunit_control_w )
+static WRITE32_HANDLER( midvunit_control_w )
 {
 	UINT16 olddata = control_data;
 	COMBINE_DATA(&control_data);
@@ -214,7 +214,7 @@ WRITE32_HANDLER( midvunit_control_w )
 }
 
 
-WRITE32_HANDLER( crusnwld_control_w )
+static WRITE32_HANDLER( crusnwld_control_w )
 {
 	UINT16 olddata = control_data;
 	COMBINE_DATA(&control_data);
@@ -255,7 +255,7 @@ static READ32_HANDLER( tms32031_control_r )
 	{
 		/* timer is clocked at 100ns */
 		int which = (offset >> 4) & 1;
-		INT32 result = mame_time_to_double(scale_up_mame_time(mame_timer_timeelapsed(timer[which]), timer_rate));
+		INT32 result = attotime_to_double(attotime_mul(timer_timeelapsed(timer[which]), timer_rate));
 //      logerror("%06X:tms32031_control_r(%02X) = %08X\n", activecpu_get_pc(), offset, result);
 		return result;
 	}
@@ -282,11 +282,11 @@ static WRITE32_HANDLER( tms32031_control_w )
 		int which = (offset >> 4) & 1;
 //  logerror("%06X:tms32031_control_w(%02X) = %08X\n", activecpu_get_pc(), offset, data);
 		if (data & 0x40)
-			mame_timer_adjust(timer[which], time_never, 0, time_never);
+			timer_adjust(timer[which], attotime_never, 0, attotime_never);
 
 		/* bit 0x200 selects internal clocking, which is 1/2 the main CPU clock rate */
 		if (data & 0x200)
-			timer_rate = (double)Machine->drv->cpu[0].cpu_clock * 0.5;
+			timer_rate = (double)Machine->drv->cpu[0].clock * 0.5;
 		else
 			timer_rate = 10000000.;
 	}
@@ -536,7 +536,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( crusnusa )
+static INPUT_PORTS_START( crusnusa )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -660,7 +660,7 @@ INPUT_PORTS_START( crusnusa )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( crusnwld )
+static INPUT_PORTS_START( crusnwld )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -781,7 +781,7 @@ INPUT_PORTS_START( crusnwld )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( offroadc )
+static INPUT_PORTS_START( offroadc )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -876,7 +876,7 @@ INPUT_PORTS_START( offroadc )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( wargods )
+static INPUT_PORTS_START( wargods )
 	PORT_START	    /* DS1 */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ))
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ))
@@ -988,7 +988,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-MACHINE_DRIVER_START( midvcommon )
+static MACHINE_DRIVER_START( midvcommon )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", TMS32031, CPU_CLOCK)
@@ -1010,7 +1010,7 @@ MACHINE_DRIVER_START( midvcommon )
 MACHINE_DRIVER_END
 
 
-MACHINE_DRIVER_START( midvunit )
+static MACHINE_DRIVER_START( midvunit )
 	MDRV_IMPORT_FROM(midvcommon)
 
 	/* sound hardware */
@@ -1018,7 +1018,7 @@ MACHINE_DRIVER_START( midvunit )
 MACHINE_DRIVER_END
 
 
-MACHINE_DRIVER_START( midvplus )
+static MACHINE_DRIVER_START( midvplus )
 	MDRV_IMPORT_FROM(midvcommon)
 
 	/* basic machine hardware */

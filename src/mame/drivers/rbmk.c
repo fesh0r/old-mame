@@ -124,7 +124,7 @@ AM_WRITE(gms_write2)
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( rbmk )
+static INPUT_PORTS_START( rbmk )
 
 	PORT_START	/* 16bit */
 	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Controls ) )
@@ -447,11 +447,11 @@ static GFXDECODE_START( rbmk )
 	GFXDECODE_ENTRY( REGION_GFX2, 0, rbmk8_layout,   0x100, 16  )
 GFXDECODE_END
 
-VIDEO_START(rbmk)
+static VIDEO_START(rbmk)
 {
 }
 
-VIDEO_UPDATE(rbmk)
+static VIDEO_UPDATE(rbmk)
 {
 	int x,y;
 	int count = 0;
@@ -480,7 +480,7 @@ VIDEO_UPDATE(rbmk)
 	return 0;
 }
 
-NVRAM_HANDLER( syf )
+static NVRAM_HANDLER( syf )
 {
 	if (read_or_write)
 		EEPROM_save(file);

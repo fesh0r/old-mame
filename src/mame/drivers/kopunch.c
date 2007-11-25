@@ -13,7 +13,7 @@ extern VIDEO_START( kopunch );
 extern VIDEO_UPDATE( kopunch );
 
 
-INTERRUPT_GEN( kopunch_interrupt )
+static INTERRUPT_GEN( kopunch_interrupt )
 {
 	if (cpu_getiloops() == 0)
 	{
@@ -87,7 +87,7 @@ static ADDRESS_MAP_START( kopunch_io_map, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( kopunch )
+static INPUT_PORTS_START( kopunch )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY

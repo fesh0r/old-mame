@@ -212,7 +212,7 @@ static ADDRESS_MAP_START( rsp_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x04001000, 0x04001fff) AM_RAM AM_BASE(&rsp_imem) AM_SHARE(2)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( aleck64 )
+static INPUT_PORTS_START( aleck64 )
 	PORT_START_TAG("P1")
 		PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)			// Button A
 		PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)			// Button B
@@ -295,7 +295,7 @@ INPUT_PORTS_START( aleck64 )
 		PORT_BIT( 0x00040000, IP_ACTIVE_LOW, IPT_COIN1 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mtetrisc )
+static INPUT_PORTS_START( mtetrisc )
 	// The basic N64 controls are unused in this game
 	PORT_START_TAG("P1")
 	PORT_START_TAG("P1_ANALOG_X")
@@ -329,7 +329,7 @@ INPUT_PORTS_START( mtetrisc )
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START( starsldr )
+static INPUT_PORTS_START( starsldr )
 	PORT_START_TAG("P1")
 		PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)			// Button A
 		PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)			// Button B
@@ -421,12 +421,12 @@ static INTERRUPT_GEN( n64_vblank )
 	signal_rcp_interrupt(VI_INTERRUPT);
 }
 
-MACHINE_RESET( aleck64 )
+static MACHINE_RESET( aleck64 )
 {
 	n64_machine_reset();
 }
 
-MACHINE_DRIVER_START( aleck64 )
+static MACHINE_DRIVER_START( aleck64 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(R4600BE, 93750000)
 	MDRV_CPU_CONFIG(config)
@@ -458,7 +458,7 @@ MACHINE_DRIVER_START( aleck64 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
 
-DRIVER_INIT( aleck64 )
+static DRIVER_INIT( aleck64 )
 {
 	UINT8 *rom = memory_region(REGION_USER2);
 

@@ -430,7 +430,7 @@ static WRITE16_HANDLER( othunder_lightgun_w )
        The ADC60808 clock is 512kHz. Conversion takes between 0 and 8 clock
        cycles, so would end in a maximum of 15.625us. We'll use 10. */
 
-	mame_timer_set(MAME_TIME_IN_USEC(10),0, ad_interrupt);
+	timer_set(ATTOTIME_IN_USEC(10),0, ad_interrupt);
 }
 
 
@@ -549,7 +549,7 @@ ADDRESS_MAP_END
              INPUT PORTS, DIPs
 ***********************************************************/
 
-INPUT_PORTS_START( othunder )
+static INPUT_PORTS_START( othunder )
 	/* 0x090000 -> 0x08a000 */
 	PORT_START_TAG("DSWA")
 	PORT_DIPUNUSED( 0x01, IP_ACTIVE_LOW )
@@ -628,14 +628,14 @@ INPUT_PORTS_START( othunder )
 	PORT_CONFSETTING(    0x00, DEF_STR( Low ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( othundrj )
+static INPUT_PORTS_START( othundrj )
 	PORT_INCLUDE( othunder )
 
 	PORT_MODIFY( "DSWA" )
 	TAITO_COINAGE_JAPAN_OLD
 INPUT_PORTS_END
 
-INPUT_PORTS_START( othundu )
+static INPUT_PORTS_START( othundu )
 	PORT_INCLUDE( othundrj )
 
 	PORT_MODIFY( "DSWB" )

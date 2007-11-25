@@ -16,9 +16,9 @@ etc.
 #include "driver.h"
 #include "sound/ay8910.h"
 
-UINT8 *ltcasino_tile_num_ram, *ltcasino_tile_atr_ram;
+static UINT8 *ltcasino_tile_num_ram, *ltcasino_tile_atr_ram;
 
-tilemap *ltcasino_tilemap;
+static tilemap *ltcasino_tilemap;
 
 /* Video */
 
@@ -34,19 +34,19 @@ static TILE_GET_INFO( get_ltcasino_tile_info )
 	SET_TILE_INFO(0,tileno,0,0);
 }
 
-VIDEO_START(ltcasino)
+static VIDEO_START(ltcasino)
 {
 	ltcasino_tilemap = tilemap_create(get_ltcasino_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
 }
 
 
-WRITE8_HANDLER( ltcasino_tile_num_w )
+static WRITE8_HANDLER( ltcasino_tile_num_w )
 {
 	ltcasino_tile_num_ram[offset] = data;
 	tilemap_mark_tile_dirty(ltcasino_tilemap,offset);
 }
 
-WRITE8_HANDLER( ltcasino_tile_atr_w )
+static WRITE8_HANDLER( ltcasino_tile_atr_w )
 {
 	ltcasino_tile_atr_ram[offset] = data;
 	tilemap_mark_tile_dirty(ltcasino_tilemap,offset);
@@ -93,7 +93,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( ltcasino )
+static INPUT_PORTS_START( ltcasino )
 	PORT_START /* Q in service */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(KEYCODE_Z) PORT_NAME("Hold 1")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(KEYCODE_X) PORT_NAME("Hold 2")
@@ -272,7 +272,7 @@ INPUT_PORTS_START( ltcasino )
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ltcasin2 )
+static INPUT_PORTS_START( ltcasin2 )
 	PORT_START /* Q in service */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 ) //start?
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Unknown ) )
@@ -465,7 +465,7 @@ INPUT_PORTS_START( ltcasin2 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( mv4in1 )
+static INPUT_PORTS_START( mv4in1 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(KEYCODE_Z) PORT_NAME("Hold 1")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(KEYCODE_X) PORT_NAME("Hold 2")
@@ -638,7 +638,7 @@ static GFXDECODE_START( ltcasino )
 GFXDECODE_END
 
 
-VIDEO_UPDATE(ltcasino)
+static VIDEO_UPDATE(ltcasino)
 {
 	tilemap_draw(bitmap,cliprect,ltcasino_tilemap,0,0);
 	return 0;

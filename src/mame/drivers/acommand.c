@@ -145,7 +145,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 }
 
 
-VIDEO_START( acommand )
+static VIDEO_START( acommand )
 {
 	tx_tilemap = tilemap_create(ac_get_tx_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,512,32);
 	bg_tilemap = tilemap_create(ac_get_bg_tile_info,bg_scan,TILEMAP_TYPE_PEN,16,16,256,16);
@@ -211,7 +211,7 @@ static void draw_led(mame_bitmap *bitmap, int x, int y,UINT8 value)
 #endif
 static UINT16 led0;
 
-VIDEO_UPDATE( acommand )
+static VIDEO_UPDATE( acommand )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	draw_sprites(machine,bitmap,cliprect,0,0);
@@ -225,13 +225,13 @@ VIDEO_UPDATE( acommand )
 }
 
 
-WRITE16_HANDLER( ac_bgvram_w )
+static WRITE16_HANDLER( ac_bgvram_w )
 {
 	COMBINE_DATA(&ac_bgvram[offset]);
 	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
-WRITE16_HANDLER( ac_txvram_w )
+static WRITE16_HANDLER( ac_txvram_w )
 {
 	COMBINE_DATA(&ac_txvram[offset]);
 	tilemap_mark_tile_dirty(tx_tilemap,offset);
@@ -373,7 +373,7 @@ static ADDRESS_MAP_START( acommand, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x1000ff) AM_READ(ac_devices_r) AM_WRITE(ac_devices_w) AM_BASE(&ac_devram)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( acommand )
+static INPUT_PORTS_START( acommand )
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )

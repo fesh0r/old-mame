@@ -25,13 +25,13 @@ rom mapping is still wrong, correct this before anything else
 
 #include "driver.h"
 
-UINT8 *galaxia_video;
+static UINT8 *galaxia_video;
 
-VIDEO_START( galaxia )
+static VIDEO_START( galaxia )
 {
 }
 
-VIDEO_UPDATE( galaxia )
+static VIDEO_UPDATE( galaxia )
 {
 	int x,y, count;
 
@@ -86,7 +86,7 @@ static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( galaxia )
+static INPUT_PORTS_START( galaxia )
 	PORT_START	/*  */
 
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )

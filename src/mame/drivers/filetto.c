@@ -90,7 +90,7 @@ static UINT8 hv_blank;
 
 static void cga_alphanumeric_tilemap(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,UINT16 size,UINT32 map_offs);
 
-VIDEO_START( filetto )
+static VIDEO_START( filetto )
 {
 }
 
@@ -235,7 +235,7 @@ static void cga_alphanumeric_tilemap(running_machine *machine, mame_bitmap *bitm
 }
 
 
-VIDEO_UPDATE( filetto )
+static VIDEO_UPDATE( filetto )
 {
 /*          xx1x xxxx  Attribute bit 7. 0=blink, 1=Intesity
             xxx1 xxxx  640x200 mode
@@ -573,7 +573,7 @@ static ADDRESS_MAP_START( filetto_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x03f8, 0x03ff) AM_RAM //rs232c (serial) port
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( filetto )
+static INPUT_PORTS_START( filetto )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED ) //START1
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(1)

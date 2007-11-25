@@ -53,7 +53,7 @@
 #define DRMATH_MONITOR_DISPLAY 0
 #endif
 
-UINT16 *micro3d_sprite_vram;
+static UINT16 *micro3d_sprite_vram;
 static UINT16 *m68681_base;
 static UINT16 *m68901_base;
 
@@ -215,7 +215,7 @@ static DRIVER_INIT( f15se21 )
        rom[0x28C3B]=0x4E71;
 }
 
-INPUT_PORTS_START( stankatk )
+static INPUT_PORTS_START( stankatk )
 	/* Ports A and B */
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Unused ) )
@@ -286,7 +286,7 @@ INPUT_PORTS_START( stankatk )
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START( botss )
+static INPUT_PORTS_START( botss )
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Unused ) )
 	PORT_DIPSETTING(	0x0001, DEF_STR(Off) )
@@ -338,7 +338,7 @@ INPUT_PORTS_START( botss )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( f15se )
+static INPUT_PORTS_START( f15se )
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Unused ) )
 	PORT_DIPSETTING(	0x0001, DEF_STR(Off) )
@@ -395,7 +395,7 @@ static void tms_interrupt(int state)
    m68901_int_gen(GPIP4);
 }
 
-void micro3d_vblank(void)
+static void micro3d_vblank(void)
 {
    m68901_int_gen(GPIP7);
 }
@@ -405,28 +405,28 @@ void micro3d_vblank(void)
 
 static TIMER_CALLBACK( timera_int )
 {
-//      mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), ((m68901_base[0xf]>>8) & 0xff) * 200),0,timera_int);     // Set the timer again.
-        mame_timer_set(MAME_TIME_IN_USEC(1000),0,timera_int);     // Set the timer again.
+//      timer_set(attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), ((m68901_base[0xf]>>8) & 0xff) * 200),0,timera_int);     // Set the timer again.
+        timer_set(ATTOTIME_IN_USEC(1000),0,timera_int);     // Set the timer again.
         m68901_int_gen(TMRA);           // Fire an interrupt.
 }
 
 #ifdef UNUSED_FUNCTION
 static TIMER_CALLBACK( timerb_int )
 {
-        mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), ((m68901_base[0x10]>>8) & 0xff) * 200),0,timera_int);
+        timer_set(attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), ((m68901_base[0x10]>>8) & 0xff) * 200),0,timera_int);
         m68901_int_gen(TMRB);           // Fire an interrupt.
 }
 
 static TIMER_CALLBACK( timerc_int )
 {
-        mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), ((m68901_base[0x11]>>8) & 0xff) * 200),0,timera_int);
+        timer_set(attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), ((m68901_base[0x11]>>8) & 0xff) * 200),0,timera_int);
         m68901_int_gen(TMRC);           // Fire an interrupt.
 }
 #endif
 
 static TIMER_CALLBACK( timerd_int )
 {
-        mame_timer_set(MAME_TIME_IN_USEC(250),0,timerd_int);
+        timer_set(ATTOTIME_IN_USEC(250),0,timerd_int);
         m68901_int_gen(TMRD);           // Fire an interrupt.
 }
 
@@ -473,19 +473,19 @@ switch(offset)
                       break;
 
         case 0x0f:    mame_printf_debug("Timer A Data:%4x\n",value);                                                       // Timer A Data Register
-                     mame_timer_set(MAME_TIME_IN_USEC(1000),0,timera_int);
+                     timer_set(ATTOTIME_IN_USEC(1000),0,timera_int);
                       break;
 
         case 0x10:    mame_printf_debug("Timer B Data:%4x\n",value);                                                           // Timer B Data Register
-//                    mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), value * 200),0,timerb_int);
+//                    timer_set(attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), value * 200),0,timerb_int);
                       break;
 
         case 0x11:    mame_printf_debug("Timer C Data:%4x\n",value);                                                        // Timer C Data Register
-//                    mame_timer_set(scale_up_mame_time(MAME_TIME_IN_HZ(M68901_CLK), value * 200),0,timerc_int);
+//                    timer_set(attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), value * 200),0,timerc_int);
                       break;
 
         case 0x12:    mame_printf_debug("Timer D Data:%4x\n",value);
-                      mame_timer_set(MAME_TIME_IN_USEC(500),0,timerd_int);                 // Timer D Data Register
+                      timer_set(ATTOTIME_IN_USEC(500),0,timerd_int);                 // Timer D Data Register
                       break;
 
 }

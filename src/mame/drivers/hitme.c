@@ -19,7 +19,7 @@
 #include "sound/discrete.h"
 
 static tilemap *hitme_tilemap;
-static mame_time timeout_time;
+static attotime timeout_time;
 static UINT8 *hitme_vidram;
 
 
@@ -38,7 +38,7 @@ static TILE_GET_INFO( get_hitme_tile_info )
 }
 
 
-WRITE8_HANDLER( hitme_vidram_w )
+static WRITE8_HANDLER( hitme_vidram_w )
 {
 	/* mark this tile dirty */
 	hitme_vidram[offset] = data;
@@ -129,7 +129,7 @@ static VIDEO_UPDATE(barricad)
 static UINT8 read_port_and_t0(int port)
 {
 	UINT8 val = readinputport(port);
-	if (compare_mame_times(mame_timer_get_time(), timeout_time) > 0)
+	if (attotime_compare(timer_get_time(), timeout_time) > 0)
 		val ^= 0x80;
 	return val;
 }
@@ -185,8 +185,8 @@ static WRITE8_HANDLER( output_port_0_w )
     */
 	UINT8 raw_game_speed = readinputport(6);
 	double resistance = raw_game_speed * 25000 / 100;
-	mame_time duration = make_mame_time(0, MAX_SUBSECONDS * 0.45 * 6.8e-6 * resistance * (data+1));
-	timeout_time = add_mame_times(mame_timer_get_time(), duration);
+	attotime duration = attotime_make(0, ATTOSECONDS_PER_SECOND * 0.45 * 6.8e-6 * resistance * (data+1));
+	timeout_time = attotime_add(timer_get_time(), duration);
 
 	discrete_sound_w(HITME_DOWNCOUNT_VAL, data);
 	discrete_sound_w(HITME_OUT0, 1);
@@ -353,7 +353,7 @@ MACHINE_DRIVER_END
  *
  *************************************/
 
-INPUT_PORTS_START( hitme )
+static INPUT_PORTS_START( hitme )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )					/* Start button */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )					/* Always high */
@@ -430,7 +430,7 @@ INPUT_PORTS_START( hitme )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( barricad )
+static INPUT_PORTS_START( barricad )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )							/* Start button */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )							/* Always high */

@@ -165,7 +165,7 @@ ADDRESS_MAP_END
 
 /* PORTS */
 /*  (DIPLOCATION diplay inverted) */
-INPUT_PORTS_START( lgp )
+static INPUT_PORTS_START( lgp )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x03, 0x03, "1st Round" ) PORT_DIPLOCATION("SWA:2,1")
 	PORT_DIPSETTING(    0x03, "68 Seconds" )
@@ -333,7 +333,7 @@ static INTERRUPT_GEN( vblank_callback_lgp )
 
 	// IRQ
 	cpunum_set_input_line(0, 0, ASSERT_LINE);
-	mame_timer_set(MAME_TIME_IN_USEC(50), 0, irq_stop);
+	timer_set(ATTOTIME_IN_USEC(50), 0, irq_stop);
 
 	laserdisc_vsync(discinfo);
 }

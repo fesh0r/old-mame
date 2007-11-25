@@ -30,7 +30,7 @@ static TILE_GET_INFO( get_tile_info )
 	SET_TILE_INFO(1, code & 0x1ff, 0, TILE_FLIPYX( 0 ));;
 }
 
-VIDEO_START( cowrace )
+static VIDEO_START( cowrace )
 {
 	tmap = tilemap_create(	get_tile_info, tilemap_scan_rows,
 							TILEMAP_TYPE_PEN, 8,8, 0x20,0x20	);
@@ -38,7 +38,7 @@ VIDEO_START( cowrace )
 	tilemap_set_transparent_pen(tmap, 0);
 }
 
-VIDEO_UPDATE( cowrace )
+static VIDEO_UPDATE( cowrace )
 {
 	fillbitmap(bitmap,machine->pens[0],cliprect);
 	tilemap_draw(bitmap,cliprect, tmap, 0, 0);
@@ -145,7 +145,7 @@ static GFXDECODE_START( cowrace )
 	GFXDECODE_ENTRY( REGION_GFX2, 0x000000, layout8x8x2, 0, 0x1 )
 GFXDECODE_END
 
-INPUT_PORTS_START( cowrace )
+static INPUT_PORTS_START( cowrace )
 	PORT_START	// IN0
 INPUT_PORTS_END
 

@@ -103,12 +103,12 @@ ADDRESS_MAP_END
 
 /* Pocket Gal Deluxe (bootleg!) */
 
-READ16_HANDLER( pckgaldx_unknown_r )
+static READ16_HANDLER( pckgaldx_unknown_r )
 {
 	return 0xffff;
 }
 
-WRITE16_HANDLER( paletteram16_xRGB_w )
+static WRITE16_HANDLER( paletteram16_xRGB_w )
 {
 	int pen;
 	int r,g,b;
@@ -127,7 +127,7 @@ WRITE16_HANDLER( paletteram16_xRGB_w )
 	palette_set_color(Machine,pen,MAKE_RGB(r,g,b));
 }
 
-READ16_HANDLER( pckgaldx_protection_r )
+static READ16_HANDLER( pckgaldx_protection_r )
 {
 	logerror("pckgaldx_protection_r address %06x\n",activecpu_get_pc());
 	return -1;
@@ -206,7 +206,7 @@ ADDRESS_MAP_END
 
 /**********************************************************************************/
 
-INPUT_PORTS_START( pktgaldx )
+static INPUT_PORTS_START( pktgaldx )
 	PORT_START	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )

@@ -32,7 +32,7 @@ static int cardline_video;
 					cliprect,\
 					transparency?TRANSPARENCY_PEN:TRANSPARENCY_NONE,transparency);
 
-VIDEO_UPDATE( cardline )
+static VIDEO_UPDATE( cardline )
 {
 	int x,y;
 	fillbitmap(bitmap,machine->pens[0],cliprect);
@@ -119,7 +119,7 @@ static ADDRESS_MAP_START( mem_io, ADDRESS_SPACE_IO, 8 )
   AM_RANGE(0x01, 0x01) AM_READWRITE(unk_r, video_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( cardline )
+static INPUT_PORTS_START( cardline )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_NAME("Collect")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Card 1 / Double-Up")
@@ -165,7 +165,7 @@ static GFXDECODE_START( cardline )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,     0, 2 )
 GFXDECODE_END
 
-PALETTE_INIT(cardline)
+static PALETTE_INIT(cardline)
 {
 	int i,r,g,b,data;
 	int bit0,bit1,bit2;

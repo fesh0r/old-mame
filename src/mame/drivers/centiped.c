@@ -433,7 +433,7 @@ static UINT8 sign[4];
 static UINT8 dsw_select, control_select;
 static UINT8 *rambase;
 
-static mame_timer *interrupt_timer;
+static emu_timer *interrupt_timer;
 
 
 /*************************************
@@ -455,7 +455,7 @@ static TIMER_CALLBACK( generate_interrupt )
 	if (scanline >= 256)
 		scanline = 0;
 
-	mame_timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, time_zero);
+	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
 }
 
 
@@ -469,8 +469,8 @@ static MACHINE_START( centiped )
 
 static MACHINE_RESET( centiped )
 {
-	interrupt_timer = mame_timer_alloc(generate_interrupt);
-	mame_timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, 0, 0), 0, time_zero);
+	interrupt_timer = timer_alloc(generate_interrupt);
+	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
 	cpunum_set_input_line(0, 0, CLEAR_LINE);
 	dsw_select = 0;
 	control_select = 0;
@@ -820,7 +820,7 @@ ADDRESS_MAP_END
 
 #define PORTS(GAMENAME, FOURTH_LANGUAGE)										\
 																				\
-INPUT_PORTS_START( GAMENAME )													\
+static INPUT_PORTS_START( GAMENAME )													\
 	PORT_START	/* IN0 */														\
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* trackball data */		\
 	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Cabinet ))								\
@@ -917,7 +917,7 @@ PORTS(centiped, DEF_STR( Spanish ))
 PORTS(caterplr, DEF_STR( Italian ))
 
 
-INPUT_PORTS_START( centtime )
+static INPUT_PORTS_START( centtime )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* trackball data */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1007,7 +1007,7 @@ INPUT_PORTS_START( centtime )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( magworm )
+static INPUT_PORTS_START( magworm )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* trackball data */
 	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Cabinet ))
@@ -1094,7 +1094,7 @@ INPUT_PORTS_START( magworm )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( milliped )
+static INPUT_PORTS_START( milliped )
 	PORT_START	/* IN0 $2000 */ /* see port 6 for x trackball */
 	PORT_DIPNAME(0x03, 0x00, DEF_STR( Language ) ) PORT_DIPLOCATION("P8:1,2")
 	PORT_DIPSETTING(   0x00, DEF_STR( English ) )
@@ -1210,7 +1210,7 @@ INPUT_PORTS_START( milliped )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( warlords )
+static INPUT_PORTS_START( warlords )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_DIPNAME( 0x10, 0x00, "Diag Step" )  /* Not referenced */
@@ -1283,7 +1283,7 @@ INPUT_PORTS_START( warlords )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( bullsdrt )
+static INPUT_PORTS_START( bullsdrt )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* trackball data */
 	PORT_BIT( 0x30, IP_ACTIVE_LOW,  IPT_UNKNOWN )

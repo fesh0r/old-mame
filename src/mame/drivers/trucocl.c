@@ -82,7 +82,7 @@ static WRITE8_HANDLER( audio_dac_w)
 
 	DAC_data_w( 0, rom[dac_address+cur_dac_address_index] );
 
-	mame_timer_set( MAME_TIME_IN_HZ( 16000 ), 0, dac_irq );
+	timer_set( ATTOTIME_IN_HZ( 16000 ), 0, dac_irq );
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -105,7 +105,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( trucocl )
+static INPUT_PORTS_START( trucocl )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY

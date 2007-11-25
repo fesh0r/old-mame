@@ -21,13 +21,13 @@
 static UINT8 *vram1,*vram2;
 static int vrambank=0;
 
-VIDEO_START(laserbas)
+static VIDEO_START(laserbas)
 {
 	vram1=auto_malloc(0x8000);
 	vram2=auto_malloc(0x8000);
 }
 
-VIDEO_UPDATE(laserbas)
+static VIDEO_UPDATE(laserbas)
 {
 	int x,y;
  	for(y=0;y<256;y++)
@@ -96,7 +96,7 @@ static ADDRESS_MAP_START( laserbas_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x80, 0x9f) AM_WRITE(palette_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( laserbas )
+static INPUT_PORTS_START( laserbas )
 	PORT_START
 		PORT_DIPNAME( 0x01, 0x00, "0-0" )
 		PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -118,7 +118,7 @@ INPUT_PORTS_START( laserbas )
 		PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 INPUT_PORTS_END
 
-INTERRUPT_GEN( laserbas_interrupt )
+static INTERRUPT_GEN( laserbas_interrupt )
 {
 	if(video_screen_get_vblank(0))
 		 cpunum_set_input_line(0, 0, HOLD_LINE);

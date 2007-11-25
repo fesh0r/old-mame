@@ -546,7 +546,7 @@ void itech8_update_interrupts(int periodic, int tms34061, int blitter)
 	if (blitter != -1) blitter_int = blitter;
 
 	/* handle the 6809 case */
-	if (Machine->drv->cpu[0].cpu_type == CPU_M6809)
+	if (Machine->drv->cpu[0].type == CPU_M6809)
 	{
 		/* just modify lines that have changed */
 		if (periodic != -1) cpunum_set_input_line(0, INPUT_LINE_NMI, periodic ? ASSERT_LINE : CLEAR_LINE);
@@ -622,13 +622,13 @@ static MACHINE_START( sstrike )
 	machine_start_itech8(machine);
 
 	/* we need to update behind the beam as well */
-	mame_timer_set(video_screen_get_time_until_pos(0, 0, 0), 32, behind_the_beam_update);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), 32, behind_the_beam_update);
 }
 
 static MACHINE_RESET( itech8 )
 {
 	/* make sure bank 0 is selected */
-	if (machine->drv->cpu[0].cpu_type == CPU_M6809)
+	if (machine->drv->cpu[0].type == CPU_M6809)
 		memory_set_bankptr(1, &memory_region(REGION_CPU1)[0x4000]);
 
 	/* reset the PIA (if used) */
@@ -674,7 +674,7 @@ static TIMER_CALLBACK( behind_the_beam_update )
 	if (scanline >= 256) scanline = 0;
 
 	/* set a new timer */
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), (scanline << 8) + interval, behind_the_beam_update);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), (scanline << 8) + interval, behind_the_beam_update);
 }
 
 
@@ -1072,7 +1072,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 
-INPUT_PORTS_START( wfortune )
+static INPUT_PORTS_START( wfortune )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x06, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1105,7 +1105,7 @@ INPUT_PORTS_START( wfortune )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( stratab )
+static INPUT_PORTS_START( stratab )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x06, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1142,7 +1142,7 @@ INPUT_PORTS_START( stratab )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( gtg )
+static INPUT_PORTS_START( gtg )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x06, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1179,7 +1179,7 @@ INPUT_PORTS_START( gtg )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( gtgt )
+static INPUT_PORTS_START( gtgt )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x7e, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1209,7 +1209,7 @@ INPUT_PORTS_START( gtgt )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( gtg2t )
+static INPUT_PORTS_START( gtg2t )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x06, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1246,7 +1246,7 @@ INPUT_PORTS_START( gtg2t )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( slikshot )
+static INPUT_PORTS_START( slikshot )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x7e, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1278,7 +1278,7 @@ INPUT_PORTS_START( slikshot )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( dynobop )
+static INPUT_PORTS_START( dynobop )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x7e, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1310,7 +1310,7 @@ INPUT_PORTS_START( dynobop )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( sstrike )
+static INPUT_PORTS_START( sstrike )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x7e, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1342,7 +1342,7 @@ INPUT_PORTS_START( sstrike )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( pokrdice )
+static INPUT_PORTS_START( pokrdice )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("Lower Right") PORT_CODE(KEYCODE_3_PAD)
@@ -1376,7 +1376,7 @@ INPUT_PORTS_START( pokrdice )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( hstennis )
+static INPUT_PORTS_START( hstennis )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x06, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1416,7 +1416,7 @@ INPUT_PORTS_START( hstennis )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( arlingtn )
+static INPUT_PORTS_START( arlingtn )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x06, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1452,7 +1452,7 @@ INPUT_PORTS_START( arlingtn )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( peggle )
+static INPUT_PORTS_START( peggle )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x7e, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1479,7 +1479,7 @@ INPUT_PORTS_START( peggle )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( pegglet )
+static INPUT_PORTS_START( pegglet )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x7e, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1506,7 +1506,7 @@ INPUT_PORTS_START( pegglet )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( neckneck )
+static INPUT_PORTS_START( neckneck )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* input from sound board */
 	PORT_BIT( 0x06, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1542,7 +1542,7 @@ INPUT_PORTS_START( neckneck )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( rimrockn )
+static INPUT_PORTS_START( rimrockn )
 	PORT_START	/* 40 */
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
@@ -1618,7 +1618,7 @@ INPUT_PORTS_START( rimrockn )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( ninclown )
+static INPUT_PORTS_START( ninclown )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE_NO_TOGGLE( 0x0200, IP_ACTIVE_LOW )
@@ -1654,7 +1654,7 @@ INPUT_PORTS_START( ninclown )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( gtg2 )
+static INPUT_PORTS_START( gtg2 )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
@@ -1694,7 +1694,7 @@ INPUT_PORTS_START( gtg2 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( gpgolf )
+static INPUT_PORTS_START( gpgolf )
 	PORT_START	/* 40 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )

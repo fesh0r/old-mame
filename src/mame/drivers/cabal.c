@@ -103,15 +103,15 @@ static READ16_HANDLER( track_r )
 }
 
 
-WRITE16_HANDLER( cabal_sound_irq_trigger_word_w )
+static WRITE16_HANDLER( cabal_sound_irq_trigger_word_w )
 {
 	seibu_main_word_w(4,data,mem_mask);
 
 	/* spin for a while to let the Z80 read the command, otherwise coins "stick" */
-	cpu_spinuntil_time(MAME_TIME_IN_USEC(50));
+	cpu_spinuntil_time(ATTOTIME_IN_USEC(50));
 }
 
-WRITE16_HANDLER( cabalbl_sound_irq_trigger_word_w )
+static WRITE16_HANDLER( cabalbl_sound_irq_trigger_word_w )
 {
 	cpunum_set_input_line( 1, INPUT_LINE_NMI, PULSE_LINE );
 }
@@ -356,7 +356,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )\
 	PORT_DIPSETTING(      0x8000, DEF_STR( On ) )
 
-INPUT_PORTS_START( cabalt )
+static INPUT_PORTS_START( cabalt )
 	CABALDSW
 
 	PORT_START_TAG("IN0")
@@ -389,7 +389,7 @@ INPUT_PORTS_END
 
 
 
-INPUT_PORTS_START( cabalj )
+static INPUT_PORTS_START( cabalj )
 	CABALDSW
 
 	/* Since the Trackball version was produced first, and it doesn't use
@@ -436,7 +436,7 @@ INPUT_PORTS_START( cabalj )
   	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( cabalbl )
+static INPUT_PORTS_START( cabalbl )
 	CABALDSW
 
 	PORT_START_TAG("IN0")

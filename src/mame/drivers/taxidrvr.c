@@ -104,7 +104,7 @@ static ppi8255_interface ppi8255_intf =
 	{ p0c_w, p1c_w, p2c_w, p3c_w, p4c_w }	/* Port C write */
 };
 
-MACHINE_RESET( taxidrvr )
+static MACHINE_RESET( taxidrvr )
 {
 	ppi8255_init(&ppi8255_intf);
 }
@@ -196,7 +196,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( taxidrvr )
+static INPUT_PORTS_START( taxidrvr )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x0f, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x0d, DEF_STR( 4C_1C ) )

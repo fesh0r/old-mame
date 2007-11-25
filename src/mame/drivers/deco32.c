@@ -237,7 +237,7 @@ Notes:
 
 static UINT32 *deco32_ram;
 static int raster_enable;
-static mame_timer *raster_irq_timer;
+static emu_timer *raster_irq_timer;
 static UINT8 nslasher_sound_irq;
 
 extern void decrypt156(void);
@@ -304,9 +304,9 @@ static WRITE32_HANDLER( deco32_irq_controller_w )
 	case 1: /* Raster IRQ scanline position, only valid for values between 1 & 239 (0 and 240-256 do NOT generate IRQ's) */
 		scanline=(data&0xff);
 		if (raster_enable && scanline>0 && scanline<240)
-			mame_timer_adjust(raster_irq_timer,video_screen_get_time_until_pos(0, scanline-1, 320),0,time_never);
+			timer_adjust(raster_irq_timer,video_screen_get_time_until_pos(0, scanline-1, 320),0,attotime_never);
 		else
-			mame_timer_adjust(raster_irq_timer,time_never,0,time_zero);
+			timer_adjust(raster_irq_timer,attotime_never,0,attotime_zero);
 		break;
 	case 2: /* VBL irq ack */
 		break;
@@ -1244,7 +1244,7 @@ COIN1n adds 100 energy points (based on "Coinage") for player n when ingame if e
 
 */
 
-INPUT_PORTS_START( captaven )
+static INPUT_PORTS_START( captaven )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1350,7 +1350,7 @@ INPUT_PORTS_START( captaven )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( fghthist )
+static INPUT_PORTS_START( fghthist )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -1388,7 +1388,7 @@ INPUT_PORTS_START( fghthist )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( dragngun )
+static INPUT_PORTS_START( dragngun )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1475,7 +1475,7 @@ INPUT_PORTS_START( dragngun )
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(25) PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( lockload )
+static INPUT_PORTS_START( lockload )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1556,7 +1556,7 @@ INPUT_PORTS_START( lockload )
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(20) PORT_KEYDELTA(25) PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( tattass )
+static INPUT_PORTS_START( tattass )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1594,7 +1594,7 @@ INPUT_PORTS_START( tattass )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( nslasher )
+static INPUT_PORTS_START( nslasher )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1859,7 +1859,7 @@ static NVRAM_HANDLER(tattass)
 
 static MACHINE_RESET( deco32 )
 {
-	raster_irq_timer = mame_timer_alloc(interrupt_gen);
+	raster_irq_timer = timer_alloc(interrupt_gen);
 }
 
 static INTERRUPT_GEN( deco32_vbl_interrupt )

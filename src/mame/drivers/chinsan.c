@@ -43,14 +43,14 @@ MM63.10N
 #include "machine/mc8123.h"
 #include "sound/2203intf.h"
 
-UINT8* chinsan_video;
-UINT8 chinsan_port_select;
+static UINT8* chinsan_video;
+static UINT8 chinsan_port_select;
 
-VIDEO_START(chinsan)
+static VIDEO_START(chinsan)
 {
 }
 
-VIDEO_UPDATE(chinsan)
+static VIDEO_UPDATE(chinsan)
 {
 	int y,x, count;
 	count = 0;
@@ -82,13 +82,13 @@ static WRITE8_HANDLER(ctrl_w)
 	memory_set_bank(1, data >> 6);
 }
 
-WRITE8_HANDLER( ym_port_w1 )
+static WRITE8_HANDLER( ym_port_w1 )
 {
 	logerror("ym_write port 1 %02x\n",data);
 }
 
 
-WRITE8_HANDLER( ym_port_w2 )
+static WRITE8_HANDLER( ym_port_w2 )
 {
 	logerror("ym_write port 2 %02x\n",data);
 }
@@ -102,7 +102,7 @@ static struct YM2203interface ym2203_interface =
 	ym_port_w2
 };
 
-WRITE8_HANDLER( chinsan_port00_w )
+static WRITE8_HANDLER( chinsan_port00_w )
 {
 
 	chinsan_port_select = data;
@@ -119,7 +119,7 @@ WRITE8_HANDLER( chinsan_port00_w )
 
 }
 
-READ8_HANDLER( chinsan_input_port_0_r )
+static READ8_HANDLER( chinsan_input_port_0_r )
 {
 
 	//return 0xff; // the inputs don't seem to work, so just return ff for now
@@ -151,7 +151,7 @@ READ8_HANDLER( chinsan_input_port_0_r )
 	return mame_rand(Machine);
 }
 
-READ8_HANDLER( chinsan_input_port_1_r )
+static READ8_HANDLER( chinsan_input_port_1_r )
 {
 	switch (chinsan_port_select)
 	{
@@ -199,7 +199,7 @@ static ADDRESS_MAP_START( chinsan_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( chinsan )
+static INPUT_PORTS_START( chinsan )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, "DSW1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -462,7 +462,7 @@ static MACHINE_DRIVER_START( chinsan )
 	MDRV_CPU_IO_MAP(chinsan_io,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_MACHINE_RESET( chinsan );
+	MDRV_MACHINE_RESET( chinsan )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )

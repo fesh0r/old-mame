@@ -681,7 +681,7 @@ static GFXDECODE_START( plygonet )
 	GFXDECODE_ENTRY( REGION_GFX2, 0, bglayout,     0x0000, 64 )
 GFXDECODE_END
 
-MACHINE_DRIVER_START( plygonet )
+static MACHINE_DRIVER_START( plygonet )
 	MDRV_CPU_ADD(M68EC020, 16000000)	/* 16 MHz (xtal is 32.0 MHz) */
 	MDRV_CPU_PROGRAM_MAP(polygonet_map, 0)
 	MDRV_CPU_VBLANK_INT(polygonet_interrupt, 2)
@@ -725,7 +725,7 @@ MACHINE_DRIVER_START( plygonet )
 	MDRV_SOUND_ROUTE(1, "right", 0.75)
 MACHINE_DRIVER_END
 
-INPUT_PORTS_START( polygonet )
+static INPUT_PORTS_START( polygonet )
 	PORT_START
 
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1)

@@ -74,13 +74,13 @@ static TIMER_CALLBACK( update_callback )
 	scanline += SCANLINE_UPDATE_CHUNK;
 	if (scanline >= machine->screen[0].height)
 		scanline = 32;
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline + SCANLINE_UPDATE_CHUNK - 1, 0), scanline, update_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline + SCANLINE_UPDATE_CHUNK - 1, 0), scanline, update_callback);
 }
 
 
-MACHINE_RESET( starfire )
+static MACHINE_RESET( starfire )
 {
-	mame_timer_set(video_screen_get_time_until_pos(0, 32 + SCANLINE_UPDATE_CHUNK - 1, 0), 32, update_callback);
+	timer_set(video_screen_get_time_until_pos(0, 32 + SCANLINE_UPDATE_CHUNK - 1, 0), 32, update_callback);
 }
 
 
@@ -203,7 +203,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( starfire )
+static INPUT_PORTS_START( starfire )
 	PORT_START      /* DSW0 */
 	PORT_DIPNAME( 0x03, 0x00, "Time" )
 	PORT_DIPSETTING(    0x00, "90 Sec" )
@@ -247,7 +247,7 @@ INPUT_PORTS_START( starfire )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( fireone )
+static INPUT_PORTS_START( fireone )
 	PORT_START      /* DSW0 */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, "2 Coins/1 Player" )

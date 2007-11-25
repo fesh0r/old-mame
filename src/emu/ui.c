@@ -1084,15 +1084,15 @@ int sprintf_game_info(char *buffer)
 	bufptr += sprintf(bufptr, "%s\n%s %s\n\n%s:\n", Machine->gamedrv->description, Machine->gamedrv->year, Machine->gamedrv->manufacturer, ui_getstring(UI_cpu));
 
 	/* loop over all CPUs */
-	for (cpunum = 0; cpunum < MAX_CPU && Machine->drv->cpu[cpunum].cpu_type != CPU_DUMMY; cpunum += count)
+	for (cpunum = 0; cpunum < MAX_CPU && Machine->drv->cpu[cpunum].type != CPU_DUMMY; cpunum += count)
 	{
-		int type = Machine->drv->cpu[cpunum].cpu_type;
-		int clock = Machine->drv->cpu[cpunum].cpu_clock;
+		cpu_type type = Machine->drv->cpu[cpunum].type;
+		int clock = Machine->drv->cpu[cpunum].clock;
 
 		/* count how many identical CPUs we have */
 		for (count = 1; cpunum + count < MAX_CPU; count++)
-			if (Machine->drv->cpu[cpunum + count].cpu_type != type ||
-		        Machine->drv->cpu[cpunum + count].cpu_clock != clock)
+			if (Machine->drv->cpu[cpunum + count].type != type ||
+		        Machine->drv->cpu[cpunum + count].clock != clock)
 		    	break;
 
 		/* if more than one, prepend a #x in front of the CPU name */
@@ -1111,14 +1111,14 @@ int sprintf_game_info(char *buffer)
 	bufptr += sprintf(bufptr, "\n%s:\n", ui_getstring(UI_sound));
 
 	/* loop over all sound chips */
-	for (sndnum = 0; sndnum < MAX_SOUND && Machine->drv->sound[sndnum].sound_type != SOUND_DUMMY; sndnum += count)
+	for (sndnum = 0; sndnum < MAX_SOUND && Machine->drv->sound[sndnum].type != SOUND_DUMMY; sndnum += count)
 	{
-		int type = Machine->drv->sound[sndnum].sound_type;
+		sound_type type = Machine->drv->sound[sndnum].type;
 		int clock = sndnum_clock(sndnum);
 
 		/* count how many identical sound chips we have */
 		for (count = 1; sndnum + count < MAX_SOUND; count++)
-			if (Machine->drv->sound[sndnum + count].sound_type != type ||
+			if (Machine->drv->sound[sndnum + count].type != type ||
 		        sndnum_clock(sndnum + count) != clock)
 		    	break;
 
@@ -1147,7 +1147,7 @@ int sprintf_game_info(char *buffer)
 				Machine->screen[0].visarea.max_x - Machine->screen[0].visarea.min_x + 1,
 				Machine->screen[0].visarea.max_y - Machine->screen[0].visarea.min_y + 1,
 				(Machine->gamedrv->flags & ORIENTATION_SWAP_XY) ? "V" : "H",
-				SUBSECONDS_TO_HZ(Machine->screen[0].refresh));
+				ATTOSECONDS_TO_HZ(Machine->screen[0].refresh));
 	return bufptr - buffer;
 }
 
@@ -1748,16 +1748,16 @@ static INT32 slider_overclock(INT32 newval, char *buffer, int arg)
 
 static INT32 slider_refresh(INT32 newval, char *buffer, int arg)
 {
-	double defrefresh = SUBSECONDS_TO_HZ(Machine->drv->screen[arg].defstate.refresh);
+	double defrefresh = ATTOSECONDS_TO_HZ(Machine->drv->screen[arg].defstate.refresh);
 	double refresh;
 
 	if (buffer != NULL)
 	{
 		screen_state *state = &Machine->screen[arg];
-		video_screen_configure(arg, state->width, state->height, &state->visarea, HZ_TO_SUBSECONDS(defrefresh + (double)newval * 0.001));
-		sprintf(buffer, "Screen %d %s %.3f", arg, ui_getstring(UI_refresh_rate), SUBSECONDS_TO_HZ(Machine->screen[arg].refresh));
+		video_screen_configure(arg, state->width, state->height, &state->visarea, HZ_TO_ATTOSECONDS(defrefresh + (double)newval * 0.001));
+		sprintf(buffer, "Screen %d %s %.3f", arg, ui_getstring(UI_refresh_rate), ATTOSECONDS_TO_HZ(Machine->screen[arg].refresh));
 	}
-	refresh = SUBSECONDS_TO_HZ(Machine->screen[arg].refresh);
+	refresh = ATTOSECONDS_TO_HZ(Machine->screen[arg].refresh);
 	return floor((refresh - defrefresh) * 1000.0f + 0.5f);
 }
 

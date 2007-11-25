@@ -271,7 +271,7 @@ static WRITE16_HANDLER( namcona1_nvram_w )
 
 /***************************************************************************/
 
-INPUT_PORTS_START( namcona1_joy )
+static INPUT_PORTS_START( namcona1_joy )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -327,7 +327,7 @@ INPUT_PORTS_START( namcona1_joy )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( namcona1_quiz )
+static INPUT_PORTS_START( namcona1_quiz )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON4 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )
@@ -383,7 +383,7 @@ INPUT_PORTS_START( namcona1_quiz )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( namcona2_joy )
+static INPUT_PORTS_START( namcona2_joy )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x00, "DIP2 (Freeze)" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -447,7 +447,7 @@ INPUT_PORTS_START( namcona2_joy )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN4 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( namcona2_quiz )
+static INPUT_PORTS_START( namcona2_quiz )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x00, "DIP2 (Freeze)" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -1169,7 +1169,7 @@ static WRITE16_HANDLER(snd_w)
 	}
 }
 
-ADDRESS_MAP_START( namcona1_mcu_map, ADDRESS_SPACE_PROGRAM, 16 )
+static ADDRESS_MAP_START( namcona1_mcu_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000800, 0x000fff) AM_READWRITE(mcu_mailbox_r, mcu_mailbox_w_mcu)	// "Mailslot" communications ports
 	AM_RANGE(0x001000, 0x001fff) AM_READWRITE(snd_r, snd_w)				// C140-alike sound chip
 	AM_RANGE(0x002000, 0x002fff) AM_READWRITE(na1mcu_shared_r, na1mcu_shared_w)	// mirror of first page of shared work RAM
@@ -1295,7 +1295,7 @@ static READ8_HANDLER( portana_r )
 	return (port & bitnum[offset>>1]) ? 0xff : 0x00;
 }
 
-ADDRESS_MAP_START( namcona1_mcu_io_map, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( namcona1_mcu_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(M37710_PORT4, M37710_PORT4) AM_READWRITE( port4_r, port4_w )
 	AM_RANGE(M37710_PORT5, M37710_PORT5) AM_READWRITE( port5_r, port5_w )
 	AM_RANGE(M37710_PORT6, M37710_PORT6) AM_READWRITE( port6_r, port6_w )
@@ -1304,7 +1304,7 @@ ADDRESS_MAP_START( namcona1_mcu_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x10, 0x1f) AM_READ( portana_r )
 ADDRESS_MAP_END
 
-INTERRUPT_GEN( namcona1_interrupt )
+static INTERRUPT_GEN( namcona1_interrupt )
 {
 	int level = cpu_getiloops(); /* 0,1,2,3,4 */
 	if( level==0 )
@@ -1350,7 +1350,7 @@ static MACHINE_DRIVER_START( namcona1 )
 	MDRV_CPU_ADD(M37710, 50113000/4)
 	MDRV_CPU_PROGRAM_MAP(namcona1_mcu_map, 0)
 	MDRV_CPU_IO_MAP( namcona1_mcu_io_map, 0 )
-	MDRV_CPU_VBLANK_INT(mcu_interrupt, 2);
+	MDRV_CPU_VBLANK_INT(mcu_interrupt, 2)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
@@ -1505,18 +1505,18 @@ init_namcona2( int gametype )
 		NAMCONA_interface.metadata_offset = 0x70000/2;
 }
 
-DRIVER_INIT( bkrtmaq ){		init_namcona1(NAMCO_BKRTMAQ); }
-DRIVER_INIT( cgangpzl ){	init_namcona1(NAMCO_CGANGPZL); }
-DRIVER_INIT( emeralda ){	init_namcona2(NAMCO_EMERALDA); } /* NA-2 Hardware */
-DRIVER_INIT( emeraldj ){	init_namcona1(NAMCO_EMERALDA); } /* NA-1 Hardware */
-DRIVER_INIT( exbania ){		init_namcona1(NAMCO_EXBANIA); }
-DRIVER_INIT( fa ){	        init_namcona1(NAMCO_FA); }
-DRIVER_INIT( knckhead ){	init_namcona2(NAMCO_KNCKHEAD); }
-DRIVER_INIT( numanath ){	init_namcona2(NAMCO_NUMANATH); }
-DRIVER_INIT( quiztou ){		init_namcona2(NAMCO_QUIZTOU); }
-DRIVER_INIT( swcourt ){		init_namcona1(NAMCO_SWCOURT); }
-DRIVER_INIT( tinklpit ){	init_namcona1(NAMCO_TINKLPIT); }
-DRIVER_INIT( xday2 ){		init_namcona2(NAMCO_XDAY2); }
+static DRIVER_INIT( bkrtmaq ){		init_namcona1(NAMCO_BKRTMAQ); }
+static DRIVER_INIT( cgangpzl ){	init_namcona1(NAMCO_CGANGPZL); }
+static DRIVER_INIT( emeralda ){	init_namcona2(NAMCO_EMERALDA); } /* NA-2 Hardware */
+static DRIVER_INIT( emeraldj ){	init_namcona1(NAMCO_EMERALDA); } /* NA-1 Hardware */
+static DRIVER_INIT( exbania ){		init_namcona1(NAMCO_EXBANIA); }
+static DRIVER_INIT( fa ){	        init_namcona1(NAMCO_FA); }
+static DRIVER_INIT( knckhead ){	init_namcona2(NAMCO_KNCKHEAD); }
+static DRIVER_INIT( numanath ){	init_namcona2(NAMCO_NUMANATH); }
+static DRIVER_INIT( quiztou ){		init_namcona2(NAMCO_QUIZTOU); }
+static DRIVER_INIT( swcourt ){		init_namcona1(NAMCO_SWCOURT); }
+static DRIVER_INIT( tinklpit ){	init_namcona1(NAMCO_TINKLPIT); }
+static DRIVER_INIT( xday2 ){		init_namcona2(NAMCO_XDAY2); }
 
 ROM_START( bkrtmaq )
 	ROM_REGION( 0xa80000, REGION_CPU1, 0 )

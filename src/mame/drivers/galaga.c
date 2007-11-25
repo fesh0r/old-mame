@@ -1009,7 +1009,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( bosco )
+static INPUT_PORTS_START( bosco )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
@@ -1082,7 +1082,7 @@ INPUT_PORTS_START( bosco )
 	PORT_DIPSETTING(    0xc0, "5" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( boscomd )
+static INPUT_PORTS_START( boscomd )
 	PORT_INCLUDE( bosco )
 
 	PORT_MODIFY("DSWA")
@@ -1112,7 +1112,7 @@ INPUT_PORTS_START( boscomd )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( galaga )
+static INPUT_PORTS_START( galaga )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
@@ -1185,7 +1185,7 @@ INPUT_PORTS_START( galaga )
 	PORT_DIPSETTING(    0xc0, "5" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( galagamw )
+static INPUT_PORTS_START( galagamw )
 	PORT_INCLUDE( galaga )
 
 	PORT_MODIFY("DSWA")
@@ -1215,7 +1215,7 @@ INPUT_PORTS_START( galagamw )
 INPUT_PORTS_END
 
 /* the same as galaga but with vertical movement */
-INPUT_PORTS_START( gatsbee )
+static INPUT_PORTS_START( gatsbee )
 	PORT_INCLUDE( galaga )
 
 	PORT_MODIFY("IN1")
@@ -1230,7 +1230,7 @@ INPUT_PORTS_START( gatsbee )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( xevious )
+static INPUT_PORTS_START( xevious )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
@@ -1305,7 +1305,7 @@ INPUT_PORTS_START( xevious )
 INPUT_PORTS_END
 
 /* same as xevious but different "Coin B" Dip Switch and "Copyright" Dip Switch instead of "Freeze" */
-INPUT_PORTS_START( xeviousa )
+static INPUT_PORTS_START( xeviousa )
 	PORT_INCLUDE( xevious )
 
 	PORT_MODIFY("DSWB")
@@ -1331,7 +1331,7 @@ INPUT_PORTS_START( xeviousa )
 INPUT_PORTS_END
 
 /* same as xevious but "Copyright" Dip Switch instead of "Freeze" */
-INPUT_PORTS_START( xeviousb )
+static INPUT_PORTS_START( xeviousb )
 	PORT_INCLUDE( xevious )
 
 	PORT_MODIFY("DSWB")
@@ -1357,7 +1357,7 @@ INPUT_PORTS_START( xeviousb )
 INPUT_PORTS_END
 
 /* same as xevious but different "Coin B" Dip Switch and inverted "Freeze" Dip Switch */
-INPUT_PORTS_START( sxevious )
+static INPUT_PORTS_START( sxevious )
 	PORT_INCLUDE( xevious )
 
 	PORT_MODIFY("DSWB")
@@ -1382,7 +1382,7 @@ INPUT_PORTS_START( sxevious )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( digdug )
+static INPUT_PORTS_START( digdug )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
@@ -1607,7 +1607,7 @@ static const char *battles_sample_names[] =
 	0	/* end of array */
 };
 
-struct Samplesinterface samples_interface_battles =
+struct Samplesinterface battles_samples_interface =
 {
 	1,	/* one channel */
 	battles_sample_names
@@ -1829,7 +1829,7 @@ static MACHINE_DRIVER_START( battles )
 	MDRV_SOUND_REMOVE("Discrete")
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(samples_interface_battles)
+	MDRV_SOUND_CONFIG(battles_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 

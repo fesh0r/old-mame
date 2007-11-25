@@ -41,7 +41,7 @@ static TILE_GET_INFO( get_bg0_tile_info )
 	SET_TILE_INFO(0, code, 0, 0);
 }
 
-VIDEO_START( cultures )
+static VIDEO_START( cultures )
 {
 	bg2_tilemap = tilemap_create(get_bg2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,512,512);
 	bg1_tilemap = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,512,512);
@@ -60,7 +60,7 @@ VIDEO_START( cultures )
 	tilemap_set_scrolldy(bg2_tilemap, 255, 0);
 }
 
-VIDEO_UPDATE( cultures )
+static VIDEO_UPDATE( cultures )
 {
 	int attr;
 
@@ -183,7 +183,7 @@ static ADDRESS_MAP_START( cultures_io_map, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( cultures )
+static INPUT_PORTS_START( cultures )
 	PORT_START
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:1,2,3")
 	PORT_DIPSETTING(    0x00, "10 Coins / 1 Credit" )
@@ -312,7 +312,7 @@ static const gfx_layout gfxlayout =
 	8*64,
 };
 
-GFXDECODE_START( culture )
+static GFXDECODE_START( culture )
 	GFXDECODE_ENTRY(REGION_GFX1, 0, gfxlayout, 0, 1 )
 	GFXDECODE_ENTRY(REGION_GFX2, 0, gfxlayout, 0, 1 )
 	GFXDECODE_ENTRY(REGION_GFX3, 0, gfxlayout, 0, 1 )

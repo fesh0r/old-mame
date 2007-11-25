@@ -68,7 +68,7 @@ extern PALETTE_INIT( champbas );
 extern VIDEO_START( champbas );
 extern VIDEO_UPDATE( champbas );
 
-WRITE8_HANDLER( champbas_dac_w )
+static WRITE8_HANDLER( champbas_dac_w )
 {
 	DAC_signed_data_w(0,data<<2);
 }
@@ -84,7 +84,7 @@ static WRITE8_HANDLER( champbas_mcu_halt_w )
 }
 
 /* champbja another protection */
-READ8_HANDLER( champbja_alt_protection_r )
+static READ8_HANDLER( champbja_alt_protection_r )
 {
 	UINT8 data = 0;
 /*
@@ -158,7 +158,7 @@ static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM AM_SHARE(1) /* main CPU shared RAM */
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( champbas )
+static INPUT_PORTS_START( champbas )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )

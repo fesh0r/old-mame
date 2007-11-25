@@ -243,7 +243,7 @@ int equites_id;
 int equites_flip;
 
 // Splendor Blast Hardware
-int splndrbt_flip;
+static int splndrbt_flip;
 
 /******************************************************************************/
 // Local Functions
@@ -418,7 +418,7 @@ ADDRESS_MAP_END
 /******************************************************************************/
 // Equites Port Map
 
-INPUT_PORTS_START( equites )
+static INPUT_PORTS_START( equites )
 	PORT_START
 	EQUITES_PLAYER_INPUT_LSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START1 )
 	EQUITES_PLAYER_INPUT_MSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START2 )
@@ -451,7 +451,7 @@ INPUT_PORTS_END
 /******************************************************************************/
 // Bull Fighter Port Map
 
-INPUT_PORTS_START( bullfgtr )
+static INPUT_PORTS_START( bullfgtr )
 	PORT_START
 	EQUITES_PLAYER_INPUT_LSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START1 )
 	EQUITES_PLAYER_INPUT_MSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START2 )
@@ -483,7 +483,7 @@ INPUT_PORTS_END
 /******************************************************************************/
 // Koukouyakyuh Port Map
 
-INPUT_PORTS_START( kouyakyu )
+static INPUT_PORTS_START( kouyakyu )
 	PORT_START
 	EQUITES_PLAYER_INPUT_LSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START1 )
 	EQUITES_PLAYER_INPUT_MSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START2 )
@@ -516,7 +516,7 @@ INPUT_PORTS_END
 /******************************************************************************/
 // Splendor Blast Port Map
 
-INPUT_PORTS_START( splndrbt )
+static INPUT_PORTS_START( splndrbt )
 	PORT_START
 	EQUITES_PLAYER_INPUT_LSB( IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN, IPT_START1 )
 	EQUITES_PLAYER_INPUT_MSB( IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN, IPT_START2 )
@@ -548,7 +548,7 @@ INPUT_PORTS_END
 /******************************************************************************/
 // High Voltage Port Map
 
-INPUT_PORTS_START( hvoltage )
+static INPUT_PORTS_START( hvoltage )
 	PORT_START
 	EQUITES_PLAYER_INPUT_LSB( IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN, IPT_START1 )
 	EQUITES_PLAYER_INPUT_MSB( IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN, IPT_START2 )
@@ -691,7 +691,7 @@ static MACHINE_DRIVER_START( equites )
 	MDRV_CPU_VBLANK_INT(equites_interrupt, 2)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(600))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(600))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
@@ -718,7 +718,7 @@ static MACHINE_DRIVER_START( splndrbt )
 	MDRV_CPU_VBLANK_INT(splndrbt_interrupt, 2)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(600))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(600))
 	MDRV_MACHINE_RESET(splndrbt)
 
 	/* video hardware */

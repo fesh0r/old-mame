@@ -139,7 +139,7 @@ static READ8_HANDLER( analog_read_r )
 	return 0xff;
 }
 
-WRITE8_HANDLER( chqflag_sh_irqtrigger_w )
+static WRITE8_HANDLER( chqflag_sh_irqtrigger_w )
 {
 	cpunum_set_input_line(1,0,HOLD_LINE);
 }
@@ -225,7 +225,7 @@ static ADDRESS_MAP_START( chqflag_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( chqflag )
+static INPUT_PORTS_START( chqflag )
 	PORT_START	/* DSW #1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )

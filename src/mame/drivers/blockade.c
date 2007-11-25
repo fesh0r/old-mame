@@ -40,7 +40,7 @@ Notes:  Support is complete with the exception of the noise generator.
 static UINT8 coin_latch;  /* Active Low */
 static UINT8 just_been_reset;
 
-DRIVER_INIT( blockade )
+static DRIVER_INIT( blockade )
 {
 	coin_latch = 1;
 	just_been_reset = 0;
@@ -63,7 +63,7 @@ DRIVER_INIT( blockade )
 /* Need to check for a coin on the interrupt, */
 /* This will reset the cpu                    */
 
-INTERRUPT_GEN( blockade_interrupt )
+static INTERRUPT_GEN( blockade_interrupt )
 {
 	cpunum_resume(0, SUSPEND_ANY_REASON);
 
@@ -74,7 +74,7 @@ INTERRUPT_GEN( blockade_interrupt )
 	}
 }
 
-READ8_HANDLER( blockade_input_port_0_r )
+static READ8_HANDLER( blockade_input_port_0_r )
 {
     /* coin latch is bit 7 */
 
@@ -82,7 +82,7 @@ READ8_HANDLER( blockade_input_port_0_r )
     return (coin_latch<<7) | (temp);
 }
 
-WRITE8_HANDLER( blockade_coin_latch_w )
+static WRITE8_HANDLER( blockade_coin_latch_w )
 {
     if (data & 0x80)
     {
@@ -145,7 +145,7 @@ ADDRESS_MAP_END
 /* different harnesses which plugged in here, and */
 /* some pins were unused.                         */
 
-INPUT_PORTS_START( blockade )
+static INPUT_PORTS_START( blockade )
     PORT_START  /* IN0 */
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -187,7 +187,7 @@ INPUT_PORTS_START( blockade )
 	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( comotion )
+static INPUT_PORTS_START( comotion )
     PORT_START  /* IN0 */
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -229,7 +229,7 @@ INPUT_PORTS_START( comotion )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( blasto )
+static INPUT_PORTS_START( blasto )
     PORT_START  /* IN0 */
     PORT_DIPNAME(    0x03, 0x03, DEF_STR( Coinage ) )
     PORT_DIPSETTING( 0x00, DEF_STR( 4C_1C ) )
@@ -274,7 +274,7 @@ INPUT_PORTS_START( blasto )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hustle )
+static INPUT_PORTS_START( hustle )
     PORT_START  /* IN0 */
     PORT_DIPNAME(    0x03, 0x03, DEF_STR( Coinage ) )
     PORT_DIPSETTING( 0x00, DEF_STR( 4C_1C ) )
@@ -318,7 +318,7 @@ INPUT_PORTS_START( hustle )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mineswpr )
+static INPUT_PORTS_START( mineswpr )
     PORT_START  /* IN0 */
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* This wiring selects upright mode */
@@ -360,7 +360,7 @@ INPUT_PORTS_START( mineswpr )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( minesw4p )
+static INPUT_PORTS_START( minesw4p )
     PORT_START  /* IN0 */
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN ) /* This wiring selects cocktail mode */

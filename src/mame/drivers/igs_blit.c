@@ -73,7 +73,7 @@ static WRITE16_HANDLER( igs_priority_w )
 }
 
 
-VIDEO_START(igs)
+static VIDEO_START(igs)
 {
 	int i;
 
@@ -85,7 +85,7 @@ VIDEO_START(igs)
 	chmplst2_pen_hi = 0;
 }
 
-VIDEO_UPDATE(igs)
+static VIDEO_UPDATE(igs)
 {
 #ifdef MAME_DEBUG
 	int layer_enable = -1;
@@ -367,7 +367,7 @@ static WRITE16_HANDLER( igs_palette_w )
 
 ***************************************************************************/
 
-void grtwall_decrypt(void)
+static void grtwall_decrypt(void)
 {
 	int i;
 	UINT16 *src = (UINT16 *) (memory_region(REGION_CPU1));
@@ -391,7 +391,7 @@ void grtwall_decrypt(void)
 }
 
 
-void lhb_decrypt(void)
+static void lhb_decrypt(void)
 {
 	int i;
 	UINT16 *src = (UINT16 *) (memory_region(REGION_CPU1));
@@ -416,7 +416,7 @@ void lhb_decrypt(void)
 }
 
 
-void chindrag_decrypt(void)
+static void chindrag_decrypt(void)
 {
 	int i;
 	UINT16 *src = (UINT16 *) (memory_region(REGION_CPU1));
@@ -445,7 +445,7 @@ void chindrag_decrypt(void)
 }
 
 
-void drgnwrld_decrypt(void)
+static void drgnwrld_decrypt(void)
 {
 	int i;
 	UINT16 *src = (UINT16 *) (memory_region(REGION_CPU1));
@@ -474,7 +474,7 @@ void drgnwrld_decrypt(void)
 }
 
 
-void chmplst2_decrypt(void)
+static void chmplst2_decrypt(void)
 {
 	int i,j;
 	int rom_size = 0x80000;
@@ -506,7 +506,7 @@ void chmplst2_decrypt(void)
 
 
 
-void vbowlj_decrypt(void)
+static void vbowlj_decrypt(void)
 {
 	int i;
 	UINT16 *src = (UINT16 *) (memory_region(REGION_CPU1));
@@ -540,6 +540,7 @@ void vbowlj_decrypt(void)
 }
 
 // To do:
+#ifdef UNUSED_FUNCTION
 void vbowl_decrypt(void)
 {
 	int i;
@@ -563,6 +564,7 @@ void vbowl_decrypt(void)
 
 //  vbowlj_decrypt();
 }
+#endif
 
 
 /***************************************************************************
@@ -572,7 +574,7 @@ void vbowl_decrypt(void)
 ***************************************************************************/
 
 
-void chmplst2_decrypt_gfx(void)
+static void chmplst2_decrypt_gfx(void)
 {
 	int i;
 	unsigned rom_size = 0x200000;
@@ -587,7 +589,7 @@ void chmplst2_decrypt_gfx(void)
 	free(result_data);
 }
 
-void chindrag_gfx_decrypt(void)
+static void chindrag_gfx_decrypt(void)
 {
 	int i;
 	unsigned rom_size = 0x400000;
@@ -1296,7 +1298,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( chindrag )
+static INPUT_PORTS_START( chindrag )
 	PORT_START	// IN0 - DSW1
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 5C_1C ) )
@@ -1396,7 +1398,7 @@ INPUT_PORTS_END
 
 
 
-INPUT_PORTS_START( chmplst2 )
+static INPUT_PORTS_START( chmplst2 )
 	PORT_START	// IN0 - DSW1
 	PORT_DIPNAME( 0x07, 0x02, "Pay Out (%)" )
 	PORT_DIPSETTING(    0x07, "50" )
@@ -1534,7 +1536,7 @@ INPUT_PORTS_END
 
 
 
-INPUT_PORTS_START( drgnwrld )
+static INPUT_PORTS_START( drgnwrld )
 	PORT_START	// IN0 - DSW1
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 5C_1C ) )
@@ -1634,7 +1636,7 @@ INPUT_PORTS_END
 
 
 
-INPUT_PORTS_START( grtwall )
+static INPUT_PORTS_START( grtwall )
 	PORT_START	// IN0 - DSW3
 	PORT_DIPNAME( 0xff, 0xff, "3" )
 	PORT_DIPSETTING(    0xff, DEF_STR( Off ) )
@@ -1715,7 +1717,7 @@ INPUT_PORTS_START( grtwall )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( lhb )
+static INPUT_PORTS_START( lhb )
 	PORT_START	// IN0 - DSW1
 	PORT_DIPNAME( 0x0f, 0x07, "Pay Out (%)" )
 	PORT_DIPSETTING(    0x0f, "96" )
@@ -1884,7 +1886,7 @@ INPUT_PORTS_START( lhb )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( vbowl )
+static INPUT_PORTS_START( vbowl )
 	PORT_START	// IN0 - DSW1
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )
@@ -2022,7 +2024,7 @@ INPUT_PORTS_START( vbowl )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( vbowlj )
+static INPUT_PORTS_START( vbowlj )
 	PORT_START	// IN0 - DSW1
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )
@@ -2160,7 +2162,7 @@ INPUT_PORTS_START( vbowlj )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( xymg )
+static INPUT_PORTS_START( xymg )
 	PORT_START	// IN0 - DSW1
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -2633,7 +2635,7 @@ static DRIVER_INIT( lhb )
 
 
 
-DRIVER_INIT( vbowl )
+static DRIVER_INIT( vbowl )
 {
 	UINT16 *rom = (UINT16 *) memory_region(REGION_CPU1);
 	UINT8  *gfx = (UINT8 *)  memory_region(REGION_GFX1);
@@ -2651,7 +2653,7 @@ DRIVER_INIT( vbowl )
 	rom[0x3764/2] = 0x4e75;	// 003764: 4E56 0000 link    A6, #$0
 }
 
-DRIVER_INIT( vbowlj )
+static DRIVER_INIT( vbowlj )
 {
 	UINT16 *rom = (UINT16 *) memory_region(REGION_CPU1);
 	UINT8  *gfx = (UINT8 *)  memory_region(REGION_GFX1);

@@ -29,17 +29,19 @@ A3-1J
 static tilemap *fg_tilemap;
 static UINT8 *char_bank;
 
-WRITE8_HANDLER( supdrapo_videoram_w )
+static WRITE8_HANDLER( supdrapo_videoram_w )
 {
 	videoram[offset] = data;
 	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
+#ifdef UNUSED_FUNCTION
 WRITE8_HANDLER( supdrapo_char_bank_w )
 {
 	char_bank[offset] = data;
 	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
+#endif
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x4fff) AM_READ(MRA8_ROM)
@@ -79,7 +81,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9801, 0x9801) AM_WRITE(AY8910_control_port_0_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( supdrapo )
+static INPUT_PORTS_START( supdrapo )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1) //win
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1) //cancel
@@ -247,12 +249,12 @@ static TILE_GET_INFO( get_tile_info )
 	SET_TILE_INFO( 0, code, 0, 0);
 }
 
-VIDEO_START( supdrapo )
+static VIDEO_START( supdrapo )
 {
 	fg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
 }
 
-VIDEO_UPDATE( supdrapo )
+static VIDEO_UPDATE( supdrapo )
 {
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 

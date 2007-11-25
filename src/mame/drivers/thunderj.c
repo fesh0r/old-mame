@@ -120,7 +120,7 @@ static WRITE16_HANDLER( latch_w )
 static TIMER_CALLBACK( shared_sync_callback )
 {
 	if (--param)
-		mame_timer_set(MAME_TIME_IN_USEC(50), param, shared_sync_callback);
+		timer_set(ATTOTIME_IN_USEC(50), param, shared_sync_callback);
 }
 
 
@@ -159,7 +159,7 @@ static READ16_HANDLER( shared_ram_r )
  *
  *************************************/
 
-READ16_HANDLER( thunderj_video_control_r )
+static READ16_HANDLER( thunderj_video_control_r )
 {
 	/* Sigh. CPU #1 reads the video controller register twice per frame, once at
        the beginning of interrupt and once near the end. It stores these values in a
@@ -245,7 +245,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( thunderj )
+static INPUT_PORTS_START( thunderj )
 	PORT_START		/* 260000 */
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 

@@ -54,7 +54,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( yard )
+static INPUT_PORTS_START( yard )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
@@ -148,7 +148,7 @@ INPUT_PORTS_START( yard )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( vsyard )
+static INPUT_PORTS_START( vsyard )
 	PORT_INCLUDE(yard)
 
 	PORT_MODIFY("DSW1")
@@ -200,7 +200,7 @@ static MACHINE_DRIVER_START( yard )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
 
 	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(1790))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1790))
 	/* accurate frequency, measured on a Moon Patrol board, is 56.75Hz.
        the Lode Runner manual (similar but different hardware)
        talks about 55Hz and 1790ms vblank duration. */

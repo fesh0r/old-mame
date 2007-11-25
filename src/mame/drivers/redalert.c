@@ -154,7 +154,7 @@ static ADDRESS_MAP_START( demoneye_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( redalert )
+static INPUT_PORTS_START( redalert )
 	PORT_START			   /* DIP Switches */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
@@ -202,7 +202,7 @@ INPUT_PORTS_START( redalert )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( demoneye )
+static INPUT_PORTS_START( demoneye )
 	PORT_START			   /* DIP Switches */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
@@ -401,12 +401,12 @@ static const pia6821_interface pia_0_intf =
 	/*irqs   : A/B             */ 0, 0
 };
 
-MACHINE_START( demoneye )
+static MACHINE_START( demoneye )
 {
 	pia_config(0, &pia_0_intf);
 }
 
-MACHINE_RESET( demoneye )
+static MACHINE_RESET( demoneye )
 {
 	pia_reset();
 }

@@ -178,7 +178,7 @@ static TILE_GET_INFO( get_sc1_tile_info )
 			0);
 }
 
-VIDEO_START( jalmah )
+static VIDEO_START( jalmah )
 {
 	sc0_tilemap = tilemap_create(get_sc0_tile_info,bg_scan,TILEMAP_TYPE_PEN,16,16,256,32);
 	sc1_tilemap = tilemap_create(get_sc1_tile_info,bg_scan,TILEMAP_TYPE_PEN,16,16,256,32);
@@ -330,7 +330,7 @@ static void second_mcu_run(running_machine *machine)
 	tilemap_draw(bitmap,cliprect,_tilemap_,(opaque & 1) ? 0 : TILEMAP_DRAW_OPAQUE,0); \
 	if(!opaque) { opaque = 1; }
 
-VIDEO_UPDATE( jalmah )
+static VIDEO_UPDATE( jalmah )
 {
 	int opaque = 0;
 	#ifdef MAME_DEBUG
@@ -434,7 +434,7 @@ static WRITE16_HANDLER( sc2_vram_w )
 	tilemap_mark_tile_dirty(sc2_tilemap,offset);
 }
 
-WRITE16_HANDLER( jalmah_tilebank_w )
+static WRITE16_HANDLER( jalmah_tilebank_w )
 {
 	/*
      xxxx ---- fg bank (used by suchipi)
@@ -489,7 +489,7 @@ static WRITE16_HANDLER( jalmah_scroll_w )
 
 static UINT8 oki_rom,oki_bank;
 
-WRITE16_HANDLER( jalmah_okirom_w )
+static WRITE16_HANDLER( jalmah_okirom_w )
 {
 	if(ACCESSING_LSB)
 	{
@@ -513,7 +513,7 @@ static WRITE16_HANDLER( jalmah_okibank_w )
 	}
 }
 
-WRITE16_HANDLER( jalmah_flip_screen_w )
+static WRITE16_HANDLER( jalmah_flip_screen_w )
 {
 	/*---- ----x flip screen*/
 	flip_screen_set(data & 1);
@@ -550,7 +550,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( jalmah )
+static INPUT_PORTS_START( jalmah )
 	/*System port*/
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
@@ -708,7 +708,7 @@ INPUT_PORTS_START( jalmah )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( jalmah2 )
+static INPUT_PORTS_START( jalmah2 )
 	/*System port*/
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
@@ -836,7 +836,7 @@ INPUT_PORTS_START( jalmah2 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( jalmah2a )
+static INPUT_PORTS_START( jalmah2a )
 	/*System port*/
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )

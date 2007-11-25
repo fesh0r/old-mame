@@ -374,17 +374,17 @@ static ADDRESS_MAP_START( bballoon_map, ADDRESS_SPACE_PROGRAM, 32 )
 
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( bballoon )
+static INPUT_PORTS_START( bballoon )
 INPUT_PORTS_END
 
 static int irq_en = 0;
 
-VIDEO_START( bballoon )
+static VIDEO_START( bballoon )
 {
 
 }
 static int b=0;
-VIDEO_UPDATE( bballoon )
+static VIDEO_UPDATE( bballoon )
 {
 	if(input_code_pressed_once(KEYCODE_Q))
 	{
@@ -470,7 +470,7 @@ VIDEO_UPDATE( bballoon )
 	return 0;
 }
 
-INTERRUPT_GEN( bballoon_interrupt )
+static INTERRUPT_GEN( bballoon_interrupt )
 {
 	if(irq_en)
 		cpunum_set_input_line(0, ARM7_IRQ_LINE, PULSE_LINE);
@@ -551,7 +551,7 @@ ROM_START( bballoon )
 	ROM_LOAD( "b1.u16",       0x000000, 0x100000, CRC(c42c1c85) SHA1(e1f49d556ffd6bc27142a7784c3bb8e37999857d) )
 ROM_END
 
-DRIVER_INIT( bballoon )
+static DRIVER_INIT( bballoon )
 {
 	UINT8 *flash = (UINT8 *)memory_region(REGION_USER1);
 

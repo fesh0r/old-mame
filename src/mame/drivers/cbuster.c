@@ -83,7 +83,7 @@ static WRITE16_HANDLER( twocrude_control_w )
 	logerror("Warning %04x- %02x written to control %02x\n",activecpu_get_pc(),data,offset);
 }
 
-READ16_HANDLER( twocrude_control_r )
+static READ16_HANDLER( twocrude_control_r )
 {
 	switch (offset<<1)
 	{
@@ -200,7 +200,7 @@ ADDRESS_MAP_END
 
 /******************************************************************************/
 
-INPUT_PORTS_START( twocrude )
+static INPUT_PORTS_START( twocrude )
 	PORT_START	/* Player 1 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -351,7 +351,7 @@ static MACHINE_DRIVER_START( twocrude )
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(529))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)

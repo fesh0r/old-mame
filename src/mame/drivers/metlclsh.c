@@ -166,7 +166,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( metlclsh )
+static INPUT_PORTS_START( metlclsh )
 	PORT_START_TAG("IN0")	/* c000 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
@@ -296,7 +296,7 @@ static struct YM3526interface ym3526_interface =
 	metlclsh_irqhandler
 };
 
-INTERRUPT_GEN( metlclsh_interrupt2 )
+static INTERRUPT_GEN( metlclsh_interrupt2 )
 {
 	if (cpu_getiloops() == 0)
 		return;

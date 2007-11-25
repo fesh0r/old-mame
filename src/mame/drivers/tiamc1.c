@@ -143,12 +143,12 @@ extern WRITE8_HANDLER( tiamc1_timer1_gate_w );
 
 static UINT8 *video_ram;
 
-DRIVER_INIT( tiamc1 )
+static DRIVER_INIT( tiamc1 )
 {
 	video_ram = auto_malloc(0x3040);
 }
 
-MACHINE_RESET( tiamc1 )
+static MACHINE_RESET( tiamc1 )
 {
 	memset(video_ram, 0, 0x3040);
 
@@ -165,7 +165,7 @@ MACHINE_RESET( tiamc1 )
 	state_save_register_global_pointer(video_ram, 0x3040);
 }
 
-WRITE8_HANDLER( tiamc1_control_w )
+static WRITE8_HANDLER( tiamc1_control_w )
 {
 	coin_lockout_w(0, ~data & 0x02);
 	coin_counter_w(0, data & 0x04);
@@ -208,7 +208,7 @@ static ADDRESS_MAP_START( tiamc1_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xd2, 0xd2) AM_READ(input_port_2_r)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( tiamc1 )
+static INPUT_PORTS_START( tiamc1 )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNUSED ) /* Player 0 JOYSTICK_RIGHT */
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
@@ -280,7 +280,7 @@ static MACHINE_DRIVER_START( tiamc1 )
 	MDRV_CPU_IO_MAP(tiamc1_readport,tiamc1_writeport)
 
 	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(1600))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1600))
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
 	MDRV_MACHINE_RESET(tiamc1)

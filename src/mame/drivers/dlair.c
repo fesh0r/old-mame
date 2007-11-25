@@ -161,7 +161,7 @@ static void video_cleanup(running_machine *machine)
 }
 
 
-VIDEO_START( dlair )
+static VIDEO_START( dlair )
 {
 	mame_bitmap *vidbitmap;
 
@@ -175,7 +175,7 @@ VIDEO_START( dlair )
 }
 
 
-PALETTE_INIT( dleuro )
+static PALETTE_INIT( dleuro )
 {
 	int i;
 
@@ -189,7 +189,7 @@ PALETTE_INIT( dleuro )
 }
 
 
-VIDEO_START( dleuro )
+static VIDEO_START( dleuro )
 {
 	video_start_dlair(machine);
 
@@ -206,7 +206,7 @@ VIDEO_START( dleuro )
  *
  *************************************/
 
-VIDEO_UPDATE( dlair )
+static VIDEO_UPDATE( dlair )
 {
 	mame_bitmap *vidbitmap;
 	UINT32 seqid;
@@ -228,7 +228,7 @@ VIDEO_UPDATE( dlair )
 }
 
 
-VIDEO_UPDATE( dleuro )
+static VIDEO_UPDATE( dleuro )
 {
 	mame_bitmap *vidbitmap;
 	UINT32 seqid;
@@ -281,8 +281,8 @@ static MACHINE_START( dlair )
 static MACHINE_START( dleuro )
 {
 	/* initialize the CTC and SIO peripherals */
-	ctc_intf.baseclock = machine->drv->cpu[0].cpu_clock;
-	sio_intf.baseclock = machine->drv->cpu[0].cpu_clock;
+	ctc_intf.baseclock = machine->drv->cpu[0].clock;
+	sio_intf.baseclock = machine->drv->cpu[0].clock;
 	z80ctc_init(0, &ctc_intf);
 	z80sio_init(0, &sio_intf);
 
@@ -318,7 +318,7 @@ static void vblank_callback(void)
 	if (sndti_exists(SOUND_BEEP, 0))
 	{
 		beep_set_state(0, 1);
-		beep_set_frequency(0, SUBSECONDS_TO_HZ(z80ctc_getperiod(0, 0).subseconds));
+		beep_set_frequency(0, ATTOSECONDS_TO_HZ(z80ctc_getperiod(0, 0).attoseconds));
 	}
 }
 
@@ -598,7 +598,7 @@ Address in ROM:
  *
  *************************************/
 
-INPUT_PORTS_START( dlair )
+static INPUT_PORTS_START( dlair )
 	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("A:1,0")
 	PORT_DIPSETTING(    0x01, DEF_STR( 3C_1C ) )
@@ -671,7 +671,7 @@ INPUT_PORTS_START( dlair )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( dlaire )
+static INPUT_PORTS_START( dlaire )
 	PORT_INCLUDE(dlair)
 
 	PORT_MODIFY("DSW2")
@@ -681,7 +681,7 @@ INPUT_PORTS_START( dlaire )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( dleuro )
+static INPUT_PORTS_START( dleuro )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
@@ -844,7 +844,7 @@ static MACHINE_DRIVER_START( dleuro )
 	MDRV_CPU_IO_MAP(dleuro_io_map,0)
 	MDRV_CPU_VBLANK_INT(vblank_callback, 1)
 
-	MDRV_WATCHDOG_TIME_INIT(MAME_TIME_IN_HZ(MASTER_CLOCK_EURO/(16*16*16*16*16*8)))
+	MDRV_WATCHDOG_TIME_INIT(ATTOTIME_IN_HZ(MASTER_CLOCK_EURO/(16*16*16*16*16*8)))
 
 	MDRV_MACHINE_START(dleuro)
 	MDRV_MACHINE_RESET(dlair)

@@ -51,7 +51,7 @@ Sound: YM2203 and YM3526 driven by 6809.  Sound added by Bryan McPhail, 1/4/98.
 #include "sound/3812intf.h"
 
 
-UINT8 *brkthru_nmi_enable; /* needs to be tracked down */
+//UINT8 *brkthru_nmi_enable; /* needs to be tracked down */
 extern UINT8 *brkthru_videoram;
 extern size_t brkthru_videoram_size;
 
@@ -65,14 +65,14 @@ VIDEO_UPDATE( brkthru );
 
 static int nmi_enable;
 
-WRITE8_HANDLER( brkthru_1803_w )
+static WRITE8_HANDLER( brkthru_1803_w )
 {
 	/* bit 0 = NMI enable */
 	nmi_enable = ~data & 1;
 
 	/* bit 1 = ? maybe IRQ acknowledge */
 }
-WRITE8_HANDLER( darwin_0803_w )
+static WRITE8_HANDLER( darwin_0803_w )
 {
 	/* bit 0 = NMI enable */
 	/*nmi_enable = ~data & 1;*/
@@ -81,7 +81,7 @@ WRITE8_HANDLER( darwin_0803_w )
 	/* bit 1 = ? maybe IRQ acknowledge */
 }
 
-WRITE8_HANDLER( brkthru_soundlatch_w )
+static WRITE8_HANDLER( brkthru_soundlatch_w )
 {
 	soundlatch_w(offset,data);
 	cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
@@ -158,7 +158,7 @@ ADDRESS_MAP_END
 
 
 
-INTERRUPT_GEN( brkthru_interrupt )
+static INTERRUPT_GEN( brkthru_interrupt )
 {
 	if (cpu_getiloops() == 0)
 	{
@@ -195,7 +195,7 @@ INTERRUPT_GEN( brkthru_interrupt )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )\
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )	/* used only by the self test */
 
-INPUT_PORTS_START( brkthru )
+static INPUT_PORTS_START( brkthru )
 COMMON_IN0
 COMMON_IN1
 
@@ -242,7 +242,7 @@ COMMON_IN1
 	PORT_DIPSETTING( 0x80, DEF_STR( Cocktail ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( brkthruj )
+static INPUT_PORTS_START( brkthruj )
 COMMON_IN0
 COMMON_IN1
 
@@ -287,7 +287,7 @@ COMMON_IN1
 	PORT_DIPSETTING( 0x80, DEF_STR( Cocktail ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( darwin )
+static INPUT_PORTS_START( darwin )
 COMMON_IN0
 COMMON_IN1
 

@@ -13,9 +13,9 @@
 UINT8 *slapfight_dpram;
 size_t slapfight_dpram_size;
 
-int slapfight_status;
-int getstar_sequence_index;
-int getstar_sh_intenabled;
+static int slapfight_status;
+static int getstar_sequence_index;
+static int getstar_sh_intenabled;
 
 static int slapfight_status_state;
 extern UINT8 *getstar_e803;
@@ -147,10 +147,12 @@ INTERRUPT_GEN( getstar_interrupt )
 		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
+#ifdef UNUSED_FUNCTION
 WRITE8_HANDLER( getstar_port_04_w )
 {
 //  cpu_halt(0,0);
 }
+#endif
 
 
 /* Tiger Heli MCU */

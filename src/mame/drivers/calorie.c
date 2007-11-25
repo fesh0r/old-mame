@@ -107,7 +107,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 }
 
 
-VIDEO_START( calorie )
+static VIDEO_START( calorie )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,16,16);
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
@@ -115,7 +115,7 @@ VIDEO_START( calorie )
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
 
-VIDEO_UPDATE( calorie )
+static VIDEO_UPDATE( calorie )
 {
 	int x;
 
@@ -233,7 +233,7 @@ static ADDRESS_MAP_START( calorie_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0xff) AM_WRITE(bogus_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( calorie )
+static INPUT_PORTS_START( calorie )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )    PORT_PLAYER(1) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )  PORT_PLAYER(1) PORT_4WAY

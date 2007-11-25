@@ -71,12 +71,12 @@ extern PALETTE_INIT( tankbatt );
 extern VIDEO_START( tankbatt );
 extern VIDEO_UPDATE( tankbatt );
 
-WRITE8_HANDLER( tankbatt_led_w )
+static WRITE8_HANDLER( tankbatt_led_w )
 {
 	set_led_status(offset,data & 1);
 }
 
-READ8_HANDLER( tankbatt_in0_r )
+static READ8_HANDLER( tankbatt_in0_r )
 {
 	int val;
 
@@ -84,7 +84,7 @@ READ8_HANDLER( tankbatt_in0_r )
 	return ((val << (7-offset)) & 0x80);
 }
 
-READ8_HANDLER( tankbatt_in1_r )
+static READ8_HANDLER( tankbatt_in1_r )
 {
 	int val;
 
@@ -92,7 +92,7 @@ READ8_HANDLER( tankbatt_in1_r )
 	return ((val << (7-offset)) & 0x80);
 }
 
-READ8_HANDLER( tankbatt_dsw_r )
+static READ8_HANDLER( tankbatt_dsw_r )
 {
 	int val;
 
@@ -100,7 +100,7 @@ READ8_HANDLER( tankbatt_dsw_r )
 	return ((val << (7-offset)) & 0x80);
 }
 
-WRITE8_HANDLER( tankbatt_interrupt_enable_w )
+static WRITE8_HANDLER( tankbatt_interrupt_enable_w )
 {
 	tankbatt_nmi_enable = !data;
 	tankbatt_sound_enable = !data;
@@ -114,7 +114,7 @@ WRITE8_HANDLER( tankbatt_interrupt_enable_w )
 //  interrupt_enable_w (offset, !data);
 }
 
-WRITE8_HANDLER( tankbatt_demo_interrupt_enable_w )
+static WRITE8_HANDLER( tankbatt_demo_interrupt_enable_w )
 {
 	tankbatt_nmi_enable = data;
 	if (data != 0)
@@ -125,13 +125,13 @@ WRITE8_HANDLER( tankbatt_demo_interrupt_enable_w )
 //  interrupt_enable_w (offset, data);
 }
 
-WRITE8_HANDLER( tankbatt_sh_expl_w )
+static WRITE8_HANDLER( tankbatt_sh_expl_w )
 {
 	if (tankbatt_sound_enable)
 		sample_start (1, 3, 0);
 }
 
-WRITE8_HANDLER( tankbatt_sh_engine_w )
+static WRITE8_HANDLER( tankbatt_sh_engine_w )
 {
 	if (tankbatt_sound_enable)
 	{
@@ -143,7 +143,7 @@ WRITE8_HANDLER( tankbatt_sh_engine_w )
 	else sample_stop (2);
 }
 
-WRITE8_HANDLER( tankbatt_sh_fire_w )
+static WRITE8_HANDLER( tankbatt_sh_fire_w )
 {
 	if (tankbatt_sound_enable)
 		sample_start (0, 0, 0);
@@ -174,13 +174,13 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
 
-INTERRUPT_GEN( tankbatt_interrupt )
+static INTERRUPT_GEN( tankbatt_interrupt )
 {
 	if ((readinputport (0) & 0x60) == 0) cpunum_set_input_line(0,0,HOLD_LINE);
 	else if (tankbatt_nmi_enable) cpunum_set_input_line(0,INPUT_LINE_NMI,PULSE_LINE);
 }
 
-INPUT_PORTS_START( tankbatt )
+static INPUT_PORTS_START( tankbatt )
 	PORT_START	/* IN0 */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY

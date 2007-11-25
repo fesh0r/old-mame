@@ -216,7 +216,7 @@ static TIMER_CALLBACK( rsaga2_interrupt2  )
 
 static INTERRUPT_GEN( rastansaga2_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(5000,0),0,rsaga2_interrupt2);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,rsaga2_interrupt2);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -228,7 +228,7 @@ static TIMER_CALLBACK( crimec_interrupt3 )
 
 static INTERRUPT_GEN( crimec_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(5000,0),0,crimec_interrupt3);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,crimec_interrupt3);
 	cpunum_set_input_line(0, 5, HOLD_LINE);
 }
 
@@ -240,7 +240,7 @@ static TIMER_CALLBACK( hitice_interrupt6 )
 
 static INTERRUPT_GEN( hitice_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(5000,0),0,hitice_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,hitice_interrupt6);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -252,7 +252,7 @@ static TIMER_CALLBACK( rambo3_interrupt1 )
 
 static INTERRUPT_GEN( rambo3_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(5000,0),0,rambo3_interrupt1);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,rambo3_interrupt1);
 	cpunum_set_input_line(0, 6, HOLD_LINE);
 }
 
@@ -264,7 +264,7 @@ static TIMER_CALLBACK( pbobble_interrupt5 )
 
 static INTERRUPT_GEN( pbobble_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(5000,0),0,pbobble_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,pbobble_interrupt5);
 	cpunum_set_input_line(0, 3, HOLD_LINE);
 }
 
@@ -275,7 +275,7 @@ static TIMER_CALLBACK( viofight_interrupt1 )
 
 static INTERRUPT_GEN( viofight_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(5000,0),0,viofight_interrupt1);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,viofight_interrupt1);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -286,7 +286,7 @@ static TIMER_CALLBACK( masterw_interrupt4 )
 
 static INTERRUPT_GEN( masterw_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(5000,0),0,masterw_interrupt4);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,masterw_interrupt4);
 	cpunum_set_input_line(0, 5, HOLD_LINE);
 }
 
@@ -297,7 +297,7 @@ static TIMER_CALLBACK( silentd_interrupt4 )
 
 static INTERRUPT_GEN( silentd_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(5000,0),0,silentd_interrupt4);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,silentd_interrupt4);
 	cpunum_set_input_line(0, 6, HOLD_LINE);
 }
 
@@ -308,7 +308,7 @@ static TIMER_CALLBACK( selfeena_interrupt4 )
 
 static INTERRUPT_GEN( selfeena_interrupt )
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(5000,0),0,selfeena_interrupt4);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,selfeena_interrupt4);
 	cpunum_set_input_line(0, 6, HOLD_LINE);
 }
 
@@ -319,7 +319,7 @@ static TIMER_CALLBACK( sbm_interrupt5 )//4
 
 static INTERRUPT_GEN( sbm_interrupt )//5
 {
-	mame_timer_set(MAME_TIME_IN_CYCLES(10000,0),0,sbm_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0),0,sbm_interrupt5);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -1154,7 +1154,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
 
 
-INPUT_PORTS_START( rastsag2 )
+static INPUT_PORTS_START( rastsag2 )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )  // all 2 "unused" in manual
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -1195,7 +1195,7 @@ INPUT_PORTS_START( rastsag2 )
 	TAITO_B_SYSTEM_INPUT
 INPUT_PORTS_END
 
-INPUT_PORTS_START( nastar )
+static INPUT_PORTS_START( nastar )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -1236,7 +1236,7 @@ INPUT_PORTS_START( nastar )
 	TAITO_B_SYSTEM_INPUT
 INPUT_PORTS_END
 
-INPUT_PORTS_START( nastarw )
+static INPUT_PORTS_START( nastarw )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
@@ -1277,7 +1277,7 @@ INPUT_PORTS_START( nastarw )
 	TAITO_B_SYSTEM_INPUT
 INPUT_PORTS_END
 
-INPUT_PORTS_START( masterw )
+static INPUT_PORTS_START( masterw )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
@@ -1319,7 +1319,7 @@ INPUT_PORTS_START( masterw )
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START( crimec )
+static INPUT_PORTS_START( crimec )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, "Hi Score" )
 	PORT_DIPSETTING(    0x01, "Scribble" )
@@ -1359,7 +1359,7 @@ INPUT_PORTS_START( crimec )
 	TAITO_B_SYSTEM_INPUT
 INPUT_PORTS_END
 
-INPUT_PORTS_START( crimecj )
+static INPUT_PORTS_START( crimecj )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, "Hi Score" )
 	PORT_DIPSETTING(    0x01, "Scribble" )
@@ -1399,7 +1399,7 @@ INPUT_PORTS_START( crimecj )
 	TAITO_B_SYSTEM_INPUT
 INPUT_PORTS_END
 
-INPUT_PORTS_START( crimecu )
+static INPUT_PORTS_START( crimecu )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, "Hi Score" )
 	PORT_DIPSETTING(    0x01, "Scribble" )
@@ -1439,7 +1439,7 @@ INPUT_PORTS_START( crimecu )
 	TAITO_B_SYSTEM_INPUT
 INPUT_PORTS_END
 
-INPUT_PORTS_START( tetrist )
+static INPUT_PORTS_START( tetrist )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -1482,7 +1482,7 @@ INPUT_PORTS_START( tetrist )
 	TAITO_B_SYSTEM_INPUT
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ashura )
+static INPUT_PORTS_START( ashura )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
@@ -1523,7 +1523,7 @@ INPUT_PORTS_START( ashura )
 	TAITO_B_SYSTEM_INPUT
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ashurau )
+static INPUT_PORTS_START( ashurau )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
@@ -1609,7 +1609,7 @@ maximum credit      9                             0
 5,6,7 are set to off
 */
 
-INPUT_PORTS_START( hitice )
+static INPUT_PORTS_START( hitice )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, "Cabinet Style" )
 	PORT_DIPSETTING(    0x01, "4 Players")
@@ -1692,7 +1692,7 @@ INPUT_PORTS_START( hitice )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START4 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( rambo3 )
+static INPUT_PORTS_START( rambo3 )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )  // all 5 "unused" in manual
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -1735,7 +1735,7 @@ INPUT_PORTS_START( rambo3 )
 	TAITO_B_SYSTEM_INPUT
 INPUT_PORTS_END
 
-INPUT_PORTS_START( rambo3a )
+static INPUT_PORTS_START( rambo3a )
 	PORT_START /* DSW A */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -1820,7 +1820,7 @@ INPUT_PORTS_END
 
 /* Helps document the input ports. */
 
-INPUT_PORTS_START( pbobble )	/* Missing P3&4 controls ! */
+static INPUT_PORTS_START( pbobble )	/* Missing P3&4 controls ! */
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) /*unused in test mode*/
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) /*unused in test mode*/
@@ -1892,7 +1892,7 @@ INPUT_PORTS_START( pbobble )	/* Missing P3&4 controls ! */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(4)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( spacedxo )
+static INPUT_PORTS_START( spacedxo )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )
@@ -1981,7 +1981,7 @@ INPUT_PORTS_START( spacedxo )
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START( qzshowby )
+static INPUT_PORTS_START( qzshowby )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) /*unused in test mode*/
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) /*unused in test mode*/
@@ -2053,7 +2053,7 @@ INPUT_PORTS_START( qzshowby )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( viofight )
+static INPUT_PORTS_START( viofight )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )  // all 7 "unused" in manual
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2096,7 +2096,7 @@ INPUT_PORTS_START( viofight )
 	TAITO_B_SYSTEM_INPUT
 INPUT_PORTS_END
 
-INPUT_PORTS_START( silentd )	/* World Version */
+static INPUT_PORTS_START( silentd )	/* World Version */
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )	/* Listed as "NOT USED" in the manual and only shown as "OFF" */
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2220,7 +2220,7 @@ INPUT_PORTS_START( silentd )	/* World Version */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( silentdj )
+static INPUT_PORTS_START( silentdj )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )	/* Listed as "NOT USED" in the manual and only shown as "OFF" */
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2315,7 +2315,7 @@ INPUT_PORTS_START( silentdj )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( selfeena )
+static INPUT_PORTS_START( selfeena )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2373,7 +2373,7 @@ INPUT_PORTS_START( selfeena )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ryujin )
+static INPUT_PORTS_START( ryujin )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2432,7 +2432,7 @@ INPUT_PORTS_START( ryujin )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( sbm )
+static INPUT_PORTS_START( sbm )
 	PORT_START_TAG("DSWA") /* DSW A *///+-ok
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ))
@@ -2619,7 +2619,7 @@ static void mb87078_gain_changed(int channel, int percent)
 {
 	if (channel==1)
 	{
-		int type = Machine->drv->sound[0].sound_type;
+		sound_type type = Machine->drv->sound[0].type;
 		sndti_set_output_gain(type, 0, 0, percent / 100.0);
 		sndti_set_output_gain(type, 1, 0, percent / 100.0);
 		sndti_set_output_gain(type, 2, 0, percent / 100.0);

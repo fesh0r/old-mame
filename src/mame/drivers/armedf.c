@@ -515,7 +515,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x00, "6" )
 
 
-INPUT_PORTS_START( legion )
+static INPUT_PORTS_START( legion )
 	PORT_START_TAG("IN0")
 	NIHON_SINGLE_JOYSTICK(1)
 	NIHON_COINS
@@ -570,7 +570,7 @@ INPUT_PORTS_START( legion )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( terraf )
+static INPUT_PORTS_START( terraf )
 	PORT_START_TAG("IN0")
 	NIHON_SINGLE_JOYSTICK(1)
 	NIHON_COINS
@@ -618,7 +618,7 @@ INPUT_PORTS_START( terraf )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( kodure )
+static INPUT_PORTS_START( kodure )
 	PORT_START_TAG("IN0")
 	NIHON_SINGLE_JOYSTICK(1)
 	NIHON_COINS
@@ -664,7 +664,7 @@ INPUT_PORTS_START( kodure )
 	PORT_DIPUNUSED( 0x80, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( cclimbr2 )
+static INPUT_PORTS_START( cclimbr2 )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -727,7 +727,7 @@ INPUT_PORTS_START( cclimbr2 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( armedf )
+static INPUT_PORTS_START( armedf )
 	PORT_START_TAG("IN0")
 	NIHON_SINGLE_JOYSTICK(1)
 	NIHON_COINS
@@ -1363,28 +1363,28 @@ ROM_START( armedf )
 ROM_END
 
 
-DRIVER_INIT( terraf )
+static DRIVER_INIT( terraf )
 {
 	armedf_setgfxtype(0);
 }
 
-DRIVER_INIT( terrafu )
+static DRIVER_INIT( terrafu )
 {
 	armedf_setgfxtype(5);
 }
 
-DRIVER_INIT( armedf )
+static DRIVER_INIT( armedf )
 {
 	armedf_setgfxtype(1);
 }
 
 
-DRIVER_INIT( kodure )
+static DRIVER_INIT( kodure )
 {
 	armedf_setgfxtype(2);
 }
 
-DRIVER_INIT( legion )
+static DRIVER_INIT( legion )
 {
 #if LEGION_HACK
 	/* This is a hack to allow you to use the extra features
@@ -1398,7 +1398,7 @@ DRIVER_INIT( legion )
 	armedf_setgfxtype(3);
 }
 
-DRIVER_INIT( legiono )
+static DRIVER_INIT( legiono )
 {
 #if LEGION_HACK
 	/* This is a hack to allow you to use the extra features
@@ -1411,7 +1411,7 @@ DRIVER_INIT( legiono )
 	armedf_setgfxtype(6);
 }
 
-DRIVER_INIT( cclimbr2 )
+static DRIVER_INIT( cclimbr2 )
 {
 	armedf_setgfxtype(4);
 }

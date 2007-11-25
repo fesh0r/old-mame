@@ -34,12 +34,20 @@ SPOT TABLE test
 */
 
 #include "driver.h"
+#include "eminline.h"
+#include "video/rgbutil.h"
 #include "namcos22.h"
+#include "video/poly.h"
 #include <math.h>
+
+// uncomment this line to render everything as quads
+//#define RENDER_AS_QUADS
 
 static int mbSuperSystem22; /* used to conditionally support Super System22-specific features */
 static int mbSpotlightEnable;
 static UINT16 *namcos22_czram[4];
+
+static poly_manager *poly;
 
 static UINT8
 nthbyte( const UINT32 *pSource, int offs )
@@ -80,6 +88,7 @@ static struct
 static void
 UpdateVideoMixer( void )
 {
+	poly_wait(poly, "UpdateVideoMixer");
 	memset( &mixer, 0, sizeof(mixer) );
 	if( mbSuperSystem22 )
 	{
@@ -150,7 +159,7 @@ UpdateVideoMixer( void )
 	}
 }
 
-static UINT8
+INLINE UINT8
 Clamp256( int v )
 {
    if( v<0 )
@@ -237,663 +246,363 @@ INLINE unsigned texel( unsigned x, unsigned y )
 	return mpTextureTileData[(tile<<8)|mXYAttrToPixel[mpTextureTileMapAttr[offs]][x&0xf][y&0xf]];
 } /* texel */
 
-static void renderscanline_uvi_full(running_machine *machine, mame_bitmap *bitmap, const rectangle *clip, const edge *e1, const edge *e2, int sy, int color, int bn, UINT16 flags, int cmode )
-{
-	int fadeEnable = (mixer.target&1) && mixer.fadeFactor;
-	int fogDisable = color&0x80;
-	const pen_t *pens = &machine->pens[(color&0x7f)<<8];
-   int fogDensity = 0;
-	int prioverchar = (cmode&7)==1;
 
-	if( e1->x > e2->x )
+
+typedef struct _poly_extra_data poly_extra_data;
+struct _poly_extra_data
+{
+	int color;
+	int bn;
+	UINT16 flags;
+	int cmode;
+	int fogFactor;
+	rgbint fogColor;
+	int fadeFactor;
+	rgbint fadeColor;
+	const UINT8 *source;		/* sprites */
+	int z;
+	int alpha;
+	int prioverchar;
+	int line_modulo;
+};
+
+
+static void renderscanline_uvi_full(void *dest, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid)
+{
+	float z = extent->param[0].start;
+	float u = extent->param[1].start;
+	float v = extent->param[2].start;
+	float i = extent->param[3].start;
+	float dz = extent->param[0].dpdx;
+	float du = extent->param[1].dpdx;
+	float dv = extent->param[2].dpdx;
+	float di = extent->param[3].dpdx;
+	mame_bitmap *bitmap = dest;
+	const poly_extra_data *extra = extradata;
+	int bn = extra->bn * 0x1000;
+	const pen_t *pens = &Machine->pens[(extra->color&0x7f)<<8];
+	int fogFactor = 0xff - extra->fogFactor;
+	int fadeFactor = 0xff - extra->fadeFactor;
+	int transFactor = 0xff;
+	rgbint fogColor = extra->fogColor;
+	rgbint fadeColor = extra->fadeColor;
+	int penmask, penshift;
+	int prioverchar;
+	const UINT8 *pCharPri = BITMAP_ADDR8(priority_bitmap, scanline, 0);
+	UINT32 *pDest = BITMAP_ADDR32(bitmap, scanline, 0);
+	int x;
+
+	if (extra->cmode & 4)
 	{
-		SWAP(e1,e2);
+		prioverchar = 0;
+		pens += 0xec + ((extra->cmode & 8) << 1);
+		penmask = 0x03;
+		penshift = 2 * ~(extra->cmode & 3);
+	}
+	else if (extra->cmode & 2)
+	{
+		prioverchar = 0;
+		pens += 0xe0 + ((extra->cmode & 8) << 1);
+		penmask = 0x0f;
+		penshift = 4 * ~(extra->cmode & 1);
+	}
+	else if (extra->cmode & 1)
+	{
+		transFactor = 0xff - mixer.poly_translucency;
+		prioverchar = 1;
+		penmask = 0xff;
+		penshift = 0;
+	}
+	else
+	{
+		prioverchar = 0;
+		penmask = 0xff;
+		penshift = 0;
 	}
 
+	if (prioverchar)
 	{
-		const UINT8 *pCharPri = BITMAP_ADDR8(priority_bitmap, sy, 0);
-		UINT32 *pDest = BITMAP_ADDR32(bitmap, sy, 0);
-		int x0 = (int)e1->x;
-		int x1 = (int)e2->x;
-		int w = x1-x0;
-		if( w )
+		for( x=extent->startx; x<extent->stopx; x++ )
 		{
-			float u = e1->u; /* u/z */
-			float v = e1->v; /* v/z */
-			float i = e1->i; /* i/z */
-			float z = e1->z; /* 1/z */
-			float oow = 1.0f / w;
-			float du = (e2->u - e1->u)*oow;
-			float dv = (e2->v - e1->v)*oow;
-			float dz = (e2->z - e1->z)*oow;
-			float di = (e2->i - e1->i)*oow;
-			int x, crop;
-			crop = clip->min_x - x0;
-			if( crop>0 )
-			{
-				u += crop*du;
-				v += crop*dv;
-				i += crop*di;
-				z += crop*dz;
-				x0 = clip->min_x;
-			}
-			if( x1>clip->max_x )
-			{
-				x1 = clip->max_x;
-			}
-         bn *= 0x1000;
+			float ooz = 1.0f / z;
+			int pen = texel((int)(u * ooz),bn+(int)(v*ooz));
+			int shade = i*ooz;
+			rgbint rgb;
 
-         if( mbSuperSystem22 )
-         {
-				if( !fogDisable )
-				{
-					int cz = flags>>8;
-					static const int cztype_remap[4] = { 3,1,2,0 };
-	            int cztype = flags&3;
-	            if( nthword(namcos22_czattr,4)&(0x4000>>(cztype*4)) )
-	            {
-	               int fogDelta = (INT16)nthword(namcos22_czattr, cztype);
-			//          if( fogDelta == 0x8000 ) fogDelta = -0x7fff;
-	               //cz = Clamp256(cz+fogDelta);
-	               fogDensity = fogDelta + namcos22_czram[cztype_remap[cztype]][cz];
-						if( fogDensity<0x0000 )
-						{
-							fogDensity = 0x0000;
-						}
-						else if( fogDensity>0x1fff )
-						{
-							fogDensity = 0x1fff;
-						}
-					}
-				}
-         }
-			else
+			rgb_to_rgbint(&rgb, pens[(pen >> penshift) & penmask]);
+			rgbint_scale_and_clamp(&rgb, shade << 2);
+
+			if( fogFactor != 0xff )
+				rgbint_blend(&rgb, &fogColor, fogFactor);
+
+			if( fadeFactor != 0xff )
+				rgbint_blend(&rgb, &fadeColor, fadeFactor);
+
+			if( transFactor != 0xff )
 			{
-				fogDisable = 1;
+				rgbint dest;
+				rgb_to_rgbint(&dest, pDest[x]);
+				rgbint_blend(&rgb, &dest, transFactor);
 			}
 
-         for( x=x0; x<x1; x++ )
+			pDest[x] = rgbint_to_rgb(&rgb);
+
+			u += du;
+			v += dv;
+			i += di;
+			z += dz;
+		}
+	}
+	else
+	{
+		for( x=extent->startx; x<extent->stopx; x++ )
+		{
+			if( pCharPri[x]==0 )
 			{
-				if( pCharPri[x]==0 || prioverchar )
-				{
-					float ooz = 1.0f/z;
-					int pen = texel((int)(u * ooz),bn+(int)(v*ooz));
-					switch( cmode )
-					{
-					case 0x2:
-						 pen = 0xe0|(pen>>4);
-						 break;
-					case 0x3:
-						pen = 0xe0|(pen&0xf);
-						break;
-					case 0x4:
-						pen = 0xec|(pen>>6);
-						break;
-					case 0x5:
-						pen = 0xec|((pen>>4)&3);
-						break;
-					case 0x6:
-						pen = 0xec|((pen>>2)&3);
-						break;
-					case 0x7:
-						pen = 0xec|(pen&3);
-						break;
-					case 0xa:
-						pen = 0xf0|(pen>>4);
-						break;
-					case 0xb:
-						pen = 0xf0|(pen&0xf);
-						break;
-					case 0xc:
-						pen = 0xfc|(pen>>6);
-						break;
-					case 0xd:
-						pen = 0xfc|((pen>>4)&3);
-						break;
-					case 0xe:
-						pen = 0xfc|((pen>>2)&3);
-						break;
-					case 0xf:
-						pen = 0xfc|(pen&3);
-						break;
-					default:
-						break;
-					}
+				float ooz = 1.0f / z;
+				int pen = texel((int)(u * ooz),bn+(int)(v*ooz));
+				int shade = i*ooz;
+				rgbint rgb;
 
-					{
-						UINT32 rgb = pens[pen];
-						int shade = i*ooz;
-	   				int r = rgb>>16;
-						int g = (rgb>>8)&0xff;
-						int b = rgb&0xff;
-		            r = r*shade/0x40;
-		            if( r>0xff ) r = 0xff;
-			         g = g*shade/0x40;
-				      if( g>0xff ) g = 0xff;
-					   b = b*shade/0x40;
-		   			if( b>0xff ) b = 0xff;
-						if( !fogDisable )
-						{
-						   int fogDensity2 = 0x2000 - fogDensity;
-						   r = (r*fogDensity2 + fogDensity*mixer.rFogColor)>>13;
-						   g = (g*fogDensity2 + fogDensity*mixer.gFogColor)>>13;
-						   b = (b*fogDensity2 + fogDensity*mixer.bFogColor)>>13;
-						}
-						if( fadeEnable )
-						{
-							int fade2 = 0x100-mixer.fadeFactor;
-							r = (r*fade2+mixer.fadeFactor*mixer.rFadeColor)>>8;
-							g = (g*fade2+mixer.fadeFactor*mixer.gFadeColor)>>8;
-							b = (b*fade2+mixer.fadeFactor*mixer.bFadeColor)>>8;
-						}
-						if( prioverchar )
-						{
-							UINT32 color = pDest[x];
-							int tr = color>>16;
-							int tg = (color>>8)&0xff;
-							int tb = color&0xff;
-							int trans1 = 0x100 - mixer.poly_translucency;
-							r = (tr*mixer.poly_translucency + r*trans1)>>8;
-							g = (tg*mixer.poly_translucency + g*trans1)>>8;
-							b = (tb*mixer.poly_translucency + b*trans1)>>8;
-						}
-						rgb = (r<<16)|(g<<8)|b;
-						pDest[x] = rgb;
-					}
-				}
+				rgb_to_rgbint(&rgb, pens[(pen >> penshift) & penmask]);
+				rgbint_scale_and_clamp(&rgb, shade << 2);
 
-            u += du;
-				v += dv;
-				i += di;
-				z += dz;
+				if( fogFactor != 0xff )
+					rgbint_blend(&rgb, &fogColor, fogFactor);
+
+				if( fadeFactor != 0xff )
+					rgbint_blend(&rgb, &fadeColor, fadeFactor);
+
+				pDest[x] = rgbint_to_rgb(&rgb);
 			}
+
+			u += du;
+			v += dv;
+			i += di;
+			z += dz;
 		}
 	}
 } /* renderscanline_uvi_full */
 
-static void rendertri(running_machine *machine,
-		mame_bitmap *bitmap,
-		const rectangle *clip,
-      int color,
-      int bn,
-		const vertex *v0,
-		const vertex *v1,
-		const vertex *v2,
-      UINT16 flags,
-		int cmode )
+static void poly3d_DrawQuad(running_machine *machine, mame_bitmap *bitmap, int textureBank, int color, Poly3dVertex pv[4], UINT16 flags, int direct, int cmode )
 {
-	int dy,ystart,yend,crop;
+	poly_extra_data *extra;
+	poly_vertex v[4], clipv[5];
+	int clipverts;
+	int vertnum;
 
-	/* first, sort so that v0->y <= v1->y <= v2->y */
-	for(;;)
+	/* non-direct case: project and z-clip */
+	if (!direct)
 	{
-		if( v0->y > v1->y )
+		for (vertnum = 0; vertnum < 4; vertnum++)
 		{
-			SWAP(v0,v1);
+			v[vertnum].x = pv[vertnum].x;
+			v[vertnum].y = pv[vertnum].y;
+			v[vertnum].p[0] = pv[vertnum].z;
+			v[vertnum].p[1] = pv[vertnum].u;
+			v[vertnum].p[2] = pv[vertnum].v;
+			v[vertnum].p[3] = pv[vertnum].bri;
 		}
-		else if( v1->y > v2->y )
+		clipverts = poly_zclip_if_less(4, v, clipv, 4, MIN_Z);
+		if (clipverts < 3)
+			return;
+		for (vertnum = 0; vertnum < clipverts; vertnum++)
 		{
-			SWAP(v1,v2);
-		}
-		else
-		{
-			break;
+			float ooz = 1.0f / clipv[vertnum].p[0];
+			clipv[vertnum].x = mClip.cx + clipv[vertnum].x * ooz;
+			clipv[vertnum].y = mClip.cy - clipv[vertnum].y * ooz;
+			clipv[vertnum].p[0] = ooz;
+			clipv[vertnum].p[1] = (clipv[vertnum].p[1] + 0.5f) * ooz;
+			clipv[vertnum].p[2] = (clipv[vertnum].p[2] + 0.5f) * ooz;
+			clipv[vertnum].p[3] = (clipv[vertnum].p[3] + 0.5f) * ooz;
 		}
 	}
 
-	ystart = v0->y;
-	yend   = v2->y;
-	dy = yend-ystart;
-	if( dy )
+	/* direct case: don't clip, and treat pv->z as 1/z */
+	else
 	{
-		int y;
-		edge e1; /* short edge (top and bottom) */
-		edge e2; /* long (common) edge */
-
-		float oody = 1.0f / (float)dy;
-
-		float dx2dy = (v2->x - v0->x)*oody;
-		float du2dy = (v2->u - v0->u)*oody;
-		float dv2dy = (v2->v - v0->v)*oody;
-		float di2dy = (v2->i - v0->i)*oody;
-		float dz2dy = (v2->z - v0->z)*oody;
-
-		float dx1dy;
-		float du1dy;
-		float dv1dy;
-		float di1dy;
-		float dz1dy;
-
-		e2.x = v0->x;
-		e2.u = v0->u;
-		e2.v = v0->v;
-		e2.i = v0->i;
-		e2.z = v0->z;
-		crop = clip->min_y - ystart;
-		if( crop>0 )
+		clipverts = 4;
+		for (vertnum = 0; vertnum < 4; vertnum++)
 		{
-			e2.x += dx2dy*crop;
-			e2.u += du2dy*crop;
-			e2.v += dv2dy*crop;
-			e2.i += di2dy*crop;
-			e2.z += dz2dy*crop;
+			float ooz = pv[vertnum].z;
+			clipv[vertnum].x = mClip.cx + pv[vertnum].x;
+			clipv[vertnum].y = mClip.cy - pv[vertnum].y;
+			clipv[vertnum].p[0] = ooz;
+			clipv[vertnum].p[1] = (pv[vertnum].u + 0.5f) * ooz;
+			clipv[vertnum].p[2] = (pv[vertnum].v + 0.5f) * ooz;
+			clipv[vertnum].p[3] = (pv[vertnum].bri + 0.5f) * ooz;
 		}
+	}
 
-		ystart = v0->y;
-		yend = v1->y;
-		dy = yend-ystart;
+	extra = poly_get_extra_data(poly);
 
-		if( dy )
+	extra->color = color;
+	extra->bn = textureBank;
+	extra->flags = flags;
+	extra->cmode = cmode;
+	extra->fogFactor = 0;
+	extra->fadeFactor = 0;
+
+	if (mixer.target&1)
+	{
+		extra->fadeFactor = mixer.fadeFactor;
+		rgb_comp_to_rgbint(&extra->fadeColor, mixer.rFadeColor, mixer.gFadeColor, mixer.bFadeColor);
+	}
+
+	if( mbSuperSystem22 )
+	{
+		if( !(color&0x80) )
 		{
-			e1.x = v0->x;
-			e1.u = v0->u;
-			e1.v = v0->v;
-			e1.i = v0->i;
-			e1.z = v0->z;
-
-			oody = 1.0f / (float)dy;
-			dx1dy = (v1->x - v0->x)*oody;
-			du1dy = (v1->u - v0->u)*oody;
-			dv1dy = (v1->v - v0->v)*oody;
-			di1dy = (v1->i - v0->i)*oody;
-			dz1dy = (v1->z - v0->z)*oody;
-
-			crop = clip->min_y - ystart;
-			if( crop>0 )
+			int cz = flags>>8;
+			static const int cztype_remap[4] = { 3,1,2,0 };
+			int cztype = flags&3;
+			if( nthword(namcos22_czattr,4)&(0x4000>>(cztype*4)) )
 			{
-				e1.x += dx1dy*crop;
-				e1.u += du1dy*crop;
-				e1.v += dv1dy*crop;
-				e1.i += di1dy*crop;
-				e1.z += dz1dy*crop;
-				ystart = clip->min_y;
-			}
-			if( yend>clip->max_y ) yend = clip->max_y;
-
-			for( y=ystart; y<yend; y++ )
-			{
-				renderscanline_uvi_full(machine, bitmap, clip, &e1, &e2, y, color, bn, flags, cmode );
-
-				e2.x += dx2dy;
-				e2.u += du2dy;
-				e2.v += dv2dy;
-				e2.i += di2dy;
-				e2.z += dz2dy;
-
-				e1.x += dx1dy;
-				e1.u += du1dy;
-				e1.v += dv1dy;
-				e1.i += di1dy;
-				e1.z += dz1dy;
-			}
-		}
-
-		ystart = v1->y;
-		yend = v2->y;
-		dy = yend-ystart;
-		if( dy )
-		{
-			e1.x = v1->x;
-			e1.u = v1->u;
-			e1.v = v1->v;
-			e1.i = v1->i;
-			e1.z = v1->z;
-
-			oody = 1.0f / (float)dy;
-			dx1dy = (v2->x - v1->x)*oody;
-			du1dy = (v2->u - v1->u)*oody;
-			dv1dy = (v2->v - v1->v)*oody;
-			di1dy = (v2->i - v1->i)*oody;
-			dz1dy = (v2->z - v1->z)*oody;
-
-			crop = clip->min_y - ystart;
-			if( crop>0 )
-			{
-				e1.x += dx1dy*crop;
-				e1.u += du1dy*crop;
-				e1.v += dv1dy*crop;
-				e1.i += di1dy*crop;
-				e1.z += dz1dy*crop;
-				ystart = clip->min_y;
-			}
-			if( yend>clip->max_y ) yend = clip->max_y;
-
-			for( y=ystart; y<yend; y++ )
-			{
-				renderscanline_uvi_full(machine, bitmap, clip, &e1,&e2,y, color, bn, flags, cmode );
-
-				e2.x += dx2dy;
-				e2.u += du2dy;
-				e2.v += dv2dy;
-				e2.i += di2dy;
-				e2.z += dz2dy;
-
-				e1.x += dx1dy;
-				e1.u += du1dy;
-				e1.v += dv1dy;
-				e1.i += di1dy;
-				e1.z += dz1dy;
+				int fogDelta = (INT16)nthword(namcos22_czattr, cztype);
+				int fogDensity = fogDelta + namcos22_czram[cztype_remap[cztype]][cz];
+				//          if( fogDelta == 0x8000 ) fogDelta = -0x7fff;
+				//cz = Clamp256(cz+fogDelta);
+				if( fogDensity<0x0000 )
+				{
+					fogDensity = 0x0000;
+				}
+				else if( fogDensity>0x1fff )
+				{
+					fogDensity = 0x1fff;
+				}
+				extra->fogFactor = fogDensity >> 5;
+				rgb_comp_to_rgbint(&extra->fogColor, mixer.rFogColor, mixer.gFogColor, mixer.bFogColor);
 			}
 		}
 	}
-} /* rendertri */
 
-static void
-ProjectPoint( const Poly3dVertex *v, vertex *pv, int direct )
-{
-	float ooz;
-   if( direct )
-   {
-      ooz = v->z;
-      pv->x = mClip.cx + v->x;
-      pv->y = mClip.cy - v->y;
-   }
-   else
-   {
-      ooz = 1.0f/v->z;
-      pv->x = mClip.cx + v->x*ooz;
-   	pv->y = mClip.cy - v->y*ooz;
-   }
-   pv->z = ooz;
-	pv->u = (v->u+0.5f)*ooz;
-	pv->v = (v->v+0.5f)*ooz;
-	pv->i = (v->bri+0.5f)*ooz;
-} /* ProjectPoint */
-
-static void BlitTriHelper(running_machine *machine,
-		mame_bitmap *bitmap,
-		const Poly3dVertex *v0,
-		const Poly3dVertex *v1,
-		const Poly3dVertex *v2,
-		unsigned color,
-      int bn,
-      UINT16 flags,
-      int direct,
-		int cmode )
-{
-	vertex a,b,c;
-   ProjectPoint( v0,&a,direct );
-   ProjectPoint( v1,&b,direct );
-   ProjectPoint( v2,&c,direct );
-   rendertri(machine, bitmap, &mClip.scissor, color, bn, &a, &b, &c, flags, cmode );
-} /* BlitTriHelper */
-
-static float
-interp( float x0, float ns3d_y0, float x1, float ns3d_y1 )
-{
-	float m = (ns3d_y1-ns3d_y0)/(x1-x0);
-	float b = ns3d_y0 - m*x0;
-	return m*MIN_Z+b;
+#ifdef RENDER_AS_QUADS
+	poly_render_quad_fan(poly, bitmap, &mClip.scissor, renderscanline_uvi_full, 4, clipverts, clipv);
+#else
+	poly_render_triangle_fan(poly, bitmap, &mClip.scissor, renderscanline_uvi_full, 4, clipverts, clipv);
+#endif
 }
 
-static int
-VertexEqual( const Poly3dVertex *a, const Poly3dVertex *b )
+static void renderscanline_sprite(void *destbase, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid)
 {
-	return
-		a->x == b->x &&
-		a->y == b->y &&
-		a->z == b->z;
-}
+	int x_index = extent->param[0].start * 65536.0f;
+	int y_index = extent->param[1].start * 65536.0f;
+	int dx = extent->param[0].dpdx * 65536.0f;
+	const poly_extra_data *extra = extradata;
+	mame_bitmap *destmap = destbase;
+	const pen_t *pal = &Machine->remapped_colortable[extra->color];
+	int prioverchar = extra->prioverchar;
+	int z = extra->z;
+	int alpha = extra->alpha;
+	UINT8 *source = (UINT8 *)extra->source + (y_index>>16) * extra->line_modulo;
+	UINT32 *dest = BITMAP_ADDR32(destmap, scanline, 0);
+	const UINT8 *pCharPri = BITMAP_ADDR8(priority_bitmap, scanline, 0);
+	int x;
 
-static void BlitTri(running_machine *machine,
-	mame_bitmap *bitmap,
-	const Poly3dVertex *pv[3],
-	int color,
-   int bn,
-   UINT16 flags,
-   int direct,
-	int cmode )
-{
-	Poly3dVertex vc[3];
-	int i,j;
-	int iBad = 0, iGood = 0;
-	int bad_count = 0;
+	int bFogEnable = 0;
+	INT16 fogDelta = 0;
+	int fadeEnable = (mixer.target&2) && mixer.fadeFactor;
 
-   if( direct )
-   {
-		BlitTriHelper(machine, bitmap, pv[0],pv[1],pv[2], color,bn,flags,direct,cmode );
-      return;
-   }
-
-	/* don't bother rendering a degenerate triangle */
-	if( VertexEqual(pv[0],pv[1]) ) return;
-	if( VertexEqual(pv[0],pv[2]) ) return;
-	if( VertexEqual(pv[1],pv[2]) ) return;
-
-	for( i=0; i<3; i++ )
+	if( mbSuperSystem22 )
 	{
-		if( pv[i]->z<MIN_Z )
-		{
-			bad_count++;
-			iBad = i;
-		}
-		else
-		{
-			iGood = i;
-		}
+		fogDelta = nthword(namcos22_czattr, 0 );
+		bFogEnable = nthword(namcos22_czattr,4)&0x4000; /* ? */
+	}
+	else
+	{
+		bFogEnable = 0;
 	}
 
-	switch( bad_count )
+	for( x=extent->startx; x<extent->stopx; x++ )
 	{
-	case 0:
-		BlitTriHelper(machine, bitmap, pv[0],pv[1],pv[2], color,bn,flags,direct,cmode );
-		break;
-
-	case 1:
-		vc[0] = *pv[0];
-      vc[1] = *pv[1];
-      vc[2] = *pv[2];
-
-		i = (iBad+1)%3;
-		vc[iBad].x   = interp( pv[i]->z,pv[i]->x,   pv[iBad]->z, pv[iBad]->x  );
-		vc[iBad].y   = interp( pv[i]->z,pv[i]->y,   pv[iBad]->z, pv[iBad]->y  );
-		vc[iBad].u   = interp( pv[i]->z,pv[i]->u,   pv[iBad]->z, pv[iBad]->u );
-		vc[iBad].v   = interp( pv[i]->z,pv[i]->v,   pv[iBad]->z, pv[iBad]->v );
-		vc[iBad].bri = interp( pv[i]->z,pv[i]->bri, pv[iBad]->z, pv[iBad]->bri );
-		vc[iBad].z = MIN_Z;
-		BlitTriHelper(machine, bitmap, &vc[0],&vc[1],&vc[2], color,bn,flags,direct,cmode );
-
-		j = (iBad+2)%3;
-		vc[i].x   = interp(pv[j]->z,pv[j]->x,   pv[iBad]->z,pv[iBad]->x  );
-		vc[i].y   = interp(pv[j]->z,pv[j]->y,   pv[iBad]->z,pv[iBad]->y  );
-		vc[i].u   = interp(pv[j]->z,pv[j]->u,   pv[iBad]->z,pv[iBad]->u );
-		vc[i].v   = interp(pv[j]->z,pv[j]->v,   pv[iBad]->z,pv[iBad]->v );
-		vc[i].bri = interp(pv[j]->z,pv[j]->bri, pv[iBad]->z,pv[iBad]->bri );
-		vc[i].z = MIN_Z;
-		BlitTriHelper(machine, bitmap, &vc[0],&vc[1],&vc[2], color,bn,flags,direct,cmode );
-		break;
-
-	case 2:
-		vc[0] = *pv[0];
-      vc[1] = *pv[1];
-      vc[2] = *pv[2];
-
-		i = (iGood+1)%3;
-		vc[i].x   = interp(pv[iGood]->z,pv[iGood]->x,   pv[i]->z,pv[i]->x  );
-		vc[i].y   = interp(pv[iGood]->z,pv[iGood]->y,   pv[i]->z,pv[i]->y  );
-		vc[i].u   = interp(pv[iGood]->z,pv[iGood]->u,   pv[i]->z,pv[i]->u );
-		vc[i].v   = interp(pv[iGood]->z,pv[iGood]->v,   pv[i]->z,pv[i]->v );
-		vc[i].bri = interp(pv[iGood]->z,pv[iGood]->bri, pv[i]->z,pv[i]->bri );
-		vc[i].z = MIN_Z;
-
-		i = (iGood+2)%3;
-		vc[i].x   = interp(pv[iGood]->z,pv[iGood]->x,   pv[i]->z,pv[i]->x  );
-		vc[i].y   = interp(pv[iGood]->z,pv[iGood]->y,   pv[i]->z,pv[i]->y  );
-		vc[i].u   = interp(pv[iGood]->z,pv[iGood]->u,   pv[i]->z,pv[i]->u );
-		vc[i].v   = interp(pv[iGood]->z,pv[iGood]->v,   pv[i]->z,pv[i]->v );
-		vc[i].bri = interp(pv[iGood]->z,pv[iGood]->bri, pv[i]->z,pv[i]->bri );
-		vc[i].z = MIN_Z;
-
-		BlitTriHelper(machine, bitmap, &vc[0],&vc[1],&vc[2], color,bn,flags,direct,cmode );
-		break;
-
-	case 3:
-		/* wholly clipped */
-		break;
+		int pen = source[x_index>>16];
+		if( pen != 0xff )
+		{
+			if( pCharPri[x]==0 || prioverchar )
+			{
+				UINT32 color = pal[pen];
+				int r = color>>16;
+				int g = (color>>8)&0xff;
+				int b = color&0xff;
+				if( bFogEnable && z!=0xffff )
+				{
+					int zc = Clamp256(fogDelta + z);
+					UINT16 fogDensity = namcos22_czram[3][zc];
+					if( fogDensity>0 )
+					{
+						int fogDensity2 = 0x2000 - fogDensity;
+						r = (r*fogDensity2 + fogDensity*mixer.rFogColor)>>13;
+						g = (g*fogDensity2 + fogDensity*mixer.gFogColor)>>13;
+						b = (b*fogDensity2 + fogDensity*mixer.bFogColor)>>13;
+					}
+				}
+				if( fadeEnable )
+				{
+					int fade2 = 0x100-mixer.fadeFactor;
+					r = (r*fade2+mixer.fadeFactor*mixer.rFadeColor)>>8;
+					g = (g*fade2+mixer.fadeFactor*mixer.gFadeColor)>>8;
+					b = (b*fade2+mixer.fadeFactor*mixer.bFadeColor)>>8;
+				}
+				color = (r<<16)|(g<<8)|b;
+				color = alpha_blend_r32(dest[x], color, alpha);
+				color&=0xffffff;
+				dest[x] = color;
+			}
+		}
+		x_index += dx;
 	}
-} /* BlitTri */
-
-static void poly3d_DrawQuad(running_machine *machine, mame_bitmap *bitmap, int textureBank, int color, Poly3dVertex v[4], UINT16 flags, int direct, int cmode )
-{
-   const Poly3dVertex *pv[3];
-
-   pv[0] = &v[0];
-   pv[1] = &v[1];
-   pv[2] = &v[2];
-   BlitTri(machine, bitmap, pv, color, textureBank, flags, direct, cmode );
-
-   pv[0] = &v[2];
-   pv[1] = &v[3];
-   pv[2] = &v[0];
-   BlitTri(machine, bitmap, pv, color, textureBank, flags, direct, cmode );
 }
+
 
 static void
 mydrawgfxzoom(
 	mame_bitmap *dest_bmp,const gfx_element *gfx,
 	UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
 	const rectangle *clip,int transparency,int transparent_color,
-	int scalex, int scaley, int z, int prioverchar )
+	int scalex, int scaley, int z, int prioverchar, int alpha )
 {
-	rectangle myclip;
-	if (!scalex || !scaley) return;
-	if(clip)
+	int sprite_screen_height = (scaley*gfx->height+0x8000)>>16;
+	int sprite_screen_width = (scalex*gfx->width+0x8000)>>16;
+	if (sprite_screen_width && sprite_screen_height && gfx)
 	{
-		myclip.min_x = clip->min_x;
-		myclip.max_x = clip->max_x;
-		myclip.min_y = clip->min_y;
-		myclip.max_y = clip->max_y;
+		float fsx = sx;
+		float fsy = sy;
+		float fwidth = gfx->width;
+		float fheight = gfx->height;
+		float fsw = sprite_screen_width;
+		float fsh = sprite_screen_height;
+		poly_extra_data *extra;
+		poly_vertex vert[4];
 
-		if (myclip.min_x < 0) myclip.min_x = 0;
-		if (myclip.max_x >= dest_bmp->width) myclip.max_x = dest_bmp->width-1;
-		if (myclip.min_y < 0) myclip.min_y = 0;
-		if (myclip.max_y >= dest_bmp->height) myclip.max_y = dest_bmp->height-1;
+		vert[0].x = fsx;
+		vert[0].y = fsy;
+		vert[0].p[0] = flipx ? fwidth : 0;
+		vert[0].p[1] = flipy ? fheight : 0;
+		vert[1].x = fsx + fsw;
+		vert[1].y = fsy;
+		vert[1].p[0] = flipx ? 0 : fwidth;
+		vert[1].p[1] = flipy ? fheight : 0;
+		vert[2].x = fsx + fsw;
+		vert[2].y = fsy + fsh;
+		vert[2].p[0] = flipx ? 0 : fwidth;
+		vert[2].p[1] = flipy ? 0 : fheight;
+		vert[3].x = fsx;
+		vert[3].y = fsy + fsh;
+		vert[3].p[0] = flipx ? fwidth : 0;
+		vert[3].p[1] = flipy ? 0 : fheight;
 
-		clip=&myclip;
-	}
-	if( gfx )
-	{
-		const pen_t *pal = &Machine->remapped_colortable[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
-		UINT8 *source_base = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
-		int sprite_screen_height = (scaley*gfx->height+0x8000)>>16;
-		int sprite_screen_width = (scalex*gfx->width+0x8000)>>16;
-		if (sprite_screen_width && sprite_screen_height)
-		{
-			int dx = (gfx->width<<16)/sprite_screen_width;
-			int dy = (gfx->height<<16)/sprite_screen_height;
-			int ex = sx+sprite_screen_width;
-			int ey = sy+sprite_screen_height;
-			int x_index_base;
-			int y_index;
-
-         int bFogEnable = 0;
-         INT16 fogDelta = 0;
-			int fadeEnable = (mixer.target&2) && mixer.fadeFactor;
-
-         if( mbSuperSystem22 )
-         {
-            fogDelta = nthword(namcos22_czattr, 0 );
-            bFogEnable = nthword(namcos22_czattr,4)&0x4000; /* ? */
-         }
-			else
-			{
-				bFogEnable = 0;
-			}
-
-			if( flipx )
-			{
-				x_index_base = (sprite_screen_width-1)*dx;
-				dx = -dx;
-			}
-			else
-			{
-				x_index_base = 0;
-			}
-			if( flipy )
-			{
-				y_index = (sprite_screen_height-1)*dy;
-				dy = -dy;
-			}
-			else
-			{
-				y_index = 0;
-			}
-			if( clip )
-			{
-				if( sx < clip->min_x)
-				{ /* clip left */
-					int pixels = clip->min_x-sx;
-					sx += pixels;
-					x_index_base += pixels*dx;
-				}
-				if( sy < clip->min_y )
-				{ /* clip top */
-					int pixels = clip->min_y-sy;
-					sy += pixels;
-					y_index += pixels*dy;
-				}
-				if( ex > clip->max_x+1 )
-				{ /* clip right */
-					int pixels = ex-clip->max_x-1;
-					ex -= pixels;
-				}
-				if( ey > clip->max_y+1 )
-				{ /* clip bottom */
-					int pixels = ey-clip->max_y-1;
-					ey -= pixels;
-				}
-			}
-			if( ex>sx )
-			{ /* skip if inner loop doesn't draw anything */
-				int y;
-				for( y=sy; y<ey; y++ )
-				{
-					UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
-					UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
-					const UINT8 *pCharPri = BITMAP_ADDR8(priority_bitmap, y, 0);
-					int x, x_index = x_index_base;
-					for( x=sx; x<ex; x++ )
-					{
-						int pen = source[x_index>>16];
-						if( pen != transparent_color )
-						{
-							if( pCharPri[x]==0 || prioverchar )
-							{
-	                     UINT32 color = pal[pen];
-		                  int r = color>>16;
-			               int g = (color>>8)&0xff;
-				      		int b = color&0xff;
-	                     if( bFogEnable && z!=0xffff )
-		                  {
-			                  int zc = Clamp256(fogDelta + z);
-				               UINT16 fogDensity = namcos22_czram[3][zc];
-					            if( fogDensity>0 )
-						         {
-							         int fogDensity2 = 0x2000 - fogDensity;
-								      r = (r*fogDensity2 + fogDensity*mixer.rFogColor)>>13;
-									   g = (g*fogDensity2 + fogDensity*mixer.gFogColor)>>13;
-										b = (b*fogDensity2 + fogDensity*mixer.bFogColor)>>13;
-									}
-								}
-	                     if( fadeEnable )
-		                  {
-			                  int fade2 = 0x100-mixer.fadeFactor;
-				               r = (r*fade2+mixer.fadeFactor*mixer.rFadeColor)>>8;
-					            g = (g*fade2+mixer.fadeFactor*mixer.gFadeColor)>>8;
-						         b = (b*fade2+mixer.fadeFactor*mixer.bFadeColor)>>8;
-							   }
-	                     color = (r<<16)|(g<<8)|b;
-		                  color = alpha_blend32(dest[x], color);
-			               color&=0xffffff;
-				            dest[x] = color;
-							}
-						}
-						x_index += dx;
-					}
-					y_index += dy;
-				}
-			}
-		}
+		extra = poly_get_extra_data(poly);
+		extra->z = z;
+		extra->alpha = alpha;
+		extra->prioverchar = prioverchar;
+		extra->line_modulo = gfx->line_modulo;
+		extra->color = gfx->color_base + gfx->color_granularity * (color % gfx->total_colors);
+		extra->source = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
+#ifdef RENDER_AS_QUADS
+		poly_render_quad_fan(poly, dest_bmp, clip, renderscanline_sprite, 2, 4, &vert[0]);
+#else
+		poly_render_triangle_fan(poly, dest_bmp, clip, renderscanline_sprite, 2, 4, &vert[0]);
+#endif
 	}
 } /* mydrawgfxzoom */
 
@@ -954,7 +663,6 @@ poly3d_Draw3dSprite( mame_bitmap *bitmap, gfx_element *gfx, int tileNumber, int 
    clip.min_y = 0;
    clip.max_x = 640-1;
    clip.max_y = 480-1;
-   alpha_set_level( 0xff - translucency );
    mydrawgfxzoom(
       bitmap,
       gfx,
@@ -966,7 +674,7 @@ poly3d_Draw3dSprite( mame_bitmap *bitmap, gfx_element *gfx, int tileNumber, int 
       TRANSPARENCY_ALPHA, 0xff,
       (width<<16)/32,
       (height<<16)/32,
-      zc, pri );
+      zc, pri, 0xff - translucency );
 }
 
 #define DSP_FIXED_TO_FLOAT( X ) (((INT16)(X))/(float)0x7fff)
@@ -1290,6 +998,7 @@ static void RenderScene(running_machine *machine, mame_bitmap *bitmap )
       node->data.nonleaf.next[i] = NULL;
    }
    poly3d_NoClip();
+	poly_wait(poly, "DrawPolygons");
 } /* RenderScene */
 
 static float
@@ -1401,24 +1110,24 @@ PatchTexture( void )
 	int i;
 	switch( namcos22_gametype )
 	{
-	case NAMCOS22_RIDGE_RACER:
-	case NAMCOS22_RIDGE_RACER2:
-	case NAMCOS22_ACE_DRIVER:
-	case NAMCOS22_CYBER_COMMANDO:
-   	for( i=0; i<0x100000; i++ )
-   	{
-   		int tile = mpTextureTileMap16[i];
-   		int attr = mpTextureTileMapAttr[i];
-   		if( (attr&0x1)==0 )
-   		{
-   			tile = (tile&0x3fff)|0x8000;
-   			mpTextureTileMap16[i] = tile;
-   		}
-   	}
-		break;
+		case NAMCOS22_RIDGE_RACER:
+		case NAMCOS22_RIDGE_RACER2:
+		case NAMCOS22_ACE_DRIVER:
+		case NAMCOS22_CYBER_COMMANDO:
+			for( i=0; i<0x100000; i++ )
+			{
+				int tile = mpTextureTileMap16[i];
+				int attr = mpTextureTileMapAttr[i];
+				if( (attr&0x1)==0 )
+				{
+					tile = (tile&0x3fff)|0x8000;
+					mpTextureTileMap16[i] = tile;
+				}
+			}
+			break;
 
-	default:
-   	break;
+		default:
+			break;
    }
 } /* PatchTexture */
 
@@ -1450,71 +1159,67 @@ namcos22_draw_direct_poly( const UINT16 *pSource )
     *    xx-- ---- // BRI
      *    --xx xxxx // zpos
      */
-   INT32 zsortvalue24 = ((pSource[1]&0xfff)<<12)|(pSource[0]&0xfff);
-   struct SceneNode *node = NewSceneNode(zsortvalue24,eSCENENODE_QUAD3D);
-   int i;
-   node->data.quad3d.flags = ((pSource[3]&0x7f00)*2)|(pSource[3]&3);
+	INT32 zsortvalue24 = ((pSource[1]&0xfff)<<12)|(pSource[0]&0xfff);
+	struct SceneNode *node = NewSceneNode(zsortvalue24,eSCENENODE_QUAD3D);
+	int i;
+	node->data.quad3d.flags = ((pSource[3]&0x7f00)*2)|(pSource[3]&3);
 	node->data.quad3d.cmode = (pSource[2]&0x00f0)>>4;
 	node->data.quad3d.textureBank = pSource[2]&0xf;
-   node->data.quad3d.color = (pSource[2]&0xff00)>>8;
-   pSource += 4;
-   for( i=0; i<4; i++ )
-   {
-      Poly3dVertex *p = &node->data.quad3d.v[i];
+	node->data.quad3d.color = (pSource[2]&0xff00)>>8;
+	pSource += 4;
+	for( i=0; i<4; i++ )
+	{
+		Poly3dVertex *p = &node->data.quad3d.v[i];
 
-      p->u = pSource[0];
-      p->v = pSource[1];
-      if( mbSuperSystem22 )
-      {
-         p->u >>= 4;
-         p->v >>= 4;
-      }
-      p->u &= 0xfff;
-      p->v &= 0xfff;
+		p->u = pSource[0];
+		p->v = pSource[1];
+		if( mbSuperSystem22 )
+		{
+			p->u >>= 4;
+			p->v >>= 4;
+		}
+		p->u &= 0xfff;
+		p->v &= 0xfff;
 
-      {
-         int mantissa = (INT16)pSource[5];
-         float zf = (float)mantissa;
-      	int exponent = (pSource[4])&0xff;
-         if( mantissa )
-         {
-   	      while( exponent<0x2e )
-      	   {
-	      	   zf /= 2.0;
-		         exponent++;
-	         }
-            if( mbSuperSystem22 )
-            {
-               p->z = zf;
-            }
-            else
-            {
-               p->z = 1.0f/zf;
-            }
-         }
-         else
-         {
-            zf = (float)0x10000;
-            exponent = 0x40-exponent;
-   	      while( exponent<0x2e )
-      	   {
-	      	   zf /= 2.0;
-		         exponent++;
-	         }
-            p->z = 1.0f/zf;
-         }
-      }
+		{
+			int mantissa = (INT16)pSource[5];
+			float zf = (float)mantissa;
+			int exponent = (pSource[4])&0xff;
+			if( mantissa )
+			{
+				while( exponent<0x2e )
+				{
+					zf /= 2.0;
+					exponent++;
+				}
+				if( mbSuperSystem22 )
+					p->z = zf;
+				else
+					p->z = 1.0f/zf;
+			}
+			else
+			{
+				zf = (float)0x10000;
+				exponent = 0x40-exponent;
+				while( exponent<0x2e )
+				{
+					zf /= 2.0;
+					exponent++;
+				}
+				p->z = 1.0f/zf;
+			}
+		}
 
-      p->x = ((INT16)pSource[2]);
-      p->y = (-(INT16)pSource[3]);
-      p->bri = pSource[4]>>8;
-      pSource += 6;
-   }
-   node->data.quad3d.direct = 1;
-   node->data.quad3d.vx = 0;
-   node->data.quad3d.vy = 0;
-   node->data.quad3d.vw = -320;
-   node->data.quad3d.vh = -240;
+		p->x = ((INT16)pSource[2]);
+		p->y = (-(INT16)pSource[3]);
+		p->bri = pSource[4]>>8;
+		pSource += 6;
+	}
+	node->data.quad3d.direct = 1;
+	node->data.quad3d.vx = 0;
+	node->data.quad3d.vy = 0;
+	node->data.quad3d.vw = -320;
+	node->data.quad3d.vh = -240;
 } /* namcos22_draw_direct_poly */
 
 static void
@@ -1551,27 +1256,27 @@ DrawSpritesHelper(
 	int deltax,
 	int deltay )
 {
-   int i;
+	int i;
 	for( i=0; i<num_sprites; i++ )
 	{
-      /*
-         ----.-x--.----.----.----.----.----.---- hidden?
-         ----.--xx.----.----.----.----.----.---- ?
-         ----.----.xxxx.xxxx.xxxx.----.----.---- always 0xff0?
-         ----.----.----.----.----.--x-.----.---- right justify
-         ----.----.----.----.----.---x.----.---- bottom justify
-         ----.----.----.----.----.----.x---.---- flipx
-         ----.----.----.----.----.----.-xxx.---- numcols
-         ----.----.----.----.----.----.----.x--- flipy
-         ----.----.----.----.----.----.----.-xxx numrows
-      */
+		/*
+        ----.-x--.----.----.----.----.----.---- hidden?
+        ----.--xx.----.----.----.----.----.---- ?
+        ----.----.xxxx.xxxx.xxxx.----.----.---- always 0xff0?
+        ----.----.----.----.----.--x-.----.---- right justify
+        ----.----.----.----.----.---x.----.---- bottom justify
+        ----.----.----.----.----.----.x---.---- flipx
+        ----.----.----.----.----.----.-xxx.---- numcols
+        ----.----.----.----.----.----.----.x--- flipy
+        ----.----.----.----.----.----.----.-xxx numrows
+        */
 		UINT32 attrs = pSource[2];
-      if( (attrs&0x04000000)==0 )
+		if( (attrs&0x04000000)==0 )
 		{ /* sprite is not hidden */
 			INT32 zcoord = pPal[0];
-         int color = pPal[1]>>16;
-         int cz = pPal[1]&0xffff;
-         UINT32 xypos = pSource[0];
+			int color = pPal[1]>>16;
+			int cz = pPal[1]&0xffff;
+			UINT32 xypos = pSource[0];
 			UINT32 size = pSource[1];
 			UINT32 code = pSource[3];
 			int xpos = (xypos>>16)-deltax;
@@ -1586,12 +1291,10 @@ DrawSpritesHelper(
 			int flipx = (attrs>>4)&0x8;
 			int numcols = (attrs>>4)&0x7;
 			int tile = code>>16;
-         int translucency = (code&0xff00)>>8;
+			int translucency = (code&0xff00)>>8;
 
-         if( numrows==0 )
-         {
-            numrows = 8;
-         }
+			if( numrows==0 )
+				numrows = 8;
 			if( flipy )
 			{
 				ypos += sizey*(numrows-1);
@@ -1599,9 +1302,7 @@ DrawSpritesHelper(
 			}
 
 			if( numcols==0 )
-         {
-            numcols = 8;
-         }
+				numcols = 8;
 			if( flipx )
 			{
 				xpos += sizex*(numcols-1);
@@ -1611,34 +1312,34 @@ DrawSpritesHelper(
 			if( attrs & 0x0200 )
 			{ /* right justify */
 				xpos -= ((zoomx*numcols*0x20)>>16)-1;
-         }
+			}
 			if( attrs & 0x0100 )
 			{ /* bottom justify */
-         	ypos -= ((zoomy*numrows*0x20)>>16)-1;
-         }
+				ypos -= ((zoomy*numrows*0x20)>>16)-1;
+			}
 
-         {
-            struct SceneNode *node = NewSceneNode(zcoord,eSCENENODE_SPRITE);
-            node->data.sprite.tile = tile;
-            node->data.sprite.pri = cz&0x80;
-//              node->data.sprite.pri = (color&0x80);
-            node->data.sprite.color = color&0x7f;
-            node->data.sprite.flipx = flipx;
-            node->data.sprite.flipy = flipy;
-            node->data.sprite.numcols = numcols;
-            node->data.sprite.numrows = numrows;
-            node->data.sprite.linkType = linkType;
-            node->data.sprite.xpos = xpos;
-            node->data.sprite.ypos = ypos;
-            node->data.sprite.sizex = sizex;
-            node->data.sprite.sizey = sizey;
-            node->data.sprite.translucency = translucency;
-            node->data.sprite.cz = cz;
-         }
-  		} /* visible sprite */
+			{
+				struct SceneNode *node = NewSceneNode(zcoord,eSCENENODE_SPRITE);
+				node->data.sprite.tile = tile;
+				node->data.sprite.pri = cz&0x80;
+				//              node->data.sprite.pri = (color&0x80);
+				node->data.sprite.color = color&0x7f;
+				node->data.sprite.flipx = flipx;
+				node->data.sprite.flipy = flipy;
+				node->data.sprite.numcols = numcols;
+				node->data.sprite.numrows = numrows;
+				node->data.sprite.linkType = linkType;
+				node->data.sprite.xpos = xpos;
+				node->data.sprite.ypos = ypos;
+				node->data.sprite.sizex = sizex;
+				node->data.sprite.sizey = sizey;
+				node->data.sprite.translucency = translucency;
+				node->data.sprite.cz = cz;
+			}
+		} /* visible sprite */
 		pSource += 4;
 		pPal += 2;
-   }
+	}
 } /* DrawSpritesHelper */
 
 static void
@@ -1715,36 +1416,36 @@ DrawSprites( mame_bitmap *bitmap, const rectangle *cliprect )
 	int num_sprites = ((spriteram32[0x04/4]>>16)&0x3ff)+1;
 	const UINT32 *pSource = &spriteram32[0x4000/4];
 	const UINT32 *pPal = &spriteram32[0x20000/4];
-   int deltax = spriteram32[0x14/4]>>16;
+	int deltax = spriteram32[0x14/4]>>16;
 	int deltay = spriteram32[0x18/4]>>16;
-   int enable = spriteram32[0]>>16;
+	int enable = spriteram32[0]>>16;
 
-   if( spriteram32[0x14/4] == 0x000002ff &&
-       spriteram32[0x18/4] == 0x000007ff )
-   { /* HACK (fixes alpine racer and self test) */
-      deltax = 48;
+	if( spriteram32[0x14/4] == 0x000002ff &&
+	spriteram32[0x18/4] == 0x000007ff )
+	{ /* HACK (fixes alpine racer and self test) */
+		deltax = 48;
 		deltay = 43;
-   }
+	}
 
-   if( enable==6 /*&& namcos22_gametype!=NAMCOS22_AIR_COMBAT22*/ )
-   {
-      DrawSpritesHelper( bitmap, cliprect, pSource, pPal, num_sprites, deltax, deltay );
-   }
+	if( enable==6 /*&& namcos22_gametype!=NAMCOS22_AIR_COMBAT22*/ )
+	{
+		DrawSpritesHelper( bitmap, cliprect, pSource, pPal, num_sprites, deltax, deltay );
+	}
 
 	/* VICS RAM provides two additional banks */
 	/*
-        0x940000 -x------       sprite chip busy
-        0x940018 xxxx----       clr.w   $940018.l
+    0x940000 -x------       sprite chip busy
+    0x940018 xxxx----       clr.w   $940018.l
 
-        0x940034 xxxxxxxx       0x3070b0f
+    0x940034 xxxxxxxx       0x3070b0f
 
-        0x940040 xxxxxxxx       sprite attribute size
-        0x940048 xxxxxxxx       sprite attribute list baseaddr
-        0x940050 xxxxxxxx       sprite color size
-        0x940058 xxxxxxxx       sprite color list baseaddr
+    0x940040 xxxxxxxx       sprite attribute size
+    0x940048 xxxxxxxx       sprite attribute list baseaddr
+    0x940050 xxxxxxxx       sprite color size
+    0x940058 xxxxxxxx       sprite color list baseaddr
 
-        0x940060..0x94007c      set#2
-*/
+    0x940060..0x94007c      set#2
+    */
 
 	num_sprites = (namcos22_vics_control[0x40/4]&0xffff)/0x10;
 	if( num_sprites>=1 )
@@ -1770,7 +1471,7 @@ static void UpdatePaletteS(running_machine *machine) /* for Super System22 - app
 	{
 		if( dirtypal[i] )
 		{
-         int j;
+			int j;
 			for( j=0; j<4; j++ )
 			{
 				int which = i*4+j;
@@ -1844,14 +1545,14 @@ DrawTranslucentCharacters( mame_bitmap *bitmap, const rectangle *cliprect )
 static void DrawCharacterLayer(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	unsigned i;
-   INT32 dx = namcos22_tilemapattr[0]>>16;
-   INT32 dy = namcos22_tilemapattr[0]&0xffff;
-   /**
-     * namcos22_tilemapattr[0x4/4] == 0x006e0000
+	INT32 dx = namcos22_tilemapattr[0]>>16;
+	INT32 dy = namcos22_tilemapattr[0]&0xffff;
+	/**
+    * namcos22_tilemapattr[0x4/4] == 0x006e0000
     * namcos22_tilemapattr[0x8/4] == 0x01ff0000
-     * namcos22_tilemapattr[0xe/4] == ?
+    * namcos22_tilemapattr[0xe/4] == ?
     */
-   if( cgsomethingisdirty )
+	if( cgsomethingisdirty )
 	{
 		for( i=0; i<64*64; i+=2 )
 		{
@@ -1954,13 +1655,13 @@ BlitQuadHelper(
 		int flags,
 		int packetFormat )
 {
-   int absolutePriority = mAbsolutePriority;
-   UINT32 zsortvalue24;
-   float zmin = 0.0f;
-   float zmax = 0.0f;
+	int absolutePriority = mAbsolutePriority;
+	UINT32 zsortvalue24;
+	float zmin = 0.0f;
+	float zmax = 0.0f;
 	Poly3dVertex v[4];
 	int i;
-   int bBackFace = 0;
+	int bBackFace = 0;
 
 	for( i=0; i<4; i++ )
 	{
@@ -1971,26 +1672,25 @@ BlitQuadHelper(
 		TransformPoint( &pVerTex->x, &pVerTex->y, &pVerTex->z, m );
 	} /* for( i=0; i<4; i++ ) */
 
-   if( (v[2].x*((v[0].z*v[1].y)-(v[0].y*v[1].z)))+
-       (v[2].y*((v[0].x*v[1].z)-(v[0].z*v[1].x)))+
-		 (v[2].z*((v[0].y*v[1].x)-(v[0].x*v[1].y))) >= 0 &&
+	if( (v[2].x*((v[0].z*v[1].y)-(v[0].y*v[1].z)))+
+		(v[2].y*((v[0].x*v[1].z)-(v[0].z*v[1].x)))+
+		(v[2].z*((v[0].y*v[1].x)-(v[0].x*v[1].y))) >= 0 &&
 
-       (v[0].x*((v[2].z*v[3].y)-(v[2].y*v[3].z)))+
-		 (v[0].y*((v[2].x*v[3].z)-(v[2].z*v[3].x)))+
-		 (v[0].z*((v[2].y*v[3].x)-(v[2].x*v[3].y))) >= 0 )
-   {
-      bBackFace = 1;
-   }
-
-   if( bBackFace && (flags&0x0020) )
-	{ /* backface cull one-sided polygons */
-		return;
+		(v[0].x*((v[2].z*v[3].y)-(v[2].y*v[3].z)))+
+		(v[0].y*((v[2].x*v[3].z)-(v[2].z*v[3].x)))+
+		(v[0].z*((v[2].y*v[3].x)-(v[2].x*v[3].y))) >= 0 )
+	{
+		bBackFace = 1;
 	}
 
-   for( i=0; i<4; i++ )
+	/* backface cull one-sided polygons */
+	if( bBackFace && (flags&0x0020) )
+		return;
+
+	for( i=0; i<4; i++ )
 	{
 		Poly3dVertex *pVerTex = &v[i];
-      int bri;
+		int bri;
 
 		pVerTex->u = GetPolyData(  0+i*2+addr );
 		pVerTex->v = GetPolyData(  1+i*2+addr );
@@ -1998,144 +1698,129 @@ BlitQuadHelper(
 		if( i==0 || pVerTex->z > zmax ) zmax = pVerTex->z;
 		if( i==0 || pVerTex->z < zmin ) zmin = pVerTex->z;
 
-      if( mLitSurfaceCount )
-      {
-      	bri = mLitSurfaceInfo[mLitSurfaceIndex%mLitSurfaceCount];
-         if( mSurfaceNormalFormat == 0x6666 )
-         {
-            if( i==3 )
-            {
-               mLitSurfaceIndex++;
-            }
-         }
-         else if( mSurfaceNormalFormat == 0x4000 )
-         {
-            mLitSurfaceIndex++;
-         }
-         else
-         {
-            logerror( "unknown normal format: 0x%x\n", mSurfaceNormalFormat );
-         }
-      } /* pLitSurfaceInfo */
-      else if( packetFormat & 0x40 )
-      {
-         bri = (GetPolyData(i+addr)>>16)&0xff;
-      }
-		else
+		if( mLitSurfaceCount )
 		{
+			bri = mLitSurfaceInfo[mLitSurfaceIndex%mLitSurfaceCount];
+			if( mSurfaceNormalFormat == 0x6666 )
+			{
+				if( i==3 )
+					mLitSurfaceIndex++;
+			}
+			else if( mSurfaceNormalFormat == 0x4000 )
+				mLitSurfaceIndex++;
+			else
+				logerror( "unknown normal format: 0x%x\n", mSurfaceNormalFormat );
+		} /* pLitSurfaceInfo */
+		else if( packetFormat & 0x40 )
+			bri = (GetPolyData(i+addr)>>16)&0xff;
+		else
 			bri = 0x40;
-		}
-      pVerTex->bri = bri;
+		pVerTex->bri = bri;
 	} /* for( i=0; i<4; i++ ) */
 
-   if( zmin<0.0f ) zmin = 0.0f;
-   if( zmax<0.0f ) zmax = 0.0f;
+	if( zmin<0.0f ) zmin = 0.0f;
+	if( zmax<0.0f ) zmax = 0.0f;
 
-   switch( (flags&0x0f00)>>8 )
-   {
-   case 0:
-       zsortvalue24 = (INT32)zmin;
-       break;
+	switch( (flags&0x0f00)>>8 )
+	{
+		case 0:
+			zsortvalue24 = (INT32)zmin;
+			break;
 
-   case 1:
-       zsortvalue24 = (INT32)zmax;
-       break;
+		case 1:
+			zsortvalue24 = (INT32)zmax;
+			break;
 
-   case 2:
-   default:
-       zsortvalue24 = (INT32)((zmin+zmax)/2.0f);
-       break;
-   }
+		case 2:
+		default:
+			zsortvalue24 = (INT32)((zmin+zmax)/2.0f);
+			break;
+	}
 
-   /* relative: representative z + shift values
+	/* relative: representative z + shift values
     * 1x.xxxx.xxxxxxxx.xxxxxxxx fixed z value
     * 0x.xx--.--------.-------- absolute priority shift
     * 0-.--xx.xxxxxxxx.xxxxxxxx z-representative value shift
     */
-   if( polygonShiftValue22 & 0x200000 )
-   {
-      zsortvalue24 = polygonShiftValue22 & LSB21;
-   }
-   else
-   {
-      zsortvalue24 += Signed18( polygonShiftValue22 );
-      absolutePriority += (polygonShiftValue22&0x1c0000)>>18;
-   }
-   if( mObjectShiftValue22 & 0x200000 )
-   {
-      zsortvalue24 = mObjectShiftValue22 & LSB21;
-   }
-   else
-   {
-      zsortvalue24 += Signed18( mObjectShiftValue22 );
-      absolutePriority += (mObjectShiftValue22&0x1c0000)>>18;
-   }
-   absolutePriority &= 7;
-   zsortvalue24 = Cap(zsortvalue24,0,0x1fffff);
-   zsortvalue24 |= (absolutePriority<<21);
+	if( polygonShiftValue22 & 0x200000 )
+		zsortvalue24 = polygonShiftValue22 & LSB21;
+	else
+	{
+		zsortvalue24 += Signed18( polygonShiftValue22 );
+		absolutePriority += (polygonShiftValue22&0x1c0000)>>18;
+	}
 
-   {
-      struct SceneNode *node = NewSceneNode(zsortvalue24,eSCENENODE_QUAD3D);
+	if( mObjectShiftValue22 & 0x200000 )
+		zsortvalue24 = mObjectShiftValue22 & LSB21;
+	else
+	{
+		zsortvalue24 += Signed18( mObjectShiftValue22 );
+		absolutePriority += (mObjectShiftValue22&0x1c0000)>>18;
+	}
+
+	absolutePriority &= 7;
+	zsortvalue24 = Cap(zsortvalue24,0,0x1fffff);
+	zsortvalue24 |= (absolutePriority<<21);
+
+	{
+		struct SceneNode *node = NewSceneNode(zsortvalue24,eSCENENODE_QUAD3D);
 		node->data.quad3d.cmode = (v[0].u>>12)&0xf;
-      node->data.quad3d.textureBank = (v[0].v>>12)&0xf;
-      node->data.quad3d.color = (color>>8)&0xff;
+		node->data.quad3d.textureBank = (v[0].v>>12)&0xf;
+		node->data.quad3d.color = (color>>8)&0xff;
 
-      {
-         INT32 cz = (INT32)((zmin+zmax)/2.0f);
-         cz = Clamp256(cz/0x2000);
-         node->data.quad3d.flags = (cz<<8)|(flags&3);
-      }
+		{
+			INT32 cz = (INT32)((zmin+zmax)/2.0f);
+			cz = Clamp256(cz/0x2000);
+			node->data.quad3d.flags = (cz<<8)|(flags&3);
+		}
 
-      for( i=0; i<4; i++ )
-      {
-         Poly3dVertex *p = &node->data.quad3d.v[i];
-         p->x     = v[i].x*mCamera.zoom;
-         p->y     = v[i].y*mCamera.zoom;
-         p->z     = v[i].z;
-         p->u     = v[i].u&0xfff;
-         p->v     = v[i].v&0xfff;
-         p->bri   = v[i].bri;
-      }
-      node->data.quad3d.direct = 0;
-      node->data.quad3d.vx = mCamera.vx;
-      node->data.quad3d.vy = mCamera.vy;
-      node->data.quad3d.vw = mCamera.vw;
-      node->data.quad3d.vh = mCamera.vh;
-   }
+		for( i=0; i<4; i++ )
+		{
+			Poly3dVertex *p = &node->data.quad3d.v[i];
+			p->x     = v[i].x*mCamera.zoom;
+			p->y     = v[i].y*mCamera.zoom;
+			p->z     = v[i].z;
+			p->u     = v[i].u&0xfff;
+			p->v     = v[i].v&0xfff;
+			p->bri   = v[i].bri;
+		}
+		node->data.quad3d.direct = 0;
+		node->data.quad3d.vx = mCamera.vx;
+		node->data.quad3d.vy = mCamera.vy;
+		node->data.quad3d.vw = mCamera.vw;
+		node->data.quad3d.vh = mCamera.vh;
+	}
 } /* BlitQuadHelper */
 
 static void
 RegisterNormals( INT32 addr, float m[4][4] )
 {
-   int i;
-   for( i=0; i<4; i++ )
-   {
-         float nx = DSP_FIXED_TO_FLOAT(GetPolyData(addr+i*3+0));
-		   float ny = DSP_FIXED_TO_FLOAT(GetPolyData(addr+i*3+1));
-		   float nz = DSP_FIXED_TO_FLOAT(GetPolyData(addr+i*3+2));
-			float dotproduct;
+	int i;
+	for( i=0; i<4; i++ )
+	{
+		float nx = DSP_FIXED_TO_FLOAT(GetPolyData(addr+i*3+0));
+		float ny = DSP_FIXED_TO_FLOAT(GetPolyData(addr+i*3+1));
+		float nz = DSP_FIXED_TO_FLOAT(GetPolyData(addr+i*3+2));
+		float dotproduct;
 
-			/* transform normal vector */
-			TransformNormal( &nx, &ny, &nz, m );
-			dotproduct = nx*mCamera.lx + ny*mCamera.ly + nz*mCamera.lz;
-			if( dotproduct<0.0f )
-         {
-            dotproduct = 0.0f;
-         }
-         mLitSurfaceInfo[mLitSurfaceCount++] = mCamera.ambient + mCamera.power*dotproduct;
-   }
+		/* transform normal vector */
+		TransformNormal( &nx, &ny, &nz, m );
+		dotproduct = nx*mCamera.lx + ny*mCamera.ly + nz*mCamera.lz;
+		if( dotproduct<0.0f )
+			dotproduct = 0.0f;
+		mLitSurfaceInfo[mLitSurfaceCount++] = mCamera.ambient + mCamera.power*dotproduct;
+	}
 } /* RegisterNormals */
 
 static void
 BlitQuads( mame_bitmap *bitmap, INT32 addr, float m[4][4], INT32 base )
 {
-   int numAdditionalNormals = 0;
+	int numAdditionalNormals = 0;
 	int chunkLength = GetPolyData(addr++);
 	int finish = addr + chunkLength;
+
 	if( chunkLength>0x100 )
-	{
 		fatalerror( "bad packet length" );
-	}
 
 	while( addr<finish )
 	{
@@ -2144,89 +1829,89 @@ BlitQuads( mame_bitmap *bitmap, INT32 addr, float m[4][4], INT32 base )
 		int flags, color, bias;
 
 		/**
-         * packetFormat:
-         *      800000 final packet in chunk
-         *      080000 ?
-         *      020000 color word exists?
-         *      010000 z-offset word exists?
-         *      002000 ?
-         *      001000 z-offset word exists?
-         *      000400 ?
-         *      000080 tex# or UV or CMODE?
-         *      000040 use I
-         *      000001 ?
-         *
-         * flags:
-         *      1042 (always set)
-         *      0c00 depth-cueing mode (brake-disc(2108)=001e43, model font)
-         *      0200 usually 1
-         *      0100 ?
-         *      0040 1 ... polygon palette?
-         *      0020 cull backface
-         *      0002 ?
-         *      0001 ?
-         *
-         * color:
-         *      ff0000 type?
-         *      008000 depth-cueing off
-         *      007f00 palette#
-         */
+        * packetFormat:
+        *      800000 final packet in chunk
+        *      080000 ?
+        *      020000 color word exists?
+        *      010000 z-offset word exists?
+        *      002000 ?
+        *      001000 z-offset word exists?
+        *      000400 ?
+        *      000080 tex# or UV or CMODE?
+        *      000040 use I
+        *      000001 ?
+        *
+        * flags:
+        *      1042 (always set)
+        *      0c00 depth-cueing mode (brake-disc(2108)=001e43, model font)
+        *      0200 usually 1
+        *      0100 ?
+        *      0040 1 ... polygon palette?
+        *      0020 cull backface
+        *      0002 ?
+        *      0001 ?
+        *
+        * color:
+        *      ff0000 type?
+        *      008000 depth-cueing off
+        *      007f00 palette#
+        */
 		switch( packetLength )
 		{
-		case 0x17:
-			/**
-             * word 0: opcode (8a24c0)
-             * word 1: flags
-             * word 2: color
-             */
-			flags = GetPolyData(addr+1);
-			color = GetPolyData(addr+2);
-			bias = 0;
-			BlitQuadHelper( bitmap,color,addr+3,m,bias,flags,packetFormat );
-			break;
+			case 0x17:
+				/**
+                * word 0: opcode (8a24c0)
+                * word 1: flags
+                * word 2: color
+                */
+				flags = GetPolyData(addr+1);
+				color = GetPolyData(addr+2);
+				bias = 0;
+				BlitQuadHelper( bitmap,color,addr+3,m,bias,flags,packetFormat );
+				break;
 
-		case 0x18:
-			/**
-          * word 0: opcode (0b3480 for first N-1 quads or 8b3480 for final quad in primitive)
-          * word 1: flags
-          * word 2: color
-          * word 3: depth bias
-          */
-			flags = GetPolyData(addr+1);
-			color = GetPolyData(addr+2);
-			bias  = GetPolyData(addr+3);
-			BlitQuadHelper( bitmap,color,addr+4,m,bias,flags,packetFormat );
-			break;
+			case 0x18:
+				/**
+                * word 0: opcode (0b3480 for first N-1 quads or 8b3480 for final quad in primitive)
+                * word 1: flags
+                * word 2: color
+                * word 3: depth bias
+                */
+				flags = GetPolyData(addr+1);
+				color = GetPolyData(addr+2);
+				bias  = GetPolyData(addr+3);
+				BlitQuadHelper( bitmap,color,addr+4,m,bias,flags,packetFormat );
+				break;
 
-		case 0x10: /* vertex lighting */
-			/*
-            333401 (opcode)
+			case 0x10: /* vertex lighting */
+				/*
+                333401 (opcode)
                 000000  [count] [type]
                 000000  000000  007fff // normal vector
                 000000  000000  007fff // normal vector
                 000000  000000  007fff // normal vector
                 000000  000000  007fff // normal vector
-            */
-         numAdditionalNormals = GetPolyData(addr+2);
-         mSurfaceNormalFormat = GetPolyData(addr+3);
-         mLitSurfaceCount = 0;
-         mLitSurfaceIndex = 0;
-         RegisterNormals( addr+4, m );
-			break;
+                */
+				numAdditionalNormals = GetPolyData(addr+2);
+				mSurfaceNormalFormat = GetPolyData(addr+3);
+				mLitSurfaceCount = 0;
+				mLitSurfaceIndex = 0;
+				RegisterNormals( addr+4, m );
+				break;
 
-		case 0x0d: /* additional normals */
-			/*
-            300401 (opcode)
+			case 0x0d: /* additional normals */
+				/*
+                300401 (opcode)
                 007b09 ffdd04 0004c2
                 007a08 ffd968 0001c1
                 ff8354 ffe401 000790
                 ff84f7 ffdd04 0004c2
-            */
-         RegisterNormals( addr+1, m );
-         break;
+                */
+				RegisterNormals( addr+1, m );
+				break;
 
-		default:
-			break;
+			default:
+				break;
 		}
 		addr += packetLength;
 	}
@@ -2236,15 +1921,13 @@ static void
 BlitPolyObject( mame_bitmap *bitmap, int code, float M[4][4] )
 {
 	unsigned addr1 = GetPolyData(code);
-   mLitSurfaceCount = 0;
-   mLitSurfaceIndex = 0;
+	mLitSurfaceCount = 0;
+	mLitSurfaceIndex = 0;
 	for(;;)
 	{
 		INT32 addr2 = GetPolyData(addr1++);
 		if( addr2<0 )
-		{
 			break;
-		}
 		BlitQuads( bitmap, addr2, M, code );
 	}
 } /* BlitPolyObject */
@@ -2489,6 +2172,7 @@ DrawPolygons( mame_bitmap *bitmap )
 	if( mbDSPisActive )
 	{
 		SimulateSlaveDSP( bitmap );
+		poly_wait(poly, "DrawPolygons");
 	}
 } /* DrawPolygons */
 
@@ -2533,6 +2217,11 @@ WRITE32_HANDLER( namcos22_paletteram_w )
 	dirtypal[offset&(0x7fff/4)] = 1;
 }
 
+static void namcos22_exit(running_machine *machine)
+{
+	poly_free(poly);
+}
+
 static void video_start_common(running_machine *machine)
 {
 	bgtilemap = tilemap_create( TextTilemapGetInfo,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64 );
@@ -2548,6 +2237,13 @@ static void video_start_common(running_machine *machine)
 	mpPolyL = memory_region(REGION_POINTROM);
 	mpPolyM = mpPolyL + mPtRomSize;
 	mpPolyH = mpPolyM + mPtRomSize;
+
+#ifdef RENDER_AS_QUADS
+	poly = poly_alloc(4000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
+#else
+	poly = poly_alloc(4000, sizeof(poly_extra_data), 0);
+#endif
+	add_exit_callback(machine, namcos22_exit);
 }
 
 VIDEO_START( namcos22 )

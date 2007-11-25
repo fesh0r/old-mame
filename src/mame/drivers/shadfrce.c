@@ -96,7 +96,7 @@ WRITE16_HANDLER( shadfrce_bg0videoram_w );
 WRITE16_HANDLER( shadfrce_bg1videoram_w );
 
 
-WRITE16_HANDLER( shadfrce_flip_screen )
+static WRITE16_HANDLER( shadfrce_flip_screen )
 {
 	flip_screen_set(data & 0x01);
 }
@@ -321,7 +321,7 @@ ADDRESS_MAP_END
 
 
 #if USE_SHADFRCE_FAKE_INPUT_PORTS
-INPUT_PORTS_START( shadfrce )
+static INPUT_PORTS_START( shadfrce )
 	PORT_START	/* Fake IN0 (player 1 inputs) */
 	SHADFRCE_PLAYER_INPUT( 1, IPT_START1 )
 
@@ -400,7 +400,7 @@ INPUT_PORTS_START( shadfrce )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 #else
-INPUT_PORTS_START( shadfrce )
+static INPUT_PORTS_START( shadfrce )
 	PORT_START	/* IN0 - $1d0020.w */
 	SHADFRCE_PLAYER_INPUT( 1, IPT_START1 )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_COIN1 )

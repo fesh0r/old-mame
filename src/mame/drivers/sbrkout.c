@@ -52,7 +52,7 @@ Stephh's notes (based on the games M6502 code and some tests) :
  *
  *************************************/
 
-#define TIME_4V MAME_TIME_IN_SEC(4075000/4)
+#define TIME_4V ATTOTIME_IN_SEC(4075000/4)
 
 static UINT8 *sbrkout_sound;
 
@@ -77,7 +77,7 @@ static TIMER_CALLBACK( sbrkout_tones_4V )
 
 static MACHINE_RESET( sbrkout )
 {
-	mame_timer_pulse(TIME_4V, 0, sbrkout_tones_4V);
+	timer_pulse(TIME_4V, 0, sbrkout_tones_4V);
 }
 
 
@@ -145,7 +145,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( sbrkout )
+static INPUT_PORTS_START( sbrkout )
 	PORT_START		/* DSW - fake port, gets mapped to Super Breakout ports */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Language ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( English ) )

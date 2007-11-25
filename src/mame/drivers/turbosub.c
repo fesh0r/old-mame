@@ -58,11 +58,11 @@ static UINT8 *FDT_A;
 static UINT8 *FDT_B;
 static UINT8 INTER_CPU_REG;
 
-VIDEO_START( turbosub )
+static VIDEO_START( turbosub )
 {
 }
 
-VIDEO_UPDATE( turbosub )
+static VIDEO_UPDATE( turbosub )
 {
 	return 0;
 }
@@ -178,7 +178,7 @@ static WRITE8_HANDLER( FDT_W )
  		FDT_B[offset] = data;
 }
 
-INPUT_PORTS_START( turbosub )
+static INPUT_PORTS_START( turbosub )
 PORT_START
 INPUT_PORTS_END
 

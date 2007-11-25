@@ -55,7 +55,7 @@ static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( dderby )
+static INPUT_PORTS_START( dderby )
 	PORT_START	/* 8bit */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -132,11 +132,11 @@ static GFXDECODE_START( dmndrby )
 
 GFXDECODE_END
 
-VIDEO_START(dderby)
+static VIDEO_START(dderby)
 {
 }
 
-VIDEO_UPDATE(dderby)
+static VIDEO_UPDATE(dderby)
 {
 	int x,y,count;
 	const gfx_element *gfx = machine->gfx[0];
@@ -165,7 +165,7 @@ VIDEO_UPDATE(dderby)
 	return 0;
 }
 
-INTERRUPT_GEN( dderby_interrupt )
+static INTERRUPT_GEN( dderby_interrupt )
 {
 //  cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0x8);  // almost certainly wrong?
 //  cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0x10); // almost certainly wrong?

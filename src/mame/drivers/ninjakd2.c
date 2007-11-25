@@ -238,7 +238,7 @@ static int ninjakd2_bank_latch = 255;
 static INT16 *sampledata[8];
 static int samplelen[8];
 
-void ninjakd2_init_samples(void)
+static void ninjakd2_init_samples(void)
 {
 	int i,n;
 	UINT8 *source = memory_region(REGION_SOUND1);
@@ -255,17 +255,19 @@ void ninjakd2_init_samples(void)
 }
 
 
-INTERRUPT_GEN( ninjakd2_interrupt )
+static INTERRUPT_GEN( ninjakd2_interrupt )
 {
 	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0xd7);	/* RST 10h */
 }
 
+#ifdef UNUSED_FUNCTION
 READ8_HANDLER( ninjakd2_bankselect_r )
 {
 	return ninjakd2_bank_latch;
 }
+#endif
 
-WRITE8_HANDLER( ninjakd2_bankselect_w )
+static WRITE8_HANDLER( ninjakd2_bankselect_w )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 	int bankaddress;
@@ -279,7 +281,7 @@ WRITE8_HANDLER( ninjakd2_bankselect_w )
 	}
 }
 
-WRITE8_HANDLER( ninjakd2_pcm_play_w )
+static WRITE8_HANDLER( ninjakd2_pcm_play_w )
 {
 	int i;
 	static const int sample_no[9] = { 0x00,0x0A,0x27,0x3E,0x53,0x5E,0x68,0x76,0xF0 };
@@ -335,7 +337,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( ninjakd2 )
+static INPUT_PORTS_START( ninjakd2 )
     PORT_START
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
@@ -479,7 +481,7 @@ static MACHINE_DRIVER_START( ninjakd2 )
 	MDRV_CPU_IO_MAP(ninjakd2_sound_io,0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(10000))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(10000))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)

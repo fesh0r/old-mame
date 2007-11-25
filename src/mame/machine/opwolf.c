@@ -212,7 +212,7 @@ static const UINT16 level_data_04[0xcc] =
 	0x0000,0xfc01,0x8009,0x0042
 };
 
-const UINT16 level_data_05[0xcc] =
+static const UINT16 level_data_05[0xcc] =
 {
 	0x0480,0x1008,0x0300,0x5701,0x0001,0x0010,0x0480,0x1008,
 	0x0300,0x5701,0x0001,0x002b,0x0780,0x0009,0x0300,0x4a01,
@@ -694,7 +694,7 @@ static TIMER_CALLBACK( cchip_timer )
 	{
 		// Simulate time for command to execute (exact timing unknown, this is close)
 		current_cmd=0xf5;
-		mame_timer_set(MAME_TIME_IN_CYCLES(80000,0), 0, timer_callback);
+		timer_set(ATTOTIME_IN_CYCLES(80000,0), 0, timer_callback);
 	}
 	cchip_last_7a=cchip_ram[0x7a];
 
@@ -747,5 +747,5 @@ void opwolf_cchip_init(void)
 	cchip_coins_for_credit[1]=1;
 	cchip_credits_for_coin[1]=1;
 
-	mame_timer_pulse(MAME_TIME_IN_HZ(60), 0, cchip_timer);
+	timer_pulse(ATTOTIME_IN_HZ(60), 0, cchip_timer);
 }

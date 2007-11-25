@@ -221,7 +221,7 @@ static WRITE32_HANDLER( groundfx_adc_w )
 {
 	/* One interrupt per input port (4 per frame, though only 2 used).
         1000 cycle delay is arbitrary */
-	mame_timer_set(MAME_TIME_IN_CYCLES(1000,0),0, groundfx_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(1000,0),0, groundfx_interrupt5);
 }
 
 static WRITE32_HANDLER( rotate_control_w )	/* only a guess that it's rotation */
@@ -297,7 +297,7 @@ ADDRESS_MAP_END
              INPUT PORTS (dips in eprom)
 ***********************************************************/
 
-INPUT_PORTS_START( groundfx )
+static INPUT_PORTS_START( groundfx )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW,  IPT_UNUSED )
 
@@ -488,7 +488,7 @@ static READ32_HANDLER( irq_speedup_r_groundfx )
 }
 
 
-DRIVER_INIT( groundfx )
+static DRIVER_INIT( groundfx )
 {
 	UINT32 offset,i;
 	UINT8 *gfx = memory_region(REGION_GFX3);

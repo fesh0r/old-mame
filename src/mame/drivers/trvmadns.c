@@ -216,7 +216,7 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x80, 0x80) AM_WRITE(trvmadns_banking_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( trvmadns )
+static INPUT_PORTS_START( trvmadns )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -261,14 +261,14 @@ static TILE_GET_INFO( get_bg_tile_info )
 	SET_TILE_INFO(0,tile,color,flag);
 }
 
-VIDEO_START( trvmadns )
+static VIDEO_START( trvmadns )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap,1);
 }
 
-VIDEO_UPDATE( trvmadns )
+static VIDEO_UPDATE( trvmadns )
 {
 	fillbitmap(bitmap,machine->pens[0xd],cliprect);
 

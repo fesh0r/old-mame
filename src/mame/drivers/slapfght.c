@@ -453,7 +453,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )\
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-INPUT_PORTS_START( perfrman )
+static INPUT_PORTS_START( perfrman )
 COMMON_START
 	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
@@ -509,7 +509,7 @@ COMMON_START
 	PORT_DIPSETTING(    0x02, "5" )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( tigerh )
+static INPUT_PORTS_START( tigerh )
 COMMON_START
 	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
@@ -562,7 +562,7 @@ COMMON_START
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( slapfigh )
+static INPUT_PORTS_START( slapfigh )
 COMMON_START
 	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_B ) )
@@ -613,7 +613,7 @@ COMMON_START
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( getstar )
+static INPUT_PORTS_START( getstar )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
@@ -684,7 +684,7 @@ INPUT_PORTS_START( getstar )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( gtstarba )
+static INPUT_PORTS_START( gtstarba )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -1597,7 +1597,7 @@ static DRIVER_INIT( tigerh )
 
 }
 
-READ8_HANDLER( getstar_mcu_r )
+static READ8_HANDLER( getstar_mcu_r )
 {
 	/* pass the first check only */
 	return 0x76;
@@ -1614,7 +1614,7 @@ static DRIVER_INIT( getstarb )
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe803, 0xe803, 0, 0, getstar_e803_r );
 }
 
-READ8_HANDLER( gtstarba_port_0_read )
+static READ8_HANDLER( gtstarba_port_0_read )
 {
 	/* the bootleg has it's own 'protection' on startup? */
 	if (activecpu_get_pc()==0x6d1e) return 0;
@@ -1627,7 +1627,7 @@ READ8_HANDLER( gtstarba_port_0_read )
 	return 0;
 }
 
-READ8_HANDLER( gtstarba_dpram_r )
+static READ8_HANDLER( gtstarba_dpram_r )
 {
 	/* requires this or it gets stuck with 'rom test' on screen */
 	/* it is possible the program roms are slighly corrupt like the gfx roms, or
@@ -1646,7 +1646,7 @@ static DRIVER_INIT( gtstarba )
 
 static int slapfigh_prot_pos;
 
-READ8_HANDLER( slapfigh_mcu_r )
+static READ8_HANDLER( slapfigh_mcu_r )
 {
 	/* pass initial checks */
 	int protvalues[] = { 0xc7, 0x55, -1 };

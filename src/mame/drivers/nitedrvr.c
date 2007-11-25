@@ -73,7 +73,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( nitedrvr )
+static INPUT_PORTS_START( nitedrvr )
 	PORT_START	// fake
 	PORT_DIPNAME( 0x30, 0x10, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(	0x30, DEF_STR( 2C_1C ) )
@@ -154,7 +154,7 @@ static TIMER_CALLBACK( nitedrvr_crash_toggle_callback )
 
 static MACHINE_RESET( nitedrvr )
 {
-	mame_timer_pulse(PERIOD_OF_555_ASTABLE(RES_K(180), 330, CAP_U(1)), 0, nitedrvr_crash_toggle_callback);
+	timer_pulse(PERIOD_OF_555_ASTABLE(RES_K(180), 330, CAP_U(1)), 0, nitedrvr_crash_toggle_callback);
 	nitedrvr_register_machine_vars();
 }
 

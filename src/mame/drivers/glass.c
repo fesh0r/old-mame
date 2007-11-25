@@ -123,7 +123,7 @@ static ADDRESS_MAP_START( glass_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( glass )
+static INPUT_PORTS_START( glass )
 PORT_START	/* DSW #2 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
@@ -299,7 +299,7 @@ ROM_END
 
 ***************************************************************************/
 
-void glass_ROM16_split(int src_reg, int dst_reg, int start, int length, int dest1, int dest2)
+static void glass_ROM16_split(int src_reg, int dst_reg, int start, int length, int dest1, int dest2)
 {
 	int i;
 

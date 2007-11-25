@@ -244,7 +244,7 @@ static ADDRESS_MAP_START( pasha2_io, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0xec, 0xef) AM_WRITE(oki_1_bank_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( pasha2 )
+static INPUT_PORTS_START( pasha2 )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -331,13 +331,13 @@ INPUT_PORTS_START( pasha2 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START3 )
 INPUT_PORTS_END
 
-VIDEO_START( pasha2 )
+static VIDEO_START( pasha2 )
 {
 	bitmap0 = auto_malloc(0x40000);
 	bitmap1 = auto_malloc(0x40000);
 }
 
-VIDEO_UPDATE( pasha2 )
+static VIDEO_UPDATE( pasha2 )
 {
 	int x,y,count;
 	int color;
@@ -454,7 +454,7 @@ static READ16_HANDLER( pasha2_speedup_r )
 	return wram[(0x95744/2)+offset];
 }
 
-DRIVER_INIT( pasha2 )
+static DRIVER_INIT( pasha2 )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x95744, 0x95747, 0, 0, pasha2_speedup_r );
 

@@ -67,10 +67,10 @@ PALETTE_INIT( quasar );
 VIDEO_UPDATE( quasar );
 VIDEO_START( quasar );
 
-extern UINT8 *bullet_ram;
+extern UINT8 *cvs_bullet_ram;
 
-extern UINT8 *effectram;
-extern int			 effectcontrol;
+extern UINT8 *quasar_effectram;
+extern int quasar_effectcontrol;
 
 static int page = 0;
 static int IOpage = 8;
@@ -149,11 +149,11 @@ static WRITE8_HANDLER( quasar_video_w )
 	if (page == 1) colorram_w(offset,(data & 7));	// 3 bits of ram only - 3 x 2102
 	if (page == 2)
 	{
-		effectram[offset]   = data;
+		quasar_effectram[offset]   = data;
 	}
 	if (page == 3)
 	{
-		effectcontrol = data;
+		quasar_effectcontrol = data;
 	}
 }
 
@@ -169,16 +169,16 @@ static READ8_HANDLER( quasar_IO_r )
 	return ans;
 }
 
-WRITE8_HANDLER( quasar_bullet_w )
+static WRITE8_HANDLER( quasar_bullet_w )
 {
-    bullet_ram[offset] = (data ^ 0xff);
+	cvs_bullet_ram[offset] = (data ^ 0xff);
 }
 
 static int Quasar_T1=0;
 static int Quasar_Command=0;
 //static int sh_page=0;
 
-WRITE8_HANDLER( quasar_sh_command_w )
+static WRITE8_HANDLER( quasar_sh_command_w )
 {
 	// bit 4 = Sound Invader : Linked to an NE555V circuit
 	// Not handled yet
@@ -190,7 +190,7 @@ WRITE8_HANDLER( quasar_sh_command_w )
 	Quasar_T1      = (Quasar_Command != 15);
 }
 
-READ8_HANDLER( quasar_sh_command_r )
+static READ8_HANDLER( quasar_sh_command_r )
 {
 	// Clear T1 signal
 	Quasar_T1 = 0;
@@ -202,12 +202,12 @@ READ8_HANDLER( quasar_sh_command_r )
 	return (Quasar_Command) + (input_port_5_r(0) & 0x30);
 }
 
-READ8_HANDLER( Quasar_T1_r )
+static READ8_HANDLER( Quasar_T1_r )
 {
 	return Quasar_T1;
 }
 
-WRITE8_HANDLER( Quasar_DAC_w )
+static WRITE8_HANDLER( Quasar_DAC_w )
 {
 	DAC_0_signed_data_w(0,data);
 }
@@ -216,7 +216,7 @@ WRITE8_HANDLER( Quasar_DAC_w )
 
 static ADDRESS_MAP_START( quasar, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x13ff) AM_ROM
-	AM_RANGE(0x1400, 0x14ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_bullet_r, quasar_bullet_w) AM_BASE(&bullet_ram)
+	AM_RANGE(0x1400, 0x14ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_bullet_r, quasar_bullet_w) AM_BASE(&cvs_bullet_ram)
 	AM_RANGE(0x1500, 0x15ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_2636_1_r, cvs_2636_1_w) AM_BASE(&s2636_1_ram)
 	AM_RANGE(0x1600, 0x16ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_2636_2_r, cvs_2636_2_w) AM_BASE(&s2636_2_ram)
 	AM_RANGE(0x1700, 0x17ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_2636_3_r, cvs_2636_3_w) AM_BASE(&s2636_3_ram)
@@ -272,7 +272,7 @@ ADDRESS_MAP_END
 
 ************************************************************************/
 
-INPUT_PORTS_START( quasar )
+static INPUT_PORTS_START( quasar )
 	PORT_START	/* Controls 0 */
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )

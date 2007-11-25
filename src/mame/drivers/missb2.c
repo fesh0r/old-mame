@@ -33,7 +33,7 @@ extern int bublbobl_video_enable;
 
 /* Video Hardware */
 
-VIDEO_UPDATE( missb2 )
+static VIDEO_UPDATE( missb2 )
 {
 	int offs;
 	int sx,sy,xc,yc;
@@ -202,7 +202,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( missb2 )
+static INPUT_PORTS_START( missb2 )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Language ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( English ) )

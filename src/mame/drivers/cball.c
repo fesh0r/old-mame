@@ -64,13 +64,13 @@ static TIMER_CALLBACK( interrupt_callback )
 		scanline = 16;
 	}
 
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, interrupt_callback);
 }
 
 
 static MACHINE_RESET( cball )
 {
-	mame_timer_set(video_screen_get_time_until_pos(0, 16, 0), 16, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, 16, 0), 16, interrupt_callback);
 }
 
 
@@ -125,7 +125,7 @@ static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( cball )
+static INPUT_PORTS_START( cball )
 
 	PORT_START /* 1001 */
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coinage ))

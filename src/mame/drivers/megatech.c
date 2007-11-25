@@ -102,7 +102,7 @@ extern void driver_init_megatech_bios(running_machine *machine);
 
 
 /* not currently used */
-INPUT_PORTS_START( megatech ) /* Genesis Input Ports */
+static INPUT_PORTS_START( megatech ) /* Genesis Input Ports */
 	PORT_INCLUDE(megadriv)
 
 	PORT_START_TAG("BIOS_IN0") // port 6
@@ -230,7 +230,7 @@ INPUT_PORTS_END
 
 /* MEGATECH specific */
 
-UINT8 mt_cart_select_reg;
+static UINT8 mt_cart_select_reg;
 
 static READ8_HANDLER( megatech_instr_r )
 {
@@ -268,11 +268,11 @@ static WRITE8_HANDLER( z80_unmapped_w )
 	printf("unmapped z80 write %04x\n",offset);
 }
 
-UINT8* sms_mainram;
-UINT8* sms_rom;
+static UINT8* sms_mainram;
+static UINT8* sms_rom;
 
 
-WRITE8_HANDLER( mt_sms_standard_rom_bank_w )
+static WRITE8_HANDLER( mt_sms_standard_rom_bank_w )
 {
 	int bank = data&0x1f;
 	//logerror("bank w %02x %02x\n", offset, data);
@@ -300,6 +300,7 @@ WRITE8_HANDLER( mt_sms_standard_rom_bank_w )
 	}
 }
 
+#ifdef UNUSED_FUNCTION
 READ8_HANDLER( md_sms_ioport_dc_r )
 {
 	return 0xff;//mame_rand(Machine);
@@ -309,10 +310,11 @@ READ8_HANDLER( md_sms_ioport_dd_r )
 {
 	return 0xff;//mame_rand(Machine);
 }
+#endif
 
 
 
-void megatech_set_genz80_as_sms_standard_ports(void)
+static void megatech_set_genz80_as_sms_standard_ports(void)
 {
 	/* INIT THE PORTS *********************************************************************************************/
 	memory_install_read8_handler (1, ADDRESS_SPACE_IO, 0x0000, 0xffff, 0, 0, z80_unmapped_port_r);
@@ -337,7 +339,7 @@ void megatech_set_genz80_as_sms_standard_ports(void)
 	memory_install_read8_handler (1, ADDRESS_SPACE_IO, 0xdf, 0xdf, 0, 0, megatech_sms_ioport_dd_r); // adams family
 }
 
-void megatech_set_genz80_as_sms_standard_map(void)
+static void megatech_set_genz80_as_sms_standard_map(void)
 {
 	/* INIT THE MEMMAP / BANKING *********************************************************************************/
 
@@ -370,7 +372,7 @@ void megatech_set_genz80_as_sms_standard_map(void)
 
 }
 
-void megatech_select_game(int gameno)
+static void megatech_select_game(int gameno)
 {
 	UINT8* game_region;
 	UINT8* bios_region;
@@ -497,10 +499,10 @@ static WRITE8_HANDLER( bios_ctrl_w )
 }
 
 
-READ8_HANDLER( megaplay_r0) { return readinputportbytag("BIOS_IN0") ; }
-READ8_HANDLER( megaplay_r1) { return readinputportbytag("BIOS_IN1") ; }
-READ8_HANDLER( megaplay_r2) { return readinputportbytag("BIOS_DSW0") ; }
-READ8_HANDLER( megaplay_r3) { return readinputportbytag("BIOS_DSW1") ; }
+static READ8_HANDLER( megaplay_r0) { return readinputportbytag("BIOS_IN0") ; }
+static READ8_HANDLER( megaplay_r1) { return readinputportbytag("BIOS_IN1") ; }
+static READ8_HANDLER( megaplay_r2) { return readinputportbytag("BIOS_DSW0") ; }
+static READ8_HANDLER( megaplay_r3) { return readinputportbytag("BIOS_DSW1") ; }
 
 static int mt_bank_bank_pos = 0;
 static int mt_bank_partial = 0;
@@ -508,7 +510,7 @@ static int mt_bank_addr = 0;
 
 /* this sets 0x300000 which may indicate that the 68k can see the instruction rom
    there, this limiting the max game rom capacity to 3meg. */
-WRITE8_HANDLER (mt_z80_bank_w)
+static WRITE8_HANDLER (mt_z80_bank_w)
 {
 	mt_bank_partial |= (data & 0x01)<<23; // add new bit to partial address
 	mt_bank_bank_pos++;
@@ -527,12 +529,12 @@ WRITE8_HANDLER (mt_z80_bank_w)
 	}
 }
 
-READ8_HANDLER( megatech_banked_ram_r )
+static READ8_HANDLER( megatech_banked_ram_r )
 {
 	return megatech_banked_ram[offset + 0x1000 * (mt_cart_select_reg&0x7) ];
 }
 
-WRITE8_HANDLER( megatech_banked_ram_w )
+static WRITE8_HANDLER( megatech_banked_ram_w )
 {
 	megatech_banked_ram[offset + 0x1000 * (mt_cart_select_reg&0x7) ] = data;
 }
@@ -589,20 +591,20 @@ ADDRESS_MAP_END
 
 
 
-DRIVER_INIT(mtnew)
+static DRIVER_INIT(mtnew)
 {
 	megatech_banked_ram = auto_malloc(0x1000*8);
 	driver_init_megadriv(Machine);
 	driver_init_megatech_bios(Machine);
 }
 
-VIDEO_START(mtnew)
+static VIDEO_START(mtnew)
 {
 	init_for_megadrive(); // create an sms vdp too, for comptibility mode
 	video_start_megadriv(Machine);
 }
-//time_never
-VIDEO_UPDATE(mtnew)
+//attotime_never
+static VIDEO_UPDATE(mtnew)
 {
 	if (screen ==0)
 	{
@@ -614,14 +616,14 @@ VIDEO_UPDATE(mtnew)
 	return 0;
 }
 
-VIDEO_EOF(mtnew)
+static VIDEO_EOF(mtnew)
 {
 	if (!current_game_is_sms) video_eof_megadriv(Machine);
 	else video_eof_megatech_md_sms(Machine);
 	video_eof_megatech_bios(Machine);
 }
 
-MACHINE_RESET(mtnew)
+static MACHINE_RESET(mtnew)
 {
 	machine_reset_megadriv(Machine);
 	machine_reset_megatech_bios(Machine);

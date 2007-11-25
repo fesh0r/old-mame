@@ -116,7 +116,7 @@ WRITE8_HANDLER( senjyo_volume_w );
 
 static int int_delay_kludge;
 
-MACHINE_RESET( senjyo )
+static MACHINE_RESET( senjyo )
 {
 	/* we must avoid generating interrupts for the first few frames otherwise */
 	/* Senjyo locks up. There must be an interrupt enable port somewhere, */
@@ -125,7 +125,7 @@ MACHINE_RESET( senjyo )
 	int_delay_kludge = 10;
 }
 
-INTERRUPT_GEN( senjyo_interrupt )
+static INTERRUPT_GEN( senjyo_interrupt )
 {
 	if (int_delay_kludge == 0) cpunum_set_input_line(0, 0, HOLD_LINE);
 	else int_delay_kludge--;
@@ -319,7 +319,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( senjyo )
+static INPUT_PORTS_START( senjyo )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -400,7 +400,7 @@ INPUT_PORTS_START( senjyo )
 	PORT_DIPSETTING(    0xc0, DEF_STR( Hardest ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( starforc )
+static INPUT_PORTS_START( starforc )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -481,7 +481,7 @@ INPUT_PORTS_START( starforc )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( baluba )
+static INPUT_PORTS_START( baluba )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -649,7 +649,7 @@ static struct z80_irq_daisy_chain daisy_chain[] =
 
 
 
-static struct Samplesinterface custom_interface =
+static struct Samplesinterface senjyo_samples_interface =
 {
 	1,
 	NULL,
@@ -700,7 +700,7 @@ static MACHINE_DRIVER_START( senjyo )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
+	MDRV_SOUND_CONFIG(senjyo_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 MACHINE_DRIVER_END
 

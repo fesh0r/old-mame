@@ -162,7 +162,7 @@ ADDRESS_MAP_END
 
 /***************************************************************************/
 
-INPUT_PORTS_START( lkage )
+static INPUT_PORTS_START( lkage )
 	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x03, "30000 100000" ) /* unverified */
@@ -555,7 +555,7 @@ static READ8_HANDLER( fake_status_r )
 	return res;
 }
 
-DRIVER_INIT( lkageb )
+static DRIVER_INIT( lkageb )
 {
 	memory_install_read8_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf062, 0xf062, 0, 0, fake_mcu_r);
 	memory_install_read8_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf087, 0xf087, 0, 0, fake_status_r);

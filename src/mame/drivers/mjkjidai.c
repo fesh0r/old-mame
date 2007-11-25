@@ -73,7 +73,7 @@ static void mjkjidai_adpcm_callback (void *param, stream_sample_t **inputs, stre
 	}
 }
 
-void *mjkjidai_adpcm_start (int clock, const struct CustomSound_interface *config)
+static void *mjkjidai_adpcm_start (int clock, const struct CustomSound_interface *config)
 {
 	struct mjkjidai_adpcm_state *state = &mjkjidai_adpcm;
 	state->playing = 0;
@@ -140,7 +140,7 @@ static WRITE8_HANDLER( keyboard_select_w )
 static UINT8 *nvram;
 static size_t nvram_size;
 
-NVRAM_HANDLER( mjkjidai )
+static NVRAM_HANDLER( mjkjidai )
 {
 	if (read_or_write)
 		mame_fwrite(file, nvram, nvram_size);
@@ -191,7 +191,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( mjkjidai )
+static INPUT_PORTS_START( mjkjidai )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )

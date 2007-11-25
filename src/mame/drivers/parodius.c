@@ -122,7 +122,7 @@ static WRITE8_HANDLER( sound_arm_nmi_w )
 {
 //  sound_nmi_enabled = 1;
 	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
-	mame_timer_set(MAME_TIME_IN_USEC(50),0,nmi_callback);	/* kludge until the K053260 is emulated correctly */
+	timer_set(ATTOTIME_IN_USEC(50),0,nmi_callback);	/* kludge until the K053260 is emulated correctly */
 }
 
 /********************************************/
@@ -181,7 +181,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( parodius )
+static INPUT_PORTS_START( parodius )
 	PORT_START	/* PLAYER 1 INPUTS */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)

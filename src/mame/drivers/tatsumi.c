@@ -74,12 +74,12 @@
 #include "sound/okim6295.h"
 
 static UINT16 *cyclwarr_cpua_ram, *cyclwarr_cpub_ram;
-UINT16 *tatsumi_c_ram, *apache3_g_ram;
+static UINT16 *tatsumi_c_ram, *apache3_g_ram;
 UINT16 *roundup5_d0000_ram, *roundup5_e0000_ram;
 UINT8 *tatsumi_rom_sprite_lookup1, *tatsumi_rom_sprite_lookup2;
 UINT8 *tatsumi_rom_clut0, *tatsumi_rom_clut1;
 UINT16 *roundup5_unknown0, *roundup5_unknown1, *roundup5_unknown2;
-UINT8 *apache3_bg_ram;
+static UINT8 *apache3_bg_ram;
 
 /***************************************************************************/
 
@@ -228,7 +228,7 @@ ADDRESS_MAP_END
 
 /******************************************************************************/
 
-INPUT_PORTS_START( apache3 )
+static INPUT_PORTS_START( apache3 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME( "Trigger" )
@@ -294,7 +294,7 @@ INPUT_PORTS_START( apache3 )
 	PORT_DIPSETTING(    0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( roundup5 )
+static INPUT_PORTS_START( roundup5 )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) PORT_NAME("Accelerator")
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -369,7 +369,7 @@ INPUT_PORTS_START( roundup5 )
 	PORT_DIPSETTING(    0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( cyclwarr )
+static INPUT_PORTS_START( cyclwarr )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )

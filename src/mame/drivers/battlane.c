@@ -32,7 +32,7 @@ extern VIDEO_UPDATE( battlane );
 /* CPU interrupt control register */
 int battlane_cpu_control;
 
-WRITE8_HANDLER( battlane_cpu_command_w )
+static WRITE8_HANDLER( battlane_cpu_command_w )
 {
 	battlane_cpu_control = data;
 
@@ -104,7 +104,7 @@ static ADDRESS_MAP_START( battlane_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-INTERRUPT_GEN( battlane_cpu1_interrupt )
+static INTERRUPT_GEN( battlane_cpu1_interrupt )
 {
 	/* See note in battlane_cpu_command_w */
 
@@ -116,7 +116,7 @@ INTERRUPT_GEN( battlane_cpu1_interrupt )
 }
 
 
-INPUT_PORTS_START( battlane )
+static INPUT_PORTS_START( battlane )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )

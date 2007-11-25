@@ -474,7 +474,7 @@ static TIMER_CALLBACK( gpu_sync_timer )
 {
 	/* if a command is still pending, and we haven't maxed out our timer, set a new one */
 	if (gpu_command_pending && param < 1000)
-		mame_timer_set(MAME_TIME_IN_USEC(50), ++param, gpu_sync_timer);
+		timer_set(ATTOTIME_IN_USEC(50), ++param, gpu_sync_timer);
 }
 
 
@@ -785,7 +785,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( area51 )
+static INPUT_PORTS_START( area51 )
 	PORT_START
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START2 )
@@ -828,7 +828,7 @@ INPUT_PORTS_START( area51 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( freezeat )
+static INPUT_PORTS_START( freezeat )
 	PORT_START
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START2 )
@@ -869,7 +869,7 @@ INPUT_PORTS_START( freezeat )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( fishfren )
+static INPUT_PORTS_START( fishfren )
 	PORT_START
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START2 )
@@ -910,7 +910,7 @@ INPUT_PORTS_START( fishfren )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( vcircle )
+static INPUT_PORTS_START( vcircle )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(2)
@@ -984,7 +984,7 @@ static struct jaguar_config dsp_config =
 };
 
 
-MACHINE_DRIVER_START( cojagr3k )
+static MACHINE_DRIVER_START( cojagr3k )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(R3000BE, 66000000/2)
@@ -1025,7 +1025,7 @@ MACHINE_DRIVER_START( cojagr3k )
 MACHINE_DRIVER_END
 
 
-MACHINE_DRIVER_START( r3knarrow )
+static MACHINE_DRIVER_START( r3knarrow )
 	MDRV_IMPORT_FROM(cojagr3k)
 
 	/* video hardware */
@@ -1033,7 +1033,7 @@ MACHINE_DRIVER_START( r3knarrow )
 MACHINE_DRIVER_END
 
 
-MACHINE_DRIVER_START( cojag68k )
+static MACHINE_DRIVER_START( cojag68k )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, 50000000/2)
@@ -1423,7 +1423,7 @@ ROM_END
 static void cojag_common_init(running_machine *machine, UINT16 gpu_jump_offs, UINT16 spin_pc)
 {
 	/* copy over the ROM */
-	cojag_is_r3000 = (machine->drv->cpu[0].cpu_type == CPU_R3000BE);
+	cojag_is_r3000 = (machine->drv->cpu[0].type == CPU_R3000BE);
 
 	/* install synchronization hooks for GPU */
 	if (cojag_is_r3000)

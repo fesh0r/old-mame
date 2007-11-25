@@ -17,13 +17,7 @@
 
 #define VERBOSE 0
 
-typedef struct
-{
-	void *data;		// device's "this" pointer
-	pSCSIDispatch handler;	// device's handler routine
-} SCSIDev;
-
-static SCSIDev devices[8];	// SCSI IDs 0-7
+static SCSIInstance *devices[8];	// SCSI IDs 0-7
 static struct WD33C93interface *intf;
 
 /* wd register names */
@@ -191,7 +185,7 @@ typedef struct
 	UINT8		busphase;
 	UINT8		identify;
 	int			read_pending;
-	mame_timer *cmd_timer;
+	emu_timer *cmd_timer;
 } _wd33c93_data;
 
 /* local instance of controller data */
@@ -230,9 +224,9 @@ static void wd33c93_read_data(int bytes, UINT8 *pData)
 {
 	UINT8	unit = wd33c93_getunit();
 
-	if ( devices[unit].handler )
+	if ( devices[unit] )
 	{
-		devices[unit].handler(SCSIOP_READ_DATA, devices[unit].data, bytes, pData);
+		SCSIReadData( devices[unit], pData, bytes );
 	}
 	else
 	{
@@ -243,7 +237,7 @@ static void wd33c93_read_data(int bytes, UINT8 *pData)
 static void wd33c93_complete_immediate( int status )
 {
 	/* reset our timer */
-	mame_timer_reset( scsi_data.cmd_timer, time_never );
+	timer_reset( scsi_data.cmd_timer, attotime_never );
 
 	/* set the new status */
 	scsi_data.regs[WD_SCSI_STATUS] = status & 0xff;
@@ -292,7 +286,7 @@ static TIMER_CALLBACK(wd33c93_deassert_cip)
 static void wd33c93_complete_cmd( UINT8 status )
 {
 	/* fire off a timer to complete the command */
-	mame_timer_adjust( scsi_data.cmd_timer, MAME_TIME_IN_USEC(1), status, time_zero );
+	timer_adjust( scsi_data.cmd_timer, ATTOTIME_IN_USEC(1), status, attotime_zero );
 }
 
 /* command handlers */
@@ -339,7 +333,7 @@ static void wd33c93_select_cmd( void )
 	UINT8	newstatus;
 
 	/* see if we can select that device */
-	if ( devices[unit].handler )
+	if ( devices[unit] )
 	{
 		/* device is available - signal selection done */
 		newstatus = CSR_SELECT;
@@ -357,7 +351,7 @@ static void wd33c93_select_cmd( void )
 		}
 
 		/* queue up a service request out in the future */
-		mame_timer_set( MAME_TIME_IN_USEC(50), 0, wd33c93_service_request );
+		timer_set( ATTOTIME_IN_USEC(50), 0, wd33c93_service_request );
 	}
 	else
 	{
@@ -375,15 +369,18 @@ static void wd33c93_selectxfer_cmd( void )
 	UINT8	newstatus;
 
 	/* see if we can select that device */
-	if ( devices[unit].handler )
+	if ( devices[unit] )
 	{
 		if ( scsi_data.regs[WD_COMMAND_PHASE] < 0x45 )
 		{
 			/* device is available */
 			int xfercount;
+			int phase;
 
 			/* do the request */
-			xfercount = devices[unit].handler(SCSIOP_EXEC_COMMAND, devices[unit].data, 0, &scsi_data.regs[WD_CDB_1]);
+			SCSISetCommand( devices[unit], &scsi_data.regs[WD_CDB_1], 12 );
+			SCSIExecCommand( devices[unit], &xfercount );
+			SCSIGetPhase( devices[unit], &phase );
 
 			/* set transfer count */
 			if ( wd33c93_get_xfer_count() > TEMP_INPUT_LEN )
@@ -392,7 +389,12 @@ static void wd33c93_selectxfer_cmd( void )
 				wd33c93_set_xfer_count( TEMP_INPUT_LEN );
 			}
 
-			scsi_data.read_pending = 1;
+			switch( phase )
+			{
+				case SCSI_PHASE_DATAIN:
+					scsi_data.read_pending = 1;
+					break;
+			}
 		}
 
 		if ( scsi_data.read_pending )
@@ -421,7 +423,7 @@ static void wd33c93_selectxfer_cmd( void )
 			scsi_data.busphase = PHS_MESS_IN;
 
 			/* queue up a service request out in the future */
-			mame_timer_set( MAME_TIME_IN_MSEC(50), 0, wd33c93_service_request );
+			timer_set( ATTOTIME_IN_MSEC(50), 0, wd33c93_service_request );
 		}
 	}
 	else
@@ -451,7 +453,7 @@ static void wd33c93_xferinfo_cmd( void )
 	scsi_data.regs[WD_AUXILIARY_STATUS] |= ASR_CIP;
 
 	/* the command will be completed once the data is transferred */
-	mame_timer_set( MAME_TIME_IN_MSEC(1), 0, wd33c93_deassert_cip );
+	timer_set( ATTOTIME_IN_MSEC(1), 0, wd33c93_deassert_cip );
 }
 
 /* Command handlers */
@@ -590,9 +592,12 @@ WRITE8_HANDLER(wd33c93_w)
 							{
 								UINT8	unit = wd33c93_getunit();
 								int		xfercount;
+								int phase;
 
 								/* Execute the command. Depending on the command, we'll move to data in or out */
-								xfercount = devices[unit].handler(SCSIOP_EXEC_COMMAND, devices[unit].data, 0, &scsi_data.fifo[0]);
+								SCSISetCommand( devices[unit], &scsi_data.fifo[0], 12 );
+								SCSIExecCommand( devices[unit], &xfercount );
+								SCSIGetPhase( devices[unit], &phase );
 
 								/* reset fifo */
 								scsi_data.fifo_pos = 0;
@@ -600,23 +605,20 @@ WRITE8_HANDLER(wd33c93_w)
 								/* set the new count */
 								wd33c93_set_xfer_count( xfercount );
 
-								if ( xfercount == 0 )
+								switch( phase )
 								{
-									/* move to status phase */
+								case SCSI_PHASE_STATUS:
 									scsi_data.busphase = PHS_STATUS;
-								}
-								else
-								{
-									/* update bus phase */
-									if ( scsi_data.fifo[0] == 0x15 || scsi_data.fifo[0] == 0x55 ) /* MODE SELECT */
-									{
-										scsi_data.busphase = PHS_DATA_OUT;
-									}
-									else
-									{
-										scsi_data.busphase = PHS_DATA_IN;
-										scsi_data.read_pending = 1;
-									}
+									break;
+
+								case SCSI_PHASE_DATAIN:
+									scsi_data.busphase = PHS_DATA_IN;
+									scsi_data.read_pending = 1;
+									break;
+
+								case SCSI_PHASE_DATAOUT:
+									scsi_data.busphase = PHS_DATA_OUT;
+									break;
 								}
 							}
 							break;
@@ -796,12 +798,11 @@ extern void wd33c93_init( struct WD33C93interface *interface )
 	// try to open the devices
 	for (i = 0; i < interface->scsidevs->devs_present; i++)
 	{
-		devices[interface->scsidevs->devices[i].scsiID].handler = interface->scsidevs->devices[i].handler;
-		interface->scsidevs->devices[i].handler(SCSIOP_ALLOC_INSTANCE, &devices[interface->scsidevs->devices[i].scsiID].data, interface->scsidevs->devices[i].diskID, (UINT8 *)NULL);
+		SCSIAllocInstance( interface->scsidevs->devices[i].scsiClass, &devices[interface->scsidevs->devices[i].scsiID], interface->scsidevs->devices[i].diskID );
 	}
 
 	/* allocate a timer for commands */
-	scsi_data.cmd_timer = mame_timer_alloc(wd33c93_complete_cb);
+	scsi_data.cmd_timer = timer_alloc(wd33c93_complete_cb);
 
 	scsi_data.temp_input = auto_malloc( TEMP_INPUT_LEN );
 
@@ -835,9 +836,9 @@ void wd33c93_write_data(int bytes, UINT8 *pData)
 {
 	UINT8	unit = wd33c93_getunit();
 
-	if (devices[unit].handler)
+	if (devices[unit])
 	{
-		devices[unit].handler(SCSIOP_WRITE_DATA, devices[unit].data, bytes, pData);
+		SCSIWriteData( devices[unit], pData, bytes );
 	}
 	else
 	{
@@ -849,10 +850,9 @@ void *wd33c93_get_device(int id)
 {
 	void *ret;
 
-	if (devices[id].handler)
+	if (devices[id])
 	{
-		devices[id].handler(SCSIOP_GET_DEVICE, devices[id].data, 0, (UINT8 *)&ret);
-
+		SCSIGetDevice( devices[id], &ret );
 		return ret;
 	}
 

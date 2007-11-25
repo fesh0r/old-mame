@@ -162,7 +162,7 @@ static offs_t tms_offset_xor;
 static UINT8 analog_ports[4];
 static UINT8 framenum;
 
-static mame_timer *adsp_autobuffer_timer;
+static emu_timer *adsp_autobuffer_timer;
 static UINT16 *adsp_control_regs;
 static UINT16 *adsp_fastram_base;
 static UINT8 adsp_ireg;
@@ -197,7 +197,7 @@ static void init_machine_common(void)
 	cpunum_set_info_fct(2, CPUINFO_PTR_ADSP2100_TX_HANDLER, (genf *)adsp_tx_callback);
 
 	/* allocate a timer for feeding the autobuffer */
-	adsp_autobuffer_timer = mame_timer_alloc(adsp_autobuffer_irq);
+	adsp_autobuffer_timer = timer_alloc(adsp_autobuffer_irq);
 
 	memory_configure_bank(1, 0, 256, memory_region(REGION_USER1), 0x4000);
 	memory_set_bank(1, 0);
@@ -527,7 +527,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			if ((data & 0x0800) == 0)
 			{
 				dmadac_enable(0, SOUND_CHANNELS, 0);
-				mame_timer_adjust(adsp_autobuffer_timer, time_never, 0, time_never);
+				timer_adjust(adsp_autobuffer_timer, attotime_never, 0, attotime_never);
 			}
 			break;
 
@@ -536,7 +536,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			if ((data & 0x0002) == 0)
 			{
 				dmadac_enable(0, SOUND_CHANNELS, 0);
-				mame_timer_adjust(adsp_autobuffer_timer, time_never, 0, time_never);
+				timer_adjust(adsp_autobuffer_timer, attotime_never, 0, attotime_never);
 			}
 			break;
 
@@ -607,7 +607,7 @@ static void adsp_tx_callback(int port, INT32 data)
 			/* get the autobuffer registers */
 			int		mreg, lreg;
 			UINT16	source;
-			mame_time sample_period;
+			attotime sample_period;
 
 			adsp_ireg = (adsp_control_regs[S1_AUTOBUF_REG] >> 9) & 7;
 			mreg = (adsp_control_regs[S1_AUTOBUF_REG] >> 7) & 3;
@@ -632,18 +632,18 @@ static void adsp_tx_callback(int port, INT32 data)
 			/* calculate how long until we generate an interrupt */
 
 			/* period per each bit sent */
-			sample_period = scale_up_mame_time(MAME_TIME_IN_HZ(Machine->drv->cpu[2].cpu_clock), 2 * (adsp_control_regs[S1_SCLKDIV_REG] + 1));
+			sample_period = attotime_mul(ATTOTIME_IN_HZ(Machine->drv->cpu[2].clock), 2 * (adsp_control_regs[S1_SCLKDIV_REG] + 1));
 
 			/* now put it down to samples, so we know what the channel frequency has to be */
-			sample_period = scale_up_mame_time(sample_period, 16 * SOUND_CHANNELS);
+			sample_period = attotime_mul(sample_period, 16 * SOUND_CHANNELS);
 
- 			dmadac_set_frequency(0, SOUND_CHANNELS, SUBSECONDS_TO_HZ(sample_period.subseconds));
+ 			dmadac_set_frequency(0, SOUND_CHANNELS, ATTOSECONDS_TO_HZ(sample_period.attoseconds));
 			dmadac_enable(0, SOUND_CHANNELS, 1);
 
 			/* fire off a timer wich will hit every half-buffer */
-			sample_period = scale_down_mame_time(scale_up_mame_time(sample_period, adsp_size), SOUND_CHANNELS * adsp_incs);
+			sample_period = attotime_div(attotime_mul(sample_period, adsp_size), SOUND_CHANNELS * adsp_incs);
 
-			mame_timer_adjust(adsp_autobuffer_timer, sample_period, 0, sample_period);
+			timer_adjust(adsp_autobuffer_timer, sample_period, 0, sample_period);
 
 			return;
 		}
@@ -655,7 +655,7 @@ static void adsp_tx_callback(int port, INT32 data)
 	dmadac_enable(0, SOUND_CHANNELS, 0);
 
 	/* remove timer */
-	mame_timer_adjust(adsp_autobuffer_timer, time_never, 0, time_never);
+	timer_adjust(adsp_autobuffer_timer, attotime_never, 0, attotime_never);
 }
 
 
@@ -814,7 +814,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( speedup )
+static INPUT_PORTS_START( speedup )
 	PORT_START	    /* DIPs */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_VOLUME_UP )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_VOLUME_DOWN )
@@ -853,7 +853,7 @@ INPUT_PORTS_START( speedup )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( surfplnt )
+static INPUT_PORTS_START( surfplnt )
 	PORT_START	    /* DIPs */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_VOLUME_UP )	// low two bits read, compared against 3
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_VOLUME_DOWN )	// low four bits read, compared against f
@@ -887,7 +887,7 @@ INPUT_PORTS_START( surfplnt )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( radikalb )
+static INPUT_PORTS_START( radikalb )
 	PORT_START	    /* DIPs */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_VOLUME_UP )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_VOLUME_DOWN )
@@ -937,7 +937,7 @@ static struct tms32031_config tms_config =
 };
 
 
-MACHINE_DRIVER_START( gaelco3d )
+static MACHINE_DRIVER_START( gaelco3d )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 15000000)
@@ -963,8 +963,8 @@ MACHINE_DRIVER_START( gaelco3d )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
-	MDRV_SCREEN_SIZE(576 / GAELCO3D_RESOLUTION_DIVIDE, 432 / GAELCO3D_RESOLUTION_DIVIDE)
-	MDRV_SCREEN_VISIBLE_AREA(0, 576 / GAELCO3D_RESOLUTION_DIVIDE - 1, 0, 432 / GAELCO3D_RESOLUTION_DIVIDE - 1)
+	MDRV_SCREEN_SIZE(576, 432)
+	MDRV_SCREEN_VISIBLE_AREA(0, 575, 0, 431)
 	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(gaelco3d)
@@ -987,7 +987,7 @@ MACHINE_DRIVER_START( gaelco3d )
 MACHINE_DRIVER_END
 
 
-MACHINE_DRIVER_START( gaelco3d2 )
+static MACHINE_DRIVER_START( gaelco3d2 )
 	MDRV_IMPORT_FROM(gaelco3d)
 
 	/* basic machine hardware */

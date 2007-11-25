@@ -94,8 +94,8 @@ TODO:
 ***************************************************************************/
 
 UINT8 dynax_blitter_irq;
-UINT8 dynax_sound_irq;
-UINT8 dynax_vblank_irq;
+static UINT8 dynax_sound_irq;
+static UINT8 dynax_vblank_irq;
 
 /* It runs in IM 0, thus needs an opcode on the data bus */
 void sprtmtch_update_irq(void)
@@ -106,25 +106,25 @@ void sprtmtch_update_irq(void)
 	cpunum_set_input_line_and_vector(0, 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq); /* rst $xx */
 }
 
-WRITE8_HANDLER( dynax_vblank_ack_w )
+static WRITE8_HANDLER( dynax_vblank_ack_w )
 {
 	dynax_vblank_irq = 0;
 	sprtmtch_update_irq();
 }
 
-WRITE8_HANDLER( dynax_blitter_ack_w )
+static WRITE8_HANDLER( dynax_blitter_ack_w )
 {
 	dynax_blitter_irq = 0;
 	sprtmtch_update_irq();
 }
 
-INTERRUPT_GEN( sprtmtch_vblank_interrupt )
+static INTERRUPT_GEN( sprtmtch_vblank_interrupt )
 {
 	dynax_vblank_irq = 1;
 	sprtmtch_update_irq();
 }
 
-void sprtmtch_sound_callback(int state)
+static void sprtmtch_sound_callback(int state)
 {
 	dynax_sound_irq = state;
 	sprtmtch_update_irq();
@@ -146,25 +146,25 @@ void jantouki_update_irq(void)
 	cpunum_set_input_line_and_vector(0, 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq); /* rst $xx */
 }
 
-WRITE8_HANDLER( jantouki_vblank_ack_w )
+static WRITE8_HANDLER( jantouki_vblank_ack_w )
 {
 	dynax_vblank_irq = 0;
 	jantouki_update_irq();
 }
 
-WRITE8_HANDLER( jantouki_blitter_ack_w )
+static WRITE8_HANDLER( jantouki_blitter_ack_w )
 {
 	dynax_blitter_irq = data;
 	jantouki_update_irq();
 }
 
-WRITE8_HANDLER( jantouki_blitter2_ack_w )
+static WRITE8_HANDLER( jantouki_blitter2_ack_w )
 {
 	dynax_blitter2_irq = data;
 	jantouki_update_irq();
 }
 
-INTERRUPT_GEN( jantouki_vblank_interrupt )
+static INTERRUPT_GEN( jantouki_vblank_interrupt )
 {
 	dynax_vblank_irq = 1;
 	jantouki_update_irq();
@@ -175,10 +175,10 @@ INTERRUPT_GEN( jantouki_vblank_interrupt )
                             Jantouki - Sound CPU
 ***************************************************************************/
 
-UINT8 dynax_soundlatch_irq;
-UINT8 dynax_sound_vblank_irq;
+static UINT8 dynax_soundlatch_irq;
+static UINT8 dynax_sound_vblank_irq;
 
-void jantouki_sound_update_irq(void)
+static void jantouki_sound_update_irq(void)
 {
 	int irq	=	((dynax_sound_irq)			? 0x08 : 0) |
 				((dynax_soundlatch_irq)		? 0x10 : 0) |
@@ -186,19 +186,19 @@ void jantouki_sound_update_irq(void)
 	cpunum_set_input_line_and_vector(1, 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq); /* rst $xx */
 }
 
-INTERRUPT_GEN( jantouki_sound_vblank_interrupt )
+static INTERRUPT_GEN( jantouki_sound_vblank_interrupt )
 {
 	dynax_sound_vblank_irq = 1;
 	jantouki_sound_update_irq();
 }
 
-WRITE8_HANDLER( jantouki_sound_vblank_ack_w )
+static WRITE8_HANDLER( jantouki_sound_vblank_ack_w )
 {
 	dynax_sound_vblank_irq = 0;
 	jantouki_sound_update_irq();
 }
 
-void jantouki_sound_callback(int state)
+static void jantouki_sound_callback(int state)
 {
 	dynax_sound_irq = state;
 	jantouki_sound_update_irq();
@@ -654,7 +654,7 @@ static WRITE8_HANDLER( yarunara_rombank_w )
 	hnoridur_bank = data;
 }
 
-WRITE8_HANDLER( yarunara_flipscreen_w )
+static WRITE8_HANDLER( yarunara_flipscreen_w )
 {
 	dynax_flipscreen_w(0,(data&2)?1:0);
 }
@@ -845,16 +845,16 @@ ADDRESS_MAP_END
                             Jantouki - Main CPU
 ***************************************************************************/
 
-UINT8 dynax_soundlatch_ack;
-UINT8 dynax_soundlatch_full;
+static UINT8 dynax_soundlatch_ack;
+static UINT8 dynax_soundlatch_full;
 static UINT8 latch;
 
-READ8_HANDLER( jantouki_soundlatch_ack_r )
+static READ8_HANDLER( jantouki_soundlatch_ack_r )
 {
 	return (dynax_soundlatch_ack) ? 0x80 : 0;
 }
 
-WRITE8_HANDLER( jantouki_soundlatch_w )
+static WRITE8_HANDLER( jantouki_soundlatch_w )
 {
 	dynax_soundlatch_ack = 1;
 	dynax_soundlatch_full = 1;
@@ -863,7 +863,7 @@ WRITE8_HANDLER( jantouki_soundlatch_w )
 	jantouki_sound_update_irq();
 }
 
-READ8_HANDLER( jantouki_blitter_busy_r )
+static READ8_HANDLER( jantouki_blitter_busy_r )
 {
 	return 0;	// bit 0 & 1
 }
@@ -912,20 +912,20 @@ ADDRESS_MAP_END
                             Jantouki - Sound CPU
 ***************************************************************************/
 
-WRITE8_HANDLER( jantouki_soundlatch_ack_w )
+static WRITE8_HANDLER( jantouki_soundlatch_ack_w )
 {
 	dynax_soundlatch_ack = data;
 	dynax_soundlatch_irq = 0;
 	jantouki_sound_update_irq();
 }
 
-READ8_HANDLER( jantouki_soundlatch_r )
+static READ8_HANDLER( jantouki_soundlatch_r )
 {
 	dynax_soundlatch_full = 0;
 	return latch;
 }
 
-READ8_HANDLER( jantouki_soundlatch_status_r )
+static READ8_HANDLER( jantouki_soundlatch_status_r )
 {
 	return (dynax_soundlatch_full) ? 0 : 0x80;
 }
@@ -1151,7 +1151,7 @@ ADDRESS_MAP_END
 
 static int rombank;
 static UINT8 *romptr;
-int tenkai_dswsel, tenkai_ipsel, tenkai_ip;
+static int tenkai_dswsel, tenkai_ipsel, tenkai_ip;
 static UINT8 tenkai_p5_val;
 
 static WRITE8_HANDLER( tenkai_ipsel_w )
@@ -1429,7 +1429,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( MAHJONG_KEYS )
+static INPUT_PORTS_START( MAHJONG_KEYS )
 	// Keyboard 1
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_A		)	PORT_PLAYER(1)
@@ -1513,7 +1513,7 @@ INPUT_PORTS_START( MAHJONG_KEYS )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( MAHJONG_KEYS_BET )
+static INPUT_PORTS_START( MAHJONG_KEYS_BET )
 	// Keyboard 1
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_A		)	PORT_PLAYER(1)
@@ -1597,7 +1597,7 @@ INPUT_PORTS_START( MAHJONG_KEYS_BET )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_SMALL		)	PORT_PLAYER(2)	// "s"
 INPUT_PORTS_END
 
-INPUT_PORTS_START( HANAFUDA_KEYS )
+static INPUT_PORTS_START( HANAFUDA_KEYS )
 	// Keyboard 1
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER				) PORT_NAME("1") PORT_CODE(KEYCODE_1_PAD)
@@ -1681,7 +1681,7 @@ INPUT_PORTS_START( HANAFUDA_KEYS )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( HANAFUDA_KEYS_BET )
+static INPUT_PORTS_START( HANAFUDA_KEYS_BET )
 	// Keyboard 1
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER				) PORT_NAME("1") PORT_CODE(KEYCODE_1_PAD)
@@ -1766,7 +1766,7 @@ INPUT_PORTS_START( HANAFUDA_KEYS_BET )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( hanamai )
+static INPUT_PORTS_START( hanamai )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -1830,7 +1830,7 @@ INPUT_PORTS_START( hanamai )
 	PORT_INCLUDE( HANAFUDA_KEYS )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hnkochou )
+static INPUT_PORTS_START( hnkochou )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -1897,7 +1897,7 @@ INPUT_PORTS_START( hnkochou )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( hnoridur )
+static INPUT_PORTS_START( hnoridur )
 	PORT_START_TAG("DSW0")	/* note that these are in reverse order wrt the others */
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )
@@ -2012,7 +2012,7 @@ INPUT_PORTS_START( hnoridur )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( sprtmtch )
+static INPUT_PORTS_START( sprtmtch )
 	PORT_START_TAG("IN0")
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -2093,7 +2093,7 @@ INPUT_PORTS_START( sprtmtch )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mjfriday )
+static INPUT_PORTS_START( mjfriday )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
@@ -2157,7 +2157,7 @@ INPUT_PORTS_START( mjfriday )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( mjdialq2 )
+static INPUT_PORTS_START( mjdialq2 )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2224,7 +2224,7 @@ INPUT_PORTS_START( mjdialq2 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( yarunara )
+static INPUT_PORTS_START( yarunara )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
@@ -2286,7 +2286,7 @@ INPUT_PORTS_START( yarunara )
 	PORT_INCLUDE( MAHJONG_KEYS )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hanayara )
+static INPUT_PORTS_START( hanayara )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
@@ -2348,7 +2348,7 @@ INPUT_PORTS_START( hanayara )
 	PORT_INCLUDE( HANAFUDA_KEYS )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( quiztvqq )
+static INPUT_PORTS_START( quiztvqq )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
@@ -2443,7 +2443,7 @@ INPUT_PORTS_START( quiztvqq )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( mcnpshnt )
+static INPUT_PORTS_START( mcnpshnt )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -2506,7 +2506,7 @@ INPUT_PORTS_START( mcnpshnt )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( nanajign )
+static INPUT_PORTS_START( nanajign )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
@@ -2596,7 +2596,7 @@ INPUT_PORTS_START( nanajign )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( jantouki )
+static INPUT_PORTS_START( jantouki )
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x07, "0" )	// 0 6 2
@@ -2700,7 +2700,7 @@ INPUT_PORTS_START( jantouki )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( mjelct3 )
+static INPUT_PORTS_START( mjelct3 )
 	PORT_START_TAG("DSW2")	// 7c21 (select = 00)
 	PORT_DIPNAME( 0x03, 0x03, "Difficulty?" )
 	PORT_DIPSETTING(    0x03, "0" )	// 20
@@ -2825,7 +2825,7 @@ INPUT_PORTS_START( mjelct3 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( mjelctrn )
+static INPUT_PORTS_START( mjelctrn )
 	PORT_START_TAG("DSW2")	// 7c21 (select = 00)
 	PORT_DIPNAME( 0x03, 0x03, "Difficulty?" )
 	PORT_DIPSETTING(    0x03, "0" )	// 20
@@ -2950,7 +2950,7 @@ INPUT_PORTS_START( mjelctrn )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( majxtal7 )
+static INPUT_PORTS_START( majxtal7 )
 	PORT_START_TAG("DSW2")	// select = 00
 	PORT_DIPNAME( 0x03, 0x03, "Difficulty?" )
 	PORT_DIPSETTING(    0x03, "0" )	// 20
@@ -3074,7 +3074,7 @@ INPUT_PORTS_START( majxtal7 )
 	PORT_DIPSETTING(    0xff, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( neruton )
+static INPUT_PORTS_START( neruton )
 	PORT_START_TAG("DSW2") //6a77 (select = 00)
 	PORT_DIPNAME( 0x07, 0x07, "Hours" )
 	PORT_DIPSETTING(    0x07, "08:30" )
@@ -3138,7 +3138,7 @@ INPUT_PORTS_START( neruton )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( tenkai )
+static INPUT_PORTS_START( tenkai )
 	PORT_START	// 0
 	PORT_DIPNAME( 0x0f, 0x07, "Pay Out Rate" )
 	PORT_DIPSETTING(    0x00, "50" )
@@ -3284,7 +3284,7 @@ INPUT_PORTS_START( tenkai )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( mjreach )
+static INPUT_PORTS_START( mjreach )
 	PORT_START	// 0
 	PORT_DIPNAME( 0x0f, 0x07, "Pay Out Rate" )
 	PORT_DIPSETTING(    0x00, "50" )
@@ -3428,7 +3428,7 @@ INPUT_PORTS_START( mjreach )
 	PORT_INCLUDE( MAHJONG_KEYS_BET )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( htengoku )
+static INPUT_PORTS_START( htengoku )
 	PORT_START	// IN0
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE4	)	// medal out
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN	)
@@ -3793,7 +3793,7 @@ MACHINE_DRIVER_END
   what was it trying to do?
   set an irq and clear it before its even taken? */
 
-INTERRUPT_GEN( yarunara_clock_interrupt )
+static INTERRUPT_GEN( yarunara_clock_interrupt )
 {
 	static int i=0;
 	i^=1;
@@ -3948,7 +3948,7 @@ void mjelctrn_update_irq(void)
 	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0xfa);
 }
 
-INTERRUPT_GEN( mjelctrn_vblank_interrupt )
+static INTERRUPT_GEN( mjelctrn_vblank_interrupt )
 {
 	// This is a kludge to avoid losing blitter interrupts
 	// there should be a vblank ack mechanism
@@ -3982,7 +3982,7 @@ void neruton_update_irq(void)
 	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0x42);
 }
 
-INTERRUPT_GEN( neruton_vblank_interrupt )
+static INTERRUPT_GEN( neruton_vblank_interrupt )
 {
 	// This is a kludge to avoid losing blitter interrupts
 	// there should be a vblank ack mechanism
@@ -4011,7 +4011,7 @@ MACHINE_DRIVER_END
 /*  It runs in IM 2, thus needs a vector on the data bus:
     0x42 and 0x44 are very similar, they should be triggered by the blitter
     0x40 is vblank  */
-INTERRUPT_GEN( majxtal7_vblank_interrupt )
+static INTERRUPT_GEN( majxtal7_vblank_interrupt )
 {
 	// This is a kludge to avoid losing blitter interrupts
 	// there should be a vblank ack mechanism
@@ -4081,7 +4081,7 @@ MACHINE_DRIVER_END
                                Mahjong Tenkaigen
 ***************************************************************************/
 
-INTERRUPT_GEN( tenkai_interrupt )
+static INTERRUPT_GEN( tenkai_interrupt )
 {
 	switch(cpu_getiloops())
 	{
@@ -5428,7 +5428,7 @@ ROM_START( mjreach )
 	ROM_RELOAD(          0x80000, 0x80000 )
 ROM_END
 
-DRIVER_INIT( mjreach )
+static DRIVER_INIT( mjreach )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x10060, 0x10060, 0, 0, yarunara_flipscreen_w);
 }

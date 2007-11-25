@@ -136,7 +136,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( tickee )
+static INPUT_PORTS_START( tickee )
 	PORT_START
 	PORT_DIPNAME( 0x03, 0x01, "Game Time/Diff" )
 	PORT_DIPSETTING(    0x03, "Very Fast/Very Easy" )
@@ -192,7 +192,7 @@ INPUT_PORTS_START( tickee )
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ghoshunt )
+static INPUT_PORTS_START( ghoshunt )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, "Messages in Play")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ))
@@ -301,7 +301,7 @@ static tms34010_config tms_config =
  *
  *************************************/
 
-MACHINE_DRIVER_START( tickee )
+static MACHINE_DRIVER_START( tickee )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", TMS34010, 40000000/TMS34010_CLOCK_DIVIDER)
@@ -335,7 +335,7 @@ MACHINE_DRIVER_START( tickee )
 MACHINE_DRIVER_END
 
 
-MACHINE_DRIVER_START( ghoshunt )
+static MACHINE_DRIVER_START( ghoshunt )
 	MDRV_IMPORT_FROM(tickee)
 
 	/* basic machine hardware */

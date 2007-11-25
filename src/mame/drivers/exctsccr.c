@@ -44,13 +44,15 @@ extern VIDEO_START( exctsccr );
 extern VIDEO_UPDATE( exctsccr );
 
 /* from machine */
+#if MCU_HACK
 extern UINT8 *exctsccr_mcu_ram;
 extern WRITE8_HANDLER( exctsccr_mcu_w );
 extern WRITE8_HANDLER( exctsccr_mcu_control_w );
 extern WRITE8_HANDLER( exctscc2_mcu_control_w );
+#endif
 
 
-WRITE8_HANDLER( exctsccr_DAC_data_w )
+static WRITE8_HANDLER( exctsccr_DAC_data_w )
 {
 	DAC_signed_data_w(offset,data << 2);
 }
@@ -108,13 +110,12 @@ static const int *mcu_patch_data = NULL;
 static UINT8 *mcu_shared_ram;
 static WRITE8_HANDLER( cexctsccr_mcu_halt_w )
 {
+#if MCU_HACK
+	exctsccr_mcu_control_w(offset,data&1);
+#else
 	const int *p;
 
 	data &= 1;
-#if MCU_HACK
-	exctsccr_mcu_control_w(offset,data);
-extern UINT8 *exctsccr_mcu_ram;
-#else
 	cpunum_set_input_line(2, INPUT_LINE_HALT, data ? ASSERT_LINE : CLEAR_LINE);
 	if( (p=mcu_patch_data) != NULL)
 	{
@@ -129,8 +130,8 @@ extern UINT8 *exctsccr_mcu_ram;
 			p++;
 		}
 	}
-}
 #endif
+}
 
 /***************************************************************************
 
@@ -240,7 +241,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( exctsccr )
+static INPUT_PORTS_START( exctsccr )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -590,7 +591,7 @@ ROM_END
 
 /* The games need a different MCU control */
 
-DRIVER_INIT( exctsccr )
+static DRIVER_INIT( exctsccr )
 {
 #if MCU_HACK
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa006, 0xa006, 0, 0, exctsccr_mcu_control_w);
@@ -599,7 +600,7 @@ DRIVER_INIT( exctsccr )
 #endif
 }
 
-DRIVER_INIT( exctscc2 )
+static DRIVER_INIT( exctscc2 )
 {
 #if MCU_HACK
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa006, 0xa006, 0, 0, exctscc2_mcu_control_w);

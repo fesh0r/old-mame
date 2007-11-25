@@ -111,7 +111,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( skyfox )
+static INPUT_PORTS_START( skyfox )
 
 	PORT_START_TAG("IN0")	// Player 1
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    )
@@ -413,7 +413,7 @@ ROM_END
 
 
 /* Untangle the graphics: cut each 32x32x8 tile in 16 8x8x8 tiles */
-DRIVER_INIT( skyfox )
+static DRIVER_INIT( skyfox )
 {
 	UINT8 *RAM = memory_region(REGION_GFX1);
 	UINT8 *end = RAM + memory_region_length(REGION_GFX1);

@@ -10,6 +10,151 @@
 
 ****************************************************************************
 
+Slip Stream (950515 HISPANIC)
+Sega, 1995
+
+This game runs on Sega System 32 hardware.
+
+PCB Layout
+----------
+837-7428  171-5964E (C) SEGA 1990
+|-------------------------------------------------------------------------------------------|
+| TDA1518                                                               8464      8464      |
+|             HM65256                                                   8464      8464      |
+|  TL064      HM65256             |---------|                             |---------|       |
+|   LC7881  |-----|               |SEGA     |                             |SEGA     |       |
+|           |ASSP |               |315-5385 |                             |315-5388 |       |
+|CND        |5C105|               |         |                             |         |       |
+|           |1FD07|               |         |             |---------|     |         |       |
+|           |-----|               |---------|        CNF  |SEGA     |     |---------|       |
+|                                                         |315-5242 |                       |
+|-|  TL062   TL064                  84256                 |         |                       |
+  |                                 84256                 |         |                    CNI|
+|-|                                                       |---------|      |---------|      |
+|             YM3438                                                       |SEGA     |      |
+|                             |-----------|                                |315-5387 |      |
+|             YM3438          |NEC        |       315-5441                 |         |      |
+|                             |D70616R-16 |                                |         |      |
+|J              BAT_5.5V      |9105M9 V60 |                                |---------|      |
+|A   BAT_3.3V                 |(C)NEC 1986|                                                 |
+|M                            |           |                                  D42264         |
+|M            8464            |-----------|                                  D42264         |
+|A                                                                           D42264         |
+|             Z80                                                            D42264         |
+|                            HM53461ZP-12   HM53461ZP-12                                    |
+|                            HM53461ZP-12   HM53461ZP-12                                    |
+|                            HM53461ZP-12   HM53461ZP-12                                    |
+|                            HM53461ZP-12   HM53461ZP-12                |-----------|       |
+|-|                          HM53461ZP-12   HM53461ZP-12                | SEGA      |    CNE|
+  |      |-------|           HM53461ZP-12   HM53461ZP-12                | 315-5386A |       |
+|-|      |SEGA   |           HM53461ZP-12   HM53461ZP-12                |           |       |
+|        |315-   |           HM53461ZP-12   HM53461ZP-12                |           |       |
+|        |5296   |                                                      |           |       |
+|        |-------|        3771   3771                                   |-----------|       |
+|         93C46                                                              D42264         |
+|CNB                         SW2                                             D42264         |
+|                            SW1                                             D42264         |
+|       CNA                  DSW1    32MHz  50MHz                            D42264         |
+|-------------------------------------------------------------------------------------------|
+
+Notes:
+      V60 CPU running at 16.00MHz [32/2]
+      Z80 CPU running at 8.000MHz [32/4]
+      YM3438 running at 8.000MHz [32/4]
+      CNE/F/I - Multi-pin connectors for connection of ROM Board
+      CND     - 4 pin connector for 2nd Speaker for Stereo Output
+      CNA     - 30 pin connector for extra controls PCB
+      CNB     - 26 pin connector (purpose unknown)
+      SW1     - push-button TEST switch
+      SW2     - push button SERVICE switch
+      DSW1    - 4-position DIP Switch
+      HM53461 - Hitachi 256k Dual Port RAM
+      D42264  - NEC 256k Dual Port RAM
+
+      SEGA Custom ICs:
+                      315-5441  Lattice GAL16V8A (DIP20)
+                      315-5386A (QFP184)
+                      315-5388  (QFP160)
+                      315-5387  (QFP160)
+                      315-5242  (custom ceramic DIP32 containing a small QFP IC and some capacitors/resistors etc)
+                      315-5296  (QFP100)
+                      ASSP 5C105 (QFP80)
+                      315-5385  (QFP128)
+
+
+ROM Board
+---------
+837-7429-01
+|-------------------------------------------------------------------------------------------|
+|JP10-JP27                     CNJ                    CNH                      JP1-JP9      |
+|              IC6                                                                          |
+| IC7                                                                                       |
+|              IC13                                                                         |
+| IC14                                                                                      |
+|            315-5442                                                                       |
+| IC22                                 IC25                IC24               IC23          |
+|                                                                                           |
+| IC26                                 IC29                IC28               IC27          |
+|                                                                                           |
+| IC31            CNK                  IC34                IC23               IC32          |
+|                                                                                           |
+| IC35                                 IC38                IC37               IC36          |
+|             CNG       JP28-JP32                                                           |
+|-------------------------------------------------------------------------------------------|
+
+Notes:
+CNG/H/J  - Multi-pin connectors (below PCB) for connection of ROM Board to Main Board
+CNK      - Custom Sega connector for connection of protection daughterboard (not used)
+315-5442 - MMI PAL16L8ACN (DIP20)
+
+Jumpers: (to configure ROM sizes used on Slip Stream. Other games)
+         (may vary depending on ROM types used)
+JP1: 2-3           JP17: 1-2
+JP2: 2-3           JP18: 2-3
+JP3: 2-3           JP19: 1-2
+JP4: 1-2           JP20: 2-3
+JP5: 2-3           JP21: 1-2
+JP6: 2-3           JP22: 2-3
+JP7: 1-2           JP23: 1-2
+JP8: 2-3           JP24: 1-2
+JP9: 1-2           JP25: 2-3
+JP10: 2-3          JP26: 1-2
+JP11: 1-2          JP27: 1-2
+JP12: 1-2          JP28: 2-3
+JP13: 1-2          JP29: 1-2
+JP14: 2-3          JP30: 2-3
+JP15: 2-3          JP31: 1-2
+JP16: 2-3          JP32: 1-2
+
+ROM Locations
+-------------
+PCB Label  CPU P0 CPU P1    CPU D0   CPU D1   SND0     SND1     SND2 SND3 SCR0     SCR1     SCR2     SCR3     OBJ0     OBJ1     OBJ2     OBJ3     OBJ4     OBJ5     OBJ6     OBJ7
+IC#        IC13   IC6       IC7      IC14     IC35     IC31     -    -    IC38     IC34     IC29     IC25     IC36     IC32     IC27     IC23     IC37     IC33     IC28     IC24
+IC Type    -      27C4002   27C4000  27C4000  27C010   27C4000  -    -    27C4000  27C4000  27C4000  27C4000  27C4000  27C4000  27C4000  27C4000  27C4000  27C4000  27C4000  27C4000
+ROM Label  -      S32HPRG01 S32DAT00 S32DAT01 S32SND00 S32SND01 -    -    S32SCR00 S32SCR01 S32SCR02 S32SCR03 S32OBJ00 S32OBJ01 S32OBJ02 S32OBJ03 S32OBJ04 S32OBJ05 S32OBJ06 S32OBJ07
+
+
+Extra Controls PCB
+------------------
+837-7536
+837-7536-91 (sticker)
+|------------------------|
+|                        |
+|                 74HC74 |
+|         OKI_M6253      |
+|  74HC4053              |
+| DAP601          74HC139|
+| DAN601                 |
+|CN2              CN1    |
+|------------------------|
+Notes:
+CN2 - Multi-pin connector for controls
+CN1 - Connector joining to CNA on main PCB
+
+
+*********************************************************************************************
+
+
 Title Fight (Export Revision)
 Sega, 1992
 
@@ -203,7 +348,7 @@ static UINT8 *z80_shared_ram;
 
 /* V60 interrupt controller */
 static UINT8 v60_irq_control[0x10];
-static mame_timer *v60_irq_timer[2];
+static emu_timer *v60_irq_timer[2];
 
 /* sound interrupt controller */
 static UINT8 sound_irq_control[4];
@@ -247,8 +392,8 @@ static MACHINE_RESET( system32 )
 	memset(v60_irq_control, 0xff, sizeof(v60_irq_control));
 
 	/* allocate timers */
-	v60_irq_timer[0] = mame_timer_alloc(signal_v60_irq_callback);
-	v60_irq_timer[1] = mame_timer_alloc(signal_v60_irq_callback);
+	v60_irq_timer[0] = timer_alloc(signal_v60_irq_callback);
+	v60_irq_timer[1] = timer_alloc(signal_v60_irq_callback);
 
 	/* clear IRQ lines */
 	cpunum_set_input_line(0, 0, CLEAR_LINE);
@@ -335,8 +480,8 @@ static void int_control_w(int offset, UINT8 data)
 			duration = v60_irq_control[8] + ((v60_irq_control[9] << 8) & 0xf00);
 			if (duration)
 			{
-				mame_time period = make_mame_time(0, mame_time_to_subseconds(MAME_TIME_IN_HZ(TIMER_0_CLOCK)) * duration);
-				mame_timer_adjust(v60_irq_timer[0], period, MAIN_IRQ_TIMER0, time_never);
+				attotime period = attotime_make(0, attotime_to_attoseconds(ATTOTIME_IN_HZ(TIMER_0_CLOCK)) * duration);
+				timer_adjust(v60_irq_timer[0], period, MAIN_IRQ_TIMER0, attotime_never);
 			}
 			break;
 
@@ -346,8 +491,8 @@ static void int_control_w(int offset, UINT8 data)
 			duration = v60_irq_control[10] + ((v60_irq_control[11] << 8) & 0xf00);
 			if (duration)
 			{
-				mame_time period = make_mame_time(0, mame_time_to_subseconds(MAME_TIME_IN_HZ(TIMER_1_CLOCK)) * duration);
-				mame_timer_adjust(v60_irq_timer[1], period, MAIN_IRQ_TIMER1, time_never);
+				attotime period = attotime_make(0, attotime_to_attoseconds(ATTOTIME_IN_HZ(TIMER_1_CLOCK)) * duration);
+				timer_adjust(v60_irq_timer[1], period, MAIN_IRQ_TIMER1, attotime_never);
 			}
 			break;
 
@@ -426,7 +571,7 @@ static INTERRUPT_GEN( start_of_vblank_int )
 {
 	signal_v60_irq(MAIN_IRQ_VBSTART);
 	system32_set_vblank(1);
-	mame_timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, end_of_vblank_int);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, end_of_vblank_int);
 	if (system32_prot_vblank)
 		(*system32_prot_vblank)();
 }
@@ -1275,7 +1420,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-INPUT_PORTS_START( arescue )
+static INPUT_PORTS_START( arescue )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1301,7 +1446,7 @@ INPUT_PORTS_START( arescue )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( alien3 )
+static INPUT_PORTS_START( alien3 )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1330,7 +1475,7 @@ INPUT_PORTS_START( alien3 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( arabfgt )
+static INPUT_PORTS_START( arabfgt )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1363,7 +1508,7 @@ INPUT_PORTS_START( arabfgt )
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( arabfgtu )
+static INPUT_PORTS_START( arabfgtu )
 	PORT_INCLUDE( arabfgt )
 
 	PORT_MODIFY("SERVICE12")
@@ -1376,7 +1521,7 @@ INPUT_PORTS_START( arabfgtu )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( brival )
+static INPUT_PORTS_START( brival )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1397,7 +1542,7 @@ INPUT_PORTS_START( brival )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( darkedge )
+static INPUT_PORTS_START( darkedge )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1422,12 +1567,12 @@ INPUT_PORTS_START( darkedge )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( dbzvrvs )
+static INPUT_PORTS_START( dbzvrvs )
 	PORT_INCLUDE( system32_generic )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( f1en )
+static INPUT_PORTS_START( f1en )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1468,7 +1613,7 @@ INPUT_PORTS_START( f1en )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( f1lap )
+static INPUT_PORTS_START( f1lap )
 	PORT_INCLUDE( f1en )
 
 	PORT_MODIFY("P1")
@@ -1478,7 +1623,7 @@ INPUT_PORTS_START( f1lap )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( ga2 )
+static INPUT_PORTS_START( ga2 )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_START_TAG("EXTRA1")
@@ -1507,7 +1652,7 @@ INPUT_PORTS_START( ga2 )
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ga2u )
+static INPUT_PORTS_START( ga2u )
 	PORT_INCLUDE( ga2 )
 
 	PORT_MODIFY("SERVICE12")
@@ -1520,7 +1665,7 @@ INPUT_PORTS_START( ga2u )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( harddunk )
+static INPUT_PORTS_START( harddunk )
 	PORT_INCLUDE( multi32_generic )
 
 	PORT_MODIFY("P1_A")
@@ -1600,7 +1745,7 @@ INPUT_PORTS_START( harddunk )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( holo )
+static INPUT_PORTS_START( holo )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1611,7 +1756,7 @@ INPUT_PORTS_START( holo )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( jpark )
+static INPUT_PORTS_START( jpark )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1634,7 +1779,7 @@ INPUT_PORTS_START( jpark )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( orunners )
+static INPUT_PORTS_START( orunners )
 	PORT_INCLUDE( multi32_generic )
 
 	PORT_MODIFY("P1_A")
@@ -1679,7 +1824,7 @@ INPUT_PORTS_START( orunners )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( radm )
+static INPUT_PORTS_START( radm )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1721,7 +1866,7 @@ INPUT_PORTS_START( radm )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( radr )
+static INPUT_PORTS_START( radr )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1761,7 +1906,7 @@ INPUT_PORTS_START( radr )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( scross )
+static INPUT_PORTS_START( scross )
 	PORT_INCLUDE( multi32_generic )
 
 	PORT_MODIFY("P1_A")
@@ -1790,7 +1935,7 @@ INPUT_PORTS_START( scross )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( slipstrm )
+static INPUT_PORTS_START( slipstrm )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1830,7 +1975,7 @@ INPUT_PORTS_START( slipstrm )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( sonic )
+static INPUT_PORTS_START( sonic )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1865,7 +2010,7 @@ INPUT_PORTS_START( sonic )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( spidman )
+static INPUT_PORTS_START( spidman )
 	PORT_INCLUDE( system32_generic )
 
 	PORT_MODIFY("P1")
@@ -1899,7 +2044,7 @@ INPUT_PORTS_START( spidman )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( spidmanu )
+static INPUT_PORTS_START( spidmanu )
 	PORT_INCLUDE( spidman )
 
 	PORT_MODIFY("SERVICE12")
@@ -1912,12 +2057,12 @@ INPUT_PORTS_START( spidmanu )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( svf )
+static INPUT_PORTS_START( svf )
 	PORT_INCLUDE( system32_generic )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( titlef )
+static INPUT_PORTS_START( titlef )
 	PORT_INCLUDE( multi32_generic )
 
 	PORT_MODIFY("P1_A")
@@ -3175,32 +3320,64 @@ ROM_END
  **************************************************************************************************************************
  **************************************************************************************************************************
     Slipstream
+
+    GAME BD NO. 833-7429-01
+     1. ROM BD. 837-7429-01
+     2. MAIN BD. 837-7428
+    A/D BD NO. 837-7536
 */
 ROM_START( slipstrm )
 	ROM_REGION( 0x200000, REGION_CPU1, 0 ) /* v60 code + data */
-	ROM_LOAD_x2( "slipstrm.u6",     0x000000, 0x080000, CRC(7d066307) SHA1(d87e04167263b435b77830db02ed58651ccc020c) )
-	ROM_LOAD16_BYTE( "slipstrm.u14",0x100000, 0x080000, CRC(c3ff6309) SHA1(dcc857736fe0f15aa7909c3ee88a7e239c8f0228) )
-	ROM_LOAD16_BYTE( "slipstrm.u7", 0x100001, 0x080000, CRC(0e605c81) SHA1(47c64195cab9a07b234d5a375d26168e53ffaa17) )
+	ROM_LOAD_x2( "s32b_prg01.ic6",    0x000000, 0x080000, CRC(7d066307) SHA1(d87e04167263b435b77830db02ed58651ccc020c) )
+	ROM_LOAD16_BYTE( "s32_dat00.ic14",0x100000, 0x080000, CRC(c3ff6309) SHA1(dcc857736fe0f15aa7909c3ee88a7e239c8f0228) )
+	ROM_LOAD16_BYTE( "s32_dat01.ic7", 0x100001, 0x080000, CRC(0e605c81) SHA1(47c64195cab9a07b234d5a375d26168e53ffaa17) )
 
 	ROM_REGION( 0x500000, REGION_CPU2, 0 ) /* sound CPU */
-	ROM_LOAD_x8( "slipstrm.u35", 0x100000, 0x020000, CRC(0fee2278) SHA1(7533a03c3fc46d65dfdd07bddf1e6e0bbc368752) )
-	ROM_LOAD_x2( "slipstrm.u31", 0x200000, 0x080000, CRC(ae7be5f2) SHA1(ba089355e64864435bcc3b0c208e4bce1ea66295) )
+	ROM_LOAD_x8( "s32_snd00.ic35", 0x100000, 0x020000, CRC(0fee2278) SHA1(7533a03c3fc46d65dfdd07bddf1e6e0bbc368752) )
+	ROM_LOAD_x2( "s32_snd01.ic31", 0x200000, 0x080000, CRC(ae7be5f2) SHA1(ba089355e64864435bcc3b0c208e4bce1ea66295) )
 
 	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
-	ROM_LOAD32_BYTE( "slipstrm.u38", 0x000000, 0x080000, CRC(3cbb2d0b) SHA1(b94006347b72cd60a889b0e279f62f677cedfd2e) )
-	ROM_LOAD32_BYTE( "slipstrm.u34", 0x000002, 0x080000, CRC(4167be55) SHA1(96b34d311b318c00c3fad917e341589a70ba0a15) )
-	ROM_LOAD32_BYTE( "slipstrm.u29", 0x000001, 0x080000, CRC(52c4bb85) SHA1(4fbee1072a19c75c25b5fd269acc75640923d69c) )
-	ROM_LOAD32_BYTE( "slipstrm.u25", 0x000003, 0x080000, CRC(4948604a) SHA1(d5a1b9781fef7976a59a0af9b755a04fcacf9381) )
+	ROM_LOAD32_BYTE( "s32_scr00.ic38", 0x000000, 0x080000, CRC(3cbb2d0b) SHA1(b94006347b72cd60a889b0e279f62f677cedfd2e) )
+	ROM_LOAD32_BYTE( "s32_scr01.ic34", 0x000002, 0x080000, CRC(4167be55) SHA1(96b34d311b318c00c3fad917e341589a70ba0a15) )
+	ROM_LOAD32_BYTE( "s32_scr02.ic29", 0x000001, 0x080000, CRC(52c4bb85) SHA1(4fbee1072a19c75c25b5fd269acc75640923d69c) )
+	ROM_LOAD32_BYTE( "s32_scr03.ic25", 0x000003, 0x080000, CRC(4948604a) SHA1(d5a1b9781fef7976a59a0af9b755a04fcacf9381) )
 
 	ROM_REGION32_BE( 0x400000, REGION_GFX2, 0 ) /* sprites */
-	ROMX_LOAD( "slipstrm.u36", 0x000000, 0x80000, CRC(cffe9e0d) SHA1(5272d54ff142de927a9abd61f3646e963c7d22c4) , ROM_SKIP(7) )
-	ROMX_LOAD( "slipstrm.u32", 0x000001, 0x80000, CRC(4ebd1383) SHA1(ce35f4d15e7904bfde55e58cdde925cba8002763) , ROM_SKIP(7) )
-	ROMX_LOAD( "slipstrm.u27", 0x000002, 0x80000, CRC(b3cf4fe2) SHA1(e13199522e1e3e8b9cfe72cc29b33f25dad542ef) , ROM_SKIP(7) )
-	ROMX_LOAD( "slipstrm.u23", 0x000003, 0x80000, CRC(c6345391) SHA1(155758097911ffca0c5c0b2a24a8033339dcfcbb) , ROM_SKIP(7) )
-	ROMX_LOAD( "slipstrm.u37", 0x000004, 0x80000, CRC(2de4288e) SHA1(8e794f79f506293edb7609187a7908516ce76849) , ROM_SKIP(7) )
-	ROMX_LOAD( "slipstrm.u33", 0x000005, 0x80000, CRC(6cfb74fb) SHA1(b74c886959910cd069427418525b23300a9b7b18) , ROM_SKIP(7) )
-	ROMX_LOAD( "slipstrm.u28", 0x000006, 0x80000, CRC(53234bf4) SHA1(1eca538dcb86e44c31310ab1ab42a2b66b69c8fe) , ROM_SKIP(7) )
-	ROMX_LOAD( "slipstrm.u24", 0x000007, 0x80000, CRC(22c129cf) SHA1(0f64680511a357038f6a556253c13fbb5417dd1a) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj00.ic36", 0x000000, 0x80000, CRC(cffe9e0d) SHA1(5272d54ff142de927a9abd61f3646e963c7d22c4) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj01.ic32", 0x000001, 0x80000, CRC(4ebd1383) SHA1(ce35f4d15e7904bfde55e58cdde925cba8002763) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj02.ic27", 0x000002, 0x80000, CRC(b3cf4fe2) SHA1(e13199522e1e3e8b9cfe72cc29b33f25dad542ef) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj03.ic23", 0x000003, 0x80000, CRC(c6345391) SHA1(155758097911ffca0c5c0b2a24a8033339dcfcbb) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj04.ic37", 0x000004, 0x80000, CRC(2de4288e) SHA1(8e794f79f506293edb7609187a7908516ce76849) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj05.ic33", 0x000005, 0x80000, CRC(6cfb74fb) SHA1(b74c886959910cd069427418525b23300a9b7b18) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj06.ic28", 0x000006, 0x80000, CRC(53234bf4) SHA1(1eca538dcb86e44c31310ab1ab42a2b66b69c8fe) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj07.ic24", 0x000007, 0x80000, CRC(22c129cf) SHA1(0f64680511a357038f6a556253c13fbb5417dd1a) , ROM_SKIP(7) )
+ROM_END
+
+ROM_START( slipstrh )
+	ROM_REGION( 0x200000, REGION_CPU1, 0 ) /* v60 code + data */
+	ROM_LOAD_x2( "s32h_prg01.ic6",    0x000000, 0x080000, CRC(ab778297) SHA1(e440d44b20f2f7478ef7d86af90af5eb7b9a545a) )
+	ROM_LOAD16_BYTE( "s32_dat00.ic14",0x100000, 0x080000, CRC(c3ff6309) SHA1(dcc857736fe0f15aa7909c3ee88a7e239c8f0228) )
+	ROM_LOAD16_BYTE( "s32_dat01.ic7", 0x100001, 0x080000, CRC(0e605c81) SHA1(47c64195cab9a07b234d5a375d26168e53ffaa17) )
+
+	ROM_REGION( 0x500000, REGION_CPU2, 0 ) /* sound CPU */
+	ROM_LOAD_x8( "s32_snd00.ic35", 0x100000, 0x020000, CRC(0fee2278) SHA1(7533a03c3fc46d65dfdd07bddf1e6e0bbc368752) )
+	ROM_LOAD_x2( "s32_snd01.ic31", 0x200000, 0x080000, CRC(ae7be5f2) SHA1(ba089355e64864435bcc3b0c208e4bce1ea66295) )
+
+	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
+	ROM_LOAD32_BYTE( "s32_scr00.ic38", 0x000000, 0x080000, CRC(3cbb2d0b) SHA1(b94006347b72cd60a889b0e279f62f677cedfd2e) )
+	ROM_LOAD32_BYTE( "s32_scr01.ic34", 0x000002, 0x080000, CRC(4167be55) SHA1(96b34d311b318c00c3fad917e341589a70ba0a15) )
+	ROM_LOAD32_BYTE( "s32_scr02.ic29", 0x000001, 0x080000, CRC(52c4bb85) SHA1(4fbee1072a19c75c25b5fd269acc75640923d69c) )
+	ROM_LOAD32_BYTE( "s32_scr03.ic25", 0x000003, 0x080000, CRC(4948604a) SHA1(d5a1b9781fef7976a59a0af9b755a04fcacf9381) )
+
+	ROM_REGION32_BE( 0x400000, REGION_GFX2, 0 ) /* sprites */
+	ROMX_LOAD( "s32_obj00.ic36", 0x000000, 0x80000, CRC(cffe9e0d) SHA1(5272d54ff142de927a9abd61f3646e963c7d22c4) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj01.ic32", 0x000001, 0x80000, CRC(4ebd1383) SHA1(ce35f4d15e7904bfde55e58cdde925cba8002763) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj02.ic27", 0x000002, 0x80000, CRC(b3cf4fe2) SHA1(e13199522e1e3e8b9cfe72cc29b33f25dad542ef) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj03.ic23", 0x000003, 0x80000, CRC(c6345391) SHA1(155758097911ffca0c5c0b2a24a8033339dcfcbb) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj04.ic37", 0x000004, 0x80000, CRC(2de4288e) SHA1(8e794f79f506293edb7609187a7908516ce76849) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj05.ic33", 0x000005, 0x80000, CRC(6cfb74fb) SHA1(b74c886959910cd069427418525b23300a9b7b18) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj06.ic28", 0x000006, 0x80000, CRC(53234bf4) SHA1(1eca538dcb86e44c31310ab1ab42a2b66b69c8fe) , ROM_SKIP(7) )
+	ROMX_LOAD( "s32_obj07.ic24", 0x000007, 0x80000, CRC(22c129cf) SHA1(0f64680511a357038f6a556253c13fbb5417dd1a) , ROM_SKIP(7) )
 ROM_END
 
 
@@ -3853,14 +4030,15 @@ GAME( 1991, radm,     0,        system32,     radm,     radm,     ROT0, "Sega", 
 GAME( 1991, radmu,    radm,     system32,     radm,     radm,     ROT0, "Sega",   "Rad Mobile (US)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1991, radr,     0,        system32,     radr,     radr,     ROT0, "Sega",   "Rad Rally (World)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1991, radru,    radr,     system32,     radr,     radr,     ROT0, "Sega",   "Rad Rally (US)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1995, slipstrm, 0,        system32,     slipstrm, slipstrm, ROT0, "Capcom", "Slipstream (Brazil 950515)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1995, slipstrm, 0,        system32,     slipstrm, slipstrm, ROT0, "Capcom", "Slipstream (950515 BRAZIL)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1995, slipstrh, slipstrm, system32,     slipstrm, slipstrm, ROT0, "Capcom", "Slipstream (950515 HISPANIC)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1992, sonic,    0,        system32,     sonic,    sonic,    ROT0, "Sega",   "SegaSonic The Hedgehog (Japan, rev. C)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1992, sonicp,   sonic,    system32,     sonic,    sonicp,   ROT0, "Sega",   "SegaSonic The Hedgehog (Japan, prototype)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1991, spidman,  0,        system32,     spidman,  spidman,  ROT0, "Sega",   "Spider-Man: The Videogame (World)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1991, spidmanu, spidman,  system32,     spidmanu, spidman,  ROT0, "Sega",   "Spider-Man: The Videogame (US)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1994, svf,      0,        system32,     svf,      svf,      ROT0, "Sega",   "Super Visual Football: European Sega Cup", GAME_IMPERFECT_GRAPHICS )
-GAME( 1994, svs,	  svf,		system32,     svf,	    svf,      ROT0, "Sega",   "Super Visual Soccer: Sega Cup (US)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1994, jleague,  svf,		system32,     svf,      jleague,  ROT0, "Sega",   "The J.League 1994 (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, svs,      svf,      system32,     svf,      svf,      ROT0, "Sega",   "Super Visual Soccer: Sega Cup (US)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, jleague,  svf,      system32,     svf,      jleague,  ROT0, "Sega",   "The J.League 1994 (Japan)", GAME_IMPERFECT_GRAPHICS )
 
 GAME( 1994, harddunk, 0,        multi32,      harddunk, harddunk, ROT0, "Sega",   "Hard Dunk (World)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1994, harddunj, harddunk, multi32,      harddunk, harddunk, ROT0, "Sega",   "Hard Dunk (Japan)", GAME_IMPERFECT_GRAPHICS )

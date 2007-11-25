@@ -76,7 +76,7 @@ extern UINT32* skns_spc_regs;
 
 static UINT16 *galpani3_sprregs, *galpani3_spriteram;
 
-INTERRUPT_GEN( galpani3_vblank ) // 2, 3, 5 ?
+static INTERRUPT_GEN( galpani3_vblank ) // 2, 3, 5 ?
 {
 	switch ( cpu_getiloops() )
 	{
@@ -88,7 +88,7 @@ INTERRUPT_GEN( galpani3_vblank ) // 2, 3, 5 ?
 
 
 
-VIDEO_START(galpani3)
+static VIDEO_START(galpani3)
 {
 	/* so we can use suprnova.c */
 	buffered_spriteram32 = auto_malloc ( 0x4000 );
@@ -99,7 +99,7 @@ VIDEO_START(galpani3)
 extern void skns_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect );
 
 
-VIDEO_UPDATE(galpani3)
+static VIDEO_UPDATE(galpani3)
 {
 	fillbitmap(bitmap, get_black_pen(machine), cliprect);
 
@@ -108,7 +108,7 @@ VIDEO_UPDATE(galpani3)
 }
 
 
-INPUT_PORTS_START( galpani3 )
+static INPUT_PORTS_START( galpani3 )
 
 	PORT_START	// IN0 - Player Controls
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	) PORT_8WAY PORT_PLAYER(1)
@@ -169,7 +169,7 @@ INPUT_PORTS_START( galpani3 )
 INPUT_PORTS_END
 
 
-WRITE16_HANDLER( galpani3_suprnova_sprite32_w )
+static WRITE16_HANDLER( galpani3_suprnova_sprite32_w )
 {
 	COMBINE_DATA(&galpani3_spriteram[offset]);
 
@@ -178,7 +178,7 @@ WRITE16_HANDLER( galpani3_suprnova_sprite32_w )
 	buffered_spriteram32[offset]=(galpani3_spriteram[offset*2+1]<<16) | (galpani3_spriteram[offset*2]);
 }
 
-WRITE16_HANDLER( galpani3_suprnova_sprite32regs_w )
+static WRITE16_HANDLER( galpani3_suprnova_sprite32regs_w )
 {
 	COMBINE_DATA(&galpani3_sprregs[offset]);
 
@@ -197,7 +197,7 @@ WRITE16_HANDLER( galpani3_suprnova_sprite32regs_w )
 ***************************************************************************/
 static UINT16 *mcu_ram, galpani3_mcu_com[4];
 
-void galpani3_mcu_run(void)
+static void galpani3_mcu_run(void)
 {
 	UINT16 mcu_command = mcu_ram[0x0010/2];		/* command nb */
 	UINT16 mcu_offset  = mcu_ram[0x0012/2] / 2;	/* offset in shared RAM where MCU will write */
@@ -303,7 +303,7 @@ GALPANI3_MCU_COM_W(1)
 GALPANI3_MCU_COM_W(2)
 GALPANI3_MCU_COM_W(3)
 
-READ16_HANDLER( galpani3_mcu_status_r )
+static READ16_HANDLER( galpani3_mcu_status_r )
 {
 	logerror("cpu #%d (PC=%06X): read mcu status\n", cpu_getactivecpu(), activecpu_get_previouspc());
 	return 0;
@@ -421,7 +421,7 @@ ROM_START( galpani3 )
 ROM_END
 
 
-DRIVER_INIT( galpani3 )
+static DRIVER_INIT( galpani3 )
 {
 	UINT16 *patchrom = (UINT16 *)memory_region(REGION_CPU1);
 

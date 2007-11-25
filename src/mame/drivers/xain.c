@@ -174,7 +174,7 @@ static WRITE8_HANDLER( xain_sharedram_w )
 	/* so let's resync every time they are changed to avoid deadlocks */
 	if ((offset == 0x003d || offset == 0x003e)
 			&& xain_sharedram[offset] != data)
-		cpu_boost_interleave(time_zero, MAME_TIME_IN_USEC(20));
+		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(20));
 	xain_sharedram[offset] = data;
 }
 
@@ -343,7 +343,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( xsleena )
+static INPUT_PORTS_START( xsleena )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -692,7 +692,7 @@ ROM_END
 
 
 
-DRIVER_INIT( xsleena )
+static DRIVER_INIT( xsleena )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 
@@ -705,7 +705,7 @@ DRIVER_INIT( xsleena )
 	RAM[0xd48d] = 0x12;
 }
 
-DRIVER_INIT( solarwar )
+static DRIVER_INIT( solarwar )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 

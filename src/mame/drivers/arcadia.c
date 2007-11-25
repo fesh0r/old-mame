@@ -69,7 +69,7 @@ static UINT8 coin_counter[2];
  *
  *************************************/
 
-WRITE16_HANDLER( arcadia_multibios_change_game )
+static WRITE16_HANDLER( arcadia_multibios_change_game )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x97ffff, 0, 0, (data == 0) ? MRA16_BANK2 : MRA16_NOP);
 }
@@ -217,7 +217,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( arcadia )
+static INPUT_PORTS_START( arcadia )
 	PORT_START_TAG("CIA0PORTA")
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_SPECIAL )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -294,7 +294,7 @@ static MACHINE_DRIVER_START( arcadia )
 	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 262)
 
 	MDRV_SCREEN_REFRESH_RATE(59.997)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MDRV_MACHINE_RESET(amiga)
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -698,16 +698,16 @@ static void arcadia_init(void)
  *************************************/
 
 static DRIVER_INIT( none )  {                                                arcadia_init(); }
-DRIVER_INIT( airh )  { generic_decode(REGION_USER3, 5, 0, 2, 4, 7, 6, 1, 3); arcadia_init(); }
-DRIVER_INIT( bowl )  { generic_decode(REGION_USER3, 7, 6, 0, 1, 2, 3, 4, 5); arcadia_init(); }
-DRIVER_INIT( dart )  { generic_decode(REGION_USER3, 4, 0, 7, 6, 3, 1, 2, 5); arcadia_init(); }
-DRIVER_INIT( ldrba ) { generic_decode(REGION_USER3, 2, 3, 4, 1, 0, 7, 5, 6); arcadia_init(); }
-DRIVER_INIT( ninj )  { generic_decode(REGION_USER3, 1, 6, 5, 7, 4, 2, 0, 3); arcadia_init(); }
-DRIVER_INIT( rdwr )  { generic_decode(REGION_USER3, 3, 1, 6, 4, 0, 5, 2, 7); arcadia_init(); }
-DRIVER_INIT( sdwr )  { generic_decode(REGION_USER3, 6, 3, 4, 5, 2, 1, 0, 7); arcadia_init(); }
-DRIVER_INIT( socc )  { generic_decode(REGION_USER3, 0, 7, 1, 6, 5, 4, 3, 2); arcadia_init(); }
-DRIVER_INIT( sprg )  { generic_decode(REGION_USER3, 4, 7, 3, 0, 6, 5, 2, 1); arcadia_init(); }
-DRIVER_INIT( xeon )  { generic_decode(REGION_USER3, 3, 1, 2, 4, 0, 5, 6, 7); arcadia_init(); }
+static DRIVER_INIT( airh )  { generic_decode(REGION_USER3, 5, 0, 2, 4, 7, 6, 1, 3); arcadia_init(); }
+static DRIVER_INIT( bowl )  { generic_decode(REGION_USER3, 7, 6, 0, 1, 2, 3, 4, 5); arcadia_init(); }
+static DRIVER_INIT( dart )  { generic_decode(REGION_USER3, 4, 0, 7, 6, 3, 1, 2, 5); arcadia_init(); }
+static DRIVER_INIT( ldrba ) { generic_decode(REGION_USER3, 2, 3, 4, 1, 0, 7, 5, 6); arcadia_init(); }
+static DRIVER_INIT( ninj )  { generic_decode(REGION_USER3, 1, 6, 5, 7, 4, 2, 0, 3); arcadia_init(); }
+static DRIVER_INIT( rdwr )  { generic_decode(REGION_USER3, 3, 1, 6, 4, 0, 5, 2, 7); arcadia_init(); }
+static DRIVER_INIT( sdwr )  { generic_decode(REGION_USER3, 6, 3, 4, 5, 2, 1, 0, 7); arcadia_init(); }
+static DRIVER_INIT( socc )  { generic_decode(REGION_USER3, 0, 7, 1, 6, 5, 4, 3, 2); arcadia_init(); }
+static DRIVER_INIT( sprg )  { generic_decode(REGION_USER3, 4, 7, 3, 0, 6, 5, 2, 1); arcadia_init(); }
+static DRIVER_INIT( xeon )  { generic_decode(REGION_USER3, 3, 1, 2, 4, 0, 5, 6, 7); arcadia_init(); }
 
 
 
@@ -718,19 +718,19 @@ DRIVER_INIT( xeon )  { generic_decode(REGION_USER3, 3, 1, 2, 4, 0, 5, 6, 7); arc
  *************************************/
 
 /* BIOS */
-GAMEB( 1988, ar_bios,	0,		 ar_bios, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Arcadia System BIOS", GAME_IS_BIOS_ROOT )
+GAME( 1988, ar_bios,	0, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Arcadia System BIOS", GAME_IS_BIOS_ROOT )
 
 /* working */
-GAMEB( 1988, ar_airh,	ar_bios, ar_bios, arcadia, arcadia, airh,  ROT0, "Arcadia Systems", "SportTime Table Hockey (Arcadia, V 2.1)", 0 )
-GAMEB( 1988, ar_bowl,	ar_bios, ar_bios, arcadia, arcadia, bowl,  ROT0, "Arcadia Systems", "SportTime Bowling (Arcadia, V 2.1)", 0 )
-GAMEB( 1987, ar_dart,	ar_bios, ar_bios, arcadia, arcadia, dart,  ROT0, "Arcadia Systems", "World Darts (Arcadia, V 2.1)", 0 )
-GAMEB( 1988, ar_fast,	ar_bios, ar_bios, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Magic Johnson's Fast Break (Arcadia, V 2.8)", 0 )
-GAMEB( 1988, ar_ldrb,	ar_bios, ar_bios, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Leader Board (Arcadia, V 2.4?)", 0 )
-GAMEB( 1988, ar_ldrba,	ar_ldrb, ar_bios, arcadia, arcadia, ldrba, ROT0, "Arcadia Systems", "Leader Board (Arcadia, V 2.5)", 0 )
-GAMEB( 1987, ar_ninj,	ar_bios, ar_bios, arcadia, arcadia, ninj,  ROT0, "Arcadia Systems", "Ninja Mission (Arcadia, V 2.5)", 0 )
-GAMEB( 1988, ar_rdwr,	ar_bios, ar_bios, arcadia, arcadia, rdwr,  ROT0, "Arcadia Systems", "RoadWars (Arcadia, V 2.3)", 0  )
-GAMEB( 1988, ar_sdwr,	ar_bios, ar_bios, arcadia, arcadia, sdwr,  ROT0, "Arcadia Systems", "Sidewinder (Arcadia, V 2.1)", 0 )
-GAMEB( 1989, ar_socc,	ar_bios, ar_bios, arcadia, arcadia, socc,  ROT0, "Arcadia Systems", "World Trophy Soccer (Arcadia, V 3.0)", 0 )
-GAMEB( 1990, ar_spot,	ar_bios, ar_bios, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Spot (Arcadia)", 0 )
-GAMEB( 1987, ar_sprg,	ar_bios, ar_bios, arcadia, arcadia, sprg,  ROT0, "Arcadia Systems", "Space Ranger (Arcadia, V 2.0)", 0 )
-GAMEB( 1988, ar_xeon,	ar_bios, ar_bios, arcadia, arcadia, xeon,  ROT0, "Arcadia Systems", "Xenon (Arcadia, V 2.3)", 0 )
+GAME( 1988, ar_airh,	ar_bios, arcadia, arcadia, airh,  ROT0, "Arcadia Systems", "SportTime Table Hockey (Arcadia, V 2.1)", 0 )
+GAME( 1988, ar_bowl,	ar_bios, arcadia, arcadia, bowl,  ROT0, "Arcadia Systems", "SportTime Bowling (Arcadia, V 2.1)", 0 )
+GAME( 1987, ar_dart,	ar_bios, arcadia, arcadia, dart,  ROT0, "Arcadia Systems", "World Darts (Arcadia, V 2.1)", 0 )
+GAME( 1988, ar_fast,	ar_bios, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Magic Johnson's Fast Break (Arcadia, V 2.8)", 0 )
+GAME( 1988, ar_ldrb,	ar_bios, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Leader Board (Arcadia, V 2.4?)", 0 )
+GAME( 1988, ar_ldrba,	ar_ldrb, arcadia, arcadia, ldrba, ROT0, "Arcadia Systems", "Leader Board (Arcadia, V 2.5)", 0 )
+GAME( 1987, ar_ninj,	ar_bios, arcadia, arcadia, ninj,  ROT0, "Arcadia Systems", "Ninja Mission (Arcadia, V 2.5)", 0 )
+GAME( 1988, ar_rdwr,	ar_bios, arcadia, arcadia, rdwr,  ROT0, "Arcadia Systems", "RoadWars (Arcadia, V 2.3)", 0  )
+GAME( 1988, ar_sdwr,	ar_bios, arcadia, arcadia, sdwr,  ROT0, "Arcadia Systems", "Sidewinder (Arcadia, V 2.1)", 0 )
+GAME( 1989, ar_socc,	ar_bios, arcadia, arcadia, socc,  ROT0, "Arcadia Systems", "World Trophy Soccer (Arcadia, V 3.0)", 0 )
+GAME( 1990, ar_spot,	ar_bios, arcadia, arcadia, none,  ROT0, "Arcadia Systems", "Spot (Arcadia)", 0 )
+GAME( 1987, ar_sprg,	ar_bios, arcadia, arcadia, sprg,  ROT0, "Arcadia Systems", "Space Ranger (Arcadia, V 2.0)", 0 )
+GAME( 1988, ar_xeon,	ar_bios, arcadia, arcadia, xeon,  ROT0, "Arcadia Systems", "Xenon (Arcadia, V 2.3)", 0 )

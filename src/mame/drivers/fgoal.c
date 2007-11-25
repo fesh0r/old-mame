@@ -122,13 +122,13 @@ static TIMER_CALLBACK( interrupt_callback )
 		scanline = 0;
 	}
 
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), 0, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), 0, interrupt_callback);
 }
 
 
 static MACHINE_RESET( fgoal )
 {
-	mame_timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, interrupt_callback);
 }
 
 
@@ -284,7 +284,7 @@ static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( fgoal )
+static INPUT_PORTS_START( fgoal )
 
 	PORT_START
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_TILT )

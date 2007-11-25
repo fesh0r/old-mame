@@ -177,7 +177,7 @@ int rockola_music0_playing(void);
 
 /* binary counter (1.4MHz update) */
 static UINT8 sasuke_counter;
-static mame_timer *sasuke_timer;
+static emu_timer *sasuke_timer;
 
 static TIMER_CALLBACK( sasuke_update_counter )
 {
@@ -188,8 +188,8 @@ static void sasuke_start_counter(void)
 {
 	sasuke_counter = 0;
 
-	sasuke_timer = mame_timer_alloc(sasuke_update_counter);
-	mame_timer_adjust(sasuke_timer, time_zero, 0, MAME_TIME_IN_HZ(11289000/8));	// 1.4 MHz
+	sasuke_timer = timer_alloc(sasuke_update_counter);
+	timer_adjust(sasuke_timer, attotime_zero, 0, ATTOTIME_IN_HZ(11289000/8));	// 1.4 MHz
 }
 
 
@@ -315,7 +315,7 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 /* Derived from Zarzon. Might not reflect the actual hardware. */
-INPUT_PORTS_START( sasuke )
+static INPUT_PORTS_START( sasuke )
 	PORT_START  // IN0
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY
@@ -363,7 +363,7 @@ INPUT_PORTS_START( sasuke )
 	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* connected to a binary counter */
 INPUT_PORTS_END
 
-INPUT_PORTS_START( satansat )
+static INPUT_PORTS_START( satansat )
 	PORT_START  // IN0
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY
@@ -410,7 +410,7 @@ INPUT_PORTS_START( satansat )
 	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* connected to a binary counter */
 INPUT_PORTS_END
 
-INPUT_PORTS_START( vanguard )
+static INPUT_PORTS_START( vanguard )
 	PORT_START	// IN0
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON4 )
@@ -472,7 +472,7 @@ INPUT_PORTS_START( vanguard )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( fantasy )
+static INPUT_PORTS_START( fantasy )
 	PORT_START	// IN0
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -536,7 +536,7 @@ INPUT_PORTS_START( fantasy )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( nibbler )
+static INPUT_PORTS_START( nibbler )
 	PORT_START	// IN0
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Debug 0") PORT_CODE(KEYCODE_Z) // slow down
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Debug 1") PORT_CODE(KEYCODE_X)
@@ -590,7 +590,7 @@ INPUT_PORTS_START( nibbler )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( pballoon )
+static INPUT_PORTS_START( pballoon )
 	PORT_START	// IN0
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )

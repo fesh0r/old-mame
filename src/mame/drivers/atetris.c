@@ -84,7 +84,7 @@ static TIMER_CALLBACK( interrupt_gen )
 	scanline += 32;
 	if (scanline >= 256)
 		scanline -= 256;
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, interrupt_gen);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, interrupt_gen);
 }
 
 
@@ -109,7 +109,7 @@ static MACHINE_RESET( atetris )
 	memcpy(slapstic_base, &slapstic_source[current_bank * 0x4000], 0x4000);
 
 	/* start interrupts going (32V clocked by 16V) */
-	mame_timer_set(video_screen_get_time_until_pos(0, 48, 0), 48, interrupt_gen);
+	timer_set(video_screen_get_time_until_pos(0, 48, 0), 48, interrupt_gen);
 }
 
 
@@ -221,7 +221,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( atetris )
+static INPUT_PORTS_START( atetris )
 	// These ports are read via the Pokeys
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -247,7 +247,7 @@ INPUT_PORTS_END
 
 
 // Same as the regular one except they added a Flip Controls switch
-INPUT_PORTS_START( atetcktl )
+static INPUT_PORTS_START( atetcktl )
 	// These ports are read via the Pokeys
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN2 )

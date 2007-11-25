@@ -27,18 +27,18 @@ WRITE8_HANDLER( xxmissio_videoram_w );
 
 WRITE8_HANDLER( xxmissio_paletteram_w );
 
-WRITE8_HANDLER( xxmissio_bank_sel_w )
+static WRITE8_HANDLER( xxmissio_bank_sel_w )
 {
 	memory_set_bank(1, data & 7);
 }
 
-READ8_HANDLER( xxmissio_status_r )
+static READ8_HANDLER( xxmissio_status_r )
 {
 	xxmissio_status = (xxmissio_status | 2) & ( readinputportbytag("IN2") | 0xfd );
 	return xxmissio_status;
 }
 
-WRITE8_HANDLER ( xxmissio_status_m_w )
+static WRITE8_HANDLER ( xxmissio_status_m_w )
 {
 	switch (data)
 	{
@@ -57,7 +57,7 @@ WRITE8_HANDLER ( xxmissio_status_m_w )
 	}
 }
 
-WRITE8_HANDLER ( xxmissio_status_s_w )
+static WRITE8_HANDLER ( xxmissio_status_s_w )
 {
 	switch (data)
 	{
@@ -76,13 +76,13 @@ WRITE8_HANDLER ( xxmissio_status_s_w )
 	}
 }
 
-INTERRUPT_GEN( xxmissio_interrupt_m )
+static INTERRUPT_GEN( xxmissio_interrupt_m )
 {
 	xxmissio_status &= ~0x20;
 	cpunum_set_input_line(0, 0, HOLD_LINE);
 }
 
-INTERRUPT_GEN( xxmissio_interrupt_s )
+static INTERRUPT_GEN( xxmissio_interrupt_s )
 {
 	xxmissio_status &= ~0x10;
 	cpunum_set_input_line(1, 0, HOLD_LINE);
@@ -150,7 +150,7 @@ ADDRESS_MAP_END
 
 /****************************************************************************/
 
-INPUT_PORTS_START( xxmissio )
+static INPUT_PORTS_START( xxmissio )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )

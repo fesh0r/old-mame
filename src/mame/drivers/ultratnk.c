@@ -61,13 +61,13 @@ static TIMER_CALLBACK( nmi_callback	)
 		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, nmi_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, nmi_callback);
 }
 
 
 static MACHINE_RESET( ultratnk )
 {
-	mame_timer_set(video_screen_get_time_until_pos(0, 32, 0), 32, nmi_callback);
+	timer_set(video_screen_get_time_until_pos(0, 32, 0), 32, nmi_callback);
 }
 
 
@@ -182,7 +182,7 @@ static ADDRESS_MAP_START( ultratnk_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( ultratnk )
+static INPUT_PORTS_START( ultratnk )
 
 	PORT_START_TAG("IN0")
 	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )

@@ -37,7 +37,7 @@ VIDEO_UPDATE( megazone );
 
 
 
-READ8_HANDLER( megazone_portA_r )
+static READ8_HANDLER( megazone_portA_r )
 {
 	int clock,timer;
 
@@ -75,7 +75,7 @@ static WRITE8_HANDLER( megazone_portB_w )
 	}
 }
 
-WRITE8_HANDLER( megazone_videoram2_w )
+static WRITE8_HANDLER( megazone_videoram2_w )
 {
 	if (megazone_videoram2[offset] != data)
 	{
@@ -83,7 +83,7 @@ WRITE8_HANDLER( megazone_videoram2_w )
 	}
 }
 
-WRITE8_HANDLER( megazone_colorram2_w )
+static WRITE8_HANDLER( megazone_colorram2_w )
 {
 	if (megazone_colorram2[offset] != data)
 	{
@@ -91,12 +91,12 @@ WRITE8_HANDLER( megazone_colorram2_w )
 	}
 }
 
-READ8_HANDLER( megazone_sharedram_r )
+static READ8_HANDLER( megazone_sharedram_r )
 {
 	return(megazone_sharedram[offset]);
 }
 
-WRITE8_HANDLER( megazone_sharedram_w )
+static WRITE8_HANDLER( megazone_sharedram_w )
 {
 	megazone_sharedram[offset] = data;
 }
@@ -191,7 +191,7 @@ static ADDRESS_MAP_START( i8039_writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(I8039_p2, I8039_p2) AM_WRITE(i8039_irqen_and_status_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( megazone )
+static INPUT_PORTS_START( megazone )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )

@@ -35,7 +35,7 @@ static UINT8 ldv1000_input_latch;
 static UINT8 ldv1000_output_latch;
 
 /* VIDEO GOODS */
-void astron_draw_characters(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void astron_draw_characters(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	UINT8 characterX, characterY;
 
@@ -50,7 +50,7 @@ void astron_draw_characters(running_machine *machine, mame_bitmap *bitmap,const 
 	}
 }
 
-void astron_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
+static void astron_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	/* Heisted from Daphne */
 	const UINT8 SPR_Y_TOP     = 0;
@@ -78,7 +78,7 @@ void astron_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
 }
 
 
-VIDEO_UPDATE( astron )
+static VIDEO_UPDATE( astron )
 {
 	fillbitmap(bitmap, 0, cliprect);
 
@@ -241,7 +241,7 @@ ADDRESS_MAP_END
 
 
 /* PORTS */
-INPUT_PORTS_START( astron )
+static INPUT_PORTS_START( astron )
 	PORT_START_TAG("DSWA")
 	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:4,3,2,1")
 	PORT_DIPSETTING(    0xe0, DEF_STR( 4C_1C ) )

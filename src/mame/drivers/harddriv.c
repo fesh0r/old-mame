@@ -533,7 +533,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( harddriv )
+static INPUT_PORTS_START( harddriv )
 	PORT_START_TAG("600000")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )	/* diagnostic switch */
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	/* HBLANK */
@@ -589,7 +589,7 @@ INPUT_PORTS_START( harddriv )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( racedriv )
+static INPUT_PORTS_START( racedriv )
 	PORT_START_TAG("600000")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )	/* diagnostic switch */
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	/* HBLANK */
@@ -645,7 +645,7 @@ INPUT_PORTS_START( racedriv )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( racedrvc )
+static INPUT_PORTS_START( racedrvc )
 	PORT_START_TAG("60c000")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )	/* diagnostic switch */
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	/* HBLANK */
@@ -707,7 +707,7 @@ INPUT_PORTS_START( racedrvc )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( stunrun )
+static INPUT_PORTS_START( stunrun )
 	PORT_START_TAG("60c000")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	/* HBLANK */
@@ -765,7 +765,7 @@ INPUT_PORTS_START( stunrun )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( steeltal )
+static INPUT_PORTS_START( steeltal )
 	PORT_START_TAG("60c000")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	/* HBLANK */
@@ -824,7 +824,7 @@ INPUT_PORTS_START( steeltal )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( strtdriv )
+static INPUT_PORTS_START( strtdriv )
 	PORT_START_TAG("60c000")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	/* HBLANK */
@@ -887,7 +887,7 @@ INPUT_PORTS_START( strtdriv )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( hdrivair )
+static INPUT_PORTS_START( hdrivair )
 	PORT_START_TAG("60c000")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	/* HBLANK */
@@ -3425,10 +3425,10 @@ static void init_ds3(running_machine *machine)
 	memory_install_write16_handler(hdcpu_main, ADDRESS_SPACE_PROGRAM, 0x823800, 0x823fff, 0, 0, hd68k_ds3_control_w);
 
 	/* if we have a sound DSP, boot it */
-	if (hdcpu_sound != -1 && machine->drv->cpu[hdcpu_sound].cpu_type == CPU_ADSP2105)
+	if (hdcpu_sound != -1 && machine->drv->cpu[hdcpu_sound].type == CPU_ADSP2105)
 		adsp2105_load_boot_data((UINT8 *)(memory_region(REGION_CPU1 + hdcpu_sound) + 0x10000),
 								(UINT32 *)(memory_region(REGION_CPU1 + hdcpu_sound)));
-	if (hdcpu_sounddsp != -1 && machine->drv->cpu[hdcpu_sounddsp].cpu_type == CPU_ADSP2105)
+	if (hdcpu_sounddsp != -1 && machine->drv->cpu[hdcpu_sounddsp].type == CPU_ADSP2105)
 		adsp2105_load_boot_data((UINT8 *)(memory_region(REGION_CPU1 + hdcpu_sounddsp) + 0x10000),
 								(UINT32 *)(memory_region(REGION_CPU1 + hdcpu_sounddsp)));
 
@@ -3665,9 +3665,9 @@ static DRIVER_INIT( stunrun )
 }
 
 
-UINT32 *rddsp32_speedup;
-offs_t rddsp32_speedup_pc;
-READ32_HANDLER( rddsp32_speedup_r )
+static UINT32 *rddsp32_speedup;
+static offs_t rddsp32_speedup_pc;
+static READ32_HANDLER( rddsp32_speedup_r )
 {
 	if (activecpu_get_pc() == rddsp32_speedup_pc && (*rddsp32_speedup >> 16) == 0)
 	{

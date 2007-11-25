@@ -180,14 +180,14 @@ VIDEO_START(ddenlovr)
 	ddenlovr_blit_commands = ddenlovr_commands;
 }
 
-VIDEO_START(mmpanic)
+static VIDEO_START(mmpanic)
 {
 	video_start_ddenlovr(machine);
 
 	extra_layers = 1;
 }
 
-VIDEO_START(hanakanz)
+static VIDEO_START(hanakanz)
 {
 	video_start_ddenlovr(machine);
 
@@ -195,7 +195,7 @@ VIDEO_START(hanakanz)
 	ddenlovr_blit_commands = hanakanz_commands;
 }
 
-VIDEO_START(mjflove)
+static VIDEO_START(mjflove)
 {
 	video_start_ddenlovr(machine);
 
@@ -225,12 +225,12 @@ WRITE8_HANDLER( ddenlovr_bgcolor_w )
 	ddenlovr_bgcolor = data;
 }
 
-WRITE8_HANDLER( ddenlovr_bgcolor2_w )
+static WRITE8_HANDLER( ddenlovr_bgcolor2_w )
 {
 	ddenlovr_bgcolor2 = data;
 }
 
-WRITE16_HANDLER( ddenlovr16_bgcolor_w )
+static WRITE16_HANDLER( ddenlovr16_bgcolor_w )
 {
 	if (ACCESSING_LSB)
 		ddenlovr_bgcolor_w(offset,data);
@@ -242,12 +242,12 @@ WRITE8_HANDLER( ddenlovr_priority_w )
 	ddenlovr_priority = data;
 }
 
-WRITE8_HANDLER( ddenlovr_priority2_w )
+static WRITE8_HANDLER( ddenlovr_priority2_w )
 {
 	ddenlovr_priority2 = data;
 }
 
-WRITE16_HANDLER( ddenlovr16_priority_w )
+static WRITE16_HANDLER( ddenlovr16_priority_w )
 {
 	if (ACCESSING_LSB)
 		ddenlovr_priority_w(offset,data);
@@ -259,13 +259,13 @@ WRITE8_HANDLER( ddenlovr_layer_enable_w )
 	ddenlovr_layer_enable = data;
 }
 
-WRITE8_HANDLER( ddenlovr_layer_enable2_w )
+static WRITE8_HANDLER( ddenlovr_layer_enable2_w )
 {
 	ddenlovr_layer_enable2 = data;
 }
 
 
-WRITE16_HANDLER( ddenlovr16_layer_enable_w )
+static WRITE16_HANDLER( ddenlovr16_layer_enable_w )
 {
 	if (ACCESSING_LSB)
 		ddenlovr_layer_enable_w(offset,data);
@@ -1321,7 +1321,7 @@ VIDEO_EOF(ddenlovr)
 	ddenlovr_layer_enable2 = enab2;
 }
 
-READ16_HANDLER( ddenlovr_special_r )
+static READ16_HANDLER( ddenlovr_special_r )
 {
 	int res = readinputport(2) | (ddenlovr_blitter_irq_flag << 6);
 
@@ -1371,7 +1371,7 @@ WRITE8_HANDLER( ddenlovr_palette_base_w )
 {
 	ddenlovr_palette_base[offset] = data;
 }
-WRITE8_HANDLER( ddenlovr_palette_base2_w )
+static WRITE8_HANDLER( ddenlovr_palette_base2_w )
 {
 	ddenlovr_palette_base[offset+4] = data;
 }
@@ -1380,7 +1380,7 @@ WRITE8_HANDLER( ddenlovr_palette_mask_w )
 {
 	ddenlovr_palette_mask[offset] = data;
 }
-WRITE8_HANDLER( ddenlovr_palette_mask2_w )
+static WRITE8_HANDLER( ddenlovr_palette_mask2_w )
 {
 	ddenlovr_palette_mask[offset+4] = data;
 }
@@ -1389,7 +1389,7 @@ WRITE8_HANDLER( ddenlovr_transparency_pen_w )
 {
 	ddenlovr_transparency_pen[offset] = data;
 }
-WRITE8_HANDLER( ddenlovr_transparency_pen2_w )
+static WRITE8_HANDLER( ddenlovr_transparency_pen2_w )
 {
 	ddenlovr_transparency_pen[offset+4] = data;
 }
@@ -1398,31 +1398,31 @@ WRITE8_HANDLER( ddenlovr_transparency_mask_w )
 {
 	ddenlovr_transparency_mask[offset] = data;
 }
-WRITE8_HANDLER( ddenlovr_transparency_mask2_w )
+static WRITE8_HANDLER( ddenlovr_transparency_mask2_w )
 {
 	ddenlovr_transparency_mask[offset+4] = data;
 }
 
 
-WRITE16_HANDLER( ddenlovr16_palette_base_w )
+static WRITE16_HANDLER( ddenlovr16_palette_base_w )
 {
 	if (ACCESSING_LSB)
 		ddenlovr_palette_base[offset] = data & 0xff;
 }
 
-WRITE16_HANDLER( ddenlovr16_palette_mask_w )
+static WRITE16_HANDLER( ddenlovr16_palette_mask_w )
 {
 	if (ACCESSING_LSB)
 		ddenlovr_palette_mask[offset] = data & 0xff;
 }
 
-WRITE16_HANDLER( ddenlovr16_transparency_pen_w )
+static WRITE16_HANDLER( ddenlovr16_transparency_pen_w )
 {
 	if (ACCESSING_LSB)
 		ddenlovr_transparency_pen[offset] = data & 0xff;
 }
 
-WRITE16_HANDLER( ddenlovr16_transparency_mask_w )
+static WRITE16_HANDLER( ddenlovr16_transparency_mask_w )
 {
 	if (ACCESSING_LSB)
 		ddenlovr_transparency_mask[offset] = data & 0xff;
@@ -1476,29 +1476,29 @@ static READ16_HANDLER( unk16_r )
 
 static UINT8 ddenlovr_select, ddenlovr_select2;
 
-WRITE8_HANDLER( ddenlovr_select_w )
+static WRITE8_HANDLER( ddenlovr_select_w )
 {
 	ddenlovr_select = data;
 }
 
-WRITE16_HANDLER( ddenlovr_select_16_w )
+static WRITE16_HANDLER( ddenlovr_select_16_w )
 {
 	if (ACCESSING_LSB)
 		ddenlovr_select = data;
 }
 
-WRITE8_HANDLER( ddenlovr_select2_w )
+static WRITE8_HANDLER( ddenlovr_select2_w )
 {
 	ddenlovr_select2 = data;
 }
 
-WRITE16_HANDLER( ddenlovr_select2_16_w )
+static WRITE16_HANDLER( ddenlovr_select2_16_w )
 {
 	if (ACCESSING_LSB)
 		ddenlovr_select2 = data;
 }
 
-READ8_HANDLER( rongrong_input2_r )
+static READ8_HANDLER( rongrong_input2_r )
 {
 //  logerror("%04x: input2_r offset %d select %x\n",activecpu_get_pc(),offset,ddenlovr_select2 );
 	/* 0 and 1 are read from offset 1, 2 from offset 0... */
@@ -1512,7 +1512,7 @@ READ8_HANDLER( rongrong_input2_r )
 }
 
 
-READ8_HANDLER( quiz365_input_r )
+static READ8_HANDLER( quiz365_input_r )
 {
 	if (!(ddenlovr_select & 0x01))	return readinputport(3);
 	if (!(ddenlovr_select & 0x02))	return readinputport(4);
@@ -1522,7 +1522,7 @@ READ8_HANDLER( quiz365_input_r )
 	return 0xff;
 }
 
-READ16_HANDLER( quiz365_input2_r )
+static READ16_HANDLER( quiz365_input2_r )
 {
 //  logerror("%04x: input2_r offset %d select %x\n",activecpu_get_pc(),offset,ddenlovr_select2 );
 	/* 0 and 1 are read from offset 1, 2 from offset 0... */
@@ -1537,13 +1537,13 @@ READ16_HANDLER( quiz365_input2_r )
 
 static UINT8 rongrong_blitter_busy_select;
 
-WRITE8_HANDLER( rongrong_blitter_busy_w )
+static WRITE8_HANDLER( rongrong_blitter_busy_w )
 {
 	rongrong_blitter_busy_select = data;
 	if (data != 0x18)
 		logerror("%04x: rongrong_blitter_busy_w data = %02x\n",activecpu_get_pc(),data);
 }
-READ8_HANDLER( rongrong_blitter_busy_r )
+static READ8_HANDLER( rongrong_blitter_busy_r )
 {
 	switch( rongrong_blitter_busy_select )
 	{
@@ -1826,7 +1826,7 @@ ADDRESS_MAP_END
                                 Rong Rong
 ***************************************************************************/
 
-READ8_HANDLER( rongrong_input_r )
+static READ8_HANDLER( rongrong_input_r )
 {
 	if (!(ddenlovr_select & 0x01))	return readinputport(3);
 	if (!(ddenlovr_select & 0x02))	return readinputport(4);
@@ -1836,7 +1836,7 @@ READ8_HANDLER( rongrong_input_r )
 	return 0xff;
 }
 
-WRITE8_HANDLER( rongrong_select_w )
+static WRITE8_HANDLER( rongrong_select_w )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 
@@ -2136,7 +2136,7 @@ static WRITE8_HANDLER( funkyfig_blitter_w )
 	blitter_w_funkyfig(0,offset,data,0xe0);
 }
 
-WRITE8_HANDLER( funkyfig_rombank_w )
+static WRITE8_HANDLER( funkyfig_rombank_w )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 
@@ -2147,7 +2147,7 @@ WRITE8_HANDLER( funkyfig_rombank_w )
 	memory_set_bankptr(2, &rom[0x90000 + 0x1000 * ((data & 0xe0) >> 5)]);
 }
 
-READ8_HANDLER( funkyfig_dsw_r )
+static READ8_HANDLER( funkyfig_dsw_r )
 {
 	if (!(ddenlovr_select & 0x01))	return readinputport(3);
 	if (!(ddenlovr_select & 0x02))	return readinputport(4);
@@ -2158,7 +2158,7 @@ READ8_HANDLER( funkyfig_dsw_r )
 
 static UINT8 funkyfig_lockout;
 
-READ8_HANDLER( funkyfig_coin_r )
+static READ8_HANDLER( funkyfig_coin_r )
 {
 	switch( ddenlovr_select2 )
 	{
@@ -2169,7 +2169,7 @@ READ8_HANDLER( funkyfig_coin_r )
 	return 0xff;
 }
 
-READ8_HANDLER( funkyfig_key_r )
+static READ8_HANDLER( funkyfig_key_r )
 {
 	switch( ddenlovr_select2 )
 	{
@@ -2249,7 +2249,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-WRITE8_HANDLER( hanakanz_rombank_w )
+static WRITE8_HANDLER( hanakanz_rombank_w )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 
@@ -2749,7 +2749,7 @@ ADDRESS_MAP_END
                             Hanafuda Hana Ginga
 ***************************************************************************/
 
-UINT8 hginga_rombank;
+static UINT8 hginga_rombank;
 static WRITE8_HANDLER( hginga_rombank_w )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
@@ -2926,7 +2926,7 @@ ADDRESS_MAP_END
                              Hanafuda Hana Gokou
 ***************************************************************************/
 
-UINT8 hgokou_hopper;
+static UINT8 hgokou_hopper;
 
 static UINT8 hgokou_player_r(int player)
 {
@@ -3307,7 +3307,7 @@ static READ8_HANDLER( mjflove_keyb_r )
 	return val;
 }
 
-UINT8 mjflove_irq_cause;
+static UINT8 mjflove_irq_cause;
 
 static READ8_HANDLER( mjflove_blitter_r )
 {
@@ -3371,7 +3371,7 @@ static ADDRESS_MAP_START( mjflove_writeport, ADDRESS_SPACE_IO, 8 )	// 16 bit I/O
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( ddenlvrj )
+static INPUT_PORTS_START( ddenlvrj )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -3477,7 +3477,7 @@ INPUT_PORTS_START( ddenlvrj )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( ddenlovr )
+static INPUT_PORTS_START( ddenlovr )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -3533,7 +3533,7 @@ INPUT_PORTS_START( ddenlovr )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( nettoqc )
+static INPUT_PORTS_START( nettoqc )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
@@ -3631,7 +3631,7 @@ INPUT_PORTS_START( nettoqc )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( quiz365 )
+static INPUT_PORTS_START( quiz365 )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
@@ -3724,7 +3724,7 @@ INPUT_PORTS_START( quiz365 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( rongrong )
+static INPUT_PORTS_START( rongrong )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -3816,7 +3816,7 @@ INPUT_PORTS_START( rongrong )
   	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( quizchq )
+static INPUT_PORTS_START( quizchq )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
@@ -3911,7 +3911,7 @@ INPUT_PORTS_START( quizchq )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mmpanic )
+static INPUT_PORTS_START( mmpanic )
 	PORT_START	// IN0 6a (68 = 1:used? 2:normal 3:goes to 69)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )	// tested?
@@ -4008,7 +4008,7 @@ INPUT_PORTS_START( mmpanic )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( animaljr )
+static INPUT_PORTS_START( animaljr )
 	PORT_START	// IN0 6a (68 = 1:used? 2:normal 3:goes to 69)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -4105,7 +4105,7 @@ INPUT_PORTS_START( animaljr )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( hanakanz )
+static INPUT_PORTS_START( hanakanz )
 
 	PORT_START	// IN0 - Coins + Service Keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE3	)	// medal out
@@ -4331,7 +4331,7 @@ INPUT_PORTS_START( hanakanz )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( hkagerou )
+static INPUT_PORTS_START( hkagerou )
 
 	PORT_START	// IN0 - Coins + Service Keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE3	)	// medal out
@@ -4558,7 +4558,7 @@ INPUT_PORTS_START( hkagerou )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( mjreach1 )
+static INPUT_PORTS_START( mjreach1 )
 
 	PORT_START	// IN0 - Coins + Service Keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE3	)	// medal out
@@ -4793,7 +4793,7 @@ INPUT_PORTS_START( mjreach1 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( mjchuuka )
+static INPUT_PORTS_START( mjchuuka )
 
 	PORT_START	// IN0 - Coins + Service Keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE3	)	// medal out
@@ -5028,7 +5028,7 @@ INPUT_PORTS_START( mjchuuka )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( funkyfig )
+static INPUT_PORTS_START( funkyfig )
 	PORT_START	// IN0 - Keys (port 83 with port 80 = 20)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("1") PORT_CODE(KEYCODE_1_PAD)
@@ -5129,7 +5129,7 @@ INPUT_PORTS_END
 
 
 
-INPUT_PORTS_START( mjmyster )
+static INPUT_PORTS_START( mjmyster )
 	PORT_START	// IN0 - Coins + Service Keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE3	)	// medal out
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN	)
@@ -5310,7 +5310,7 @@ INPUT_PORTS_START( mjmyster )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hginga )
+static INPUT_PORTS_START( hginga )
 
 	PORT_START	// IN0 - Coins + Service Keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE3	)	// medal out
@@ -5533,7 +5533,7 @@ INPUT_PORTS_START( hginga )
 	PORT_BIT( 0xbf, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hgokou )
+static INPUT_PORTS_START( hgokou )
 	PORT_START	// IN0
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE3	)	// medal out
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN	)
@@ -5749,7 +5749,7 @@ INPUT_PORTS_START( hgokou )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mjmyornt )
+static INPUT_PORTS_START( mjmyornt )
 	PORT_START	// IN0 - Coins + Service Keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE3	)	// medal out
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN	)
@@ -5930,7 +5930,7 @@ INPUT_PORTS_START( mjmyornt )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mjmyuniv )
+static INPUT_PORTS_START( mjmyuniv )
 	PORT_START	// IN0 - Coins + Service Keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE3	)	// medal out
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN	)
@@ -6111,7 +6111,7 @@ INPUT_PORTS_START( mjmyuniv )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( akamaru )
+static INPUT_PORTS_START( akamaru )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -6190,7 +6190,7 @@ INPUT_PORTS_START( akamaru )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( mjflove )
+static INPUT_PORTS_START( mjflove )
 	PORT_START	// IN0 - Coins + Service Keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN1    )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_COIN2    )
@@ -6333,7 +6333,7 @@ INPUT_PORTS_START( mjflove )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hparadis )
+static INPUT_PORTS_START( hparadis )
 	PORT_START	// IN0 - Player 1
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
@@ -7058,7 +7058,7 @@ MACHINE_DRIVER_END
 
 /*  It runs in IM 2, thus needs a vector on the data bus:
     0xee is vblank  */
-INTERRUPT_GEN( hparadis_irq )
+static INTERRUPT_GEN( hparadis_irq )
 {
 	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0xee);
 }

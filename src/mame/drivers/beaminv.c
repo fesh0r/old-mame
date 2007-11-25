@@ -72,7 +72,7 @@ static UINT8 controller_select;
 
 static const int interrupt_lines[INTERRUPTS_PER_FRAME] = { 0x00, 0x80 };
 
-static mame_timer *interrupt_timer;
+static emu_timer *interrupt_timer;
 
 
 static TIMER_CALLBACK( interrupt_callback )
@@ -87,20 +87,20 @@ static TIMER_CALLBACK( interrupt_callback )
 	next_interrupt_number = (interrupt_number + 1) % INTERRUPTS_PER_FRAME;
 	next_vpos = interrupt_lines[next_interrupt_number];
 
-	mame_timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, next_vpos, 0), next_interrupt_number, time_zero);
+	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, next_vpos, 0), next_interrupt_number, attotime_zero);
 }
 
 
 static void create_interrupt_timer(void)
 {
-	interrupt_timer = mame_timer_alloc(interrupt_callback);
+	interrupt_timer = timer_alloc(interrupt_callback);
 }
 
 
 static void start_interrupt_timer(void)
 {
 	int vpos = interrupt_lines[0];
-	mame_timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, vpos, 0), 0, time_zero);
+	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, vpos, 0), 0, attotime_zero);
 }
 
 
@@ -270,7 +270,7 @@ static INPUT_PORTS_START( beaminv )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( beaminva )
+static INPUT_PORTS_START( beaminva )
 	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )

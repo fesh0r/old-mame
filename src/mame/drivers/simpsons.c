@@ -85,7 +85,7 @@ static WRITE8_HANDLER( z80_arm_nmi_w )
 {
 //  sound_nmi_enabled = 1;
 	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
-	mame_timer_set(MAME_TIME_IN_USEC(25),0,nmi_callback);	/* kludge until the K053260 is emulated correctly */
+	timer_set(ATTOTIME_IN_USEC(25),0,nmi_callback);	/* kludge until the K053260 is emulated correctly */
 }
 
 static ADDRESS_MAP_START( z80_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -105,7 +105,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( simpsons )
+static INPUT_PORTS_START( simpsons )
 	PORT_START /* IN0 - Player 1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -161,7 +161,7 @@ INPUT_PORTS_START( simpsons )
 	PORT_BIT( 0xfe, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( simpsn2p )
+static INPUT_PORTS_START( simpsn2p )
 	PORT_START /* IN0 - Player 1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -266,7 +266,7 @@ static INTERRUPT_GEN( simpsons_irq )
 		simpsons_objdma();
 
 		// 32+256us delay at 8MHz dotclock; artificially shortened since actual V-blank length is unknown
-		mame_timer_set(MAME_TIME_IN_USEC(30), 0, dmaend_callback);
+		timer_set(ATTOTIME_IN_USEC(30), 0, dmaend_callback);
 	}
 
 	if (K052109_is_IRQ_enabled())

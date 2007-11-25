@@ -212,7 +212,7 @@ static size_t blitter_ramsize, io_ramsize;
 
 static int game_id, blitter_busy, collision_count, stars_enabled, bgcolor, ffcount, ffhead, fftail;
 static int mVectorType, sndnmi_mask, firq_level;
-static mame_timer *blitter_reset_timer;
+static emu_timer *blitter_reset_timer;
 
 static offs_t halleys_collision_detection;
 
@@ -1006,7 +1006,7 @@ static WRITE8_HANDLER( blitter_w )
 		else
 		{
 			blitter_busy = 1;
-			mame_timer_adjust(blitter_reset_timer, MAME_TIME_IN_CYCLES(100, 0), 0, time_zero); // free blitter if no updates in 100 cycles
+			timer_adjust(blitter_reset_timer, ATTOTIME_IN_CYCLES(100, 0), 0, attotime_zero); // free blitter if no updates in 100 cycles
 		}
 	}
 }
@@ -1685,7 +1685,7 @@ ADDRESS_MAP_END
     Dip sw 2 is not used and all contacts should be set off.
 */
 
-INPUT_PORTS_START( halleys )
+static INPUT_PORTS_START( halleys )
 	PORT_START_TAG("DSW1") // 0xff95
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
@@ -1798,7 +1798,7 @@ INPUT_PORTS_START( halleys )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( benberob )
+static INPUT_PORTS_START( benberob )
 	PORT_START_TAG("DSW1") // 0xff95
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x02, "Every 100K" )
@@ -2228,7 +2228,7 @@ static DRIVER_INIT( benberob )
 
 	init_common();
 
-	blitter_reset_timer = mame_timer_alloc(blitter_reset);
+	blitter_reset_timer = timer_alloc(blitter_reset);
 }
 
 

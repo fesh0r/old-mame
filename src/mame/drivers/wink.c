@@ -136,7 +136,7 @@ static ADDRESS_MAP_START( wink_sound_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x80, 0x80) AM_WRITE(AY8910_control_port_0_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( wink )
+static INPUT_PORTS_START( wink )
 	PORT_START
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(3) PORT_REVERSE
 
@@ -267,12 +267,12 @@ static TILE_GET_INFO( get_bg_tile_info )
 	SET_TILE_INFO(0, code, 0, 0);
 }
 
-VIDEO_START( wink )
+static VIDEO_START( wink )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 }
 
-VIDEO_UPDATE( wink )
+static VIDEO_UPDATE( wink )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	return 0;

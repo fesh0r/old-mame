@@ -168,7 +168,7 @@ ADDRESS_MAP_END									/*   (someday 0xf8-0xff will probably be a single handle
 
 
 /* PORTS */
-INPUT_PORTS_START( esh )
+static INPUT_PORTS_START( esh )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -210,7 +210,7 @@ INPUT_PORTS_START( esh )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-PALETTE_INIT( esh )
+static PALETTE_INIT( esh )
 {
 	int i;
 
@@ -274,7 +274,7 @@ static INTERRUPT_GEN( vblank_callback_esh )
 {
 	// IRQ
 	cpunum_set_input_line(0, 0, ASSERT_LINE);
-	mame_timer_set(MAME_TIME_IN_USEC(50), 0, irq_stop);
+	timer_set(ATTOTIME_IN_USEC(50), 0, irq_stop);
 
 	laserdisc_vsync(discinfo);
 }

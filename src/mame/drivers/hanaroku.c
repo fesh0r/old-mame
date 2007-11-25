@@ -15,12 +15,12 @@ TODO:
 
 /* video */
 
-UINT8 *hanaroku_spriteram1;
-UINT8 *hanaroku_spriteram2;
-UINT8 *hanaroku_spriteram3;
+static UINT8 *hanaroku_spriteram1;
+static UINT8 *hanaroku_spriteram2;
+static UINT8 *hanaroku_spriteram3;
 
 
-PALETTE_INIT( hanaroku )
+static PALETTE_INIT( hanaroku )
 {
 	int i;
 	int r,g,b;
@@ -36,7 +36,7 @@ PALETTE_INIT( hanaroku )
 }
 
 
-VIDEO_START(hanaroku)
+static VIDEO_START(hanaroku)
 {
 }
 
@@ -65,7 +65,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-VIDEO_UPDATE(hanaroku)
+static VIDEO_UPDATE(hanaroku)
 {
 	fillbitmap(bitmap, machine->pens[0x1f0], cliprect);	// ???
 	draw_sprites(machine, bitmap, cliprect);
@@ -149,7 +149,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( hanaroku )
+static INPUT_PORTS_START( hanaroku )
 	PORT_START_TAG("IN0")	// IN0  (0xe000)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )		// adds n credits depending on "Coinage" Dip Switch
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )		// adds 5 credits

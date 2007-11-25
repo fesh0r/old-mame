@@ -55,7 +55,7 @@ static TIMER_CALLBACK( delayed_sound_w )
 	cpu_triggerint(1);
 
 	/* use a timer to make long transfers faster */
-	mame_timer_set(MAME_TIME_IN_USEC(50), 0, 0);
+	timer_set(ATTOTIME_IN_USEC(50), 0, 0);
 }
 
 
@@ -225,7 +225,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( btoads )
+static INPUT_PORTS_START( btoads )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)

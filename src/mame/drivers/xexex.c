@@ -1,6 +1,6 @@
 #define XE_DEBUG 0
 #define XE_SKIPIDLE 1
-#define XE_DMADELAY MAME_TIME_IN_USEC(256)
+#define XE_DMADELAY ATTOTIME_IN_USEC(256)
 
 /***************************************************************************
 
@@ -74,15 +74,15 @@ VIDEO_START( xexex );
 VIDEO_UPDATE( xexex );
 void xexex_set_alpha(int on);
 
-MACHINE_START( xexex );
-MACHINE_RESET( xexex );
+static MACHINE_START( xexex );
+static MACHINE_RESET( xexex );
 
 static UINT16 *xexex_workram;
 static UINT16 cur_control2;
 static int init_eeprom_count;
 static INT32 cur_sound_region, xexex_strip0x1a;
 static int suspension_active, resume_trigger;
-static mame_timer *dmadelay_timer;
+static emu_timer *dmadelay_timer;
 
 
 static struct EEPROM_interface eeprom_interface =
@@ -331,7 +331,7 @@ static INTERRUPT_GEN( xexex_interrupt )
 				xexex_objdma(0);
 
 				// schedule DMA end interrupt
-				mame_timer_adjust(dmadelay_timer, XE_DMADELAY, 0, time_zero);
+				timer_adjust(dmadelay_timer, XE_DMADELAY, 0, attotime_zero);
 			}
 
 			// IRQ 4 is the V-blank interrupt. It controls color, sound and
@@ -423,7 +423,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( xexex )
+static INPUT_PORTS_START( xexex )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -484,7 +484,7 @@ static MACHINE_DRIVER_START( xexex )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(32);
+	MDRV_INTERLEAVE(32)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
@@ -617,14 +617,14 @@ ROM_START( xexexj ) /* Japan, Version AA */
 	ROM_LOAD( "067_b07.rom", 0x200000, 0x100000, CRC(ec87fe1b) SHA1(ec9823aea5a1fc5c47c8262e15e10b28be87231c) )
 ROM_END
 
-MACHINE_RESET( xexex )
+static MACHINE_RESET( xexex )
 {
 	cur_sound_region = 0;
 	suspension_active = 0;
 	K054539_init_flags(0, K054539_REVERSE_STEREO);
 }
 
-MACHINE_START( xexex )
+static MACHINE_START( xexex )
 {
 	state_save_register_global(cur_control2);
 	state_save_register_func_postload(parse_control2);
@@ -633,7 +633,7 @@ MACHINE_START( xexex )
 
 	resume_trigger = 1000;
 
-	dmadelay_timer = mame_timer_alloc(dmaend_callback);
+	dmadelay_timer = timer_alloc(dmaend_callback);
 }
 
 

@@ -16,7 +16,7 @@ extern UINT16 *gaelco_vregs;
 extern UINT16 *gaelco_videoram;
 extern UINT16 *gaelco_spriteram;
 extern tilemap *gaelco_tilemap[2];
-UINT16 *gaelco_screen;
+static UINT16 *gaelco_screen;
 
 /* from video/gaelco.c */
 WRITE16_HANDLER( gaelco_vram_w );
@@ -73,7 +73,7 @@ static ADDRESS_MAP_START( bigkarnk_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff8000, 0xffffff) AM_READ(MRA16_RAM)			/* Work RAM */
 ADDRESS_MAP_END
 
-WRITE16_HANDLER( bigkarnk_sound_command_w )
+static WRITE16_HANDLER( bigkarnk_sound_command_w )
 {
 	if (ACCESSING_LSB){
 		soundlatch_w(0,data & 0xff);
@@ -81,7 +81,7 @@ WRITE16_HANDLER( bigkarnk_sound_command_w )
 	}
 }
 
-WRITE16_HANDLER( bigkarnk_coin_w )
+static WRITE16_HANDLER( bigkarnk_coin_w )
 {
 	if (ACCESSING_LSB){
 		switch ((offset >> 3)){
@@ -128,7 +128,7 @@ static ADDRESS_MAP_START( bigkarnk_writemem_snd, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0c00, 0xffff) AM_WRITE(MWA8_ROM)				/* ROM */
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( bigkarnk )
+static INPUT_PORTS_START( bigkarnk )
 	PORT_START	/* DSW #1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( 4C_1C ) )
@@ -557,7 +557,7 @@ ROM_END
 
 /*********** Squash Encryption Related Code ******************/
 
-INPUT_PORTS_START( squash )
+static INPUT_PORTS_START( squash )
 	PORT_START	/* DSW2 8bit */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
@@ -1038,7 +1038,7 @@ static UINT16 squash_encrypt(int offset, int data, int game)
 	return data;
 }
 
-WRITE16_HANDLER( gaelco_vram_encrypted_w )
+static WRITE16_HANDLER( gaelco_vram_encrypted_w )
 {
 //  mame_printf_debug("gaelco_vram_encrypted_w!!\n");
 
@@ -1049,7 +1049,7 @@ WRITE16_HANDLER( gaelco_vram_encrypted_w )
 }
 
 
-WRITE16_HANDLER(gaelco_encrypted_w)
+static WRITE16_HANDLER(gaelco_encrypted_w)
 {
 //  mame_printf_debug("gaelco_encrypted_w!!\n");
 
@@ -1057,7 +1057,7 @@ WRITE16_HANDLER(gaelco_encrypted_w)
         COMBINE_DATA(&gaelco_screen[offset]);
 }
 
-WRITE16_HANDLER( thoop_vram_encrypted_w )
+static WRITE16_HANDLER( thoop_vram_encrypted_w )
 {
 //  mame_printf_debug("gaelco_vram_encrypted_w!!\n");
 
@@ -1067,7 +1067,7 @@ WRITE16_HANDLER( thoop_vram_encrypted_w )
 	tilemap_mark_tile_dirty(gaelco_tilemap[offset >> 11],((offset << 1) & 0x0fff) >> 2);
 }
 
-WRITE16_HANDLER(thoop_encrypted_w)
+static WRITE16_HANDLER(thoop_encrypted_w)
 {
 //  mame_printf_debug("gaelco_encrypted_w!!\n");
 
@@ -1158,7 +1158,7 @@ ROM_END
 
 /*********** Thunder Hoop Encryption Related Code ******************/
 
-INPUT_PORTS_START( thoop )
+static INPUT_PORTS_START( thoop )
 	PORT_START	/* DSW2 8bit */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Easy ) )

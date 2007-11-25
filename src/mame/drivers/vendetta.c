@@ -244,7 +244,7 @@ static WRITE8_HANDLER( z80_arm_nmi_w )
 {
 	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE );
 
-	mame_timer_set( MAME_TIME_IN_USEC( 25 ), 0, z80_nmi_callback );
+	timer_set( ATTOTIME_IN_USEC( 25 ), 0, z80_nmi_callback );
 }
 
 static WRITE8_HANDLER( z80_irq_w )
@@ -252,13 +252,13 @@ static WRITE8_HANDLER( z80_irq_w )
 	cpunum_set_input_line_and_vector( 1, 0, HOLD_LINE, 0xff );
 }
 
-READ8_HANDLER( vendetta_sound_interrupt_r )
+static READ8_HANDLER( vendetta_sound_interrupt_r )
 {
 	cpunum_set_input_line_and_vector( 1, 0, HOLD_LINE, 0xff );
 	return 0x00;
 }
 
-READ8_HANDLER( vendetta_sound_r )
+static READ8_HANDLER( vendetta_sound_r )
 {
 	return K053260_0_r(2 + offset);
 }
@@ -364,7 +364,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( vendet4p )
+static INPUT_PORTS_START( vendet4p )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -423,7 +423,7 @@ INPUT_PORTS_START( vendet4p )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN4 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( vendetta )
+static INPUT_PORTS_START( vendetta )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -462,7 +462,7 @@ INPUT_PORTS_START( vendetta )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( esckids )
+static INPUT_PORTS_START( esckids )
 	PORT_START_TAG("IN0")		// Player 1 Control
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -521,7 +521,7 @@ INPUT_PORTS_START( esckids )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN4 )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( esckidsj )
+static INPUT_PORTS_START( esckidsj )
 	PORT_START_TAG("IN0")		// Player 1 Control
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)

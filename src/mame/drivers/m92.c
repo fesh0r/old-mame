@@ -198,7 +198,7 @@ Notes:
 static UINT8 irqvector;
 static UINT16 sound_status;
 static UINT32 bankaddress;
-static mame_timer *scanline_timer;
+static emu_timer *scanline_timer;
 
 static UINT8 m92_irq_vectorbase;
 
@@ -225,12 +225,12 @@ static MACHINE_START( m92 )
 	state_save_register_global(bankaddress);
 	state_save_register_func_postload(set_m92_bank);
 
-	scanline_timer = mame_timer_alloc(m92_scanline_interrupt);
+	scanline_timer = timer_alloc(m92_scanline_interrupt);
 }
 
 static MACHINE_RESET( m92 )
 {
-	mame_timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, time_never);
+	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_never);
 }
 
 /*****************************************************************************/
@@ -256,7 +256,7 @@ static TIMER_CALLBACK( m92_scanline_interrupt )
 	/* adjust for next scanline */
 	if (++scanline >= machine->screen[0].height)
 		scanline = 0;
-	mame_timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, time_never);
+	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_never);
 }
 
 /*****************************************************************************/
@@ -569,7 +569,7 @@ static INPUT_PORTS_START( bmaster )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( gunforce )
+static INPUT_PORTS_START( gunforce )
 	PORT_INCLUDE(m92_2player)
 
 	PORT_MODIFY("DIPS21")
@@ -590,7 +590,7 @@ INPUT_PORTS_START( gunforce )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( lethalth )
+static INPUT_PORTS_START( lethalth )
 	PORT_INCLUDE(m92_2player)
 
 	PORT_MODIFY("COINS_DIPS")
@@ -619,7 +619,7 @@ INPUT_PORTS_START( lethalth )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( hook )
+static INPUT_PORTS_START( hook )
 	PORT_INCLUDE(m92_4player)
 
 	PORT_MODIFY("DIPS21")
@@ -643,7 +643,7 @@ INPUT_PORTS_START( hook )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( majtitl2 )
+static INPUT_PORTS_START( majtitl2 )
 	PORT_INCLUDE(m92_4player)
 
 	PORT_MODIFY("COINS_DIPS")
@@ -692,7 +692,7 @@ INPUT_PORTS_START( majtitl2 )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( mysticri )
+static INPUT_PORTS_START( mysticri )
 	PORT_INCLUDE(m92_2player)
 
 	PORT_MODIFY("DIPS21")
@@ -713,7 +713,7 @@ INPUT_PORTS_START( mysticri )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( uccops )
+static INPUT_PORTS_START( uccops )
 	PORT_INCLUDE(m92_3player)
 
 	PORT_MODIFY("DIPS21")
@@ -736,7 +736,7 @@ INPUT_PORTS_START( uccops )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( rtypeleo )
+static INPUT_PORTS_START( rtypeleo )
 	PORT_INCLUDE(m92_2player)
 
 	PORT_MODIFY("DIPS21")
@@ -754,7 +754,7 @@ INPUT_PORTS_START( rtypeleo )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( inthunt )
+static INPUT_PORTS_START( inthunt )
 	PORT_INCLUDE(m92_2player)
 
 	PORT_MODIFY("DIPS21")
@@ -775,7 +775,7 @@ INPUT_PORTS_START( inthunt )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( nbbatman )
+static INPUT_PORTS_START( nbbatman )
 	PORT_INCLUDE(m92_4player)
 
 	PORT_MODIFY("DIPS21")
@@ -796,7 +796,7 @@ INPUT_PORTS_START( nbbatman )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( psoldier )
+static INPUT_PORTS_START( psoldier )
 	PORT_INCLUDE(m92_2player)
 
 	PORT_MODIFY("DIPS21")
@@ -817,7 +817,7 @@ INPUT_PORTS_START( psoldier )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( dsccr94j )
+static INPUT_PORTS_START( dsccr94j )
 	PORT_INCLUDE(m92_4player)
 	/* Dip Switch 2, dip 2 is listed as "Don't Change" and is "OFF" */
 
@@ -857,7 +857,7 @@ INPUT_PORTS_START( dsccr94j )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( gunforc2 )
+static INPUT_PORTS_START( gunforc2 )
 	PORT_INCLUDE(m92_2player)
 
 	PORT_MODIFY("DIPS21")

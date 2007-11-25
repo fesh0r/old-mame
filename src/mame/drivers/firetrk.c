@@ -99,7 +99,7 @@ static TIMER_CALLBACK( periodic_callback )
 		scanline = 0;
 	}
 
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, periodic_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, periodic_callback);
 }
 
 
@@ -223,7 +223,7 @@ static void write_output(UINT8 flags)
 
 static MACHINE_RESET( firetrk )
 {
-	mame_timer_pulse(video_screen_get_frame_period(0), 0, frame_callback);
+	timer_pulse(video_screen_get_frame_period(0), 0, frame_callback);
 
 	if (GAME_IS_MONTECARLO)
 	{
@@ -563,7 +563,7 @@ static ADDRESS_MAP_START( montecar_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( firetrk )
+static INPUT_PORTS_START( firetrk )
 	PORT_START
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
@@ -642,7 +642,7 @@ INPUT_PORTS_START( firetrk )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( superbug )
+static INPUT_PORTS_START( superbug )
 	PORT_START
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(10)
 
@@ -709,7 +709,7 @@ INPUT_PORTS_START( superbug )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( montecar )
+static INPUT_PORTS_START( montecar )
 	PORT_START
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(10) PORT_PLAYER(1)
 

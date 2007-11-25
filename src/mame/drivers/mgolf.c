@@ -8,8 +8,8 @@
 
 static UINT8* mgolf_video_ram;
 
-static mame_time time_pushed;
-static mame_time time_released;
+static attotime time_pushed;
+static attotime time_released;
 
 static UINT8 prev = 0;
 static UINT8 mask = 0;
@@ -78,7 +78,7 @@ static void update_plunger(void)
 	{
 		if (val == 0)
 		{
-			time_released = mame_timer_get_time();
+			time_released = timer_get_time();
 
 			if (!mask)
 			{
@@ -87,7 +87,7 @@ static void update_plunger(void)
 		}
 		else
 		{
-			time_pushed = mame_timer_get_time();
+			time_pushed = timer_get_time();
 		}
 
 		prev = val;
@@ -110,19 +110,19 @@ static TIMER_CALLBACK( interrupt_callback )
 		scanline = 16;
 	}
 
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, interrupt_callback);
 }
 
 
 static double calc_plunger_pos(void)
 {
-	return (mame_time_to_double(mame_timer_get_time()) - mame_time_to_double(time_released)) * (mame_time_to_double(time_released) - mame_time_to_double(time_pushed) + 0.2);
+	return (attotime_to_double(timer_get_time()) - attotime_to_double(time_released)) * (attotime_to_double(time_released) - attotime_to_double(time_pushed) + 0.2);
 }
 
 
 static MACHINE_RESET( mgolf )
 {
-	mame_timer_set(video_screen_get_time_until_pos(0, 16, 0), 16, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, 16, 0), 16, interrupt_callback);
 }
 
 
@@ -214,7 +214,7 @@ static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( mgolf )
+static INPUT_PORTS_START( mgolf )
 
 	PORT_START /* 40 */
 	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Language ) )

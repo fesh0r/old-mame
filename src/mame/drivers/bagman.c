@@ -125,7 +125,7 @@ static void reset_talking (void)
 }
 
 
-int bagman_speech_rom_read_bit(void)
+static int bagman_speech_rom_read_bit(void)
 {
 	UINT8 *ROM = memory_region(REGION_SOUND1);
 	int bit_no = (ls259_buf[0]<<2) | (ls259_buf[1]<<1) | (ls259_buf[2]<<0);
@@ -267,7 +267,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( bagman )
+static INPUT_PORTS_START( bagman )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -315,7 +315,7 @@ INPUT_PORTS_END
 
 /* EXACTLY the same as bagman, the only difference is that
 Languade dip is replaced by Demo Sounds */
-INPUT_PORTS_START( bagmans )
+static INPUT_PORTS_START( bagmans )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -364,7 +364,7 @@ INPUT_PORTS_END
 
 /* EXACTLY the same as bagman, the only difference is that the START1 button */
 /* also acts as the shoot button. */
-INPUT_PORTS_START( sbagman )
+static INPUT_PORTS_START( sbagman )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -412,7 +412,7 @@ INPUT_PORTS_START( sbagman )
 	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( pickin )
+static INPUT_PORTS_START( pickin )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -459,7 +459,7 @@ INPUT_PORTS_START( pickin )
 	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( botanic )
+static INPUT_PORTS_START( botanic )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -939,7 +939,7 @@ ROM_START( botanic )
 	ROM_LOAD( "bota_3a.3a",    0x0020, 0x0020, CRC(edf88f34) SHA1(b9c342d51303d552f87df2543a34e38c30acd07c) )
 ROM_END
 
-DRIVER_INIT( bagnarda )
+static DRIVER_INIT( bagnarda )
 {
 	/* initialize video enable because it's not done in the code */
 	*bagman_video_enable = 1;

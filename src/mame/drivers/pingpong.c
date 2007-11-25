@@ -129,7 +129,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( pingpong )
+static INPUT_PORTS_START( pingpong )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -202,7 +202,7 @@ INPUT_PORTS_START( pingpong )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( merlinmm )
+static INPUT_PORTS_START( merlinmm )
 	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x01, 0x01, "Bank 3-3")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -314,7 +314,7 @@ INPUT_PORTS_START( merlinmm )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN4 ) PORT_NAME("100P")
 INPUT_PORTS_END
 
-INPUT_PORTS_START( cashquiz )
+static INPUT_PORTS_START( cashquiz )
 	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
@@ -567,7 +567,7 @@ ROM_START( cashquiz )
 	ROM_LOAD( "pingpong.5h",  0x0120, 0x0100, CRC(8456046a) SHA1(8226f1325c14eb8aed5cd3c3d6bad9f9fd88c5fa) ) /* characters */
 ROM_END
 
-DRIVER_INIT( merlinmm )
+static DRIVER_INIT( merlinmm )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 	int i;
@@ -577,7 +577,7 @@ DRIVER_INIT( merlinmm )
 		ROM[i] = BITSWAP8(ROM[i],0,1,2,3,4,5,6,7);
 }
 
-DRIVER_INIT( cashquiz )
+static DRIVER_INIT( cashquiz )
 {
 	UINT8 *ROM;
 	int i;

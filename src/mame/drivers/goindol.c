@@ -34,7 +34,7 @@ extern size_t goindol_bg_videoram_size;
 extern int goindol_char_bank;
 
 
-WRITE8_HANDLER( goindol_bankswitch_w )
+static WRITE8_HANDLER( goindol_bankswitch_w )
 {
 	int bankaddress;
 	UINT8 *RAM = memory_region(REGION_CPU1);
@@ -190,7 +190,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )\
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-INPUT_PORTS_START( goindol )
+static INPUT_PORTS_START( goindol )
 GOINDOL_INPUT_BITS
 
 	PORT_START_TAG("DSW0")
@@ -219,7 +219,7 @@ GOINDOL_INPUT_BITS
 GOINDOL_DSW1
 INPUT_PORTS_END
 
-INPUT_PORTS_START( homo )
+static INPUT_PORTS_START( homo )
 GOINDOL_INPUT_BITS
 
 	PORT_START_TAG("DSW0")
@@ -411,7 +411,7 @@ ROM_END
 
 
 
-DRIVER_INIT( goindol )
+static DRIVER_INIT( goindol )
 {
 	UINT8 *rom = memory_region(REGION_CPU1);
 

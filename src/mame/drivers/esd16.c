@@ -63,15 +63,15 @@ static UINT16 *headpanic_platform_y;
 
 ***************************************************************************/
 
-WRITE16_HANDLER( esd16_spriteram_w ) {	COMBINE_DATA(&spriteram16[offset]);	}
+static WRITE16_HANDLER( esd16_spriteram_w ) {	COMBINE_DATA(&spriteram16[offset]);	}
 
-WRITE16_HANDLER( esd16_sound_command_w )
+static WRITE16_HANDLER( esd16_sound_command_w )
 {
 	if (ACCESSING_LSB)
 	{
 		soundlatch_w(0,data & 0xff);
 		cpunum_set_input_line(1,0,ASSERT_LINE);		// Generate an IRQ
-		cpu_spinuntil_time(MAME_TIME_IN_USEC(50));	// Allow the other CPU to reply
+		cpu_spinuntil_time(ATTOTIME_IN_USEC(50));	// Allow the other CPU to reply
 	}
 }
 
@@ -116,7 +116,7 @@ static ADDRESS_MAP_START( multchmp_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x60000c, 0x60000d) AM_WRITE(esd16_sound_command_w			)	// To Sound CPU
 ADDRESS_MAP_END
 
-WRITE16_HANDLER(hedpanic_platform_w)
+static WRITE16_HANDLER(hedpanic_platform_w)
 {
 	int offsets = headpanic_platform_x[0]+0x40* headpanic_platform_y[0];
 
@@ -282,7 +282,7 @@ static ADDRESS_MAP_START( multchmp_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf800, 0xffff) AM_WRITE(MWA8_RAM		)	// RAM
 ADDRESS_MAP_END
 
-READ8_HANDLER( esd16_sound_command_r )
+static READ8_HANDLER( esd16_sound_command_r )
 {
 	/* Clear IRQ only after reading the command, or some get lost */
 	cpunum_set_input_line(1,0,CLEAR_LINE);
@@ -315,7 +315,7 @@ ADDRESS_MAP_END
 
 ***************************************************************************/
 
-INPUT_PORTS_START( multchmp )
+static INPUT_PORTS_START( multchmp )
 	PORT_START_TAG("IN0")	// $600002.w
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -394,7 +394,7 @@ INPUT_PORTS_START( multchmp )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( hedpanic )
+static INPUT_PORTS_START( hedpanic )
 	PORT_START_TAG("IN0")	// $600002.w
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)

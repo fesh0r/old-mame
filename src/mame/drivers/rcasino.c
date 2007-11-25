@@ -40,7 +40,7 @@ Get correct data for hopper on and lockout.
 static tilemap *bg_tilemap;
 static int pulse;
 static int hopper;
-PALETTE_INIT( rcasino )
+static PALETTE_INIT( rcasino )
 {
 	int i;
 
@@ -78,13 +78,13 @@ PALETTE_INIT( rcasino )
 	}
 }
 
-WRITE8_HANDLER( rcasino_videoram_w )
+static WRITE8_HANDLER( rcasino_videoram_w )
 {
 	videoram[offset] = data;
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-WRITE8_HANDLER( rcasino_colorram_w )
+static WRITE8_HANDLER( rcasino_colorram_w )
 {
 	colorram[offset] = data;
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
@@ -100,13 +100,13 @@ static TILE_GET_INFO( get_bg_tile_info )
 	SET_TILE_INFO(bank, code, color, 0);
 }
 
-VIDEO_START(rcasino)
+static VIDEO_START(rcasino)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 }
 
-VIDEO_UPDATE(rcasino)
+static VIDEO_UPDATE(rcasino)
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	return 0;
@@ -187,7 +187,7 @@ static ADDRESS_MAP_START( rcasino_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x13, 0x13) AM_WRITE(rcasino_coin_counter_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( rcasino )
+static INPUT_PORTS_START( rcasino )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(KEYCODE_A)	// SW1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(KEYCODE_S)	// SW2

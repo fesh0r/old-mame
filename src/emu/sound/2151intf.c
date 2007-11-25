@@ -16,13 +16,11 @@
 struct ym2151_info
 {
 	sound_stream *	stream;
-	mame_timer *	timer[2];
+	emu_timer *	timer[2];
 	void *			chip;
 	const struct YM2151interface *intf;
 };
 
-
-#if (HAS_YM2151)
 
 static void ym2151_update(void *param, stream_sample_t **inputs, stream_sample_t **buffers, int length)
 {
@@ -236,6 +234,3 @@ void ym2151_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
 	}
 }
-
-#endif
-

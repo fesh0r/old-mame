@@ -29,22 +29,22 @@ extern size_t mnight_foregroundram_size;
 
 static int mnight_bank_latch = 255, main_cpu_num;
 
-MACHINE_RESET( mnight )
+static MACHINE_RESET( mnight )
 {
 	main_cpu_num = 0;
 }
 
-INTERRUPT_GEN( mnight_interrupt )
+static INTERRUPT_GEN( mnight_interrupt )
 {
 	cpunum_set_input_line_and_vector(0,0,HOLD_LINE,0xd7);	/* RST 10h */
 }
 
-READ8_HANDLER( mnight_bankselect_r )
+static READ8_HANDLER( mnight_bankselect_r )
 {
 	return mnight_bank_latch;
 }
 
-WRITE8_HANDLER( mnight_bankselect_w )
+static WRITE8_HANDLER( mnight_bankselect_w )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1+main_cpu_num);
 	int bankaddress;
@@ -120,7 +120,7 @@ static ADDRESS_MAP_START( snd_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( mnight )
+static INPUT_PORTS_START( mnight )
 	PORT_START /* Player 1 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -201,7 +201,7 @@ INPUT_PORTS_START( mnight )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_4C ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( arkarea )
+static INPUT_PORTS_START( arkarea )
 	PORT_START /* Player 1 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -351,7 +351,7 @@ static MACHINE_DRIVER_START( mnight )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(10000))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(10000))
 	MDRV_INTERLEAVE(10)
 
 	MDRV_MACHINE_RESET(mnight)

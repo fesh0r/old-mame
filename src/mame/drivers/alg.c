@@ -27,7 +27,7 @@
 
 
 static laserdisc_info *discinfo;
-static mame_timer *serial_timer;
+static emu_timer *serial_timer;
 static UINT8 serial_timer_active;
 static UINT16 input_select;
 
@@ -145,7 +145,7 @@ static VIDEO_UPDATE( alg )
 static MACHINE_START( alg )
 {
 	discinfo = laserdisc_init(LASERDISC_TYPE_LDP1450, get_disk_handle(0), 1);
-	serial_timer = mame_timer_alloc(response_timer);
+	serial_timer = timer_alloc(response_timer);
 	serial_timer_active = FALSE;
 }
 
@@ -177,7 +177,7 @@ static TIMER_CALLBACK( response_timer )
 
 	/* if there's more to come, set another timer */
 	if (laserdisc_line_r(discinfo, LASERDISC_LINE_DATA_AVAIL) == ASSERT_LINE)
-		mame_timer_adjust(serial_timer, amiga_get_serial_char_period(), 0, time_zero);
+		timer_adjust(serial_timer, amiga_get_serial_char_period(), 0, attotime_zero);
 	else
 		serial_timer_active = FALSE;
 }
@@ -191,7 +191,7 @@ static void vsync_callback(void)
 	/* if we have data available, set a timer to read it */
 	if (!serial_timer_active && laserdisc_line_r(discinfo, LASERDISC_LINE_DATA_AVAIL) == ASSERT_LINE)
 	{
-		mame_timer_adjust(serial_timer, amiga_get_serial_char_period(), 0, time_zero);
+		timer_adjust(serial_timer, amiga_get_serial_char_period(), 0, attotime_zero);
 		serial_timer_active = TRUE;
 	}
 }
@@ -205,7 +205,7 @@ static void serial_w(UINT16 data)
 	/* if we have data available, set a timer to read it */
 	if (!serial_timer_active && laserdisc_line_r(discinfo, LASERDISC_LINE_DATA_AVAIL) == ASSERT_LINE)
 	{
-		mame_timer_adjust(serial_timer, amiga_get_serial_char_period(), 0, time_zero);
+		timer_adjust(serial_timer, amiga_get_serial_char_period(), 0, attotime_zero);
 		serial_timer_active = TRUE;
 	}
 }
@@ -359,7 +359,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( alg )
+static INPUT_PORTS_START( alg )
 	PORT_START_TAG("JOY0DAT")	/* read by Amiga core */
 	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(amiga_joystick_convert, "P1JOY")
 	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -402,7 +402,7 @@ INPUT_PORTS_START( alg )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( alg_2p )
+static INPUT_PORTS_START( alg_2p )
 	PORT_INCLUDE(alg)
 
 	PORT_MODIFY("POTGO")
@@ -457,7 +457,7 @@ static MACHINE_DRIVER_START( alg_r1 )
 	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 262)
 
 	MDRV_SCREEN_REFRESH_RATE(59.97)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MDRV_MACHINE_START(alg)
 	MDRV_MACHINE_RESET(alg)
@@ -828,36 +828,36 @@ static DRIVER_INIT( none )
  *************************************/
 
 /* BIOS */
-GAMEB( 199?, alg_bios, 0,        alg_bios, alg_r1,   alg,    none,     ROT0,  "American Laser Games", "American Laser Games BIOS", GAME_IS_BIOS_ROOT )
+GAME( 199?, alg_bios, 0, alg_r1,   alg,    none,     ROT0,  "American Laser Games", "American Laser Games BIOS", GAME_IS_BIOS_ROOT )
 
 /* Rev. A board */
 /* PAL R1 */
-GAMEB( 1990, maddoga,  maddog,   alg_bios, alg_r1,   alg,    palr1,    ROT0,  "American Laser Games", "Mad Dog McCree v1C board rev.A", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1990, maddoga,  maddog, alg_r1,   alg,    palr1,    ROT0,  "American Laser Games", "Mad Dog McCree v1C board rev.A", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
 
 /* PAL R3 */
-GAMEB( 1991, wsjr,     alg_bios, alg_bios, alg_r1,   alg,    palr3,    ROT0,  "American Laser Games", "Who Shot Johnny Rock? v1.6", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAMEB( 1991, wsjr15,   wsjr,     alg_bios, alg_r1,   alg,    palr3,    ROT0,  "American Laser Games", "Who Shot Johnny Rock? v1.5", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, wsjr,     alg_bios, alg_r1,   alg,    palr3,    ROT0,  "American Laser Games", "Who Shot Johnny Rock? v1.6", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, wsjr15,   wsjr, alg_r1,   alg,    palr3,    ROT0,  "American Laser Games", "Who Shot Johnny Rock? v1.5", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
 
 /* Rev. B board */
 /* PAL R6 */
-GAMEB( 1990, maddog,   alg_bios, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Mad Dog McCree v2.03 board rev.B", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1990, maddog,   alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Mad Dog McCree v2.03 board rev.B", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
   /* works ok but uses right player (2) controls only for trigger and holster */
-GAMEB( 1992, maddog2,  alg_bios, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Mad Dog II: The Lost Gold v2.04", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAMEB( 1992, maddog22, alg_bios, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Mad Dog II: The Lost Gold v2.02", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAMEB( 1992, maddog21, maddog2,  alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Mad Dog II: The Lost Gold v1.0", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, maddog2,  alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Mad Dog II: The Lost Gold v2.04", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, maddog22, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Mad Dog II: The Lost Gold v2.02", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, maddog21, maddog2, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Mad Dog II: The Lost Gold v1.0", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
   /* works ok but uses right player (2) controls only for trigger and holster */
-GAMEB( 1992, spacepir, alg_bios, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Space Pirates v2.2", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAMEB( 1992, gallgall, alg_bios, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Gallagher's Gallery v2.2", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, spacepir, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Space Pirates v2.2", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, gallgall, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Gallagher's Gallery v2.2", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
   /* all good, but no holster */
-GAMEB( 1993, crimepat, alg_bios, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Crime Patrol v1.4", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAMEB( 1993, crimep2,  alg_bios, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Crime Patrol 2: Drug Wars v1.3", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAMEB( 1993, crime211, crimep2,  alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Crime Patrol 2: Drug Wars v1.1", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAMEB( 1994, lastbh,   alg_bios, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "The Last Bounty Hunter v0.06", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAMEB( 1995, fastdraw, alg_bios, alg_bios, alg_r2,   alg_2p, palr6,    ROT90, "American Laser Games", "Fast Draw Showdown v1.3", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, crimepat, alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Crime Patrol v1.4", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, crimep2,  alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Crime Patrol 2: Drug Wars v1.3", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, crime211, crimep2, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "Crime Patrol 2: Drug Wars v1.1", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, lastbh,   alg_bios, alg_r2,   alg_2p, palr6,    ROT0,  "American Laser Games", "The Last Bounty Hunter v0.06", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1995, fastdraw, alg_bios, alg_r2,   alg_2p, palr6,    ROT90, "American Laser Games", "Fast Draw Showdown v1.3", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
   /* works ok but uses right player (2) controls only for trigger and holster */
 
 /* NOVA games on ALG hardware with own address scramble */
-GAMEB( 199?, aplatoon, alg_bios, alg_bios, alg_r2,   alg,    aplatoon, ROT0,  "Nova?", "Platoon V.?.? US", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 199?, aplatoon, alg_bios, alg_r2,   alg,    aplatoon, ROT0,  "Nova?", "Platoon V.?.? US", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
 
 /* Web Picmatic games PAL tv standard, own rom board */
-GAMEB( 1993, zortonbr, alg_bios, alg_bios, picmatic, alg,    none,     ROT0,  "Web Picmatic", "Zorton Brothers (Los Justicieros)", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, zortonbr, alg_bios, picmatic, alg,    none,     ROT0,  "Web Picmatic", "Zorton Brothers (Los Justicieros)", GAME_NOT_WORKING | GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )

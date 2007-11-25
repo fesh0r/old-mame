@@ -326,7 +326,7 @@ static ADDRESS_MAP_START( sound_writeport_2203, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x03, 0x03) AM_WRITE(DAC_1_signed_data_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( terracre )
+static INPUT_PORTS_START( terracre )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -400,7 +400,7 @@ INPUT_PORTS_START( terracre )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( amazon )
+static INPUT_PORTS_START( amazon )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -474,7 +474,7 @@ INPUT_PORTS_START( amazon )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( horekid )
+static INPUT_PORTS_START( horekid )
 	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Lives ) )
 	PORT_DIPSETTING(      0x0003, "3" )
@@ -994,17 +994,17 @@ ROM_START( horekidb )
 	ROM_LOAD( "kid_prom.4e",  0x400, 0x100, CRC(e4fb54ee) SHA1(aba89d347b24dc6680e6f25b4a6c0d6657bb6a83) ) /* ctable */
 ROM_END
 
-DRIVER_INIT( amazon )
+static DRIVER_INIT( amazon )
 {
 	mpProtData = mAmazonProtData;
 }
 
-DRIVER_INIT( amatelas )
+static DRIVER_INIT( amatelas )
 {
 	mpProtData = mAmatelasProtData;
 }
 
-DRIVER_INIT( horekid )
+static DRIVER_INIT( horekid )
 {
 	mpProtData = mHoreKidProtData;
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x44004, 0x44005, 0, 0, horekid_IN2_r);

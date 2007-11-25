@@ -272,7 +272,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-VIDEO_START( limenko )
+static VIDEO_START( limenko )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,128,64);
 	md_tilemap = tilemap_create(get_md_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,128,64);
@@ -282,7 +282,7 @@ VIDEO_START( limenko )
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
 
-VIDEO_UPDATE( limenko )
+static VIDEO_UPDATE( limenko )
 {
 	fillbitmap(priority_bitmap,0,cliprect);
 
@@ -312,7 +312,7 @@ VIDEO_UPDATE( limenko )
   INPUT PORTS
 *****************************************************************************************************/
 
-INPUT_PORTS_START( legendoh )
+static INPUT_PORTS_START( legendoh )
 	PORT_START
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_PLAYER(1)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(1)
@@ -372,7 +372,7 @@ INPUT_PORTS_START( legendoh )
 	PORT_BIT( 0x4000ffff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( sb2003 )
+static INPUT_PORTS_START( sb2003 )
 	PORT_START
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_PLAYER(1)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(1)
@@ -410,7 +410,7 @@ INPUT_PORTS_START( sb2003 )
 	PORT_BIT( 0x5f10ffff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( spotty )
+static INPUT_PORTS_START( spotty )
 	PORT_START
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_NAME("Hold 1")
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_NAME("Hold 2")
@@ -863,22 +863,22 @@ static READ32_HANDLER( spotty_speedup_r )
 	return mainram[0x6626c/4];
 }
 
-DRIVER_INIT( dynabomb )
+static DRIVER_INIT( dynabomb )
 {
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xe2784, 0xe2787, 0, 0, dynabomb_speedup_r );
 }
 
-DRIVER_INIT( legendoh )
+static DRIVER_INIT( legendoh )
 {
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x32ab0, 0x32ab3, 0, 0, legendoh_speedup_r );
 }
 
-DRIVER_INIT( sb2003 )
+static DRIVER_INIT( sb2003 )
 {
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x135800, 0x135803, 0, 0, sb2003_speedup_r );
 }
 
-DRIVER_INIT( spotty )
+static DRIVER_INIT( spotty )
 {
 	UINT8 *dst    = memory_region(REGION_GFX1);
 	UINT8 *src    = memory_region(REGION_USER2);

@@ -68,7 +68,7 @@
 #include "sound/ay8910.h"
 #include "includes/cclimber.h"
 
-PALETTE_INIT( yamato )
+static PALETTE_INIT( yamato )
 {
 	int i;
 	#define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
@@ -156,7 +156,7 @@ PALETTE_INIT( yamato )
 	}
 }
 
-PALETTE_INIT( toprollr )
+static PALETTE_INIT( toprollr )
 {
 	int i;
 
@@ -337,7 +337,7 @@ static ADDRESS_MAP_START( trport_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0d, 0x0d) AM_NOP
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( yamato )
+static INPUT_PORTS_START( yamato )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -404,7 +404,7 @@ INPUT_PORTS_START( yamato )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( toprollr )
+static INPUT_PORTS_START( toprollr )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -601,7 +601,7 @@ static MACHINE_DRIVER_START( toprollr )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(cclimber_custom_interface)
+	MDRV_SOUND_CONFIG(cclimber_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 MACHINE_DRIVER_END
 

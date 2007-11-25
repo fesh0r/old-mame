@@ -105,7 +105,7 @@ INLINE void pokechmp_set_color(pen_t color, int rshift, int gshift, int bshift, 
 }
 
 
-WRITE8_HANDLER( pokechmp_paletteram_w )
+static WRITE8_HANDLER( pokechmp_paletteram_w )
 {
 	paletteram[offset] = data;
 	pokechmp_set_color(offset &0x3ff, 0, 5, 10, (paletteram[offset&0x3ff]<<8) | ( paletteram[ (offset&0x3ff)+0x400 ] )  );
@@ -166,7 +166,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( pokechmp )
+static INPUT_PORTS_START( pokechmp )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY

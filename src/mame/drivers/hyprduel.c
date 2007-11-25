@@ -140,7 +140,7 @@ static WRITE16_HANDLER( hypr_subcpu_control_w )
 			cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
 			subcpu_resetline = 0;
 			if (pc == 0xbb0 || pc == 0x9d30 || pc == 0xb19c)
-				cpu_spinuntil_time(MAME_TIME_IN_USEC(15000));		/* sync semaphore */
+				cpu_spinuntil_time(ATTOTIME_IN_USEC(15000));		/* sync semaphore */
 		}
 		else if (subcpu_resetline == -1)
 		{
@@ -185,7 +185,7 @@ static TIMER_CALLBACK( vblank_end_callback )
 	cpunum_set_input_line(1, 2, HOLD_LINE);
 }
 
-INTERRUPT_GEN( hyprduel_interrupt )
+static INTERRUPT_GEN( hyprduel_interrupt )
 {
 	int line = RASTER_LINES - cpu_getiloops();
 
@@ -196,7 +196,7 @@ INTERRUPT_GEN( hyprduel_interrupt )
 		cpunum_set_input_line(0, 2, HOLD_LINE);
 		cpunum_set_input_line(1, 1, HOLD_LINE);
 		/* the duration is a guess */
-		mame_timer_set(MAME_TIME_IN_USEC(2500), 0x20, vblank_end_callback);
+		timer_set(ATTOTIME_IN_USEC(2500), 0x20, vblank_end_callback);
 		rastersplit = 0;
 	} else {
 		requested_int |= 0x12;		/* hsync */
@@ -206,7 +206,7 @@ INTERRUPT_GEN( hyprduel_interrupt )
 	update_irq_state();
 }
 
-MACHINE_RESET( hyprduel )
+static MACHINE_RESET( hyprduel )
 {
 	/* start with cpu2 halted */
 	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
@@ -228,7 +228,7 @@ MACHINE_RESET( hyprduel )
 
 static UINT16 *hyprduel_rombank;
 
-READ16_HANDLER( hyprduel_bankedrom_r )
+static READ16_HANDLER( hyprduel_bankedrom_r )
 {
 	const int region = REGION_GFX1;
 
@@ -285,7 +285,7 @@ READ16_HANDLER( hyprduel_bankedrom_r )
 
 ***************************************************************************/
 
-UINT16 *hyprduel_blitter_regs;
+static UINT16 *hyprduel_blitter_regs;
 
 static TIMER_CALLBACK( hyprduel_blit_done )
 {
@@ -367,7 +367,7 @@ static WRITE16_HANDLER( hyprduel_blitter_w )
                        another blit. */
 					if (b1 == 0)
 					{
-						mame_timer_set(MAME_TIME_IN_USEC(500),0,hyprduel_blit_done);
+						timer_set(ATTOTIME_IN_USEC(500),0,hyprduel_blit_done);
 						return;
 					}
 
@@ -608,7 +608,7 @@ ADDRESS_MAP_END
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_##_b4_         ) PORT_PLAYER(_n_) \
 
 
-INPUT_PORTS_START( hyprduel )
+static INPUT_PORTS_START( hyprduel )
 	PORT_START
 	PORT_BIT(    0x8000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
 	PORT_DIPNAME( 0x4000, 0x0000, "Show Warning" )

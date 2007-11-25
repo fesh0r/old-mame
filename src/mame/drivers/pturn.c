@@ -77,7 +77,7 @@ ROMS: All ROM labels say only "PROM" and a number.
 #include "driver.h"
 #include "sound/ay8910.h"
 
-tilemap *pturn_fgmap,*pturn_bgmap;
+static tilemap *pturn_fgmap,*pturn_bgmap;
 static int bgbank=0;
 static int fgbank=0;
 static int bgpalette=0;
@@ -117,7 +117,7 @@ static TILE_GET_INFO( get_pturn_bg_tile_info )
 	SET_TILE_INFO(1,tileno+bgbank*256,palno,0);
 }
 
-VIDEO_START(pturn)
+static VIDEO_START(pturn)
 {
 	pturn_fgmap = tilemap_create(get_pturn_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
 	tilemap_set_transparent_pen(pturn_fgmap,0);
@@ -125,7 +125,7 @@ VIDEO_START(pturn)
 	tilemap_set_transparent_pen(pturn_bgmap,0);
 }
 
-VIDEO_UPDATE(pturn)
+static VIDEO_UPDATE(pturn)
 {
 	int offs;
 	int sx, sy;
@@ -350,7 +350,7 @@ static GFXDECODE_START( pturn )
 	GFXDECODE_ENTRY( REGION_GFX3, 0, spritelayout, 0x000, 32 )
 GFXDECODE_END
 
-INPUT_PORTS_START( pturn )
+static INPUT_PORTS_START( pturn )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) 	PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) 	PORT_8WAY PORT_PLAYER(1)

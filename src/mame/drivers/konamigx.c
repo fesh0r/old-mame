@@ -118,8 +118,8 @@ VIDEO_START(opengolf);
 VIDEO_START(racinfrc);
 VIDEO_UPDATE(konamigx);
 
-MACHINE_START(konamigx);
-MACHINE_RESET(konamigx);
+static MACHINE_START(konamigx);
+static MACHINE_RESET(konamigx);
 
 WRITE32_HANDLER( konamigx_palette_w );
 WRITE32_HANDLER( konamigx_palette2_w );
@@ -131,13 +131,13 @@ UINT32 *gx_psacram, *gx_subpaletteram32;
 WRITE32_HANDLER( konamigx_t1_psacmap_w );
 WRITE32_HANDLER( konamigx_t4_psacmap_w );
 
-int konamigx_cfgport;
+static int konamigx_cfgport;
 
 static UINT32 *gx_workram; /* workram pointer for ESC protection fun */
 static UINT16 *gx_sndram;
 static int gx_rdport1_3, gx_syncen;
 
-static mame_timer *dmadelay_timer;
+static emu_timer *dmadelay_timer;
 
 /**********************************************************************************/
 /*
@@ -682,7 +682,7 @@ static void dmastart_callback(int data)
 	}
 
 	// simulate DMA delay
-	mame_timer_adjust(dmadelay_timer, MAME_TIME_IN_USEC(120), 0, time_zero);
+	timer_adjust(dmadelay_timer, ATTOTIME_IN_USEC(120), 0, attotime_zero);
 }
 
 
@@ -864,7 +864,7 @@ static WRITE32_HANDLER( adc0834_w )
 	adc083x_cs_write( 0, ( data >> 26 ) & 1 );
 }
 
-double adc0834_callback( int input )
+static double adc0834_callback( int input )
 {
 	switch( input )
 	{
@@ -1322,9 +1322,9 @@ static MACHINE_DRIVER_START( konamigx )
 	MDRV_CPU_PROGRAM_MAP(gxsndmap, 0)
 	MDRV_CPU_PERIODIC_INT(irq2_line_hold, 480)
 
-	MDRV_INTERLEAVE(32);
+	MDRV_INTERLEAVE(32)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(USEC_TO_SUBSECONDS(600))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(600))
 
 	MDRV_MACHINE_START(konamigx)
 	MDRV_MACHINE_RESET(konamigx)
@@ -1434,7 +1434,7 @@ MACHINE_DRIVER_END
 /**********************************************************************************/
 /* port maps */
 
-INPUT_PORTS_START( konamigx )
+static INPUT_PORTS_START( konamigx )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1549,7 +1549,7 @@ INPUT_PORTS_START( konamigx )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( racinfrc )
+static INPUT_PORTS_START( racinfrc )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1671,7 +1671,7 @@ INPUT_PORTS_START( racinfrc )
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_MINMAX(0,0x68) PORT_SENSITIVITY(35) PORT_KEYDELTA(5) PORT_CODE_INC(KEYCODE_LCONTROL)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( le2 )
+static INPUT_PORTS_START( le2 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1784,7 +1784,7 @@ INPUT_PORTS_START( le2 )
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( gokuparo )
+static INPUT_PORTS_START( gokuparo )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1872,7 +1872,7 @@ INPUT_PORTS_START( gokuparo )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( puzldama )
+static INPUT_PORTS_START( puzldama )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -1961,7 +1961,7 @@ INPUT_PORTS_START( puzldama )
 	PORT_DIPSETTING(    0x02, DEF_STR( High ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( dragoonj )
+static INPUT_PORTS_START( dragoonj )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -2050,7 +2050,7 @@ INPUT_PORTS_START( dragoonj )
 	PORT_DIPSETTING(    0x02, DEF_STR( High ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( type3 )
+static INPUT_PORTS_START( type3 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -3415,14 +3415,14 @@ ROM_END
 /**********************************************************************************/
 /* initializers */
 
-MACHINE_START( konamigx )
+static MACHINE_START( konamigx )
 {
 	state_save_register_global(konamigx_wrport1_1);
 	state_save_register_global_array(sndto020);
 	state_save_register_global_array(sndto000);
 }
 
-MACHINE_RESET(konamigx)
+static MACHINE_RESET(konamigx)
 {
 	int i;
 
@@ -3526,7 +3526,7 @@ static DRIVER_INIT(konamigx)
 	snd020_hack = 0;
 	resume_trigger = 0;
 
-	dmadelay_timer = mame_timer_alloc(dmaend_callback);
+	dmadelay_timer = timer_alloc(dmaend_callback);
 
 	i = match = 0;
 	while ((gameDefs[i].cfgport != -1) && (!match))

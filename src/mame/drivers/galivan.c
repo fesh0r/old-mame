@@ -258,7 +258,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x01, "5" ) \
 	PORT_DIPSETTING(    0x00, "6" )
 
-INPUT_PORTS_START( galivan )
+static INPUT_PORTS_START( galivan )
 	PORT_START_TAG("IN0")
 	NIHON_JOYSTICK(1)
 	PORT_START_TAG("IN1")
@@ -298,7 +298,7 @@ INPUT_PORTS_START( galivan )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( dangar )
+static INPUT_PORTS_START( dangar )
 	PORT_START_TAG("IN0")
 	NIHON_JOYSTICK(1)
 	PORT_START_TAG("IN1")
@@ -339,7 +339,7 @@ INPUT_PORTS_START( dangar )
 INPUT_PORTS_END
 
 /* different Lives values and last different the last two dips */
-INPUT_PORTS_START( dangar2 )
+static INPUT_PORTS_START( dangar2 )
 	PORT_START_TAG("IN0")
 	NIHON_JOYSTICK(1)
 	PORT_START_TAG("IN1")
@@ -384,7 +384,7 @@ INPUT_PORTS_START( dangar2 )
 INPUT_PORTS_END
 
 /* the last two dip switches are different */
-INPUT_PORTS_START( dangarb )
+static INPUT_PORTS_START( dangarb )
 	PORT_START_TAG("IN0")
 	NIHON_JOYSTICK(1)
 	PORT_START_TAG("IN1")
@@ -424,7 +424,7 @@ INPUT_PORTS_START( dangarb )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( ninjemak )
+static INPUT_PORTS_START( ninjemak )
 	PORT_START_TAG("IN0")
 	NIHON_JOYSTICK(1)
 	PORT_START_TAG("IN1")
@@ -988,7 +988,7 @@ ROM_START( youmab2 )
 ROM_END
 
 
-WRITE8_HANDLER( youmab_extra_bank_w )
+static WRITE8_HANDLER( youmab_extra_bank_w )
 {
 	if (data==0xff)
 	{
@@ -1004,22 +1004,22 @@ WRITE8_HANDLER( youmab_extra_bank_w )
 	}
 }
 
-READ8_HANDLER( youmab_8a_r )
+static READ8_HANDLER( youmab_8a_r )
 {
 	return mame_rand(Machine);
 }
 
-WRITE8_HANDLER( youmab_81_w )
+static WRITE8_HANDLER( youmab_81_w )
 {
 	// ??
 }
 
-WRITE8_HANDLER( youmab_84_w )
+static WRITE8_HANDLER( youmab_84_w )
 {
 	// ??
 }
 
-DRIVER_INIT( youmab )
+static DRIVER_INIT( youmab )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x82, 0x82, 0, 0, youmab_extra_bank_w); // banks rom at 0x8000? writes 0xff and 0x00 before executing code there
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_BANK2);

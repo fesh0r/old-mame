@@ -229,12 +229,12 @@ static MACHINE_RESET( shogwarr )
 
 ***************************************************************************/
 
-READ16_HANDLER( kaneko16_rnd_r )
+static READ16_HANDLER( kaneko16_rnd_r )
 {
 	return mame_rand(Machine) & 0xffff;
 }
 
-WRITE16_HANDLER( kaneko16_coin_lockout_w )
+static WRITE16_HANDLER( kaneko16_coin_lockout_w )
 {
 	if (ACCESSING_MSB)
 	{
@@ -256,7 +256,7 @@ WRITE16_HANDLER( kaneko16_coin_lockout_w )
 
 ***************************************************************************/
 
-WRITE16_HANDLER( kaneko16_soundlatch_w )
+static WRITE16_HANDLER( kaneko16_soundlatch_w )
 {
 	if (ACCESSING_MSB)
 	{
@@ -267,20 +267,20 @@ WRITE16_HANDLER( kaneko16_soundlatch_w )
 
 /* Two identically mapped YM2149 chips */
 
-READ16_HANDLER( kaneko16_YM2149_0_r )
+static READ16_HANDLER( kaneko16_YM2149_0_r )
 {
 	/* Each 2149 register is mapped to a different address */
 	AY8910_control_port_0_w(0,offset);
 	return AY8910_read_port_0_r(0);
 }
-READ16_HANDLER( kaneko16_YM2149_1_r )
+static READ16_HANDLER( kaneko16_YM2149_1_r )
 {
 	/* Each 2149 register is mapped to a different address */
 	AY8910_control_port_1_w(0,offset);
 	return AY8910_read_port_1_r(0);
 }
 
-WRITE16_HANDLER( kaneko16_YM2149_0_w )
+static WRITE16_HANDLER( kaneko16_YM2149_0_w )
 {
 	/* Each 2149 register is mapped to a different address */
 	AY8910_control_port_0_w(0,offset);
@@ -288,7 +288,7 @@ WRITE16_HANDLER( kaneko16_YM2149_0_w )
 	if (ACCESSING_LSB)	AY8910_write_port_0_w(0, data       & 0xff);
 	else				AY8910_write_port_0_w(0,(data >> 8) & 0xff);
 }
-WRITE16_HANDLER( kaneko16_YM2149_1_w )
+static WRITE16_HANDLER( kaneko16_YM2149_1_w )
 {
 	/* Each 2149 register is mapped to a different address */
 	AY8910_control_port_1_w(0,offset);
@@ -306,18 +306,18 @@ WRITE16_HANDLER( kaneko16_YM2149_1_w )
 
 ***************************************************************************/
 
-READ8_HANDLER( kaneko16_eeprom_r )
+static READ8_HANDLER( kaneko16_eeprom_r )
 {
 	return EEPROM_read_bit() & 1;
 }
 
-WRITE8_HANDLER( kaneko16_eeprom_reset_w )
+static WRITE8_HANDLER( kaneko16_eeprom_reset_w )
 {
 	// reset line asserted: reset.
 	EEPROM_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE );
 }
 
-WRITE16_HANDLER( kaneko16_eeprom_w )
+static WRITE16_HANDLER( kaneko16_eeprom_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -388,7 +388,7 @@ ADDRESS_MAP_END
 /* The two YM2149 chips are only used when entering high score initials, and */
 /* when the game is fully completed. Overkill??? */
 
-WRITE16_HANDLER( bakubrkr_oki_bank_sw )
+static WRITE16_HANDLER( bakubrkr_oki_bank_sw )
 {
 	if (ACCESSING_LSB) {
 		OKIM6295_set_bank_base(0, 0x40000 * (data & 0x7) );
@@ -490,7 +490,7 @@ static WRITE16_HANDLER( bloodwar_coin_lockout_w )
 static ADDRESS_MAP_START( bloodwar, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM		// ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM		// Work RAM
-	AM_RANGE(0x200000, 0x20ffff) AM_RAM AM_BASE(&mcu_ram)		// Shared With MCU
+	AM_RANGE(0x200000, 0x20ffff) AM_RAM AM_BASE(&kaneko16_mcu_ram)		// Shared With MCU
 	AM_RANGE(0x2a0000, 0x2a0001) AM_WRITE(toybox_mcu_com0_w)	// To MCU ?
 	AM_RANGE(0x2b0000, 0x2b0001) AM_WRITE(toybox_mcu_com1_w)
 	AM_RANGE(0x2c0000, 0x2c0001) AM_WRITE(toybox_mcu_com2_w)
@@ -550,7 +550,7 @@ static WRITE16_HANDLER( bonkadv_oki_1_bank_w )
 static ADDRESS_MAP_START( bonkadv, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM		// ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM		// Work RAM
-	AM_RANGE(0x200000, 0x20ffff) AM_RAM AM_BASE(&mcu_ram)		// Shared With MCU
+	AM_RANGE(0x200000, 0x20ffff) AM_RAM AM_BASE(&kaneko16_mcu_ram)		// Shared With MCU
 	AM_RANGE(0x2a0000, 0x2a0001) AM_WRITE(toybox_mcu_com0_w)	// To MCU ?
 	AM_RANGE(0x2b0000, 0x2b0001) AM_WRITE(toybox_mcu_com1_w)
 	AM_RANGE(0x2c0000, 0x2c0001) AM_WRITE(toybox_mcu_com2_w)
@@ -589,7 +589,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 
-READ16_HANDLER( gtmr_wheel_r )
+static READ16_HANDLER( gtmr_wheel_r )
 {
 	if ( (readinputport(4) & 0x1800) == 0x10)	// DSW setting
 		return	readinputport(5)<<8;			// 360' Wheel
@@ -597,7 +597,7 @@ READ16_HANDLER( gtmr_wheel_r )
 		return	readinputport(5);				// 270' Wheel
 }
 
-WRITE16_HANDLER( gtmr_oki_0_bank_w )
+static WRITE16_HANDLER( gtmr_oki_0_bank_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -606,7 +606,7 @@ WRITE16_HANDLER( gtmr_oki_0_bank_w )
 	}
 }
 
-WRITE16_HANDLER( gtmr_oki_1_bank_w )
+static WRITE16_HANDLER( gtmr_oki_1_bank_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -615,7 +615,7 @@ WRITE16_HANDLER( gtmr_oki_1_bank_w )
 	}
 }
 
-WRITE16_HANDLER( gtmr_oki_0_data_w )
+static WRITE16_HANDLER( gtmr_oki_0_data_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -624,7 +624,7 @@ WRITE16_HANDLER( gtmr_oki_0_data_w )
 	}
 }
 
-WRITE16_HANDLER( gtmr_oki_1_data_w )
+static WRITE16_HANDLER( gtmr_oki_1_data_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -660,7 +660,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( gtmr_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM					)	// ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_RAM					)	// Work RAM
-	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(MWA16_RAM) AM_BASE(&mcu_ram		)	// Shared With MCU
+	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(MWA16_RAM) AM_BASE(&kaneko16_mcu_ram	)	// Shared With MCU
 	AM_RANGE(0x2a0000, 0x2a0001) AM_WRITE(toybox_mcu_com0_w			)	// To MCU ?
 	AM_RANGE(0x2b0000, 0x2b0001) AM_WRITE(toybox_mcu_com1_w			)
 	AM_RANGE(0x2c0000, 0x2c0001) AM_WRITE(toybox_mcu_com2_w			)
@@ -694,7 +694,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 
-READ16_HANDLER( gtmr2_wheel_r )
+static READ16_HANDLER( gtmr2_wheel_r )
 {
 	switch (readinputport(4) & 0x1800)
 	{
@@ -714,7 +714,7 @@ READ16_HANDLER( gtmr2_wheel_r )
 	}
 }
 
-READ16_HANDLER( gtmr2_IN1_r )
+static READ16_HANDLER( gtmr2_IN1_r )
 {
 	return	(readinputport(1) & (readinputport(8) | ~0x7100));
 }
@@ -782,7 +782,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 /* Untested */
-WRITE16_HANDLER( shogwarr_oki_bank_w )
+static WRITE16_HANDLER( shogwarr_oki_bank_w )
 {
 	if (ACCESSING_LSB)
 	{
@@ -794,7 +794,7 @@ WRITE16_HANDLER( shogwarr_oki_bank_w )
 static ADDRESS_MAP_START( shogwarr, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM		// ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM		// Work RAM
-	AM_RANGE(0x200000, 0x20ffff) AM_READWRITE(MRA16_RAM,calc3_mcu_ram_w) AM_BASE(&mcu_ram)	// Shared With MCU
+	AM_RANGE(0x200000, 0x20ffff) AM_READWRITE(MRA16_RAM,calc3_mcu_ram_w) AM_BASE(&kaneko16_mcu_ram)	// Shared With MCU
 	AM_RANGE(0x280000, 0x280001) AM_WRITE(calc3_mcu_com0_w)
 	AM_RANGE(0x290000, 0x290001) AM_WRITE(calc3_mcu_com1_w)
 	AM_RANGE(0x2b0000, 0x2b0001) AM_WRITE(calc3_mcu_com2_w)
@@ -866,7 +866,7 @@ ADDRESS_MAP_END
                             Bakuretsu Breaker
 ***************************************************************************/
 
-INPUT_PORTS_START( bakubrkr )
+static INPUT_PORTS_START( bakubrkr )
 	PORT_START	// IN0 - Player 1 + DSW - e00000.w
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -936,7 +936,7 @@ INPUT_PORTS_END
                             The Berlin Wall (set 1)
 ***************************************************************************/
 
-INPUT_PORTS_START( berlwall )
+static INPUT_PORTS_START( berlwall )
 	PORT_START	// IN0 - Player 1 - 680000.w
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1032,7 +1032,7 @@ INPUT_PORTS_END
 
 //  Same as berlwall, but for a different lives setting
 
-INPUT_PORTS_START( berlwalt )
+static INPUT_PORTS_START( berlwalt )
 	PORT_START	// IN0 - Player 1 - 680000.w
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1126,7 +1126,7 @@ INPUT_PORTS_END
                                     Blaze On
 ***************************************************************************/
 
-INPUT_PORTS_START( blazeon )
+static INPUT_PORTS_START( blazeon )
 	PORT_START	// IN0 - Player 1 + DSW - c00000.w
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( Easy )    )
@@ -1222,7 +1222,7 @@ INPUT_PORTS_END
                                 Blood Warrior
 ***************************************************************************/
 
-INPUT_PORTS_START( bloodwar )
+static INPUT_PORTS_START( bloodwar )
 	PORT_START	// IN0 - Player 1 - b00000.w
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(1)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(1)
@@ -1292,7 +1292,7 @@ INPUT_PORTS_END
                                 Bonk's Adventure
 ***************************************************************************/
 
-INPUT_PORTS_START( bonkadv )
+static INPUT_PORTS_START( bonkadv )
 	PORT_START	// IN0 - Player 1 - b00000.w
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(1)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(1)
@@ -1363,7 +1363,7 @@ INPUT_PORTS_END
                             Great 1000 Miles Rally
 ***************************************************************************/
 
-INPUT_PORTS_START( gtmr )
+static INPUT_PORTS_START( gtmr )
 	PORT_START	// IN0 - Player 1 - b00000.w
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1435,7 +1435,7 @@ INPUT_PORTS_END
                             Great 1000 Miles Rally 2
 ***************************************************************************/
 
-INPUT_PORTS_START( gtmr2 )
+static INPUT_PORTS_START( gtmr2 )
 	PORT_START	// IN0 - Player 1 - 100004.w <- b00000.w (cpl)
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1526,7 +1526,7 @@ INPUT_PORTS_END
                                 Magical Crystal
 ***************************************************************************/
 
-INPUT_PORTS_START( mgcrystl )
+static INPUT_PORTS_START( mgcrystl )
 	PORT_START	// IN0 - Player 1 + DSW - c00000.w
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -1613,7 +1613,7 @@ INPUT_PORTS_END
                                 Shogun Warriors
 ***************************************************************************/
 
-INPUT_PORTS_START( shogwarr )
+static INPUT_PORTS_START( shogwarr )
 	PORT_START	// IN0 - - b80000.w
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1746,7 +1746,7 @@ GFXDECODE_END
 ***************************************************************************/
 
 #define KANEKO16_INTERRUPTS_NUM	3
-INTERRUPT_GEN( kaneko16_interrupt )
+static INTERRUPT_GEN( kaneko16_interrupt )
 {
 	switch ( cpu_getiloops() )
 	{
@@ -2082,7 +2082,7 @@ MACHINE_DRIVER_END
     other: busy loop
 */
 #define SHOGWARR_INTERRUPTS_NUM	3
-INTERRUPT_GEN( shogwarr_interrupt )
+static INTERRUPT_GEN( shogwarr_interrupt )
 {
 	switch ( cpu_getiloops() )
 	{
@@ -2141,7 +2141,7 @@ MACHINE_DRIVER_END
  have the even and odd pixels swapped. So we use this function to untangle
  them and have one single gfxlayout for both tiles and sprites.
 */
-void kaneko16_unscramble_tiles(int region)
+static void kaneko16_unscramble_tiles(int region)
 {
 	UINT8 *RAM	=	memory_region(region);
 	int size			=	memory_region_length(region);
@@ -2155,7 +2155,7 @@ void kaneko16_unscramble_tiles(int region)
 	}
 }
 
-void kaneko16_expand_sample_banks(int region)
+static void kaneko16_expand_sample_banks(int region)
 {
 	/* The sample data for the first OKI has an address translator/
        banking register in it that munges the addresses as follows:
@@ -2183,18 +2183,18 @@ void kaneko16_expand_sample_banks(int region)
 	}
 }
 
-DRIVER_INIT( kaneko16 )
+static DRIVER_INIT( kaneko16 )
 {
 	kaneko16_unscramble_tiles(REGION_GFX2);
 	kaneko16_unscramble_tiles(REGION_GFX3);
 }
 
-DRIVER_INIT( berlwall )
+static DRIVER_INIT( berlwall )
 {
 	kaneko16_unscramble_tiles(REGION_GFX2);
 }
 
-DRIVER_INIT( samplebank )
+static DRIVER_INIT( samplebank )
 {
 	kaneko16_unscramble_tiles(REGION_GFX2);
 	kaneko16_unscramble_tiles(REGION_GFX3);
@@ -3206,7 +3206,7 @@ ROM_START( shogwarr )
 ROM_END
 
 
-DRIVER_INIT( shogwarr )
+static DRIVER_INIT( shogwarr )
 {
 	driver_init_kaneko16(machine);
 

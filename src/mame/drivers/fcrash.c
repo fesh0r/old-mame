@@ -40,7 +40,7 @@ from 2.bin to 9.bin program eproms
 /* not verified */
 #define CPS1_ROWSCROLL_OFFS     0x20    /* base of row scroll offsets in other RAM */
 
-void fcrash_update_transmasks(void)
+static void fcrash_update_transmasks(void)
 {
 	int i;
 	int priority[4];
@@ -65,7 +65,7 @@ void fcrash_update_transmasks(void)
 	}
 }
 
-void fcrash_render_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void fcrash_render_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
 {
 	int pos;
 	int base=0x50c8/2; // and 10c8/2 for the buffer?
@@ -92,7 +92,7 @@ void fcrash_render_sprites(running_machine *machine, mame_bitmap *bitmap,const r
 
 }
 
-void fcrash_render_layer(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int layer,int primask)
+static void fcrash_render_layer(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int layer,int primask)
 {
 	switch (layer)
 	{
@@ -107,7 +107,7 @@ void fcrash_render_layer(running_machine *machine, mame_bitmap *bitmap,const rec
 	}
 }
 
-void fcrash_render_high_layer(mame_bitmap *bitmap, const rectangle *cliprect, int layer)
+static void fcrash_render_high_layer(mame_bitmap *bitmap, const rectangle *cliprect, int layer)
 {
 	switch (layer)
 	{
@@ -122,7 +122,7 @@ void fcrash_render_high_layer(mame_bitmap *bitmap, const rectangle *cliprect, in
 	}
 }
 
-VIDEO_UPDATE( fcrash )
+static VIDEO_UPDATE( fcrash )
 {
    	int layercontrol,l0,l1,l2,l3;
 	int videocontrol=cps1_port(0x22);
@@ -234,7 +234,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x20, DEF_STR( 1C_4C ) ) \
 	PORT_DIPSETTING(    0x18, DEF_STR( 1C_6C ) )
 
-INPUT_PORTS_START( fcrash )
+static INPUT_PORTS_START( fcrash )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )

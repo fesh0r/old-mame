@@ -115,7 +115,7 @@ static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( pbaction )
+static INPUT_PORTS_START( pbaction )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -255,7 +255,7 @@ static GFXDECODE_START( pbaction )
 GFXDECODE_END
 
 
-INTERRUPT_GEN( pbaction_interrupt )
+static INTERRUPT_GEN( pbaction_interrupt )
 {
 	cpunum_set_input_line_and_vector(1, 0, HOLD_LINE, 0x02);	/* the CPU is in Interrupt Mode 2 */
 }

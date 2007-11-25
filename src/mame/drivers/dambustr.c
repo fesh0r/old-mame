@@ -23,7 +23,7 @@ VIDEO_UPDATE( dambustr );
 static int noise_data = 0;
 
 
-WRITE8_HANDLER( dambustr_noise_enable_w )
+static WRITE8_HANDLER( dambustr_noise_enable_w )
 {
 	if (data != noise_data) {
 		noise_data = data;
@@ -70,7 +70,7 @@ static ADDRESS_MAP_START( dambustr_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( dambustr )
+static INPUT_PORTS_START( dambustr )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 )
@@ -143,7 +143,7 @@ static GFXDECODE_START( dambustr )
 GFXDECODE_END
 
 
-DRIVER_INIT(dambustr)
+static DRIVER_INIT(dambustr)
 {
 	int i, j, tmp;
 	int tmpram[16];
@@ -212,7 +212,7 @@ static MACHINE_DRIVER_START( dambustr )
 
 	/* sound hardware */
 	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(galaxian_custom_interface)
+	MDRV_SOUND_CONFIG(galaxian_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

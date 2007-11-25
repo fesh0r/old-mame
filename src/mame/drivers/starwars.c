@@ -49,7 +49,7 @@ static UINT8 current_bank;
  *
  *************************************/
 
-MACHINE_RESET( starwars )
+static MACHINE_RESET( starwars )
 {
 	/* ESB-specific */
 	if (starwars_is_esb)
@@ -88,7 +88,7 @@ static WRITE8_HANDLER( irq_ack_w )
  *
  *************************************/
 
-READ8_HANDLER( esb_slapstic_r )
+static READ8_HANDLER( esb_slapstic_r )
 {
 	int result = slapstic_base[offset];
 	int new_bank = slapstic_tweak(offset);
@@ -103,7 +103,7 @@ READ8_HANDLER( esb_slapstic_r )
 }
 
 
-WRITE8_HANDLER( esb_slapstic_w )
+static WRITE8_HANDLER( esb_slapstic_w )
 {
 	int new_bank = slapstic_tweak(offset);
 
@@ -215,7 +215,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( starwars )
+static INPUT_PORTS_START( starwars )
 	PORT_START	/* IN0 */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -292,7 +292,7 @@ INPUT_PORTS_START( starwars )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( esb )
+static INPUT_PORTS_START( esb )
 	PORT_START	/* IN0 */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -382,7 +382,7 @@ static MACHINE_DRIVER_START( starwars )
 	MDRV_CPU_ADD(M6809, MASTER_CLOCK / 8)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_assert, (double)MASTER_CLOCK / 4096 / 12)
-	MDRV_WATCHDOG_TIME_INIT(MAME_TIME_IN_HZ(CLOCK_3KHZ / 128))
+	MDRV_WATCHDOG_TIME_INIT(ATTOTIME_IN_HZ(CLOCK_3KHZ / 128))
 
 	MDRV_CPU_ADD(M6809, MASTER_CLOCK / 8)
 	/* audio CPU */

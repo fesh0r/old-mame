@@ -42,7 +42,6 @@
 #include "machine/konamiic.h"
 #include "machine/adc083x.h"
 #include "sound/rf5c400.h"
-#include "video/poly.h"
 #include "video/voodoo.h"
 #include "video/gticlub.h"
 #include "rendlay.h"
@@ -87,7 +86,7 @@ static void voodoo_vblank_1(int param)
 	cpunum_set_input_line(0, INPUT_LINE_IRQ1, ASSERT_LINE);
 }
 
-VIDEO_START( hangplt )
+static VIDEO_START( hangplt )
 {
 	voodoo_start(0, 0, VOODOO_1, 2, 4, 4);
 	voodoo_start(1, 1, VOODOO_1, 2, 4, 4);
@@ -100,7 +99,7 @@ VIDEO_START( hangplt )
 }
 
 
-VIDEO_UPDATE( hangplt )
+static VIDEO_UPDATE( hangplt )
 {
 	fillbitmap(bitmap, machine->remapped_colortable[0], cliprect);
 
@@ -547,7 +546,7 @@ static NVRAM_HANDLER(gticlub)
 }
 
 
-INPUT_PORTS_START( gticlub )
+static INPUT_PORTS_START( gticlub )
 	PORT_START
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )		// View switch
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) 		// Shift Down
@@ -593,7 +592,7 @@ INPUT_PORTS_START( gticlub )
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START( slrasslt )
+static INPUT_PORTS_START( slrasslt )
 	PORT_START
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )						// View Shift
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)		// Trigger
@@ -635,7 +634,7 @@ INPUT_PORTS_START( slrasslt )
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START( thunderh )
+static INPUT_PORTS_START( thunderh )
 	PORT_START
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -679,7 +678,7 @@ INPUT_PORTS_START( thunderh )
 
 INPUT_PORTS_END
 
-INPUT_PORTS_START( hangplt )
+static INPUT_PORTS_START( hangplt )
 	PORT_START
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)

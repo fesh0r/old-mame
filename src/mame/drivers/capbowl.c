@@ -129,13 +129,13 @@ static TIMER_CALLBACK( capbowl_update )
 	video_screen_update_partial(0, scanline - 1);
 	scanline += 32;
 	if (scanline > 240) scanline = 32;
-	mame_timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, capbowl_update);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, capbowl_update);
 }
 
 
 static MACHINE_RESET( capbowl )
 {
-	mame_timer_set(video_screen_get_time_until_pos(0, 32, 0), 32, capbowl_update);
+	timer_set(video_screen_get_time_until_pos(0, 32, 0), 32, capbowl_update);
 }
 
 
@@ -146,7 +146,7 @@ static MACHINE_RESET( capbowl )
  *
  *************************************/
 
-WRITE8_HANDLER( capbowl_rom_select_w )
+static WRITE8_HANDLER( capbowl_rom_select_w )
 {
 	int bankaddress = ((data & 0x0c) << 13) + ((data & 0x01) << 14);
 	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x10000 + bankaddress);
@@ -292,7 +292,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-INPUT_PORTS_START( capbowl )
+static INPUT_PORTS_START( capbowl )
 	PORT_START	/* IN0 */
 	/* low 4 bits are for the trackball */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL

@@ -284,7 +284,7 @@ static void hit_recalc(void)
 */
 }
 
-WRITE32_HANDLER ( skns_hit_w )
+static WRITE32_HANDLER ( skns_hit_w )
 //void hit_w(UINT32 adr, UINT32 data, int type)
 {
 	int adr = offset * 4;
@@ -348,14 +348,14 @@ WRITE32_HANDLER ( skns_hit_w )
 	hit_recalc();
 }
 
-WRITE32_HANDLER ( skns_hit2_w )
+static WRITE32_HANDLER ( skns_hit2_w )
 {
 //  log_event("HIT", "Set disconnect to %02x", data);
 	hit.disconnect = data;
 }
 
 
-READ32_HANDLER( skns_hit_r )
+static READ32_HANDLER( skns_hit_r )
 //UINT32 hit_r(UINT32 adr, int type)
 {
 	int adr = offset *4;
@@ -454,9 +454,9 @@ static TIMER_CALLBACK( interrupt_callback )
 
 static MACHINE_RESET(skns)
 {
-	mame_timer_pulse(MAME_TIME_IN_MSEC(2), 15, interrupt_callback);
-	mame_timer_pulse(MAME_TIME_IN_MSEC(8), 11, interrupt_callback);
-	mame_timer_pulse(MAME_TIME_IN_CYCLES(1824, 0), 9, interrupt_callback);
+	timer_pulse(ATTOTIME_IN_MSEC(2), 15, interrupt_callback);
+	timer_pulse(ATTOTIME_IN_MSEC(8), 11, interrupt_callback);
+	timer_pulse(ATTOTIME_IN_CYCLES(1824, 0), 9, interrupt_callback);
 
 	memory_set_bankptr(1,memory_region(REGION_USER1));
 }
@@ -704,7 +704,7 @@ static READ32_HANDLER( nova_input_port_dip_r )
 
 static UINT32 timer_0_temp[4];
 
-static WRITE32_HANDLER( msm6242_w )
+static WRITE32_HANDLER( skns_msm6242_w )
 {
 	COMBINE_DATA(&timer_0_temp[offset]);
 
@@ -777,7 +777,7 @@ static WRITE32_HANDLER( skns_io_w )
 }
 
 
-static READ32_HANDLER( msm6242_r )
+static READ32_HANDLER( skns_msm6242_r )
 {
 	mame_system_time systime;
 	long value;
@@ -854,7 +854,7 @@ static ADDRESS_MAP_START( skns_readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x0040000c, 0x0040000f) AM_READ(nova_input_port_3_r)
 	AM_RANGE(0x00800000, 0x00801fff) AM_READ(MRA32_RAM) /* 'backup' RAM */
 //  AM_RANGE(0x00c00000, 0x00c00003) AM_READ(skns_ymz280_r) /* ymz280 (sound) */
-	AM_RANGE(0x01000000, 0x0100000f) AM_READ(msm6242_r)
+	AM_RANGE(0x01000000, 0x0100000f) AM_READ(skns_msm6242_r)
 	AM_RANGE(0x02000000, 0x02003fff) AM_READ(MRA32_RAM) /* 'spc' RAM */
 	AM_RANGE(0x02100000, 0x0210003f) AM_READ(MRA32_RAM) /* 'spc' */
 	AM_RANGE(0x02400000, 0x0240007f) AM_READ(MRA32_RAM) /* 'v3' */
@@ -874,7 +874,7 @@ static ADDRESS_MAP_START( skns_writemem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00400000, 0x0040000f) AM_WRITE(skns_io_w) /* I/O Write */
 	AM_RANGE(0x00800000, 0x00801fff) AM_WRITE(MWA32_RAM) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size) /* 'backup' RAM */
 	AM_RANGE(0x00c00000, 0x00c00003) AM_WRITE(skns_ymz280_w) /* ymz280_w (sound) */
-	AM_RANGE(0x01000000, 0x0100000f) AM_WRITE(msm6242_w)
+	AM_RANGE(0x01000000, 0x0100000f) AM_WRITE(skns_msm6242_w)
 	AM_RANGE(0x01800000, 0x01800003) AM_WRITE(skns_hit2_w)
 	AM_RANGE(0x02000000, 0x02003fff) AM_WRITE(MWA32_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size) /* sprite ram */
 	AM_RANGE(0x02100000, 0x0210003f) AM_WRITE(MWA32_RAM) AM_BASE(&skns_spc_regs) /* sprite registers */

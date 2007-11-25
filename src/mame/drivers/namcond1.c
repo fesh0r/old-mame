@@ -87,7 +87,7 @@ ADDRESS_MAP_END
 
 /*************************************************************/
 
-INPUT_PORTS_START( namcond1 )
+static INPUT_PORTS_START( namcond1 )
 	PORT_START      /* player 1 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
@@ -296,7 +296,7 @@ static MACHINE_DRIVER_START( namcond1 )
 	MDRV_CPU_ADD(H83002, 16384000 )
 	MDRV_CPU_PROGRAM_MAP( nd1h8rwmap, 0 )
 	MDRV_CPU_IO_MAP( nd1h8iomap, 0 )
-	MDRV_CPU_VBLANK_INT( mcu_interrupt, 1 );
+	MDRV_CPU_VBLANK_INT( mcu_interrupt, 1 )
 
 	MDRV_SCREEN_REFRESH_RATE(60.0)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)

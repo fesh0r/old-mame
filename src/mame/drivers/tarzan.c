@@ -69,11 +69,11 @@ static int decrypt_tarzan()
 #endif
 
 
-VIDEO_START(tarzan)
+static VIDEO_START(tarzan)
 {
 }
 
-VIDEO_UPDATE(tarzan)
+static VIDEO_UPDATE(tarzan)
 {
 
 	return 0;
@@ -84,7 +84,7 @@ static ADDRESS_MAP_START( tarzan_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( tarzan )
+static INPUT_PORTS_START( tarzan )
 INPUT_PORTS_END
 
 

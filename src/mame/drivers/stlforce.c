@@ -127,7 +127,7 @@ static ADDRESS_MAP_START( stlforce_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x410000, 0x410001) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( stlforce )
+static INPUT_PORTS_START( stlforce )
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -405,13 +405,13 @@ ROM_START( twinbrta )
 	ROM_COPY( REGION_USER1, 0x060000, 0x0e0000, 0x020000)
 ROM_END
 
-DRIVER_INIT(stlforce)
+static DRIVER_INIT(stlforce)
 {
 	stlforce_sprxoffs = 0;
 	default_eeprom = stlforce_default_eeprom;
 }
 
-DRIVER_INIT(twinbrat)
+static DRIVER_INIT(twinbrat)
 {
 	stlforce_sprxoffs = 9;
 	default_eeprom = twinbrat_default_eeprom;

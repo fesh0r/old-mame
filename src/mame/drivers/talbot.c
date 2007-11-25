@@ -60,7 +60,7 @@ static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM AM_SHARE(1) /* main CPU shared RAM */
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( talbot )
+static INPUT_PORTS_START( talbot )
 	PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -152,7 +152,7 @@ static TILE_GET_INFO( get_tile_info_bg )
 	SET_TILE_INFO(0, code, color + 0x20, 0);
 }
 
-VIDEO_START( talbot )
+static VIDEO_START( talbot )
 {
 	bg_tilemap = tilemap_create(get_tile_info_bg, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 }
@@ -180,14 +180,14 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-VIDEO_UPDATE( talbot )
+static VIDEO_UPDATE( talbot )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	draw_sprites(machine, bitmap, cliprect);
 	return 0;
 }
 
-PALETTE_INIT( talbot )
+static PALETTE_INIT( talbot )
 {
 	int i;
 

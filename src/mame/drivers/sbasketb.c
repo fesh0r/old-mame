@@ -42,7 +42,7 @@ extern WRITE8_HANDLER( hyperspt_sound_w );
 extern READ8_HANDLER( hyperspt_sh_timer_r );
 
 
-WRITE8_HANDLER( sbasketb_sh_irqtrigger_w )
+static WRITE8_HANDLER( sbasketb_sh_irqtrigger_w )
 {
 	cpunum_set_input_line_and_vector(1,0,HOLD_LINE,0xff);
 }
@@ -100,7 +100,7 @@ ADDRESS_MAP_END
 
 
 
-INPUT_PORTS_START( sbasketb )
+static INPUT_PORTS_START( sbasketb )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )

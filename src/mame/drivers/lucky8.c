@@ -29,7 +29,7 @@
 
 static tilemap *bg_tilemap;
 
-PALETTE_INIT( lucky8 )
+static PALETTE_INIT( lucky8 )
 {
 	#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
 
@@ -75,13 +75,13 @@ PALETTE_INIT( lucky8 )
 	}
 }
 
-WRITE8_HANDLER( lucky8_videoram_w )
+static WRITE8_HANDLER( lucky8_videoram_w )
 {
 	videoram[offset] = data;
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-WRITE8_HANDLER( lucky8_colorram_w )
+static WRITE8_HANDLER( lucky8_colorram_w )
 {
 	colorram[offset] = data;
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
@@ -96,13 +96,13 @@ static TILE_GET_INFO( get_bg_tile_info )
 	SET_TILE_INFO(0, code, color, 0);
 }
 
-VIDEO_START(lucky8)
+static VIDEO_START(lucky8)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_TYPE_PEN, 8, 8, 64, 32);
 }
 
-VIDEO_UPDATE(lucky8)
+static VIDEO_UPDATE(lucky8)
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	return 0;
@@ -136,7 +136,7 @@ static ADDRESS_MAP_START( lucky8_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb870, 0xb870) AM_WRITENOP
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( lucky8 )
+static INPUT_PORTS_START( lucky8 )
 	PORT_START_TAG("B800")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Bit 0") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Bit 1") PORT_CODE(KEYCODE_W)

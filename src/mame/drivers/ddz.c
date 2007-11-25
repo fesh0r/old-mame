@@ -30,7 +30,7 @@ static VIDEO_UPDATE(ddz)
 	return 0;
 }
 
-VIDEO_EOF(ddz)
+static VIDEO_EOF(ddz)
 {
 
 }
@@ -40,7 +40,7 @@ static INTERRUPT_GEN(ddz_interrupt)
 //  IntReq(24);     //VRender0 VBlank
 }
 
-INPUT_PORTS_START(ddz)
+static INPUT_PORTS_START(ddz)
 
 INPUT_PORTS_END
 

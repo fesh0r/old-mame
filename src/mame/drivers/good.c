@@ -33,8 +33,6 @@ voice.rom - VOICE ROM
 #include "driver.h"
 #include "sound/okim6295.h"
 
-UINT16*unkkor_tileram2;
-
 static tilemap *bg_tilemap;
 static tilemap *fg_tilemap;
 static UINT16 *bg_tilemapram;
@@ -70,14 +68,14 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 
 
-VIDEO_START( good )
+static VIDEO_START( good )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16, 32,32);
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16, 32,32);
 	tilemap_set_transparent_pen(fg_tilemap,0xf);
 }
 
-VIDEO_UPDATE( good )
+static VIDEO_UPDATE( good )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
@@ -101,7 +99,7 @@ static ADDRESS_MAP_START( good_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff0000, 0xffefff) AM_RAM
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( good )
+static INPUT_PORTS_START( good )
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0001, "0" )
 	PORT_DIPSETTING(  0x0001, DEF_STR( Off ) )

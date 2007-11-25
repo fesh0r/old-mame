@@ -127,10 +127,12 @@ WRITE8_HANDLER( victnine_gfxctrl_w )
 
 }
 
+#ifdef UNUSED_FUNCTION
 READ8_HANDLER( flstory_scrlram_r )
 {
 	return flstory_scrlram[offset];
 }
+#endif
 
 WRITE8_HANDLER( flstory_scrlram_w )
 {
@@ -139,7 +141,7 @@ WRITE8_HANDLER( flstory_scrlram_w )
 }
 
 
-void flstory_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri)
+static void flstory_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri)
 {
 	int i;
 
@@ -196,7 +198,7 @@ VIDEO_UPDATE( flstory )
 	return 0;
 }
 
-void victnine_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void victnine_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
 {
 	int i;
 

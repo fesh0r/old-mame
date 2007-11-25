@@ -458,7 +458,7 @@ static UINT8 fn(UINT8 in, const struct optimised_sbox *sboxes, UINT32 key)
 
 // srckey is the 64-bit master key (2x32 bits)
 // dstkey will contain the 96-bit key for the 1st FN (4x24 bits)
-void expand_1st_key(UINT32 *dstkey, const UINT32 *srckey)
+static void expand_1st_key(UINT32 *dstkey, const UINT32 *srckey)
 {
 	static const int bits[96] =
 	{
@@ -493,7 +493,7 @@ void expand_1st_key(UINT32 *dstkey, const UINT32 *srckey)
 
 // srckey is the 64-bit master key (2x32 bits) XORed with the subkey
 // dstkey will contain the 96-bit key for the 2nd FN (4x24 bits)
-void expand_2nd_key(UINT32 *dstkey, const UINT32 *srckey)
+static void expand_2nd_key(UINT32 *dstkey, const UINT32 *srckey)
 {
 	static const int bits[96] =
 	{
@@ -769,6 +769,7 @@ static const struct game_keys keys_table[] =
 	{ "ddtodh",   { 0x19691019,0xe825dde0 }, 0x180000 },	// 0C78 1019 4000  cmpi.w  #$1019,$4000
 	{ "ecofghtr", { 0x931031dc,0xba987654 }, 0x200000 },	// 0838 0003 7345  btst    #3,$7345
 	{ "ecofghtu", { 0x931031ed,0xcba98765 }, 0x200000 },	// 0838 0003 7345  btst    #3,$7345
+	{ "ecofgtu1", { 0x931031ed,0xcba98765 }, 0x200000 },	// 0838 0003 7345  btst    #3,$7345
 	{ "uecology", { 0x931031fe,0xdcba9876 }, 0x200000 },	// 0838 0003 7345  btst    #3,$7345
 	{ "ecofghta", { 0x931031ba,0x98765432 }, 0x200000 },	// 0838 0003 7345  btst    #3,$7345
 	{ "ssf2t",    { 0x944e8302,0x56d3143c }, 0x400000 },	// 0838 0007 2000  btst    #7,$2000
@@ -834,7 +835,7 @@ static const struct game_keys keys_table[] =
 	{ "sfzh",     { 0x876b0e39,0x5ca24fd1 }, 0x080000 },	// 0C80 0564 2194  cmpi.l  #$05642194,D0
 	{ "sfzb",     { 0xef415bd3,0x7a92c680 }, 0x080000 },	// 0C80 0564 2194  cmpi.l  #$05642194,D0
 	{ "sfzbr1",   { 0xef415bd3,0x7a92c680 }, 0x080000 },	// 0C80 0564 2194  cmpi.l  #$05642194,D0
-	{ "mmancp2u", { 0x054893fa,0x94642525 }, 0x100000 },    // 0C80 0564 2194  cmpi.l  #$05642194,D0
+	{ "mmancp2u", { 0x054893fa,0x94642525 }, 0x100000 },	// 0C80 0564 2194  cmpi.l  #$05642194,D0
 	{ "rmancp2j", { 0x07215501,0x37fa32d0 }, 0x100000 },	// 0C80 0564 2194  cmpi.l  #$05642194,D0
 	{ "19xx",     { 0x0e07181f,0x5fd0f080 }, 0x200000 },	// 0C81 0095 1101  cmpi.l  #$00951101,D1
 	{ "19xxa",    { 0xcce74cf5,0xb7da3711 }, 0x200000 },	// 0C81 0095 1101  cmpi.l  #$00951101,D1
