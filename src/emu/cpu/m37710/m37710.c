@@ -56,12 +56,13 @@
 
 #define M37710_DEBUG	(0)	// enables verbose logging for peripherals, etc.
 
-extern void m37710_set_irq_line(int line, int state);
+static void m37710_set_irq_line(int line, int state);
 
 /* Our CPU structure */
 m37710i_cpu_struct m37710i_cpu = {0};
 
-int m37710_ICount = 0, m37710_fullCount = 0;
+int m37710_ICount = 0;
+static int m37710_fullCount = 0;
 
 /* Temporary Variables */
 uint m37710i_source;
@@ -69,7 +70,7 @@ uint m37710i_destination;
 
 /* interrupt control mapping */
 
-int m37710_irq_levels[M37710_LINE_MAX] =
+const int m37710_irq_levels[M37710_LINE_MAX] =
 {
 	// maskable
 	0x70,	// ADC
@@ -97,7 +98,7 @@ int m37710_irq_levels[M37710_LINE_MAX] =
 	0,	// reset
 };
 
-static int m37710_irq_vectors[M37710_LINE_MAX] =
+static const int m37710_irq_vectors[M37710_LINE_MAX] =
 {
 	// maskable          C74
 	0xffd6, // A-D converter     c68b
@@ -128,7 +129,7 @@ static int m37710_irq_vectors[M37710_LINE_MAX] =
 // M37710 internal peripherals
 
 #if M37710_DEBUG
-static const char *m37710_rnames[128] =
+static const char *const m37710_rnames[128] =
 {
 	"",
 	"",
@@ -260,7 +261,7 @@ static const char *m37710_rnames[128] =
 	"INT2 IRQ ctrl",
 };
 
-static const char *m37710_tnames[8] =
+static const char *const m37710_tnames[8] =
 {
 	"A0", "A1", "A2", "A3", "A4", "B0", "B1", "B2"
 };
@@ -425,7 +426,7 @@ static void m37710_recalc_timer(int timer)
 			switch (m37710i_cpu.m37710_regs[0x56+timer] & 0x3)
 			{
 				case 0:	      	// timer mode
-					time = attotime_mul(ATTOTIME_IN_HZ(16000000), tscales[m37710i_cpu.m37710_regs[tcr[timer]]>>6]);
+					time = attotime_mul(ATTOTIME_IN_HZ(cpunum_get_clock(cpu_getactivecpu())), tscales[m37710i_cpu.m37710_regs[tcr[timer]]>>6]);
 					time = attotime_mul(time, tval + 1);
 
 					#if M37710_DEBUG
@@ -460,7 +461,7 @@ static void m37710_recalc_timer(int timer)
 			switch (m37710i_cpu.m37710_regs[0x56+timer] & 0x3)
 			{
 				case 0:	      	// timer mode
-					time = attotime_mul(ATTOTIME_IN_HZ(16000000), tscales[m37710i_cpu.m37710_regs[tcr[timer]]>>6]);
+					time = attotime_mul(ATTOTIME_IN_HZ(cpunum_get_clock(cpu_getactivecpu())), tscales[m37710i_cpu.m37710_regs[tcr[timer]]>>6]);
 					time = attotime_mul(time, tval + 1);
 
 					#if M37710_DEBUG
@@ -683,39 +684,39 @@ static WRITE16_HANDLER( m37710_internal_word_w )
 	}
 }
 
-extern void (*m37710i_opcodes_M0X0[])(void);
-extern void (*m37710i_opcodes42_M0X0[])(void);
-extern void (*m37710i_opcodes89_M0X0[])(void);
+extern void (*const m37710i_opcodes_M0X0[])(void);
+extern void (*const m37710i_opcodes42_M0X0[])(void);
+extern void (*const m37710i_opcodes89_M0X0[])(void);
 extern uint m37710i_get_reg_M0X0(int regnum);
 extern void m37710i_set_reg_M0X0(int regnum, uint val);
 extern void m37710i_set_line_M0X0(int line, int state);
 extern int  m37710i_execute_M0X0(int cycles);
 
-extern void (*m37710i_opcodes_M0X1[])(void);
-extern void (*m37710i_opcodes42_M0X1[])(void);
-extern void (*m37710i_opcodes89_M0X1[])(void);
+extern void (*const m37710i_opcodes_M0X1[])(void);
+extern void (*const m37710i_opcodes42_M0X1[])(void);
+extern void (*const m37710i_opcodes89_M0X1[])(void);
 extern uint m37710i_get_reg_M0X1(int regnum);
 extern void m37710i_set_reg_M0X1(int regnum, uint val);
 extern void m37710i_set_line_M0X1(int line, int state);
 extern int  m37710i_execute_M0X1(int cycles);
 
-extern void (*m37710i_opcodes_M1X0[])(void);
-extern void (*m37710i_opcodes42_M1X0[])(void);
-extern void (*m37710i_opcodes89_M1X0[])(void);
+extern void (*const m37710i_opcodes_M1X0[])(void);
+extern void (*const m37710i_opcodes42_M1X0[])(void);
+extern void (*const m37710i_opcodes89_M1X0[])(void);
 extern uint m37710i_get_reg_M1X0(int regnum);
 extern void m37710i_set_reg_M1X0(int regnum, uint val);
 extern void m37710i_set_line_M1X0(int line, int state);
 extern int  m37710i_execute_M1X0(int cycles);
 
-extern void (*m37710i_opcodes_M1X1[])(void);
-extern void (*m37710i_opcodes42_M1X1[])(void);
-extern void (*m37710i_opcodes89_M1X1[])(void);
+extern void (*const m37710i_opcodes_M1X1[])(void);
+extern void (*const m37710i_opcodes42_M1X1[])(void);
+extern void (*const m37710i_opcodes89_M1X1[])(void);
 extern uint m37710i_get_reg_M1X1(int regnum);
 extern void m37710i_set_reg_M1X1(int regnum, uint val);
 extern void m37710i_set_line_M1X1(int line, int state);
 extern int  m37710i_execute_M1X1(int cycles);
 
-void (**m37710i_opcodes[4])(void) =
+void (*const *const m37710i_opcodes[4])(void) =
 {
 	m37710i_opcodes_M0X0,
 	m37710i_opcodes_M0X1,
@@ -723,7 +724,7 @@ void (**m37710i_opcodes[4])(void) =
 	m37710i_opcodes_M1X1,
 };
 
-void (**m37710i_opcodes2[4])(void) =
+void (*const *const m37710i_opcodes2[4])(void) =
 {
 	m37710i_opcodes42_M0X0,
 	m37710i_opcodes42_M0X1,
@@ -731,7 +732,7 @@ void (**m37710i_opcodes2[4])(void) =
 	m37710i_opcodes42_M1X1,
 };
 
-void (**m37710i_opcodes3[4])(void) =
+void (*const *const m37710i_opcodes3[4])(void) =
 {
 	m37710i_opcodes89_M0X0,
 	m37710i_opcodes89_M0X1,
@@ -739,7 +740,7 @@ void (**m37710i_opcodes3[4])(void) =
 	m37710i_opcodes89_M1X1,
 };
 
-uint (*m37710i_get_reg[4])(int regnum) =
+uint (*const m37710i_get_reg[4])(int regnum) =
 {
 	m37710i_get_reg_M0X0,
 	m37710i_get_reg_M0X1,
@@ -747,7 +748,7 @@ uint (*m37710i_get_reg[4])(int regnum) =
 	m37710i_get_reg_M1X1,
 };
 
-void (*m37710i_set_reg[4])(int regnum, uint val) =
+void (*const m37710i_set_reg[4])(int regnum, uint val) =
 {
 	m37710i_set_reg_M0X0,
 	m37710i_set_reg_M0X1,
@@ -755,7 +756,7 @@ void (*m37710i_set_reg[4])(int regnum, uint val) =
 	m37710i_set_reg_M1X1,
 };
 
-void (*m37710i_set_line[4])(int line, int state) =
+void (*const m37710i_set_line[4])(int line, int state) =
 {
 	m37710i_set_line_M0X0,
 	m37710i_set_line_M0X1,
@@ -763,7 +764,7 @@ void (*m37710i_set_line[4])(int line, int state) =
 	m37710i_set_line_M1X1,
 };
 
-int (*m37710i_execute[4])(int cycles) =
+int (*const m37710i_execute[4])(int cycles) =
 {
 	m37710i_execute_M0X0,
 	m37710i_execute_M0X1,
@@ -882,7 +883,7 @@ void m37710i_update_irqs(void)
 
 /* external functions */
 
-void m37710_reset(void)
+static void m37710_reset(void)
 {
 	/* Start the CPU */
 	CPU_STOPPED = 0;
@@ -927,6 +928,7 @@ void m37710_exit(void)
 	/* nothing to do yet */
 }
 
+#ifdef UNUSED_FUNCTION
 /* return elapsed cycles in the current slice */
 int m37710_getcycles(void)
 {
@@ -940,9 +942,10 @@ void m37710_yield(void)
 
 	m37710_ICount = 0;
 }
+#endif
 
 /* Execute some instructions */
-int m37710_execute(int cycles)
+static int m37710_execute(int cycles)
 {
 	m37710_fullCount = cycles;
 
@@ -959,45 +962,47 @@ static void m37710_get_context(void *dst_context)
 }
 
 /* Set the current CPU context */
-void m37710_set_context(void *src_context)
+static void m37710_set_context(void *src_context)
 {
 	m37710i_cpu = *(m37710i_cpu_struct*)src_context;
 	m37710i_jumping(REG_PB | REG_PC);
 }
 
 /* Get the current Program Counter */
+#ifdef UNUSED_FUNCTION
 unsigned m37710_get_pc(void)
 {
 	return REG_PC;
 }
+#endif
 
 /* Set the Program Counter */
-void m37710_set_pc(unsigned val)
+static void m37710_set_pc(unsigned val)
 {
 	REG_PC = MAKE_UINT_16(val);
 	m37710_jumping(REG_PB | REG_PC);
 }
 
 /* Get the current Stack Pointer */
-unsigned m37710_get_sp(void)
+static unsigned m37710_get_sp(void)
 {
 	return REG_S;
 }
 
 /* Set the Stack Pointer */
-void m37710_set_sp(unsigned val)
+static void m37710_set_sp(unsigned val)
 {
 	REG_S = MAKE_UINT_16(val);
 }
 
 /* Get a register */
-unsigned m37710_get_reg(int regnum)
+static unsigned m37710_get_reg(int regnum)
 {
 	return FTABLE_GET_REG(regnum);
 }
 
 /* Set a register */
-void m37710_set_reg(int regnum, unsigned value)
+static void m37710_set_reg(int regnum, unsigned value)
 {
 	FTABLE_SET_REG(regnum, value);
 }
@@ -1013,16 +1018,18 @@ void m37710_state_save(void *file)
 }
 
 /* Set an interrupt line */
-void m37710_set_irq_line(int line, int state)
+static void m37710_set_irq_line(int line, int state)
 {
 	FTABLE_SET_LINE(line, state);
 }
 
 /* Set the callback that is called when servicing an interrupt */
+#ifdef UNUSED_FUNCTION
 void m37710_set_irq_callback(int (*callback)(int))
 {
 	INT_ACK = callback;
 }
+#endif
 
 /* Disassemble an instruction */
 #ifdef MAME_DEBUG
@@ -1043,18 +1050,18 @@ static void m37710_restore_state(void)
 	m37710i_jumping(REG_PB | REG_PC);
 }
 
-void m37710_init(int index, int clock, const void *config, int (*irqcallback)(int))
+static void m37710_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	INT_ACK = irqcallback;
 
-	m37710i_cpu.timers[0] = timer_alloc(m37710_timer_a0_cb);
-	m37710i_cpu.timers[1] = timer_alloc(m37710_timer_a1_cb);
-	m37710i_cpu.timers[2] = timer_alloc(m37710_timer_a2_cb);
-	m37710i_cpu.timers[3] = timer_alloc(m37710_timer_a3_cb);
-	m37710i_cpu.timers[4] = timer_alloc(m37710_timer_a4_cb);
-	m37710i_cpu.timers[5] = timer_alloc(m37710_timer_b0_cb);
-	m37710i_cpu.timers[6] = timer_alloc(m37710_timer_b1_cb);
-	m37710i_cpu.timers[7] = timer_alloc(m37710_timer_b2_cb);
+	m37710i_cpu.timers[0] = timer_alloc(m37710_timer_a0_cb, NULL);
+	m37710i_cpu.timers[1] = timer_alloc(m37710_timer_a1_cb, NULL);
+	m37710i_cpu.timers[2] = timer_alloc(m37710_timer_a2_cb, NULL);
+	m37710i_cpu.timers[3] = timer_alloc(m37710_timer_a3_cb, NULL);
+	m37710i_cpu.timers[4] = timer_alloc(m37710_timer_a4_cb, NULL);
+	m37710i_cpu.timers[5] = timer_alloc(m37710_timer_b0_cb, NULL);
+	m37710i_cpu.timers[6] = timer_alloc(m37710_timer_b1_cb, NULL);
+	m37710i_cpu.timers[7] = timer_alloc(m37710_timer_b2_cb, NULL);
 
 	state_save_register_item("M377xx", index, m37710i_cpu.a);
 	state_save_register_item("M377xx", index, m37710i_cpu.b);

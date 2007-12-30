@@ -271,7 +271,7 @@ static TIMER_CALLBACK( nmi_callback )
 static WRITE8_HANDLER( sound_command_w )
 {
 	soundlatch_w(0,data);
-	timer_call_after_resynch(data,nmi_callback);
+	timer_call_after_resynch(NULL, data,nmi_callback);
 }
 
 static WRITE8_HANDLER( nmi_disable_w )
@@ -294,7 +294,7 @@ static WRITE8_HANDLER(unk_w)
 
 }
 
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
 	0,
 	0,
@@ -302,7 +302,7 @@ static struct AY8910interface ay8910_interface =
 	unk_w
 };
 
-static struct MSM5232interface msm5232_interface =
+static const struct MSM5232interface msm5232_interface =
 {
 	{ 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6 }	/* 0.65 (???) uF capacitors (match the sample, not verified) */
 };

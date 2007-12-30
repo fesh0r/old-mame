@@ -153,7 +153,7 @@ static TIMER_CALLBACK( scanline_update )
 static MACHINE_START( foodf )
 {
 	state_save_register_global(whichport);
-	scanline_timer = timer_alloc(scanline_update);
+	scanline_timer = timer_alloc(scanline_update, NULL);
 }
 
 
@@ -356,7 +356,7 @@ static READ8_HANDLER( pot_r )
 	return (readinputport(5) >> offset) << 7;
 }
 
-static struct POKEYinterface pokey_interface =
+static const struct POKEYinterface pokey_interface =
 {
 	{ pot_r,pot_r,pot_r,pot_r,pot_r,pot_r,pot_r,pot_r }
 };

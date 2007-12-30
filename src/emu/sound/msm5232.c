@@ -179,8 +179,8 @@ static void msm5232_init_tables( MSM5232 *chip )
 #if 0
 {
 	/* rate tables (in miliseconds) */
-	static int ATBL[8] = { 2,4,8,16, 32,64, 32,64};
-	static int DTBL[16]= { 40,80,160,320, 640,1280, 640,1280,
+	static const int ATBL[8] = { 2,4,8,16, 32,64, 32,64};
+	static const int DTBL[16]= { 40,80,160,320, 640,1280, 640,1280,
 							333,500,1000,2000, 4000,8000, 4000,8000};
 	for (i=0; i<8; i++)
 	{
@@ -665,7 +665,7 @@ INLINE void TG_group_advance(MSM5232 *chip, int groupidx)
 #endif
 
 
-void MSM5232_update_one(void *param, stream_sample_t **inputs, stream_sample_t** buffer, int samples)
+static void MSM5232_update_one(void *param, stream_sample_t **inputs, stream_sample_t** buffer, int samples)
 {
 	MSM5232 * chip = param;
 	stream_sample_t *buf1 = buffer[0];

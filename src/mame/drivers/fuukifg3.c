@@ -539,14 +539,14 @@ GFXDECODE_END
 static TIMER_CALLBACK( level_1_interrupt_callback )
 {
 	cpunum_set_input_line(0, 1, PULSE_LINE);
-	timer_set(video_screen_get_time_until_pos(0, 248, 0), 0, level_1_interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, 248, 0), NULL, 0, level_1_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( vblank_interrupt_callback )
 {
 	cpunum_set_input_line(0, 3, PULSE_LINE);	// VBlank IRQ
-	timer_set(video_screen_get_time_until_pos(0, machine->screen[0].visarea.max_y + 1, 0), 0, vblank_interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, machine->screen[0].visarea.max_y + 1, 0), NULL, 0, vblank_interrupt_callback);
 }
 
 
@@ -560,14 +560,14 @@ static TIMER_CALLBACK( raster_interrupt_callback )
 
 static MACHINE_START( fuuki32 )
 {
-	raster_interrupt_timer = timer_alloc(raster_interrupt_callback);
+	raster_interrupt_timer = timer_alloc(raster_interrupt_callback, NULL);
 }
 
 
 static MACHINE_RESET( fuuki32 )
 {
-	timer_set(video_screen_get_time_until_pos(0, 248, 0), 0, level_1_interrupt_callback);
-	timer_set(video_screen_get_time_until_pos(0, machine->screen[0].visarea.max_y + 1, 0), 0, vblank_interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, 248, 0), NULL, 0, level_1_interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, machine->screen[0].visarea.max_y + 1, 0), NULL, 0, vblank_interrupt_callback);
 	timer_adjust(raster_interrupt_timer, video_screen_get_time_until_pos(0, 0, machine->screen[0].visarea.max_x + 1), 0, attotime_zero);
 }
 
@@ -577,12 +577,12 @@ static void irqhandler(int irq)
 	cpunum_set_input_line(1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YMF278B_interface ymf278b_interface =
+static const struct YMF278B_interface ymf278b_interface =
 {
 	REGION_SOUND1
 };
 
-static struct YMF262interface ymf262_interface =
+static const struct YMF262interface ymf262_interface =
 {
 	irqhandler		/* irq */
 };

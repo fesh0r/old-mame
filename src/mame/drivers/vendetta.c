@@ -112,7 +112,7 @@ VIDEO_UPDATE( vendetta );
 static int init_eeprom_count;
 
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -244,7 +244,7 @@ static WRITE8_HANDLER( z80_arm_nmi_w )
 {
 	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE );
 
-	timer_set( ATTOTIME_IN_USEC( 25 ), 0, z80_nmi_callback );
+	timer_set( ATTOTIME_IN_USEC( 25 ), NULL, 0, z80_nmi_callback );
 }
 
 static WRITE8_HANDLER( z80_irq_w )
@@ -566,7 +566,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static struct K053260_interface k053260_interface =
+static const struct K053260_interface k053260_interface =
 {
 	REGION_SOUND1 /* memory region */
 };

@@ -361,7 +361,7 @@ MACHINE_START( leland )
 	battery_ram = auto_malloc(LELAND_BATTERY_RAM_SIZE);
 
 	/* start scanline interrupts going */
-	master_int_timer = timer_alloc(leland_interrupt_callback);
+	master_int_timer = timer_alloc(leland_interrupt_callback, NULL);
 }
 
 
@@ -414,7 +414,7 @@ MACHINE_START( ataxx )
 	extra_tram = auto_malloc(ATAXX_EXTRA_TRAM_SIZE);
 
 	/* start scanline interrupts going */
-	master_int_timer = timer_alloc(ataxx_interrupt_callback);
+	master_int_timer = timer_alloc(ataxx_interrupt_callback, NULL);
 }
 
 
@@ -676,7 +676,7 @@ void ataxx_bankswitch(void)
 
 void leland_init_eeprom(UINT8 default_val, const UINT16 *data, UINT8 serial_offset, UINT8 serial_type)
 {
-	static struct EEPROM_interface eeprom_interface =
+	static const struct EEPROM_interface eeprom_interface =
 	{
 		6,
 		16,
@@ -769,7 +769,7 @@ void leland_init_eeprom(UINT8 default_val, const UINT16 *data, UINT8 serial_offs
 
 void ataxx_init_eeprom(UINT8 default_val, const UINT16 *data, UINT8 serial_offset)
 {
-	static struct EEPROM_interface eeprom_interface =
+	static const struct EEPROM_interface eeprom_interface =
 	{
 		7,
 		16,

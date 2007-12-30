@@ -46,7 +46,7 @@ static TIMER_CALLBACK( soundlatch_callback )
 
 static WRITE8_HANDLER( tankbust_soundlatch_w )
 {
-	timer_call_after_resynch(data,soundlatch_callback);
+	timer_call_after_resynch(NULL, data,soundlatch_callback);
 }
 
 static READ8_HANDLER( tankbust_soundlatch_r )
@@ -95,7 +95,7 @@ static WRITE8_HANDLER( tankbust_e0xx_w )
 	break;
 
 	case 1:	/* 0xe001 (value 0 then 1) written right after the soundlatch_w */
-		timer_call_after_resynch(data,soundirqline_callback);
+		timer_call_after_resynch(NULL, data,soundirqline_callback);
 	break;
 
 	case 2:	/* 0xe002 coin counter */
@@ -358,7 +358,7 @@ static GFXDECODE_START( tankbust )
 	GFXDECODE_ENTRY( REGION_GFX3, 0, charlayout2,		0x60, 16  )	/* txt tilemap characters*/
 GFXDECODE_END
 
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
 	tankbust_soundlatch_r,
 	tankbust_soundtimer_r

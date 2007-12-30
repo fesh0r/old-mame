@@ -47,7 +47,7 @@ static UINT8 cidelsa_ef_r(void)
 	return (cdp1869_prd & 0x01) + (readinputportbytag("EF") & 0xfe);
 }
 
-static CDP1802_CONFIG cidelsa_cdp1802_config =
+static const CDP1802_CONFIG cidelsa_cdp1802_config =
 {
 	cidelsa_mode_r,
 	cidelsa_ef_r,
@@ -148,7 +148,7 @@ static WRITE8_HANDLER ( draco_ay8910_port_b_w )
     */
 }
 
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
 	0,
 	0,
@@ -680,7 +680,7 @@ static DRIVER_INIT( cidelsa )
 {
 	cdp1869_configure(&destryer_CDP1869_interface);
 
-	timer_set(ATTOTIME_IN_MSEC(200), 0, set_cpu_mode);
+	timer_set(ATTOTIME_IN_MSEC(200), NULL, 0, set_cpu_mode);
 }
 
 static const CDP1869_interface draco_CDP1869_interface =
@@ -699,7 +699,7 @@ static DRIVER_INIT( draco )
 
 	cdp1869_configure(&draco_CDP1869_interface);
 
-	timer_set(ATTOTIME_IN_MSEC(200), 0, set_cpu_mode);
+	timer_set(ATTOTIME_IN_MSEC(200), NULL, 0, set_cpu_mode);
 }
 
 /* ROMs */

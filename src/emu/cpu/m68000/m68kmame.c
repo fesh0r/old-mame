@@ -20,6 +20,12 @@ void m68k_set_encrypted_opcode_range(int cpunum, offs_t start, offs_t end)
  * 8-bit data memory interface
  ****************************************************************************/
 
+static UINT16 m68008_read_immediate_16(offs_t address)
+{
+	offs_t addr = (address) ^ m68k_memory_intf.opcode_xor;
+	return (cpu_readop(addr) << 8) | (cpu_readop(addr + 1));
+}
+
 static UINT16 readword_d8(offs_t address)
 {
 	UINT16 result = program_read_byte_8(address) << 8;
@@ -52,6 +58,7 @@ static void writelong_d8(offs_t address, UINT32 data)
 static const struct m68k_memory_interface interface_d8 =
 {
 	0,
+	m68008_read_immediate_16,
 	program_read_byte_8,
 	readword_d8,
 	readlong_d8,
@@ -63,6 +70,11 @@ static const struct m68k_memory_interface interface_d8 =
 /****************************************************************************
  * 16-bit data memory interface
  ****************************************************************************/
+
+static UINT16 read_immediate_16(offs_t address)
+{
+	return cpu_readop16((address) ^ m68k_memory_intf.opcode_xor);
+}
 
 static UINT32 readlong_d16(offs_t address)
 {
@@ -80,6 +92,7 @@ static void writelong_d16(offs_t address, UINT32 data)
 static const struct m68k_memory_interface interface_d16 =
 {
 	0,
+	read_immediate_16,
 	program_read_byte_16be,
 	program_read_word_16be,
 	readlong_d16,
@@ -155,6 +168,7 @@ static void writelong_d32(offs_t address, UINT32 data)
 static const struct m68k_memory_interface interface_d32 =
 {
 	WORD_XOR_BE(0),
+	read_immediate_16,
 	program_read_byte_32be,
 	readword_d32,
 	readlong_d32,
@@ -162,10 +176,6 @@ static const struct m68k_memory_interface interface_d32 =
 	writeword_d32,
 	writelong_d32
 };
-
-
-/* global access */
-struct m68k_memory_interface m68k_memory_intf;
 
 
 static void set_irq_line(int irqline, int state)
@@ -284,14 +294,14 @@ static offs_t m68008_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UIN
 }
 #endif /* MAME_DEBUG */
 
-#endif
+#endif /* HAS_M68008 */
 
 /****************************************************************************
  * M68010 section
  ****************************************************************************/
 #if HAS_M68010
 
-void m68010_init(int index, int clock, const void *config, int (*irqcallback)(int))
+static void m68010_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	m68k_init();
 	m68k_set_cpu_type(M68K_CPU_TYPE_68010);
@@ -570,7 +580,7 @@ void m68000_get_info(UINT32 state, cpuinfo *info)
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "68000");				break;
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Motorola 68K");		break;
-		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "3.31");					break;
+		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "3.32");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
 		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright 1998-2007 Karl Stenerud. All rights reserved. (2.1 fixes HJB)"); break;
 
@@ -749,7 +759,7 @@ void m68008_get_info(UINT32 state, cpuinfo *info)
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "68008");				break;
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Motorola 68K");		break;
-		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "3.31");					break;
+		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "3.32");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
 		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright 1998-2007 Karl Stenerud. All rights reserved. (2.1 fixes HJB)"); break;
 
@@ -800,7 +810,7 @@ void m68008_get_info(UINT32 state, cpuinfo *info)
 	}
 }
 
-#endif
+#endif /* HAS_M68008 */
 
 /**************************************************************************
  * CPU-specific set_info
@@ -845,7 +855,7 @@ void m68010_get_info(UINT32 state, cpuinfo *info)
 	}
 }
 
-#endif
+#endif /* HAS_M68010 */
 
 /**************************************************************************
  * CPU-specific set_info
@@ -989,7 +999,7 @@ void m68020_get_info(UINT32 state, cpuinfo *info)
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "68020");				break;
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Motorola 68K");		break;
-		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "3.31");					break;
+		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "3.32");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
 		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright 1998-2007 Karl Stenerud. All rights reserved. (2.1 fixes HJB)"); break;
 
@@ -1085,7 +1095,7 @@ void m68ec020_get_info(UINT32 state, cpuinfo *info)
 	}
 }
 
-#endif
+#endif /* HAS_M68EC020 */
 
 /**************************************************************************
  * CPU-specific set_info
@@ -1230,7 +1240,7 @@ void m68040_get_info(UINT32 state, cpuinfo *info)
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "68040");				break;
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Motorola 68K");		break;
-		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "3.31");					break;
+		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "3.32");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
 		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright 1998-2007 Karl Stenerud. All rights reserved. (2.1 fixes HJB)"); break;
 
@@ -1287,5 +1297,5 @@ void m68040_get_info(UINT32 state, cpuinfo *info)
 	}
 }
 
-#endif
+#endif /* HAS_M68040 */
 

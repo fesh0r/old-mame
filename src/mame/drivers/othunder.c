@@ -316,7 +316,7 @@ The eeprom unlock command is different, and the write/clock/reset
 bits are different.
 ******************************************************************/
 
-static UINT8 default_eeprom[128]=
+static const UINT8 default_eeprom[128]=
 {
 	0x00,0x00,0x00,0xff,0x00,0x01,0x41,0x41,0x00,0x00,0x00,0xff,0x00,0x00,0xf0,0xf0,
 	0x00,0x00,0x00,0xff,0x00,0x01,0x41,0x41,0x00,0x00,0x00,0xff,0x00,0x00,0xf0,0xf0,
@@ -328,7 +328,7 @@ static UINT8 default_eeprom[128]=
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
 };
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -419,7 +419,7 @@ static READ16_HANDLER( othunder_TC0220IOC_r )
 
 static READ16_HANDLER( othunder_lightgun_r )
 {
-	static const char *dswname[4] = { P1X_PORT_TAG, P1Y_PORT_TAG, P2X_PORT_TAG, P2Y_PORT_TAG };
+	static const char *const dswname[4] = { P1X_PORT_TAG, P1Y_PORT_TAG, P2X_PORT_TAG, P2Y_PORT_TAG };
 	return readinputportbytag(dswname[offset]);
 }
 
@@ -430,7 +430,7 @@ static WRITE16_HANDLER( othunder_lightgun_w )
        The ADC60808 clock is 512kHz. Conversion takes between 0 and 8 clock
        cycles, so would end in a maximum of 15.625us. We'll use 10. */
 
-	timer_set(ATTOTIME_IN_USEC(10),0, ad_interrupt);
+	timer_set(ATTOTIME_IN_USEC(10), NULL,0, ad_interrupt);
 }
 
 
@@ -689,7 +689,7 @@ static void irqhandler(int irq)
 	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2610interface ym2610_interface =
+static const struct YM2610interface ym2610_interface =
 {
 	irqhandler,
 	REGION_SOUND2,	/* Delta-T */

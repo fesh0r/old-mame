@@ -1531,7 +1531,7 @@ static void soundirq(int state)
 
 /* 1 x 24 MHz crystal */
 
-static struct AY8910interface hardhead_ay8910_interface =
+static const struct AY8910interface hardhead_ay8910_interface =
 {
 	0,
 	0,
@@ -1539,7 +1539,7 @@ static struct AY8910interface hardhead_ay8910_interface =
 	suna8_samples_number_w
 };
 
-static struct Samplesinterface suna8_samples_interface =
+static const struct Samplesinterface suna8_samples_interface =
 {
 	1,
 	NULL,
@@ -1648,7 +1648,7 @@ MACHINE_DRIVER_END
 
 /* 1 x 24 MHz crystal */
 
-static struct YM3812interface brickzn_ym3812_interface =
+static const struct YM3812interface brickzn_ym3812_interface =
 {
 	soundirq	/* IRQ Line */
 };
@@ -1754,7 +1754,7 @@ MACHINE_DRIVER_END
                                 Star Fighter
 ***************************************************************************/
 
-static struct AY8910interface starfigh_ay8910_interface =
+static const struct AY8910interface starfigh_ay8910_interface =
 {
 	0,
 	0,

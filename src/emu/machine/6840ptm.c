@@ -97,7 +97,7 @@ static TIMER_CALLBACK( ptm6840_t3_timeout );
 static ptm6840 ptm[PTM_6840_MAX];
 
 #if PTMVERBOSE
-static const char *opmode[] =
+static const char *const opmode[] =
 {
 	"000 continous mode",
 	"001 freq comparison mode",
@@ -355,9 +355,9 @@ void ptm6840_config(int which, const ptm6840_interface *intf)
 		}
 	}
 
-	ptm[which].timer[0] = timer_alloc(ptm6840_t1_timeout);
-	ptm[which].timer[1] = timer_alloc(ptm6840_t2_timeout);
-	ptm[which].timer[2] = timer_alloc(ptm6840_t3_timeout);
+	ptm[which].timer[0] = timer_alloc(ptm6840_t1_timeout, NULL);
+	ptm[which].timer[1] = timer_alloc(ptm6840_t2_timeout, NULL);
+	ptm[which].timer[2] = timer_alloc(ptm6840_t3_timeout, NULL);
 
 	for (i = 0; i < 3; i++)
 		timer_enable(ptm[which].timer[i], FALSE);

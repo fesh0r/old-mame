@@ -70,7 +70,7 @@ static TIMER_CALLBACK( nmi_callback )
 static WRITE8_HANDLER( sound_command_w )
 {
 	soundlatch_w(0,data);
-	timer_call_after_resynch(data,nmi_callback);
+	timer_call_after_resynch(NULL, data,nmi_callback);
 }
 
 static WRITE8_HANDLER( nmi_disable_w )
@@ -517,7 +517,7 @@ static GFXDECODE_START( msisaac )
 	GFXDECODE_ENTRY( REGION_GFX2, 0, tile_layout, 0, 64 )
 GFXDECODE_END
 
-static struct MSM5232interface msm5232_interface =
+static const struct MSM5232interface msm5232_interface =
 {
 	{ 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6 }	/* 0.65 (???) uF capacitors (match the sample, not verified) */
 };

@@ -46,9 +46,9 @@ static UINT16 snes_htmult;	/* in 512 wide, we run HTOTAL double and halve it on 
 
 // full graphic variables
 static UINT16 vram_fgr_high, vram_fgr_increment, vram_fgr_count, vram_fgr_mask, vram_fgr_shift, vram_read_buffer;
-static UINT16 vram_fgr_inctab[4] = { 1, 32, 128, 128 };
-static UINT16 vram_fgr_inccnts[4] = { 0, 32, 64, 128 };
-static UINT16 vram_fgr_shiftab[4] = { 0, 5, 6, 7 };
+static const UINT16 vram_fgr_inctab[4] = { 1, 32, 128, 128 };
+static const UINT16 vram_fgr_inccnts[4] = { 0, 32, 64, 128 };
+static const UINT16 vram_fgr_shiftab[4] = { 0, 5, 6, 7 };
 
 struct snes_cart_info snes_cart = { SNES_MODE_20, 0x40000, 0x40000 };
 
@@ -318,13 +318,13 @@ static void snes_init_ram(void)
 	snes_ram[VMAIN] = 0x80;
 
 	/* init timers and stop them */
-	snes_scanline_timer = timer_alloc(snes_scanline_tick);
+	snes_scanline_timer = timer_alloc(snes_scanline_tick, NULL);
 	timer_adjust(snes_scanline_timer, attotime_never, 0, attotime_never);
-	snes_hblank_timer = timer_alloc(snes_hblank_tick);
+	snes_hblank_timer = timer_alloc(snes_hblank_tick, NULL);
 	timer_adjust(snes_hblank_timer, attotime_never, 0, attotime_never);
-	snes_nmi_timer = timer_alloc(snes_nmi_tick);
+	snes_nmi_timer = timer_alloc(snes_nmi_tick, NULL);
 	timer_adjust(snes_nmi_timer, attotime_never, 0, attotime_never);
-	snes_hirq_timer = timer_alloc(snes_hirq_tick_callback);
+	snes_hirq_timer = timer_alloc(snes_hirq_tick_callback, NULL);
 	timer_adjust(snes_hirq_timer, attotime_never, 0, attotime_never);
 
 	// SNES hcounter has a 0-339 range.  hblank starts at counter 260.

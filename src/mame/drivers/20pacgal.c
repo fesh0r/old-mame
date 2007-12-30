@@ -56,7 +56,7 @@ VIDEO_UPDATE( 20pacgal );
 
 
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -226,7 +226,7 @@ static GFXDECODE_START( 20pacgal )
 	GFXDECODE_ENTRY( 0, 0, spritelayout, 0, 64 )
 GFXDECODE_END
 
-static struct namco_interface namco_interface =
+static const struct namco_interface namco_interface =
 {
 	3,	/* number of voices */
 	-1,	/* memory region */

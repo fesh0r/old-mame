@@ -52,7 +52,7 @@ static UINT16 cur_control2;
 static int init_eeprom_count;
 static emu_timer *dmadelay_timer;
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -207,7 +207,7 @@ static MACHINE_START( gijoe )
 {
 	state_save_register_global(cur_control2);
 
-	dmadelay_timer = timer_alloc(dmaend_callback);
+	dmadelay_timer = timer_alloc(dmaend_callback, NULL);
 }
 
 
@@ -331,7 +331,7 @@ static INPUT_PORTS_START( gijoe )
 	PORT_DIPUNUSED( 0x8000, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
-static struct K054539interface k054539_interface =
+static const struct K054539interface k054539_interface =
 {
 	REGION_SOUND1,
 	NULL,

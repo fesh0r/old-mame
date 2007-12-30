@@ -305,7 +305,7 @@ covert megatech / megaplay drivers to use new code etc. etc.
 //static UINT8* sms_rom;
 static UINT8* sms_mainram;
 //static UINT8* smsgg_backupram;
-static TIMER_CALLBACK_PTR( sms_scanline_timer_callback );
+static TIMER_CALLBACK( sms_scanline_timer_callback );
 static struct sms_vdp *vdp2;
 static struct sms_vdp *vdp1;
 
@@ -352,7 +352,7 @@ ADDRESS_MAP_END
 
 /* Precalculated tables for H/V counters.  Note the position the counter 'jumps' is marked with with
    an empty comment */
-static UINT8 hc_256[] =
+static const UINT8 hc_256[] =
 {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,    0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,    0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -379,7 +379,7 @@ static UINT8 hc_256[] =
 };
 
 
-static UINT8 vc_ntsc_192[] =
+static const UINT8 vc_ntsc_192[] =
 {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,    0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a,    0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -400,7 +400,7 @@ static UINT8 vc_ntsc_192[] =
     0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 };
 
-static UINT8 vc_ntsc_224[] =
+static const UINT8 vc_ntsc_224[] =
 {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,    0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a,    0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -421,7 +421,7 @@ static UINT8 vc_ntsc_224[] =
     0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 };
 
-static UINT8 vc_ntsc_240[] =
+static const UINT8 vc_ntsc_240[] =
 {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -444,7 +444,7 @@ static UINT8 vc_ntsc_240[] =
 
 
 
-static UINT8 vc_pal_192[] =
+static const UINT8 vc_pal_192[] =
 {
     0x00, 0x01, 0x02,    0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12,    0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -469,7 +469,7 @@ static UINT8 vc_pal_192[] =
 };
 
 
-static UINT8 vc_pal_224[] =
+static const UINT8 vc_pal_224[] =
 {
     0x00, 0x01, 0x02,    0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12,    0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -493,7 +493,7 @@ static UINT8 vc_pal_224[] =
     0xf7, 0xf8, 0xf9,    0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 };
 
-static UINT8 vc_pal_240[] =
+static const UINT8 vc_pal_240[] =
 {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,    0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a,    0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -517,14 +517,14 @@ static UINT8 vc_pal_240[] =
     0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 };
 
-static struct
+static const struct
 {
 	UINT8 sms2_name[40];
 	int sms2_valid;
 	int sms2_height;
 	int sms2_tilemap_height;
-	UINT8* sms_vcounter_table;
-	UINT8* sms_hcounter_table;
+	const UINT8* sms_vcounter_table;
+	const UINT8* sms_hcounter_table;
 
 } sms_mode_table[] =
 {
@@ -729,7 +729,7 @@ static void *start_vdp(running_machine *machine, int type)
 	chip->writemode = 0;
 	chip->r_bitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
 
-	chip->sms_scanline_timer = timer_alloc_ptr(sms_scanline_timer_callback, chip);
+	chip->sms_scanline_timer = timer_alloc(sms_scanline_timer_callback, chip);
 
 	return chip;
 }
@@ -737,7 +737,7 @@ static void *start_vdp(running_machine *machine, int type)
 /* stop timer and clear ram.. used on megatech when we switch between genesis and sms mode */
 void segae_md_sms_stop_scanline_timer(void)
 {
-	timer_adjust_ptr(md_sms_vdp->sms_scanline_timer,  attotime_never, attotime_never);
+	timer_adjust(md_sms_vdp->sms_scanline_timer,  attotime_never, 0, attotime_never);
 	memset(md_sms_vdp->vram,0x00,0x4000);
 }
 
@@ -1284,7 +1284,7 @@ static void sms_draw_scanline(int scanline, struct sms_vdp* chip)
 }
 
 
-static TIMER_CALLBACK_PTR( sms_scanline_timer_callback )
+static TIMER_CALLBACK( sms_scanline_timer_callback )
 {
 	/* This function is called at the very start of every scanline starting at the very
        top-left of the screen.  The first scanline is scanline 0 (we set scanline to -1 in
@@ -1299,12 +1299,12 @@ static TIMER_CALLBACK_PTR( sms_scanline_timer_callback )
        The position to get the H position also has to compensate for a few errors
     */
 //  printf("num %d\n",num );
-	struct sms_vdp *chip = param;
+	struct sms_vdp *chip = ptr;
 
 	if (chip->sms_scanline_counter<(chip->sms_total_scanlines-1))
 	{
 		chip->sms_scanline_counter++;
-		timer_adjust_ptr(chip->sms_scanline_timer, ATTOTIME_IN_HZ(chip->sms_framerate * chip->sms_total_scanlines), attotime_zero);
+		timer_adjust(chip->sms_scanline_timer, ATTOTIME_IN_HZ(chip->sms_framerate * chip->sms_total_scanlines), 0, attotime_zero);
 
 		if (chip->sms_scanline_counter>sms_mode_table[chip->screen_mode].sms2_height)
 		{
@@ -1469,7 +1469,7 @@ static void end_of_frame(struct sms_vdp *chip)
 
 	chip->sms_scanline_counter = -1;
 	chip->yscroll = chip->regs[0x9]; // this can't change mid-frame
-	timer_adjust_ptr(chip->sms_scanline_timer, attotime_zero, attotime_zero);
+	timer_adjust(chip->sms_scanline_timer, attotime_zero, 0, attotime_zero);
 }
 
 #ifdef UNUSED_FUNCTION
@@ -1491,7 +1491,7 @@ static VIDEO_START(sms)
 #ifdef UNUSED_FUNCTION
 MACHINE_RESET(sms)
 {
-	timer_adjust_ptr(vdp1->sms_scanline_timer, attotime_zero, attotime_zero);
+	timer_adjust(vdp1->sms_scanline_timer, attotime_zero, 0, attotime_zero);
 }
 #endif
 
@@ -1949,18 +1949,18 @@ static UINT8 f7_bank_value;
 
 static MACHINE_RESET(systeme)
 {
-	timer_adjust_ptr(vdp1->sms_scanline_timer, attotime_zero, attotime_zero);
-	timer_adjust_ptr(vdp2->sms_scanline_timer, attotime_zero, attotime_zero);
+	timer_adjust(vdp1->sms_scanline_timer, attotime_zero, 0, attotime_zero);
+	timer_adjust(vdp2->sms_scanline_timer, attotime_zero, 0, attotime_zero);
 }
 
 MACHINE_RESET(megatech_md_sms)
 {
-	timer_adjust_ptr(md_sms_vdp->sms_scanline_timer, attotime_zero, attotime_zero);
+	timer_adjust(md_sms_vdp->sms_scanline_timer, attotime_zero, 0, attotime_zero);
 }
 
 MACHINE_RESET(megatech_bios)
 {
-	timer_adjust_ptr(vdp1->sms_scanline_timer, attotime_zero, attotime_zero);
+	timer_adjust(vdp1->sms_scanline_timer, attotime_zero, 0, attotime_zero);
 }
 
 static VIDEO_EOF(systeme)

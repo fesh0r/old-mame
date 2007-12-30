@@ -10,7 +10,7 @@
 extern unsigned dasmr3k(char *,unsigned, UINT32);
 extern unsigned dasmmips3(char *,unsigned, UINT32);
 
-struct
+static struct
 {
 	UINT8 id[ 8 ];
 	UINT32 text;	/* SCE only */
@@ -42,9 +42,9 @@ struct
 
 static UINT8 *filebuf;
 static UINT32 offset;
-static UINT8 order[] = { 0, 1, 2, 3 };
+static const UINT8 order[] = { 0, 1, 2, 3 };
 
-static char *Options[]=
+static const char *const Options[]=
 {
 	"begin", "end", "offset", "order", "format", "cpu", 0
 };

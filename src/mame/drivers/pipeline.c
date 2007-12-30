@@ -209,7 +209,7 @@ static TIMER_CALLBACK( protection_deferred_w )
 
 static WRITE8_HANDLER(protection_w)
 {
-	timer_call_after_resynch(data, protection_deferred_w);
+	timer_call_after_resynch(NULL, data, protection_deferred_w);
 	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
 }
 
@@ -300,13 +300,13 @@ static z80ctc_interface ctc_intf =
 	0,					// ZC/TO2 callback
 };
 
-static struct z80_irq_daisy_chain daisy_chain_sound[] =
+static const struct z80_irq_daisy_chain daisy_chain_sound[] =
 {
 	{ z80ctc_reset, z80ctc_irq_state, z80ctc_irq_ack, z80ctc_irq_reti, 0 },	/* device 0 = CTC_1 */
 	{ 0, 0, 0, 0, -1 }		/* end mark */
 };
 
-static ppi8255_interface ppi8255_intf =
+static const ppi8255_interface ppi8255_intf =
 {
 	3,
 	{ input_port_0_r, input_port_1_r, NULL },	/* Port A read */
@@ -317,7 +317,7 @@ static ppi8255_interface ppi8255_intf =
 	{ vidctrl_w,      protection_w,   NULL },	/* Port C write */
 };
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	0,
 	0,

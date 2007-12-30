@@ -65,13 +65,13 @@ static TIMER_CALLBACK( interrupt_callback )
 		scanline = 32;
 	}
 
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, interrupt_callback);
 }
 
 
 static MACHINE_RESET( videopin )
 {
-	timer_set(video_screen_get_time_until_pos(0, 32, 0), 32, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, 32, 0), NULL, 32, interrupt_callback);
 
 	/* both output latches are cleared on reset */
 
@@ -117,7 +117,7 @@ static READ8_HANDLER( videopin_misc_r )
 static WRITE8_HANDLER( videopin_led_w )
 {
 	int i = (video_screen_get_vpos(0) >> 5) & 7;
-	static const char* matrix[8][4] =
+	static const char *const matrix[8][4] =
 	{
 		{ "LED26", "LED18", "LED11", "LED13" },
 		{ "LED25", "LED17", "LED10", "LED08" },

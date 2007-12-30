@@ -1111,7 +1111,7 @@ static void irqhandler(int state)
 	}
 }
 
-static struct YMF271interface ymf271_interface =
+static const struct YMF271interface ymf271_interface =
 {
 	REGION_SOUND1,
 	flashrom_read,
@@ -1699,7 +1699,7 @@ static NVRAM_HANDLER( spi )
 }
 
 /* this is a 93C46 but with reset delay */
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	6,				/* address bits */
 	16,				/* data bits */

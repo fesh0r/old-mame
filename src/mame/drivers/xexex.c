@@ -85,7 +85,7 @@ static int suspension_active, resume_trigger;
 static emu_timer *dmadelay_timer;
 
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -464,7 +464,7 @@ INPUT_PORTS_END
 
 
 
-static struct K054539interface k054539_interface =
+static const struct K054539interface k054539_interface =
 {
 	REGION_SOUND1,
 	ym_set_mixing
@@ -633,7 +633,7 @@ static MACHINE_START( xexex )
 
 	resume_trigger = 1000;
 
-	dmadelay_timer = timer_alloc(dmaend_callback);
+	dmadelay_timer = timer_alloc(dmaend_callback, NULL);
 }
 
 

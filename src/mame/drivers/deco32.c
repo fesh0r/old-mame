@@ -1798,13 +1798,13 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 	OKIM6295_set_bank_base(1, ((data >> 1)& 1) * 0x40000);
 }
 
-static struct YM2151interface ym2151_interface =
+static const struct YM2151interface ym2151_interface =
 {
 	sound_irq,
 	sound_bankswitch_w
 };
 
-static struct YM2151interface ym2151_interface_nslasher =
+static const struct YM2151interface ym2151_interface_nslasher =
 {
 	sound_irq_nslasher,
 	sound_bankswitch_w
@@ -1836,7 +1836,7 @@ static const UINT8 tattass_default_eprom[0x160] =
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
-static struct EEPROM_interface eeprom_interface_tattass =
+static const struct EEPROM_interface eeprom_interface_tattass =
 {
 	10,				// address bits 10  ==> } 1024 byte eprom
 	8,				// data bits    8
@@ -1859,7 +1859,7 @@ static NVRAM_HANDLER(tattass)
 
 static MACHINE_RESET( deco32 )
 {
-	raster_irq_timer = timer_alloc(interrupt_gen);
+	raster_irq_timer = timer_alloc(interrupt_gen, NULL);
 }
 
 static INTERRUPT_GEN( deco32_vbl_interrupt )

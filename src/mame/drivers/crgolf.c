@@ -124,7 +124,7 @@ static TIMER_CALLBACK( main_to_sound_callback )
 
 static WRITE8_HANDLER( main_to_sound_w )
 {
-	timer_call_after_resynch(data, main_to_sound_callback);
+	timer_call_after_resynch(NULL, data, main_to_sound_callback);
 }
 
 
@@ -151,7 +151,7 @@ static TIMER_CALLBACK( sound_to_main_callback )
 
 static WRITE8_HANDLER( sound_to_main_w )
 {
-	timer_call_after_resynch(data, sound_to_main_callback);
+	timer_call_after_resynch(NULL, data, sound_to_main_callback);
 }
 
 
@@ -346,7 +346,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct MSM5205interface msm5205_intf =
+static const struct MSM5205interface msm5205_intf =
 {
 	vck_callback,
 	MSM5205_S64_4B

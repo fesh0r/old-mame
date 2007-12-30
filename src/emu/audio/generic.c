@@ -85,7 +85,7 @@ static TIMER_CALLBACK( latch_callback )
 
 INLINE void latch_w(int which, UINT16 value)
 {
-	timer_call_after_resynch(which | (value << 8), latch_callback);
+	timer_call_after_resynch(NULL, which | (value << 8), latch_callback);
 }
 
 
@@ -158,5 +158,6 @@ WRITE8_HANDLER( soundlatch4_clear_w ) { latch_clear(3); }
 
 void soundlatch_setclearedvalue(int value)
 {
+	assert_always(mame_get_phase(Machine) == MAME_PHASE_INIT, "Can only call soundlatch_setclearedvalue at init time!");
 	latch_clear_value = value;
 }

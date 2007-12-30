@@ -122,6 +122,7 @@ struct _video_global
 	UINT32					speed;				/* overall speed (*100) */
 	UINT32					original_speed;		/* originally-specified speed */
 	UINT8					refresh_speed;		/* flag: TRUE if we max out our speed according to the refresh */
+	UINT8					update_in_pause;	/* flag: TRUE if video is updated while in pause */
 
 	/* frameskipping */
 	UINT8					empty_skip_count;	/* number of empty frames we have skipped */
@@ -285,6 +286,7 @@ void video_init(running_machine *machine)
 	global.seconds_to_run = options_get_int(mame_options(), OPTION_SECONDS_TO_RUN);
 	global.original_speed = global.speed = (options_get_float(mame_options(), OPTION_SPEED) * 100.0 + 0.5);
 	global.refresh_speed = options_get_bool(mame_options(), OPTION_REFRESHSPEED);
+	global.update_in_pause = options_get_bool(mame_options(), OPTION_UPDATEINPAUSE);
 
 	/* allocate memory for our private data */
 	viddata = machine->video_data = auto_malloc(sizeof(*viddata));
@@ -301,7 +303,7 @@ void video_init(running_machine *machine)
 			internal_screen_info *info = &viddata->scrinfo[scrnum];
 
 			/* allocate a timer to reset partial updates */
-			info->scanline0_timer = timer_alloc(scanline0_callback);
+			info->scanline0_timer = timer_alloc(scanline0_callback, NULL);
 
 			/* make pointers back to the config and state */
 			info->config = &machine->drv->screen[scrnum];
@@ -1017,18 +1019,14 @@ static TIMER_CALLBACK( scanline0_callback )
     operations
 -------------------------------------------------*/
 
-void video_frame_update(void)
+void video_frame_update(int debug)
 {
 	attotime current_time = timer_get_time();
 	int skipped_it = global.skipping_this_frame;
 	int phase = mame_get_phase(Machine);
 
 	/* only render sound and video if we're in the running phase */
-#ifdef MAME_DEBUG
-	if (phase == MAME_PHASE_RUNNING)
-#else
-	if (phase == MAME_PHASE_RUNNING && !mame_is_paused(Machine))
-#endif
+	if (phase == MAME_PHASE_RUNNING && (!mame_is_paused(Machine) || global.update_in_pause))
 	{
 		int anything_changed = finish_screen_updates(Machine);
 
@@ -1045,30 +1043,32 @@ void video_frame_update(void)
 	ui_update_and_render();
 
 	/* if we're throttling, synchronize before rendering */
-	if (!skipped_it && effective_throttle())
+	if (!debug && !skipped_it && effective_throttle())
 		update_throttle(current_time);
 
 	/* ask the OSD to update */
 	profiler_mark(PROFILER_BLIT);
-	osd_update(skipped_it);
+	osd_update(!debug && skipped_it);
 	profiler_mark(PROFILER_END);
 
 	/* perform tasks for this frame */
-	mame_frame_update(Machine);
+	if (!debug)
+		mame_frame_update(Machine);
 
 	/* update frameskipping */
-	update_frameskip();
+	if (!debug)
+		update_frameskip();
 
 	/* update speed computations */
-	if (!skipped_it)
+	if (!debug && !skipped_it)
 		recompute_speed(current_time);
 
 	/* call the end-of-frame callback */
 	if (phase == MAME_PHASE_RUNNING)
 	{
 		/* reset partial updates if we're paused or if the debugger is active */
-		if (video_screen_exists(0) && (mame_is_paused(Machine) || mame_debug_is_active()))
-			scanline0_callback(Machine, 0);
+		if (video_screen_exists(0) && (mame_is_paused(Machine) || debug || mame_debug_is_active()))
+			scanline0_callback(Machine, NULL, 0);
 
 		/* otherwise, call the video EOF callback */
 		else if (Machine->drv->video_eof != NULL)
@@ -1521,6 +1521,7 @@ static osd_ticks_t throttle_until_ticks(osd_ticks_t target_ticks)
 		}
 		current_ticks = new_ticks;
 	}
+	profiler_mark(PROFILER_END);
 
 	return current_ticks;
 }
@@ -1863,6 +1864,7 @@ static void movie_record_frame(running_machine *machine, int scrnum)
 {
 	video_private *viddata = machine->video_data;
 	internal_screen_info *info = &viddata->scrinfo[scrnum];
+	const rgb_t *palette;
 
 	/* only record if we have a file */
 	if (info->movie_file != NULL)
@@ -1900,7 +1902,8 @@ static void movie_record_frame(running_machine *machine, int scrnum)
 		}
 
 		/* write the next frame */
-		error = mng_capture_frame(mame_core_file(info->movie_file), &pnginfo, bitmap, machine->drv->total_colors, palette_entry_list_adjusted(machine->palette));
+		palette = (machine->palette != NULL) ? palette_entry_list_adjusted(machine->palette) : NULL;
+		error = mng_capture_frame(mame_core_file(info->movie_file), &pnginfo, bitmap, machine->drv->total_colors, palette);
 		png_free(&pnginfo);
 		if (error != PNGERR_NONE)
 		{

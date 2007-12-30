@@ -646,7 +646,7 @@ static WRITE8_HANDLER( buckrog_ppi8255_0_w )
 {
 	/* the port C handshaking signals control the sub CPU IRQ, */
 	/* so we have to sync whenever we access this PPI */
-	timer_call_after_resynch(((offset & 3) << 8) | (data & 0xff), delayed_ppi8255_w);
+	timer_call_after_resynch(NULL, ((offset & 3) << 8) | (data & 0xff), delayed_ppi8255_w);
 }
 
 
@@ -1328,8 +1328,8 @@ ROM_START( buckrog )
 	ROM_LOAD( "pr-5195.cpu-ic53", 0x0020, 0x0020, CRC(181c6d23) SHA1(4749b205cbaa513ee65a644946235d2cfe275648) )  /* sprite state machine */
 	ROM_LOAD( "pr-5196.cpu-ic10", 0x0100, 0x0200, CRC(04204bcf) SHA1(5636eb184463ac58fcfd20012d13d14fb0769124) )  /* sprite Y scaling */
 	ROM_LOAD( "pr-5197.cpu-ic78", 0x0300, 0x0200, CRC(a42674af) SHA1(db3590dd0d0f8a85d4ba32ac4ee33f2f4ee4c348) )  /* video timing */
-	ROM_LOAD( "pr-5198.cpu-ic93", 0x0500, 0x0200, CRC(32e74bc8) SHA1(dd2c812efd7b8f6b31a45e698d6453ea6bec132e) )  /* char colortable */
-	ROM_LOAD( "pr-5199.cpu-ic95", 0x0700, 0x0400, CRC(45e997a8) SHA1(023703b90b503310351b12157b1e732e61430fa5) )  /* sprite colortable */
+	ROM_LOAD( "pr-5198.cpu-ic93", 0x0500, 0x0200, CRC(32e74bc8) SHA1(dd2c812efd7b8f6b31a45e698d6453ea6bec132e) )  /* char color table */
+	ROM_LOAD( "pr-5199.cpu-ic95", 0x0700, 0x0400, CRC(45e997a8) SHA1(023703b90b503310351b12157b1e732e61430fa5) )  /* sprite color table */
 ROM_END
 
 
@@ -1366,8 +1366,8 @@ ROM_START( buckrogn )
 	ROM_LOAD( "pr-5195.cpu-ic53", 0x0020, 0x0020, CRC(181c6d23) SHA1(4749b205cbaa513ee65a644946235d2cfe275648) )  /* sprite state machine */
 	ROM_LOAD( "pr-5196.cpu-ic10", 0x0100, 0x0200, CRC(04204bcf) SHA1(5636eb184463ac58fcfd20012d13d14fb0769124) )  /* sprite Y scaling */
 	ROM_LOAD( "pr-5197.cpu-ic78", 0x0300, 0x0200, CRC(a42674af) SHA1(db3590dd0d0f8a85d4ba32ac4ee33f2f4ee4c348) )  /* video timing */
-	ROM_LOAD( "pr-5198.cpu-ic93", 0x0500, 0x0200, CRC(32e74bc8) SHA1(dd2c812efd7b8f6b31a45e698d6453ea6bec132e) )  /* char colortable */
-	ROM_LOAD( "pr-5199.cpu-ic95", 0x0700, 0x0400, CRC(45e997a8) SHA1(023703b90b503310351b12157b1e732e61430fa5) )  /* sprite colortable */
+	ROM_LOAD( "pr-5198.cpu-ic93", 0x0500, 0x0200, CRC(32e74bc8) SHA1(dd2c812efd7b8f6b31a45e698d6453ea6bec132e) )  /* char color table */
+	ROM_LOAD( "pr-5199.cpu-ic95", 0x0700, 0x0400, CRC(45e997a8) SHA1(023703b90b503310351b12157b1e732e61430fa5) )  /* sprite color table */
 ROM_END
 
 
@@ -1404,8 +1404,8 @@ ROM_START( zoom909 )
 	ROM_LOAD( "pr-5195.cpu-ic53", 0x0020, 0x0020, CRC(181c6d23) SHA1(4749b205cbaa513ee65a644946235d2cfe275648) )  /* sprite state machine */
 	ROM_LOAD( "pr-5196.cpu-ic10", 0x0100, 0x0200, CRC(04204bcf) SHA1(5636eb184463ac58fcfd20012d13d14fb0769124) )  /* sprite Y scaling */
 	ROM_LOAD( "pr-5197.cpu-ic78", 0x0300, 0x0200, CRC(a42674af) SHA1(db3590dd0d0f8a85d4ba32ac4ee33f2f4ee4c348) )  /* video timing */
-	ROM_LOAD( "pr-5198.cpu-ic93", 0x0500, 0x0200, CRC(32e74bc8) SHA1(dd2c812efd7b8f6b31a45e698d6453ea6bec132e) )  /* char colortable */
-	ROM_LOAD( "pr-5199.cpu-ic95", 0x0700, 0x0400, BAD_DUMP CRC(45e997a8) SHA1(023703b90b503310351b12157b1e732e61430fa5) )  /* sprite colortable */
+	ROM_LOAD( "pr-5198.cpu-ic93", 0x0500, 0x0200, CRC(32e74bc8) SHA1(dd2c812efd7b8f6b31a45e698d6453ea6bec132e) )  /* char color table */
+	ROM_LOAD( "pr-5199.cpu-ic95", 0x0700, 0x0400, BAD_DUMP CRC(45e997a8) SHA1(023703b90b503310351b12157b1e732e61430fa5) )  /* sprite color table */
 ROM_END
 
 
@@ -1526,7 +1526,7 @@ static void turbo_rom_decode(void)
 
 static DRIVER_INIT( turbo )
 {
-	static ppi8255_interface turbo_8255_intf =
+	static const ppi8255_interface turbo_8255_intf =
 	{
 		4,
 		{ NULL,          NULL,          NULL,            turbo_analog_r },
@@ -1548,7 +1548,7 @@ static DRIVER_INIT( turbo_enc )
 
 static DRIVER_INIT( subroc3d )
 {
-	static ppi8255_interface subroc3d_8255_intf =
+	static const ppi8255_interface subroc3d_8255_intf =
 	{
 		2,
 		{ NULL,             NULL },
@@ -1564,7 +1564,7 @@ static DRIVER_INIT( subroc3d )
 
 static DRIVER_INIT( buckrog )
 {
-	static ppi8255_interface buckrog_8255_intf =
+	static const ppi8255_interface buckrog_8255_intf =
 	{
 		2,
 		{ NULL,            NULL },

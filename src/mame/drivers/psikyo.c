@@ -130,7 +130,7 @@ static int psikyo_readcoinport(int has_mcu)
 
 		/* main CPU might be waiting for sound CPU to finish NMI,
            so set a timer to give sound CPU a chance to run */
-		timer_call_after_resynch(0, NULL);
+		timer_call_after_resynch(NULL, 0, NULL);
 //      logerror("PC %06X - Read coin port during Z80 NMI\n", activecpu_get_pc());
 	}
 
@@ -171,7 +171,7 @@ static TIMER_CALLBACK( psikyo_soundlatch_callback )
 static WRITE32_HANDLER( psikyo_soundlatch_w )
 {
 	if (ACCESSING_LSB32)
-		timer_call_after_resynch(data & 0xff, psikyo_soundlatch_callback);
+		timer_call_after_resynch(NULL, data & 0xff, psikyo_soundlatch_callback);
 }
 
 /***************************************************************************
@@ -181,22 +181,22 @@ static WRITE32_HANDLER( psikyo_soundlatch_w )
 static WRITE32_HANDLER( s1945_soundlatch_w )
 {
 	if (!(mem_mask & 0x00ff0000))
-		timer_call_after_resynch((data >> 16) & 0xff, psikyo_soundlatch_callback);
+		timer_call_after_resynch(NULL, (data >> 16) & 0xff, psikyo_soundlatch_callback);
 }
 
-static UINT8 s1945_table[256] = {
+static const UINT8 s1945_table[256] = {
 	0x00, 0x00, 0x64, 0xae, 0x00, 0x00, 0x26, 0x2c, 0x00, 0x00, 0x2c, 0xda, 0x00, 0x00, 0x2c, 0xbc,
 	0x00, 0x00, 0x2c, 0x9e, 0x00, 0x00, 0x2f, 0x0e, 0x00, 0x00, 0x31, 0x10, 0x00, 0x00, 0xc5, 0x1e,
 	0x00, 0x00, 0x32, 0x90, 0x00, 0x00, 0xac, 0x5c, 0x00, 0x00, 0x2b, 0xc0
 };
 
-static UINT8 s1945a_table[256] = {
+static const UINT8 s1945a_table[256] = {
 	0x00, 0x00, 0x64, 0xbe, 0x00, 0x00, 0x26, 0x2c, 0x00, 0x00, 0x2c, 0xda, 0x00, 0x00, 0x2c, 0xbc,
 	0x00, 0x00, 0x2c, 0x9e, 0x00, 0x00, 0x2f, 0x0e, 0x00, 0x00, 0x31, 0x10, 0x00, 0x00, 0xc7, 0x2a,
 	0x00, 0x00, 0x32, 0x90, 0x00, 0x00, 0xad, 0x4c, 0x00, 0x00, 0x2b, 0xc0
 };
 
-static UINT8 s1945j_table[256] = {
+static const UINT8 s1945j_table[256] = {
 	0x00, 0x00, 0x64, 0xb6, 0x00, 0x00, 0x26, 0x2c, 0x00, 0x00, 0x2c, 0xda, 0x00, 0x00, 0x2c, 0xbc,
 	0x00, 0x00, 0x2c, 0x9e, 0x00, 0x00, 0x2f, 0x0e, 0x00, 0x00, 0x31, 0x10, 0x00, 0x00, 0xc5, 0x92,
 	0x00, 0x00, 0x32, 0x90, 0x00, 0x00, 0xac, 0x64, 0x00, 0x00, 0x2b, 0xc0
@@ -1552,7 +1552,7 @@ GFXDECODE_END
 ***************************************************************************/
 
 
-struct YM2610interface sngkace_ym2610_interface =
+static const struct YM2610interface sngkace_ym2610_interface =
 {
 	sound_irq,	/* irq */
 	REGION_SOUND1,	/* delta_t */
@@ -1606,7 +1606,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 
-struct YM2610interface gunbird_ym2610_interface =
+static const struct YM2610interface gunbird_ym2610_interface =
 {
 	sound_irq,	/* irq */
 	REGION_SOUND1,	/* delta_t */
@@ -1669,7 +1669,7 @@ static void irqhandler(int linestate)
 		cpunum_set_input_line(1, 0, CLEAR_LINE);
 }
 
-static struct YMF278B_interface ymf278b_interface =
+static const struct YMF278B_interface ymf278b_interface =
 {
 	REGION_SOUND1,
 	irqhandler

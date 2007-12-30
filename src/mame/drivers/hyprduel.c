@@ -196,7 +196,7 @@ static INTERRUPT_GEN( hyprduel_interrupt )
 		cpunum_set_input_line(0, 2, HOLD_LINE);
 		cpunum_set_input_line(1, 1, HOLD_LINE);
 		/* the duration is a guess */
-		timer_set(ATTOTIME_IN_USEC(2500), 0x20, vblank_end_callback);
+		timer_set(ATTOTIME_IN_USEC(2500), NULL, 0x20, vblank_end_callback);
 		rastersplit = 0;
 	} else {
 		requested_int |= 0x12;		/* hsync */
@@ -367,7 +367,7 @@ static WRITE16_HANDLER( hyprduel_blitter_w )
                        another blit. */
 					if (b1 == 0)
 					{
-						timer_set(ATTOTIME_IN_USEC(500),0,hyprduel_blit_done);
+						timer_set(ATTOTIME_IN_USEC(500), NULL,0,hyprduel_blit_done);
 						return;
 					}
 
@@ -713,7 +713,7 @@ static void sound_irq(int state)
 	cpunum_set_input_line(1, 1, HOLD_LINE);
 }
 
-static struct YM2151interface ym2151_interface =
+static const struct YM2151interface ym2151_interface =
 {
 	sound_irq
 };

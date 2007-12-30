@@ -76,7 +76,7 @@ static WRITE8_HANDLER( video_control_w );
  *
  *************************************/
 
-static ppi8255_interface single_ppi_intf =
+static const ppi8255_interface single_ppi_intf =
 {
 	1,
 	{ unknown_porta_r },
@@ -128,7 +128,7 @@ static TIMER_CALLBACK( delayed_sound_data_w )
 
 static void sound_data_w(UINT8 data)
 {
-	timer_call_after_resynch(data, delayed_sound_data_w);
+	timer_call_after_resynch(NULL, data, delayed_sound_data_w);
 }
 
 
@@ -213,7 +213,7 @@ static TIMER_CALLBACK( scanline_callback )
 		case 65:
 		case 129:
 		case 193:
-			timer_set(video_screen_get_time_until_pos(0, scanline, machine->screen[0].visarea.max_x + 1), 0, irq2_gen);
+			timer_set(video_screen_get_time_until_pos(0, scanline, machine->screen[0].visarea.max_x + 1), NULL, 0, irq2_gen);
 			next_scanline = scanline + 1;
 			break;
 
@@ -244,7 +244,7 @@ static TIMER_CALLBACK( scanline_callback )
 	update_main_irqs();
 
 	/* come back at the next targeted scanline */
-	timer_set(video_screen_get_time_until_pos(0, next_scanline, 0), next_scanline, scanline_callback);
+	timer_set(video_screen_get_time_until_pos(0, next_scanline, 0), NULL, next_scanline, scanline_callback);
 }
 
 
@@ -275,7 +275,7 @@ static MACHINE_RESET( outrun )
 	cpunum_set_info_fct(0, CPUINFO_PTR_M68K_RESET_CALLBACK, (genf *)outrun_reset);
 
 	/* start timers to track interrupts */
-	timer_set(video_screen_get_time_until_pos(0, 223, 0), 223, scanline_callback);
+	timer_set(video_screen_get_time_until_pos(0, 223, 0), NULL, 223, scanline_callback);
 }
 
 
@@ -391,7 +391,7 @@ static READ16_HANDLER( outrun_custom_io_r )
 
 		case 0x30/2:
 		{
-			static const char *ports[] = { "ADC0", "ADC1", "ADC2", "ADC3", "ADC4", "ADC5", "ADC6", "ADC7" };
+			static const char *const ports[] = { "ADC0", "ADC1", "ADC2", "ADC3", "ADC4", "ADC5", "ADC6", "ADC7" };
 			return readinputportbytag_safe(ports[adc_select], 0x0010);
 		}
 
@@ -454,7 +454,7 @@ static READ16_HANDLER( shangon_custom_io_r )
 
 		case 0x3020/2:
 		{
-			static const char *ports[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
+			static const char *const ports[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
 			return readinputportbytag_safe(ports[adc_select], 0x0010);
 		}
 	}
@@ -772,7 +772,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct SEGAPCMinterface segapcm_interface =
+static const struct SEGAPCMinterface segapcm_interface =
 {
 	BANK_512,
 	REGION_SOUND1

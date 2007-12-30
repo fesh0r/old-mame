@@ -997,7 +997,7 @@ static UINT16 m_p_n_mdec_r5[ 256 * 3 ];
 static UINT16 m_p_n_mdec_g5[ 256 * 3 ];
 static UINT16 m_p_n_mdec_b5[ 256 * 3 ];
 
-static UINT32 m_p_n_mdec_zigzag[ DCTSIZE2 ] =
+static const UINT32 m_p_n_mdec_zigzag[ DCTSIZE2 ] =
 {
 	 0,  1,  8, 16,  9,  2,  3, 10,
 	17, 24, 32, 25, 18, 11,  4,  5,
@@ -1563,19 +1563,19 @@ void psx_driver_init( void )
 
 	for( n = 0; n < 7; n++ )
 	{
-		m_p_timer_dma[ n ] = timer_alloc( dma_finished_callback );
+		m_p_timer_dma[ n ] = timer_alloc( dma_finished_callback , NULL);
 		m_p_fn_dma_read[ n ] = NULL;
 		m_p_fn_dma_write[ n ] = NULL;
 	}
 
 	for( n = 0; n < 3; n++ )
 	{
-		m_p_timer_root[ n ] = timer_alloc( root_finished );
+		m_p_timer_root[ n ] = timer_alloc( root_finished , NULL);
 	}
 
 	for( n = 0; n < 2; n++ )
 	{
-		m_p_timer_sio[ n ] = timer_alloc( sio_clock );
+		m_p_timer_sio[ n ] = timer_alloc( sio_clock , NULL);
 	}
 
 	for( n = 0; n < 256; n++ )

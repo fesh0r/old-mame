@@ -256,7 +256,7 @@ static TIMER_CALLBACK( auto_animation_timer_callback )
 
 static void create_auto_animation_timer(void)
 {
-	auto_animation_timer = timer_alloc(auto_animation_timer_callback);
+	auto_animation_timer = timer_alloc(auto_animation_timer_callback, NULL);
 }
 
 
@@ -678,7 +678,7 @@ static TIMER_CALLBACK( sprite_line_timer_callback )
 
 static void create_sprite_line_timer(void)
 {
-	sprite_line_timer = timer_alloc(sprite_line_timer_callback);
+	sprite_line_timer = timer_alloc(sprite_line_timer_callback, NULL);
 }
 
 
@@ -863,6 +863,12 @@ VIDEO_START( neogeo )
 	palettes[1] = auto_malloc(NUM_PENS * sizeof(UINT16));
 	pens = auto_malloc(NUM_PENS * sizeof(pen_t));
 	neogeo_videoram = auto_malloc(0x20000);
+
+	/* clear allocated memory */
+	memset(palettes[0],0x00, NUM_PENS * sizeof(UINT16));
+	memset(palettes[1],0x00, NUM_PENS * sizeof(UINT16));
+	memset(pens,0x00, NUM_PENS * sizeof(pen_t));
+	memset(neogeo_videoram,0x00, 0x20000);
 
 	compute_rgb_weights();
 	create_sprite_line_timer();

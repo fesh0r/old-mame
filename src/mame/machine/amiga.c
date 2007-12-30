@@ -79,7 +79,7 @@ static autoconfig_device *cur_autoconfig;
 static emu_timer * amiga_irq_timer;
 static emu_timer * amiga_blitter_timer;
 
-const char *amiga_custom_names[0x100] =
+const char *const amiga_custom_names[0x100] =
 {
 	/* 0x000 */
 	"BLTDDAT", 		"DMACONR", 		"VPOSR", 		"VHPOSR",
@@ -293,8 +293,8 @@ void amiga_machine_config(const amiga_machine_interface *intf)
 	cia_config(1, &cia_intf[1]);
 
 	/* setup the timers */
-	amiga_irq_timer = timer_alloc(amiga_irq_proc);
-	amiga_blitter_timer = timer_alloc(amiga_blitter_proc);
+	amiga_irq_timer = timer_alloc(amiga_irq_proc, NULL);
+	amiga_blitter_timer = timer_alloc(amiga_blitter_proc, NULL);
 }
 
 
@@ -925,7 +925,7 @@ static TIMER_CALLBACK( amiga_blitter_proc )
 	/* logging */
 	if (LOG_BLITS)
 	{
-		static const char *type[] = { "ASCENDING", "LINE", "DESCENDING", "LINE" };
+		static const char *const type[] = { "ASCENDING", "LINE", "DESCENDING", "LINE" };
 		logerror("BLIT %s: %dx%d  %04x %04x\n", type[CUSTOM_REG(REG_BLTCON1) & 0x0003], CUSTOM_REG(REG_BLTSIZH), CUSTOM_REG(REG_BLTSIZV), CUSTOM_REG(REG_BLTCON0), CUSTOM_REG(REG_BLTCON1));
 		if (CUSTOM_REG(REG_BLTCON0) & 0x0800)
 			logerror("  A: addr=%06X mod=%3d shift=%2d maskl=%04x maskr=%04x\n", CUSTOM_REG_LONG(REG_BLTAPTH), CUSTOM_REG_SIGNED(REG_BLTAMOD), CUSTOM_REG(REG_BLTCON0) >> 12, CUSTOM_REG(REG_BLTAFWM), CUSTOM_REG(REG_BLTALWM));
@@ -1308,7 +1308,7 @@ WRITE16_HANDLER( amiga_custom_w )
 			if (amiga_intf->serdat_w != NULL)
 				(*amiga_intf->serdat_w)(data);
 			CUSTOM_REG(REG_SERDATR) &= ~0x3000;
-			timer_set(amiga_get_serial_char_period(), 0, finish_serial_write);
+			timer_set(amiga_get_serial_char_period(), NULL, 0, finish_serial_write);
 			break;
 
 		case REG_BLTSIZE:

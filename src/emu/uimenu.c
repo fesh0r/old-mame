@@ -130,7 +130,7 @@ static render_texture *hilight_texture;
 
 static render_texture *arrow_texture;
 
-static const char *input_format[] =
+static const char *const input_format[] =
 {
 	"%s",
 	"%s Analog",
@@ -229,8 +229,8 @@ INLINE int get_num_dips(void)
 {
 	int num = 0;
 
-	while (dip_switch_model[num].dip_name != NULL && num++ < MAX_PHYSICAL_DIPS)
-		;
+	while (dip_switch_model[num].dip_name != NULL && num < MAX_PHYSICAL_DIPS)
+		num++;
 
 	return num;
 }
@@ -531,7 +531,7 @@ int ui_menu_draw(const ui_menu_item *items, int numitems, int selected, const me
     bottom
 -------------------------------------------------*/
 
-void ui_menu_draw_text_box(const char *text)
+static void ui_menu_draw_text_box(const char *text)
 {
 	const char *priortext = ui_getstring(UI_returntoprior);
 	float line_height = ui_get_line_height();
@@ -1891,7 +1891,7 @@ static int input_menu_get_game_items(input_item_data *itemlist)
 			((in->type == IPT_OTHER && in->name != IP_NAME_DEFAULT) || port_type_to_group(in->type, in->player) != IPG_INVALID))
 		{
 			UINT16 sortorder;
-			input_seq *curseq, *defseq;
+			const input_seq *curseq, *defseq;
 
 			/* determine the sorting order */
 			if (in->type >= IPT_START1 && in->type <= __ipt_analog_end)

@@ -103,7 +103,7 @@ static TIMER_CALLBACK( gottlieb_nmi_generate )
 	cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
-static const char *PhonemeTable[65] =
+static const char *const PhonemeTable[65] =
 {
  "EH3","EH2","EH1","PA0","DT" ,"A1" ,"A2" ,"ZH",
  "AH2","I3" ,"I2" ,"I1" ,"M"  ,"N"  ,"B"  ,"V",
@@ -150,7 +150,7 @@ logerror("Votrax: intonation %d, phoneme %02x %s\n",data >> 6,data & 0x3f,Phonem
 	}
 
 	/* generate a NMI after a while to make the CPU continue to send data */
-	timer_set(ATTOTIME_IN_USEC(50),0,gottlieb_nmi_generate);
+	timer_set(ATTOTIME_IN_USEC(50), NULL,0,gottlieb_nmi_generate);
 }
 
 WRITE8_HANDLER( gottlieb_speech_clock_DAC_w )
@@ -209,7 +209,7 @@ static UINT8 sp0250_latch;
 static TIMER_CALLBACK( nmi_callback );
 void gottlieb_sound_init(void)
 {
-	nmi_timer = timer_alloc(nmi_callback);
+	nmi_timer = timer_alloc(nmi_callback, NULL);
 }
 
 void stooges_sp0250_drq(int level)

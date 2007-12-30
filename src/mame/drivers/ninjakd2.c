@@ -449,7 +449,7 @@ static GFXDECODE_START( ninjakd2 )
 	GFXDECODE_ENTRY( REGION_GFX3, 0, charlayout,   32*16, 16 )
 GFXDECODE_END
 
-static struct Samplesinterface samples_interface =
+static const struct Samplesinterface samples_interface =
 {
 	1,	/* 1 channel */
 	NULL,
@@ -462,7 +462,7 @@ static void irqhandler(int irq)
 	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	0,0,0,0,irqhandler
 };

@@ -39,7 +39,7 @@ static UINT8 irq_state;
 static UINT8 adc_result;
 
 /* 8254 timer config */
-static struct pit8253_config pit8254_config =
+static const struct pit8253_config pit8254_config =
 {
 	TYPE8254,
 	{
@@ -59,7 +59,7 @@ static struct pit8253_config pit8254_config =
 	}
 };
 
-static struct TTL74148_interface irq_encoder =
+static const struct TTL74148_interface irq_encoder =
 {
 	update_irq
 };
@@ -174,7 +174,7 @@ static TIMER_CALLBACK( sound_command_w )
 WRITE16_HANDLER( vertigo_audio_w )
 {
 	if (ACCESSING_LSB)
-		timer_call_after_resynch(data & 0xff, sound_command_w);
+		timer_call_after_resynch(NULL, data & 0xff, sound_command_w);
 }
 
 READ16_HANDLER( vertigo_sio_r )

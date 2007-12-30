@@ -119,13 +119,13 @@ static WRITE8_HANDLER( merit_prot_w )
 }
 
 #if 0
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
 	input_port_4_r,
 };
 #endif
 
-static ppi8255_interface ppi8255_intf =
+static const ppi8255_interface ppi8255_intf =
 {
 	2,
 	{ input_port_0_r,   input_port_1_r },	/* Port A read */

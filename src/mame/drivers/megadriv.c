@@ -55,18 +55,18 @@ Known Non-Issues (confirmed on Real Genesis)
 /* the same on all systems? */
 #define MASTER_CLOCK		53693100
 /* timing details */
-int megadriv_framerate = 60;
-int megadrive_total_scanlines = 262;
-int megadrive_visible_scanlines = 224;
-int megadrive_irq6_scanline = 224;
-int megadrive_irq6_hpos = 320;
-int megadrive_z80irq_scanline = 226;
-int megadrive_z80irq_hpos = 320;
-int megadrive_imode = 0;
-int megadrive_imode_odd_frame = 0;
-int megadrive_vblank_flag = 0;
-int megadrive_irq6_pending = 0;
-int megadrive_irq4_pending = 0;
+static int megadriv_framerate = 60;
+static int megadrive_total_scanlines = 262;
+static int megadrive_visible_scanlines = 224;
+static int megadrive_irq6_scanline = 224;
+//int megadrive_irq6_hpos = 320;
+static int megadrive_z80irq_scanline = 226;
+//int megadrive_z80irq_hpos = 320;
+static int megadrive_imode = 0;
+static int megadrive_imode_odd_frame = 0;
+static int megadrive_vblank_flag = 0;
+static int megadrive_irq6_pending = 0;
+static int megadrive_irq4_pending = 0;
 
 INLINE UINT16 get_hposition(void);
 
@@ -78,10 +78,10 @@ static UINT16* megadrive_vdp_palette_lookup_shadow;
 static UINT16* megadrive_vdp_palette_lookup_highlight;
 static UINT8 oldscreenwidth = 3;
 UINT16* megadrive_ram;
-UINT8 megadrive_vram_fill_pending = 0;
-UINT16 megadrive_vram_fill_length = 0;
-int genesis_scanline_counter = 0;
-int megadrive_sprite_collision = 0;
+static UINT8 megadrive_vram_fill_pending = 0;
+static UINT16 megadrive_vram_fill_length = 0;
+static int genesis_scanline_counter = 0;
+static int megadrive_sprite_collision = 0;
 static int megadrive_region_export;
 static int megadrive_region_pal;
 static int megadrive_max_hposition;
@@ -608,10 +608,9 @@ static UINT16 get_word_from_68k_mem(UINT32 source)
 
 /* Note, In reality this transfer is NOT instant, the 68k isn't paused
    as the 68k address bus isn't accessed */
-static void megadrive_do_insta_vram_copy(UINT32 source, UINT16 length);
 
 /* Wani Wani World, James Pond 3, Pirates Gold! */
-void megadrive_do_insta_vram_copy(UINT32 source, UINT16 length)
+static void megadrive_do_insta_vram_copy(UINT32 source, UINT16 length)
 {
 	int x;
 
@@ -1149,7 +1148,7 @@ static UINT16 megadriv_vdp_ctrl_port_r(void)
 	       (megadrive_region_pal<<0); // PAL MODE FLAG checked by striker for region prot..
 }
 
-static UINT8 vc_ntsc_224[] =
+static const UINT8 vc_ntsc_224[] =
 {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,    0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a,    0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -1170,7 +1169,7 @@ static UINT8 vc_ntsc_224[] =
     0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 };
 
-static UINT8 vc_ntsc_240[] =
+static const UINT8 vc_ntsc_240[] =
 {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -1191,7 +1190,7 @@ static UINT8 vc_ntsc_240[] =
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05
 };
 
-static UINT8 vc_pal_224[] =
+static const UINT8 vc_pal_224[] =
 {
     0x00, 0x01, 0x02,    0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12,    0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -1215,7 +1214,7 @@ static UINT8 vc_pal_224[] =
     0xf7, 0xf8, 0xf9,    0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 };
 
-static UINT8 vc_pal_240[] =
+static const UINT8 vc_pal_240[] =
 {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,    0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a,    0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -1427,10 +1426,10 @@ static TIMER_CALLBACK( io_timeout1_timer_callback )
 
 static void init_megadri6_io(void)
 {
-	io_timeout[0] = timer_alloc(io_timeout0_timer_callback);
+	io_timeout[0] = timer_alloc(io_timeout0_timer_callback, NULL);
 	io_stage[0] = -1;
 
-	io_timeout[1] = timer_alloc(io_timeout1_timer_callback);
+	io_timeout[1] = timer_alloc(io_timeout1_timer_callback, NULL);
 	io_stage[1] = -1;
 
 }
@@ -4255,7 +4254,7 @@ static TIMER_CALLBACK( scanline_timer_callback )
        top-left of the screen.  The first scanline is scanline 0 (we set scanline to -1 in
        VIDEO_EOF) */
 
-	timer_call_after_resynch(0, 0);
+	timer_call_after_resynch(NULL, 0, 0);
 	/* Compensate for some rounding errors
 
        When the counter reaches 261 we should have reached the end of the frame, however due
@@ -4407,12 +4406,12 @@ MACHINE_RESET( megadriv )
 
 	megadrive_init_io(machine);
 
-	frame_timer = timer_alloc(frame_timer_callback);
-	scanline_timer = timer_alloc(scanline_timer_callback);
-	render_timer = timer_alloc(render_timer_callback);
+	frame_timer = timer_alloc(frame_timer_callback, NULL);
+	scanline_timer = timer_alloc(scanline_timer_callback, NULL);
+	render_timer = timer_alloc(render_timer_callback, NULL);
 
-	irq6_on_timer = timer_alloc(irq6_on_callback);
-	irq4_on_timer = timer_alloc(irq4_on_callback);
+	irq6_on_timer = timer_alloc(irq6_on_callback, NULL);
+	irq4_on_timer = timer_alloc(irq4_on_callback, NULL);
 
 	timer_adjust(frame_timer, attotime_zero, 0, attotime_zero);
 	timer_adjust(scanline_timer,  attotime_zero, 0, attotime_zero);

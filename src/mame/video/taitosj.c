@@ -34,7 +34,7 @@ static UINT8 flipscreen[2];
 static rectangle spritearea[32]; /*areas on bitmap (sprite locations)*/
 static UINT8 spriteon[32]; /* 1 if sprite is active */
 
-static int playfield_enable_mask[3] = { 0x10, 0x20, 0x40 };
+static const int playfield_enable_mask[3] = { 0x10, 0x20, 0x40 };
 
 
 /***************************************************************************
@@ -644,12 +644,12 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap)
        Note that the clipping is asymmetrical. This matches the real thing.
        I'm not sure of what should happen when the screen is flipped, though.
      */
-	static rectangle spritevisiblearea =
+	static const rectangle spritevisiblearea =
 	{
 		0*8+3, 32*8-1-1,
 		2*8, 30*8-1
 	};
-	static rectangle spritevisibleareaflip =
+	static const rectangle spritevisibleareaflip =
 	{
 		0*8+1, 32*8-3-1,
 		2*8, 30*8-1
@@ -707,8 +707,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap)
 
 static void draw_playfield(running_machine *machine, int n, mame_bitmap *bitmap)
 {
-	static int fudge1[3] = { 3,  1, -1 };
-	static int fudge2[3] = { 8, 10, 12 };
+	static const int fudge1[3] = { 3,  1, -1 };
+	static const int fudge2[3] = { 8, 10, 12 };
 
 	if (taitosj_video_enable & playfield_enable_mask[n])
 	{

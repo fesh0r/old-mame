@@ -138,7 +138,7 @@ static WRITE8_HANDLER( pang_bankswitch_w )
 
 ***************************************************************************/
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	6,		/* address bits */
 	16,		/* data bits */
@@ -1422,7 +1422,7 @@ static void spangbl_adpcm_int(int data)
 }
 
 
-static struct MSM5205interface msm5205_interface =
+static const struct MSM5205interface msm5205_interface =
 {
 	spangbl_adpcm_int,	/* interrupt function */
 	MSM5205_S48_4B		/* 4KHz 4-bit */

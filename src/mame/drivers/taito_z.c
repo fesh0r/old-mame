@@ -911,7 +911,7 @@ static INTERRUPT_GEN( sci_interrupt )
 	sci_int6 = !sci_int6;
 
 	if (sci_int6)
-		timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, taitoz_interrupt6);
+		timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL, 0, taitoz_interrupt6);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -926,7 +926,7 @@ static INTERRUPT_GEN( dblaxle_interrupt )
 	dblaxle_int6 = !dblaxle_int6;
 
 	if (dblaxle_int6)
-		timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, taitoz_interrupt6);
+		timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL, 0, taitoz_interrupt6);
 
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
@@ -934,7 +934,7 @@ static INTERRUPT_GEN( dblaxle_interrupt )
 static INTERRUPT_GEN( dblaxle_cpub_interrupt )
 {
 	// Unsure how many int6's per frame
-	timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, taitoz_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL,  0, taitoz_interrupt6);
 	cpunum_set_input_line(2, 4, HOLD_LINE);
 }
 
@@ -943,7 +943,7 @@ static INTERRUPT_GEN( dblaxle_cpub_interrupt )
                               EEPROM
 ******************************************************************/
 
-static UINT8 default_eeprom[128]=
+static const UINT8 default_eeprom[128]=
 {
 	0x00,0x00,0x00,0xff,0x00,0x01,0x41,0x41,0x00,0x00,0x00,0xff,0x00,0x00,0xf0,0xf0,
 	0x00,0x00,0x00,0xff,0x00,0x01,0x41,0x41,0x00,0x00,0x00,0xff,0x00,0x00,0xf0,0xf0,
@@ -955,7 +955,7 @@ static UINT8 default_eeprom[128]=
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
 };
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -1134,7 +1134,7 @@ logerror("CPU #0 PC %06x: warning - read unmapped stick offset %06x\n",activecpu
 	return 0xff;
 }
 
-static UINT8 nightstr_stick[128]=
+static const UINT8 nightstr_stick[128]=
 {
 	0xb8,0xb9,0xba,0xbb,0xbc,0xbd,0xbe,0xbf,0xc0,0xc1,0xc2,0xc3,0xc4,0xc5,0xc6,0xc7,
 	0xc8,0xc9,0xca,0xcb,0xcc,0xcd,0xce,0xcf,0xd0,0xd1,0xd2,0xd3,0xd4,0xd5,0xd6,0xd7,
@@ -1175,7 +1175,7 @@ static WRITE16_HANDLER( bshark_stick_w )
        but we don't want CPUA to have an int6 before int4 is over (?)
     */
 
-	timer_set(ATTOTIME_IN_CYCLES(10000,0),0, taitoz_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0), NULL, 0, taitoz_interrupt6);
 }
 
 
@@ -1258,7 +1258,7 @@ static WRITE16_HANDLER( spacegun_lightgun_w )
        Four lightgun interrupts happen before the collected coords
        are moved to shared ram where CPUA can use them. */
 
-	timer_set(ATTOTIME_IN_CYCLES(10000,0),0, taitoz_sg_cpub_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0), NULL, 0, taitoz_sg_cpub_interrupt5);
 }
 
 
@@ -2752,14 +2752,14 @@ static void irqhandlerb(int irq)
 //  cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2610interface ym2610_interface =
+static const struct YM2610interface ym2610_interface =
 {
 	irqhandler,
 	REGION_SOUND2,	/* Delta-T */
 	REGION_SOUND1	/* ADPCM */
 };
 
-static struct YM2610interface ym2610_interfaceb =
+static const struct YM2610interface ym2610_interfaceb =
 {
 	irqhandlerb,
 	REGION_SOUND2,	/* Delta-T */
@@ -2786,7 +2786,7 @@ static int subwoofer_sh_start(const sound_config *msound)
 	return 0;
 }
 
-static struct CustomSound_interface subwoofer_interface =
+static const struct CustomSound_interface subwoofer_interface =
 {
 	subwoofer_sh_start,
 	0, /* none */

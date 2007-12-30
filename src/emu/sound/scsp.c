@@ -2,13 +2,11 @@
     Sega/Yamaha YMF292-F (SCSP = Saturn Custom Sound Processor) emulation
     By ElSemi
     MAME/M1 conversion and cleanup by R. Belmont
+    Additional code and bugfixes by kingshriek
 
     This chip has 32 voices.  Each voice can play a sample or be part of
     an FM construct.  Unlike traditional Yamaha FM chips, the base waveform
     for the FM still comes from the wavetable RAM.
-
-    Unsupported:
-        - FM mode (VF3 uses it, Hanagumi might late in the title song...)
 
     ChangeLog:
     * November 25, 2003 (ES) Fixed buggy timers and envelope overflows.
@@ -20,8 +18,10 @@
     * January 8, 2005   (RB) Added ability to specify region offset for RAM.
     * January 26, 2007  (ES) Added on-board DSP capability
     * September 24, 2007 (RB+ES) Removed fake reverb.  Rewrote timers and IRQ handling.
-                              Fixed case where voice frequency is updated while looping.
-                  Enabled DSP again.
+                             Fixed case where voice frequency is updated while looping.
+                             Enabled DSP again.
+    * December 16, 2007 (kingshriek) Many EG bug fixes, implemented effects mixer,
+                             implemented FM.
 */
 
 #include <math.h>
@@ -38,7 +38,7 @@
 #define FIX(v)	((UINT32) ((float) (1<<SHIFT)*(v)))
 
 
-#define EG_SHIFT	8
+#define EG_SHIFT	16
 
 // include the LFO handling code
 #include "scsplfo.c"
@@ -76,7 +76,7 @@
 #define SDIR(slot)		((slot->udata.data[0x6]>>0x0)&0x0100)
 #define TL(slot)		((slot->udata.data[0x6]>>0x0)&0x00FF)
 
-#define MDL(slot)		((slot->udata.data[0x7]>>0xB)&0x0007)
+#define MDL(slot)		((slot->udata.data[0x7]>>0xC)&0x000F)
 #define MDXSL(slot)		((slot->udata.data[0x7]>>0x6)&0x003F)
 #define MDYSL(slot)		((slot->udata.data[0x7]>>0x0)&0x003F)
 
@@ -108,6 +108,7 @@ static const double DRTimes[64]={100000/*infinity*/,100000/*infinity*/,118200.0,
 					920.0,790.0,690.0,550.0,460.0,390.0,340.0,270.0,230.0,200.0,170.0,140.0,110.0,98.0,85.0,68.0,57.0,49.0,43.0,34.0,
 					28.0,25.0,22.0,18.0,14.0,12.0,11.0,8.5,7.1,6.1,5.4,4.3,3.6,3.1};
 static UINT32 FNS_Table[0x400];
+static INT32 EG_TABLE[0x400];
 
 typedef enum {ATTACK,DECAY1,DECAY2,RELEASE} _STATE;
 struct _EG
@@ -137,6 +138,7 @@ struct _SLOT
 	UINT8 active;	//this slot is currently playing
 	UINT8 *base;		//samples base address
 	UINT32 cur_addr;	//current play address (24.8)
+	UINT32 nxt_addr;	//next play address
 	UINT32 step;		//pitch step (24.8)
 	struct _EG EG;			//Envelope
 	struct _LFO PLFO;		//Phase LFO
@@ -308,9 +310,9 @@ static void ResetInterrupts(struct _SCSP *SCSP)
 	CheckPendingIRQ(SCSP);
 }
 
-static TIMER_CALLBACK_PTR( timerA_cb )
+static TIMER_CALLBACK( timerA_cb )
 {
-	struct _SCSP *SCSP = (struct _SCSP *)param;
+	struct _SCSP *SCSP = (struct _SCSP *)ptr;
 
 	SCSP->TimCnt[0] = 0xFFFF;
 	SCSP->udata.data[0x20/2]|=0x40;
@@ -320,9 +322,9 @@ static TIMER_CALLBACK_PTR( timerA_cb )
 	CheckPendingIRQ(SCSP);
 }
 
-static TIMER_CALLBACK_PTR( timerB_cb )
+static TIMER_CALLBACK( timerB_cb )
 {
-	struct _SCSP *SCSP = (struct _SCSP *)param;
+	struct _SCSP *SCSP = (struct _SCSP *)ptr;
 
 	SCSP->TimCnt[1] = 0xFFFF;
 	SCSP->udata.data[0x20/2]|=0x80;
@@ -332,9 +334,9 @@ static TIMER_CALLBACK_PTR( timerB_cb )
 	CheckPendingIRQ(SCSP);
 }
 
-static TIMER_CALLBACK_PTR( timerC_cb )
+static TIMER_CALLBACK( timerC_cb )
 {
-	struct _SCSP *SCSP = (struct _SCSP *)param;
+	struct _SCSP *SCSP = (struct _SCSP *)ptr;
 
 	SCSP->TimCnt[2] = 0xFFFF;
 	SCSP->udata.data[0x20/2]|=0x100;
@@ -365,7 +367,7 @@ static int Get_RR(struct _SCSP *SCSP,int base,int R)
 	int Rate=base+(R<<1);
 	if(Rate>63)	Rate=63;
 	if(Rate<0) Rate=0;
-	return SCSP->ARTABLE[63-Rate];
+	return SCSP->DRTABLE[Rate];
 }
 
 static void Compute_EG(struct _SCSP *SCSP,struct _SLOT *slot)
@@ -374,11 +376,11 @@ static void Compute_EG(struct _SCSP *SCSP,struct _SLOT *slot)
 	int rate;
 	if(octave&8) octave=octave-16;
 	if(KRS(slot)!=0xf)
-		rate=2*(octave+KRS(slot))+((FNS(slot)>>9)&1);
+		rate=octave+2*KRS(slot)+((FNS(slot)>>9)&1);
 	else
 		rate=0; //rate=((FNS(slot)>>9)&1);
 
-	slot->EG.volume=0;
+	slot->EG.volume=0x17F<<EG_SHIFT;
 	slot->EG.AR=Get_AR(SCSP,rate,AR(slot));
 	slot->EG.D1R=Get_DR(SCSP,rate,D1R(slot));
 	slot->EG.D2R=Get_DR(SCSP,rate,D2R(slot));
@@ -410,7 +412,9 @@ static int EG_Update(struct _SLOT *slot)
 			break;
 		case DECAY1:
 			slot->EG.volume-=slot->EG.D1R;
-			if(slot->EG.volume>>(EG_SHIFT+5)<=slot->EG.DL)
+			if(slot->EG.volume<=0)
+				slot->EG.volume=0;
+			if(slot->EG.volume>>(EG_SHIFT+5)<slot->EG.DL)
 				slot->EG.state=DECAY2;
 			break;
 		case DECAY2:
@@ -425,9 +429,10 @@ static int EG_Update(struct _SLOT *slot)
 			slot->EG.volume-=slot->EG.RR;
 			if(slot->EG.volume<=0)
 			{
-				SCSP_StopSlot(slot,0);
 				slot->EG.volume=0;
-				slot->EG.state=ATTACK;
+				SCSP_StopSlot(slot,0);
+				//slot->EG.volume=0x17F<<EG_SHIFT;
+				//slot->EG.state=ATTACK;
 			}
 			break;
 		default:
@@ -439,7 +444,7 @@ static int EG_Update(struct _SLOT *slot)
 static UINT32 SCSP_Step(struct _SLOT *slot)
 {
 	int octave=OCT(slot);
-	int Fn;
+	UINT64 Fn;
 
 	Fn=(FNS_Table[FNS(slot)]);	//24.8
 	if(octave&8)
@@ -461,13 +466,17 @@ static void Compute_LFO(struct _SLOT *slot)
 
 static void SCSP_StartSlot(struct _SCSP *SCSP, struct _SLOT *slot)
 {
+	UINT32 start_offset;
+
 	slot->active=1;
-	slot->base=SCSP->SCSPRAM+SA(slot);
-	slot->cur_addr=0;
+	start_offset = PCM8B(slot) ? SA(slot) : SA(slot) & 0x7FFFE;
+	slot->base=SCSP->SCSPRAM + start_offset;
+ 	slot->cur_addr=0;
+	slot->nxt_addr=1<<SHIFT;
 	slot->step=SCSP_Step(slot);
 	Compute_EG(SCSP,slot);
 	slot->EG.state=ATTACK;
-	slot->EG.volume=0;
+	slot->EG.volume=0x17F<<EG_SHIFT;
 	slot->Prev=0;
 	slot->Backwards=0;
 	Compute_LFO(slot);
@@ -477,7 +486,7 @@ static void SCSP_StartSlot(struct _SCSP *SCSP, struct _SLOT *slot)
 
 static void SCSP_StopSlot(struct _SLOT *slot,int keyoff)
 {
-	if(keyoff && slot->EG.state!=RELEASE)
+	if(keyoff /*&& slot->EG.state!=RELEASE*/)
 	{
 		slot->EG.state=RELEASE;
 	}
@@ -485,7 +494,6 @@ static void SCSP_StopSlot(struct _SLOT *slot,int keyoff)
 	{
 		slot->active=0;
 	}
-
 	slot->udata.data[0]&=~0x800;
 }
 
@@ -524,9 +532,9 @@ static void SCSP_Init(struct _SCSP *SCSP, const struct SCSPinterface *intf, int 
 		}
 	}
 
-	SCSP->timerA = timer_alloc_ptr(timerA_cb, SCSP);
-	SCSP->timerB = timer_alloc_ptr(timerB_cb, SCSP);
-	SCSP->timerC = timer_alloc_ptr(timerC_cb, SCSP);
+	SCSP->timerA = timer_alloc(timerA_cb, SCSP);
+	SCSP->timerB = timer_alloc(timerB_cb, SCSP);
+	SCSP->timerC = timer_alloc(timerC_cb, SCSP);
 
 	for(i=0;i<0x400;++i)
 	{
@@ -534,6 +542,13 @@ static void SCSP_Init(struct _SCSP *SCSP, const struct SCSPinterface *intf, int 
 		//fcent=(double) 44100.0*pow(2.0,fcent/1200.0);
 		float fcent=44100.0*(1024.0+(double) i)/1024.0;
 		FNS_Table[i]=(float) (1<<SHIFT) *fcent;
+	}
+
+	for(i=0;i<0x400;++i)
+	{
+		float envDB=((float)(3*(i-0x3ff)))/32.0;
+		float scale=(float)(1<<SHIFT);
+		EG_TABLE[i]=(INT32)(pow(10.0,envDB/20.0)*scale);
 	}
 
 	for(i=0;i<0x10000;++i)
@@ -613,7 +628,6 @@ static void SCSP_Init(struct _SCSP *SCSP, const struct SCSPinterface *intf, int 
 	{
 		SCSP->Slots[i].slot=i;
 		SCSP->Slots[i].active=0;
-		SCSP->Slots[i].active=0;
 		SCSP->Slots[i].base=NULL;
 	}
 
@@ -645,11 +659,11 @@ static void SCSP_UpdateSlotReg(struct _SCSP *SCSP,int s,int r)
 				{
 					struct _SLOT *s2=SCSP->Slots+sl;
 					{
-						if(KEYONB(s2) && !s2->active)
+						if(KEYONB(s2) && s2->EG.state==RELEASE/*&& !s2->active*/)
 						{
 							SCSP_StartSlot(SCSP, s2);
 						}
-						if(!KEYONB(s2) && s2->active)
+						if(!KEYONB(s2) /*&& s2->active*/)
 						{
 							SCSP_StopSlot(s2,1);
 						}
@@ -720,7 +734,7 @@ static void SCSP_UpdateReg(struct _SCSP *SCSP, int reg)
 					time = (44100 / SCSP->TimPris[0]) / (255-(SCSP->udata.data[0x18/2]&0xff));
 					if (time)
 					{
-						timer_adjust_ptr(SCSP->timerA, ATTOTIME_IN_HZ(time), attotime_never);
+						timer_adjust(SCSP->timerA, ATTOTIME_IN_HZ(time), 0, attotime_never);
 					}
 				}
 			}
@@ -739,7 +753,7 @@ static void SCSP_UpdateReg(struct _SCSP *SCSP, int reg)
 					time = (44100 / SCSP->TimPris[1]) / (255-(SCSP->udata.data[0x1A/2]&0xff));
 					if (time)
 					{
-						timer_adjust_ptr(SCSP->timerB, ATTOTIME_IN_HZ(time), attotime_never);
+						timer_adjust(SCSP->timerB, ATTOTIME_IN_HZ(time), 0, attotime_never);
 					}
 				}
 			}
@@ -758,7 +772,7 @@ static void SCSP_UpdateReg(struct _SCSP *SCSP, int reg)
 					time = (44100 / SCSP->TimPris[2]) / (255-(SCSP->udata.data[0x1C/2]&0xff));
 					if (time)
 					{
-						timer_adjust_ptr(SCSP->timerC, ATTOTIME_IN_HZ(time), attotime_never);
+						timer_adjust(SCSP->timerC, ATTOTIME_IN_HZ(time), 0, attotime_never);
 					}
 				}
 			}
@@ -1053,7 +1067,7 @@ SCSPTMPL(1,1,1,3)
 
 typedef void (*_SCSPUpdateModes)(struct _SCSP *,struct _SLOT *,unsigned int,unsigned int);
 
-static _SCSPUpdateModes SCSPUpdateModes[]=
+static const _SCSPUpdateModes SCSPUpdateModes[]=
 {
 	SCSPTMPL(0,0,0,0)
 	SCSPTMPL(0,0,0,1)
@@ -1146,7 +1160,9 @@ INLINE INT32 SCSP_UpdateSlot(struct _SCSP *SCSP, struct _SLOT *slot)
 {
 	INT32 sample;
 	int step=slot->step;
-	UINT32 addr;
+	UINT32 addr1,addr2,addr_select;                                   // current and next sample addresses
+	UINT32 *addr[2]      = {&addr1, &addr2};                          // used for linear interpolation
+	UINT32 *slot_addr[2] = {&(slot->cur_addr), &(slot->nxt_addr)};    //
 
 	if(SSCTL(slot)!=0)	//no FM or noise yet
 		return 0;
@@ -1157,50 +1173,58 @@ INLINE INT32 SCSP_UpdateSlot(struct _SCSP *SCSP, struct _SLOT *slot)
 		step>>=SHIFT;
 	}
 
-	if(PCM8B(slot))
-		addr=slot->cur_addr>>SHIFT;
-	else
-		addr=(slot->cur_addr>>(SHIFT-1)) & 0x7fffe;
-/*
-    if(MDL(slot)!=0 || MDXSL(slot)!=0 || MDYSL(slot)!=0)
-    {
-        INT32 smp;
-        smp=(SCSP->RINGBUF[(SCSP->BUFPTR+MDXSL(slot))&63]+SCSP->RINGBUF[(SCSP->BUFPTR+MDYSL(slot))&63])/2;
-
-        smp>>=11;
-        addr+=smp;
-        if(!PCM8B(slot))
-            addr&=0x7fffe;
-        else
-            addr&=0x7ffff;
-    }
-*/
- 	if(addr==LSA(slot))
+  	if(PCM8B(slot))
  	{
- 		if(LPSLNK(slot) && slot->EG.state==ATTACK)
- 			slot->EG.state = DECAY1;
+ 		addr1=slot->cur_addr>>SHIFT;
+ 		addr2=slot->nxt_addr>>SHIFT;
+ 	}
+  	else
+ 	{
+ 		addr1=(slot->cur_addr>>(SHIFT-1))&0x7fffe;
+ 		addr2=(slot->nxt_addr>>(SHIFT-1))&0x7fffe;
  	}
 
-	if(PCM8B(slot))	//8 bit signed
-	{
-		INT8 *p=(INT8 *) (slot->base+BYTE_XOR_BE((slot->cur_addr>>SHIFT)));
-		INT32 s;
-		INT32 fpart=slot->cur_addr&((1<<SHIFT)-1);
-		s=(int) (p[0]<<8)*((1<<SHIFT)-fpart)+(int) slot->Prev*fpart;
-		sample=(s>>SHIFT);
-		slot->Prev=p[0]<<8;
+	/*if(MDL(slot)!=0 || MDXSL(slot)!=0 || MDYSL(slot)!=0)
+    {
+        INT32 smp=(SCSP->RINGBUF[(SCSP->BUFPTR+MDXSL(slot))&63]+SCSP->RINGBUF[(SCSP->BUFPTR+MDYSL(slot))&63])/2;
+        INT32 cycle=LEA(slot)-LSA(slot); // cycle corresponds to 2 pi
 
-	}
-	else	//16 bit signed
-	{
-		INT16 *p=(INT16 *) (slot->base+addr);
-		INT32 s;
-		INT32 fpart=slot->cur_addr&((1<<SHIFT)-1);
-		s=(int) (p[0])*((1<<SHIFT)-fpart)+(int) slot->Prev*fpart;
-		sample=(s>>SHIFT);
-		slot->Prev=p[0];
+        smp*=cycle; // associate cycle with full 16-bit sample range
+        smp>>=0x1A-MDL(slot); // ex. for MDL=0xF, sample range corresponds to +/- 64 pi (32=2^5 cycles) so shift by 11 (16-5 == 0x1A-0xF)
+        while(smp<0) smp+=cycle; smp%=cycle; // keep modulation sampler within a single cycle
+        if(!PCM8B(slot)) smp<<=1;
 
-	}
+        addr1+=smp; addr2+=smp;
+        if(!PCM8B(slot))
+        {
+            addr1&=0x7fffe; addr2&=0x7fffe;
+        }
+        else
+        {
+            addr1&=0x7ffff; addr2&=0x7ffff;
+        }
+    }*/
+
+  	if(PCM8B(slot))	//8 bit signed
+  	{
+ 		INT8 *p1=(signed char *) (SCSP->SCSPRAM+((SA(slot)+addr1)^1));
+ 		INT8 *p2=(signed char *) (SCSP->SCSPRAM+((SA(slot)+addr2)^1));
+  		//sample=(p[0])<<8;
+  		INT32 s;
+  		INT32 fpart=slot->cur_addr&((1<<SHIFT)-1);
+ 		s=(int) (p1[0]<<8)*((1<<SHIFT)-fpart)+(int) (p2[0]<<8)*fpart;
+  		sample=(s>>SHIFT);
+  	}
+  	else	//16 bit signed (endianness?)
+  	{
+ 		INT16 *p1=(signed short *) (slot->base+addr1);
+ 		INT16 *p2=(signed short *) (slot->base+addr2);
+  		//sample=LE16(p[0]);
+  		INT32 s;
+  		INT32 fpart=slot->cur_addr&((1<<SHIFT)-1);
+ 		s=(int) (p1[0])*((1<<SHIFT)-fpart)+(int) (p2[0])*fpart;
+  		sample=(s>>SHIFT);
+  	}
 
 	if(SBCTL(slot)&0x1)
 		sample ^= 0x7FFF;
@@ -1210,43 +1234,56 @@ INLINE INT32 SCSP_UpdateSlot(struct _SCSP *SCSP, struct _SLOT *slot)
 	if(slot->Backwards)
 		slot->cur_addr-=step;
 	else
-	slot->cur_addr+=step;
-	addr=slot->cur_addr>>SHIFT;
-	switch(LPCTL(slot))
+		slot->cur_addr+=step;
+ 	slot->nxt_addr=slot->cur_addr+(1<<SHIFT);
+
+ 	addr1=slot->cur_addr>>SHIFT;
+ 	addr2=slot->nxt_addr>>SHIFT;
+
+	if(addr1>=LSA(slot) && !(slot->Backwards))
 	{
-	case 0:	//no loop
-		if(addr>LEA(slot))
-		{
-			//slot->active=0;
-			SCSP_StopSlot(slot,0);
-		}
-		break;
-	case 1: //normal loop
-		if(addr>LEA(slot))
-			slot->cur_addr=LSA(slot)<<SHIFT;
-		break;
-	case 2:	//reverse loop
-		if(addr>LEA(slot))
-		{
-			slot->cur_addr=LEA(slot)<<SHIFT;
-			slot->Backwards=1;
-		}
-		if(addr<LSA(slot) || (addr&0x80000000))
-			slot->cur_addr=LEA(slot)<<SHIFT;
-		break;
-	case 3: //ping-pong
-		if(addr>LEA(slot)) //reached end, reverse till start
-		{
-			slot->cur_addr=LEA(slot)<<SHIFT;
-			slot->Backwards=1;
-		}
-		if((addr<LSA(slot) || (addr&0x80000000)) && (slot->Backwards))//reached start or negative
-		{
-			slot->cur_addr=LSA(slot)<<SHIFT;
-			slot->Backwards=0;
-		}
-		break;
+		if(LPSLNK(slot) && slot->EG.state==ATTACK)
+			slot->EG.state = DECAY1;
 	}
+
+ 	for (addr_select=0;addr_select<2;addr_select++)
+  	{
+ 		switch(LPCTL(slot))
+  		{
+ 		case 0:	//no loop
+ 			if(*addr[addr_select]>=LSA(slot) && *addr[addr_select]>=LEA(slot))
+ 			{
+  			//slot->active=0;
+  			SCSP_StopSlot(slot,0);
+ 			}
+ 			break;
+ 		case 1: //normal loop
+ 			if(*addr[addr_select]>=LEA(slot))
+ 				*slot_addr[addr_select]=LSA(slot)<<SHIFT;
+ 			break;
+ 		case 2:	//reverse loop
+ 			if((*addr[addr_select]>=LSA(slot)) && !(slot->Backwards))
+ 			{
+ 				*slot_addr[addr_select]=LEA(slot)<<SHIFT;
+ 				slot->Backwards=1;
+ 			}
+ 			if((*addr[addr_select]<=LSA(slot) || (*slot_addr[addr_select]&0x80000000)) && slot->Backwards)
+ 				*slot_addr[addr_select]=LEA(slot)<<SHIFT;
+ 			break;
+ 		case 3: //ping-pong
+ 			if(*addr[addr_select]>=LEA(slot)) //reached end, reverse till start
+ 			{
+ 				*slot_addr[addr_select]=LEA(slot)<<SHIFT;
+ 				slot->Backwards=1;
+ 			}
+ 			if((*addr[addr_select]<=LSA(slot) || (*slot_addr[addr_select]&0x80000000)) && slot->Backwards)//reached start or negative
+ 			{
+ 				*slot_addr[addr_select]=LSA(slot)<<SHIFT;
+ 				slot->Backwards=0;
+ 			}
+ 			break;
+  		}
+  	}
 
 	if(ALFOS(slot)!=0)
 	{
@@ -1254,10 +1291,13 @@ INLINE INT32 SCSP_UpdateSlot(struct _SCSP *SCSP, struct _SLOT *slot)
 		sample>>=SHIFT;
 	}
 
+	if(slot->EG.state==ATTACK)
+		sample=(sample*EG_Update(slot))>>SHIFT;
+	else
+		sample=(sample*EG_TABLE[EG_Update(slot)>>(SHIFT-10)])>>SHIFT;
+
 	if(!STWINH(slot))
 		*RBUFDST=sample;
-
-	sample=(sample*EG_Update(slot))>>SHIFT;
 
 	return sample;
 }
@@ -1278,18 +1318,18 @@ static void SCSP_DoMasterSamples(struct _SCSP *SCSP, int nsamples)
 
 		for(sl=0;sl<32;++sl)
 		{
+			RBUFDST=SCSP->RINGBUF+SCSP->BUFPTR;
 			if(SCSP->Slots[sl].active)
 			{
 				struct _SLOT *slot=SCSP->Slots+sl;
 				unsigned short Enc;
 				signed int sample;
 
-				RBUFDST=SCSP->RINGBUF+SCSP->BUFPTR;
 				sample=SCSP_UpdateSlot(SCSP, slot);
-				++SCSP->BUFPTR;
-				SCSP->BUFPTR&=63;
+
 #ifdef USEDSP
-				SCSPDSP_SetSample(&SCSP->DSP,sample>>SHIFT,ISEL(slot),IMXL(slot));
+				Enc=((TL(slot))<<0x0)|((IMXL(slot))<<0xd);
+				SCSPDSP_SetSample(&SCSP->DSP,(sample*SCSP->LPANTABLE[Enc])>>(SHIFT-2),ISEL(slot),IMXL(slot));
 #endif
 				Enc=((TL(slot))<<0x0)|((DIPAN(slot))<<0x8)|((DISDL(slot))<<0xd);
 				{
@@ -1297,7 +1337,8 @@ static void SCSP_DoMasterSamples(struct _SCSP *SCSP, int nsamples)
 					smpr+=(sample*SCSP->RPANTABLE[Enc])>>SHIFT;
 				}
 			}
-
+			--SCSP->BUFPTR;
+			SCSP->BUFPTR&=63;
 		}
 
 		SCSPDSP_Step(&SCSP->DSP);
@@ -1307,14 +1348,14 @@ static void SCSP_DoMasterSamples(struct _SCSP *SCSP, int nsamples)
 			struct _SLOT *slot=SCSP->Slots+i;
 			if(EFSDL(slot))
 			{
-				unsigned short Enc=(TL(slot))|((EFPAN(slot))<<0x8)|((EFSDL(slot))<<0xd);
-				smpl+=(SCSP->DSP.EFREG[i]*SCSP->LPANTABLE[Enc])>>(SHIFT-5);
-				smpr+=(SCSP->DSP.EFREG[i]*SCSP->RPANTABLE[Enc])>>(SHIFT-5);
+ 				unsigned short Enc=((EFPAN(slot))<<0x8)|((EFSDL(slot))<<0xd);
+ 				smpl+=(SCSP->DSP.EFREG[i]*SCSP->LPANTABLE[Enc])>>SHIFT;
+ 				smpr+=(SCSP->DSP.EFREG[i]*SCSP->RPANTABLE[Enc])>>SHIFT;
 			}
 		}
 
-		*bufl++ = ICLIP16(smpl>>4);
-		*bufr++ = ICLIP16(smpr>>4);
+ 		*bufl++ = ICLIP16(smpl>>2);
+ 		*bufr++ = ICLIP16(smpr>>2);
 	}
 }
 #endif
@@ -1370,11 +1411,13 @@ static void dma_scsp(struct _SCSP *SCSP)
 	cpunum_set_input_line(2,dma_transfer_end,HOLD_LINE);
 }
 
+#ifdef UNUSED_FUNCTION
 int SCSP_IRQCB(void *param)
 {
 	CheckPendingIRQ(param);
 	return -1;
 }
+#endif
 
 static void SCSP_Update(void *param, stream_sample_t **inputs, stream_sample_t **buf, int samples)
 {

@@ -925,7 +925,7 @@ static offs_t nec_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 
 
 static void nec_init(int index, int clock, const void *config, int (*irqcallback)(int), int type)
 {
-	static const char *names[]={"V20","V30","V33","V30MZ"};
+	static const char *const names[]={"V20","V30","V33","V30MZ"};
 
 	state_save_register_item_array(names[type], index, I.regs.w);
 	state_save_register_item_array(names[type], index, I.sregs);
@@ -949,8 +949,8 @@ static void nec_init(int index, int clock, const void *config, int (*irqcallback
 	I.irq_callback = irqcallback;
 }
 
-void v30mz_init(int index, int clock, const void *config, int (*irqcallback)(int)) { nec_init(index, clock, config, irqcallback, 3); }
-int v30mz_execute(int cycles)
+static void v30mz_init(int index, int clock, const void *config, int (*irqcallback)(int)) { nec_init(index, clock, config, irqcallback, 3); }
+static int v30mz_execute(int cycles)
 {
 	nec_ICount=cycles;
 	chip_type=V30MZ;

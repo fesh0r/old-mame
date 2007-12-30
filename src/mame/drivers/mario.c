@@ -353,7 +353,7 @@ GFXDECODE_END
 
 
 
-static const char *mario_sample_names[] =
+static const char *const mario_sample_names[] =
 {
 	"*mario",
 
@@ -371,13 +371,13 @@ static const char *mario_sample_names[] =
     0	/* end of array */
 };
 
-static struct Samplesinterface samples_interface =
+static const struct Samplesinterface samples_interface =
 {
 	3,	/* 3 channels */
 	mario_sample_names
 };
 
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
 	soundlatch_r
 };

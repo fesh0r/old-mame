@@ -39,7 +39,6 @@
 #define VIDEO_UPDATE(name)		UINT32 video_update_##name(running_machine *machine, int screen, mame_bitmap *bitmap, const rectangle *cliprect)
 
 /* NULL versions */
-#define driver_init_NULL		NULL
 #define nvram_handler_NULL 		NULL
 #define memcard_handler_NULL	NULL
 #define machine_start_NULL 		NULL
@@ -120,16 +119,17 @@
 
 /* ----- flags for video_attributes ----- */
 
-/* is the video hardware raser or vector base? */
-#define	VIDEO_TYPE_RASTER				0x0000
-#define	VIDEO_TYPE_VECTOR				0x0001
+/* is the video hardware raster or vector based? */
+#define VIDEO_TYPE_NONE                 0x0000
+#define	VIDEO_TYPE_RASTER				0x0001
+#define	VIDEO_TYPE_VECTOR				0x0002
 
 /* should VIDEO_UPDATE by called at the start of VBLANK or at the end? */
 #define	VIDEO_UPDATE_BEFORE_VBLANK		0x0000
-#define	VIDEO_UPDATE_AFTER_VBLANK		0x0002
+#define	VIDEO_UPDATE_AFTER_VBLANK		0x0004
 
 /* indicates VIDEO_UPDATE will add container bits its */
-#define VIDEO_SELF_RENDER				0x0004
+#define VIDEO_SELF_RENDER				0x0008
 
 /* automatically extend the palette creating a darker copy for shadows */
 #define VIDEO_HAS_SHADOWS				0x0010
@@ -283,14 +283,14 @@ struct _game_driver
 
 #define MDRV_CPU_REPLACE(tag, _type, _clock)								\
 	cpu = driver_find_cpu(machine, tag);								\
-	cpu->type = (CPU_##_type);										\
-	cpu->clock = (_clock);											\
+	cpu->type = (CPU_##_type);											\
+	cpu->clock = (_clock);												\
 
 
 /* CPU parameters */
 #define MDRV_CPU_FLAGS(_flags)											\
 	if (cpu)															\
-		cpu->flags = (_flags);										\
+		cpu->flags = (_flags);											\
 
 #define MDRV_CPU_CONFIG(config)											\
 	if (cpu)															\
@@ -508,24 +508,10 @@ struct _game_driver
 ***************************************************************************/
 
 #define GAME(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,MONITOR,COMPANY,FULLNAME,FLAGS)	\
-game_driver driver_##NAME =					\
-{											\
-	__FILE__,								\
-	#PARENT,								\
-	#NAME,									\
-	FULLNAME,								\
-	#YEAR,									\
-	COMPANY,								\
-	construct_##MACHINE,					\
-	ipt_##INPUT,							\
-	driver_init_##INIT,						\
-	rom_##NAME,								\
-	(MONITOR)|(FLAGS),						\
-	NULL									\
-};
+	GAMEL(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,MONITOR,COMPANY,FULLNAME,FLAGS,((const char *)0))
 
 #define GAMEL(YEAR,NAME,PARENT,MACHINE,INPUT,INIT,MONITOR,COMPANY,FULLNAME,FLAGS,LAYOUT)	\
-game_driver driver_##NAME =					\
+const game_driver driver_##NAME =					\
 {											\
 	__FILE__,								\
 	#PARENT,								\
@@ -552,7 +538,7 @@ game_driver driver_##NAME =					\
 
 extern const game_driver * const drivers[];
 
-extern game_driver driver_empty;
+extern const game_driver driver_empty;
 
 
 /***************************************************************************

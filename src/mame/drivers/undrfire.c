@@ -174,7 +174,7 @@ static TIMER_CALLBACK( undrfire_interrupt5 )
                 EPROM
 **********************************************************/
 
-static UINT8 default_eeprom[128]=
+static const UINT8 default_eeprom[128]=
 {
 	0x02,0x01,0x11,0x12,0x01,0x01,0x01,0x00,0x80,0x80,0x30,0x01,0x00,0x00,0x62,0x45,
 	0xe0,0xa0,0xff,0x28,0xff,0xff,0xfa,0xd7,0x33,0x28,0x00,0x00,0x33,0x28,0x00,0x00,
@@ -186,7 +186,7 @@ static UINT8 default_eeprom[128]=
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
 };
 
-static struct EEPROM_interface undrfire_eeprom_interface =
+static const struct EEPROM_interface undrfire_eeprom_interface =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -295,7 +295,7 @@ static READ32_HANDLER( unknown_hardware_r )
 static WRITE32_HANDLER( unknown_int_req_w )
 {
 	/* 10000 cycle delay is arbitrary */
-	timer_set(ATTOTIME_IN_CYCLES(10000,0),0, undrfire_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0), NULL, 0, undrfire_interrupt5);
 }
 
 

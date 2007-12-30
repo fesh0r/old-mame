@@ -28,7 +28,7 @@
 /* define this to expand all EA calculations inline */
 #define INLINE_EA	1
 
-int s2650_ICount = 0;
+static int s2650_ICount = 0;
 
 typedef struct {
 	UINT16	ppc;	/* previous program counter (page + iar) */
@@ -200,7 +200,7 @@ INLINE UINT8 ARG(void)
  * handy table to build PC relative offsets
  * from HR (holding register)
  ***************************************************************/
-static	int 	S2650_relative[0x100] =
+static const int S2650_relative[0x100] =
 {
 	  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
 	 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,

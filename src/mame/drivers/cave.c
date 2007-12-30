@@ -123,8 +123,8 @@ static TIMER_CALLBACK( cave_vblank_end )
 /* Called once/frame to generate the VBLANK interrupt */
 static INTERRUPT_GEN( cave_interrupt )
 {
-	timer_set(ATTOTIME_IN_USEC(17376-time_vblank_irq), 0, cave_vblank_start);
-	timer_set(ATTOTIME_IN_USEC(17376-time_vblank_irq + 2000), 0, cave_vblank_end);
+	timer_set(ATTOTIME_IN_USEC(17376-time_vblank_irq), NULL, 0, cave_vblank_start);
+	timer_set(ATTOTIME_IN_USEC(17376-time_vblank_irq + 2000), NULL, 0, cave_vblank_end);
 }
 
 /* Called by the YMZ280B to set the IRQ state */
@@ -292,19 +292,19 @@ static READ16_HANDLER( cave_sound_r )
 
 ***************************************************************************/
 
-static UINT8 cave_default_eeprom_type1[16] =	{0x00,0x0C,0x11,0x0D,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x11,0x11,0xFF,0xFF,0xFF,0xFF};  /* DFeveron, Guwange */
-static UINT8 cave_default_eeprom_type1feversos[18] =	{0x00,0x0C,0x16,0x27,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x11,0x11,0xFF,0xFF,0xFF,0xFF,0x05,0x19};  /* Fever SOS (code checks for the 0x0519 or it won't boot) */
-static UINT8 cave_default_eeprom_type2[16] =	{0x00,0x0C,0xFF,0xFB,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};  /* Esprade, DonPachi, DDonPachi */
-static UINT8 cave_default_eeprom_type3[16] =	{0x00,0x03,0x08,0x00,0xFF,0xFF,0xFF,0xFF,0x08,0x00,0x00,0x00,0xFF,0xFF,0xFF,0xFF};  /* UoPoko */
-static UINT8 cave_default_eeprom_type4[16] =	{0xF3,0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};  /* Hotdog Storm */
-static UINT8 cave_default_eeprom_type5[16] =	{0xED,0xFF,0x00,0x00,0x12,0x31,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};  /* Mazinger Z (6th byte is country code) */
-static UINT8 cave_default_eeprom_type6[18] =	{0xa5,0x00,0xa5,0x00,0xa5,0x00,0xa5,0x00,0xa5,0x01,0xa5,0x01,0xa5,0x04,0xa5,0x01,0xa5,0x02};	/* Sailor Moon (last byte is country code) */
+static const UINT8 cave_default_eeprom_type1[16] =	{0x00,0x0C,0x11,0x0D,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x11,0x11,0xFF,0xFF,0xFF,0xFF};  /* DFeveron, Guwange */
+static const UINT8 cave_default_eeprom_type1feversos[18] =	{0x00,0x0C,0x16,0x27,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x11,0x11,0xFF,0xFF,0xFF,0xFF,0x05,0x19};  /* Fever SOS (code checks for the 0x0519 or it won't boot) */
+static const UINT8 cave_default_eeprom_type2[16] =	{0x00,0x0C,0xFF,0xFB,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};  /* Esprade, DonPachi, DDonPachi */
+static const UINT8 cave_default_eeprom_type3[16] =	{0x00,0x03,0x08,0x00,0xFF,0xFF,0xFF,0xFF,0x08,0x00,0x00,0x00,0xFF,0xFF,0xFF,0xFF};  /* UoPoko */
+static const UINT8 cave_default_eeprom_type4[16] =	{0xF3,0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};  /* Hotdog Storm */
+static const UINT8 cave_default_eeprom_type5[16] =	{0xED,0xFF,0x00,0x00,0x12,0x31,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};  /* Mazinger Z (6th byte is country code) */
+static const UINT8 cave_default_eeprom_type6[18] =	{0xa5,0x00,0xa5,0x00,0xa5,0x00,0xa5,0x00,0xa5,0x01,0xa5,0x01,0xa5,0x04,0xa5,0x01,0xa5,0x02};	/* Sailor Moon (last byte is country code) */
 // Air Gallet. Byte 1f is the country code (0==JAPAN,U.S.A,EUROPE,HONGKONG,TAIWAN,KOREA)
-static UINT8 cave_default_eeprom_type7[48] =	{0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
+static const UINT8 cave_default_eeprom_type7[48] =	{0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,
 												 0x00,0x00,0x00,0x00,0x00,0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,
 												 0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0x00,0x00,0xff,0xff,0xff,0xff,0xff,0xff};
 
-static UINT8 *cave_default_eeprom;
+static const UINT8 *cave_default_eeprom;
 static int cave_default_eeprom_length;
 static int cave_region_byte;
 
@@ -443,7 +443,7 @@ static NVRAM_HANDLER( cave )
 	}
 }
 
-static struct EEPROM_interface eeprom_interface_93C46_8bit =
+static const struct EEPROM_interface eeprom_interface_93C46_8bit =
 {
 	7,				// address bits 7
 	8,				// data bits    8
@@ -1488,7 +1488,7 @@ ADDRESS_MAP_END
 
 /* Most games use this */
 static INPUT_PORTS_START( cave )
-	PORT_START	// IN0 - Player 1
+	PORT_START_TAG("IN0")	// IN0 - Player 1
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
@@ -1507,7 +1507,7 @@ static INPUT_PORTS_START( cave )
 	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN1 - Player 2
+	PORT_START_TAG("IN1")	// IN1 - Player 2
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(2)
 	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
@@ -1529,14 +1529,9 @@ INPUT_PORTS_END
 
 /* Gaia Crusaders, no EEPROM. Has DIPS */
 static INPUT_PORTS_START( gaia )
-	PORT_START	// IN0 - Player 1 + 2
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
-	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
-	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
-	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_INCLUDE( cave )
+
+	PORT_MODIFY("IN0")	// IN0 - Player 1 + 2
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
 
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
@@ -1548,7 +1543,7 @@ static INPUT_PORTS_START( gaia )
 	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 
-	PORT_START	// IN1 - Coins
+	PORT_MODIFY("IN1")	// IN1 - Coins
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(6)
 	PORT_SERVICE_NO_TOGGLE(0x0004, IP_ACTIVE_LOW )
@@ -1560,12 +1555,7 @@ static INPUT_PORTS_START( gaia )
 
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START_TAG("DSW1")	// Dips bank 1
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )      PORT_DIPLOCATION("SW1:1")
@@ -1626,7 +1616,7 @@ static INPUT_PORTS_START( gaia )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( theroes )
-	PORT_INCLUDE(gaia)
+	PORT_INCLUDE( gaia )
 
 	PORT_MODIFY("DSW1")
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Language ) )         PORT_DIPLOCATION("SW1:3")
@@ -1652,45 +1642,9 @@ INPUT_PORTS_END
 
 /* Mazinger Z (has region stored in Eeprom) */
 static INPUT_PORTS_START( mazinger )
-	PORT_START	// IN0 - Player 1
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
-	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
-	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
-	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START1  )
+	PORT_INCLUDE( cave )
 
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
-	PORT_SERVICE_NO_TOGGLE(0x0200, IP_ACTIVE_LOW )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? exit service mode
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? enter & exit service mode
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START	// IN1 - Player 2
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
-	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
-	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
-	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START2  )
-
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(6)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW,  IPT_SERVICE1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x0800, IP_ACTIVE_HIGH, IPT_SPECIAL )	// eeprom bit
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-
-	PORT_START	// Eeprom Region
+	PORT_START_TAG("EEPROM")	// Eeprom Region
 	PORT_DIPNAME( 0xff, 0x31, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x30, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x31, DEF_STR( World ) )
@@ -1698,45 +1652,9 @@ INPUT_PORTS_END
 
 /* Sailor Moon / Air Gallet (has region stored in Eeprom) */
 static INPUT_PORTS_START( sailormn )
-	PORT_START	// IN0 - Player 1
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
-	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
-	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
-	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START1  )
+	PORT_INCLUDE( cave )
 
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
-	PORT_SERVICE_NO_TOGGLE(0x0200, IP_ACTIVE_LOW )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? exit service mode
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? enter & exit service mode
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START	// IN1 - Player 2
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
-	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
-	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
-	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START2  )
-
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(6)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW,  IPT_SERVICE1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x0800, IP_ACTIVE_HIGH, IPT_SPECIAL )	// eeprom bit
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-
-	PORT_START	// Eeprom Region
+	PORT_START_TAG("EEPROM")	// Eeprom Region
 	PORT_DIPNAME( 0xff, 0x02, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( USA ) )
@@ -1746,9 +1664,20 @@ static INPUT_PORTS_START( sailormn )
 	PORT_DIPSETTING(    0x05, "Korea" )
 INPUT_PORTS_END
 
+/* Normal layout but with 4 buttons */
+static INPUT_PORTS_START( metmqstr )
+	PORT_INCLUDE( cave )
+
+	PORT_MODIFY("IN0")	// IN0 - Player 1
+	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
+
+	PORT_MODIFY("IN0")	// IN1 - Player 2
+	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
+INPUT_PORTS_END
+
 /* Different layout */
 static INPUT_PORTS_START( guwange )
-	PORT_START	// IN0 - Player 1 & 2
+	PORT_START_TAG("IN0")	// IN0 - Player 1 & 2
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_START1  )
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -1767,7 +1696,7 @@ static INPUT_PORTS_START( guwange )
 	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 
-	PORT_START	// IN1 - Coins
+	PORT_START_TAG("IN1")	// IN1 - Coins
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(6)
 	PORT_SERVICE_NO_TOGGLE(0x0004, IP_ACTIVE_LOW )
@@ -1787,50 +1716,9 @@ static INPUT_PORTS_START( guwange )
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-/* Normal layout but with 4 buttons */
-static INPUT_PORTS_START( metmqstr )
-	PORT_START	// IN0 - Player 1
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
-	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
-	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
-	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START1  )
-
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
-	PORT_SERVICE_NO_TOGGLE(0x0200, IP_ACTIVE_LOW )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? enter & exit service mode
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START	// IN1 - Player 2
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
-	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
-	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
-	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START2  )
-
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(6)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW,  IPT_SERVICE1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_HIGH, IPT_SPECIAL )	// eeprom bit
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-INPUT_PORTS_END
-
 
 static INPUT_PORTS_START( korokoro )
-	PORT_START	// IN0
+	PORT_START_TAG("IN0")	// IN0
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1   ) PORT_IMPULSE(10)	// bit 0x0010 of leds (coin)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_COIN2   ) PORT_IMPULSE(10)	// bit 0x0020 of leds (does coin sound)
 	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_COIN3   ) PORT_IMPULSE(10)	// bit 0x0080 of leds
@@ -1849,7 +1737,7 @@ static INPUT_PORTS_START( korokoro )
 	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_SERVICE1)	// service coin
 	PORT_BIT(  0x8000, IP_ACTIVE_HIGH, IPT_SPECIAL)	// motor / hopper status ???
 
-	PORT_START	// IN1
+	PORT_START_TAG("IN1")	// IN1
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x0004, IP_ACTIVE_LOW,  IPT_UNKNOWN )
@@ -2098,7 +1986,7 @@ static MACHINE_RESET( cave )
 		EEPROM_get_data_pointer(0)[cave_region_byte] =  readinputport(2);
 }
 
-static struct YMZ280Binterface ymz280b_intf =
+static const struct YMZ280Binterface ymz280b_intf =
 {
 	REGION_SOUND1,
 	sound_irq_gen
@@ -2109,12 +1997,12 @@ static void irqhandler(int irq)
 	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2151interface ym2151_interface =
+static const struct YM2151interface ym2151_interface =
 {
 	irqhandler
 };
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	0,0,0,0,irqhandler
 };
@@ -4480,32 +4368,32 @@ static DRIVER_INIT( korokoro )
 
 ***************************************************************************/
 
-GAME( 1994, pwrinst2, 0,        pwrinst2, metmqstr, pwrinst2, ROT0,   "Atlus/Cave",                           "Power Instinct 2 (USA)"                  , 0 ) /* 94.04.08 */
-GAME( 1994, pwrins2j, pwrinst2, pwrinst2, metmqstr, pwrins2j, ROT0,   "Atlus/Cave",                           "Gouketsuji Ichizoku 2 (Japan)"           , 0 ) /* 94.04.08 */
-GAME( 1994, mazinger, 0,        mazinger, mazinger, mazinger, ROT90,  "Banpresto/Dynamic Pl. Toei Animation", "Mazinger Z"                              , 0 ) // region in eeprom
-GAME( 1995, donpachi, 0,        donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (US)"                           , 0 )
-GAME( 1995, donpacjp, donpachi, donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (Japan)"                        , 0 )
-GAME( 1995, donpackr, donpachi, donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (Korea)"                        , 0 )
-GAME( 1995, donpachk, donpachi, donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (Hong Kong)"                    , 0 )
-GAME( 1995, metmqstr, 0,        metmqstr, metmqstr, metmqstr, ROT0,   "Banpresto/Pandorabox",                 "Metamoqester"                            , 0 )
-GAME( 1995, nmaster,  metmqstr, metmqstr, metmqstr, metmqstr, ROT0,   "Banpresto/Pandorabox",                 "Oni - The Ninja Master (Japan)"          , 0 )
-GAME( 1995, plegends, 0,        pwrinst2, metmqstr, pwrins2j, ROT0,   "Atlus/Cave",                           "Power Instinct Legends (USA)"            , 0 ) /* 95.06.20 */
-GAME( 1995, plegendj, plegends, pwrinst2, metmqstr, pwrins2j, ROT0,   "Atlus/Cave",                           "Gouketsuji Ichizoku Saikyou Densetsu (Japan)", 0 ) /* 95.06.20 */
-GAME( 1995, sailormn, 0,        sailormn, sailormn, sailormn, ROT0,   "Banpresto",                            "Pretty Soldier Sailor Moon (95/03/22B)"  , 0 ) // region in eeprom
-GAME( 1995, sailormo, sailormn, sailormn, sailormn, sailormn, ROT0,   "Banpresto",                            "Pretty Soldier Sailor Moon (95/03/22)"   , 0 ) // region in eeprom
-GAME( 1996, agallet,  0,        sailormn, sailormn, agallet,  ROT270, "Banpresto / Gazelle",                  "Air Gallet"                              , 0 ) // board was taiwan, region in eeprom
-GAME( 1996, hotdogst, 0,        hotdogst, cave,     hotdogst, ROT90,  "Marble",                               "Hotdog Storm"                            , 0 )
-GAME( 1997, ddonpach, 0,        ddonpach, cave,     ddonpach, ROT270, "Atlus/Cave",                           "DoDonPachi (International)"              , 0 )
-GAME( 1997, ddonpchj, ddonpach, ddonpach, cave,     ddonpach, ROT270, "Atlus/Cave",                           "DoDonPachi (Japan)"                      , 0 )
-GAME( 1998, dfeveron, 0,        dfeveron, cave,     dfeveron, ROT270, "Cave (Nihon System license)",          "Dangun Feveron (Japan)"                  , 0 )
-GAME( 1998, feversos, dfeveron, dfeveron, cave,     feversos, ROT270, "Cave (Nihon System license)",          "Fever SOS (International)"               , 0 )
-GAME( 1998, esprade,  0,        esprade,  cave,     esprade,  ROT270, "Atlus/Cave",                           "ESP Ra.De. (International Ver 1998 4/22)", 0 )
-GAME( 1998, espradej, esprade,  esprade,  cave,     esprade,  ROT270, "Atlus/Cave",                           "ESP Ra.De. (Japan Ver 1998 4/21)"        , 0 )
-GAME( 1998, espradeo, esprade,  esprade,  cave,     esprade,  ROT270, "Atlus/Cave",                           "ESP Ra.De. (Japan Ver 1998 4/14)"        , 0 )
-GAME( 1998, uopoko,   0,        uopoko,   cave,     uopoko,   ROT0,   "Cave (Jaleco license)",                "Puzzle Uo Poko (International)"          , 0 )
-GAME( 1998, uopokoj,  uopoko,   uopoko,   cave,     uopoko,   ROT0,   "Cave (Jaleco license)",                "Puzzle Uo Poko (Japan)"                  , 0 )
-GAME( 1999, guwange,  0,        guwange,  guwange,  guwange,  ROT270, "Atlus/Cave",                           "Guwange (Japan)"                         , 0 )
-GAME( 1999, gaia,     0,        gaia,     gaia,     gaia,     ROT0,   "Noise Factory",                        "Gaia Crusaders",        GAME_IMPERFECT_SOUND ) // cuts out occasionally
-GAME( 2001, theroes,  0,        gaia,     theroes,  gaia,     ROT0,   "Primetek Investments",                 "Thunder Heroes",        GAME_IMPERFECT_SOUND ) // cuts out occasionally
+GAME( 1994, pwrinst2, 0,        pwrinst2, metmqstr, pwrinst2, ROT0,   "Atlus/Cave",                           "Power Instinct 2 (US, Ver. 94/04/08)"			, 0 )
+GAME( 1994, pwrins2j, pwrinst2, pwrinst2, metmqstr, pwrins2j, ROT0,   "Atlus/Cave",                           "Gouketsuji Ichizoku 2 (Japan, Ver. 94/04/08)"		, 0 )
+GAME( 1994, mazinger, 0,        mazinger, mazinger, mazinger, ROT90,  "Banpresto/Dynamic Pl. Toei Animation", "Mazinger Z (International/Japan)"			, 0 ) // region in eeprom
+GAME( 1995, donpachi, 0,        donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (US)"						, 0 )
+GAME( 1995, donpacjp, donpachi, donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (Japan)"					, 0 )
+GAME( 1995, donpackr, donpachi, donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (Korea)"					, 0 )
+GAME( 1995, donpachk, donpachi, donpachi, cave,     donpachi, ROT270, "Atlus/Cave",                           "DonPachi (Hong Kong)"					, 0 )
+GAME( 1995, metmqstr, 0,        metmqstr, metmqstr, metmqstr, ROT0,   "Banpresto/Pandorabox",                 "Metamoqester (International)"				, 0 )
+GAME( 1995, nmaster,  metmqstr, metmqstr, metmqstr, metmqstr, ROT0,   "Banpresto/Pandorabox",                 "Oni - The Ninja Master (Japan)"				, 0 )
+GAME( 1995, plegends, 0,        pwrinst2, metmqstr, pwrins2j, ROT0,   "Atlus/Cave",                           "Power Instinct Legends (US, Ver. 95/06/20)"		, 0 )
+GAME( 1995, plegendj, plegends, pwrinst2, metmqstr, pwrins2j, ROT0,   "Atlus/Cave",                           "Gouketsuji Ichizoku Saikyou Densetsu (Japan, Ver. 95/06/20)", 0 )
+GAME( 1995, sailormn, 0,        sailormn, sailormn, sailormn, ROT0,   "Banpresto",                            "Pretty Soldier Sailor Moon (JUEHTK, Ver. 95/03/22B)"	, 0 ) // region in eeprom
+GAME( 1995, sailormo, sailormn, sailormn, sailormn, sailormn, ROT0,   "Banpresto",                            "Pretty Soldier Sailor Moon (JUEHTK, Ver. 95/03/22)"	, 0 ) // region in eeprom
+GAME( 1996, agallet,  0,        sailormn, sailormn, agallet,  ROT270, "Banpresto / Gazelle",                  "Air Gallet (JUEHTK)"					, 0 ) // board was taiwan, region in eeprom
+GAME( 1996, hotdogst, 0,        hotdogst, cave,     hotdogst, ROT90,  "Marble",                               "Hotdog Storm (International)"				, 0 )
+GAME( 1997, ddonpach, 0,        ddonpach, cave,     ddonpach, ROT270, "Atlus/Cave",                           "DoDonPachi (International, Master Ver. 97/02/05)"	, 0 )
+GAME( 1997, ddonpchj, ddonpach, ddonpach, cave,     ddonpach, ROT270, "Atlus/Cave",                           "DoDonPachi (Japan, Master Ver. 97/02/05)"		, 0 )
+GAME( 1998, dfeveron, feversos, dfeveron, cave,     dfeveron, ROT270, "Cave (Nihon System license)",          "Dangun Feveron (Japan, Ver. 98/09/17)"			, 0 )
+GAME( 1998, feversos, 0,        dfeveron, cave,     feversos, ROT270, "Cave (Nihon System license)",          "Fever SOS (International, Ver. 98/09/25)"		, 0 )
+GAME( 1998, esprade,  0,        esprade,  cave,     esprade,  ROT270, "Atlus/Cave",                           "ESP Ra.De. (International, Ver. 98/04/22)"		, 0 )
+GAME( 1998, espradej, esprade,  esprade,  cave,     esprade,  ROT270, "Atlus/Cave",                           "ESP Ra.De. (Japan, Ver. 98/04/21)"			, 0 )
+GAME( 1998, espradeo, esprade,  esprade,  cave,     esprade,  ROT270, "Atlus/Cave",                           "ESP Ra.De. (Japan, Ver. 98/04/14)"			, 0 )
+GAME( 1998, uopoko,   0,        uopoko,   cave,     uopoko,   ROT0,   "Cave (Jaleco license)",                "Puzzle Uo Poko (International)"				, 0 )
+GAME( 1998, uopokoj,  uopoko,   uopoko,   cave,     uopoko,   ROT0,   "Cave (Jaleco license)",                "Puzzle Uo Poko (Japan)"					, 0 )
+GAME( 1999, guwange,  0,        guwange,  guwange,  guwange,  ROT270, "Atlus/Cave",                           "Guwange (Japan, Master Ver. 99/06/24)"			, 0 )
+GAME( 1999, gaia,     0,        gaia,     gaia,     gaia,     ROT0,   "Noise Factory",                        "Gaia Crusaders",		GAME_IMPERFECT_SOUND ) // cuts out occasionally
+GAME( 2001, theroes,  0,        gaia,     theroes,  gaia,     ROT0,   "Primetek Investments",                 "Thunder Heroes",		GAME_IMPERFECT_SOUND ) // cuts out occasionally
 
-GAME( 1999, korokoro, 0,        korokoro, korokoro, korokoro, ROT0,   "Takumi",                               "Koro Koro Quest (Japan)"                 , 0 )
+GAME( 1999, korokoro, 0,        korokoro, korokoro, korokoro, ROT0,   "Takumi",                               "Koro Koro Quest (Japan)"					, 0 )

@@ -149,10 +149,10 @@ static int              echo_ptr;
 static const int               TS_CYC = CPU_RATE / SAMP_FREQ;
 
 /* Ptrs to Gaussian table */
-static const int *      G1 = &gauss[ 256 ];
-static const int *      G2 = &gauss[ 512 ];
-static const int *      G3 = &gauss[ 255 ];
-static const int *      G4 = &gauss[ -1  ];
+static const int *const G1 = &gauss[ 256 ];
+static const int *const G2 = &gauss[ 512 ];
+static const int *const G3 = &gauss[ 255 ];
+static const int *const G4 = &gauss[ -1  ];
 
 static const int        mask = 0xFF;
 
@@ -1153,13 +1153,13 @@ void *snes_sh_start(int clock, const struct CustomSound_interface *config)
 	channel = stream_create( 0, 2, 32000, NULL, snes_sh_update );
 
 	/* Initialize the timers */
-	timers[0].timer = timer_alloc( snes_spc_timer );
+	timers[0].timer = timer_alloc( snes_spc_timer , NULL);
 	timer_adjust( timers[0].timer, ATTOTIME_IN_HZ(8000), 0, ATTOTIME_IN_HZ(8000) );
 	timer_enable( timers[0].timer, 0 );
-	timers[1].timer = timer_alloc( snes_spc_timer );
+	timers[1].timer = timer_alloc( snes_spc_timer , NULL);
 	timer_adjust( timers[1].timer, ATTOTIME_IN_HZ(8000), 1, ATTOTIME_IN_HZ(8000) );
 	timer_enable( timers[1].timer, 0 );
-	timers[2].timer = timer_alloc( snes_spc_timer );
+	timers[2].timer = timer_alloc( snes_spc_timer , NULL);
 	timer_adjust( timers[2].timer, ATTOTIME_IN_HZ(64000), 2, ATTOTIME_IN_HZ(64000) );
 	timer_enable( timers[2].timer, 0 );
 

@@ -158,14 +158,14 @@ static const pia6821_interface cvsd_pia_intf =
 ****************************************************************************/
 
 /* YM2151 structure (CVSD variant) */
-static struct YM2151interface cvsd_ym2151_interface =
+static const struct YM2151interface cvsd_ym2151_interface =
 {
 	cvsd_ym2151_irq
 };
 
 
 /* YM2151 structure (ADPCM variant) */
-static struct YM2151interface adpcm_ym2151_interface =
+static const struct YM2151interface adpcm_ym2151_interface =
 {
 	adpcm_ym2151_irq
 };
@@ -464,7 +464,7 @@ static TIMER_CALLBACK( williams_cvsd_delayed_data_w )
 
 void williams_cvsd_data_w(int data)
 {
-	timer_call_after_resynch(data, williams_cvsd_delayed_data_w);
+	timer_call_after_resynch(NULL, data, williams_cvsd_delayed_data_w);
 }
 
 

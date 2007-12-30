@@ -123,7 +123,7 @@ static TIMER_CALLBACK( delayed_sound_w )
 
 static WRITE8_HANDLER( sound_data_w )
 {
-	timer_call_after_resynch(data, delayed_sound_w);
+	timer_call_after_resynch(NULL, data, delayed_sound_w);
 }
 
 
@@ -307,7 +307,7 @@ GFXDECODE_END
  *
  *************************************/
 
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
 	sound_data_r
 };

@@ -131,7 +131,7 @@ static const struct segaic16_memory_map_entry rom_171_5987_info[] =
 	{ 0 }
 };
 
-static const struct segaic16_memory_map_entry *region_info_list[] =
+static const struct segaic16_memory_map_entry *const region_info_list[] =
 {
 	&rom_171_shad_info[0],
 	&rom_171_5874_info[0],
@@ -204,7 +204,7 @@ static MACHINE_RESET( system18 )
 
 	/* if we are running with a real live 8751, we need to boost the interleave at startup */
 	if (machine->drv->cpu[2].type == CPU_I8751)
-		timer_call_after_resynch(0, boost_interleave);
+		timer_call_after_resynch(NULL, 0, boost_interleave);
 }
 
 

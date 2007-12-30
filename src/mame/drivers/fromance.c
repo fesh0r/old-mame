@@ -99,14 +99,14 @@ static TIMER_CALLBACK( deferred_commanddata_w )
 static WRITE8_HANDLER( fromance_commanddata_w )
 {
 	/* do this on a timer to let the slave CPU synchronize */
-	timer_call_after_resynch(data, deferred_commanddata_w);
+	timer_call_after_resynch(NULL, data, deferred_commanddata_w);
 }
 
 
 static READ8_HANDLER( fromance_busycheck_main_r )
 {
 	/* set a timer to force synchronization after the read */
-	timer_call_after_resynch(0, NULL);
+	timer_call_after_resynch(NULL, 0, NULL);
 
 	if (!fromance_directionflag) return 0x00;		// standby
 	else return 0xff;								// busy
@@ -1041,7 +1041,7 @@ GFXDECODE_END
  *
  *************************************/
 
-static struct MSM5205interface msm5205_interface =
+static const struct MSM5205interface msm5205_interface =
 {
 	fromance_adpcm_int,	/* IRQ handler */
 	MSM5205_S48_4B		/* 8 KHz */

@@ -521,13 +521,13 @@ static void sound_irq(int irq)
 	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YMF262interface ymf262_interface =
+static const struct YMF262interface ymf262_interface =
 {
 	sound_irq		/* irq */
 };
 
 
-static struct YMZ280Binterface ymz280b_interface =
+static const struct YMZ280Binterface ymz280b_interface =
 {
 	REGION_SOUND1,
 	0	/* irq */
@@ -660,7 +660,7 @@ static DRIVER_INIT( deroon )
 	ROM[0x044A/2] = 0x4E71;
 	ROM[0x04bc/2] = 0x0000;
 	ROM[0x302c/2] = 0x60a4;
-	timer_set(ATTOTIME_IN_SEC(2),0,reset_callback);
+	timer_set(ATTOTIME_IN_SEC(2), NULL,0,reset_callback);
 	gametype=0;
 }
 
@@ -682,7 +682,7 @@ static DRIVER_INIT( tkdensho )
 	ROM[0x04822/2] = 0x4E71;
 	ROM[0x04862/2] = 0x4E71;
 
-	timer_set(ATTOTIME_IN_SEC(2),0,reset_callback);
+	timer_set(ATTOTIME_IN_SEC(2), NULL,0,reset_callback);
 	gametype=1;
 
 }

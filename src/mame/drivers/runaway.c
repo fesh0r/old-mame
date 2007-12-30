@@ -41,13 +41,13 @@ static TIMER_CALLBACK( interrupt_callback )
 		scanline = 16;
 	}
 
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, interrupt_callback);
 }
 
 
 static MACHINE_RESET( runaway )
 {
-	timer_set(video_screen_get_time_until_pos(0, 16, 0), 16, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(0, 16, 0), NULL, 16, interrupt_callback);
 }
 
 
@@ -339,13 +339,13 @@ static GFXDECODE_START( qwak )
 GFXDECODE_END
 
 
-static struct POKEYinterface pokey_interface_1 =
+static const struct POKEYinterface pokey_interface_1 =
 {
 	{ 0 },
 	input_port_3_r
 };
 
-static struct POKEYinterface pokey_interface_2 =
+static const struct POKEYinterface pokey_interface_2 =
 {
 	{ runaway_pot_r,runaway_pot_r,runaway_pot_r,runaway_pot_r,runaway_pot_r,runaway_pot_r,runaway_pot_r,runaway_pot_r }
 };

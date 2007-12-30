@@ -212,7 +212,7 @@ static TIMER_CALLBACK( mcu_acknowledge_callback )
 
 static READ8_HANDLER( mcu_acknowledge_r )
 {
-	timer_call_after_resynch(0, mcu_acknowledge_callback);
+	timer_call_after_resynch(NULL, 0, mcu_acknowledge_callback);
 	return 0;
 }
 
@@ -419,7 +419,7 @@ logerror("%04x: z80 reads command %02x\n",activecpu_get_pc(),from_z80);
 				break;
 
 			case 0x5:	// answer to Z80
-				timer_call_after_resynch(portB_out, delayed_mcu_z80_w);
+				timer_call_after_resynch(NULL, portB_out, delayed_mcu_z80_w);
 				break;
 
 			case 0x6:
@@ -435,7 +435,7 @@ logerror("%04x: z80 reads command %02x\n",activecpu_get_pc(),from_z80);
 
 static WRITE8_HANDLER( hotsmash_z80_mcu_w )
 {
-	timer_call_after_resynch(data, delayed_z80_mcu_w);
+	timer_call_after_resynch(NULL, data, delayed_z80_mcu_w);
 }
 
 static READ8_HANDLER(hotsmash_from_mcu_r)
@@ -862,32 +862,32 @@ GFXDECODE_END
 
 
 
-static struct Samplesinterface pbillian_samples_interface =
+static const struct Samplesinterface pbillian_samples_interface =
 {
 	1,
 	NULL,
 	pbillian_sh_start
 };
 
-static struct AY8910interface pbillian_ay8910_interface =
+static const struct AY8910interface pbillian_ay8910_interface =
 {
 	pbillian_ay_port_a_r,			/* port Aread */
 	input_port_2_r					/* port Bread */
 };
 
-static struct AY8910interface hotsmash_ay8910_interface =
+static const struct AY8910interface hotsmash_ay8910_interface =
 {
 	hotsmash_ay_port_a_r,			/* port Aread */
 	input_port_2_r					/* port Bread */
 };
 
-static struct AY8910interface sqix_ay8910_interface_1 =
+static const struct AY8910interface sqix_ay8910_interface_1 =
 {
 	input_port_3_r,	/* port Aread */
 	in4_mcu_r,		/* port Bread */
 };
 
-static struct AY8910interface sqix_ay8910_interface_2 =
+static const struct AY8910interface sqix_ay8910_interface_2 =
 {
 	input_port_1_r,	/* port Aread */
 	sqix_from_mcu_r,		/* port Bread */
@@ -895,13 +895,13 @@ static struct AY8910interface sqix_ay8910_interface_2 =
 	sqix_z80_mcu_w				/* port Bwrite */
 };
 
-static struct AY8910interface bootleg_ay8910_interface_1 =
+static const struct AY8910interface bootleg_ay8910_interface_1 =
 {
 	input_port_3_r,	/* port Aread */
 	input_port_4_r	/* port Bread */
 };
 
-static struct AY8910interface bootleg_ay8910_interface_2 =
+static const struct AY8910interface bootleg_ay8910_interface_2 =
 {
 	input_port_1_r,	/* port Aread */
 	bootleg_in0_r	/* port Bread */
@@ -1246,7 +1246,7 @@ static DRIVER_INIT( perestro )
 		memcpy(temp,&src[i],16);
 		for (j = 0;j < 16;j++)
 		{
-			static int convtable[16] =
+			static const int convtable[16] =
 			{
 				0xc, 0x9, 0xb, 0xa,
 				0x8, 0xd, 0xf, 0xe,

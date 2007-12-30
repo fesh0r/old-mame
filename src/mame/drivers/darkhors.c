@@ -197,7 +197,7 @@ static VIDEO_UPDATE( darkhors )
 
 ***************************************************************************/
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,				// address bits 7
 	8,				// data bits    8
@@ -558,7 +558,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static gfx_layout layout_16x16x8 =
+static const gfx_layout layout_16x16x8 =
 {
 	16,16,
 	RGN_FRAC(1,4),

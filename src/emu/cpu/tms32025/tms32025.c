@@ -130,8 +130,8 @@ Table 3-2.  TMS32025/26 Memory Blocks
 #endif
 
 
-UINT16 *tms32025_pgmmap[0x200];
-UINT16 *tms32025_datamap[0x200];
+static UINT16 *tms32025_pgmmap[0x200];
+static UINT16 *tms32025_datamap[0x200];
 
 #define SET_PC(x)	do { R.PC = (x); change_pc(R.PC<<1); } while (0)
 
@@ -1561,7 +1561,7 @@ static void zals(void)
  *  Cycle Timings
  ***********************************************************************/
 
-static unsigned cycles_main[256]=
+static const unsigned cycles_main[256]=
 {
 /*00*/		1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK,
 /*08*/		1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK,
@@ -1597,12 +1597,12 @@ static unsigned cycles_main[256]=
 /*F8*/		2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK
 };
 
-static unsigned cycles_DX_subset[8]=
+static const unsigned cycles_DX_subset[8]=
 {
 /*00*/		2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK, 0
 };
 
-static unsigned cycles_CE_subset[256]=
+static const unsigned cycles_CE_subset[256]=
 {
 /*00*/		1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK,
 /*08*/		1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK,
@@ -1643,7 +1643,7 @@ static unsigned cycles_CE_subset[256]=
  *  Opcode Table
  ***********************************************************************/
 
-static opcode_fn opcode_main[256]=
+static const opcode_fn opcode_main[256]=
 {
 /*00*/ add,			add,		add,		add,		add,		add,		add,		add,
 /*08*/ add,			add,		add,		add,		add,		add,		add,		add,
@@ -1679,12 +1679,12 @@ static opcode_fn opcode_main[256]=
 /*F8*/ bbz,			bbnz,		bioz,		banz,		blkp,		blkd,		call,		br
 };
 
-static opcode_fn opcode_DX_subset[8]=	/* Instructions living under the Dxxx opcode */
+static const opcode_fn opcode_DX_subset[8]=	/* Instructions living under the Dxxx opcode */
 {
 /*00*/ lrlk,		lalk,		adlk,		sblk,		andk,		ork,		xork,		illegal
 };
 
-static opcode_fn opcode_CE_subset[256]=
+static const opcode_fn opcode_CE_subset[256]=
 {
 /*00*/ eint,		dint,		rovm,		sovm,		cnfd,		cnfp,		rsxm,		ssxm,
 /*08*/ spm,			spm,		spm,		spm,		rxf,		sxf,		fort,		fort,

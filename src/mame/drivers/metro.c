@@ -259,7 +259,7 @@ static INTERRUPT_GEN( karatour_interrupt )
 			requested_int[0] = 1;
 			requested_int[5] = 1;	// write the scroll registers
 			/* the duration is a guess */
-			timer_set(ATTOTIME_IN_USEC(2500), 0, vblank_end_callback);
+			timer_set(ATTOTIME_IN_USEC(2500), NULL, 0, vblank_end_callback);
 			update_irq_state();
 			break;
 
@@ -517,7 +517,7 @@ static void metro_sound_irq_handler(int state)
 	cpunum_set_input_line(1, UPD7810_INTF2, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2151interface ym2151_interface =
+static const struct YM2151interface ym2151_interface =
 {
 	metro_sound_irq_handler	/* irq handler */
 };
@@ -555,7 +555,7 @@ static WRITE16_HANDLER( ymf278b_w )
 }
 
 
-static struct YMF278B_interface ymf278b_interface =
+static const struct YMF278B_interface ymf278b_interface =
 {
 	REGION_SOUND1,
 	ymf278b_interrupt
@@ -754,7 +754,7 @@ static WRITE16_HANDLER( metro_blitter_w )
                        another blit. */
 					if (b1 == 0)
 					{
-						timer_set(ATTOTIME_IN_USEC(500),0,metro_blit_done);
+						timer_set(ATTOTIME_IN_USEC(500), NULL,0,metro_blit_done);
 						return;
 					}
 
@@ -1942,7 +1942,7 @@ static void blzntrnd_irqhandler(int irq)
 	cpunum_set_input_line(1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2610interface blzntrnd_ym2610_interface =
+static const struct YM2610interface blzntrnd_ym2610_interface =
 {
 	blzntrnd_irqhandler,
 	REGION_SOUND1,
@@ -3679,7 +3679,7 @@ GFXDECODE_END
 
 ***************************************************************************/
 
-UPD7810_CONFIG metro_cpu_config =
+static const UPD7810_CONFIG metro_cpu_config =
 {
     TYPE_7810,
     metro_io_callback
@@ -4667,7 +4667,7 @@ static DRIVER_INIT( mouja )
 {
 	metro_common();
 	irq_line = -1;	/* split interrupt handlers */
-	mouja_irq_timer = timer_alloc(mouja_irq_callback);
+	mouja_irq_timer = timer_alloc(mouja_irq_callback, NULL);
 }
 
 static DRIVER_INIT( gakusai )

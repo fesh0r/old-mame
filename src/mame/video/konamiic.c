@@ -1353,8 +1353,8 @@ if (input_code_pressed(KEYCODE_D))
 		int yflip = source[offs[4]] & 0x20;		/* flip y */
 		int color = base_color + ((source[offs[1]] & 0xf0) >> 4);
 		int width,height;
-		static int x_offset[4] = {0x0,0x1,0x4,0x5};
-		static int y_offset[4] = {0x0,0x2,0x8,0xa};
+		static const int x_offset[4] = {0x0,0x1,0x4,0x5};
+		static const int y_offset[4] = {0x0,0x2,0x8,0xa};
 		int x,y, ex, ey;
 
 		if (attr & 0x01) sx -= 256;
@@ -1443,11 +1443,11 @@ static UINT8 *K007342_ram,*K007342_scroll_ram;
 static int K007342_gfxnum;
 static int K007342_int_enabled;
 static int K007342_flipscreen;
-static int K007342_scrollx[2];
-static int K007342_scrolly[2];
+static UINT16 K007342_scrollx[2];
+static UINT8 K007342_scrolly[2];
 static UINT8 *K007342_videoram_0,*K007342_colorram_0;
 static UINT8 *K007342_videoram_1,*K007342_colorram_1;
-static int K007342_regs[8];
+static UINT8 K007342_regs[8];
 static void (*K007342_callback)(int tmap, int bank, int *code, int *color, int *flags);
 static tilemap *K007342_tilemap[2];
 
@@ -1517,6 +1517,14 @@ void K007342_vh_start(int gfx_index, void (*callback)(int tmap, int bank, int *c
 
 	tilemap_set_transparent_pen(K007342_tilemap[0],0);
 	tilemap_set_transparent_pen(K007342_tilemap[1],0);
+
+	state_save_register_global_pointer(K007342_ram, 0x2000);
+	state_save_register_global_pointer(K007342_scroll_ram, 0x0200);
+	state_save_register_global(K007342_int_enabled);
+	state_save_register_global(K007342_flipscreen);
+	state_save_register_global_array(K007342_scrollx);
+	state_save_register_global_array(K007342_scrolly);
+	state_save_register_global_array(K007342_regs);
 }
 
 READ8_HANDLER( K007342_r )
@@ -1677,6 +1685,9 @@ void K007420_vh_start(running_machine *machine, int gfxnum, void (*callback)(int
 	memset(K007420_ram,0,0x200);
 
 	K007420_banklimit = -1;
+
+	state_save_register_global_pointer(K007420_ram, 0x0200);
+	state_save_register_global(K007420_banklimit);
 }
 
 READ8_HANDLER( K007420_r )
@@ -1719,8 +1730,8 @@ void K007420_sprites_draw(mame_bitmap *bitmap,const rectangle *cliprect)
 	for (offs = K007420_SPRITERAM_SIZE - 8; offs >= 0; offs -= 8)
 	{
 		int ox,oy,code,color,flipx,flipy,zoom,w,h,x,y,bank;
-		static int xoffset[4] = { 0, 1, 4, 5 };
-		static int yoffset[4] = { 0, 2, 8, 10 };
+		static const int xoffset[4] = { 0, 1, 4, 5 };
+		static const int yoffset[4] = { 0, 2, 8, 10 };
 
 		code = K007420_ram[offs+1];
 		color = K007420_ram[offs+2];
@@ -2468,6 +2479,14 @@ void K051960_vh_start(running_machine *machine,int gfx_memory_region,int plane0,
 	K051960_callback = callback;
 	K051960_ram = auto_malloc(0x400);
 	memset(K051960_ram,0,0x400);
+
+	state_save_register_global(K051960_romoffset);
+	state_save_register_global(K051960_spriteflip);
+	state_save_register_global(K051960_readroms);
+	state_save_register_global_array(K051960_spriterombank);
+	state_save_register_global_pointer(K051960_ram, 0x400);
+	state_save_register_global(K051960_irq_enabled);
+	state_save_register_global(K051960_nmi_enabled);
 }
 
 
@@ -2663,10 +2682,10 @@ void K051960_sprites_draw(mame_bitmap *bitmap,const rectangle *cliprect,int min_
             40 41 44 45 56 57 60 61
             42 43 46 47 58 59 62 63
         */
-		static int xoffset[8] = { 0, 1, 4, 5, 16, 17, 20, 21 };
-		static int yoffset[8] = { 0, 2, 8, 10, 32, 34, 40, 42 };
-		static int width[8] =  { 1, 2, 1, 2, 4, 2, 4, 8 };
-		static int height[8] = { 1, 1, 2, 2, 2, 4, 4, 8 };
+		static const int xoffset[8] = { 0, 1, 4, 5, 16, 17, 20, 21 };
+		static const int yoffset[8] = { 0, 2, 8, 10, 32, 34, 40, 42 };
+		static const int width[8] =  { 1, 2, 1, 2, 4, 2, 4, 8 };
+		static const int height[8] = { 1, 1, 2, 2, 2, 4, 4, 8 };
 
 
 		offs = sortedlist[pri_code];
@@ -2964,6 +2983,13 @@ void K053245_vh_start(running_machine *machine,int chip, int gfx_memory_region,i
 
 	memset(K053245_ram[chip],0,K053245_ramsize[chip]);
 	memset(K053245_buffer[chip],0,K053245_ramsize[chip]);
+
+	state_save_register_item_pointer("K053245", chip, K053245_ram[chip], K053245_ramsize[chip] / 2);
+	state_save_register_item_pointer("K053245", chip, K053245_buffer[chip], K053245_ramsize[chip] / 2);
+	state_save_register_item("K053245", chip, K053244_rombank[chip]);
+	state_save_register_item("K053245", chip, K053245_dx[chip]);
+	state_save_register_item("K053245", chip, K053245_dy[chip]);
+	state_save_register_item_array("K053245", chip, K053244_regs[chip]);
 }
 
 void K053245_set_SpriteOffset(int chip,int offsx, int offsy)
@@ -4127,8 +4153,8 @@ void K053247_sprites_draw(running_machine *machine, mame_bitmap *bitmap,const re
         40 41 44 45 56 57 60 61
         42 43 46 47 58 59 62 63
     */
-	static int xoffset[8] = { 0, 1, 4, 5, 16, 17, 20, 21 };
-	static int yoffset[8] = { 0, 2, 8, 10, 32, 34, 40, 42 };
+	static const int xoffset[8] = { 0, 1, 4, 5, 16, 17, 20, 21 };
+	static const int yoffset[8] = { 0, 2, 8, 10, 32, 34, 40, 42 };
 
 	int sortedlist[NUM_SPRITES];
 	int offs,zcode;
@@ -4525,7 +4551,7 @@ static void K051316_vh_start(running_machine *machine,int chip, int gfx_memory_r
 		void (*callback)(int *code,int *color,int *flags))
 {
 	int gfx_index;
-	static tile_get_info_callback get_tile_info[3] = { K051316_get_tile_info0,K051316_get_tile_info1,K051316_get_tile_info2 };
+	static const tile_get_info_callback get_tile_info[3] = { K051316_get_tile_info0,K051316_get_tile_info1,K051316_get_tile_info2 };
 
 	/* find first empty slot to decode gfx */
 	for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
@@ -4613,6 +4639,12 @@ static void K051316_vh_start(running_machine *machine,int chip, int gfx_memory_r
 
 	K051316_wraparound[chip] = 0;	/* default = no wraparound */
 	K051316_offset[chip][0] = K051316_offset[chip][1] = 0;
+
+	state_save_register_item_pointer("K051316", chip, K051316_ram[chip], 0x800);
+	state_save_register_item_array("K051316", chip, K051316_ctrlram[chip]);
+	state_save_register_item("K051316", chip, K051316_wraparound[chip]);
+	state_save_register_item("K051316", chip, K051316_offset[chip][0]);
+	state_save_register_item("K051316", chip, K051316_offset[chip][1]);
 }
 
 void K051316_vh_start_0(running_machine *machine,int gfx_memory_region,int bpp,
@@ -5389,13 +5421,13 @@ static void (*K056832_callback)(int layer, int *code, int *color, int *flags);
 
 INLINE void K056832_get_tile_info( running_machine *machine, tile_data *tileinfo, int tile_index, int pageIndex )
 {
-	static struct K056832_SHIFTMASKS
+	static const struct K056832_SHIFTMASKS
 	{
 		int flips, palm1, pals2, palm2;
 	}
 	K056832_shiftmasks[4] = {{6,0x3f,0,0x00},{4,0x0f,2,0x30},{2,0x03,2,0x3c},{0,0x00,2,0x3f}};
 
-	struct K056832_SHIFTMASKS *smptr;
+	const struct K056832_SHIFTMASKS *smptr;
 	int layer, flip, fbits, attr, code, color, flags;
 	UINT16 *pMem;
 
@@ -7069,7 +7101,7 @@ void K055555_vh_start(void)
 void K055555_write_reg(UINT8 regnum, UINT8 regdat)
 {
 	#if VERBOSE
-	static const char *rnames[46] =
+	static const char *const rnames[46] =
 	{
 		"BGC CBLK", "BGC SET", "COLSET0", "COLSET1", "COLSET2", "COLSET3", "COLCHG ON",
 		"A PRI 0", "A PRI 1", "A COLPRI", "B PRI 0", "B PRI 1", "B COLPRI", "C PRI", "D PRI",

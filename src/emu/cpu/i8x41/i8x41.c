@@ -111,7 +111,7 @@ typedef struct {
 	int 	(*irq_callback)(int irqline);
 }	I8X41;
 
-int i8x41_ICount;
+static int i8x41_ICount;
 
 static I8X41 i8x41;
 
@@ -1282,7 +1282,7 @@ INLINE void xrl_i(void)
  *  Cycle Timings
  ***********************************************************************/
 
-static UINT8 i8x41_cycles[] = {
+static const UINT8 i8x41_cycles[] = {
 	1,1,1,2,2,1,1,1,2,2,2,2,2,2,2,2,
 	1,1,2,2,2,1,2,1,1,1,1,1,1,1,1,1,
 	1,1,1,2,2,1,2,1,1,1,1,1,1,1,1,1,

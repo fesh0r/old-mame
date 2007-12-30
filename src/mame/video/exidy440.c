@@ -220,7 +220,7 @@ WRITE8_HANDLER( exidy440_interrupt_clear_w )
  *
  *************************************/
 
-void exidy440_update_firq(void)
+static void exidy440_update_firq(void)
 {
 	if (exidy440_firq_vblank || (firq_enable && exidy440_firq_beam))
 		cpunum_set_input_line(0, 1, ASSERT_LINE);
@@ -354,7 +354,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 						/* check the collisions bit */
 						if ((palette[2 * pen] & 0x80) && count++ < 128)
-							timer_set(video_screen_get_time_until_pos(0, yoffs, currx), currx, collide_firq_callback);
+							timer_set(video_screen_get_time_until_pos(0, yoffs, currx), NULL, currx, collide_firq_callback);
 					}
 					currx++;
 
@@ -367,7 +367,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 						/* check the collisions bit */
 						if ((palette[2 * pen] & 0x80) && count++ < 128)
-							timer_set(video_screen_get_time_until_pos(0, yoffs, currx), currx, collide_firq_callback);
+							timer_set(video_screen_get_time_until_pos(0, yoffs, currx), NULL, currx, collide_firq_callback);
 					}
 					currx++;
 				}
@@ -456,7 +456,7 @@ VIDEO_EOF( exidy440 )
 		time = attotime_sub(video_screen_get_time_until_pos(0, beamy, beamx), attotime_make(0, increment * 6));
 		for (i = 0; i <= 12; i++)
 		{
-			timer_set(time, beamx, beam_firq_callback);
+			timer_set(time, NULL, beamx, beam_firq_callback);
 			time = attotime_add(time, attotime_make(0, increment));
 		}
 	}

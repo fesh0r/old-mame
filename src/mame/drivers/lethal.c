@@ -184,13 +184,13 @@ static UINT8 cur_control2;
 
 /* Default Eeprom for the parent.. otherwise it will always complain first boot */
 /* its easy to init but this saves me a bit of time.. */
-static UINT8 lethalen_default_eeprom[48] = {
+static const UINT8 lethalen_default_eeprom[48] = {
 	0x02, 0x1E, 0x00, 0x00, 0x39, 0x31, 0x39, 0x31, 0x55, 0x45, 0x77, 0x00, 0x00, 0x00, 0x00, 0x01,
 	0x02, 0x01, 0x00, 0x03, 0x05, 0x01, 0x01, 0x02, 0x28, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,			/* address bits */
 	8,			/* data bits */
@@ -610,7 +610,7 @@ static INPUT_PORTS_START( lethalej )
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, -1.0, 0.0, 0) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2) PORT_REVERSE
 INPUT_PORTS_END
 
-static struct K054539interface k054539_interface =
+static const struct K054539interface k054539_interface =
 {
 	REGION_SOUND1,
 	NULL,

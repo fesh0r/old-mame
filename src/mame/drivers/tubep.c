@@ -352,7 +352,7 @@ static void tubep_setup_save_state(void)
 static MACHINE_START( tubep )
 {
 	/* Create interrupt timer */
-	interrupt_timer = timer_alloc(tubep_scanline_callback);
+	interrupt_timer = timer_alloc(tubep_scanline_callback, NULL);
 
 	tubep_setup_save_state();
 }
@@ -516,7 +516,7 @@ logerror("scanline=%3i scrgetvpos(0)=%3i\n",scanline,video_screen_get_vpos(0));
 static MACHINE_START( rjammer )
 {
 	/* Create interrupt timer */
-	interrupt_timer = timer_alloc(rjammer_scanline_callback);
+	interrupt_timer = timer_alloc(rjammer_scanline_callback, NULL);
 
 	tubep_setup_save_state();
 }
@@ -882,7 +882,7 @@ GFXDECODE_END
  *
  *************************************/
 
-static struct AY8910interface ay8910_interface_1 =
+static const struct AY8910interface ay8910_interface_1 =
 {
 	0,
 	0,
@@ -890,7 +890,7 @@ static struct AY8910interface ay8910_interface_1 =
 	ay8910_portB_0_w  /* write port B */
 };
 
-static struct AY8910interface ay8910_interface_2 =
+static const struct AY8910interface ay8910_interface_2 =
 {
 	0,
 	0,
@@ -898,7 +898,7 @@ static struct AY8910interface ay8910_interface_2 =
 	ay8910_portB_1_w  /* write port B */
 };
 
-static struct AY8910interface ay8910_interface_3 =
+static const struct AY8910interface ay8910_interface_3 =
 {
 	0,
 	0,
@@ -906,7 +906,7 @@ static struct AY8910interface ay8910_interface_3 =
 	ay8910_portB_2_w  /* write port B */
 };
 
-static struct MSM5205interface msm5205_interface =
+static const struct MSM5205interface msm5205_interface =
 {
 	rjammer_adpcm_vck,			/* VCK function */
 	MSM5205_S48_4B				/* 8 KHz (changes at run time) */

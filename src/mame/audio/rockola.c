@@ -50,7 +50,7 @@ static sound_stream * tone_stream;
 static int Sound0StopOnRollover;
 static UINT8 LastPort1;
 
-const char *sasuke_sample_names[] =
+const char *const sasuke_sample_names[] =
 {
 	"*sasuke",
 
@@ -63,7 +63,7 @@ const char *sasuke_sample_names[] =
 	0
 };
 
-const char *vanguard_sample_names[] =
+const char *const vanguard_sample_names[] =
 {
 	"*vanguard",
 
@@ -92,7 +92,7 @@ const char *vanguard_sample_names[] =
 	0
 };
 
-const char *fantasy_sample_names[] =
+const char *const fantasy_sample_names[] =
 {
 	"*fantasy",
 
@@ -751,7 +751,7 @@ static int	hd38880_data_bytes;
 static double	hd38880_speed;
 
 
-static void rockola_speech_w(UINT8 data, UINT16 *table, int start)
+static void rockola_speech_w(UINT8 data, const UINT16 *table, int start)
 {
 	/*
         bit description
@@ -894,7 +894,7 @@ static void rockola_speech_w(UINT8 data, UINT16 *table, int start)
 
 WRITE8_HANDLER( vanguard_speech_w )
 {
-	static UINT16 vanguard_table[16] =
+	static const UINT16 vanguard_table[16] =
 	{
 		0x04000,
 		0x04325,
@@ -919,7 +919,7 @@ WRITE8_HANDLER( vanguard_speech_w )
 
 WRITE8_HANDLER( fantasy_speech_w )
 {
-	static UINT16 fantasy_table[16] =
+	static const UINT16 fantasy_table[16] =
 	{
 		0x04000,
 		0x04297,

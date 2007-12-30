@@ -154,7 +154,7 @@ static TIMER_CALLBACK( delayed_command_w )
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	timer_call_after_resynch(data, delayed_command_w);
+	timer_call_after_resynch(NULL, data, delayed_command_w);
 }
 
 
@@ -306,7 +306,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct CustomSound_interface custom_interface =
+static const struct CustomSound_interface custom_interface =
 {
     victory_sh_start,
     0,

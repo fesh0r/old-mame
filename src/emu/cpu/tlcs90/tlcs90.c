@@ -63,8 +63,8 @@ static int t90_ICount;
 typedef UINT16 e_r;
 #define F	T90.af.b.l
 
-static const char *r8_names[]	=	{	"b",	"c",	"d",	"e",	"h",	"l",	"a"								};
-static const char *r16_names[]	=	{	"bc",	"de",	"hl",	"??",	"ix",	"iy",	"sp",	"af",	"af'",	"pc"	};
+static const char *const r8_names[]	=	{	"b",	"c",	"d",	"e",	"h",	"l",	"a"								};
+static const char *const r16_names[]	=	{	"bc",	"de",	"hl",	"??",	"ix",	"iy",	"sp",	"af",	"af'",	"pc"	};
 
 // Condition Codes
 
@@ -107,13 +107,13 @@ static UINT8 SZP[256];		/* zero, sign and parity flags */
 static UINT8 SZHV_inc[256]; /* zero, sign, half carry and overflow flags INC r8 */
 static UINT8 SZHV_dec[256]; /* zero, sign, half carry and overflow flags DEC r8 */
 
-static const char *cc_names[]	=	{	"f",	"lt",	"le",	"ule",	"ov",	"mi",	"z",	"c",	"",		"ge",	"gt",	"ugt",	"nov",	"pl",	"nz",	"nc"	};
+static const char *const cc_names[]	=	{	"f",	"lt",	"le",	"ule",	"ov",	"mi",	"z",	"c",	"",		"ge",	"gt",	"ugt",	"nov",	"pl",	"nz",	"nc"	};
 
 // Opcodes
 
 #define OP_16 0x80
 typedef enum					{	UNKNOWN,	NOP,	EX,		EXX,	LD,		LDW,	LDA,	LDI,	LDIR,	LDD,	LDDR,	CPI,	CPIR,	CPD,	CPDR,	PUSH,	POP,	JP,		JR,		CALL,	CALLR,		RET,	RETI,	HALT,	DI,		EI,		SWI,	DAA,	CPL,	NEG,	LDAR,	RCF,	SCF,	CCF,	TSET,	BIT,	SET,	RES,	INC,	DEC,	INCX,	DECX,	INCW,	DECW,	ADD,	ADC,	SUB,	SBC,	AND,	XOR,	OR,		CP,		RLC,	RRC,	RL,		RR,		SLA,	SRA,	SLL,	SRL,	RLD,	RRD,	DJNZ,	MUL,	DIV		}	e_op;
-static const char *op_names[] =	{	"??",		"nop",	"ex",	"exx",	"ld",	"ldw",	"lda",	"ldi",	"ldir",	"ldd",	"lddr",	"cpi",	"cpir",	"cpd",	"cpdr",	"push",	"pop",	"jp",	"jr",	"call",	"callr",	"ret",	"reti",	"halt",	"di",	"ei",	"swi",	"daa",	"cpl",	"neg",	"ldar",	"rcf",	"scf",	"ccf",	"tset",	"bit",	"set",	"res",	"inc",	"dec",	"incx",	"decx",	"incw",	"decw",	"add",	"adc",	"sub",	"sbc",	"and",	"xor",	"or",	"cp",	"rlc",	"rrc",	"rl",	"rr",	"sla",	"sra",	"sll",	"srl",	"rld",	"rrd",	"djnz",	"mul",	"div"	};
+static const char *const op_names[] =	{	"??",		"nop",	"ex",	"exx",	"ld",	"ldw",	"lda",	"ldi",	"ldir",	"ldd",	"lddr",	"cpi",	"cpir",	"cpd",	"cpdr",	"push",	"pop",	"jp",	"jr",	"call",	"callr",	"ret",	"reti",	"halt",	"di",	"ei",	"swi",	"daa",	"cpl",	"neg",	"ldar",	"rcf",	"scf",	"ccf",	"tset",	"bit",	"set",	"res",	"inc",	"dec",	"incx",	"decx",	"incw",	"decw",	"add",	"adc",	"sub",	"sbc",	"and",	"xor",	"or",	"cp",	"rlc",	"rrc",	"rl",	"rr",	"sla",	"sra",	"sll",	"srl",	"rld",	"rrd",	"djnz",	"mul",	"div"	};
 
 typedef enum	{
 	MODE_NONE,	MODE_BIT8,	MODE_CC,
@@ -936,7 +936,7 @@ static void decode(void)
 	OP( UNKNOWN,2 )		NONE( 1 )		NONE( 2 )
 }
 
-static const char *ir_names[] =	{
+static const char *const ir_names[] =	{
 	"P0",		"P1",		"P01CR/IRFL",	"IRFH",		"P2",		"P2CR",		"P3",		"P3CR",
 	"P4",		"P4CR",		"P5",			"SMMOD",	"P6",		"P7",		"P67CR",	"SMCR",
 	"P8",		"P8CR",		"WDMOD",		"WDCR",		"TREG0",	"TREG1",	"TREG2",	"TREG3",
@@ -2302,7 +2302,7 @@ static READ8_HANDLER( t90_internal_registers_r )
 	return data;
 }
 
-void t90_start_timer(int i)
+static void t90_start_timer(int i)
 {
 	int prescaler;
 	attotime period;
@@ -2349,7 +2349,7 @@ void t90_start_timer(int i)
 	logerror("%04X: CPU Timer %d started at %lf Hz\n", activecpu_get_pc(), i, 1.0 / attotime_to_double(period));
 }
 
-void t90_start_timer4(void)
+static void t90_start_timer4(void)
 {
 	int prescaler;
 	attotime period;
@@ -2372,13 +2372,13 @@ void t90_start_timer4(void)
 }
 
 
-void t90_stop_timer(int i)
+static void t90_stop_timer(int i)
 {
 	timer_adjust(T90.timer[i], attotime_never, i, attotime_zero);
 	logerror("%04X: CPU Timer %d stopped\n", activecpu_get_pc(), i);
 }
 
-void t90_stop_timer4(void)
+static void t90_stop_timer4(void)
 {
 	t90_stop_timer(4);
 }
@@ -2430,7 +2430,7 @@ static TIMER_CALLBACK( t90_timer_callback )
 			case 2:
 				if ( !is16bit )
 					if ( (T90.internal_registers[ T90_TCLK - T90_IOBASE ] & (0x03 << (i * 2 + 2))) == 0 )	// T0/T1 match signal clocks T1/T3
-						t90_timer_callback(machine, i+1);
+						t90_timer_callback(machine, NULL, i+1);
 				break;
 		}
 	}
@@ -2446,7 +2446,7 @@ static TIMER_CALLBACK( t90_timer_callback )
 			case 0:
 			case 2:
 				if ( is16bit )	// T0/T1 overflow signal clocks T1/T3
-					t90_timer_callback(machine, i+1);
+					t90_timer_callback(machine, NULL, i+1);
 				break;
 		}
 	}
@@ -2662,9 +2662,9 @@ static void t90_init(int index, int clock, const void *config, int (*irqcallback
 	// Timers
 
 	for (i = 0; i < 4; i++)
-		T90.timer[i] = timer_alloc(t90_timer_callback);
+		T90.timer[i] = timer_alloc(t90_timer_callback, NULL);
 
-	T90.timer[4] = timer_alloc(t90_timer4_callback);
+	T90.timer[4] = timer_alloc(t90_timer4_callback, NULL);
 }
 
 static ADDRESS_MAP_START(tmp90840_mem, ADDRESS_SPACE_PROGRAM, 8)

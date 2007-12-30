@@ -301,7 +301,7 @@ static const int tune4[13*6] = {
 	B(1),	B(2),	Dx(3),	B(3),	Dx(4),	B(4)
 };
 
-static const int *tunes[] = {NULL,tune1,tune2,tune3,tune4};
+static const int *const tunes[] = {NULL,tune1,tune2,tune3,tune4};
 
 #define DECAY(voice)											\
 	if( tms->vol[voice] > VMIN )								\
@@ -447,7 +447,7 @@ void tms36xx_note_w(int chip, int octave, int note)
 	tms->tune_max = note + 1;
 }
 
-void tms3617_enable(struct TMS36XX *tms, int enable)
+static void tms3617_enable(struct TMS36XX *tms, int enable)
 {
 	int i, bits = 0;
 

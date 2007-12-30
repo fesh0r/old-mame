@@ -366,10 +366,10 @@ static UINT32* cps3_spriteram;
 static UINT32* cps3_eeprom;
 static UINT32* cps3_fullscreenzoom;
 
-UINT32 cps3_ss_pal_base = 0;
+static UINT32 cps3_ss_pal_base = 0;
 static UINT32* cps3_colourram;
 static UINT32 cps3_unk_vidregs[0x20/4];
-UINT32 cps3_ss_bank_base = 0;
+static UINT32 cps3_ss_bank_base = 0;
 
 static UINT32 cps3_screenwidth;
 //cdrom_file* cps3_cd;
@@ -2038,7 +2038,7 @@ static UINT32 chardma_other;
 //static UINT8* current_table;
 static UINT32 current_table_address = -1;
 
-int cps3_rle_length = 0;
+static int cps3_rle_length = 0;
 
 static int last_normal_byte = 0;
 
@@ -2478,7 +2478,7 @@ static INTERRUPT_GEN(cps3_other_interrupt)
 //static struct sh2_config sh2cp_conf_slave  = { 1 };
 
 
-static struct CustomSound_interface custom_interface =
+static const struct CustomSound_interface custom_interface =
 {
 	cps3_sh_start
 };
@@ -2497,13 +2497,13 @@ static TIMER_CALLBACK( fastboot_timer_callback )
 	cpunum_set_reg(0,SH2_VBR, 0x6000000);
 }
 
-static SCSIConfigTable dev_table =
+static const SCSIConfigTable dev_table =
 {
 	1,                                      /* 1 SCSI device */
 	{ { SCSI_ID_1, 0, SCSI_DEVICE_CDROM } } /* SCSI ID 2, using CD 0, and it's a CD-ROM */
 };
 
-static struct WD33C93interface scsi_intf =
+static const struct WD33C93interface scsi_intf =
 {
 	&dev_table,		/* SCSI device table */
 	NULL			/* command completion IRQ */
@@ -2515,7 +2515,7 @@ static MACHINE_RESET( cps3 )
 
 	if (cps3_use_fastboot)
 	{
-		fastboot_timer = timer_alloc(fastboot_timer_callback);
+		fastboot_timer = timer_alloc(fastboot_timer_callback, NULL);
 	//  printf("reset\n");
 		timer_adjust(fastboot_timer, attotime_zero, 0, attotime_zero);
 	}

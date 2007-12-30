@@ -7,7 +7,7 @@ Atari Wolf Pack (prototype) driver
 #include "driver.h"
 #include "sound/s14001a.h"
 
-static struct S14001A_interface wolfpack_s14001a_interface =
+static const struct S14001A_interface wolfpack_s14001a_interface =
 {
 	REGION_SOUND1	/* voice data region */
 };
@@ -47,13 +47,13 @@ static TIMER_CALLBACK( periodic_callback )
 		scanline = 0;
 	}
 
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, periodic_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, periodic_callback);
 }
 
 
 static MACHINE_RESET( wolfpack )
 {
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, periodic_callback);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 0, periodic_callback);
 }
 
 

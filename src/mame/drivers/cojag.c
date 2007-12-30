@@ -204,7 +204,7 @@ static UINT8 eeprom_enable;
 
 static UINT32 *rom_base;
 
-static struct ide_interface ide_intf =
+static const struct ide_interface ide_intf =
 {
 	jaguar_external_int
 };
@@ -474,7 +474,7 @@ static TIMER_CALLBACK( gpu_sync_timer )
 {
 	/* if a command is still pending, and we haven't maxed out our timer, set a new one */
 	if (gpu_command_pending && param < 1000)
-		timer_set(ATTOTIME_IN_USEC(50), ++param, gpu_sync_timer);
+		timer_set(ATTOTIME_IN_USEC(50), NULL, ++param, gpu_sync_timer);
 }
 
 
@@ -488,7 +488,7 @@ static WRITE32_HANDLER( gpu_jump_w )
 	jaguar_gpu_resume();
 
 	/* start the sync timer going, and note that there is a command pending */
-	timer_call_after_resynch(0, gpu_sync_timer);
+	timer_call_after_resynch(NULL, 0, gpu_sync_timer);
 	gpu_command_pending = 1;
 }
 
@@ -964,7 +964,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct r3000_config config =
+static const struct r3000_config config =
 {
 	0,		/* 1 if we have an FPU, 0 otherwise */
 	4096,	/* code cache size */
@@ -972,13 +972,13 @@ static struct r3000_config config =
 };
 
 
-static struct jaguar_config gpu_config =
+static const struct jaguar_config gpu_config =
 {
 	jaguar_gpu_cpu_int
 };
 
 
-static struct jaguar_config dsp_config =
+static const struct jaguar_config dsp_config =
 {
 	jaguar_dsp_cpu_int
 };

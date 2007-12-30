@@ -118,7 +118,7 @@ static NVRAM_HANDLER( konamigq_93C46 )
 		}
 		else
 		{
-			static UINT8 def_eeprom[ 128 ] =
+			static const UINT8 def_eeprom[ 128 ] =
 			{
 				0x29, 0x2b, 0x52, 0x56, 0x20, 0x94, 0x41, 0x55, 0x00, 0x41, 0x14, 0x14, 0x00, 0x03, 0x01, 0x01,
 				0x01, 0x03, 0x00, 0x00, 0x07, 0x07, 0x00, 0x01, 0xaa, 0x00, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
@@ -274,7 +274,7 @@ static ADDRESS_MAP_START( sndwritemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x580000, 0x580001) AM_WRITE(MWA16_NOP) /* ?? */
 ADDRESS_MAP_END
 
-static struct K054539interface k054539_interface =
+static const struct K054539interface k054539_interface =
 {
 	REGION_SOUND1
 };
@@ -325,7 +325,7 @@ static void scsi_irq(void)
 	psx_irq_set(0x400);
 }
 
-static SCSIConfigTable dev_table =
+static const SCSIConfigTable dev_table =
 {
 	1, /* 1 SCSI device */
 	{
@@ -333,7 +333,7 @@ static SCSIConfigTable dev_table =
 	}
 };
 
-static struct AM53CF96interface scsi_intf =
+static const struct AM53CF96interface scsi_intf =
 {
 	&dev_table,		/* SCSI device table */
 	&scsi_irq,		/* command completion IRQ */

@@ -119,7 +119,7 @@ static VIDEO_UPDATE( hangplt )
 /******************************************************************/
 
 /* 93C56 EEPROM */
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	8,				/* address bits */
 	16,				/* data bits */
@@ -728,17 +728,17 @@ static INTERRUPT_GEN( gticlub_vblank )
 }
 
 
-static ppc_config gticlub_ppc_cfg =
+static const ppc_config gticlub_ppc_cfg =
 {
 	PPC_MODEL_403GA
 };
 
-static sharc_config sharc_cfg =
+static const sharc_config sharc_cfg =
 {
 	BOOT_MODE_EPROM
 };
 
-static struct RF5C400interface rf5c400_interface =
+static const struct RF5C400interface rf5c400_interface =
 {
 	REGION_SOUND1
 };

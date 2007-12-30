@@ -115,7 +115,7 @@ static TIMER_CALLBACK( groundfx_interrupt5 )
                 EPROM
 **********************************************************/
 
-static UINT8 default_eeprom[128]=
+static const UINT8 default_eeprom[128]=
 {
 	0x02,0x01,0x11,0x12,0x01,0x01,0x01,0x00,0x80,0x80,0x30,0x01,0x00,0x00,0x62,0x45,
 	0xe0,0xa0,0xff,0x28,0xff,0xff,0xfa,0xd7,0x33,0x28,0x00,0x00,0x33,0x28,0x00,0x00,
@@ -127,7 +127,7 @@ static UINT8 default_eeprom[128]=
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
 };
 
-static struct EEPROM_interface groundfx_eeprom_interface =
+static const struct EEPROM_interface groundfx_eeprom_interface =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -221,7 +221,7 @@ static WRITE32_HANDLER( groundfx_adc_w )
 {
 	/* One interrupt per input port (4 per frame, though only 2 used).
         1000 cycle delay is arbitrary */
-	timer_set(ATTOTIME_IN_CYCLES(1000,0),0, groundfx_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(1000,0), NULL, 0, groundfx_interrupt5);
 }
 
 static WRITE32_HANDLER( rotate_control_w )	/* only a guess that it's rotation */

@@ -272,12 +272,12 @@ static void update_mpu68_interrupts(void)
 	/* set the new state of the IRQ lines */
 	if (newstate)
 	{
-		LOG(("68k IRQ, %x\n", newstate));
+		LOGSTUFF(("68k IRQ, %x\n", newstate));
 		cpunum_set_input_line(1, newstate, ASSERT_LINE);
 	}
 	else
 	{
-		LOG(("68k IRQ Clear, %x\n", newstate));
+		LOGSTUFF(("68k IRQ Clear, %x\n", newstate));
 		cpunum_set_input_line(1, 7, CLEAR_LINE);
 	}
 }
@@ -300,7 +300,7 @@ static void m68k_acia_irq(int state)
 	update_mpu68_interrupts();
 }
 
-static struct acia6850_interface m6809_acia_if =
+static const struct acia6850_interface m6809_acia_if =
 {
 	MPU4_MASTER_CLOCK/44,//This isn't a real division, this is just to work around
 	MPU4_MASTER_CLOCK/44,//the ACIA code's hard coding
@@ -312,7 +312,7 @@ static struct acia6850_interface m6809_acia_if =
 	m6809_acia_irq
 };
 
-static struct acia6850_interface m68k_acia_if =
+static const struct acia6850_interface m68k_acia_if =
 {
 	MPU4_MASTER_CLOCK/44,
 	MPU4_MASTER_CLOCK/44,

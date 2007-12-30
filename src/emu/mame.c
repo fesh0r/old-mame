@@ -190,7 +190,7 @@ static output_callback output_cb[OUTPUT_CHANNEL_COUNT];
 static void *output_cb_param[OUTPUT_CHANNEL_COUNT];
 
 /* the "disclaimer" that should be printed when run with no parameters */
-const char *mame_disclaimer =
+const char mame_disclaimer[] =
 	"MAME is an emulator: it reproduces, more or less faithfully, the behaviour of\n"
 	"several arcade machines. But hardware is useless without software, so an image\n"
 	"of the ROMs which run on that hardware is required. Such ROMs, like any other\n"
@@ -200,7 +200,7 @@ const char *mame_disclaimer =
 	"images is a violation of copyright law and should be promptly reported to the\n"
 	"authors so that appropriate legal action can be taken.\n";
 
-const char *memory_region_names[REGION_MAX] =
+const char *const memory_region_names[REGION_MAX] =
 {
 	"REGION_INVALID",
 	"REGION_CPU1",
@@ -378,7 +378,7 @@ int mame_execute(core_options *options)
 			begin_resource_tracking();
 
 			/* perform a soft reset -- this takes us to the running phase */
-			soft_reset(machine, 0);
+			soft_reset(machine, NULL, 0);
 
 			/* run the CPUs until a reset or exit */
 			mame->hard_reset_pending = FALSE;
@@ -392,7 +392,7 @@ int mame_execute(core_options *options)
 
 				/* otherwise, just pump video updates through */
 				else
-					video_frame_update();
+					video_frame_update(FALSE);
 
 				/* handle save/load */
 				if (mame->saveload_schedule_callback)
@@ -1073,6 +1073,7 @@ void mame_printf_debug(const char *format, ...)
     appropriate callback
 -------------------------------------------------*/
 
+#ifdef UNUSED_FUNCTION
 void mame_printf_log(const char *format, ...)
 {
 	va_list argptr;
@@ -1089,6 +1090,7 @@ void mame_printf_log(const char *format, ...)
 	(*output_cb[OUTPUT_CHANNEL_LOG])(output_cb_param[OUTPUT_CHANNEL_LOG], format, argptr);
 	va_end(argptr);
 }
+#endif
 
 
 
@@ -1506,7 +1508,7 @@ static void init_machine(running_machine *machine)
 	/* initialize the timers and allocate a soft_reset timer */
 	/* this must be done before cpu_init so that CPU's can allocate timers */
 	timer_init(machine);
-	mame->soft_reset_timer = timer_alloc(soft_reset);
+	mame->soft_reset_timer = timer_alloc(soft_reset, NULL);
 
 	/* init the osd layer */
 	osd_init(machine);

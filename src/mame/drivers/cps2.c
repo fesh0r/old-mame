@@ -634,7 +634,7 @@ static INTERRUPT_GEN( cps2_interrupt )
 
 
 
-static struct EEPROM_interface cps2_eeprom_interface =
+static const struct EEPROM_interface cps2_eeprom_interface =
 {
 	6,		/* address bits */
 	16,		/* data bits */
@@ -1342,7 +1342,7 @@ GFXDECODE_END
 
 
 
-static struct m68k_encryption_interface cps2_encryption =
+static const struct m68k_encryption_interface cps2_encryption =
 {
 	CPS2_Read8, CPS2_Read16, CPS2_Read32,
 	CPS2_Read16, CPS2_Read32

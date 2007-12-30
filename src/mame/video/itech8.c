@@ -170,7 +170,7 @@ static void generate_interrupt(int state)
 }
 
 
-static struct tms34061_interface tms34061intf =
+static const struct tms34061_interface tms34061intf =
 {
 	0,						/* the screen we are acting on */
 	8,						/* VRAM address is (row << rowshift) | col */
@@ -517,7 +517,7 @@ WRITE8_HANDLER( itech8_blitter_w )
 		blit_in_progress = 1;
 
 		/* set a timer to go off when we're done */
-		timer_set(attotime_mul(ATTOTIME_IN_HZ(12000000/4), BLITTER_WIDTH * BLITTER_HEIGHT + 12), 0, blitter_done);
+		timer_set(attotime_mul(ATTOTIME_IN_HZ(12000000/4), BLITTER_WIDTH * BLITTER_HEIGHT + 12), NULL, 0, blitter_done);
 	}
 
 	/* debugging */

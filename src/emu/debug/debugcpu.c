@@ -42,7 +42,7 @@
 FILE *debug_source_file;
 symbol_table *global_symtable;
 
-static const char *address_space_name[] = { "program", "data", "I/O" };
+static const char *const address_space_name[] = { "program", "data", "I/O" };
 
 static UINT64 wpdata;
 static UINT64 wpaddr;
@@ -77,7 +77,7 @@ static UINT64 tempvar[NUM_TEMP_VARIABLES];
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-void debug_cpu_exit(running_machine *machine);
+static void debug_cpu_exit(running_machine *machine);
 static void perform_trace(debug_cpu_info *info);
 static void prepare_for_step_overout(void);
 static void process_source_file(void);
@@ -288,7 +288,7 @@ void debug_cpu_init(running_machine *machine)
     debug_cpu_exit - free all memory
 -------------------------------------------------*/
 
-void debug_cpu_exit(running_machine *machine)
+static void debug_cpu_exit(running_machine *machine)
 {
 	int cpunum, spacenum;
 
@@ -530,7 +530,7 @@ void debug_halt_on_next_instruction(void)
 
 void debug_refresh_display(void)
 {
-	video_frame_update();
+	video_frame_update(TRUE);
 }
 
 
@@ -1317,7 +1317,7 @@ static void check_watchpoints(int cpunum, int spacenum, int type, offs_t address
 			/* if we do, evaluate the condition */
 			if (wp->condition == NULL || (expression_execute(wp->condition, &result) == EXPRERR_NONE && result))
 			{
-				static const char *sizes[] =
+				static const char *const sizes[] =
 				{
 					"0bytes", "byte", "word", "3bytes", "dword", "5bytes", "6bytes", "7bytes", "qword"
 				};

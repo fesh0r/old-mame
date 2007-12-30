@@ -544,7 +544,7 @@ static TIMER_CALLBACK( delayed_sound_data_w )
 static WRITE16_HANDLER( sound_data_w )
 {
 	if (ACCESSING_LSB)
-		timer_call_after_resynch(data & 0xff, delayed_sound_data_w);
+		timer_call_after_resynch(NULL, data & 0xff, delayed_sound_data_w);
 }
 
 
@@ -557,7 +557,7 @@ static READ32_HANDLER( sound_data32_r )
 static WRITE32_HANDLER( sound_data32_w )
 {
 	if (!(mem_mask & 0x00ff0000))
-		timer_call_after_resynch((data >> 16) & 0xff, delayed_sound_data_w);
+		timer_call_after_resynch(NULL, (data >> 16) & 0xff, delayed_sound_data_w);
 }
 
 
@@ -640,7 +640,7 @@ static void via_irq(int state)
 }
 
 
-static struct via6522_interface via_interface =
+static const struct via6522_interface via_interface =
 {
 	/*inputs : A/B         */ 0, 0,
 	/*inputs : CA/B1,CA/B2 */ 0, 0, 0, 0,
@@ -650,7 +650,7 @@ static struct via6522_interface via_interface =
 };
 
 
-static struct via6522_interface drivedge_via_interface =
+static const struct via6522_interface drivedge_via_interface =
 {
 	/*inputs : A/B         */ 0, 0,
 	/*inputs : CA/B1,CA/B2 */ 0, 0, 0, 0,
@@ -1484,7 +1484,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct ES5506interface es5506_interface =
+static const struct ES5506interface es5506_interface =
 {
 	REGION_SOUND1,
 	REGION_SOUND2,
@@ -1593,6 +1593,7 @@ static MACHINE_DRIVER_START( gt3dt )
 	MDRV_NVRAM_HANDLER( gt3dt ) /* Make Tournament sets load/store the Timekeeper info */
 MACHINE_DRIVER_END
 
+
 static MACHINE_DRIVER_START( wcbowlt )
 
 	/* basic machine hardware */
@@ -1600,6 +1601,7 @@ static MACHINE_DRIVER_START( wcbowlt )
 
 	MDRV_NVRAM_HANDLER( gt3dt ) /* Make WCB Tournament load/store the Timekeeper info */
 MACHINE_DRIVER_END
+
 
 
 /*************************************

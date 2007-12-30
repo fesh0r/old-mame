@@ -93,7 +93,7 @@ static UINT32 tv_artifacts = 0;
  * player/missile colors calculated for the first part (00-1F).
  * The priorities of combining priority bits (which games use!) are:
  ************************************************************************/
-static	UINT8	_pm_colors[32][8*2*8] = {
+static const UINT8 _pm_colors[32][8*2*8] = {
 	{
 		M0, PL0,P0, PL0,M1, PL1,P1, PL1,M2, PL2,P2, PL2,M3, PL3,P3, PL3,  // 00
 		M0, PL0,P0, PL0,M1, PL1,P1, PL1,M2, PL2,P2, PL2,M3, PL3,P3, PL3,
@@ -423,7 +423,7 @@ static	UINT8	_pm_colors[32][8*2*8] = {
 static void prio_init(void)
 {
 	int i, j, pm, p, c;
-	UINT8 * prio;
+	const UINT8 * prio;
 
 	/* 32 priority bit combinations */
 	for( i = 0; i < 32; i++ )
@@ -460,10 +460,10 @@ static void prio_init(void)
  ************************************************************************/
 static void cclk_init(void)
 {
-	static UINT8 _pf_21[4] =   {T00,T01,T10,T11};
-	static UINT8 _pf_1b[4] =   {G00,G01,G10,G11};
-	static UINT8 _pf_210b[4] = {PBK,PF0,PF1,PF2};
-	static UINT8 _pf_310b[4] = {PBK,PF0,PF1,PF3};
+	static const UINT8 _pf_21[4] =   {T00,T01,T10,T11};
+	static const UINT8 _pf_1b[4] =   {G00,G01,G10,G11};
+	static const UINT8 _pf_210b[4] = {PBK,PF0,PF1,PF2};
+	static const UINT8 _pf_310b[4] = {PBK,PF0,PF1,PF3};
 	int i;
 	UINT8 * dst;
 
@@ -1065,12 +1065,12 @@ static int cycle(void)
 }
 #endif
 
-static void after(int cycles, void (*function)(running_machine *machine, int), const char *funcname)
+static void after(int cycles, timer_callback function, const char *funcname)
 {
     attotime duration = attotime_make(0, attotime_to_attoseconds(video_screen_get_scan_period(0)) * cycles / CYCLES_PER_LINE);
     (void)funcname;
 	LOG(("           after %3d (%5.1f us) %s\n", cycles, attotime_to_double(duration) * 1.0e6, funcname));
-	timer_set(duration, 0, function);
+	timer_set(duration, NULL, 0, function);
 }
 
 static TIMER_CALLBACK( antic_issue_dli )
@@ -1088,7 +1088,7 @@ static TIMER_CALLBACK( antic_issue_dli )
 }
 
 
-static  renderer_function renderer[2][19][5] = {
+static const renderer_function renderer[2][19][5] = {
 	/*   no playfield    narrow          normal          wide         */
 	{
 		{antic_mode_0_xx,antic_mode_0_xx,antic_mode_0_xx,antic_mode_0_xx},

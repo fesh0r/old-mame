@@ -38,7 +38,7 @@ UINT16 xmen_current_frame;
 static int init_eeprom_count;
 
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -499,7 +499,7 @@ INPUT_PORTS_END
 
 
 
-static struct K054539interface k054539_interface =
+static const struct K054539interface k054539_interface =
 {
 	REGION_SOUND1
 };

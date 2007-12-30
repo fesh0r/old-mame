@@ -70,7 +70,7 @@ static UINT16 *dsp56k_bank01_ram ;
 static UINT16 *dsp56k_bank02_ram ;
 static UINT16 *dsp56k_bank04_ram ;
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,			/* address bits */
 	8,			/* data bits */
@@ -657,7 +657,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xfff1, 0xfff3) AM_WRITE(MWA8_NOP)
 ADDRESS_MAP_END
 
-static struct K054539interface k054539_interface =
+static const struct K054539interface k054539_interface =
 {
 	REGION_SOUND1
 };

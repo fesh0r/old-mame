@@ -173,7 +173,7 @@ typedef struct {
 
 }	I8051;
 
-int i8051_icount;
+static int i8051_icount;
 
 static I8051 i8051;
 static I8051_UART uart;
@@ -456,7 +456,7 @@ static READ32_HANDLER((*hold_eram_iaddr_callback));
 #define R_B		i8051.b
 
 /* # of oscilations each opcode requires*/
-static UINT8 i8051_cycles[] = {
+static const UINT8 i8051_cycles[] = {
 	12,24,24,12,12,12,12,12,12,12,12,12,12,12,12,12,
 	24,24,24,12,12,12,12,12,12,12,12,12,12,12,12,12,
 	24,24,24,12,12,12,12,12,12,12,12,12,12,12,12,12,

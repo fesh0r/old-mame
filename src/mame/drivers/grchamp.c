@@ -405,7 +405,7 @@ static TIMER_CALLBACK( main_to_sub_comm_sync_w )
 
 static WRITE8_HANDLER( main_to_sub_comm_w )
 {
-	timer_call_after_resynch(data | (offset << 8), main_to_sub_comm_sync_w);
+	timer_call_after_resynch(NULL, data | (offset << 8), main_to_sub_comm_sync_w);
 }
 
 
@@ -451,7 +451,7 @@ static WRITE8_HANDLER( grchamp_portB_2_w )
  *
  *************************************/
 
-static struct AY8910interface ay8910_interface_1 =
+static const struct AY8910interface ay8910_interface_1 =
 {
 	0,
 	0,
@@ -459,7 +459,7 @@ static struct AY8910interface ay8910_interface_1 =
 	grchamp_portB_0_w
 };
 
-static struct AY8910interface ay8910_interface_3 =
+static const struct AY8910interface ay8910_interface_3 =
 {
 	0,
 	0,

@@ -229,7 +229,7 @@ static UINT32 d1l_tab[16];
 
 
 #define RATE_STEPS (8)
-static UINT8 eg_inc[19*RATE_STEPS]={
+static const UINT8 eg_inc[19*RATE_STEPS]={
 
 /*cycle:0 1  2 3  4 5  6 7*/
 
@@ -262,7 +262,7 @@ static UINT8 eg_inc[19*RATE_STEPS]={
 #define O(a) (a*RATE_STEPS)
 
 /*note that there is no O(17) in this table - it's directly in the code */
-static UINT8 eg_rate_select[32+64+32]={	/* Envelope Generator rates (32 + 64 rates + 32 RKS) */
+static const UINT8 eg_rate_select[32+64+32]={	/* Envelope Generator rates (32 + 64 rates + 32 RKS) */
 /* 32 dummy (infinite time) rates */
 O(18),O(18),O(18),O(18),O(18),O(18),O(18),O(18),
 O(18),O(18),O(18),O(18),O(18),O(18),O(18),O(18),
@@ -309,7 +309,7 @@ O(16),O(16),O(16),O(16),O(16),O(16),O(16),O(16)
 /*mask  2047, 1023, 511, 255, 127, 63, 31, 15, 7,  3, 1,  0,  0,  0,  0,  0 */
 
 #define O(a) (a*1)
-static UINT8 eg_rate_shift[32+64+32]={	/* Envelope Generator counter shifts (32 + 64 rates + 32 RKS) */
+static const UINT8 eg_rate_shift[32+64+32]={	/* Envelope Generator counter shifts (32 + 64 rates + 32 RKS) */
 /* 32 infinite time rates */
 O(0),O(0),O(0),O(0),O(0),O(0),O(0),O(0),
 O(0),O(0),O(0),O(0),O(0),O(0),O(0),O(0),
@@ -362,14 +362,14 @@ O( 0),O( 0),O( 0),O( 0),O( 0),O( 0),O( 0),O( 0)
 *   DT2=0 DT2=1 DT2=2 DT2=3
 *   0     600   781   950
 */
-static UINT32 dt2_tab[4] = { 0, 384, 500, 608 };
+static const UINT32 dt2_tab[4] = { 0, 384, 500, 608 };
 
 /*  DT1 defines offset in Hertz from base note
 *   This table is converted while initialization...
 *   Detune table shown in YM2151 User's Manual is wrong (verified on the real chip)
 */
 
-static UINT8 dt1_tab[4*32] = { /* 4*32 DT1 values */
+static const UINT8 dt1_tab[4*32] = { /* 4*32 DT1 values */
 /* DT1=0 */
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -387,7 +387,7 @@ static UINT8 dt1_tab[4*32] = { /* 4*32 DT1 values */
   8, 8, 9,10,11,12,13,14,16,17,19,20,22,22,22,22
 };
 
-static UINT16 phaseinc_rom[768]={
+static const UINT16 phaseinc_rom[768]={
 1299,1300,1301,1302,1303,1304,1305,1306,1308,1309,1310,1311,1313,1314,1315,1316,
 1318,1319,1320,1321,1322,1323,1324,1325,1327,1328,1329,1330,1332,1333,1334,1335,
 1337,1338,1339,1340,1341,1342,1343,1344,1346,1347,1348,1349,1351,1352,1353,1354,
@@ -457,7 +457,7 @@ static UINT16 phaseinc_rom[768]={
         some 0x80 could be 0x81 as well as some 0x00 could be 0x01.
 */
 
-static UINT8 lfo_noise_waveform[256] = {
+static const UINT8 lfo_noise_waveform[256] = {
 0xFF,0xEE,0xD3,0x80,0x58,0xDA,0x7F,0x94,0x9E,0xE3,0xFA,0x00,0x4D,0xFA,0xFF,0x6A,
 0x7A,0xDE,0x49,0xF6,0x00,0x33,0xBB,0x63,0x91,0x60,0x51,0xFF,0x00,0xD8,0x7F,0xDE,
 0xDC,0x73,0x21,0x85,0xB2,0x9C,0x5D,0x24,0xCD,0x91,0x9E,0x76,0x7F,0x20,0xFB,0xF3,
@@ -783,9 +783,9 @@ INLINE void envelope_KONKOFF(YM2151Operator * op, int v)
 
 #ifdef USE_MAME_TIMERS
 
-static TIMER_CALLBACK_PTR( irqAon_callback )
+static TIMER_CALLBACK( irqAon_callback )
 {
-	YM2151 *chip = param;
+	YM2151 *chip = ptr;
 	int oldstate = chip->irqlinestate;
 
 	chip->irqlinestate |= 1;
@@ -793,9 +793,9 @@ static TIMER_CALLBACK_PTR( irqAon_callback )
 	if (oldstate == 0 && chip->irqhandler) (*chip->irqhandler)(1);
 }
 
-static TIMER_CALLBACK_PTR( irqBon_callback )
+static TIMER_CALLBACK( irqBon_callback )
 {
-	YM2151 *chip = param;
+	YM2151 *chip = ptr;
 	int oldstate = chip->irqlinestate;
 
 	chip->irqlinestate |= 2;
@@ -803,9 +803,9 @@ static TIMER_CALLBACK_PTR( irqBon_callback )
 	if (oldstate == 0 && chip->irqhandler) (*chip->irqhandler)(1);
 }
 
-static TIMER_CALLBACK_PTR( irqAoff_callback )
+static TIMER_CALLBACK( irqAoff_callback )
 {
-	YM2151 *chip = param;
+	YM2151 *chip = ptr;
 	int oldstate = chip->irqlinestate;
 
 	chip->irqlinestate &= ~1;
@@ -813,9 +813,9 @@ static TIMER_CALLBACK_PTR( irqAoff_callback )
 	if (oldstate == 1 && chip->irqhandler) (*chip->irqhandler)(0);
 }
 
-static TIMER_CALLBACK_PTR( irqBoff_callback )
+static TIMER_CALLBACK( irqBoff_callback )
 {
-	YM2151 *chip = param;
+	YM2151 *chip = ptr;
 	int oldstate = chip->irqlinestate;
 
 	chip->irqlinestate &= ~2;
@@ -823,34 +823,34 @@ static TIMER_CALLBACK_PTR( irqBoff_callback )
 	if (oldstate == 2 && chip->irqhandler) (*chip->irqhandler)(0);
 }
 
-static TIMER_CALLBACK_PTR( timer_callback_a )
+static TIMER_CALLBACK( timer_callback_a )
 {
-	YM2151 *chip = param;
-	timer_adjust_ptr(chip->timer_A, chip->timer_A_time[ chip->timer_A_index ], attotime_zero);
+	YM2151 *chip = ptr;
+	timer_adjust(chip->timer_A, chip->timer_A_time[ chip->timer_A_index ], 0, attotime_zero);
 	chip->timer_A_index_old = chip->timer_A_index;
 	if (chip->irq_enable & 0x04)
 	{
 		chip->status |= 1;
-		timer_set_ptr(attotime_zero,chip,irqAon_callback);
+		timer_set(attotime_zero,chip,0,irqAon_callback);
 	}
 	if (chip->irq_enable & 0x80)
 		chip->csm_req = 2;		/* request KEY ON / KEY OFF sequence */
 }
-static TIMER_CALLBACK_PTR( timer_callback_b )
+static TIMER_CALLBACK( timer_callback_b )
 {
-	YM2151 *chip = param;
-	timer_adjust_ptr(chip->timer_B, chip->timer_B_time[ chip->timer_B_index ], attotime_zero);
+	YM2151 *chip = ptr;
+	timer_adjust(chip->timer_B, chip->timer_B_time[ chip->timer_B_index ], 0, attotime_zero);
 	chip->timer_B_index_old = chip->timer_B_index;
 	if (chip->irq_enable & 0x08)
 	{
 		chip->status |= 2;
-		timer_set_ptr(attotime_zero,chip,irqBon_callback);
+		timer_set(attotime_zero,chip,0,irqBon_callback);
 	}
 }
 #if 0
-static TIMER_CALLBACK_PTR( timer_callback_chip_busy )
+static TIMER_CALLBACK( timer_callback_chip_busy )
 {
-	YM2151 *chip = param;
+	YM2151 *chip = ptr;
 	chip->status &= 0x7f;	/* reset busy flag */
 }
 #endif
@@ -1056,7 +1056,7 @@ void YM2151WriteReg(void *_chip, int r, int v)
 #if 0
 	/* There is no info on what YM2151 really does when busy flag is set */
 	if ( chip->status & 0x80 ) return;
-	timer_set_ptr ( attotime_mul(ATTOTIME_IN_HZ(chip->clock), 64), chip, timer_callback_chip_busy);
+	timer_set ( attotime_mul(ATTOTIME_IN_HZ(chip->clock), 64), chip, 0, timer_callback_chip_busy);
 	chip->status |= 0x80;	/* set busy flag for 64 chip clock cycles */
 #endif
 
@@ -1107,7 +1107,7 @@ void YM2151WriteReg(void *_chip, int r, int v)
 			{
 #ifdef USE_MAME_TIMERS
 				chip->status &= ~1;
-				timer_set_ptr(attotime_zero,chip,irqAoff_callback);
+				timer_set(attotime_zero,chip,0,irqAoff_callback);
 #else
 				int oldstate = chip->status & 3;
 				chip->status &= ~1;
@@ -1119,7 +1119,7 @@ void YM2151WriteReg(void *_chip, int r, int v)
 			{
 #ifdef USE_MAME_TIMERS
 				chip->status &= ~2;
-				timer_set_ptr(attotime_zero,chip,irqBoff_callback);
+				timer_set(attotime_zero,chip,0,irqBoff_callback);
 #else
 				int oldstate = chip->status & 3;
 				chip->status &= ~2;
@@ -1133,7 +1133,7 @@ void YM2151WriteReg(void *_chip, int r, int v)
 				/* start timer _only_ if it wasn't already started (it will reload time value next round) */
 					if (!timer_enable(chip->timer_B, 1))
 					{
-						timer_adjust_ptr(chip->timer_B, chip->timer_B_time[ chip->timer_B_index ], attotime_zero);
+						timer_adjust(chip->timer_B, chip->timer_B_time[ chip->timer_B_index ], 0, attotime_zero);
 						chip->timer_B_index_old = chip->timer_B_index;
 					}
 				#else
@@ -1158,7 +1158,7 @@ void YM2151WriteReg(void *_chip, int r, int v)
 				/* start timer _only_ if it wasn't already started (it will reload time value next round) */
 					if (!timer_enable(chip->timer_A, 1))
 					{
-						timer_adjust_ptr(chip->timer_A, chip->timer_A_time[ chip->timer_A_index ], attotime_zero);
+						timer_adjust(chip->timer_A, chip->timer_A_time[ chip->timer_A_index ], 0, attotime_zero);
 						chip->timer_A_index_old = chip->timer_A_index;
 					}
 				#else
@@ -1542,8 +1542,8 @@ void * YM2151Init(int index, int clock, int rate)
 
 #ifdef USE_MAME_TIMERS
 /* this must be done _before_ a call to YM2151ResetChip() */
-	PSG->timer_A = timer_alloc_ptr(timer_callback_a, PSG);
-	PSG->timer_B = timer_alloc_ptr(timer_callback_b, PSG);
+	PSG->timer_A = timer_alloc(timer_callback_a, PSG);
+	PSG->timer_B = timer_alloc(timer_callback_b, PSG);
 #else
 	PSG->tim_A      = 0;
 	PSG->tim_B      = 0;

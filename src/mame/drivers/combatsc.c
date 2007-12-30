@@ -639,7 +639,7 @@ static GFXDECODE_START( combascb )
 	GFXDECODE_ENTRY( REGION_GFX2, 0x40000, sprite_layout, 0, 8*16 )
 GFXDECODE_END
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	0,
 	0,
@@ -647,7 +647,7 @@ static struct YM2203interface ym2203_interface =
 	0
 };
 
-static struct upd7759_interface upd7759_interface =
+static const struct upd7759_interface upd7759_interface =
 {
 	REGION_SOUND1,			/* memory region */
 	0
@@ -904,7 +904,7 @@ ROM_END
 
 static void combasc_init_common(void)
 {
-	combasc_interleave_timer = timer_alloc(NULL);
+	combasc_interleave_timer = timer_alloc(NULL, NULL);
 }
 
 static DRIVER_INIT( combasct )

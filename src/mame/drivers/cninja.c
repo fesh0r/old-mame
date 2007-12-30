@@ -825,7 +825,7 @@ GFXDECODE_END
 
 static MACHINE_RESET( cninja )
 {
-	raster_irq_timer = timer_alloc(interrupt_gen);
+	raster_irq_timer = timer_alloc(interrupt_gen, NULL);
 	cninja_scanline=0;
 	cninja_irq_mask=0;
 }
@@ -846,13 +846,13 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 	OKIM6295_set_bank_base(1, (data & 1) * 0x40000);
 }
 
-static struct YM2151interface ym2151_interface =
+static const struct YM2151interface ym2151_interface =
 {
 	sound_irq,
 	sound_bankswitch_w
 };
 
-static struct YM2151interface ym2151_interface2 =
+static const struct YM2151interface ym2151_interface2 =
 {
 	sound_irq2
 };

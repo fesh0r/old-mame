@@ -2031,7 +2031,7 @@ static UINT32 copro_fifoout_pop(void)
 		extern void v60_stall(void);
 		v60_stall();
 
-		timer_call_after_resynch(0, NULL);
+		timer_call_after_resynch(NULL, 0, NULL);
 
 		return 0;
 	}
@@ -2157,7 +2157,7 @@ WRITE16_HANDLER( model1_vr_tgp_w )
 }
 
 /* TGP config */
-struct mb86233_config model1_vr_tgp_config =
+const struct mb86233_config model1_vr_tgp_config =
 {
 	copro_fifoin_pop,
 	copro_fifoout_push

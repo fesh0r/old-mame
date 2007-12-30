@@ -34,7 +34,7 @@ static WRITE8_HANDLER(pa_w){homerun_xpa=data;}
 static WRITE8_HANDLER(pb_w){homerun_xpb=data;}
 static WRITE8_HANDLER(pc_w){homerun_xpc=data;}
 
-static ppi8255_interface ppi8255_intf =
+static const ppi8255_interface ppi8255_intf =
 {
 	1,
 	{ 0 },
@@ -109,7 +109,7 @@ static ADDRESS_MAP_START( homerun_iomap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x71, 0x71) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
 ADDRESS_MAP_END
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	input_port_3_r,
 	0,

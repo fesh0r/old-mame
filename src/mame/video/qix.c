@@ -84,7 +84,7 @@ VIDEO_START( qix )
 	vram_mask = 0xff;
 
 	/* allocate a timer */
-	scanline_timer = timer_alloc(scanline_callback);
+	scanline_timer = timer_alloc(scanline_callback, NULL);
 	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 1, 0), 1, attotime_zero);
 
 	/* set up save states */
@@ -242,7 +242,7 @@ WRITE8_HANDLER( qix_paletteram_w )
 	/* this conversion table should be about right. It gives a reasonable */
 	/* gray scale in the test screen, and the red, green and blue squares */
 	/* in the same screen are barely visible, as the manual requires. */
-	static UINT8 table[16] =
+	static const UINT8 table[16] =
 	{
 		0x00,	/* value = 0, intensity = 0 */
 		0x12,	/* value = 0, intensity = 1 */

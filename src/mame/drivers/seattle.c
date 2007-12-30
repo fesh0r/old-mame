@@ -541,10 +541,10 @@ static MACHINE_RESET( seattle )
 	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_READONLY, 1);
 
 	/* allocate timers for the galileo */
-	galileo.timer[0].timer = timer_alloc(galileo_timer_callback);
-	galileo.timer[1].timer = timer_alloc(galileo_timer_callback);
-	galileo.timer[2].timer = timer_alloc(galileo_timer_callback);
-	galileo.timer[3].timer = timer_alloc(galileo_timer_callback);
+	galileo.timer[0].timer = timer_alloc(galileo_timer_callback, NULL);
+	galileo.timer[1].timer = timer_alloc(galileo_timer_callback, NULL);
+	galileo.timer[2].timer = timer_alloc(galileo_timer_callback, NULL);
+	galileo.timer[3].timer = timer_alloc(galileo_timer_callback, NULL);
 	galileo.dma_active = -1;
 
 	vblank_irq_num = 0;
@@ -587,7 +587,7 @@ static void ide_interrupt(int state)
 }
 
 
-static struct ide_interface ide_intf =
+static const struct ide_interface ide_intf =
 {
 	ide_interrupt
 };
@@ -614,7 +614,7 @@ static void ethernet_interrupt(int state)
 }
 
 
-static struct smc91c9x_interface ethernet_intf =
+static const struct smc91c9x_interface ethernet_intf =
 {
 	ethernet_interrupt
 };
@@ -2447,7 +2447,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct mips3_config config =
+static const struct mips3_config config =
 {
 	16384,		/* code cache size */
 	16384,		/* data cache size */

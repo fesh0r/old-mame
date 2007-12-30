@@ -218,7 +218,7 @@ GFXDECODE_END
 
 /* Sound Interface */
 
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
  input_port_3_r,// DSWA
  input_port_4_r,// DSWB
@@ -232,7 +232,7 @@ static WRITE8_HANDLER( ppi8255_a_w ){}// watchdog ?
 static WRITE8_HANDLER( ppi8255_b_w ){}// lamps ?
 static WRITE8_HANDLER( ppi8255_c_w ){}
 
-static ppi8255_interface ppi8255_intf =
+static const ppi8255_interface ppi8255_intf =
 {
 	2, 							        // 2 chips
 	{ input_port_0_r,	NULL },	        // Port A read

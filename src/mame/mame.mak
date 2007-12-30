@@ -287,6 +287,7 @@ SOUNDS += RF5C400
 SOUNDS += SPEAKER
 SOUNDS += CDP1869
 SOUNDS += S14001A
+SOUNDS += M58817
 SOUNDS += BEEP
 #SOUNDS += WAVE
 #SOUNDS += SID6581
@@ -1145,6 +1146,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/segas16a.o $(VIDEO)/segas16a.o \
 	$(DRIVERS)/segas16b.o $(VIDEO)/segas16b.o \
 	$(DRIVERS)/segas18.o $(VIDEO)/segas18.o \
+	$(DRIVERS)/segas24.o $(MACHINE)/segas24.o $(VIDEO)/segas24.o \
 	$(DRIVERS)/segas32.o $(MACHINE)/segas32.o $(VIDEO)/segas32.o \
 	$(DRIVERS)/segae.o $(VIDEO)/segasyse.o \
 	$(DRIVERS)/segaxbd.o $(VIDEO)/segaxbd.o \
@@ -1157,7 +1159,6 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/system1.o $(VIDEO)/system1.o \
 	$(DRIVERS)/system16.o $(MACHINE)/system16.o $(VIDEO)/system16.o $(VIDEO)/sys16spr.o \
 	$(DRIVERS)/system18.o \
-	$(DRIVERS)/system24.o $(MACHINE)/system24.o $(VIDEO)/system24.o \
 	$(DRIVERS)/topshoot.o \
 	$(DRIVERS)/turbo.o $(AUDIO)/turbo.o $(VIDEO)/turbo.o \
 	$(DRIVERS)/vicdual.o $(AUDIO)/vicdual.o $(VIDEO)/vicdual.o \
@@ -1513,6 +1514,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/dorachan.o \
 	$(DRIVERS)/dreamwld.o \
 	$(DRIVERS)/dribling.o $(VIDEO)/dribling.o \
+	$(DRIVERS)/drw80pkr.o \
 	$(DRIVERS)/dwarfd.o \
 	$(DRIVERS)/dynadice.o \
 	$(DRIVERS)/epos.o $(VIDEO)/epos.o \
@@ -1684,9 +1686,11 @@ $(DRIVERS)/meadows.o:	$(LAYOUT)/deadeye.lh \
 $(DRIVERS)/nbmj8688.o:	$(LAYOUT)/nbmj8688.lh
 
 $(DRIVERS)/peplus.o:	$(LAYOUT)/peplus.lh \
-						$(LAYOUT)/pepp0158.lh \
-						$(LAYOUT)/pepp0188.lh \
-						$(LAYOUT)/peset038.lh
+						$(LAYOUT)/pe_schip.lh \
+						$(LAYOUT)/pe_poker.lh \
+						$(LAYOUT)/pe_bjack.lh \
+						$(LAYOUT)/pe_keno.lh \
+						$(LAYOUT)/pe_slots.lh
 
 $(DRIVERS)/pmpoker.o:	$(LAYOUT)/pmpoker.lh \
 						$(LAYOUT)/goldnpkr.lh \
@@ -1695,6 +1699,8 @@ $(DRIVERS)/pmpoker.o:	$(LAYOUT)/pmpoker.lh \
 $(DRIVERS)/sbrkout.o:	$(LAYOUT)/sbrkout.lh
 
 $(DRIVERS)/sspeedr.o:	$(LAYOUT)/sspeedr.lh
+
+$(DRIVERS)/tceptor.o:	$(LAYOUT)/tceptor2.lh
 
 $(DRIVERS)/tetrisp2.o:	$(LAYOUT)/rocknms.lh
 

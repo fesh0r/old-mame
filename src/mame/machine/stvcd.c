@@ -273,7 +273,7 @@ void stvcd_reset(void)
 		cd_stat = CD_STAT_OPEN;
 	}
 
-	sector_timer = timer_alloc(sector_cb);
+	sector_timer = timer_alloc(sector_cb, NULL);
 	timer_adjust(sector_timer, ATTOTIME_IN_HZ(150), 0, attotime_zero);	// 150 sectors / second = 300kBytes/second
 }
 
@@ -1547,6 +1547,15 @@ static void make_dir_current(UINT32 fad)
 			firstfile = i;
 			i = numfiles;
 		}
+	}
+}
+
+void stvcd_exit(running_machine* machine)
+{
+	if (curdir != (direntryT *)NULL)
+	{
+		free((void *)curdir);
+		curdir = (direntryT *)NULL;
 	}
 }
 

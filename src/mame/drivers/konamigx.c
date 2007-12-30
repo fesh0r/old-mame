@@ -1245,7 +1245,7 @@ static ADDRESS_MAP_START( gxsndmap, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x580000, 0x580001) AM_WRITENOP
 ADDRESS_MAP_END
 
-static struct K054539interface k054539_interface =
+static const struct K054539interface k054539_interface =
 {
 	REGION_SOUND1
 };
@@ -1268,7 +1268,7 @@ static const gfx_layout bglayout_8bpp =
 	16*128
 };
 
-gfx_layout t1_charlayout6 =
+static const gfx_layout t1_charlayout6 =
 {
 	16, 16,
 	RGN_FRAC(1,1),
@@ -1280,7 +1280,7 @@ gfx_layout t1_charlayout6 =
 	16*16*6
 };
 
-gfx_layout t1_charlayout8 =
+static const gfx_layout t1_charlayout8 =
 {
 	16, 16,
 	RGN_FRAC(1,1),
@@ -3476,7 +3476,7 @@ typedef struct
 #define BPP6  2
 #define BPP66 3
 
-static GXGameInfoT gameDefs[] =
+static const GXGameInfoT gameDefs[] =
 {
 	{ "racinfrc", 11, 0, 0, BPP4 },
 	{ "racinfru", 11, 0, 0, BPP4 },
@@ -3526,7 +3526,7 @@ static DRIVER_INIT(konamigx)
 	snd020_hack = 0;
 	resume_trigger = 0;
 
-	dmadelay_timer = timer_alloc(dmaend_callback);
+	dmadelay_timer = timer_alloc(dmaend_callback, NULL);
 
 	i = match = 0;
 	while ((gameDefs[i].cfgport != -1) && (!match))

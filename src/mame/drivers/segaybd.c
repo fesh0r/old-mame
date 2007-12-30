@@ -184,7 +184,7 @@ static TIMER_CALLBACK( scanline_callback )
 
 static MACHINE_RESET( yboard )
 {
-    interrupt_timer = timer_alloc(scanline_callback);
+    interrupt_timer = timer_alloc(scanline_callback, NULL);
     timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, 223, 0), 223, attotime_zero);
 
 	state_save_register_global_array(misc_io_data);
@@ -217,7 +217,7 @@ static TIMER_CALLBACK( delayed_sound_data_w )
 static WRITE16_HANDLER( sound_data_w )
 {
 	if (ACCESSING_LSB)
-		timer_call_after_resynch(data & 0xff, delayed_sound_data_w);
+		timer_call_after_resynch(NULL, data & 0xff, delayed_sound_data_w);
 }
 
 
@@ -354,7 +354,7 @@ static READ16_HANDLER( analog_r )
 
 static WRITE16_HANDLER( analog_w )
 {
-	static const char *ports[] = { "ADC0", "ADC1", "ADC2", "ADC3", "ADC4", "ADC5", "ADC6" };
+	static const char *const ports[] = { "ADC0", "ADC1", "ADC2", "ADC3", "ADC4", "ADC5", "ADC6" };
 	int selected = ((offset & 3) == 3) ? (3 + (misc_io_data[0x08/2] & 3)) : (offset & 3);
 	int value = readinputportbytag_safe(ports[selected], 0xff);
 	analog_data[offset & 3] = value;
@@ -933,13 +933,13 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct YM2151interface ym2151_interface =
+static const struct YM2151interface ym2151_interface =
 {
 	sound_cpu_irq
 };
 
 
-static struct SEGAPCMinterface segapcm_interface =
+static const struct SEGAPCMinterface segapcm_interface =
 {
 	BANK_12M | BANK_MASKF8,
 	REGION_SOUND1

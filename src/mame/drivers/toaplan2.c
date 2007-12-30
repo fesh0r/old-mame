@@ -575,7 +575,7 @@ static TIMER_CALLBACK( toaplan2_raise_irq )
 static void toaplan2_vblank_irq(int irq_line)
 {
 	/* the IRQ appears to fire at line 0xe6 */
-	timer_set(video_screen_get_time_until_pos(0, 0xe6, 0), irq_line, toaplan2_raise_irq);
+	timer_set(video_screen_get_time_until_pos(0, 0xe6, 0), NULL, irq_line, toaplan2_raise_irq);
 }
 
 static INTERRUPT_GEN( toaplan2_vblank_irq1 ) { toaplan2_vblank_irq(1); }
@@ -1212,7 +1212,7 @@ static WRITE8_HANDLER( raizing_clear_nmi_w )
 /*###################### Battle Bakraid ##############################*/
 
 /* EEPROM contents with Battle Bakraid Unlimited version features unlocked */
-static UINT8 bbakraid_unlimited_nvram[512] = {
+static const UINT8 bbakraid_unlimited_nvram[512] = {
 	0xc2,0x49,0x00,0x07,0xa1,0x20,0x2a,0x2a,0x2a,0x90,0x90,0x90,0x00,0x00,0x00,0x00,
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,0x00,0x06,0x1a,0x80,0x2a,0x2a,0x2a,0x94,
 	0x94,0x94,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,0x00,0x04,
@@ -1249,7 +1249,7 @@ static UINT8 bbakraid_unlimited_nvram[512] = {
 
 
 
-static struct EEPROM_interface eeprom_interface_93C66 =
+static const struct EEPROM_interface eeprom_interface_93C66 =
 {
 	/* Pin 6 of the 93C66 is connected to Gnd!
        So it's configured for 512 bytes */
@@ -3265,12 +3265,12 @@ static void irqhandler(int linestate)
 	cpunum_set_input_line(1,0,linestate);
 }
 
-static struct YM3812interface ym3812_interface =
+static const struct YM3812interface ym3812_interface =
 {
 	irqhandler
 };
 
-static struct YMZ280Binterface ymz280b_interface =
+static const struct YMZ280Binterface ymz280b_interface =
 {
 	REGION_SOUND1,
 	bbakraid_irqhandler

@@ -192,7 +192,7 @@ static WRITE8_HANDLER( astdelux_coin_counter_w )
 
 static WRITE8_HANDLER( llander_led_w )
 {
-	static const char *lampname[] =
+	static const char *const lampname[] =
 	{
 		"lamp0", "lamp1", "lamp2", "lamp3", "lamp4"
 	};
@@ -609,7 +609,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct POKEYinterface pokey_interface =
+static const struct POKEYinterface pokey_interface =
 {
 	{ 0 },
 	input_port_3_r
@@ -639,7 +639,7 @@ static MACHINE_DRIVER_START( asteroid )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(400,300)
-	MDRV_SCREEN_VISIBLE_AREA(0, 1044, 0, 800)
+	MDRV_SCREEN_VISIBLE_AREA(522, 1566, 394, 1182)
 	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(dvg)
@@ -693,7 +693,7 @@ static MACHINE_DRIVER_START( llander )
 	MDRV_SCREEN_REFRESH_RATE(40)
 	MDRV_MACHINE_RESET(avgdvg)
 
-	MDRV_SCREEN_VISIBLE_AREA(0, 1023, 0, 1023)
+	MDRV_SCREEN_VISIBLE_AREA(522, 1566, 270, 1070)
 	MDRV_VIDEO_START(dvg)
 	MDRV_VIDEO_UPDATE(vector)
 

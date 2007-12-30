@@ -634,7 +634,7 @@ static void zals(void)
  *  Cycle Timings
  ***********************************************************************/
 
-static unsigned cycles_main[256]=
+static const unsigned cycles_main[256]=
 {
 /*00*/	1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK,
 /*10*/	1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK,
@@ -654,7 +654,7 @@ static unsigned cycles_main[256]=
 /*F0*/	0*CLK, 0*CLK, 0*CLK, 0*CLK, 2*CLK, 2*CLK, 2*CLK, 0*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK, 2*CLK
 };
 
-static unsigned cycles_7F_other[32]=
+static const unsigned cycles_7F_other[32]=
 {
 /*80*/	1*CLK, 1*CLK, 1*CLK, 0*CLK, 0*CLK, 0*CLK, 0*CLK, 0*CLK, 1*CLK, 1*CLK, 1*CLK, 1*CLK, 2*CLK, 2*CLK, 1*CLK, 1*CLK,
 /*90*/	1*CLK, 0*CLK, 0*CLK, 0*CLK, 0*CLK, 0*CLK, 0*CLK, 0*CLK, 0*CLK, 0*CLK, 0*CLK, 0*CLK, 2*CLK, 2*CLK, 0*CLK, 0*CLK
@@ -665,7 +665,7 @@ static unsigned cycles_7F_other[32]=
  *  Opcode Table
  ***********************************************************************/
 
-static opcode_fn opcode_main[256]=
+static const opcode_fn opcode_main[256]=
 {
 /*00*/  add_sh		,add_sh		,add_sh		,add_sh		,add_sh		,add_sh		,add_sh		,add_sh
 /*08*/ ,add_sh		,add_sh		,add_sh		,add_sh		,add_sh		,add_sh		,add_sh		,add_sh
@@ -701,7 +701,7 @@ static opcode_fn opcode_main[256]=
 /*F8*/ ,call		,br			,blz		,blez		,bgz		,bgez		,bnz		,bz
 };
 
-static opcode_fn opcode_7F_other[32]=
+static const opcode_fn opcode_7F_other[32]=
 {
 /*80*/  nop			,dint		,eint		,illegal	,illegal	,illegal	,illegal	,illegal
 /*88*/ ,abst		,zac		,rovm		,sovm		,cala		,ret		,pac		,apac

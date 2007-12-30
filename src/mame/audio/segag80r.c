@@ -173,7 +173,7 @@ static SOUND_START( astrob );
 
 */
 
-static const char *astrob_sample_names[] =
+static const char *const astrob_sample_names[] =
 {
 	"*astrob",
 	"invadr1.wav",		/* 0 */
@@ -196,7 +196,7 @@ static const char *astrob_sample_names[] =
 };
 
 
-static struct Samplesinterface astrob_samples_interface =
+static const struct Samplesinterface astrob_samples_interface =
 {
 	11,
 	astrob_sample_names
@@ -397,7 +397,7 @@ static TIMER_CALLBACK( sega005_auto_timer );
         The 4391 output is the final output.
 */
 
-static const char *sega005_sample_names[] =
+static const char *const sega005_sample_names[] =
 {
 	"*005",
 	"lexplode.wav",		/* 0 */
@@ -411,14 +411,14 @@ static const char *sega005_sample_names[] =
 };
 
 
-static struct Samplesinterface sega005_samples_interface =
+static const struct Samplesinterface sega005_samples_interface =
 {
 	7,
 	sega005_sample_names
 };
 
 
-static struct CustomSound_interface sega005_custom_interface =
+static const struct CustomSound_interface sega005_custom_interface =
 {
 	sega005_custom_start
 };
@@ -579,7 +579,7 @@ static void *sega005_custom_start(int clock, const struct CustomSound_interface 
 	sega005_stream = stream_create(0, 1, SEGA005_COUNTER_FREQ, NULL, sega005_stream_update);
 
 	/* create a timer for the 555 */
-	sega005_sound_timer = timer_alloc(sega005_auto_timer);
+	sega005_sound_timer = timer_alloc(sega005_auto_timer, NULL);
 
 	/* set the initial sound data */
 	sound_data = 0x00;
@@ -632,7 +632,7 @@ static TIMER_CALLBACK( sega005_auto_timer )
 
 static SOUND_START( spaceod );
 
-static const char *spaceod_sample_names[] =
+static const char *const spaceod_sample_names[] =
 {
 	"*spaceod",
 	"fire.wav",			/* 0 */
@@ -650,7 +650,7 @@ static const char *spaceod_sample_names[] =
 };
 
 
-static struct Samplesinterface spaceod_samples_interface =
+static const struct Samplesinterface spaceod_samples_interface =
 {
 	11,
 	spaceod_sample_names
@@ -766,7 +766,7 @@ static READ8_HANDLER( n7751_t1_r );
 */
 
 
-static const char *monsterb_sample_names[] =
+static const char *const monsterb_sample_names[] =
 {
 	"*monsterb",
 	"zap.wav",
@@ -775,14 +775,14 @@ static const char *monsterb_sample_names[] =
 };
 
 
-static struct Samplesinterface monsterb_samples_interface =
+static const struct Samplesinterface monsterb_samples_interface =
 {
 	2,
 	monsterb_sample_names
 };
 
 
-static struct TMS36XXinterface monsterb_tms3617_interface =
+static const struct TMS36XXinterface monsterb_tms3617_interface =
 {
 	TMS3617,
 	{0.5,0.5,0.5,0.5,0.5,0.5}  /* decay times of voices */

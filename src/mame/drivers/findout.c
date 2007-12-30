@@ -110,7 +110,7 @@ static WRITE8_HANDLER( sound_w )
 //  popmessage("%02x",data);
 }
 
-static ppi8255_interface ppi8255_intf =
+static const ppi8255_interface ppi8255_intf =
 {
 	2, 									/* 2 chips */
 	{ input_port_0_r, input_port_2_r },	/* Port A read */
@@ -178,7 +178,7 @@ static WRITE8_HANDLER( signature_w )
 	if (data == 0) signature_pos = 0;
 	else
 	{
-		static UINT8 signature[8] = { 0xff, 0x01, 0xfd, 0x05, 0xf5, 0x15, 0xd5, 0x55 };
+		static const UINT8 signature[8] = { 0xff, 0x01, 0xfd, 0x05, 0xf5, 0x15, 0xd5, 0x55 };
 
 		signature_answer = signature[signature_pos++];
 

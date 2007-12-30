@@ -68,7 +68,7 @@ WRITE16_HANDLER( f3_volume_w )
 	/* Channels 0, 1, 2, 3 - Unused */
 }
 
-static TIMER_CALLBACK( timer_callback )
+static TIMER_CALLBACK( taito_en_timer_callback )
 {
 	/* Only cause IRQ if the mask is set to allow it */
 	if (m68681_imr&8) {
@@ -80,7 +80,7 @@ static TIMER_CALLBACK( timer_callback )
 
 void f3_68681_reset(void)
 {
-	timer_68681 = timer_alloc(timer_callback);
+	timer_68681 = timer_alloc(taito_en_timer_callback, NULL);
 }
 
 READ16_HANDLER(f3_68681_r)
@@ -260,7 +260,7 @@ void taito_f3_soundsystem_reset(void)
 	//cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
 }
 
-struct ES5505interface es5505_interface =
+const struct ES5505interface es5505_interface =
 {
 	REGION_SOUND1,	/* Bank 0: Unused by F3 games? */
 	REGION_SOUND1,	/* Bank 1: All games seem to use this */

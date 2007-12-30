@@ -850,7 +850,13 @@ static void atapi_cause_irq(void)
 	cpunum_set_input_line(0, INPUT_LINE_IRQ4, ASSERT_LINE);
 }
 
-static void atapi_init(void)
+static void atapi_exit(running_machine* machine)
+{
+	SCSIDeleteInstance(atapi_device_data[1]);
+	SCSIDeleteInstance(atapi_device_data[0]);
+}
+
+static void atapi_init(running_machine *machine)
 {
 	memset(atapi_regs, 0, sizeof(atapi_regs));
 
@@ -866,6 +872,7 @@ static void atapi_init(void)
 	SCSIAllocInstance( SCSI_DEVICE_CDROM, &atapi_device_data[0], 0 );
 	// TODO: the slave drive can be either CD-ROM, DVD-ROM or HDD
 	SCSIAllocInstance( SCSI_DEVICE_CDROM, &atapi_device_data[1], 1 );
+	add_exit_callback(machine, atapi_exit);
 }
 
 static void atapi_reset(void)
@@ -1339,11 +1346,11 @@ static WRITE32_HANDLER( sound_w )
 	}
 }
 
-static int cab_data[2] = { 0x0, 0x8 };
-static int kbm_cab_data[2] = { 0x2, 0x8 };
-static int ppd_cab_data[2] = { 0x1, 0x9 };
+static const int cab_data[2] = { 0x0, 0x8 };
+static const int kbm_cab_data[2] = { 0x2, 0x8 };
+static const int ppd_cab_data[2] = { 0x1, 0x9 };
 static int cab_data_ptr = 0;
-static int * cur_cab_data = cab_data;
+static const int * cur_cab_data = cab_data;
 
 static READ32_HANDLER( cabinet_r )
 {
@@ -1783,7 +1790,7 @@ static void sound_irq_callback(int state)
 {
 }
 
-static struct YMZ280Binterface ymz280b_intf =
+static const struct YMZ280Binterface ymz280b_intf =
 {
 	REGION_SOUND1,
 	sound_irq_callback,			// irq
@@ -1974,7 +1981,7 @@ static MACHINE_RESET( firebeat )
 	cdda_set_cdrom(0, cd);
 }
 
-static ppc_config firebeat_ppc_cfg =
+static const ppc_config firebeat_ppc_cfg =
 {
 	PPC_MODEL_403GCX
 };
@@ -2244,7 +2251,7 @@ static void init_firebeat(running_machine *machine)
 {
 	UINT8 *rom = memory_region(REGION_USER2);
 
-	atapi_init();
+	atapi_init(machine);
 	intelflash_init(0, FLASH_FUJITSU_29F016A, NULL);
 	intelflash_init(1, FLASH_FUJITSU_29F016A, NULL);
 	intelflash_init(2, FLASH_FUJITSU_29F016A, NULL);
@@ -2283,7 +2290,7 @@ static DRIVER_INIT(ppd)
 static void init_keyboard(void)
 {
 	// set keyboard timer
-	keyboard_timer = timer_alloc(keyboard_timer_callback);
+	keyboard_timer = timer_alloc(keyboard_timer_callback, NULL);
 	timer_adjust(keyboard_timer, ATTOTIME_IN_MSEC(10), 0, ATTOTIME_IN_MSEC(10));
 }
 

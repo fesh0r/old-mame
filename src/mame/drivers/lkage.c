@@ -62,7 +62,7 @@ static TIMER_CALLBACK( nmi_callback )
 static WRITE8_HANDLER( lkage_sound_command_w )
 {
 	soundlatch_w(offset,data);
-	timer_call_after_resynch(data,nmi_callback);
+	timer_call_after_resynch(NULL, data,nmi_callback);
 }
 
 static WRITE8_HANDLER( lkage_sh_nmi_disable_w )
@@ -313,7 +313,7 @@ static void irqhandler(int irq)
 	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	0,
 	0,

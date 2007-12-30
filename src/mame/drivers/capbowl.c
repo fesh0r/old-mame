@@ -129,13 +129,13 @@ static TIMER_CALLBACK( capbowl_update )
 	video_screen_update_partial(0, scanline - 1);
 	scanline += 32;
 	if (scanline > 240) scanline = 32;
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, capbowl_update);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, capbowl_update);
 }
 
 
 static MACHINE_RESET( capbowl )
 {
-	timer_set(video_screen_get_time_until_pos(0, 32, 0), 32, capbowl_update);
+	timer_set(video_screen_get_time_until_pos(0, 32, 0), NULL, 32, capbowl_update);
 }
 
 
@@ -329,7 +329,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	ticket_dispenser_r,
 	0,

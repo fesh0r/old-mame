@@ -57,7 +57,8 @@ Stephh's notes (based on the game M68000 code and some tests) :
 
 static int aquarium_snd_ack;
 
-UINT16 *aquarium_scroll, *aquarium_priority;
+UINT16 *aquarium_scroll;
+//UINT16 *aquarium_priority;
 UINT16 *aquarium_txt_videoram;
 UINT16 *aquarium_mid_videoram;
 UINT16 *aquarium_bak_videoram;
@@ -357,7 +358,7 @@ static void irq_handler(int irq)
 	cpunum_set_input_line( 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
-static struct YM2151interface ym2151_interface =
+static const struct YM2151interface ym2151_interface =
 {
 	irq_handler
 };

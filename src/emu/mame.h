@@ -148,7 +148,7 @@ enum
 	REGION_MAX
 };
 
-extern const char *memory_region_names[REGION_MAX];
+extern const char *const memory_region_names[REGION_MAX];
 
 
 
@@ -186,6 +186,7 @@ struct _running_machine
 /* fix me - some games try to modify remapped_colortable directly */
 /* search for "palette hack" to find instances */
 	const pen_t *			pens;				/* remapped palette pen numbers */
+	struct _colortable_t *	colortable;			/* global colortable for remapping */
 	const UINT16 *			game_colortable;	/* lookup table used to map gfx pen numbers to color numbers */
 	const pen_t *			remapped_colortable;/* the above, already remapped through Machine->pens */
 	pen_t *					shadow_table;		/* table for looking up a shadowed pen */
@@ -244,11 +245,11 @@ struct _mame_system_time
 
 
 /***************************************************************************
-    GLOBALS
+    GLOBAL VARAIBLES
 ***************************************************************************/
 
 extern running_machine *Machine;
-extern const char *mame_disclaimer;
+extern const char mame_disclaimer[];
 extern char giant_string_buffer[];
 
 extern char build_version[];

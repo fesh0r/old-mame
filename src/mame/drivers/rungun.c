@@ -57,7 +57,7 @@ static int init_eeprom_count;
 static int rng_z80_control;
 static int rng_sound_status;
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,			/* address bits */
 	8,			/* data bits */
@@ -301,7 +301,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xfff0, 0xfff3) AM_WRITE(MWA8_NOP)
 ADDRESS_MAP_END
 
-static struct K054539interface k054539_interface =
+static const struct K054539interface k054539_interface =
 {
 	REGION_SOUND1
 };

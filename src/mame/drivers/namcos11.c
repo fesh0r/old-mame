@@ -789,7 +789,7 @@ static ADDRESS_MAP_START( namcos11_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xfffe0130, 0xfffe0133) AM_WRITENOP
 ADDRESS_MAP_END
 
-static struct
+static const struct
 {
 	const char *s_name;
 	read32_handler keycus_r;
@@ -824,7 +824,7 @@ static DRIVER_INIT( namcos11 )
 	int n_game;
 	emu_timer *timer;
 
-	timer = timer_alloc( mcu_timer );
+	timer = timer_alloc( mcu_timer , NULL);
 	timer_adjust( timer, ATTOTIME_IN_HZ( 600 ), 0, ATTOTIME_IN_HZ( 600 ) );
 
 	psx_driver_init();
@@ -881,6 +881,8 @@ static DRIVER_INIT( namcos11 )
 	}
 
 	state_save_register_global( m_n_oldcoin );
+
+	at28c16_init( 0, NULL, NULL );
 }
 
 static MACHINE_RESET( namcos11 )

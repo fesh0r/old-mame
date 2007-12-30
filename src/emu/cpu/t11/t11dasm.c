@@ -10,14 +10,14 @@
 #include "debugger.h"
 #include "t11.h"
 
-static const char *regs[8] = { "R0", "R1", "R2", "R3", "R4", "R5", "SP", "PC" };
+static const char *const regs[8] = { "R0", "R1", "R2", "R3", "R4", "R5", "SP", "PC" };
 
 static const UINT8 *rombase;
 static offs_t pcbase;
 
 #define PARAM_WORD(v)	((v) = rombase[pc - pcbase] | (rombase[pc + 1 - pcbase] << 8), pc += 2)
 
-unsigned MakeEA (char **ea, int lo, unsigned pc, int width)
+static unsigned MakeEA (char **ea, int lo, unsigned pc, int width)
 {
 	char *buffer = cpuintrf_temp_str();
 	int reg, pm;

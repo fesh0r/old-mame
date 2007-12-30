@@ -63,7 +63,7 @@ WRITE8_HANDLER( bublbobl_nmitrigger_w )
 }
 
 
-static UINT8 tokio_prot_data[] =
+static const UINT8 tokio_prot_data[] =
 {
 	0x6c,
 	0x7f,0x5f,0x7f,0x6f,0x5f,0x77,0x5f,0x7f,0x5f,0x7f,0x5f,0x7f,0x5b,0x7f,0x5f,0x7f,
@@ -105,7 +105,7 @@ static TIMER_CALLBACK( nmi_callback )
 WRITE8_HANDLER( bublbobl_sound_command_w )
 {
 	soundlatch_w(offset,data);
-	timer_call_after_resynch(data,nmi_callback);
+	timer_call_after_resynch(NULL, data,nmi_callback);
 }
 
 WRITE8_HANDLER( bublbobl_sh_nmi_disable_w )
@@ -337,7 +337,7 @@ WRITE8_HANDLER( boblbobl_ic43_a_w )
 
 WRITE8_HANDLER( boblbobl_ic43_b_w )
 {
-	static int xor[4] = { 4, 1, 8, 2 };
+	static const int xor[4] = { 4, 1, 8, 2 };
 
 //  logerror("%04x: ic43_b_w (offs %d) %02x\n",activecpu_get_pc(),offset,data);
 	ic43_b = (data >> 4) ^ xor[offset];

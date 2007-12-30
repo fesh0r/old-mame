@@ -390,7 +390,7 @@ static void pc_timer0_w(int state)
 	//  pic8259_0_issue_irq(0);
 }
 
-static struct pit8253_config pc_pit8253_config =
+static const struct pit8253_config pc_pit8253_config =
 {
 	TYPE8253,
 	{
@@ -475,7 +475,7 @@ static WRITE8_HANDLER( sys_reset_w )
 }
 
 
-static ppi8255_interface filetto_ppi8255_intf =
+static const ppi8255_interface filetto_ppi8255_intf =
 {
 	2, 							/* 2 chips */
 	{ port_a_r,NULL },			/* Port A read */

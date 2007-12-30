@@ -54,7 +54,7 @@ static UINT16 *gx_workram;
 static INT32 init_eeprom_count;
 static UINT8 mw_irq_control;
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,			/* address bits */
 	8,			/* data bits */
@@ -67,7 +67,7 @@ static struct EEPROM_interface eeprom_interface =
 
 /* Gaiapolis and Polygonet Commanders use the ER5911,
    but the command formats are slightly different.  Why? */
-static struct EEPROM_interface eeprom_interface_gaia =
+static const struct EEPROM_interface eeprom_interface_gaia =
 {
 	7,			/* address bits */
 	8,			/* data bits */
@@ -812,7 +812,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xfff0, 0xfff3) AM_WRITE(MWA8_NOP)	// unknown write
 ADDRESS_MAP_END
 
-static struct K054539interface k054539_interface =
+static const struct K054539interface k054539_interface =
 {
 	REGION_SOUND1
 };

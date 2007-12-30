@@ -94,8 +94,8 @@ INLINE int limit( int val, int max, int min ) {
 #define MAXOUT 0x7fff
 #define MINOUT -0x8000
 
-void K053260_update( void * param, stream_sample_t **inputs, stream_sample_t **buffer, int length ) {
-	static long dpcmcnv[] = { 0,1,2,4,8,16,32,64, -128, -64, -32, -16, -8, -4, -2, -1};
+static void K053260_update( void * param, stream_sample_t **inputs, stream_sample_t **buffer, int length ) {
+	static const long dpcmcnv[] = { 0,1,2,4,8,16,32,64, -128, -64, -32, -16, -8, -4, -2, -1};
 
 	int i, j, lvol[4], rvol[4], play[4], loop[4], ppcm_data[4], ppcm[4];
 	unsigned char *rom[4];
@@ -222,7 +222,7 @@ static void *k053260_start(int sndindex, int clock, const void *config)
 
 	/* setup SH1 timer if necessary */
 	if ( ic->intf->irq )
-		timer_pulse( attotime_mul(ATTOTIME_IN_HZ(clock), 32), 0, ic->intf->irq );
+		timer_pulse( attotime_mul(ATTOTIME_IN_HZ(clock), 32), NULL, 0, ic->intf->irq );
 
     return ic;
 }
@@ -250,7 +250,7 @@ INLINE void check_bounds( struct K053260_chip_def *ic, int channel ) {
 #endif
 }
 
-void K053260_write( int chip, offs_t offset, UINT8 data )
+static void K053260_write( int chip, offs_t offset, UINT8 data )
 {
 	int i, t;
 	int r = offset;
@@ -367,7 +367,7 @@ void K053260_write( int chip, offs_t offset, UINT8 data )
 	}
 }
 
-UINT8 K053260_read( int chip, offs_t offset )
+static UINT8 K053260_read( int chip, offs_t offset )
 {
 	struct K053260_chip_def *ic = sndti_token(SOUND_K053260, chip);
 

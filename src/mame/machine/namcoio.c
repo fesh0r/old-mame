@@ -277,7 +277,7 @@ static void namcoio_51XX_write(int chip,int data)
   verified on Namco original hardware, but they are the same in all the bootlegs,
   so we can assume they are right.
 */
-static int joy_map[16] =
+static const int joy_map[16] =
 /*  LDRU, LDR, LDU,  LD, LRU, LR,  LU,    L, DRU,  DR,  DU,   D,  RU,   R,   U, center */
 {	 0xf, 0xe, 0xd, 0x5, 0xc, 0x9, 0x7, 0x6, 0xb, 0x3, 0xa, 0x4, 0x1, 0x2, 0x0, 0x8 };
 
@@ -794,7 +794,7 @@ void namcoio_set_irq_line(int chipnum, int state)
 	if (chipnum < MAX_NAMCOIO && state != CLEAR_LINE && !io[chipnum].reset)
 	{
 		/* give the cpu a tiny bit of time to write the command before processing it */
-		timer_set(ATTOTIME_IN_USEC(50), chipnum, namcoio_run);
+		timer_set(ATTOTIME_IN_USEC(50), NULL, chipnum, namcoio_run);
 	}
 }
 
@@ -876,7 +876,7 @@ void namco_06xx_init(int chipnum, int cpu,
 		namcoio_init(4*chipnum + 2, type2, intf2);
 		namcoio_init(4*chipnum + 3, type3, intf3);
 		nmi_cpu[chipnum] = cpu;
-		nmi_timer[chipnum] = timer_alloc(nmi_generate);
+		nmi_timer[chipnum] = timer_alloc(nmi_generate, NULL);
 		namco_06xx_state_save(chipnum);
 	}
 }

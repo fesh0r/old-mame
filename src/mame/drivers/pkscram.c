@@ -264,7 +264,7 @@ static void irqhandler(int irq)
 		cpunum_set_input_line(0,2,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	0,0,0,0,
 	irqhandler
@@ -274,7 +274,7 @@ static MACHINE_RESET( pkscramble)
 {
 	out = 0;
 	interrupt_line_active=0;
-	scanline_timer = timer_alloc(scanline_callback);
+	scanline_timer = timer_alloc(scanline_callback, NULL);
 	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, interrupt_scanline, 0), interrupt_scanline, attotime_zero);
 
 	state_save_register_global(out);

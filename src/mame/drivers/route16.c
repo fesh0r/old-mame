@@ -566,7 +566,7 @@ INPUT_PORTS_END
 
 
 
-static struct AY8910interface stratvox_ay8910_interface =
+static const struct AY8910interface stratvox_ay8910_interface =
 {
 	0,
 	0,
@@ -575,7 +575,7 @@ static struct AY8910interface stratvox_ay8910_interface =
 };
 
 
-static struct SN76477interface sn76477_interface =
+static const struct SN76477interface sn76477_interface =
 {
 	RES_K(47),		/*  4  noise_res                    */
 	RES_K(150),		/*  5  filter_res                   */

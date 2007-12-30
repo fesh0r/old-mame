@@ -860,7 +860,7 @@ static MACHINE_RESET(mediagx)
 	dacl = auto_malloc(65536 * sizeof(INT16));
 	dacr = auto_malloc(65536 * sizeof(INT16));
 
-	sound_timer = timer_alloc(sound_timer_callback);
+	sound_timer = timer_alloc(sound_timer_callback, NULL);
 	timer_adjust(sound_timer, ATTOTIME_IN_MSEC(10), 0, attotime_zero);
 
 	dmadac_enable(0, 2, 1);
@@ -916,17 +916,17 @@ static void ide_interrupt(int state)
 	pic8259_set_irq_line(1, 6, state);
 }
 
-static struct kbdc8042_interface at8042 =
+static const struct kbdc8042_interface at8042 =
 {
 	KBDC8042_AT386, set_gate_a20, keyboard_interrupt
 };
 
-static struct ide_interface ide_intf =
+static const struct ide_interface ide_intf =
 {
 	ide_interrupt
 };
 
-static struct pci_device_info cx5510 =
+static const struct pci_device_info cx5510 =
 {
 	cx5510_pci_r,
 	cx5510_pci_w

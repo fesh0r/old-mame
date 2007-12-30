@@ -241,7 +241,7 @@ static TIMER_CALLBACK( cadash_interrupt5 )
 
 static INTERRUPT_GEN( cadash_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(500,0),0, cadash_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(500,0), NULL, 0, cadash_interrupt5);
 	cpunum_set_input_line(0, 4, HOLD_LINE);  /* interrupt vector 4 */
 }
 
@@ -815,7 +815,7 @@ static void irq_handler(int irq)
 	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2610interface ym2610_interface =
+static const struct YM2610interface ym2610_interface =
 {
 	irq_handler,
 	REGION_SOUND1,	/* Delta-T */
@@ -823,13 +823,13 @@ static struct YM2610interface ym2610_interface =
 };
 
 
-static struct YM2151interface ym2151_interface =
+static const struct YM2151interface ym2151_interface =
 {
 	irq_handler,
 	sound_bankswitch_w
 };
 
-static struct MSM5205interface msm5205_interface =
+static const struct MSM5205interface msm5205_interface =
 {
 	asuka_msm5205_vck,	/* VCK function */
 	MSM5205_S48_4B		/* 8 kHz */

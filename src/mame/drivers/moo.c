@@ -60,7 +60,7 @@ static UINT16 protram[16];
 static UINT16 cur_control2;
 
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	7,			/* address bits */
 	8,			/* data bits */
@@ -178,7 +178,7 @@ static INTERRUPT_GEN(moo_interrupt)
 		moo_objdma(game_type);
 
 		// schedule DMA end interrupt (delay shortened to catch up with V-blank)
-		timer_set(ATTOTIME_IN_USEC(MOO_DMADELAY), 0, dmaend_callback);
+		timer_set(ATTOTIME_IN_USEC(MOO_DMADELAY), NULL, 0, dmaend_callback);
 	}
 
 	// trigger V-blank interrupt
@@ -191,7 +191,7 @@ static INTERRUPT_GEN(moobl_interrupt)
 	moo_objdma(game_type);
 
 	// schedule DMA end interrupt (delay shortened to catch up with V-blank)
-	timer_set(ATTOTIME_IN_USEC(MOO_DMADELAY), 0, dmaend_callback);
+	timer_set(ATTOTIME_IN_USEC(MOO_DMADELAY), NULL, 0, dmaend_callback);
 
 	// trigger V-blank interrupt
 	cpunum_set_input_line(0, 5, HOLD_LINE);
@@ -606,7 +606,7 @@ static INPUT_PORTS_START( bucky )
 INPUT_PORTS_END
 
 
-static struct K054539interface k054539_interface =
+static const struct K054539interface k054539_interface =
 {
 	REGION_SOUND1
 };

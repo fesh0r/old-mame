@@ -124,7 +124,7 @@ CN1 standard DB15 VGA connector (15KHz)
 #include "machine/eeprom.h"
 
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -344,7 +344,7 @@ static WRITE16_HANDLER( pntnpuzl_280018_w )
 
 static READ16_HANDLER( pntnpuzl_280014_r )
 {
-	static int startup[3] = { 0x80, 0x0c, 0x00 };
+	static const int startup[3] = { 0x80, 0x0c, 0x00 };
 	int res;
 
 	if (serial_out == 0x11)

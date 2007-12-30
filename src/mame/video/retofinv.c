@@ -185,7 +185,7 @@ WRITE8_HANDLER( retofinv_gfx_ctrl_w )
 static void draw_sprites(running_machine *machine, mame_bitmap *bitmap)
 {
 	int offs;
-	static rectangle spritevisiblearea =
+	static const rectangle spritevisiblearea =
 	{
 		2*8, 34*8-1,
 		0*8, 28*8-1
@@ -193,7 +193,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap)
 
 	for (offs = 0;offs < 0x80;offs += 2)
 	{
-		static int gfx_offs[2][2] =
+		static const int gfx_offs[2][2] =
 		{
 			{ 0, 1 },
 			{ 2, 3 }

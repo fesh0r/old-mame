@@ -1421,7 +1421,7 @@ static DRIVER_INIT(hng64_race)
 
 
 /* ?? */
-static struct mips3_config config =
+static const struct mips3_config config =
 {
 	16384,				/* code cache size */
 	16384				/* data cache size */
@@ -1448,7 +1448,7 @@ static INTERRUPT_GEN( irq_start )
 	}
 
 	cpunum_set_input_line(0, 0, ASSERT_LINE);
-	timer_set(ATTOTIME_IN_USEC(50), 0, irq_stop);
+	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, irq_stop);
 }
 
 

@@ -488,7 +488,7 @@ static TIMER_CALLBACK( wgp_cpub_interrupt6 )
 
 static INTERRUPT_GEN( wgp_cpub_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, wgp_cpub_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL, 0, wgp_cpub_interrupt6);
 	cpunum_set_input_line(2, 4, HOLD_LINE);
 }
 
@@ -611,7 +611,7 @@ static WRITE16_HANDLER( wgp_adinput_w )
        hardware has got the next a/d conversion ready. We set a token
        delay of 10000 cycles although our inputs are always ready. */
 
-	timer_set(ATTOTIME_IN_CYCLES(10000,0),0, wgp_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0), NULL, 0, wgp_interrupt6);
 }
 
 
@@ -951,7 +951,7 @@ static void irqhandler(int irq)	// assumes Z80 sandwiched between 68Ks
 	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2610interface ym2610_interface =
+static const struct YM2610interface ym2610_interface =
 {
 	irqhandler,
 	REGION_SOUND2,	/* Delta-T */

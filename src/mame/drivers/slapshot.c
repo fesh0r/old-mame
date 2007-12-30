@@ -187,7 +187,7 @@ static TIMER_CALLBACK( slapshot_interrupt6 )
 
 static INTERRUPT_GEN( slapshot_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(200000-500,0),0, slapshot_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL, 0, slapshot_interrupt6);
 	cpunum_set_input_line(0,5,HOLD_LINE);
 }
 
@@ -532,7 +532,7 @@ static void irqhandler(int irq)
 	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2610interface ym2610_interface =
+static const struct YM2610interface ym2610_interface =
 {
 	irqhandler,
 	REGION_SOUND2,	/* Delta-T */

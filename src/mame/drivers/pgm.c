@@ -376,7 +376,7 @@ static WRITE16_HANDLER( arm7_latch_68k_w )
 
 #ifdef PGMARM7SPEEDHACK
 	cpu_trigger(1000);
-	timer_set(ATTOTIME_IN_USEC(50), 0, arm_irq); // i don't know how long..
+	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, arm_irq); // i don't know how long..
 	cpu_spinuntil_trigger(1002);
 #else
 	cpunum_set_input_line(2, ARM7_FIRQ_LINE, PULSE_LINE);
@@ -460,7 +460,7 @@ static void sound_irq(int level)
 	cpunum_set_input_line(1, 0, level);
 }
 
-static struct ics2115_interface pgm_ics2115_interface = {
+static const struct ics2115_interface pgm_ics2115_interface = {
 	REGION_SOUND1,
 	sound_irq
 };

@@ -277,7 +277,7 @@ static READ8_HANDLER( omegrace_vg_status_r )
  * 5 4 3 2 1 0 for encoder 2 (not shifted..)
  */
 
-static UINT8 spinnerTable[64] =
+static const UINT8 spinnerTable[64] =
 {
 	0x00, 0x04, 0x14, 0x10, 0x18, 0x1c, 0x5c, 0x58,
 	0x50, 0x54, 0x44, 0x40, 0x48, 0x4c, 0x6c, 0x68,
@@ -503,7 +503,7 @@ static MACHINE_DRIVER_START( omegrace )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(400, 300)
-	MDRV_SCREEN_VISIBLE_AREA(0, 1044, 0, 1024)
+	MDRV_SCREEN_VISIBLE_AREA(522, 1566, 522, 1566)
 	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(dvg)

@@ -374,11 +374,11 @@ int ui_display_startup_screens(int first_time, int show_disclaimer)
 
 		/* loop while we have a handler */
 		while (ui_handler_callback != handler_ingame && !mame_is_scheduled_event_pending(Machine) && !ui_menu_is_force_game_select())
-			video_frame_update();
+			video_frame_update(FALSE);
 
 		/* clear the handler and force an update */
 		ui_set_handler(handler_ingame, 0);
-		video_frame_update();
+		video_frame_update(FALSE);
 	}
 
 	/* if we're the empty driver, force the menus on */
@@ -407,7 +407,7 @@ void ui_set_startup_text(const char *text, int force)
 	if (force || (curtime - lastupdatetime) > osd_ticks_per_second() / 4)
 	{
 		lastupdatetime = curtime;
-		video_frame_update();
+		video_frame_update(FALSE);
 	}
 }
 
@@ -1141,13 +1141,16 @@ int sprintf_game_info(char *buffer)
 		bufptr += sprintf(bufptr, "\n%s\n", ui_getstring(UI_vectorgame));
 
 	/* display screen resolution and refresh rate info for raster games */
-	else
+	else if (Machine->drv->video_attributes & VIDEO_TYPE_RASTER)
 		bufptr += sprintf(bufptr,"\n%s:\n%d " UTF8_MULTIPLY " %d (%s) %f" UTF8_NBSP "Hz\n",
 				ui_getstring(UI_screenres),
 				Machine->screen[0].visarea.max_x - Machine->screen[0].visarea.min_x + 1,
 				Machine->screen[0].visarea.max_y - Machine->screen[0].visarea.min_y + 1,
 				(Machine->gamedrv->flags & ORIENTATION_SWAP_XY) ? "V" : "H",
 				ATTOSECONDS_TO_HZ(Machine->screen[0].refresh));
+	else
+		*bufptr++ = '\0';
+
 	return bufptr - buffer;
 }
 

@@ -216,7 +216,7 @@ static TIMER_CALLBACK( rsaga2_interrupt2  )
 
 static INTERRUPT_GEN( rastansaga2_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,rsaga2_interrupt2);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, rsaga2_interrupt2);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -228,7 +228,7 @@ static TIMER_CALLBACK( crimec_interrupt3 )
 
 static INTERRUPT_GEN( crimec_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,crimec_interrupt3);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, crimec_interrupt3);
 	cpunum_set_input_line(0, 5, HOLD_LINE);
 }
 
@@ -240,7 +240,7 @@ static TIMER_CALLBACK( hitice_interrupt6 )
 
 static INTERRUPT_GEN( hitice_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,hitice_interrupt6);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, hitice_interrupt6);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -252,7 +252,7 @@ static TIMER_CALLBACK( rambo3_interrupt1 )
 
 static INTERRUPT_GEN( rambo3_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,rambo3_interrupt1);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, rambo3_interrupt1);
 	cpunum_set_input_line(0, 6, HOLD_LINE);
 }
 
@@ -264,7 +264,7 @@ static TIMER_CALLBACK( pbobble_interrupt5 )
 
 static INTERRUPT_GEN( pbobble_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,pbobble_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, pbobble_interrupt5);
 	cpunum_set_input_line(0, 3, HOLD_LINE);
 }
 
@@ -275,7 +275,7 @@ static TIMER_CALLBACK( viofight_interrupt1 )
 
 static INTERRUPT_GEN( viofight_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,viofight_interrupt1);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, viofight_interrupt1);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -286,7 +286,7 @@ static TIMER_CALLBACK( masterw_interrupt4 )
 
 static INTERRUPT_GEN( masterw_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,masterw_interrupt4);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, masterw_interrupt4);
 	cpunum_set_input_line(0, 5, HOLD_LINE);
 }
 
@@ -297,7 +297,7 @@ static TIMER_CALLBACK( silentd_interrupt4 )
 
 static INTERRUPT_GEN( silentd_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,silentd_interrupt4);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, silentd_interrupt4);
 	cpunum_set_input_line(0, 6, HOLD_LINE);
 }
 
@@ -308,7 +308,7 @@ static TIMER_CALLBACK( selfeena_interrupt4 )
 
 static INTERRUPT_GEN( selfeena_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0),0,selfeena_interrupt4);
+	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, selfeena_interrupt4);
 	cpunum_set_input_line(0, 6, HOLD_LINE);
 }
 
@@ -319,7 +319,7 @@ static TIMER_CALLBACK( sbm_interrupt5 )//4
 
 static INTERRUPT_GEN( sbm_interrupt )//5
 {
-	timer_set(ATTOTIME_IN_CYCLES(10000,0),0,sbm_interrupt5);
+	timer_set(ATTOTIME_IN_CYCLES(10000,0), NULL, 0, sbm_interrupt5);
 	cpunum_set_input_line(0, 4, HOLD_LINE);
 }
 
@@ -382,7 +382,7 @@ static WRITE16_HANDLER( gain_control_w )
 
 ***************************************************************************/
 
-static struct EEPROM_interface eeprom_interface =
+static const struct EEPROM_interface eeprom_interface =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -2581,21 +2581,21 @@ static void irqhandler(int irq)
 	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static struct YM2610interface ym2610_interface_rsaga2 =
+static const struct YM2610interface ym2610_interface_rsaga2 =
 {
 	irqhandler,
 	REGION_SOUND1,
 	REGION_SOUND2
 };
 
-static struct YM2610interface ym2610_interface_crimec =
+static const struct YM2610interface ym2610_interface_crimec =
 {
 	irqhandler,
 	REGION_SOUND1,
 	REGION_SOUND1
 };
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	0,
 	0,
@@ -2627,7 +2627,7 @@ static void mb87078_gain_changed(int channel, int percent)
 	}
 }
 
-static struct MB87078interface mb87078_interface =
+static const struct MB87078interface mb87078_interface =
 {
 	mb87078_gain_changed	/*callback function for gain change*/
 };

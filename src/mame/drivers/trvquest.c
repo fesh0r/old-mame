@@ -220,11 +220,11 @@ static void via_irq(int state)
 	/* Kaos sits in a tight loop polling the VIA irq flags register, but that register is
        cleared by the irq handler. Therefore, I wait a bit before triggering the irq to
        leave time for the program to see the flag change. */
-	timer_set(ATTOTIME_IN_USEC(50), state, via_irq_delayed);
+	timer_set(ATTOTIME_IN_USEC(50), NULL, state, via_irq_delayed);
 }
 
 
-static struct via6522_interface via_0_interface =
+static const struct via6522_interface via_0_interface =
 {
 	/*inputs : A/B         */ input_port_0_r, input_port_1_r,
 	/*inputs : CA/B1,CA/B2 */ NULL, NULL, NULL, NULL,
@@ -233,7 +233,7 @@ static struct via6522_interface via_0_interface =
 	/*irq                  */ NULL
 };
 
-static struct via6522_interface via_1_interface =
+static const struct via6522_interface via_1_interface =
 {
 	/*inputs : A/B         */ input_port_2_r, input_port_3_r,
 	/*inputs : CA/B1,CA/B2 */ NULL, NULL, NULL, NULL,
@@ -242,7 +242,7 @@ static struct via6522_interface via_1_interface =
 	/*irq                  */ via_irq
 };
 
-static struct via6522_interface via_2_interface =
+static const struct via6522_interface via_2_interface =
 {
 	/*inputs : A/B         */ NULL, trvquest_vblank_r,
 	/*inputs : CA/B1,CA/B2 */ NULL, NULL, NULL, NULL,

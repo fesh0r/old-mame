@@ -57,7 +57,7 @@ static TIMER_CALLBACK( periodic_callback )
 		{
 			if (mask[i] != 0)
 			{
-				timer_set(video_screen_get_time_until_pos(0, i, 0), mask[i], pot_interrupt);
+				timer_set(video_screen_get_time_until_pos(0, i, 0), NULL, mask[i], pot_interrupt);
 			}
 		}
 
@@ -71,7 +71,7 @@ static TIMER_CALLBACK( periodic_callback )
 		scanline = 0;
 	}
 
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), scanline, periodic_callback);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, periodic_callback);
 }
 
 
@@ -80,16 +80,14 @@ static PALETTE_INIT( boxer )
 	palette_set_color(machine,0, MAKE_RGB(0x00,0x00,0x00));
 	palette_set_color(machine,1, MAKE_RGB(0xff,0xff,0xff));
 
-	colortable[0] = 0;
-	colortable[1] = 1;
-	colortable[2] = 1;
-	colortable[3] = 0;
+	palette_set_color(machine,2, MAKE_RGB(0xff,0xff,0xff));
+	palette_set_color(machine,3, MAKE_RGB(0x00,0x00,0x00));
 }
 
 
 static MACHINE_RESET( boxer )
 {
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, periodic_callback);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 0, periodic_callback);
 
 	pot_latch = 0;
 }
@@ -314,8 +312,7 @@ static MACHINE_DRIVER_START(boxer)
 	MDRV_SCREEN_SIZE(256, 262)
 	MDRV_SCREEN_VISIBLE_AREA(8, 247, 0, 239)
 	MDRV_GFXDECODE(boxer)
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_COLORTABLE_LENGTH(4)
+	MDRV_PALETTE_LENGTH(4)
 	MDRV_PALETTE_INIT(boxer)
 	MDRV_VIDEO_UPDATE(boxer)
 

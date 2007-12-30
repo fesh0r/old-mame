@@ -243,7 +243,7 @@ struct _addrspace_data
 	UINT64					unmap;					/* unmapped value */
 	table_data				read;					/* memory read lookup table */
 	table_data				write;					/* memory write lookup table */
-	data_accessors *		accessors;				/* pointer to the memory accessors */
+	const data_accessors *		accessors;				/* pointer to the memory accessors */
 	address_map *			map;					/* original memory map */
 	address_map *			adjmap;					/* adjusted memory map */
 };
@@ -300,7 +300,7 @@ static debug_hook_read_ptr	debug_hook_read;				/* pointer to debugger callback f
 static debug_hook_write_ptr	debug_hook_write;				/* pointer to debugger callback for memory writes */
 #endif
 
-static data_accessors memory_accessors[ADDRESS_SPACES][4][2] =
+static const data_accessors memory_accessors[ADDRESS_SPACES][4][2] =
 {
 	/* program accessors */
 	{
@@ -363,7 +363,18 @@ static data_accessors memory_accessors[ADDRESS_SPACES][4][2] =
 	},
 };
 
-const char *address_space_names[ADDRESS_SPACES] = { "program", "data", "I/O" };
+const char *const address_space_names[ADDRESS_SPACES] = { "program", "data", "I/O" };
+
+
+/*-------------------------------------------------
+    INLINE FUNCTIONS
+-------------------------------------------------*/
+
+INLINE void force_opbase_update(void)
+{
+	opcode_entry = 0xff;
+	memory_set_opbase(activecpu_get_physical_pc_byte());
+}
 
 
 /*-------------------------------------------------
@@ -576,14 +587,13 @@ opbase_handler memory_set_opbase_handler(int cpunum, opbase_handler function)
 
 void memory_set_opbase(offs_t pc)
 {
-	address_space *space = &active_address_space[ADDRESS_SPACE_PROGRAM];
-
+	const address_space *space = &active_address_space[ADDRESS_SPACE_PROGRAM];
 	UINT8 *base = NULL, *based = NULL;
-	handler_data *handlers;
+	const handler_data *handlers;
 	UINT8 entry;
 
 	/* allow overrides */
-	if (opbasefunc)
+	if (opbasefunc != NULL)
 	{
 		pc = (*opbasefunc)(pc);
 		if (pc == ~0)
@@ -595,6 +605,8 @@ void memory_set_opbase(offs_t pc)
 	entry = space->readlookup[LEVEL1_INDEX(pc)];
 	if (entry >= SUBTABLE_BASE)
 		entry = space->readlookup[LEVEL2_INDEX(entry,pc)];
+
+	/* keep track of current entry */
 	opcode_entry = entry;
 
 	/* if we don't map to a bank, see if there are any banks we can map to */
@@ -621,7 +633,7 @@ void memory_set_opbase(offs_t pc)
 	/* if no decrypted opcodes, point to the same base */
 	base = bank_ptr[entry];
 	based = bankd_ptr[entry];
-	if (!based)
+	if (based == NULL)
 		based = base;
 
 	/* compute the adjusted base */
@@ -656,7 +668,7 @@ void memory_set_decrypted_region(int cpunum, offs_t start, offs_t end, void *bas
 
 				/* if this is live, adjust now */
 				if (cpu_getactivecpu() >= 0 && cpunum == cur_context && opcode_entry == banknum)
-					memory_set_opbase(activecpu_get_physical_pc_byte());
+					force_opbase_update();
 			}
 			else if (bdata->base < end && bdata->end > start)
 				fatalerror("memory_set_decrypted_region found straddled region %08X-%08X for CPU %d", start, end, cpunum);
@@ -856,10 +868,7 @@ void memory_set_bank(int banknum, int entrynum)
 
 	/* if we're executing out of this bank, adjust the opbase pointer */
 	if (opcode_entry == banknum && cpu_getactivecpu() >= 0)
-	{
-		opcode_entry = 0xff;
-		memory_set_opbase(activecpu_get_physical_pc_byte());
-	}
+		force_opbase_update();
 }
 
 
@@ -885,10 +894,7 @@ void memory_set_bankptr(int banknum, void *base)
 
 	/* if we're executing out of this bank, adjust the opbase pointer */
 	if (opcode_entry == banknum && cpu_getactivecpu() >= 0)
-	{
-		opcode_entry = 0xff;
-		memory_set_opbase(activecpu_get_physical_pc_byte());
-	}
+		force_opbase_update();
 }
 
 
@@ -3248,7 +3254,7 @@ static genf *get_static_handler(int databits, int readorwrite, int spacenum, int
 
 static const char *handler_to_string(const table_data *table, UINT8 entry)
 {
-	static const char *strings[] =
+	static const char *const strings[] =
 	{
 		"invalid",		"bank 1",		"bank 2",		"bank 3",
 		"bank 4",		"bank 5",		"bank 6",		"bank 7",

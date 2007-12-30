@@ -446,7 +446,7 @@ static WRITE8_HANDLER( io_w )
 	switch (offset & 0xe0)
 	{
 		case 0x00:										/* sound command */
-			timer_call_after_resynch(data, delayed_sound_command_w);
+			timer_call_after_resynch(NULL, data, delayed_sound_command_w);
 			break;
 
 		case 0x20:										/* coin bits I/O1 */
@@ -1040,7 +1040,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct CustomSound_interface custom_interface =
+static const struct CustomSound_interface custom_interface =
 {
 	exidy440_sh_start,
 	exidy440_sh_stop

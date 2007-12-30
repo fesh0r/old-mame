@@ -183,7 +183,7 @@ static WRITE8_HANDLER( tilemap_sound_w );
  *
  *************************************/
 
-static ppi8255_interface single_ppi_intf =
+static const ppi8255_interface single_ppi_intf =
 {
 	1,
 	{ NULL },
@@ -240,7 +240,7 @@ static MACHINE_RESET( system16a )
 
 	/* if we have a fake i8751 handler, disable the actual 8751 */
 	if (i8751_vblank_hook != NULL)
-		timer_call_after_resynch(0, suspend_i8751);
+		timer_call_after_resynch(NULL, 0, suspend_i8751);
 }
 
 
@@ -285,7 +285,7 @@ static WRITE16_HANDLER( standard_io_w )
 			/* the port C handshaking signals control the Z80 NMI, */
 			/* so we have to sync whenever we access this PPI */
 			if (ACCESSING_LSB)
-				timer_call_after_resynch(((offset & 3) << 8) | (data & 0xff), delayed_ppi8255_w);
+				timer_call_after_resynch(NULL, ((offset & 3) << 8) | (data & 0xff), delayed_ppi8255_w);
 			return;
 	}
 	logerror("%06X:standard_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask ^ 0xffff);
@@ -746,7 +746,7 @@ static READ16_HANDLER( sdi_custom_io_r )
 
 static READ16_HANDLER( sjryuko_custom_io_r )
 {
-	static const char *portname[] = { "MJ0", "MJ1", "MJ2", "MJ3", "MJ4", "MJ5" };
+	static const char *const portname[] = { "MJ0", "MJ1", "MJ2", "MJ3", "MJ4", "MJ5" };
 
 	switch (offset & (0x3000/2))
 	{
@@ -1748,7 +1748,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct YM2151interface ym2151_interface =
+static const struct YM2151interface ym2151_interface =
 {
 	NULL,
 	n7751_control_w

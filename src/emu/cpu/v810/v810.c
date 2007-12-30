@@ -34,7 +34,7 @@ typedef struct
 
 static v810info v810;
 
-int v810_ICount;
+static int v810_ICount;
 
 #define R0 v810.reg[0]
 #define R1 v810.reg[1]
@@ -877,7 +877,7 @@ static UINT32 opFpoint(void)
 	return clkIF+1;
 }
 
-static UINT32 (*OpCodeTable[64])(void) =
+static UINT32 (*const OpCodeTable[64])(void) =
 {
 	/* 0x00 */ opMOVr,  	// mov r1,r2            1
 	/* 0x01 */ opADDr,  	// add r1,r2            1
@@ -945,7 +945,7 @@ static UINT32 (*OpCodeTable[64])(void) =
 	/* 0x3f */ opOUTW  	// out.w reg2, disp16[reg1]     6b
 };
 
-void v810_init(int index, int clock, const void *config, int (*irqcallback)(int))
+static void v810_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	v810.irq_line = CLEAR_LINE;
 	v810.nmi_line = CLEAR_LINE;
@@ -958,7 +958,7 @@ void v810_init(int index, int clock, const void *config, int (*irqcallback)(int)
 
 }
 
-void v810_reset(void)
+static void v810_reset(void)
 {
 	int i;
 	for(i=0;i<64;i++)	v810.reg[i]=0;
@@ -967,7 +967,7 @@ void v810_reset(void)
 	ECR	= 0x0000fff0;
 }
 
-int v810_execute(int cycles)
+static int v810_execute(int cycles)
 {
 	v810_ICount = cycles;
 	while(v810_ICount>=0)
@@ -981,13 +981,13 @@ int v810_execute(int cycles)
 	return cycles-v810_ICount;
 }
 
-void v810_get_context(void *dst)
+static void v810_get_context(void *dst)
 {
 	if(dst)
 		*(v810info *)dst = v810;
 }
 
-void v810_set_context(void *src)
+static void v810_set_context(void *src)
 {
 	if(src)
 		v810 = *(v810info *)src;

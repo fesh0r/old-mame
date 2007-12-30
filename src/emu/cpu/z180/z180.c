@@ -743,7 +743,7 @@ typedef struct {
 #define Z180_IOCR_RMASK 		0xff
 #define Z180_IOCR_WMASK 		0xff
 
-int z180_icount;
+static int z180_icount;
 static Z180_Regs Z180;
 static UINT32 EA;
 
@@ -2294,6 +2294,7 @@ static void z180_set_context (void *src)
 	z180_change_pc(_PCD);
 }
 
+#ifdef UNUSED_FUNCTION
 READ8_HANDLER( z180_internal_r )
 {
 	return Z180.io[offset & 0x3f];
@@ -2305,6 +2306,7 @@ WRITE8_HANDLER( z180_internal_w )
 	info.i = data;
 	z180_set_info( CPUINFO_INT_REGISTER + Z180_CNTLA0 + (offset & 0x3f), &info );
 }
+#endif
 
 /****************************************************************************
  * Set IRQ line state
@@ -2587,12 +2589,12 @@ void z180_get_info(UINT32 state, cpuinfo *info)
 #endif /* MAME_DEBUG */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &z180_icount;			break;
 		case CPUINFO_PTR_TRANSLATE:						info->translate = z180_translate;		break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_op: info->p = cc[Z180_TABLE_op];			break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_cb: info->p = cc[Z180_TABLE_cb];			break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ed: info->p = cc[Z180_TABLE_ed];			break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xy: info->p = cc[Z180_TABLE_xy];			break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xycb: info->p = cc[Z180_TABLE_xycb];		break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ex: info->p = cc[Z180_TABLE_ex];			break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_op: info->p = (void *)cc[Z180_TABLE_op];			break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_cb: info->p = (void *)cc[Z180_TABLE_cb];			break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ed: info->p = (void *)cc[Z180_TABLE_ed];			break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xy: info->p = (void *)cc[Z180_TABLE_xy];			break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xycb: info->p = (void *)cc[Z180_TABLE_xycb];		break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ex: info->p = (void *)cc[Z180_TABLE_ex];			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "Z180");				break;

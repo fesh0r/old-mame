@@ -160,7 +160,7 @@ static GFXDECODE_START( ps4 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_16x16x8, 0x000, 0x80 ) // 8bpp tiles
 GFXDECODE_END
 
-static struct EEPROM_interface eeprom_interface_93C56 =
+static const struct EEPROM_interface eeprom_interface_93C56 =
 {
 	8,		// address bits 8
 	8,		// data bits    8
@@ -481,7 +481,7 @@ static void irqhandler(int linestate)
 		cpunum_set_input_line(0, 12, CLEAR_LINE);
 }
 
-static struct YMF278B_interface ymf278b_interface =
+static const struct YMF278B_interface ymf278b_interface =
 {
 	REGION_SOUND1,
 	irqhandler

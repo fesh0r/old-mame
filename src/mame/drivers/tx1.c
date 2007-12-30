@@ -725,7 +725,7 @@ GFXDECODE_END
 /*    TX-1 Sound Hardware   */
 /****************************/
 
-static struct AY8910interface tx1_ay8910_interface =
+static const struct AY8910interface tx1_ay8910_interface =
 {
 	0,                        /* Probably hooked up to discrete sound filters */
 	0,
@@ -785,7 +785,7 @@ static WRITE8_HANDLER(BB_YM2149_1_B_w)
 
 
 /* YM2149 IC19 - front left */
-static struct AY8910interface buggyboy_ay8910_interface_1 =
+static const struct AY8910interface buggyboy_ay8910_interface_1 =
 {
 	input_port_2_r,
 	input_port_3_r,
@@ -795,7 +795,7 @@ static struct AY8910interface buggyboy_ay8910_interface_1 =
 
 
 /* YM2149 IC24 - front right */
-static struct AY8910interface buggyboy_ay8910_interface_2 =
+static const struct AY8910interface buggyboy_ay8910_interface_2 =
 {
 	0,
 	0,
@@ -808,7 +808,7 @@ static WRITE8_HANDLER(TX1_COIN_COUNTER)
        coin_counter_w(0,data & 0x80);
        coin_counter_w(1,data & 0x40);
 }
-static ppi8255_interface tx1_ppi8255_intf =
+static const ppi8255_interface tx1_ppi8255_intf =
 {
 	1,
 	{ input_port_2_r },         /* Accelerator and brake */
@@ -821,7 +821,7 @@ static ppi8255_interface tx1_ppi8255_intf =
 
 
 /* Buggy Boy (3-monitor) uses a 8255 instead of the YM2149 ports for inputs */
-static ppi8255_interface buggyboy_ppi8255_intf =
+static const ppi8255_interface buggyboy_ppi8255_intf =
 {
 	1,
 	{ input_port_2_r },

@@ -876,7 +876,20 @@ static WRITE32_HANDLER( atapi_w )
 	 }
 }
 
-static void atapi_init(void)
+static void atapi_exit(running_machine* machine)
+{
+	int i;
+
+	for( i = 0; i < 2; i++ )
+	{
+		if( get_disk_handle( i ) != NULL )
+		{
+			SCSIDeleteInstance( available_cdroms[ i ] );
+		}
+	}
+}
+
+static void atapi_init(running_machine *machine)
 {
 	int i;
 
@@ -892,7 +905,7 @@ static void atapi_init(void)
 	atapi_data_len = 0;
 	atapi_cdata_wait = 0;
 
-	atapi_timer = timer_alloc( atapi_xfer_end );
+	atapi_timer = timer_alloc( atapi_xfer_end , NULL);
 	timer_adjust(atapi_timer, attotime_never, 0, attotime_never);
 
 	for( i = 0; i < 2; i++ )
@@ -906,6 +919,7 @@ static void atapi_init(void)
 			available_cdroms[ i ] = NULL;
 		}
 	}
+	add_exit_callback(machine, atapi_exit);
 
 	atapi_data = auto_malloc( ATAPI_DATA_SIZE );
 
@@ -1316,7 +1330,7 @@ static void flash_init( void )
 	int chip;
 	int size;
 	UINT8 *data;
-	static struct
+	static const struct
 	{
 		int *start;
 		int region;
@@ -1477,13 +1491,13 @@ static DRIVER_INIT( konami573 )
 	int i;
 
 	psx_driver_init();
-	atapi_init();
+	atapi_init(machine);
 	psx_dma_install_read_handler(5, cdrom_dma_read);
 	psx_dma_install_write_handler(5, cdrom_dma_write);
 
 	for (i = 0; i < 3; i++)
 	{
-		m_p_timer_root[i] = timer_alloc(root_finished);
+		m_p_timer_root[i] = timer_alloc(root_finished, NULL);
 	}
 
 	timekeeper_init( 0, TIMEKEEPER_M48T58, memory_region( REGION_USER11 ) );
@@ -1515,7 +1529,7 @@ static MACHINE_RESET( konami573 )
 	flash_bank = -1;
 }
 
-static struct PSXSPUinterface konami573_psxspu_interface =
+static const struct PSXSPUinterface konami573_psxspu_interface =
 {
 	&g_p_n_psxram,
 	psx_irq_set,
@@ -1713,7 +1727,7 @@ static void gx700pwbf_output( int offset, UINT8 data )
 	if( gx700pwfbf_output_callback != NULL )
 	{
 		int i;
-		static int shift[] = { 7, 6, 1, 0, 5, 4, 3, 2 };
+		static const int shift[] = { 7, 6, 1, 0, 5, 4, 3, 2 };
 		for( i = 0; i < 8; i++ )
 		{
 			int oldbit = ( gx700pwbf_output_data[ offset ] >> shift[ i ] ) & 1;
@@ -1802,7 +1816,7 @@ static struct
 	int bit;
 } stage[ 2 ];
 
-static int mask[] =
+static const int mask[] =
 {
 	0, 6, 2, 4,
 	0, 4, 0, 4,
@@ -2024,7 +2038,7 @@ static DRIVER_INIT( gtrfrks )
 
 /* GX894 digital i/o */
 
-static UINT8 ds2401_xid[] =
+static const UINT8 ds2401_xid[] =
 {
 	0x3d, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12, 0x01
 };
@@ -2157,7 +2171,7 @@ static void gx894pwbba_output( int offset, UINT8 data )
 	if( gx894pwbba_output_callback != NULL )
 	{
 		int i;
-		static int shift[] = { 0, 2, 3, 1 };
+		static const int shift[] = { 0, 2, 3, 1 };
 		for( i = 0; i < 4; i++ )
 		{
 			int oldbit = ( gx894pwbba_output_data[ offset ] >> shift[ i ] ) & 1;

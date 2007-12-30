@@ -521,7 +521,7 @@ static const pia6821_interface pia_interface =
 
 static void via_irq(int state);
 
-static struct via6522_interface via_interface =
+static const struct via6522_interface via_interface =
 {
 	/*inputs : A/B         */ 0, 0,
 	/*inputs : CA/B1,CA/B2 */ 0, 0, 0, 0,
@@ -622,7 +622,7 @@ static MACHINE_START( sstrike )
 	machine_start_itech8(machine);
 
 	/* we need to update behind the beam as well */
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), 32, behind_the_beam_update);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 32, behind_the_beam_update);
 }
 
 static MACHINE_RESET( itech8 )
@@ -674,7 +674,7 @@ static TIMER_CALLBACK( behind_the_beam_update )
 	if (scanline >= 256) scanline = 0;
 
 	/* set a new timer */
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), (scanline << 8) + interval, behind_the_beam_update);
+	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, (scanline << 8) + interval, behind_the_beam_update);
 }
 
 
@@ -786,7 +786,7 @@ static TIMER_CALLBACK( delayed_sound_data_w )
 
 static WRITE8_HANDLER( sound_data_w )
 {
-	timer_call_after_resynch(data, delayed_sound_data_w);
+	timer_call_after_resynch(NULL, data, delayed_sound_data_w);
 }
 
 
@@ -797,7 +797,7 @@ static WRITE8_HANDLER( gtg2_sound_data_w )
 	       ((data & 0x5d) << 1) |
 	       ((data & 0x20) >> 3) |
 	       ((data & 0x02) << 5);
-	timer_call_after_resynch(data, delayed_sound_data_w);
+	timer_call_after_resynch(NULL, data, delayed_sound_data_w);
 }
 
 
@@ -1734,7 +1734,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	0,
 	0,
@@ -1744,7 +1744,7 @@ static struct YM2203interface ym2203_interface =
 };
 
 
-static struct YM3812interface ym3812_interface =
+static const struct YM3812interface ym3812_interface =
 {
 	generate_sound_irq
 };
@@ -2628,8 +2628,6 @@ static DRIVER_INIT( slikshot )
 	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0180, 0x0180, 0, 0, slikshot_z80_r);
 	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x01cf, 0x01cf, 0, 0, slikshot_z80_control_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01cf, 0x01cf, 0, 0, slikshot_z80_control_w);
-
-	slikshot_set_crosshair_range(116 - 80, 116 + 80);
 }
 
 
@@ -2638,8 +2636,6 @@ static DRIVER_INIT( sstrike )
 	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x1180, 0x1180, 0, 0, slikshot_z80_r);
 	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x11cf, 0x11cf, 0, 0, slikshot_z80_control_r);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x11cf, 0x11cf, 0, 0, slikshot_z80_control_w);
-
-	slikshot_set_crosshair_range(186 - 40, 186 + 40);
 }
 
 

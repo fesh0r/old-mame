@@ -339,12 +339,14 @@ void h8_itu_write8(UINT8 reg, UINT8 val)
 	}
 }
 
+#ifdef UNUSED_FUNCTION
 UINT8 h8_debugger_itu_read8(UINT8 reg)
 {
 	UINT8 val;
 	val = 0;
 	return val;
 }
+#endif
 
 
 UINT8 h8_register_read8(UINT32 address)
@@ -484,11 +486,11 @@ void h8_register_write8(UINT32 address, UINT8 val)
 
 void h8_itu_init(void)
 {
-	h8.timer[0] = timer_alloc(h8itu_timer_0_cb);
-	h8.timer[1] = timer_alloc(h8itu_timer_1_cb);
-	h8.timer[2] = timer_alloc(h8itu_timer_2_cb);
-	h8.timer[3] = timer_alloc(h8itu_timer_3_cb);
-	h8.timer[4] = timer_alloc(h8itu_timer_4_cb);
+	h8.timer[0] = timer_alloc(h8itu_timer_0_cb, NULL);
+	h8.timer[1] = timer_alloc(h8itu_timer_1_cb, NULL);
+	h8.timer[2] = timer_alloc(h8itu_timer_2_cb, NULL);
+	h8.timer[3] = timer_alloc(h8itu_timer_3_cb, NULL);
+	h8.timer[4] = timer_alloc(h8itu_timer_4_cb, NULL);
 
 	h8_itu_reset();
 

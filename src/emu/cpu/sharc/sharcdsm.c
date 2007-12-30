@@ -298,7 +298,7 @@ static void get_if_condition(int cond)
 	}
 }
 
-void pm_dm_ureg(int g, int d, int i, int m, int ureg, int update)
+static void pm_dm_ureg(int g, int d, int i, int m, int ureg, int update)
 {
 	if (update)		// post-modify
 	{
@@ -353,7 +353,7 @@ void pm_dm_ureg(int g, int d, int i, int m, int ureg, int update)
 	}
 }
 
-void pm_dm_imm_dreg(int g, int d, int i, int data, int dreg, int update)
+static void pm_dm_imm_dreg(int g, int d, int i, int data, int dreg, int update)
 {
 	if (update)		// post-modify
 	{
@@ -407,7 +407,7 @@ void pm_dm_imm_dreg(int g, int d, int i, int data, int dreg, int update)
 	}
 }
 
-void pm_dm_dreg(int g, int d, int i, int m, int dreg)
+static void pm_dm_dreg(int g, int d, int i, int m, int dreg)
 {
 	if (d)
 	{
@@ -433,7 +433,7 @@ void pm_dm_dreg(int g, int d, int i, int m, int dreg)
 	}
 }
 
-void shiftop(int shift, int data, int rn, int rx)
+static void shiftop(int shift, int data, int rn, int rx)
 {
 	INT8 data8 = data & 0xff;
 	int bit6 = data & 0x3f;
@@ -1052,7 +1052,7 @@ static UINT32 dasm_invalid(UINT32 pc, UINT64 opcode)
 	return 0;
 }
 
-static SHARC_DASM_OP sharc_dasm_ops[] =
+static const SHARC_DASM_OP sharc_dasm_ops[] =
 {
 	//  |0 0 1|
 	{	0xe000,		0x2000,		dasm_compute_dreg_dmpm								},

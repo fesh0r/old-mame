@@ -74,7 +74,7 @@ static TIMER_CALLBACK( scanline_callback )
 static MACHINE_START( magmax )
 {
 	/* Create interrupt timer */
-	interrupt_timer = timer_alloc(scanline_callback);
+	interrupt_timer = timer_alloc(scanline_callback, NULL);
 
 	/* Set up save state */
 	state_save_register_global(sound_latch);
@@ -350,7 +350,7 @@ static GFXDECODE_START( magmax )
 GFXDECODE_END
 
 
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
 	0,
 	0,

@@ -308,7 +308,7 @@ static WRITE8_HANDLER( thunderx_1f98_w )
 		calculate_collisions();
 
 		/* 100 cycle delay is arbitrary */
-		timer_set(ATTOTIME_IN_CYCLES(100,0),0, thunderx_firq_callback);
+		timer_set(ATTOTIME_IN_CYCLES(100,0), NULL, 0, thunderx_firq_callback);
 	}
 
 	thunderx_1f98_data = data;
@@ -685,7 +685,7 @@ static void volume_callback(int v)
 	K007232_set_volume(0,1,0,(v & 0x0f) * 0x11);
 }
 
-static struct K007232_interface k007232_interface =
+static const struct K007232_interface k007232_interface =
 {
 	REGION_SOUND1,	/* memory regions */
 	volume_callback	/* external port callback */

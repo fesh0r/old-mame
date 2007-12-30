@@ -408,7 +408,7 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static ppi8255_interface ppi8255_intf =
+static const ppi8255_interface ppi8255_intf =
 {
 	2,	// 2 chips
 	{ lordgun_eeprom_r,		input_port_1_r },		// Port A read
@@ -429,7 +429,7 @@ static void soundirq(int state)
 	cpunum_set_input_line(1, 0, state);
 }
 
-static struct YM3812interface lordgun_ym3812_interface =
+static const struct YM3812interface lordgun_ym3812_interface =
 {
 	soundirq
 };

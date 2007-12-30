@@ -93,7 +93,7 @@ static WRITE8_HANDLER( p8910_0b_w )
 }
 
 
-static ppi8255_interface ppi8255_intf =
+static const ppi8255_interface ppi8255_intf =
 {
 	5, 										/* 5 chips */
 	{ p0a_r, NULL,  NULL,  NULL,  NULL  },	/* Port A read */
@@ -342,7 +342,7 @@ GFXDECODE_END
 
 
 
-static struct AY8910interface ay8910_interface_1 =
+static const struct AY8910interface ay8910_interface_1 =
 {
 	p8910_0a_r,
 	0,
@@ -350,7 +350,7 @@ static struct AY8910interface ay8910_interface_1 =
 	p8910_0b_w
 };
 
-static struct AY8910interface ay8910_interface_2 =
+static const struct AY8910interface ay8910_interface_2 =
 {
 	p8910_1a_r
 };

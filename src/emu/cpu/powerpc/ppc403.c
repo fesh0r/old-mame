@@ -184,11 +184,11 @@ static int ppc403_execute(int cycles)
 
 		switch(opcode >> 26)
 		{
-			case 19:	optable19[(opcode >> 1) & 0x3ff](opcode); break;
-			case 31:	optable31[(opcode >> 1) & 0x3ff](opcode); break;
-			case 59:	optable59[(opcode >> 1) & 0x3ff](opcode); break;
-			case 63:	optable63[(opcode >> 1) & 0x3ff](opcode); break;
-			default:	optable[opcode >> 26](opcode); break;
+			case 19:	ppc.optable19[(opcode >> 1) & 0x3ff](opcode); break;
+			case 31:	ppc.optable31[(opcode >> 1) & 0x3ff](opcode); break;
+			case 59:	ppc.optable59[(opcode >> 1) & 0x3ff](opcode); break;
+			case 63:	ppc.optable63[(opcode >> 1) & 0x3ff](opcode); break;
+			default:	ppc.optable[opcode >> 26](opcode); break;
 		}
 
 		ppc_icount--;
@@ -566,7 +566,7 @@ static void ppc_wrteei(UINT32 op)
 /**************************************************************************/
 /* PPC403 Serial Port */
 
-UINT8 ppc403_spu_r(UINT32 a)
+static UINT8 ppc403_spu_r(UINT32 a)
 {
 	switch(a & 0xf)
 	{
@@ -582,7 +582,7 @@ UINT8 ppc403_spu_r(UINT32 a)
 	}
 }
 
-void ppc403_spu_w(UINT32 a, UINT8 d)
+static void ppc403_spu_w(UINT32 a, UINT8 d)
 {
 	switch(a & 0xf)
 	{
@@ -678,7 +678,7 @@ void ppc403_spu_w(UINT32 a, UINT8 d)
 
 		case 0x9:
 			ppc.spu.sptb = d;
-			ppc403_spu_tx_callback(Machine, cpu_getactivecpu());
+			ppc403_spu_tx_callback(Machine, NULL, cpu_getactivecpu());
 			break;
 
 		default:

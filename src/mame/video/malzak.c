@@ -28,7 +28,8 @@ static INT8 frame_count;
 #define SAA5050_BLACK   0
 #define SAA5050_WHITE   7
 
-struct	{
+static struct
+{
 	UINT16	saa5050_flags;
 	UINT8	saa5050_forecol;
 	UINT8	saa5050_backcol;
@@ -206,7 +207,7 @@ VIDEO_UPDATE( malzak )
 				sx+=256;
 
 			drawgfx(bitmap,machine->gfx[0],field[x*16 + y].code,7,0,0,
-			sx, sy, &machine->screen[0].visarea, TRANSPARENCY_COLOR, 0);
+				sx, sy, &machine->screen[0].visarea, TRANSPARENCY_PEN, 0);
 		}
 
 	// S2636 - Sprites / Collision detection (x2)

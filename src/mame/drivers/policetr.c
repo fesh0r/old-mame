@@ -128,7 +128,7 @@ static TIMER_CALLBACK( irq5_gen )
 static INTERRUPT_GEN( irq4_gen )
 {
 	cpunum_set_input_line(0, R3000_IRQ4, ASSERT_LINE);
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), 0, irq5_gen);
+	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 0, irq5_gen);
 }
 
 
@@ -269,7 +269,7 @@ static WRITE32_HANDLER( speedup_w )
  *
  *************************************/
 
-struct EEPROM_interface eeprom_interface_policetr =
+static const struct EEPROM_interface eeprom_interface_policetr =
 {
 	8,				// address bits 8
 	16,				// data bits    16
@@ -413,13 +413,13 @@ static INPUT_PORTS_START( policetr )
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.012, 0.008, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(10)
 
 	PORT_START_TAG("GUNY1")				/* fake analog Y */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.002, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(10)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.05, 0.002, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(10)
 
 	PORT_START_TAG("GUNX2")				/* fake analog X */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.012, 0.008, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
 	PORT_START_TAG("GUNY2")				/* fake analog Y */
-	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.002, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.05, 0.002, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 
@@ -464,7 +464,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static struct r3000_config config =
+static const struct r3000_config config =
 {
 	0,		/* 1 if we have an FPU, 0 otherwise */
 	4096,	/* code cache size */
