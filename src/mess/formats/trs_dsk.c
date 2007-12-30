@@ -3,10 +3,10 @@
 #include "formats/basicdsk.h"
 #include "formats/coco_dsk.h"
 
-/* ----------------------------------------------------------------------- 
- * JV1 (Jeff Vavasour 1) format                                         
- *                                                                         
- * Used by Jeff Vavasour's TRS-80 Emulators                                  
+/* -----------------------------------------------------------------------
+ * JV1 (Jeff Vavasour 1) format
+ *
+ * Used by Jeff Vavasour's TRS-80 Emulators
  *
  * Very straight basic disk; 1 head, 10 sectors, 256 sector length
  * ----------------------------------------------------------------------- */
@@ -16,7 +16,7 @@
 #define TRS80_JV1_SECTORLENGTH		256
 #define TRS80_JV1_FIRSTSECTORID		0
 
-static floperr_t trs80_jv1_identify(floppy_image *floppy, int *vote)
+static FLOPPY_IDENTIFY( trs80_jv1_identify )
 {
 	UINT64 size;
 	size = floppy_image_size(floppy);
@@ -27,7 +27,7 @@ static floperr_t trs80_jv1_identify(floppy_image *floppy, int *vote)
 
 
 
-static floperr_t trs80_jv1_construct(floppy_image *floppy, option_resolution *params)
+static FLOPPY_CONSTRUCT( trs80_jv1_construct )
 {
 	struct basicdsk_geometry geometry;
 

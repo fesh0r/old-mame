@@ -20,7 +20,7 @@ struct pc_disk_sizes
 
 
 
-static struct pc_disk_sizes disk_sizes[] =
+static const struct pc_disk_sizes disk_sizes[] =
 {
 	{ 8*1*40*512,  8, 1},	/* 5 1/4 inch double density single sided */
 	{ 8*2*40*512,  8, 2},	/* 5 1/4 inch double density */
@@ -67,7 +67,7 @@ static floperr_t pc_dsk_compute_geometry(floppy_image *floppy, struct basicdsk_g
 		floppy_image_read(floppy, &scl, 0x0c, 1);
 		floppy_image_read(floppy, &spt, 0x18, 1);
 		floppy_image_read(floppy, &heads, 0x1A, 1);
-		
+
 		if (size == ((UINT64) scl) * spt * heads * 0x200)
 		{
 			geometry->sectors = spt;

@@ -45,7 +45,7 @@ FE:
 - bit 4 selects internal cassette player (low) or external unit (high) on a system-80
 FD:
 - bit 7 for reading the printer status on a system-80
-- all bits for writing to a printer on a system-80 
+- all bits for writing to a printer on a system-80
 F9:
 - UART data (write) status (read) on a system-80
 F8:
@@ -85,7 +85,7 @@ Not emulated:
 #define FW	TRS80_FONT_W
 #define FH	TRS80_FONT_H
 
-READ8_HANDLER (trs80_wd179x_r)
+static READ8_HANDLER (trs80_wd179x_r)
 {
 	if (readinputport(0) & 0x80)
 	{
@@ -303,18 +303,18 @@ static const gfx_layout trs80_charlayout_double_width =
 	8*FH		   /* every char takes FH bytes */
 };
 
-static GFXDECODE_START( trs80_gfxdecodeinfo )
+static GFXDECODE_START( trs80 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, trs80_charlayout_normal_width, 0, 4 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, trs80_charlayout_double_width, 0, 4 )
 GFXDECODE_END
 
-static unsigned char trs80_palette[] =
+static const unsigned char trs80_palette[] =
 {
    0x00,0x00,0x00,
    0xff,0xff,0xff
 };
 
-static unsigned short trs80_colortable[] =
+static const unsigned short trs80_colortable[] =
 {
 	0,1 	/* white on black */
 };
@@ -328,9 +328,9 @@ static PALETTE_INIT( trs80 )
 	memcpy(colortable,trs80_colortable,sizeof(trs80_colortable));
 }
 
-static INT16 speaker_levels[3] = {0.0*32767,0.46*32767,0.85*32767};
+static const INT16 speaker_levels[3] = {0.0*32767,0.46*32767,0.85*32767};
 
-static struct Speaker_interface speaker_interface =
+static const struct Speaker_interface speaker_interface =
 {
 	3,				/* optional: number of different levels */
 	speaker_levels	/* optional: level lookup table */
@@ -355,7 +355,7 @@ static MACHINE_DRIVER_START( level1 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*FW, 16*FH)
 	MDRV_SCREEN_VISIBLE_AREA(0*FW,64*FW-1,0*FH,16*FH-1)
-	MDRV_GFXDECODE( trs80_gfxdecodeinfo )
+	MDRV_GFXDECODE( trs80 )
 	MDRV_PALETTE_LENGTH(sizeof(trs80_palette)/sizeof(trs80_palette[0])/3)
 	MDRV_COLORTABLE_LENGTH(sizeof(trs80_colortable)/sizeof(trs80_colortable[0]))
 	MDRV_PALETTE_INIT( trs80 )
@@ -541,4 +541,4 @@ COMP( 1980, sys80,    trs80,	 0,		model1,   trs80, trs80,    trs8012,	"EACA Comp
 COMP( 1981, lnw80,    trs80,	 0,		model1,   trs80, trs80,    trs8012,	"LNW Research","LNW-80", GAME_NOT_WORKING )
 COMP( 1980, trs80m3,  trs80,	 0,		model3,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model III", GAME_NOT_WORKING )
 COMP( 1980, trs80m4,  trs80,	 0,		model3,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model 4", GAME_NOT_WORKING )
-								 
+

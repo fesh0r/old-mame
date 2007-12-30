@@ -82,7 +82,7 @@ xx/xx/2001	KS -	TS-2068 sound fixed.
 		     	Fixed problem with interrupt vector set to 0xffff (much
 			more 128k games works now).
 				A useful used trick on the Spectrum is to set
-				interrupt vector to 0xffff (using the table 
+				interrupt vector to 0xffff (using the table
 				which contain 0xff's) and put a byte 0x18 hex,
 				the opcode for JR, at this address. The first
 				byte of the ROM is a 0xf3 (DI), so the JR will
@@ -96,7 +96,7 @@ xx/xx/2001	KS -	TS-2068 sound fixed.
 				There are 50.08 frames per second for Spectrum
 				48k what gives 69888 cycles for each frame and
 				50.021 for Spectrum 128/+2/+2A/+3 what gives
-				70908 cycles for each frame. 
+				70908 cycles for each frame.
 			Remaped some Spectrum+ keys.
 				Presing F3 to reset was seting 0xf7 on keyboard
 				input port. Problem occured for snapshots of
@@ -162,7 +162,7 @@ extern void spectrum_128_update_memory(void);
 extern void spectrum_plus3_update_memory(void);
 
 
-static struct AY8910interface spectrum_ay_interface =
+static const struct AY8910interface spectrum_ay_interface =
 {
 	NULL
 };
@@ -550,14 +550,14 @@ but with a disc drive */
 int spectrum_plus3_port_1ffd_data = -1;
 
 
-static nec765_interface spectrum_plus3_nec765_interface =
+static const nec765_interface spectrum_plus3_nec765_interface =
 {
 		NULL,
 		NULL
 };
 
 
-static int spectrum_plus3_memory_selections[]=
+static const int spectrum_plus3_memory_selections[]=
 {
 		0,1,2,3,
 		4,5,6,7,
@@ -646,7 +646,7 @@ void spectrum_plus3_update_memory(void)
 	{
 			/* Extended memory paging */
 
-			int *memory_selection;
+			const int *memory_selection;
 			int MemorySelection;
 			unsigned char *ram_data;
 
@@ -772,7 +772,7 @@ static WRITE8_HANDLER ( spectrum_plus3_port_w )
 
 		/* the following is not decoded exactly, need to check
 		what is correct! */
-		
+
 		if ((offset & 2)==0)
 		{
 			switch ((offset>>14) & 0x03)
@@ -794,7 +794,7 @@ static WRITE8_HANDLER ( spectrum_plus3_port_w )
 						case 1:
 							spectrum_plus3_port_1ffd_w(offset, data);
 							break;
-							
+
 						/* +3 fdc data */
 						case 3:
 							spectrum_plus3_port_3ffd_w(offset,data);
@@ -819,7 +819,7 @@ static WRITE8_HANDLER ( spectrum_plus3_port_w )
 				/* 128K AY register */
 				case 3:
 					spectrum_128_port_fffd_w(offset, data);
-			
+
 				default:
 					break;
 			}
@@ -1778,7 +1778,7 @@ static const gfx_layout spectrum_charlayout =
 	8				/* every char takes 1 consecutive byte */
 };
 
-static GFXDECODE_START( spectrum_gfxdecodeinfo )
+static GFXDECODE_START( spectrum )
 	GFXDECODE_ENTRY( 0, 0x0, spectrum_charlayout, 0, 0x80 )
 	GFXDECODE_ENTRY( 0, 0x0, spectrum_charlayout, 0, 0x80 )
 	GFXDECODE_ENTRY( 0, 0x0, spectrum_charlayout, 0, 0x80 )
@@ -1914,7 +1914,7 @@ static INPUT_PORTS_START( spectrum )
 
 INPUT_PORTS_END
 
-static unsigned char spectrum_palette[16*3] = {
+static const unsigned char spectrum_palette[16*3] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0xbf,
 	0xbf, 0x00, 0x00, 0xbf, 0x00, 0xbf,
 	0x00, 0xbf, 0x00, 0x00, 0xbf, 0xbf,
@@ -1926,7 +1926,7 @@ static unsigned char spectrum_palette[16*3] = {
 	0xff, 0xff, 0x00, 0xff, 0xff, 0xff,
 };
 
-static unsigned short spectrum_colortable[128*2] = {
+static const unsigned short spectrum_colortable[128*2] = {
 	0,0, 0,1, 0,2, 0,3, 0,4, 0,5, 0,6, 0,7,
 	1,0, 1,1, 1,2, 1,3, 1,4, 1,5, 1,6, 1,7,
 	2,0, 2,1, 2,2, 2,3, 2,4, 2,5, 2,6, 2,7,
@@ -1976,7 +1976,7 @@ static MACHINE_DRIVER_START( spectrum )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(SPEC_SCREEN_WIDTH, SPEC_SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, SPEC_SCREEN_WIDTH-1, 0, SPEC_SCREEN_HEIGHT-1)
-	MDRV_GFXDECODE( spectrum_gfxdecodeinfo )
+	MDRV_GFXDECODE( spectrum )
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_COLORTABLE_LENGTH(256)
 	MDRV_PALETTE_INIT( spectrum )
@@ -2011,7 +2011,7 @@ static MACHINE_DRIVER_START( spectrum_128 )
 	/* sound hardware */
 	MDRV_SOUND_ADD(AY8910, 1773400)
 	MDRV_SOUND_CONFIG(spectrum_ay_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
 

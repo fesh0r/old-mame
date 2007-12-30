@@ -1132,13 +1132,13 @@ static INPUT_PORTS_START( xtvga )
 	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
 INPUT_PORTS_END
 
-static unsigned i86_address_mask = 0x000fffff;
+static const unsigned i86_address_mask = 0x000fffff;
 
 #if defined(ADLIB)
 /* irq line not connected to pc on adlib cards (and compatibles) */
 static void pc_irqhandler(int linestate) {}
 
-static struct YM3812interface ym3812_interface =
+static const struct YM3812interface ym3812_interface =
 {
 	pc_irqhandler
 };
@@ -1165,7 +1165,7 @@ static MACHINE_DRIVER_START( pcmda )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*9, 25*14)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*9-1, 0,25*14-1)
-	MDRV_GFXDECODE(pc_mda_gfxdecodeinfo)
+	MDRV_GFXDECODE(pc_mda)
 	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
 	MDRV_COLORTABLE_LENGTH(sizeof(mda_colortable) / sizeof(mda_colortable[0]))
 	MDRV_PALETTE_INIT(pc_mda)
@@ -1235,7 +1235,7 @@ static MACHINE_DRIVER_START( europc )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*9, 25*14)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*9-1, 0,25*14-1)
-	MDRV_GFXDECODE(europc_gfxdecodeinfo)
+	MDRV_GFXDECODE(europc)
 	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
 	MDRV_COLORTABLE_LENGTH((sizeof(cga_colortable)+sizeof(mda_colortable) )/sizeof(cga_colortable[0]))
 	MDRV_PALETTE_INIT(pc_aga)
@@ -1301,7 +1301,7 @@ static MACHINE_DRIVER_START( pc200 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*8, 25*14)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1, 0,25*14-1)
-	MDRV_GFXDECODE(aga_gfxdecodeinfo)
+	MDRV_GFXDECODE(aga)
 	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
 	MDRV_COLORTABLE_LENGTH((sizeof(cga_colortable)+sizeof(mda_colortable) )/sizeof(cga_colortable[0]))
 	MDRV_PALETTE_INIT(pc_aga)
@@ -1418,7 +1418,7 @@ MACHINE_DRIVER_END
 
 #if 0
 	//pcjr roms? (incomplete dump, most likely 64 kbyte)
-	// basic c1.20 
+	// basic c1.20
     ROM_LOAD("basic.rom", 0xf6000, 0x8000, CRC(0c19c1a8))
 	// ???
     ROM_LOAD("bios.rom", 0x??000, 0x2000, CRC(98463f95))

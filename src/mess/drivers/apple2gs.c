@@ -3,7 +3,7 @@
 	drivers/apple2gs.c
 	Apple IIgs
 	Driver by Nathan Woods and R. Belmont
-	
+
     TODO:
     - Fix spurious interrupt problem
     - Fix 5.25" disks
@@ -27,12 +27,12 @@
                 |                                    |
                 |                                    |
                 |                                    |
-                |                                    |   0x1c0 (first line of Vblank, c019 and heartbeat trigger here, only true VBL if in A2 classic modes) 
+                |                                    |   0x1c0 (first line of Vblank, c019 and heartbeat trigger here, only true VBL if in A2 classic modes)
                 |                                    |
                  ____________________________________    0x1c8 (actual start of vblank in IIgs modes)
-    
+
     						     0x1ff (end of frame, in vblank)
-    
+
     There are 64 HCounts total, and 704 pixels total, so HCounts do not map to the pixel clock.
     VCounts do map directly to scanlines however, and count 262 of them.
 
@@ -76,7 +76,7 @@ static const gfx_layout apple2gs_dbltext_layout =
 	8*8			/* every char takes 8 bytes */
 };
 
-static GFXDECODE_START( apple2gs_gfxdecodeinfo )
+static GFXDECODE_START( apple2gs )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, apple2gs_text_layout, 0, 2 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, apple2gs_dbltext_layout, 0, 2 )
 GFXDECODE_END
@@ -101,8 +101,6 @@ static const unsigned char apple2gs_palette[] =
 	0xF, 0xF, 0xF	/* White         $F              $0FFF */
 };
 
-UINT8 apple2gs_docram[64*1024];
-
 MACHINE_DRIVER_EXTERN( apple2e );
 INPUT_PORTS_EXTERN( apple2ep );
 
@@ -126,12 +124,12 @@ static PALETTE_INIT( apple2gs )
 {
 	extern PALETTE_INIT( apple2 );
 	int i;
-	
+
 	palette_init_apple2(machine, colortable, color_prom);
 
 	for (i = 0; i < 16; i++)
 	{
-		palette_set_color_rgb(machine, i, 
+		palette_set_color_rgb(machine, i,
 			apple2gs_palette[(3*i)]*17,
 			apple2gs_palette[(3*i)+1]*17,
 			apple2gs_palette[(3*i)+2]*17);
@@ -143,7 +141,7 @@ static READ8_HANDLER( apple2gs_adc_read )
 	return 0x80;
 }
 
-static struct ES5503interface es5503_interface = 
+static const struct ES5503interface es5503_interface =
 {
 	apple2gs_doc_irq,
 	apple2gs_adc_read,
@@ -157,7 +155,7 @@ static MACHINE_DRIVER_START( apple2gs )
 	MDRV_SCREEN_SIZE(704, 262)	// 640+32+32 for the borders
 	MDRV_SCREEN_VISIBLE_AREA(0,703,0,230)
 	MDRV_PALETTE_LENGTH( 16+256 )
-	MDRV_GFXDECODE( apple2gs_gfxdecodeinfo )
+	MDRV_GFXDECODE( apple2gs )
 
 	MDRV_MACHINE_START( apple2gs )
 	MDRV_MACHINE_RESET( apple2gs )

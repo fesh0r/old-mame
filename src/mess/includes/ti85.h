@@ -1,6 +1,6 @@
 #include "devices/snapquik.h"
 
-/* machine/ti85.c */
+/*----------- defined in machine/ti85.c -----------*/
 
 extern UINT8 ti85_LCD_memory_base;
 extern UINT8 ti85_LCD_contrast;
@@ -43,10 +43,11 @@ WRITE8_HANDLER( ti85_port_0007_w);
 WRITE8_HANDLER( ti86_port_0005_w);
 WRITE8_HANDLER( ti86_port_0006_w);
 
-/* video/ti85.c */
+/*----------- defined in video/ti85.c -----------*/
+
 VIDEO_START( ti85 );
 VIDEO_UPDATE( ti85 );
 PALETTE_INIT( ti85 );
-extern unsigned char ti85_palette[32*7][3];
-extern unsigned short ti85_colortable[32][7];
-												
+extern const unsigned char ti85_palette[32*7][3];
+extern const unsigned short ti85_colortable[32][7];
+

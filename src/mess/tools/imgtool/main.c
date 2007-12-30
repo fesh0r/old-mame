@@ -21,7 +21,7 @@
 
 /* ---------------------------------------------------------------------- */
 
-static void writeusage(FILE *f, int write_word_usage, struct command *c, char *argv[])
+static void writeusage(FILE *f, int write_word_usage, const struct command *c, char *argv[])
 {
 	fprintf(f, "%s %s %s %s\n",
 		(write_word_usage ? "Usage:" : "      "),
@@ -871,7 +871,7 @@ error:
 
 /* ----------------------------------------------------------------------- */
 
-static struct command cmds[] =
+static const struct command cmds[] =
 {
 	{ "create",				cmd_create,				"<format> <imagename> [--(createoption)=value]", 2, 8, 0},
 	{ "dir",				cmd_dir,				"<format> <imagename> [path]", 2, 3, 0 },
@@ -890,25 +890,6 @@ static struct command cmds[] =
 };
 
 #ifdef WIN32
-#include "glob.h"
-void win_expand_wildcards(int *argc, char **argv[])
-{
-	int i;
-	glob_t g;
-
-	memset(&g, 0, sizeof(g));
-
-	for (i = 0; i < *argc; i++)
-		glob((*argv)[i], (g.gl_pathc > 0) ? GLOB_APPEND|GLOB_NOCHECK : GLOB_NOCHECK, NULL, &g);
-
-	*argc = g.gl_pathc;
-	*argv = g.gl_pathv;
-}
-#endif
-
-
-
-#ifdef WIN32
 int CLIB_DECL utf8_main(int argc, char *argv[])
 #else
 int CLIB_DECL main(int argc, char *argv[])
@@ -916,7 +897,7 @@ int CLIB_DECL main(int argc, char *argv[])
 {
 	int i;
 	int result;
-	struct command *c;
+	const struct command *c;
 	const char *sample_format = "coco_jvc_rsdos";
 
 #ifdef MAME_DEBUG
@@ -924,9 +905,7 @@ int CLIB_DECL main(int argc, char *argv[])
 		return -1;
 #endif /* MAME_DEBUG */
 
-#ifdef WIN32
-	win_expand_wildcards(&argc, &argv);
-#endif
+	expand_wildcards(&argc, &argv);
 
 	putchar('\n');
 

@@ -122,9 +122,9 @@ WRITE8_HANDLER ( memoryb3_w )
 2: 64K (banks 4 to 7) for Acorn sideways ram FE30 bank latch
 3: 128K (banks 8 to 15) for Acown sideways ram FE30 bank latch
 */
-static unsigned short bbc_SWRAMtype1[16]={0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1};
-static unsigned short bbc_SWRAMtype2[16]={0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0};
-static unsigned short bbc_SWRAMtype3[16]={0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1};
+static const unsigned short bbc_SWRAMtype1[16]={0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1};
+static const unsigned short bbc_SWRAMtype2[16]={0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0};
+static const unsigned short bbc_SWRAMtype3[16]={0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1};
 
 WRITE8_HANDLER ( memoryb4_w )
 {
@@ -282,7 +282,7 @@ The function memorybp4_128_w handles memory writes from 0xb000 to 0xbfff
 which could either be sideways ROM or sideways RAM */
 
 
-static unsigned short bbc_b_plus_sideways_ram_banks[16]={ 1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0 };
+static const unsigned short bbc_b_plus_sideways_ram_banks[16]={ 1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0 };
 
 
 WRITE8_HANDLER ( memorybp4_128_w )
@@ -428,7 +428,7 @@ static int bbcm_vdudriverset(void)
 }
 
 
-WRITE8_HANDLER ( page_selectbm_w )
+static WRITE8_HANDLER ( page_selectbm_w )
 {
 	pagedRAM=(data&0x80)>>7;
 	bbc_rombank=data&0x0f;
@@ -489,7 +489,7 @@ WRITE8_HANDLER ( memorybm2_w )
 	}
 }
 
-static unsigned short bbc_master_sideways_ram_banks[16]=
+static const unsigned short bbc_master_sideways_ram_banks[16]=
 {
 	0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0
 };
@@ -859,7 +859,7 @@ static void bbcb_IC32_initialise(void)
 
 
 /* This the BBC Masters Real Time Clock and NVRam IC */
-void MC146818_set(void)
+static void MC146818_set(void)
 {
 	logerror ("146181 WR=%d DS=%d AS=%d CE=%d \n",MC146818_WR,MC146818_DS,MC146818_AS,MC146818_CE);
 
@@ -1172,7 +1172,7 @@ static void bbc_via_system_irq(int level)
 }
 
 
-static struct via6522_interface
+static const struct via6522_interface
 bbcb_system_via= {
   bbcb_via_system_read_porta,
   bbcb_via_system_read_portb,
@@ -1202,9 +1202,9 @@ collector output only. It usially acts as the printer strobe line.
 file. I now need to look at the new printer code and see how I should
 connect this code up to that */
 
-int bbc_printer_porta;
-int bbc_printer_ca1;
-int bbc_printer_ca2;
+static int bbc_printer_porta;
+static int bbc_printer_ca1;
+static int bbc_printer_ca2;
 
 /* USER VIA 6522 port A is buffered as an output through IC70 so
 reading from this port will always return 0xff */
@@ -1261,7 +1261,7 @@ static void bbc_via_user_irq(int level)
 }
 
 
-static struct via6522_interface bbcb_user_via =
+static const struct via6522_interface bbcb_user_via =
 {
 	bbcb_via_user_read_porta,//via_user_read_porta,
 	bbcb_via_user_read_portb,//via_user_read_portb,
@@ -1309,7 +1309,7 @@ static void BBC_uPD7002_EOC(int data)
 	via_0_cb1_w(0,data);
 }
 
-static struct uPD7002_interface
+static const struct uPD7002_interface
 BBC_uPD7002= {
 	BBC_get_analogue_input,
 	BBC_uPD7002_EOC
@@ -1357,14 +1357,14 @@ READ8_HANDLER (BBC_6850_r)
 
 
 
-void Serial_interrupt(int level)
+static void Serial_interrupt(int level)
 {
   MC6850_irq=level;
   bbc_setirq();
   //logerror("Set SIO irq  %01x\n",level);
 }
 
-static struct MC6850_interface
+static const struct MC6850_interface
 BBC_MC6850_calls= {
 	0,// Transmit data ouput
 	0,// Request to Send output
@@ -1386,7 +1386,7 @@ static int len1=0;
 static int len2=0;
 static int len3=0;
 
-emu_timer *bbc_tape_timer;
+static emu_timer *bbc_tape_timer;
 
 static TIMER_CALLBACK(bbc_tape_timer_cb)
 {
@@ -1448,7 +1448,7 @@ static TIMER_CALLBACK(bbc_tape_timer_cb)
 
 }
 
-void BBC_Cassette_motor(unsigned char status)
+static void BBC_Cassette_motor(unsigned char status)
 {
 	if (status)
 	{
@@ -1523,14 +1523,14 @@ static void	bbc_i8271_interrupt(int state)
 }
 
 
-static i8271_interface bbc_i8271_interface=
+static const i8271_interface bbc_i8271_interface=
 {
 	bbc_i8271_interrupt,
     NULL
 };
 
 
-READ8_HANDLER( bbc_i8271_read )
+static READ8_HANDLER( bbc_i8271_read )
 {
 int ret;
 	ret=0x0ff;
@@ -1556,7 +1556,7 @@ int ret;
 	return 0x0ff;
 }
 
-WRITE8_HANDLER( bbc_i8271_write )
+static WRITE8_HANDLER( bbc_i8271_write )
 {
 	logerror("i8271 write  %d  %d\n",offset,data);
 
@@ -1688,7 +1688,7 @@ static void bbc_wd177x_callback(wd17xx_state_t event, void *param)
 
 }
 
-WRITE8_HANDLER(bbc_wd177x_status_w)
+static WRITE8_HANDLER(bbc_wd177x_status_w)
 {
 	drive_control = data;
 
@@ -1805,7 +1805,7 @@ AM_RANGE(0xfc00, 0xfdff) AM_READWRITE(bbc_opus_read     , bbc_opus_write	)
 static int opusbank;
 
 
-WRITE8_HANDLER( bbc_opus_status_w )
+static WRITE8_HANDLER( bbc_opus_status_w )
 {
 	drive_control = data;
 
@@ -2091,13 +2091,13 @@ DEVICE_LOAD( bbcb_cart )
 DRIVER_INIT( bbc )
 {
 	bbc_Master=0;
-	bbc_tape_timer = timer_alloc(bbc_tape_timer_cb);
+	bbc_tape_timer = timer_alloc(bbc_tape_timer_cb, NULL);
 }
 DRIVER_INIT( bbcm )
 {
 	bbc_Master=1;
-	bbc_tape_timer = timer_alloc(bbc_tape_timer_cb);
-    mc146818_init(MC146818_STANDARD);
+	bbc_tape_timer = timer_alloc(bbc_tape_timer_cb, NULL);
+	mc146818_init(MC146818_STANDARD);
 }
 
 MACHINE_START( bbca )

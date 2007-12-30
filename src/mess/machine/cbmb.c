@@ -35,6 +35,7 @@ UINT8 *cbmb_kernal;
 static UINT8 *cbmb_chargen;
 UINT8 *cbmb_videoram;
 UINT8 *cbmb_colorram;
+UINT8 *cbmb_memory;
 
 /* tpi at 0xfde00
  in interrupt mode
@@ -188,7 +189,7 @@ static void cbmb_cia_port_a_w(UINT8 data)
 	cbm_ieee_data_w(0, data);
 }
 
-const cia6526_interface cbmb_cia =
+static const cia6526_interface cbmb_cia =
 {
 	CIA6526,
 	tpi6525_0_irq2_level,
@@ -240,7 +241,7 @@ static void cbmb_common_driver_init (void)
 	tpi6525[1].a.output=cbmb_keyboard_line_select_a;
 	tpi6525[1].b.output=cbmb_keyboard_line_select_b;
 	tpi6525[1].c.output=cbmb_keyboard_line_select_c;
-	timer_pulse(ATTOTIME_IN_MSEC(10), 0, cbmb_frame_interrupt);
+	timer_pulse(ATTOTIME_IN_MSEC(10), NULL, 0, cbmb_frame_interrupt);
 
 	cbm500 = 0;
 	cbm700 = 0;
@@ -250,7 +251,7 @@ static void cbmb_common_driver_init (void)
 static void cbmb_display_enable_changed(int display_enabled) {
 }
 
-//static struct mscrtc6845_config cbm600_crtc= { 1600000 /*?*/, cbmb_vh_cursor };
+//static const struct mscrtc6845_config cbm600_crtc= { 1600000 /*?*/, cbmb_vh_cursor };
 const static crtc6845_interface cbm600_crtc = {
 	0,
 	1600000 /*?*/,
@@ -284,7 +285,7 @@ void cbm600hu_driver_init (void)
 	crtc6845_config( 0, &cbm600_crtc);
 }
 
-//static struct mscrtc6845_config cbm700_crtc= { 2000000 /*?*/, cbmb_vh_cursor };
+//static const struct mscrtc6845_config cbm700_crtc= { 2000000 /*?*/, cbmb_vh_cursor };
 const static crtc6845_interface cbm700_crtc = {
 	0,
 	2000000 /*?*/,

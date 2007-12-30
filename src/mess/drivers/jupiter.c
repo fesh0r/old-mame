@@ -37,7 +37,7 @@ Ports:
 #include "mslegacy.h"
 
 /* memory w/r functions */
-ADDRESS_MAP_START( jupiter_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( jupiter_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x22ff) AM_NOP
 	AM_RANGE(0x2300, 0x23ff) AM_RAM
@@ -52,7 +52,7 @@ ADDRESS_MAP_START( jupiter_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 /* port i/o functions */
-ADDRESS_MAP_START( jupiter_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( jupiter_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0x00fe, 0xfffe) AM_WRITE( jupiter_port_fe_w )
 	AM_RANGE( 0xfefe, 0xfefe) AM_READ( jupiter_port_fefe_r )
 	AM_RANGE( 0xfdfe, 0xfdfe) AM_READ( jupiter_port_fdfe_r )
@@ -77,17 +77,17 @@ const gfx_layout jupiter_charlayout =
 	8*8 	/* each character takes 8 consecutive bytes */
 };
 
-static GFXDECODE_START( jupiter_gfxdecodeinfo )
+static GFXDECODE_START( jupiter )
 	GFXDECODE_ENTRY( REGION_CPU1, 0x2c00, jupiter_charlayout, 0, 2 )
 GFXDECODE_END
 
-static unsigned char jupiter_palette[] =
+static const unsigned char jupiter_palette[] =
 {
 	0x00, 0x00, 0x00,	/* Black */
 	0xff, 0xff, 0xff	/* White */
 };
 
-static unsigned short jupiter_colortable[] =
+static const unsigned short jupiter_colortable[] =
 {
 	0, 1,
 	1, 0
@@ -189,7 +189,7 @@ static MACHINE_DRIVER_START( jupiter )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32 * 8, 24 * 8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32 * 8 - 1, 0, 24 * 8 - 1)
-	MDRV_GFXDECODE( jupiter_gfxdecodeinfo )
+	MDRV_GFXDECODE( jupiter )
 	MDRV_PALETTE_LENGTH(sizeof(jupiter_palette) / 3)
 	MDRV_COLORTABLE_LENGTH(sizeof (jupiter_colortable))
 	MDRV_PALETTE_INIT( jupiter )

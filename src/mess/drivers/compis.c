@@ -10,7 +10,7 @@
 		- Intel 80186 CPU 8MHz, integrated DMA(8237?), PIC(8259?), PIT(8253?)
                 - Intel 80130 OSP Operating system processor (PIC 8259, PIT 8254)
 		- Intel 8274 MPSC Multi-protocol serial communications controller (NEC 7201)
-		- Intel 8255 PPI Programmable peripheral interface 
+		- Intel 8255 PPI Programmable peripheral interface
 		- Intel 8253 PIT Programmable interval timer
 		- Intel 8251 USART Universal synchronous asynchronous receiver transmitter
 		- National 58174 Real-time clock (compatible with 58274)
@@ -200,13 +200,7 @@ static INPUT_PORTS_START (compis)
   PORT_DIPSETTING( 0x00, "Disabled" )
 INPUT_PORTS_END
 
-static unsigned i86_address_mask = 0x000fffff;
-
-static const compis_gdc_interface i82720_interface =
-{
-	GDC_MODE_HRG,
-	0x8000
-};
+static const unsigned i86_address_mask = 0x000fffff;
 
 static MACHINE_DRIVER_START( compis )
 	/* basic machine hardware */
@@ -222,7 +216,17 @@ static MACHINE_DRIVER_START( compis )
 
 	MDRV_MACHINE_RESET(compis)
 
-	MDRV_COMPISGDC( &i82720_interface )
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_SIZE(640, 480)
+	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	MDRV_PALETTE_LENGTH(COMPIS_PALETTE_SIZE)
+	MDRV_COLORTABLE_LENGTH(0)
+	MDRV_PALETTE_INIT(compis_gdc)
+
+	MDRV_VIDEO_START(compis_gdc)
+	MDRV_VIDEO_UPDATE(compis_gdc)
 
 MACHINE_DRIVER_END
 

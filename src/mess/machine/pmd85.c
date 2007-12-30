@@ -349,7 +349,7 @@ static WRITE8_HANDLER ( pmd85_ppi_2_portc_w )
 
 *******************************************************************************/
 
-static struct msm8251_interface pmd85_msm8251_interface =
+static const struct msm8251_interface pmd85_msm8251_interface =
 {
 	NULL,
 	NULL,
@@ -376,7 +376,7 @@ static struct msm8251_interface pmd85_msm8251_interface =
 
 *******************************************************************************/
 
-static struct pit8253_config pmd85_pit8253_interface =
+static const struct pit8253_config pmd85_pit8253_interface =
 {
 	TYPE8253,
 	{
@@ -441,7 +441,7 @@ static WRITE8_HANDLER ( pmd85_ppi_3_portc_w )
 
 	I/O board
 	1xxx11aa	external interfaces connector (K2)
-					
+
 	0xxx11aa	I/O board interfaces
 		000111aa	8251 (casette recorder, V24)
 		010011aa	8255 (GPIO/0, GPIO/1)
@@ -650,7 +650,7 @@ WRITE8_HANDLER ( mato_io_w )
 	}
 }
 
-static ppi8255_interface pmd85_ppi8255_interface =
+static const ppi8255_interface pmd85_ppi8255_interface =
 {
 	4,
 	{pmd85_ppi_0_porta_r, pmd85_ppi_1_porta_r, pmd85_ppi_2_porta_r, pmd85_ppi_3_porta_r},
@@ -661,7 +661,7 @@ static ppi8255_interface pmd85_ppi8255_interface =
 	{pmd85_ppi_0_portc_w, pmd85_ppi_1_portc_w, pmd85_ppi_2_portc_w, pmd85_ppi_3_portc_w}
 };
 
-static ppi8255_interface alfa_ppi8255_interface =
+static const ppi8255_interface alfa_ppi8255_interface =
 {
 	3,
 	{pmd85_ppi_0_porta_r, pmd85_ppi_1_porta_r, pmd85_ppi_2_porta_r},
@@ -672,7 +672,7 @@ static ppi8255_interface alfa_ppi8255_interface =
 	{pmd85_ppi_0_portc_w, pmd85_ppi_1_portc_w, pmd85_ppi_2_portc_w}
 };
 
-static ppi8255_interface mato_ppi8255_interface =
+static const ppi8255_interface mato_ppi8255_interface =
 {
 	1,
 	{pmd85_ppi_0_porta_r},
@@ -714,11 +714,11 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 					else
 					{
 						current_level = (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.038) ? 1 : 0;
-					
+
 						if (previous_level!=current_level)
-						{			
+						{
 							data = (!previous_level && current_level) ? 1 : 0;
-			
+
 							set_out_data_bit(pmd85_cassette_serial_connection.State, data);
 							serial_connection_out(&pmd85_cassette_serial_connection);
 							msm8251_receive_clock();
@@ -733,7 +733,7 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 				case ALFA:
 					/* not hardware data decoding */
 					return;
-			}      
+			}
 		}
 
 		/* tape writing */
@@ -773,7 +773,7 @@ static OPBASE_HANDLER(mato_opbaseoverride)
 	return address;
 }
 
-void pmd85_common_driver_init (void)
+static void pmd85_common_driver_init (void)
 {
 	memory_set_opbase_handler(0, pmd85_opbaseoverride);
 
@@ -784,7 +784,7 @@ void pmd85_common_driver_init (void)
 
 	msm8251_init(&pmd85_msm8251_interface);
 
-	pmd85_cassette_timer = timer_alloc(pmd85_cassette_timer_callback);
+	pmd85_cassette_timer = timer_alloc(pmd85_cassette_timer_callback, NULL);
 	timer_adjust(pmd85_cassette_timer, attotime_zero, 0, ATTOTIME_IN_HZ(2400));
 
 	serial_connection_init(&pmd85_cassette_serial_connection);

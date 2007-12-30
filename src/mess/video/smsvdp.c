@@ -195,7 +195,6 @@ int smsvdp_video_init( const smsvdp_configuration *config ) {
 	smsvdp.cram_dirty = 1;
 	memset(smsvdp.VRAM, 0, VRAM_SIZE);
 	memset(smsvdp.CRAM, 0, MAX_CRAM_SIZE);
-	smsvdp.reg[0x01] |= 0x20;
 	smsvdp.reg[0x02] = 0x0E;			/* power up default */
 	smsvdp.reg[0x0a] = 0xff;
 
@@ -210,7 +209,7 @@ int smsvdp_video_init( const smsvdp_configuration *config ) {
 
 	set_display_settings();
 
-	smsvdp.smsvdp_display_timer = timer_alloc( smsvdp_display_callback );
+	smsvdp.smsvdp_display_timer = timer_alloc( smsvdp_display_callback , NULL);
 	timer_adjust( smsvdp.smsvdp_display_timer, video_screen_get_time_until_pos( 0, 0, 0 ), 0, video_screen_get_scan_period( 0 ) );
 	return 0;
 }
@@ -234,7 +233,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 
 	/* Check if we're on the last line of a frame */
 	if ( vpos == vpos_limit - 1 ) {
-		check_pause_button();
+		sms_check_pause_button();
 		return;
 	}
 
@@ -255,7 +254,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 				smsvdp.status |= STATUS_HINT;
 				if ( smsvdp.reg[0x00] & 0x10 ) {
 					/* Delay triggering of interrupt to allow software to read the status bit before the irq */
-					timer_set( video_screen_get_time_until_pos( 0, video_screen_get_vpos(0), video_screen_get_hpos(0) + 1 ), 0, smsvdp_set_irq );
+					timer_set( video_screen_get_time_until_pos( 0, video_screen_get_vpos(0), video_screen_get_hpos(0) + 1 ), NULL, 0, smsvdp_set_irq );
 				}
 			}
 
@@ -264,7 +263,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 			smsvdp.status |= STATUS_VINT;
 			if ( smsvdp.reg[0x01] & 0x20 ) {
 				/* Delay triggering of interrupt to allow software to read the status bit before the irq */
-				timer_set( video_screen_get_time_until_pos( 0, video_screen_get_vpos(0), video_screen_get_hpos(0) + 1 ), 0, smsvdp_set_irq );
+				timer_set( video_screen_get_time_until_pos( 0, video_screen_get_vpos(0), video_screen_get_hpos(0) + 1 ), NULL, 0, smsvdp_set_irq );
 			}
 		}
 		if ( video_skip_this_frame() ) {
@@ -274,11 +273,11 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 		/* Draw left border */
 		rec.min_x = LBORDER_START;
 		rec.max_x = LBORDER_START + LBORDER_X_PIXELS - 1;
-		fillbitmap( tmpbitmap, Machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+		fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
 		/* Draw right border */
 		rec.min_x = LBORDER_START + LBORDER_X_PIXELS + 256;
 		rec.max_x = rec.min_x + RBORDER_X_PIXELS - 1;
-		fillbitmap( tmpbitmap, Machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+		fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
 		/* Draw middle of the border */
 		/* We need to do this through the regular drawing function so it will */
 		/* be included in the gamegear scaling functions */
@@ -299,7 +298,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 			smsvdp.status |= STATUS_HINT;
 			if ( smsvdp.reg[0x00] & 0x10 ) {
 				/* Delay triggering of interrupt to allow software to read the status bit before the irq */
-				timer_set( video_screen_get_time_until_pos( 0, video_screen_get_vpos(0), video_screen_get_hpos(0) + 1 ), 0, smsvdp_set_irq );
+				timer_set( video_screen_get_time_until_pos( 0, video_screen_get_vpos(0), video_screen_get_hpos(0) + 1 ), NULL, 0, smsvdp_set_irq );
 			}
 		} else {
 			smsvdp.line_counter -= 1;
@@ -314,16 +313,16 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 			/* set whole line to backdrop color */
 			rec.min_x = LBORDER_START;
 			rec.max_x = LBORDER_START + LBORDER_X_PIXELS + 255 + RBORDER_X_PIXELS;
-			fillbitmap( tmpbitmap, Machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+			fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
 		} else {
 			/* Draw left border */
 			rec.min_x = LBORDER_START;
 			rec.max_x = LBORDER_START + LBORDER_X_PIXELS - 1;
-			fillbitmap( tmpbitmap, Machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+			fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
 			/* Draw right border */
 			rec.min_x = LBORDER_START + LBORDER_X_PIXELS + 256;
 			rec.max_x = rec.min_x + RBORDER_X_PIXELS - 1;
-			fillbitmap( tmpbitmap, Machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+			fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
 			sms_refresh_line( tmpbitmap, LBORDER_START + LBORDER_X_PIXELS, vpos_limit, vpos - vpos_limit );
 		}
 		return;
@@ -340,11 +339,11 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 		/* Draw left border */
 		rec.min_x = LBORDER_START;
 		rec.max_x = LBORDER_START + LBORDER_X_PIXELS - 1;
-		fillbitmap( tmpbitmap, Machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+		fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
 		/* Draw right border */
 		rec.min_x = LBORDER_START + LBORDER_X_PIXELS + 256;
 		rec.max_x = rec.min_x + RBORDER_X_PIXELS - 1;
-		fillbitmap( tmpbitmap, Machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+		fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
 		/* Draw middle of the border */
 		/* We need to do this through the regular drawing function so it will */
 		/* be included in the gamegear scaling functions */
@@ -796,7 +795,7 @@ static void sms_refresh_tms9918_sprites(int *lineBuffer, int line) {
 				}
 			}
 		}
-	
+
 		if ( smsvdp.reg[0x01] & 0x02 ) {
 			spriteTileSelected += 2;
 			pattern = spritePatternTable[ spriteTileSelected * 8 + spriteLine ];
@@ -864,7 +863,7 @@ static void sms_refresh_line_mode2(int *lineBuffer, int line) {
 				penSelected = colors >> 4;
 			} else {
 				penSelected = colors & 0x0F;
-			} 
+			}
 			if ( ! penSelected ) {
 				penSelected = BACKDROP_COLOR;
 			}
@@ -882,13 +881,13 @@ static void sms_refresh_line_mode2(int *lineBuffer, int line) {
 
 static void sms_refresh_line_mode0(int *lineBuffer, int line) {
 	int tileColumn;
-	int pixelX, pixelPlotX; 
+	int pixelX, pixelPlotX;
 	UINT8 *nameTable, *colorTable, *patternTable;
 
 	/* Draw background layer */
 	nameTable = smsvdp.VRAM + ( ( smsvdp.reg[0x02] & 0x0F ) << 10 ) + ( ( line >> 3 ) * 32 );
 	colorTable = smsvdp.VRAM + ( ( smsvdp.reg[0x03] << 6 ) & ( VRAM_SIZE - 1 ) );
-	patternTable = smsvdp.VRAM + ( ( smsvdp.reg[0x04] << 11 ) & ( VRAM_SIZE - 1 ) ); 
+	patternTable = smsvdp.VRAM + ( ( smsvdp.reg[0x04] << 11 ) & ( VRAM_SIZE - 1 ) );
 	for ( tileColumn = 0; tileColumn < 32; tileColumn++ ) {
 		UINT8 pattern;
 		UINT8 colors;
@@ -1048,17 +1047,17 @@ VIDEO_UPDATE(sms) {
 	int x, y;
 
 	if (smsvdp.prev_bitmap_saved) {
-	for (y = 0; y < Machine->screen[0].height; y++) {
-		for (x = 0; x < Machine->screen[0].width; x++) {
+	for (y = 0; y < machine->screen[0].height; y++) {
+		for (x = 0; x < machine->screen[0].width; x++) {
 			*BITMAP_ADDR32(bitmap, y, x) = (*BITMAP_ADDR32(tmpbitmap, y, x) + *BITMAP_ADDR32(smsvdp.prev_bitmap, y, x)) >> 2;
 			logerror("%x %x %x\n", *BITMAP_ADDR32(tmpbitmap, y, x), *BITMAP_ADDR32(smsvdp.prev_bitmap, y, x), (*BITMAP_ADDR32(tmpbitmap, y, x) + *BITMAP_ADDR32(smsvdp.prev_bitmap, y, x)) >> 2);
 		}
 	}
 	} else {
-		copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, &Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+		copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
 	}
 	if (!smsvdp.prev_bitmap_saved) {
-		copybitmap(smsvdp.prev_bitmap, tmpbitmap, 0, 0, 0, 0, &Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+		copybitmap(smsvdp.prev_bitmap, tmpbitmap, 0, 0, 0, 0, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
 	//smsvdp.prev_bitmap_saved = 1;
 	}
 	return 0;

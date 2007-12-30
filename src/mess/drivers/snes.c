@@ -150,16 +150,16 @@ static INPUT_PORTS_START( snes )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON10) PORT_NAME("Toggle Windows")  PORT_PLAYER(3)
 
 	PORT_START	/* IN 11 : debug input */
-	PORT_BIT( 0x1, IP_ACTIVE_HIGH, IPT_BUTTON9) PORT_NAME("Pal prev") 
-	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_BUTTON10) PORT_NAME("Pal next") 
+	PORT_BIT( 0x1, IP_ACTIVE_HIGH, IPT_BUTTON9) PORT_NAME("Pal prev")
+	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_BUTTON10) PORT_NAME("Pal next")
 	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_BUTTON7) PORT_NAME("Toggle Transparency")  PORT_PLAYER(4)
 #endif
 INPUT_PORTS_END
 
-static struct CustomSound_interface snes_sound_interface =
+static const struct CustomSound_interface snes_sound_interface =
 { snes_sh_start, 0, 0 };
 
-static GFXDECODE_START( gfxdecodeinfo )
+static GFXDECODE_START( snes )
 GFXDECODE_END
 
 static PALETTE_INIT( snes )
@@ -187,7 +187,7 @@ static void snes_load_sram(void)
 	UINT8 ii;
 	UINT8 *battery_ram, *ptr;
 
-	battery_ram = (UINT8 *)malloc( snes_cart.sram_max );
+	battery_ram = malloc_or_die( snes_cart.sram_max );
 	ptr = battery_ram;
 	image_battery_load( image_from_devtype_and_index(IO_CARTSLOT,0), battery_ram, snes_cart.sram_max );
 
@@ -217,7 +217,7 @@ static void snes_save_sram(void)
 	UINT8 ii;
 	UINT8 *battery_ram, *ptr;
 
-	battery_ram = (UINT8 *)malloc( snes_cart.sram_max );
+	battery_ram = malloc_or_die( snes_cart.sram_max );
 	ptr = battery_ram;
 
 	if( snes_cart.mode == SNES_MODE_20 )
@@ -482,7 +482,7 @@ static MACHINE_DRIVER_START( snes )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(snes)
 	MDRV_PALETTE_LENGTH(32768)
 	MDRV_COLORTABLE_LENGTH(257)
 	MDRV_PALETTE_INIT( snes )
@@ -502,7 +502,7 @@ static MACHINE_DRIVER_START( snespal )
 	MDRV_IMPORT_FROM(snes)
 	MDRV_CPU_REPLACE("main", G65816, MCLK_PAL/6)
 
-	MDRV_SCREEN_MODIFY("main")	
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_RAW_PARAMS(DOTCLK_PAL, SNES_HTOTAL, 0, SNES_SCR_WIDTH, SNES_VTOTAL_PAL, 0, SNES_SCR_HEIGHT_PAL)
 MACHINE_DRIVER_END
 

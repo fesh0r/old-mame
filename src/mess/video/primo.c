@@ -15,13 +15,13 @@
 
 UINT16 primo_video_memory_base;
 
-unsigned char primo_palette[2*3] =
+const unsigned char primo_palette[2*3] =
 {
 	0x00, 0x00, 0x00,
 	0xff, 0xff, 0xff
 };
 
-unsigned short primo_colortable[1][2] =
+const unsigned short primo_colortable[1][2] =
 {
 	{ 0, 1 }
 };
@@ -61,7 +61,7 @@ VIDEO_UPDATE( primo )
 {
 	int primo_scanline;
 
-	for (primo_scanline=0; primo_scanline<192; primo_scanline++)                  	
+	for (primo_scanline=0; primo_scanline<192; primo_scanline++)
 		primo_draw_scanline(bitmap, primo_scanline);
 	return 0;
 }

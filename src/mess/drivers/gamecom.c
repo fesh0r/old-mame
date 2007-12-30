@@ -33,10 +33,10 @@ static ADDRESS_MAP_START(gamecom_mem_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0xE000, 0xFFFF )  AM_RAM                                                 /* Extended I/O, Extended RAM */
 ADDRESS_MAP_END
 
-static GFXDECODE_START( gamecom_gfxdecodeinfo )
+static GFXDECODE_START( gamecom )
 GFXDECODE_END
 
-SM8500_CONFIG gamecom_cpu_config = {
+static const SM8500_CONFIG gamecom_cpu_config = {
 	gamecom_handle_dma,
 	gamecom_update_timers
 };
@@ -68,9 +68,9 @@ static INPUT_PORTS_START( gamecom )
 	PORT_BIT( 0xff, 80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0,159) PORT_SENSITIVITY(50) PORT_KEYDELTA(8)
 INPUT_PORTS_END
 
-#define GAMECOM_PALETTE_LENGTH	5	
+#define GAMECOM_PALETTE_LENGTH	5
 
-static unsigned char palette[] =
+static const unsigned char palette[] =
 {
 	0xDF, 0xFF, 0x8F,	/* White */
 	0x8F, 0xCF, 0x8F,	/* Gray 3 */
@@ -110,7 +110,7 @@ static MACHINE_DRIVER_START( gamecom )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 200, 200 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 199, 0, 159 )
-	MDRV_GFXDECODE( gamecom_gfxdecodeinfo )
+	MDRV_GFXDECODE( gamecom )
 	MDRV_PALETTE_LENGTH( GAMECOM_PALETTE_LENGTH )
 	MDRV_COLORTABLE_LENGTH( GAMECOM_PALETTE_LENGTH )
 	MDRV_PALETTE_INIT( gamecom )

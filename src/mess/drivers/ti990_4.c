@@ -106,7 +106,7 @@ static WRITE8_HANDLER ( lrex_callback )
 	We emulate a single VDT911 CRT terminal.
 */
 
-static int video_start_ti990_4(void)
+static VIDEO_START( ti990_4 )
 {
 	const vdt911_init_params_t params =
 	{
@@ -115,7 +115,7 @@ static int video_start_ti990_4(void)
 		ti990_set_int3
 	};
 
-	return vdt911_init_term(0, & params);
+	vdt911_init_term(0, & params);
 }
 
 static VIDEO_UPDATE( ti990_4 )
@@ -245,11 +245,11 @@ static MACHINE_DRIVER_START(ti990_4)
 #endif
 
 #if VIDEO_911
-	MDRV_GFXDECODE(vdt911_gfxdecodeinfo)
+	MDRV_GFXDECODE(vdt911)
 	MDRV_PALETTE_LENGTH(vdt911_palette_size)
 	MDRV_COLORTABLE_LENGTH(vdt911_colortable_size)
 #else
-	MDRV_GFXDECODE(asr733_gfxdecodeinfo)
+	MDRV_GFXDECODE(asr733)
 	MDRV_PALETTE_LENGTH(asr733_palette_size)
 	MDRV_COLORTABLE_LENGTH(asr733_colortable_size)
 #endif

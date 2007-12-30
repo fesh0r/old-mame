@@ -82,7 +82,7 @@ static casserr_t wavfile_process(cassette_image *cassette, struct CassetteOption
 		return CASSETTE_ERROR_INVALIDIMAGE;
 	if (memcmp(&file_header[8], magic2, 4))
 		return CASSETTE_ERROR_INVALIDIMAGE;
-	
+
 	/* read and sanity check size */
 	stated_size = get_leuint32(&file_header[4]) + 8;
 	file_size = cassette_image_size(cassette);
@@ -139,7 +139,7 @@ static casserr_t wavfile_process(cassette_image *cassette, struct CassetteOption
 
 			if (read_waveform)
 			{
-				tag_samples = tag_size / (opts->bits_per_sample / 8) / opts->channels; 
+				tag_samples = tag_size / (opts->bits_per_sample / 8) / opts->channels;
 				cassette_read_samples(cassette, opts->channels, 0.0, tag_samples / ((double) opts->sample_frequency),
 					tag_samples, offset, waveform_flags);
 			}
@@ -228,7 +228,7 @@ static casserr_t wavfile_save(cassette_image *cassette, const struct CassetteInf
 
 
 
-struct CassetteFormat wavfile_format =
+const struct CassetteFormat wavfile_format =
 {
 	"wav",
 	wavfile_identify,
@@ -248,6 +248,7 @@ struct CassetteFormat wavfile_format =
 	This code has already identified some rounding errors
 *********************************************************************/
 
+#ifdef UNUSED_FUNCTION
 void wavfile_testload(const char *fname)
 {
 	cassette_image *cassette;
@@ -256,7 +257,7 @@ void wavfile_testload(const char *fname)
 	int freq, samples, i;
 	INT32 cassamp;
 	INT16 wavsamp;
-	
+
 	f = fopen(fname, "rb");
 	if (!f)
 		return;
@@ -279,6 +280,7 @@ void wavfile_testload(const char *fname)
 
 	cassette_close(cassette);
 }
+#endif
 
 
 

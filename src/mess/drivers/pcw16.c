@@ -109,7 +109,7 @@
 #include "machine/intelfsh.h"
 
 // interrupt counter
-unsigned long pcw16_interrupt_counter;
+static unsigned long pcw16_interrupt_counter;
 // video control
 extern int pcw16_video_control;
 /* controls which bank of 2mb address space is paged into memory */
@@ -527,8 +527,8 @@ static WRITE8_HANDLER(pcw16_video_control_w)
 
 /* PCW16 KEYBOARD */
 
-unsigned char pcw16_keyboard_status;
-unsigned char pcw16_keyboard_data_shift;
+//unsigned char pcw16_keyboard_status;
+static unsigned char pcw16_keyboard_data_shift;
 
 
 
@@ -1257,7 +1257,7 @@ static void pcw16_com_refresh_connected(int serial_port_id)
 	}
 }
 
-static uart8250_interface pcw16_com_interface[2]=
+static const uart8250_interface pcw16_com_interface[2]=
 {
 	{
 		TYPE16550,
@@ -1332,14 +1332,14 @@ static void pcw16_reset(void)
 }
 
 
-static PC_LPT_CONFIG lpt_config = 
+static const PC_LPT_CONFIG lpt_config =
 {
 	1,
 	LPT_UNIDIRECTIONAL, // more one of these epp/ecp aware ports
 	NULL
 };
 
-static CENTRONICS_CONFIG cent_config =
+static const CENTRONICS_CONFIG cent_config =
 {
 	PRINTER_CENTRONICS,
 	pc_lpt_handshake_in
@@ -1351,11 +1351,11 @@ static MACHINE_RESET( pcw16 )
 	pcw16_interrupt_counter = 0;
 
 	/* video ints */
-	timer_pulse(ATTOTIME_IN_USEC(5830), 0,pcw16_timer_callback);
+	timer_pulse(ATTOTIME_IN_USEC(5830), NULL, 0,pcw16_timer_callback);
 	/* rtc timer */
-	timer_pulse(ATTOTIME_IN_HZ(256), 0, rtc_timer_callback);
+	timer_pulse(ATTOTIME_IN_HZ(256), NULL, 0, rtc_timer_callback);
 	/* keyboard timer */
-	timer_pulse(ATTOTIME_IN_HZ(50), 0, pcw16_keyboard_timer_callback);
+	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, pcw16_keyboard_timer_callback);
 
 
 	pc_fdc_init(&pcw16_fdc_interface);

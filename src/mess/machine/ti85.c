@@ -193,7 +193,7 @@ MACHINE_START( ti81 )
 
 	ti_calculator_model = TI_81;
 
-	timer_pulse(ATTOTIME_IN_HZ(200), 0, ti85_timer_callback);
+	timer_pulse(ATTOTIME_IN_HZ(200), NULL, 0, ti85_timer_callback);
 
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MWA8_ROM);
@@ -223,7 +223,7 @@ MACHINE_START( ti85 )
 
 	ti_calculator_model = TI_85;
 
-	timer_pulse(ATTOTIME_IN_HZ(200), 0, ti85_timer_callback);
+	timer_pulse(ATTOTIME_IN_HZ(200), NULL, 0, ti85_timer_callback);
 
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MWA8_ROM);
@@ -252,7 +252,7 @@ MACHINE_START( ti86 )
 	ti85_interrupt_speed = 0;
 	ti85_port4_bit0 = 0;
 
-	if (ti86_ram)
+	ti86_ram = auto_malloc(128*1024);
 	{
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
 
@@ -267,7 +267,7 @@ MACHINE_START( ti86 )
 
 		ti_calculator_model = TI_86;
 
-		timer_pulse(ATTOTIME_IN_HZ(200), 0, ti85_timer_callback);
+		timer_pulse(ATTOTIME_IN_HZ(200), NULL, 0, ti85_timer_callback);
 	}
 
 	add_reset_callback(machine, ti85_reset_serial);
@@ -459,18 +459,10 @@ NVRAM_HANDLER( ti86 )
 {
 	if (read_or_write)
 	{
-		if (ti86_ram)
-		{
-			mame_fwrite(file, ti86_ram, sizeof(unsigned char)*128*1024);
-			free (ti86_ram);
-			ti86_ram = NULL;
-		}
+		mame_fwrite(file, ti86_ram, sizeof(unsigned char)*128*1024);
 	}
 	else
 	{
-		ti86_ram = (unsigned char *)malloc(128*1024);
-		if (ti86_ram)
-		{
 			if (file)
 			{
 				mame_fread(file, ti86_ram, sizeof(unsigned char)*128*1024);
@@ -478,7 +470,6 @@ NVRAM_HANDLER( ti86 )
 			}
 			else
 				memset(ti86_ram, 0, sizeof(unsigned char)*128*1024);
-		}
 	}
 }
 
@@ -629,7 +620,7 @@ SNAPSHOT_LOAD( ti8x )
 	{
 		case TI_85: expected_snapshot_size = TI85_SNAPSHOT_SIZE; break;
 		case TI_86: expected_snapshot_size = TI86_SNAPSHOT_SIZE; break;
-	}	
+	}
 
 	logerror("Snapshot loading\n");
 
@@ -683,10 +674,10 @@ DEVICE_LOAD( ti85_serial )
 			ti85_free_serial_stream (&ti85_serial_stream);
 			return INIT_FAIL;
 		}
-			                                    
+
 		ti85_serial_status = TI85_SEND_HEADER;
 	}
-	else 
+	else
 	{
 		return INIT_FAIL;
 	}

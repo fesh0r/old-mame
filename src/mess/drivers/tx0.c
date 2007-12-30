@@ -216,7 +216,7 @@ static const gfx_layout fontlayout =
 	8*8 /* every char takes 8 consecutive bytes */
 };
 
-static GFXDECODE_START( gfxdecodeinfo )
+static GFXDECODE_START( tx0 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, fontlayout, 0, 3 )
 GFXDECODE_END
 
@@ -308,7 +308,7 @@ static PALETTE_INIT( tx0 )
 }
 
 
-tx0_reset_param_t tx0_reset_param =
+static const tx0_reset_param_t tx0_reset_param =
 {
 	{
 		tx0_io_cpy,
@@ -350,7 +350,7 @@ static MACHINE_DRIVER_START(tx0_64kw)
 	MDRV_SCREEN_SIZE(virtual_width, virtual_height)
 	MDRV_SCREEN_VISIBLE_AREA(0, virtual_width-1, 0, virtual_height-1)
 
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(tx0)
 	MDRV_PALETTE_LENGTH(pen_crt_num_levels + (sizeof(palette) / sizeof(palette[0]) / 3))
 	MDRV_COLORTABLE_LENGTH(sizeof(tx0_colortable) / sizeof(tx0_colortable[0]))
 
@@ -388,7 +388,7 @@ static MACHINE_DRIVER_START(tx0_8kw)
 	MDRV_SCREEN_SIZE(virtual_width, virtual_height)
 	MDRV_SCREEN_VISIBLE_AREA(0, virtual_width-1, 0, virtual_height-1)
 
-	MDRV_GFXDECODE(gfxdecodeinfo)
+	MDRV_GFXDECODE(tx0)
 	MDRV_PALETTE_LENGTH(pen_crt_num_levels + (sizeof(palette) / sizeof(palette[0]) / 3))
 	MDRV_COLORTABLE_LENGTH(sizeof(tx0_colortable) / sizeof(tx0_colortable[0]))
 

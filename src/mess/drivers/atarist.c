@@ -227,7 +227,7 @@ static WRITE16_HANDLER( atarist_fdc_dma_base_w )
 		fdc.dmabase = data & 0xff;
 		break;
 	}
-	
+
 	fdc.dmabytes = ATARIST_FLOPPY_BYTES_PER_SECTOR;
 }
 
@@ -268,9 +268,9 @@ enum
 static READ8_HANDLER( ikbd_port1_r )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		Keyboard column input
 		1		Keyboard column input
 		2		Keyboard column input
@@ -288,9 +288,9 @@ static READ8_HANDLER( ikbd_port1_r )
 static READ8_HANDLER( ikbd_port2_r )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		JOY 1-5
 		1		JOY 0-6
 		2		JOY 1-6
@@ -305,9 +305,9 @@ static READ8_HANDLER( ikbd_port2_r )
 static WRITE8_HANDLER( ikbd_port2_w )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		JOY 1-5
 		1		JOY 0-6
 		2		JOY 1-6
@@ -322,9 +322,9 @@ static WRITE8_HANDLER( ikbd_port2_w )
 static WRITE8_HANDLER( ikbd_port3_w )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		CAPS LOCK LED
 		1		Keyboard row select
 		2		Keyboard row select
@@ -350,9 +350,9 @@ static WRITE8_HANDLER( ikbd_port3_w )
 static READ8_HANDLER( ikbd_port4_r )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		JOY 0-1 or mouse XB
 		1		JOY 0-2 or mouse XA
 		2		JOY 0-3 or mouse YA
@@ -391,7 +391,7 @@ static READ8_HANDLER( ikbd_port4_r )
 		{
 			ikbd.mouse_px = IKBD_MOUSE_PHASE_NEGATIVE;
 		}
-		
+
 		if (y == ikbd.mouse_y)
 		{
 			ikbd.mouse_py = IKBD_MOUSE_PHASE_STATIC;
@@ -431,9 +431,9 @@ static READ8_HANDLER( ikbd_port4_r )
 static WRITE8_HANDLER( ikbd_port4_w )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		Keyboard row select
 		1		Keyboard row select
 		2		Keyboard row select
@@ -506,7 +506,7 @@ static TIMER_CALLBACK( atariste_dmasound_tick )
 			}
 		}
 	}
-	
+
 	if (dmasound.ctrl & 0x80)
 	{
 //		logerror("DMA sound left  %i\n", dmasound.fifo[7 - dmasound.samples]);
@@ -772,9 +772,9 @@ static WRITE16_HANDLER( megaste_cache_w )
 static READ16_HANDLER( stbook_config_r )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		_POWER_SWITCH
 		1		_TOP_CLOSED
 		2		_RTC_ALARM
@@ -800,9 +800,9 @@ static READ16_HANDLER( stbook_config_r )
 static WRITE16_HANDLER( stbook_lcd_control_w )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		Shadow Chip OFF
 		1		_SHIFTER OFF
 		2		POWEROFF
@@ -933,14 +933,14 @@ static ADDRESS_MAP_START( ste_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff8a38, 0xff8a39) AM_READWRITE(atarist_blitter_count_y_r, atarist_blitter_count_y_w)
 	AM_RANGE(0xff8a3a, 0xff8a3b) AM_READWRITE(atarist_blitter_op_r, atarist_blitter_op_w)
 	AM_RANGE(0xff8a3c, 0xff8a3d) AM_READWRITE(atarist_blitter_ctrl_r, atarist_blitter_ctrl_w)
-	AM_RANGE(0xff9200, 0xff9201) AM_READ(port_tag_to_handler16("JOY0"))
-	AM_RANGE(0xff9202, 0xff9203) AM_READ(port_tag_to_handler16("JOY1"))
-	AM_RANGE(0xff9210, 0xff9211) AM_READ(port_tag_to_handler16("PADDLE0X"))
-	AM_RANGE(0xff9212, 0xff9213) AM_READ(port_tag_to_handler16("PADDLE0Y"))
-	AM_RANGE(0xff9214, 0xff9215) AM_READ(port_tag_to_handler16("PADDLE1X"))
-	AM_RANGE(0xff9216, 0xff9217) AM_READ(port_tag_to_handler16("PADDLE1Y"))
-	AM_RANGE(0xff9220, 0xff9221) AM_READ(port_tag_to_handler16("GUNX"))
-	AM_RANGE(0xff9222, 0xff9223) AM_READ(port_tag_to_handler16("GUNY"))
+	AM_RANGE(0xff9200, 0xff9201) AM_READ_PORT("JOY0")
+	AM_RANGE(0xff9202, 0xff9203) AM_READ_PORT("JOY1")
+	AM_RANGE(0xff9210, 0xff9211) AM_READ_PORT("PADDLE0X")
+	AM_RANGE(0xff9212, 0xff9213) AM_READ_PORT("PADDLE0Y")
+	AM_RANGE(0xff9214, 0xff9215) AM_READ_PORT("PADDLE1X")
+	AM_RANGE(0xff9216, 0xff9217) AM_READ_PORT("PADDLE1Y")
+	AM_RANGE(0xff9220, 0xff9221) AM_READ_PORT("GUNX")
+	AM_RANGE(0xff9222, 0xff9223) AM_READ_PORT("GUNY")
 	AM_RANGE(0xfffa00, 0xfffa2f) AM_READWRITE(mfp68901_0_register_lsb_r, mfp68901_0_register_lsb_w)
 	AM_RANGE(0xfffc00, 0xfffc01) AM_READWRITE(acia6850_0_stat_msb_r, acia6850_0_ctrl_msb_w)
 	AM_RANGE(0xfffc02, 0xfffc03) AM_READWRITE(acia6850_0_data_msb_r, acia6850_0_data_msb_w)
@@ -1064,7 +1064,7 @@ static INPUT_PORTS_START( ikbd )
 	PORT_START_TAG("P32")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F1) PORT_NAME("F1")
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Left Shift") PORT_CODE(KEYCODE_LSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
-	PORT_BIT( 0xde, IP_ACTIVE_LOW, IPT_UNUSED ) 
+	PORT_BIT( 0xde, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("P33")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F2) PORT_NAME("F2")
@@ -1083,7 +1083,7 @@ static INPUT_PORTS_START( ikbd )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Tab") PORT_CODE(KEYCODE_TAB) PORT_CHAR('\t')
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Q) PORT_CHAR('Q')
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A) PORT_CHAR('A')
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z) PORT_CHAR('Z')
 
 	PORT_START_TAG("P36")
@@ -1129,21 +1129,21 @@ static INPUT_PORTS_START( ikbd )
 	PORT_START_TAG("P42")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F9) PORT_NAME("F9")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHAR('=')
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_O) PORT_CHAR('O')
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_P) PORT_CHAR('P')
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_L) PORT_CHAR('L')
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Space") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
 
 	PORT_START_TAG("P43")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F10) PORT_NAME("F10")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(0x00B4) PORT_CHAR('`')
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Caps Lock") PORT_CODE(KEYCODE_CAPSLOCK) PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
 
 	PORT_START_TAG("P44")
@@ -1151,9 +1151,9 @@ static INPUT_PORTS_START( ikbd )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Backspace") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Delete") PORT_CODE(KEYCODE_DEL)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Insert") PORT_CODE(KEYCODE_INSERT)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Return") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('-') PORT_CHAR('_')
 
 	PORT_START_TAG("P45")
@@ -1214,10 +1214,10 @@ static INPUT_PORTS_START( atarist )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 
 	PORT_START_TAG("IKBD_MOUSEX")
-	PORT_BIT( 0xff, 0x00, IPT_MOUSE_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(1)	
+	PORT_BIT( 0xff, 0x00, IPT_MOUSE_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(1)
 
 	PORT_START_TAG("IKBD_MOUSEY")
-	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(1)	
+	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(1)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( atariste )
@@ -1299,7 +1299,7 @@ static WRITE8_HANDLER( ym2149_port_a_w )
 	{
 		wd17xx_set_drive(0);
 	}
-	
+
 	if (!(data & 0x04))
 	{
 		wd17xx_set_drive(1);
@@ -1319,7 +1319,7 @@ static WRITE8_HANDLER( ym2149_port_b_w )
 	centronics_write_data(0, data);
 }
 
-static struct AY8910interface ym2149_interface =
+static const struct AY8910interface ym2149_interface =
 {
 	0,
 	0,
@@ -1337,7 +1337,7 @@ static void acia_interrupt(int state)
 	acia_irq = state;
 }
 
-static struct acia6850_interface acia_ikbd_intf =
+static const struct acia6850_interface acia_ikbd_intf =
 {
 	Y2/64,
 	Y2/64,
@@ -1349,7 +1349,7 @@ static struct acia6850_interface acia_ikbd_intf =
 	acia_interrupt
 };
 
-static struct acia6850_interface acia_midi_intf =
+static const struct acia6850_interface acia_midi_intf =
 {
 	Y2/64,
 	Y2/64,
@@ -1366,7 +1366,7 @@ static READ8_HANDLER( mfp_gpio_r )
 	/*
 
 		bit		description
-		
+
 		0		Centronics BUSY
 		1		RS232 DCD
 		2		RS232 CTS
@@ -1420,7 +1420,7 @@ static const mfp68901_interface mfp_intf =
 	NULL
 };
 
-static CENTRONICS_CONFIG atarist_centronics_config[1] =
+static const CENTRONICS_CONFIG atarist_centronics_config[1] =
 {
 	{
 		PRINTER_IBM,
@@ -1510,7 +1510,7 @@ static MACHINE_START( atarist )
 	cpunum_set_irq_callback(0, atarist_int_ack);
 }
 
-static struct rp5c15_interface rtc_intf = 
+static const struct rp5c15_interface rtc_intf =
 {
 	NULL
 };
@@ -1526,7 +1526,7 @@ static READ8_HANDLER( atariste_mfp_gpio_r )
 	/*
 
 		bit		description
-		
+
 		0		Centronics BUSY
 		1		RS232 DCD
 		2		RS232 CTS
@@ -1597,8 +1597,8 @@ static MACHINE_START( atariste )
 
 	cpunum_set_irq_callback(0, atarist_int_ack);
 
-	dmasound_timer = timer_alloc(atariste_dmasound_tick);
-	microwire_timer = timer_alloc(atariste_microwire_tick);
+	dmasound_timer = timer_alloc(atariste_dmasound_tick, NULL);
+	microwire_timer = timer_alloc(atariste_microwire_tick, NULL);
 }
 
 static MACHINE_START( megaste )
@@ -1642,7 +1642,7 @@ static WRITE8_HANDLER( stbook_ym2149_port_a_w )
 	{
 		wd17xx_set_drive(0);
 	}
-	
+
 	if (!(data & 0x04))
 	{
 		wd17xx_set_drive(1);
@@ -1657,7 +1657,7 @@ static WRITE8_HANDLER( stbook_ym2149_port_a_w )
 	// 0x80 = FDD_DENSE_SEL
 }
 
-static struct AY8910interface stbook_ym2149_interface =
+static const struct AY8910interface stbook_ym2149_interface =
 {
 	0,
 	0,
@@ -1667,7 +1667,7 @@ static struct AY8910interface stbook_ym2149_interface =
 
 static UINT8 krxd, ktxd;
 
-static struct acia6850_interface stbook_acia_ikbd_intf =
+static const struct acia6850_interface stbook_acia_ikbd_intf =
 {
 	U517/2/16, // 500kHz
 	U517/2/2, // 1MHZ
@@ -1684,7 +1684,7 @@ static READ8_HANDLER( stbook_mfp_gpio_r )
 	/*
 
 		bit		description
-		
+
 		0		Centronics BUSY
 		1		RS232 DCD
 		2		RS232 CTS
@@ -1752,7 +1752,7 @@ static MACHINE_DRIVER_START( atarist )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_VIDEO_START( atarist )
-	MDRV_VIDEO_UPDATE( atarist )
+	MDRV_VIDEO_UPDATE( generic_bitmapped )
 
 	MDRV_SCREEN_ADD("main", 0)
 	MDRV_SCREEN_RAW_PARAMS(Y2/4, ATARIST_HTOT_PAL, ATARIST_HBEND_PAL, ATARIST_HBSTART_PAL, ATARIST_VTOT_PAL, ATARIST_VBEND_PAL, ATARIST_VBSTART_PAL)
@@ -1761,7 +1761,7 @@ static MACHINE_DRIVER_START( atarist )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(YM2149, Y2/16)
 	MDRV_SOUND_CONFIG(ym2149_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)	
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( megast )
@@ -1789,7 +1789,7 @@ static MACHINE_DRIVER_START( atariste )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_PALETTE_LENGTH(512)
 	MDRV_VIDEO_START( atarist )
-	MDRV_VIDEO_UPDATE( atarist )
+	MDRV_VIDEO_UPDATE( generic_bitmapped )
 
 	MDRV_SCREEN_ADD("main", 0)
 	MDRV_SCREEN_RAW_PARAMS(Y2/4, ATARIST_HTOT_PAL, ATARIST_HBEND_PAL, ATARIST_HBSTART_PAL, ATARIST_VTOT_PAL, ATARIST_VBEND_PAL, ATARIST_VBSTART_PAL)
@@ -1841,7 +1841,7 @@ static MACHINE_DRIVER_START( stbook )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(YM3439, U517/8)
 	MDRV_SOUND_CONFIG(stbook_ym2149_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)	
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -1998,7 +1998,7 @@ static DEVICE_LOAD( atarist_floppy )
 			int sectors = bootsector[0x18];
 			int heads = bootsector[0x1a];
 			int tracks = (bootsector[0x13] | (bootsector[0x14] << 8)) / sectors / heads;
-	
+
 			/* drive, tracks, heads, sectors per track, sector length, first sector id, offset track zero, track skipping */
 			basicdsk_set_geometry(image, tracks, heads, sectors, 512, 1, 0, FALSE);
 
@@ -2185,7 +2185,7 @@ SYSTEM_CONFIG_START( stbook )
 	CONFIG_DEVICE(megaste_serial_getinfo)
 	CONFIG_DEVICE(atarist_cartslot_getinfo)
 	// MIDI
-	// IDE Hard Disk 
+	// IDE Hard Disk
 SYSTEM_CONFIG_END
 
 /* System Drivers */

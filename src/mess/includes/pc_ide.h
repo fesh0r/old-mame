@@ -1,9 +1,11 @@
-/* 
-   ibm at mfm hard disk 
+/*
+   ibm at mfm hard disk
    interface still used in ide devices!
 */
 
 #include "driver.h"
+
+/*----------- defined in machine/pc_ide.c -----------*/
 
  READ8_HANDLER(at_mfm_0_r);
 WRITE8_HANDLER(at_mfm_0_w);

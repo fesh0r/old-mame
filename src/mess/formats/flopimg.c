@@ -587,7 +587,7 @@ floperr_t floppy_clear_sector(floppy_image *floppy, int head, int track, int sec
 
 	memset(buffer, data, length);
 
-	err = floppy_write_sector(floppy, head, track, sector, 0, buffer, length); 
+	err = floppy_write_sector(floppy, head, track, sector, 0, buffer, length);
 	if (err)
 		goto done;
 
@@ -930,7 +930,7 @@ const char *floppy_format_description(floppy_image *floppy)
 
 const char *floppy_error(floperr_t err)
 {
-	const char *error_messages[] =
+	static const char *const error_messages[] =
 	{
 		"The operation completed successfully",
 		"Fatal internal error",

@@ -31,12 +31,12 @@
 #define LOG_FDS	1
 
 /* Global variables */
-int prg_mask;
+static int prg_mask;
 
-int IRQ_enable, IRQ_enable_latch;
-UINT16 IRQ_count, IRQ_count_latch, IRQ_reload;
-UINT8 IRQ_status;
-UINT8 IRQ_mode_jaleco;
+static int IRQ_enable, IRQ_enable_latch;
+static UINT16 IRQ_count, IRQ_count_latch, IRQ_reload;
+static UINT8 IRQ_status;
+static UINT8 IRQ_mode_jaleco;
 
 int MMC1_extended;	/* 0 = normal MMC1 cart, 1 = 512k MMC1, 2 = 1024k MMC1 */
 
@@ -2086,15 +2086,21 @@ READ8_HANDLER ( fds_r )
 			nes_fds.status0 &= ~0x01;
 			break;
 		case 0x01: /* $4031 - data latch */
-			if (nes_fds.current_side)
+			/* don't read data if disk is unloaded */
+			if (nes_fds.data == NULL)
+				ret = 0;
+			else if (nes_fds.current_side)
 				ret = nes_fds.data[(nes_fds.current_side-1) * 65500 + nes_fds.head_position++];
 			else
 				ret = 0;
 			break;
 		case 0x02: /* $4032 - disk status 1 */
-			/* If we've switched disks, report "no disk" for a few reads */
-			if (last_side != nes_fds.current_side)
+			/* return "no disk" status if disk is unloaded */
+			if (nes_fds.data == NULL)
+				ret = 1;
+			else if (last_side != nes_fds.current_side)
 			{
+				/* If we've switched disks, report "no disk" for a few reads */
 				ret = 1;
 				count ++;
 				if (count == 50)
@@ -4206,15 +4212,15 @@ int mapper_reset (int mapperNum)
 
 	/* Set the vram bank-switch values to the default */
 	ppu2c0x_set_videorom_bank(0, 0, 8, 0, 64);
-	
+
 	/* Set the mapper irq callback */
 	mapper = nes_mapper_lookup(mapperNum);
 	ppu2c0x_set_scanline_callback (0, mapper ? mapper->mmc_scanline : NULL);
 	ppu2c0x_set_hblank_callback (0, mapper ? mapper->mmc_hblank :  NULL);
 
 	if (!nes_irq_timer)
-		nes_irq_timer = timer_alloc(nes_irq_callback);
-		
+		nes_irq_timer = timer_alloc(nes_irq_callback, NULL);
+
 	mapper_warning = 0;
 	/* 8k mask */
 	prg_mask = ((nes.prg_chunks << 1) - 1);
@@ -4512,7 +4518,7 @@ int mapper_reset (int mapperNum)
 
 
 
-static mmc mmc_list[] =
+static const mmc mmc_list[] =
 {
 /*	INES   DESC						LOW_W, LOW_R, MED_W, HIGH_W, PPU_latch, scanline CB, hblank CB */
 	{ 0, "No Mapper",				NULL, NULL, NULL, NULL, NULL, NULL, NULL },

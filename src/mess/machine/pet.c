@@ -225,7 +225,7 @@ static WRITE8_HANDLER( pet_via_port_b_w )
 }
 
 
-static struct via6522_interface pet_via = 
+static const struct via6522_interface pet_via =
 {
 	NULL,					/* in_a_func */
 	pet_via_port_b_r,		/* in_b_func */
@@ -452,7 +452,7 @@ static void pet_common_driver_init (void)
 	}
 
 	/* pet clock */
-	timer_pulse(ATTOTIME_IN_MSEC(10), 0, pet_interrupt);
+	timer_pulse(ATTOTIME_IN_MSEC(10), NULL, 0, pet_interrupt);
 
 	via_config(0, &pet_via);
 	pia_config(1, &pet_pia1);
@@ -482,7 +482,7 @@ DRIVER_INIT( pet1 )
 	pet_vh_init();
 }
 
-//static struct mscrtc6845_config crtc_pet = { 800000 /*?*/};
+//static const struct mscrtc6845_config crtc_pet = { 800000 /*?*/};
 static void pet_display_enable_changed(int display_enabled) {
 }
 

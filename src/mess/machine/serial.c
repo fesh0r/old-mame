@@ -86,7 +86,7 @@ static void serial_device_in_callback(int id, unsigned long status)
 
 static void serial_protocol_none_sent_char(int id);
 
-static struct serial_protocol_interface serial_protocol_none_interface=
+static const struct serial_protocol_interface serial_protocol_none_interface=
 {
 	NULL,
 	serial_protocol_none_sent_char,
@@ -96,7 +96,7 @@ static struct serial_protocol_interface serial_protocol_none_interface=
 static void serial_protocol_xmodem_receive_char(int id, unsigned char ch);
 static void serial_protocol_xmodem_sent_char(int id);
 
-static struct serial_protocol_interface serial_protocol_xmodem_interface=
+static const struct serial_protocol_interface serial_protocol_xmodem_interface=
 {
 	serial_protocol_xmodem_receive_char,
 	serial_protocol_xmodem_sent_char
@@ -118,7 +118,7 @@ void serial_device_setup(mess_image *image, int baud_rate, int num_data_bits, in
 	serial_devices[id].data_form.word_length = num_data_bits;
 	serial_devices[id].data_form.stop_bit_count = stop_bit_count;
 	serial_devices[id].data_form.parity = parity_code;
-	serial_devices[id].timer = timer_alloc(serial_device_baud_rate_callback);
+	serial_devices[id].timer = timer_alloc(serial_device_baud_rate_callback, NULL);
 
 	serial_connection_init(&serial_devices[id].connection);
 	serial_connection_set_in_callback(&serial_devices[id].connection, serial_device_in_callback);
@@ -149,7 +149,7 @@ unsigned long serial_device_get_state(int id)
 }
 
 
-static const char *protocol_names[]=
+static const char *const protocol_names[]=
 {
 	"None",
 	"XModem"

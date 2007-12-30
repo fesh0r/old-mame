@@ -1,6 +1,8 @@
 #include "driver.h"
 #include "sound/custom.h"
 
+/*----------- defined in video/arcadia.c -----------*/
+
 extern INTERRUPT_GEN( arcadia_video_line );
  READ8_HANDLER(arcadia_vsync_r);
 
@@ -20,5 +22,7 @@ WRITE8_HANDLER(arcadia_video_w);
 extern VIDEO_START( arcadia );
 extern VIDEO_UPDATE( arcadia );
 
-extern struct CustomSound_interface arcadia_sound_interface;
+/*----------- defined in audio/arcadia.c -----------*/
+
+extern const struct CustomSound_interface arcadia_sound_interface;
 extern void arcadia_soundport_w (int mode, int data);

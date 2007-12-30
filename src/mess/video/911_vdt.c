@@ -42,7 +42,7 @@ static const gfx_layout fontlayout_8bit =
 	10*8 			/* every char takes 10 consecutive bytes */
 };
 
-GFXDECODE_START( vdt911_gfxdecodeinfo )
+GFXDECODE_START( vdt911 )
 	/* array must use same order as vdt911_model_t!!! */
 	/* US */
 	GFXDECODE_ENTRY( vdt911_chr_region, vdt911_US_chr_offset, fontlayout_7bit, 0, 4 )
@@ -64,14 +64,14 @@ GFXDECODE_START( vdt911_gfxdecodeinfo )
 	GFXDECODE_ENTRY( vdt911_chr_region, vdt911_frenchWP_chr_offset, fontlayout_7bit, 0, 4 )
 GFXDECODE_END
 
-unsigned char vdt911_palette[vdt911_palette_size*3] =
+const unsigned char vdt911_palette[vdt911_palette_size*3] =
 {
 	0x00,0x00,0x00,	/* black */
 	0xC0,0xC0,0xC0,	/* low intensity */
 	0xFF,0xFF,0xFF	/* high intensity */
 };
 
-unsigned short vdt911_colortable[vdt911_colortable_size] =
+const unsigned short vdt911_colortable[vdt911_colortable_size] =
 {
 	0, 2,	/* high intensity */
 	0, 1,	/* low intensity */
@@ -226,7 +226,7 @@ static TIMER_CALLBACK(setup_beep)
 /*
 	Initialize one 911 vdt controller/terminal
 */
-int vdt911_init_term(int unit, const vdt911_init_params_t *params)
+void vdt911_init_term(int unit, const vdt911_init_params_t *params)
 {
 	vdt[unit].screen_size = params->screen_size;
 	vdt[unit].model = params->model;
@@ -237,15 +237,13 @@ int vdt911_init_term(int unit, const vdt911_init_params_t *params)
 	else
 		vdt[unit].cursor_address_mask = 0x7ff;	/* 2 kb of RAM */
 
-	timer_set(attotime_zero, unit, setup_beep);
+	timer_set(attotime_zero, NULL, unit, setup_beep);
 
 	/* set up cursor blink clock.  2Hz frequency -> .25s half-period. */
-	/*vdt[unit].blink_clock =*/ timer_pulse(ATTOTIME_IN_MSEC(250), unit, blink_callback);
+	/*vdt[unit].blink_clock =*/ timer_pulse(ATTOTIME_IN_MSEC(250), NULL, unit, blink_callback);
 
 	/* alloc beep timer */
-	vdt[unit].beep_timer = timer_alloc(beep_callback);
-
-	return 0;
+	vdt[unit].beep_timer = timer_alloc(beep_callback, NULL);
 }
 
 /*
@@ -518,7 +516,7 @@ void vdt911_refresh(mame_bitmap *bitmap, int unit, int x, int y)
 		}
 }
 
-static unsigned char (*key_translate[])[91] =
+static const unsigned char (*key_translate[])[91] =
 {	/* array must use same order as vdt911_model_t!!! */
 	/* US */
 	US_key_translate,

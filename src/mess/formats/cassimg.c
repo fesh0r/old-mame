@@ -146,7 +146,7 @@ static int good_format(const struct CassetteFormat *format, const char *extensio
 
 
 casserr_t cassette_open_choices(void *file, const struct io_procs *procs, const char *extension,
-	const struct CassetteFormat **formats, int flags, cassette_image **outcassette)
+	const struct CassetteFormat *const *formats, int flags, cassette_image **outcassette)
 {
 	casserr_t err;
 	cassette_image *cassette;
@@ -226,7 +226,7 @@ casserr_t cassette_create(void *file, const struct io_procs *procs, const struct
 {
 	casserr_t err;
 	cassette_image *cassette;
-	static struct CassetteOptions default_options = { 1, 16, 44100 };
+	static const struct CassetteOptions default_options = { 1, 16, 44100 };
 
 	/* cannot create to a read only image */
 	if (flags & CASSETTE_FLAG_READONLY)
@@ -762,7 +762,7 @@ casserr_t cassette_put_modulated_data(cassette_image *cassette, int channel, dou
 			pulse_period = 1 / pulse_frequency;
 			err = cassette_put_samples(cassette, 0, time_index, pulse_period, wave_bytes_length, 1, wave_bytes, CASSETTE_WAVEFORM_8BIT);
 			if (err)
-				goto done;	
+				goto done;
 			time_index += pulse_period;
 			total_displacement += pulse_period;
 		}
@@ -873,7 +873,7 @@ casserr_t cassette_put_modulated_data_bit(cassette_image *cassette, int channel,
 	pulse_period = 1 / pulse_frequency;
 	err = cassette_put_samples(cassette, 0, time_index, pulse_period, wave_bytes_length, 1, wave_bytes, CASSETTE_WAVEFORM_8BIT);
 	if (err)
-		goto done;	
+		goto done;
 	time_index += pulse_period;
 	total_displacement += pulse_period;
 

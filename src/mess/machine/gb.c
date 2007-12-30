@@ -90,28 +90,38 @@ static UINT8 MBC3RTCMap[5];			   /* MBC3 Real-Time-Clock banks                  
 static UINT8 MBC3RTCBank;			   /* Number of RTC bank for MBC3                 */
 static UINT8 *GBC_RAMMap[8];		   /* (GBC) Addresses of internal RAM banks       */
 static UINT8 GBC_RAMBank;			   /* (GBC) Number of RAM bank currently used     */
-UINT8 *GBC_VRAMMap[2];				   /* (GBC) Addressses of video RAM banks         */
-UINT8 *gbc_vram_bank;
 static UINT8 sgb_atf_data[4050];	   /* (SGB) Attribute files                       */
 UINT8 *sgb_tile_data;
-UINT8 *gb_cart = NULL;
-UINT8 *gb_cart_ram = NULL;
-UINT8 gb_io[0x10];
-UINT8 gb_ie;
-UINT8 *gb_dummy_rom_bank = NULL;
-UINT8 *gb_dummy_ram_bank = NULL;
+UINT16 sgb_pal[128];	/* SGB palette remapping */
+UINT16 sgb_pal_data[4096];	/* 512 palettes of 4 colours			*/
+UINT8 sgb_pal_map[20][18];	/* Palette tile map						*/
+UINT8 sgb_tile_map[2048];	/* 32x32 tile map data (0-tile,1-attribute)	*/
+UINT8 sgb_window_mask;		/* Current GB screen mask				*/
+UINT8 sgb_hack;				/* Flag set if we're using a hack		*/
+UINT8 gbc_mode;				/* is the GBC in mono/colour mode?		*/
+
+static UINT8 *gb_cart = NULL;
+static UINT8 *gb_cart_ram = NULL;
+static UINT8 gb_io[0x10];
+//UINT8 gb_ie;
+static UINT8 *gb_dummy_rom_bank = NULL;
+static UINT8 *gb_dummy_ram_bank = NULL;
 /* TAMA5 related global variables */
-UINT8 gbTama5Memory[32];
-UINT8 gbTama5Byte;
-UINT8 gbTama5Address;
-UINT8 gbLastTama5Command;
+static UINT8 gbTama5Memory[32];
+static UINT8 gbTama5Byte;
+static UINT8 gbTama5Address;
+static UINT8 gbLastTama5Command;
 /* Timer related globals */
-UINT16	gb_divcount;
-UINT8 gb_timer_count;
-UINT8 gb_timer_shift;
+static struct gb_timer_struct {
+	UINT16	divcount;
+	UINT8	shift;
+	UINT16	shift_cycles;
+	UINT8	triggering_irq;
+	UINT8	reloading;
+} gb_timer;
 /* Serial I/O related */
 static UINT32 SIOCount;			/* Serial I/O counter                          */
-emu_timer	*gb_serial_timer = NULL;
+static emu_timer	*gb_serial_timer = NULL;
 
 /*
   Prototypes
@@ -119,23 +129,23 @@ emu_timer	*gb_serial_timer = NULL;
 
 static TIMER_CALLBACK(gb_serial_timer_proc);
 static void gb_machine_stop(running_machine *machine);
-WRITE8_HANDLER( gb_rom_bank_select_mbc1 );
-WRITE8_HANDLER( gb_ram_bank_select_mbc1 );
-WRITE8_HANDLER( gb_mem_mode_select_mbc1 );
-WRITE8_HANDLER( gb_rom_bank_select_mbc2 );
-WRITE8_HANDLER( gb_rom_bank_select_mbc3 );
-WRITE8_HANDLER( gb_ram_bank_select_mbc3 );
-WRITE8_HANDLER( gb_mem_mode_select_mbc3 );
-WRITE8_HANDLER( gb_rom_bank_select_mbc5 );
-WRITE8_HANDLER( gb_ram_bank_select_mbc5 );
-WRITE8_HANDLER( gb_rom_bank_select_mbc7 );
-WRITE8_HANDLER( gb_rom_bank_unknown_mbc7 );
-WRITE8_HANDLER( gb_ram_tama5 );
-WRITE8_HANDLER( gb_rom_bank_select_wisdom );
-WRITE8_HANDLER( gb_rom_bank_mmm01_0000_w );
-WRITE8_HANDLER( gb_rom_bank_mmm01_2000_w );
-WRITE8_HANDLER( gb_rom_bank_mmm01_4000_w );
-WRITE8_HANDLER( gb_rom_bank_mmm01_6000_w );
+static WRITE8_HANDLER( gb_rom_bank_select_mbc1 );
+static WRITE8_HANDLER( gb_ram_bank_select_mbc1 );
+static WRITE8_HANDLER( gb_mem_mode_select_mbc1 );
+static WRITE8_HANDLER( gb_rom_bank_select_mbc2 );
+static WRITE8_HANDLER( gb_rom_bank_select_mbc3 );
+static WRITE8_HANDLER( gb_ram_bank_select_mbc3 );
+static WRITE8_HANDLER( gb_mem_mode_select_mbc3 );
+static WRITE8_HANDLER( gb_rom_bank_select_mbc5 );
+static WRITE8_HANDLER( gb_ram_bank_select_mbc5 );
+static WRITE8_HANDLER( gb_rom_bank_select_mbc7 );
+static WRITE8_HANDLER( gb_rom_bank_unknown_mbc7 );
+static WRITE8_HANDLER( gb_ram_tama5 );
+static WRITE8_HANDLER( gb_rom_bank_select_wisdom );
+static WRITE8_HANDLER( gb_rom_bank_mmm01_0000_w );
+static WRITE8_HANDLER( gb_rom_bank_mmm01_2000_w );
+static WRITE8_HANDLER( gb_rom_bank_mmm01_4000_w );
+static WRITE8_HANDLER( gb_rom_bank_mmm01_6000_w );
 static void gb_timer_increment( void );
 
 #ifdef MAME_DEBUG
@@ -150,16 +160,9 @@ static void gb_init_regs(void) {
 
 	gb_io_w( 0x05, 0x00 );		/* TIMECNT */
 	gb_io_w( 0x06, 0x00 );		/* TIMEMOD */
-	gb_io_w( 0x07, 0x00 );		/* TIMEFRQ */
-	gb_video_w( 0x0, 0x91 );	/* LCDCONT */
-	gb_video_w( 0x7, 0xFC );	/* BGRDPAL */
-	gb_video_w( 0x8, 0xFC );	/* SPR0PAL */
-	gb_video_w( 0x9, 0xFC );	/* SPR1PAL */
 }
 
 static void gb_init(void) {
-	gb_vram = memory_get_read_ptr( 0, ADDRESS_SPACE_PROGRAM, 0x8000 );
-
 	/* Initialize the memory banks */
 	MBC1Mode = 0;
 	MBC3RTCBank = 0;
@@ -233,9 +236,12 @@ static void gb_init(void) {
 	gb_sound_w( 0x16, 0x00 );       /* Initialize sound hardware */
 
 	/* Allocate the serial timer, and disable it */
-	gb_serial_timer = timer_alloc( gb_serial_timer_proc );
+	gb_serial_timer = timer_alloc( gb_serial_timer_proc , NULL);
 	timer_enable( gb_serial_timer, 0 );
 
+	gb_timer.divcount = 0;
+	gb_timer.triggering_irq = 0;
+	gb_io[0x07] = 0xF8;		/* Upper bits of TIMEFRQ register are set to 1 */
 }
 
 MACHINE_START( gb )
@@ -247,7 +253,7 @@ MACHINE_RESET( gb )
 {
 	gb_init();
 
-	gb_video_init();
+	gb_video_init( GB_VIDEO_DMG );
 
 	/* Enable BIOS rom */
 	memory_set_bankptr(5, memory_region(REGION_CPU1) );
@@ -258,7 +264,7 @@ MACHINE_RESET( sgb )
 {
 	gb_init();
 
-	sgb_video_init();
+	gb_video_init( GB_VIDEO_SGB );
 
 	gb_init_regs();
 
@@ -292,7 +298,7 @@ MACHINE_RESET( gbpocket )
 {
 	gb_init();
 
-	gb_video_init();
+	gb_video_init( GB_VIDEO_MGB );
 
 	gb_init_regs();
 
@@ -312,14 +318,7 @@ MACHINE_RESET( gbc )
 
 	gb_init();
 
-	/* Allocate memory for video ram */
-	for( ii = 0; ii < 2; ii++ ) {
-		GBC_VRAMMap[ii] = mess_ram + CGB_START_VRAM_BANKS + ii * 0x2000;
-		memset (GBC_VRAMMap[ii], 0, 0x2000);
-	}
-	gbc_io2_w( 0x0F, 0x00 );
-
-	gbc_video_init();
+	gb_video_init( GB_VIDEO_CGB );
 
 	gb_init_regs();
 
@@ -352,6 +351,8 @@ MACHINE_RESET( gbc )
 		gbc_mode = GBC_MODE_GBC;
 	else
 		gbc_mode = GBC_MODE_MONO;
+
+	gb_timer.divcount = 0x1E9C;
 }
 
 static void gb_machine_stop(running_machine *machine)
@@ -366,12 +367,12 @@ static void gb_machine_stop(running_machine *machine)
 	image_battery_save(image_from_devtype_and_index(IO_CARTSLOT, 0), gb_cart_ram, RAMBanks * 0x2000 );
 }
 
-void gb_set_mbc1_banks( void ) {
+static void gb_set_mbc1_banks( void ) {
 	memory_set_bankptr( 1, ROMMap[ ROMBank ] );
 	memory_set_bankptr( 2, RAMMap[ MBC1Mode ? ( ROMBank >> 5 ) : 0 ] );
 }
 
-WRITE8_HANDLER( gb_rom_bank_select_mbc1 )
+static WRITE8_HANDLER( gb_rom_bank_select_mbc1 )
 {
 	data &= 0x1F; /* Only uses lower 5 bits */
 	/* Selecting bank 0 == selecting bank 1 */
@@ -383,7 +384,7 @@ WRITE8_HANDLER( gb_rom_bank_select_mbc1 )
 	gb_set_mbc1_banks();
 }
 
-WRITE8_HANDLER( gb_rom_bank_select_mbc2 )
+static WRITE8_HANDLER( gb_rom_bank_select_mbc2 )
 {
 	data &= 0x0F; /* Only uses lower 4 bits */
 	/* Selecting bank 0 == selecting bank 1 */
@@ -397,7 +398,7 @@ WRITE8_HANDLER( gb_rom_bank_select_mbc2 )
 	memory_set_bankptr (1, ROMMap[ROMBank] );
 }
 
-WRITE8_HANDLER( gb_rom_bank_select_mbc3 )
+static WRITE8_HANDLER( gb_rom_bank_select_mbc3 )
 {
 	logerror( "0x%04X: write to mbc3 rom bank select register 0x%04X <- 0x%02X\n", activecpu_get_pc(), offset, data );
 	data &= 0x7F; /* Only uses lower 7 bits */
@@ -410,7 +411,7 @@ WRITE8_HANDLER( gb_rom_bank_select_mbc3 )
 	memory_set_bankptr (1, ROMMap[ROMBank] );
 }
 
-WRITE8_HANDLER( gb_rom_bank_select_mbc5 )
+static WRITE8_HANDLER( gb_rom_bank_select_mbc5 )
 {
 	/* MBC5 has a 9 bit bank select
 	  Writing into 2000-2FFF sets the lower 8 bits
@@ -426,7 +427,7 @@ WRITE8_HANDLER( gb_rom_bank_select_mbc5 )
 	memory_set_bankptr (1, ROMMap[ROMBank] );
 }
 
-WRITE8_HANDLER( gb_rom_bank_select_mbc7 ) {
+static WRITE8_HANDLER( gb_rom_bank_select_mbc7 ) {
 	logerror( "0x%04X: write to mbc7 rom select register: 0x%04X <- 0x%02X\n", activecpu_get_pc(), 0x2000 + offset, data );
 	/* Bit 12 must be set for writing to the mbc register */
 	if ( offset & 0x0100 ) {
@@ -435,7 +436,7 @@ WRITE8_HANDLER( gb_rom_bank_select_mbc7 ) {
 	}
 }
 
-WRITE8_HANDLER( gb_rom_bank_unknown_mbc7 ) {
+static WRITE8_HANDLER( gb_rom_bank_unknown_mbc7 ) {
         logerror( "0x%04X: write to mbc7 rom area: 0x%04X <- 0x%02X\n", activecpu_get_pc(), 0x3000 + offset, data );
 	/* Bit 12 must be set for writing to the mbc register */
 	if ( offset & 0x0100 ) {
@@ -450,7 +451,7 @@ WRITE8_HANDLER( gb_rom_bank_unknown_mbc7 ) {
 	}
 }
 
-WRITE8_HANDLER( gb_rom_bank_select_wisdom ) {
+static WRITE8_HANDLER( gb_rom_bank_select_wisdom ) {
 	logerror( "0x%04X: wisdom tree mapper write to address 0x%04X\n", activecpu_get_pc(), offset );
 	/* The address determines the bank to select */
 	ROMBank = ( offset << 1 ) & 0x1FF;
@@ -459,7 +460,7 @@ WRITE8_HANDLER( gb_rom_bank_select_wisdom ) {
 	memory_set_bankptr( 1, ROMMap[ ROMBank + 1 ] );
 }
 
-WRITE8_HANDLER( gb_ram_bank_select_mbc1 )
+static WRITE8_HANDLER( gb_ram_bank_select_mbc1 )
 {
 	data &= 0x3; /* Only uses the lower 2 bits */
 
@@ -470,7 +471,7 @@ WRITE8_HANDLER( gb_ram_bank_select_mbc1 )
 	gb_set_mbc1_banks();
 }
 
-WRITE8_HANDLER( gb_ram_bank_select_mbc3 )
+static WRITE8_HANDLER( gb_ram_bank_select_mbc3 )
 {
 	logerror( "0x%04X: write mbc3 ram bank select register 0x%04X <- 0x%02X\n", activecpu_get_pc(), offset, data );
 	if( data & 0x8 ) {	/* RTC banks */
@@ -489,7 +490,7 @@ WRITE8_HANDLER( gb_ram_bank_select_mbc3 )
 	}
 }
 
-WRITE8_HANDLER( gb_ram_bank_select_mbc5 )
+static WRITE8_HANDLER( gb_ram_bank_select_mbc5 )
 {
 	logerror( "0x%04X: MBC5 RAM Bank select write 0x%04X <- 0x%02X\n", activecpu_get_pc(), offset, data );
 	data &= 0x0F;
@@ -508,13 +509,13 @@ WRITE8_HANDLER ( gb_ram_enable )
 	logerror( "0x%04X: Write to ram enable register 0x%04X <- 0x%02X\n", activecpu_get_pc(), offset, data );
 }
 
-WRITE8_HANDLER( gb_mem_mode_select_mbc1 )
+static WRITE8_HANDLER( gb_mem_mode_select_mbc1 )
 {
 	MBC1Mode = data & 0x1;
 	gb_set_mbc1_banks();
 }
 
-WRITE8_HANDLER( gb_mem_mode_select_mbc3 )
+static WRITE8_HANDLER( gb_mem_mode_select_mbc3 )
 {
         logerror( "0x%04X: Write to mbc3 mem mode select register 0x%04X <- 0x%02X\n", activecpu_get_pc(), offset, data );
 	if( CartType & TIMER ) {
@@ -527,7 +528,7 @@ WRITE8_HANDLER( gb_mem_mode_select_mbc3 )
 	}
 }
 
-WRITE8_HANDLER( gb_ram_tama5 ) {
+static WRITE8_HANDLER( gb_ram_tama5 ) {
 	logerror( "0x%04X: TAMA5 write 0x%04X <- 0x%02X\n", activecpu_get_pc(), 0xA000 + offset, data );
 	switch( offset & 0x0001 ) {
 	case 0x0000:    /* Write to data register */
@@ -604,12 +605,12 @@ WRITE8_HANDLER( gb_ram_tama5 ) {
 
 /* This mmm01 implementation is mostly guess work, no clue how correct it all is */
 
-UINT8 mmm01_bank_offset;
-UINT8 mmm01_reg1;
-UINT8 mmm01_bank;
-UINT8 mmm01_bank_mask;
+static UINT8 mmm01_bank_offset;
+static UINT8 mmm01_reg1;
+static UINT8 mmm01_bank;
+static UINT8 mmm01_bank_mask;
 
-WRITE8_HANDLER( gb_rom_bank_mmm01_0000_w ) {
+static WRITE8_HANDLER( gb_rom_bank_mmm01_0000_w ) {
 	logerror( "0x%04X: write 0x%02X to 0x%04X\n", activecpu_get_pc(), data, offset+0x000 );
 	if ( data & 0x40 ) {
 		mmm01_bank_offset = mmm01_reg1;
@@ -619,7 +620,7 @@ WRITE8_HANDLER( gb_rom_bank_mmm01_0000_w ) {
 	}
 }
 
-WRITE8_HANDLER( gb_rom_bank_mmm01_2000_w ) {
+static WRITE8_HANDLER( gb_rom_bank_mmm01_2000_w ) {
 	logerror( "0x%04X: write 0x%02X to 0x%04X\n", activecpu_get_pc(), data, offset+0x2000 );
 
 	mmm01_reg1 = data & ROMMask;
@@ -630,11 +631,11 @@ WRITE8_HANDLER( gb_rom_bank_mmm01_2000_w ) {
 	memory_set_bankptr( 1, ROMMap[ mmm01_bank_offset + mmm01_bank ] );
 }
 
-WRITE8_HANDLER( gb_rom_bank_mmm01_4000_w ) {
+static WRITE8_HANDLER( gb_rom_bank_mmm01_4000_w ) {
 	logerror( "0x%04X: write 0x%02X to 0x%04X\n", activecpu_get_pc(), data, offset+0x4000 );
 }
 
-WRITE8_HANDLER( gb_rom_bank_mmm01_6000_w ) {
+static WRITE8_HANDLER( gb_rom_bank_mmm01_6000_w ) {
 	logerror( "0x%04X: write 0x%02X to 0x%04X\n", activecpu_get_pc(), data, offset+0x6000 );
 	/* Not sure if this is correct, Taito Variety Pack sets these values */
 	/* Momotarou Collection 2 writes 01 and 21 here */
@@ -677,22 +678,33 @@ WRITE8_HANDLER ( gb_io_w )
 		break;
 	case 0x04:						/* DIV - Divider register */
 		/* Force increment of TIMECNT register */
-		if ( gb_divcount >= 16 )
+		if ( gb_timer.divcount >= 16 )
 			gb_timer_increment();
-		gb_divcount = 0;
+		gb_timer.divcount = 0;
 		return;
 	case 0x05:						/* TIMA - Timer counter */
+		/* Check if the counter is being reloaded in this cycle */
+		if ( gb_timer.reloading && ( gb_timer.divcount & ( gb_timer.shift_cycles - 1 ) ) == 4 ) {
+			data = TIMECNT;
+		}
 		break;
 	case 0x06:						/* TMA - Timer module */
+		/* Check if the counter is being reloaded in this cycle */
+		if ( gb_timer.reloading && ( gb_timer.divcount & ( gb_timer.shift_cycles - 1 ) ) == 4 ) {
+			TIMECNT = data;
+		}
 		break;
 	case 0x07:						/* TAC - Timer control */
 		data |= 0xF8;
-		gb_timer_shift = timer_shifts[data & 0x03];
-		gb_timer_count = 1 << gb_timer_shift;
-		/* Check if timer is just enabled */
-		if ( ( data & 0x04 ) && ! ( TIMEFRQ & 0x04 ) ) {
-			TIMECNT = TIMEMOD;
+		/* Check if timer is just disabled or the timer frequency is changing */
+		if ( ( ! ( data & 0x04 ) && ( TIMEFRQ & 0x04 ) ) || ( ( data & 0x04 ) && ( TIMEFRQ & 0x04 ) && ( data & 0x03 ) != ( TIMEFRQ & 0x03 ) ) ) {
+			/* Check if TIMECNT should be incremented */
+			if ( ( gb_timer.divcount & ( gb_timer.shift_cycles - 1 ) ) >= ( gb_timer.shift_cycles >> 1 ) ) {
+				gb_timer_increment();
+			}
 		}
+		gb_timer.shift = timer_shifts[data & 0x03];
+		gb_timer.shift_cycles = 1 << gb_timer.shift;
 		break;
 	case 0x0F:						/* IF - Interrupt flag */
 		data &= 0x1F;
@@ -700,7 +712,7 @@ WRITE8_HANDLER ( gb_io_w )
 		break;
 	}
 
-	gb_io [offset] = data;
+	gb_io[offset] = data;
 }
 
 WRITE8_HANDLER ( gb_io2_w )
@@ -714,7 +726,7 @@ WRITE8_HANDLER ( gb_io2_w )
 }
 
 #ifdef MAME_DEBUG
-static const char *sgbcmds[26] =
+static const char *const sgbcmds[26] =
 {
 	"PAL01   ",
 	"PAL23   ",
@@ -1253,7 +1265,7 @@ READ8_HANDLER ( gb_io_r )
 	switch(offset)
 	{
 		case 0x04:
-			return ( gb_divcount >> 8 ) & 0xFF;
+			return ( gb_timer.divcount >> 8 ) & 0xFF;
 		case 0x00:
 		case 0x01:
 		case 0x02:
@@ -1270,27 +1282,6 @@ READ8_HANDLER ( gb_io_r )
 			/* It seems unsupported registers return 0xFF */
 			return 0xFF;
 	}
-}
-
-WRITE8_HANDLER( gb_oam_w ) {
-	if ( gb_video_oam_locked() || offset >= 0xa0 ) { 
-                return;
-        }
-        gb_oam[offset] = data;
-}
-
-WRITE8_HANDLER( gb_vram_w ) {
-	if ( gb_video_vram_locked() ) {
-                return;
-        }
-        gb_vram[offset] = data;
-}
-
-WRITE8_HANDLER( gbc_vram_w ) {
-	if ( gb_video_vram_locked() ) {
-		return;
-	}
-	gbc_vram_bank[offset] = data;
 }
 
 DEVICE_INIT(gb_cart)
@@ -1321,7 +1312,7 @@ DEVICE_INIT(gb_cart)
 
 DEVICE_LOAD(gb_cart)
 {
-	static const char *CartTypes[] =
+	static const char *const CartTypes[] =
 	{
 		"ROM ONLY",
 		"ROM+MBC1",
@@ -1362,7 +1353,7 @@ DEVICE_LOAD(gb_cart)
 	};
 
 /*** Following are some known manufacturer codes *************************/
-	static struct
+	static const struct
 	{
 		UINT16 Code;
 		const char *Name;
@@ -1731,27 +1722,45 @@ static TIMER_CALLBACK(gb_serial_timer_proc)
 	}
 }
 
+INLINE void gb_timer_check_irq( void ) {
+	gb_timer.reloading = 0;
+	if ( gb_timer.triggering_irq ) {
+		gb_timer.triggering_irq = 0;
+		if ( TIMECNT == 0 ) {
+			TIMECNT = TIMEMOD;
+			cpunum_set_input_line( 0, TIM_INT, HOLD_LINE );
+			gb_timer.reloading = 1;
+		}
+	}
+}
+
 static void gb_timer_increment( void ) {
+	gb_timer_check_irq();
+
 	TIMECNT += 1;
 	if ( TIMECNT == 0 ) {
-		TIMECNT = TIMEMOD;
-		cpunum_set_input_line( 0, TIM_INT, HOLD_LINE );
+		gb_timer.triggering_irq = 1;
 	}
 }
 
 void gb_timer_callback(int cycles) {
-	UINT16 old_gb_divcount = gb_divcount;
-	gb_divcount += cycles;
+	UINT16 old_gb_divcount = gb_timer.divcount;
+	gb_timer.divcount += cycles;
+
+	gb_timer_check_irq();
+
 	if ( TIMEFRQ & 0x04 ) {
-		UINT16 old_count = old_gb_divcount >> gb_timer_shift;
-		UINT16 new_count = gb_divcount >> gb_timer_shift;
-		if ( cycles > gb_timer_count ) {
+		UINT16 old_count = old_gb_divcount >> gb_timer.shift;
+		UINT16 new_count = gb_timer.divcount >> gb_timer.shift;
+		if ( cycles > gb_timer.shift_cycles ) {
 			gb_timer_increment();
-			old_gb_divcount += gb_timer_count;
 			old_count++;
 		}
 		if ( new_count != old_count ) {
 			gb_timer_increment();
+		}
+		if ( new_count << gb_timer.shift < gb_timer.divcount ) {
+			gb_timer_check_irq();
 		}
 	}
 }
@@ -1762,11 +1771,6 @@ WRITE8_HANDLER ( gbc_io2_w )
 		case 0x0D:	/* KEY1 - Prepare speed switch */
 			cpunum_set_reg( 0, Z80GB_SPEED, data );
 			return;
-		case 0x0F:	/* VBK - VRAM bank select */
-			gbc_vram_bank = GBC_VRAMMap[ data & 0x01 ];
-			memory_set_bankptr( 4, gbc_vram_bank );
-			data |= 0xFE;
-			break;
 		case 0x16:	/* RP - Infrared port */
 			break;
 		case 0x30:	/* SVBK - RAM bank select */
@@ -1802,7 +1806,7 @@ MACHINE_RESET( megaduck )
 	/* We may have to add some more stuff here, if not then it can be merged back into gb */
 	gb_init();
 
-	gb_video_init();
+	gb_video_init( GB_VIDEO_DMG );
 }
 
 /*

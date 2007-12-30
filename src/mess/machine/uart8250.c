@@ -54,7 +54,7 @@ typedef struct {
 	} send;
 } UART8250;
 
-UART8250 uart[4]={ { { TYPE8250 } } };
+static UART8250 uart[4]={ { { TYPE8250 } } };
 
 /* int's pending */
 #define COM_INT_PENDING_RECEIVED_DATA_AVAILABLE	0x0001
@@ -188,7 +188,7 @@ void uart8250_reset(int n)
 void uart8250_w(int n, offs_t idx, UINT8 data)
 {
 #ifdef VERBOSE_COM
-    static char P[8] = "NONENHNL";  /* names for parity select */
+    static const char P[8] = "NONENHNL";  /* names for parity select */
 #endif
     int tmp;
 

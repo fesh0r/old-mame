@@ -201,7 +201,7 @@ static void studio2_q_w(int level)
 	beep_set_state(0, level);
 }
 
-static CDP1802_CONFIG studio2_config = 
+static const CDP1802_CONFIG studio2_config =
 {
 	studio2_mode_r,
 	studio2_ef_r,
@@ -223,7 +223,7 @@ static UINT8 mpt02_ef_r(void)
 	return ef;
 }
 
-static CDP1802_CONFIG mpt02_config = 
+static const CDP1802_CONFIG mpt02_config =
 {
 	studio2_mode_r,
 	mpt02_ef_r,
@@ -334,7 +334,7 @@ ROM_END
 
 #define ST2_HEADER_SIZE		256
 
-DEVICE_LOAD( studio2_cart )
+static DEVICE_LOAD( studio2_cart )
 {
 	UINT8	*ptr = NULL;
 	UINT8	header[ST2_HEADER_SIZE];
@@ -400,8 +400,8 @@ static TIMER_CALLBACK(setup_beep)
 
 static DRIVER_INIT( studio2 )
 {
-	timer_set(attotime_zero, 0, setup_beep);
-	timer_set(ATTOTIME_IN_MSEC(200), 0, set_cpu_mode);
+	timer_set(attotime_zero, NULL, 0, setup_beep);
+	timer_set(ATTOTIME_IN_MSEC(200), NULL, 0, set_cpu_mode);
 }
 
 static int mpt02_colorram_r(UINT16 addr)
@@ -426,7 +426,7 @@ static TIMER_CALLBACK(mpt02_setup_beep)
 
 static DRIVER_INIT( mpt02 )
 {
-	timer_set(attotime_zero, 0, mpt02_setup_beep);
+	timer_set(attotime_zero, NULL, 0, mpt02_setup_beep);
 	cdp1864_configure(&mpt02_CDP1864_interface);
 }
 

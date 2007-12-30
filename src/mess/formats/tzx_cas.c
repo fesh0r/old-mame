@@ -70,6 +70,7 @@ static const UINT8 TZX_HEADER[8] = { 'Z','X','T','a','p','e','!',0x1a };
 static INT16	wave_data;
 static int	block_count;
 static UINT8**	blocks;
+static float t_scale = 1;  /* for scaling T-states to the 4MHz CPC */
 
 static void toggle_wave_data(void) {
 	if ( wave_data == WAVE_LOW ) {
@@ -184,11 +185,11 @@ static void tzx_cas_get_blocks( const UINT8 *casdata, int caslen ) {
 }
 
 INLINE int millisec_to_samplecount( int millisec ) {
-	return (int) ( ( millisec * ( (double)TZX_WAV_FREQUENCY / 3500000 ) ) / 1000.0 );
+	return (int) ( millisec * ( (double)TZX_WAV_FREQUENCY / 1000.0 ) );
 }
 
 INLINE int tcycles_to_samplecount( int tcycles ) {
-	return (int) ( 0.5 + ( ( (double)TZX_WAV_FREQUENCY / 3500000 ) * (double)tcycles ) );
+	return (int) ( ( 0.5 + ( ( (double)TZX_WAV_FREQUENCY / 3500000 ) * (double)tcycles ) ) * t_scale );
 }
 
 static void tzx_output_wave( INT16 **buffer, int length ) {
@@ -211,7 +212,7 @@ static int tzx_cas_handle_block( INT16 **buffer, const UINT8 *bytes, int pause, 
 	int data_index;
 	int size = 0;
 
-	logerror( "tzx_cas_block_size: pliot_length = %d, pilot_samples = %d, sync1_samples = %d, sync2_samples = %d, bit0_samples = %d, bit1_samples = %d\n", pilot_length, pilot_samples, sync1_samples, sync2_samples, bit0_samples, bit1_samples );
+	logerror( "tzx_cas_block_size: pilot_length = %d, pilot_samples = %d, sync1_samples = %d, sync2_samples = %d, bit0_samples = %d, bit1_samples = %d\n", pilot_length, pilot_samples, sync1_samples, sync2_samples, bit0_samples, bit1_samples );
 
 	/* PILOT */
 	for( ; pilot_length > 0; pilot_length-- ) {
@@ -256,7 +257,7 @@ static int tzx_cas_handle_block( INT16 **buffer, const UINT8 *bytes, int pause, 
 		tzx_output_wave( buffer, rest_pause_samples );
 		size += rest_pause_samples;
 	}
-        return size;
+    return size;
 }
 
 /*
@@ -306,7 +307,7 @@ static int tzx_cas_do_work( INT16 **buffer ) {
 			break;
 		case 0x13:	/* Sequence of Pulses of Different Lengths */
 			for( data_size = 0; data_size < cur_block[1]; data_size++ ) {
-				pilot = cur_block[1 + 2*data_size] + ( cur_block[2 + 2*data_size] << 8 );
+				pilot = cur_block[2 + 2*data_size] + ( cur_block[3 + 2*data_size] << 8 );
 				size += tzx_cas_handle_block( buffer, cur_block, 0, 0, pilot, 1, 0, 0, 0, 0, 0 );
 			}
 			current_block++;
@@ -404,6 +405,15 @@ cleanup:
 static int tzx_cas_fill_wave( INT16 *buffer, int length, UINT8 *bytes ) {
 	INT16	*p = buffer;
 	int	size = 0;
+	t_scale = 1.0;
+	size = tzx_cas_do_work( &p );
+	return size;
+}
+
+static int cdt_cas_fill_wave( INT16 *buffer, int length, UINT8 *bytes ) {
+	INT16	*p = buffer;
+	int	size = 0;
+	t_scale = (40 / 35);  /* scale to 4MHz */
 	size = tzx_cas_do_work( &p );
 	return size;
 }
@@ -441,7 +451,7 @@ static int tap_cas_fill_wave( INT16 *buffer, int length, UINT8 *bytes ) {
 	return size;
 }
 
-static struct CassetteLegacyWaveFiller tzx_legacy_fill_wave = {
+static const struct CassetteLegacyWaveFiller tzx_legacy_fill_wave = {
 	tzx_cas_fill_wave,			/* fill_wave */
 	-1,					/* chunk_size */
 	0,					/* chunk_samples */
@@ -451,11 +461,21 @@ static struct CassetteLegacyWaveFiller tzx_legacy_fill_wave = {
 	0					/* trailer_samples */
 };
 
-static struct CassetteLegacyWaveFiller tap_legacy_fill_wave = {
+static const struct CassetteLegacyWaveFiller tap_legacy_fill_wave = {
 	tap_cas_fill_wave,			/* fill_wave */
 	-1,					/* chunk_size */
 	0,					/* chunk_samples */
 	tap_cas_to_wav_size,			/* chunk_sample_calc */
+	TZX_WAV_FREQUENCY,			/* sample_frequency */
+	0,					/* header_samples */
+	0					/* trailer_samples */
+};
+
+static const struct CassetteLegacyWaveFiller cdt_legacy_fill_wave = {
+	cdt_cas_fill_wave,			/* fill_wave */
+	-1,					/* chunk_size */
+	0,					/* chunk_samples */
+	tzx_cas_to_wav_size,			/* chunk_sample_calc */
 	TZX_WAV_FREQUENCY,			/* sample_frequency */
 	0,					/* header_samples */
 	0					/* trailer_samples */
@@ -469,6 +489,10 @@ static casserr_t tap_cassette_identify( cassette_image *cassette, struct Cassett
 	return cassette_legacy_identify( cassette, opts, &tap_legacy_fill_wave );
 }
 
+static casserr_t cdt_cassette_identify( cassette_image *cassette, struct CassetteOptions *opts ) {
+	return cassette_legacy_identify( cassette, opts, &cdt_legacy_fill_wave );
+}
+
 static casserr_t tzx_cassette_load( cassette_image *cassette ) {
 	return cassette_legacy_construct( cassette, &tzx_legacy_fill_wave );
 }
@@ -477,22 +501,37 @@ static casserr_t tap_cassette_load( cassette_image *cassette ) {
 	return cassette_legacy_construct( cassette, &tap_legacy_fill_wave );
 }
 
-struct CassetteFormat tzx_cassette_format = {
+static casserr_t cdt_cassette_load( cassette_image *cassette ) {
+	return cassette_legacy_construct( cassette, &cdt_legacy_fill_wave );
+}
+
+static const struct CassetteFormat tzx_cassette_format = {
 	"tzx",
 	tzx_cassette_identify,
 	tzx_cassette_load,
 	NULL
 };
 
-struct CassetteFormat tap_cassette_format = {
+static const struct CassetteFormat tap_cassette_format = {
 	"tap",
 	tap_cassette_identify,
 	tap_cassette_load,
 	NULL
 };
 
+static const struct CassetteFormat cdt_cassette_format = {
+	"cdt",
+	cdt_cassette_identify,
+	cdt_cassette_load,
+	NULL
+};
+
 CASSETTE_FORMATLIST_START(tzx_cassette_formats)
 	CASSETTE_FORMAT(tzx_cassette_format)
 	CASSETTE_FORMAT(tap_cassette_format)
+CASSETTE_FORMATLIST_END
+
+CASSETTE_FORMATLIST_START(cdt_cassette_formats)
+	CASSETTE_FORMAT(cdt_cassette_format)
 CASSETTE_FORMATLIST_END
 

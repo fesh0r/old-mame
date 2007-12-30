@@ -59,6 +59,8 @@ extern "C" {
  * of the 6560 (colorram) without decoding the 6560 address line a8..a13
  */
 
+/*----------- defined in video/vic6560.c -----------*/
+
 /* call to init videodriver */
 /* pal version */
 /* dma_read: videochip fetched 12 bit data from system bus */
@@ -111,10 +113,10 @@ extern int vic6560_pal;
 
 extern VIDEO_START( vic6560 );
 extern VIDEO_UPDATE( vic6560 );
-extern unsigned char vic6560_palette[16 * 3];
+extern const unsigned char vic6560_palette[16 * 3];
 
 /* to be inserted in GameDriver-Structure */
-extern struct CustomSound_interface vic6560_sound_interface;
+extern const struct CustomSound_interface vic6560_sound_interface;
 
 extern INTERRUPT_GEN( vic656x_raster_interrupt );
 
@@ -126,7 +128,8 @@ extern  READ8_HANDLER ( vic6560_port_r );
 
 /* private area */
 
-/* from audio/pc.c */
+/*----------- defined in audio/vic6560.c -----------*/
+
 void *vic6560_custom_start(int clock, const struct CustomSound_interface *config);
 void vic6560_soundport_w (int mode, int data);
 

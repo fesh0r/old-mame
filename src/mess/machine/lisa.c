@@ -50,8 +50,8 @@
 */
 
 /* up to 2MB of 68k RAM (normally 1MB or 512kb), generally 16kb of ROM */
-UINT8 *lisa_ram_ptr;
-UINT8 *lisa_rom_ptr;
+static UINT8 *lisa_ram_ptr;
+static UINT8 *lisa_rom_ptr;
 
 /* offsets in REGION_CPU1 */
 #define RAM_OFFSET 0x004000
@@ -64,7 +64,7 @@ UINT8 *lisa_fdc_ram;
 UINT8 *lisa_fdc_rom;
 
 /* special ROM (includes S/N) */
-UINT8 *videoROM_ptr;
+static UINT8 *videoROM_ptr;
 
 
 /*
@@ -135,7 +135,7 @@ static  READ8_HANDLER(parallel_via_in_b);
 
 static int KBIR;	/* COPS VIA interrupt pending */
 
-static struct via6522_interface lisa_via6522_intf[2] =
+static const struct via6522_interface lisa_via6522_intf[2] =
 {
 	{	/* COPS via */
 		NULL, COPS_via_in_b,
@@ -170,7 +170,7 @@ static int PWM_floppy_motor_speed;
 /*
 	lisa model identification
 */
-enum
+static enum
 {
 	/*lisa1,*/		/* twiggy floppy drive */
 	lisa2,		/* 3.5'' Sony floppy drive */
@@ -178,7 +178,7 @@ enum
 	mac_xl		/* same as above with modified video */
 } lisa_model;
 
-struct
+static struct
 {
 	unsigned int has_fast_timers : 1;	/* I/O board VIAs are clocked at 1.25 MHz (?) instead of .5 MHz (?) (Lisa 2/10, Mac XL) */
 										/* Note that the beep routine in boot ROMs implies that
@@ -689,7 +689,7 @@ static TIMER_CALLBACK(set_COPS_ready)
 	COPS_Ready = TRUE;
 
 	/* impulsion width : +/- 20us */
-	timer_set(ATTOTIME_IN_USEC(20), 0, read_COPS_command);
+	timer_set(ATTOTIME_IN_USEC(20), NULL, 0, read_COPS_command);
 }
 
 static void reset_COPS(void)
@@ -753,7 +753,7 @@ static void init_COPS(void)
 	COPS_Ready = FALSE;
 
 	/* read command every ms (don't know the real value) */
-	timer_pulse(ATTOTIME_IN_MSEC(1), 0, set_COPS_ready);
+	timer_pulse(ATTOTIME_IN_MSEC(1), NULL, 0, set_COPS_ready);
 
 	reset_COPS();
 }
@@ -915,7 +915,7 @@ VIDEO_UPDATE( lisa )
 	{
 		for (x = 0; x < resx; x++)
 			line_buffer[x] = (v[(x+y*resx)>>4] & (0x8000 >> ((x+y*resx) & 0xf))) ? 1 : 0;
-		draw_scanline8(bitmap, 0, y, resx, line_buffer, Machine->pens, -1);
+		draw_scanline8(bitmap, 0, y, resx, line_buffer, machine->pens, -1);
 	}
 	return 0;
 }
@@ -1034,7 +1034,7 @@ NVRAM_HANDLER(lisa)
 		{
 			/* Now we copy the host clock into the Lisa clock */
 			mame_system_time systime;
-			mame_get_base_datetime(Machine, &systime);
+			mame_get_base_datetime(machine, &systime);
 
 			clock_regs.alarm = 0xfffffL;
 			/* The clock count starts on 1st January 1980 */
@@ -1122,7 +1122,7 @@ static void lisa210_set_iwm_enable_lines(int enable_mask)
 
 MACHINE_RESET( lisa )
 {
-	mouse_timer = timer_alloc(handle_mouse);
+	mouse_timer = timer_alloc(handle_mouse, NULL);
 
 	lisa_ram_ptr = memory_region(REGION_CPU1) + RAM_OFFSET;
 	lisa_rom_ptr = memory_region(REGION_CPU1) + ROM_OFFSET;

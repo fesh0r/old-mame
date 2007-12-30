@@ -7,6 +7,34 @@
 ###########################################################################
 
 
+
+###########################################################################
+#################   BEGIN USER-CONFIGURABLE OPTIONS   #####################
+###########################################################################
+
+# uncomment next line to build imgtool
+BUILD_IMGTOOL = 1
+
+# uncomment next line to build wimgtool
+BUILD_WIMGTOOL = 1
+
+# uncomment next line to build messtest
+BUILD_MESSTEST = 1
+
+# uncomment next line to build dat2html
+BUILD_DAT2HTML = 1
+
+
+###########################################################################
+##################   END USER-CONFIGURABLE OPTIONS   ######################
+###########################################################################
+
+
+
+# include MESS core defines
+include $(SRC)/mess/messcore.mak
+
+
 #-------------------------------------------------
 # specify available CPU cores; some of these are
 # only for MAME and so aren't included
@@ -102,7 +130,7 @@ CPUS += PSXCPU
 CPUS += ARM
 CPUS += ARM7
 CPUS += JAGUAR
-#CPUS += R3000
+CPUS += R3000
 CPUS += R4600
 #CPUS += R4650
 #CPUS += R4700
@@ -144,7 +172,7 @@ CPUS += PENTIUM
 #CPUS += M37710
 #CPUS += PPC403
 #CPUS += PPC601
-#CPUS += PPC602
+CPUS += PPC602
 CPUS += PPC603
 #CPUS += MPC8240
 #CPUS += SE3208
@@ -272,6 +300,7 @@ SOUNDS += CDDA
 SOUNDS += SPEAKER
 SOUNDS += CDP1869
 #SOUNDS += S14001A
+#SOUNDS += M58817
 SOUNDS += BEEP
 SOUNDS += WAVE
 SOUNDS += SID6581
@@ -312,8 +341,10 @@ DRVLIBS = \
 	$(MESSOBJ)/compis.a	\
 	$(MESSOBJ)/concept.a \
 	$(MESSOBJ)/cpschngr.a \
+	$(MESSOBJ)/cybiko.a \
 	$(MESSOBJ)/dai.a \
 	$(MESSOBJ)/dgn_beta.a \
+	$(MESSOBJ)/epson.a \
 	$(MESSOBJ)/ep128.a \
 	$(MESSOBJ)/exidy.a \
 	$(MESSOBJ)/fairch.a \
@@ -377,7 +408,8 @@ DRVLIBS = \
 	$(MESSOBJ)/3do.a \
 	$(MESSOBJ)/osborne.a \
 	$(MESSOBJ)/shared.a \
-#	$(MESSOBJ)/exeltel.a \
+	$(MESSOBJ)/exeltel.a \
+
 
 
 #-------------------------------------------------
@@ -413,6 +445,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/tc8521.o   \
 	$(MESS_VIDEO)/crtc6845.o	\
 	$(MESS_MACHINE)/rriot.o    \
+	$(MESS_MACHINE)/74145.o    \
 	$(MESS_MACHINE)/uart8250.o \
 	$(MESS_MACHINE)/pc_mouse.o \
 	$(MESS_MACHINE)/pclpt.o    \
@@ -585,6 +618,7 @@ $(MESSOBJ)/dgn_beta.a:	\
 $(MESSOBJ)/trs80.a:    \
 	$(MESS_MACHINE)/trs80.o	 \
 	$(MESS_VIDEO)/trs80.o	 \
+	$(MESS_FORMATS)/trs_dsk.o	\
 	$(MESS_DRIVERS)/trs80.o
 
 $(MESSOBJ)/cgenie.a:   \
@@ -829,6 +863,7 @@ $(MESSOBJ)/vtech.a :   \
 	$(MESS_FORMATS)/vt_cas.o	\
 	$(MESS_FORMATS)/vt_dsk.o	\
 	$(MESS_DRIVERS)/crvision.o	\
+	$(MESS_DRIVERS)/super80.o	\
 
 $(MESSOBJ)/jupiter.a : \
 	$(MESS_DRIVERS)/jupiter.o	\
@@ -1041,6 +1076,7 @@ $(MESSOBJ)/telmac.a:					\
 
 $(MESSOBJ)/exeltel.a:					\
 	$(MESS_DRIVERS)/exelv.o		\
+	$(MESS_VIDEO)/tms3556.o		\
 
 $(MESSOBJ)/tx0.a:				\
 	$(MESS_VIDEO)/crt.o	\
@@ -1106,83 +1142,65 @@ $(MESSOBJ)/osborne.a:			\
 	$(MESS_DRIVERS)/osborne1.o	\
 	$(MESS_MACHINE)/osborne1.o	\
 
+$(MESSOBJ)/epson.a:			\
+	$(MESS_DRIVERS)/ex800.o	\
+
+
 #-------------------------------------------------
 # layout dependencies
 #-------------------------------------------------
 
-
 $(OBJ)/render.o:	$(MESS_LAYOUT)/horizont.lh \
 					$(MESS_LAYOUT)/vertical.lh \
 
-$(MESS_DRIVERS)/coco.o:	$(MESS_LAYOUT)/coco3.lh
-
-$(MESS_DRIVERS)/svision.o:	$(MESS_LAYOUT)/svision.lh
-
-$(MESS_DRIVERS)/gb.o:	$(MESS_LAYOUT)/gb.lh
-
-$(MESS_DRIVERS)/mk1.o:	$(MESS_LAYOUT)/mk1.lh
-
-$(MESS_DRIVERS)/mk2.o:	$(MESS_LAYOUT)/mk2.lh
-
-$(MESS_DRIVERS)/mephisto.o:	$(MESS_LAYOUT)/mephisto.lh
-
-$(MESS_DRIVERS)/glasgow.o:	$(MESS_LAYOUT)/glasgow.lh
-
+$(MESS_DRIVERS)/acrnsys1.o:	$(MESS_LAYOUT)/acrnsys1.lh
 $(MESS_DRIVERS)/aim65.o:	$(MESS_LAYOUT)/aim65.lh
-
+$(MESS_DRIVERS)/coco.o:		$(MESS_LAYOUT)/coco3.lh
+$(MESS_DRIVERS)/cybiko.o:	$(MESS_LAYOUT)/cybiko.lh
+$(MESS_DRIVERS)/gb.o:		$(MESS_LAYOUT)/gb.lh
+$(MESS_DRIVERS)/glasgow.o:	$(MESS_LAYOUT)/glasgow.lh
+$(MESS_DRIVERS)/mephisto.o:	$(MESS_LAYOUT)/mephisto.lh
+$(MESS_DRIVERS)/mk1.o:		$(MESS_LAYOUT)/mk1.lh
+$(MESS_DRIVERS)/mk2.o:		$(MESS_LAYOUT)/mk2.lh
+$(MESS_DRIVERS)/svi318.o:	$(MESS_LAYOUT)/sv328806.lh
+$(MESS_DRIVERS)/svision.o:	$(MESS_LAYOUT)/svision.lh
 $(MESS_DRIVERS)/sym1.o:		$(MESS_LAYOUT)/sym1.lh
 
-$(MESS_DRIVERS)/acrnsys1.o:	$(MESS_LAYOUT)/acrnsys1.lh
 
-$(MESS_DRIVERS)/cybiko.o:	$(MESS_LAYOUT)/cybiko.lh
-
-$(MESS_DRIVERS)/svi318.o:	$(MESS_LAYOUT)/sv328806.lh
 
 #-------------------------------------------------
 # MESS-specific tools
 #-------------------------------------------------
 
+ifdef BUILD_IMGTOOL
 include $(MESSSRC)/tools/imgtool/imgtool.mak
+TOOLS += $(IMGTOOL)
+endif
+
+ifdef BUILD_MESSTEST
 include $(MESSSRC)/tools/messtest/messtest.mak
-include $(MESSSRC)/tools/messdocs/messdocs.mak
+TOOLS += $(MESSTEST)
+endif
+
+ifdef BUILD_DAT2HTML
+include $(MESSSRC)/tools/dat2html/dat2html.mak
+TOOLS += $(DAT2HTML)
+endif
 
 # include OS-specific MESS stuff
 ifeq ($(OSD),windows)
+include $(MESSSRC)/tools/messdocs/messdocs.mak
+
+ifdef BUILD_WIMGTOOL
 include $(MESSSRC)/tools/imgtool/windows/wimgtool.mak
+TOOLS += $(WIMGTOOL)
 endif
-
-# text files
-TEXTS = sysinfo.htm
-
-mess.txt: $(EMULATORCLI)
-	@echo Generating $@...
-	@$(CURPATH)$(EMULATORCLI) -listtext -noclones -sortname > docs/mess.txt
-
-sysinfo.htm: dat2html$(EXE)
-	@echo Generating $@...
-	@$(CURPATH)dat2html$(EXE) sysinfo.dat
-
-# tool targets
-TOOLS += dat2html$(EXE) messtest$(EXE) messdocs$(EXE) imgtool$(EXE)
-
-ifeq ($(OSD),windows)
-TOOLS += wimgtool$(EXE)
 endif
 
 
+
 #-------------------------------------------------
-# dat2html
+# MESS special OSD rules
 #-------------------------------------------------
-
-OBJDIRS += \
-	$(MESSOBJ)/tools/dat2html \
-
-DAT2HTML_OBJS =								\
-	$(EMUOBJ)/mamecore.o					\
-	$(MESSOBJ)/tools/dat2html/dat2html.o	\
-	$(MESSOBJ)/tools/imgtool/stubs.o		\
-	$(MESSOBJ)/utils.o						\
-
-dat2html$(EXE):	$(DAT2HTML_OBJS) $(LIBUTIL) $(ZLIB) $(LIBOCORE)
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+	
+include $(SRC)/mess/osd/$(OSD)/$(OSD).mak

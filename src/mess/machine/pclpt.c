@@ -34,8 +34,8 @@ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M );
 #define CONTROL_IRQ 0x10
 
 typedef struct {
-	CENTRONICS_DEVICE *device;
-	PC_LPT_CONFIG *config;
+	const CENTRONICS_DEVICE *device;
+	const PC_LPT_CONFIG *config;
 	int on;
 	UINT8 data;
 	UINT8 status;
@@ -45,13 +45,13 @@ static PC_LPT LPT[3]= {
 	{ 0 }
 };
 
-void pc_lpt_config(int nr, PC_LPT_CONFIG *config)
+void pc_lpt_config(int nr, const PC_LPT_CONFIG *config)
 {
 	PC_LPT *This=LPT+nr;
 	This->config=config;
 }
 
-void pc_lpt_set_device(int nr, CENTRONICS_DEVICE *device)
+void pc_lpt_set_device(int nr, const CENTRONICS_DEVICE *device)
 {
 	PC_LPT *This=LPT+nr;
 	This->device=device;
@@ -121,7 +121,7 @@ static int pc_LPT_r(int n, int offset)
 #if 0
 				/* set status 'out of paper', '*no* error', 'IRQ has *not* occured' */
 				LPT[n].status = 0x09c;	//0x2c;
-				
+
 #endif
 			}
 			data|=0x4; //?
@@ -138,7 +138,7 @@ static int pc_LPT_r(int n, int offset)
 }
 
 void pc_lpt_handshake_in(int nr, int data, int mask)
-{	
+{
 	PC_LPT *This=LPT+nr;
 	int neu=(data&mask)|(This->status&~mask);
 

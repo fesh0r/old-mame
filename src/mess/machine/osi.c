@@ -9,7 +9,7 @@ static UINT8 *sb2m600_tape_image;
 static int sb2m600_tape_size;
 static int sb2m600_tape_index;
 
-READ8_HANDLER( sb2m600_acia0_casin )
+static READ8_HANDLER( sb2m600_acia0_casin )
 {
 	if (sb2m600_tape_image && (sb2m600_tape_index < sb2m600_tape_size))
 		return sb2m600_tape_image[sb2m600_tape_index++];
@@ -17,15 +17,15 @@ READ8_HANDLER( sb2m600_acia0_casin )
 	return 0;
 }
 
-READ8_HANDLER (sb2m600_acia0_statin )
+static READ8_HANDLER (sb2m600_acia0_statin )
 {
 	if (sb2m600_tape_image && (sb2m600_tape_index < sb2m600_tape_size))
 		return ACIA_6850_RDRF;
-	
+
 	return 0;
 }
 
-static struct acia6850_interface sb2m600_acia0 =
+static const struct acia6850_interface sb2m600_acia0 =
 {
 	sb2m600_acia0_statin,
 	sb2m600_acia0_casin,
@@ -33,7 +33,7 @@ static struct acia6850_interface sb2m600_acia0 =
 	0
 };
 
-static struct acia6850_interface sb2m600_acia1 =
+static const struct acia6850_interface sb2m600_acia1 =
 {
 	0,
 	0,

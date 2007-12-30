@@ -13,7 +13,7 @@
 #define PMD85_BITS_PER_BYTE	11
 
 static INT16 *pmd85_emit_level(INT16 *p, int count, int level)
-{	
+{
 	int i;
 
 	for (i=0; i<count; i++)	*(p++) = level;
@@ -71,7 +71,7 @@ static int pmd85_cassette_fill_wave(INT16 *buffer, int length, UINT8 *bytes)
 		p = pmd85_output_bit(p, 1);
 
 	/* header */
-	for (i=0; i<PMD85_HEADER_BYTES; i++)                      
+	for (i=0; i<PMD85_HEADER_BYTES; i++)
 		p = pmd85_output_byte(p, bytes[i]);
 
 	/* pause */
@@ -79,13 +79,13 @@ static int pmd85_cassette_fill_wave(INT16 *buffer, int length, UINT8 *bytes)
 		p = pmd85_output_bit(p, 1);
 
 	/* data */
-	for (i=0; i<data_size; i++)                      
+	for (i=0; i<data_size; i++)
 		p = pmd85_output_byte(p, bytes[i+PMD85_HEADER_BYTES]);
 
 	return p - buffer;
 }
 
-static struct CassetteLegacyWaveFiller pmd85_legacy_fill_wave =
+static const struct CassetteLegacyWaveFiller pmd85_legacy_fill_wave =
 {
 	pmd85_cassette_fill_wave,			/* fill_wave */
 	-1,											/* chunk_size */
@@ -106,7 +106,7 @@ static casserr_t pmd85_pmd_load(cassette_image *cassette)
 	return cassette_legacy_construct(cassette, &pmd85_legacy_fill_wave);
 }
 
-struct CassetteFormat pmd85_pmd_image_format =
+static const struct CassetteFormat pmd85_pmd_image_format =
 {
 	"pmd",
 	pmd85_pmd_identify,

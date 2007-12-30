@@ -105,13 +105,13 @@
 // uncomment for debug log output
 //#define VERBOSE
 
-void pcw_fdc_interrupt(int);
+static void pcw_fdc_interrupt(int);
 
 // pointer to pcw ram
 unsigned int roller_ram_addr;
 // flag to indicate if boot-program is enabled/disabled
 static int 	pcw_boot;
-int	pcw_system_status;
+static int	pcw_system_status;
 unsigned short roller_ram_offset;
 // code for CPU int type generated when FDC int is triggered
 static int fdc_interrupt_code;
@@ -134,7 +134,7 @@ static void pcw_update_interrupt_counter(void)
 
 /* PCW uses NEC765 in NON-DMA mode. FDC Ints are connected to /INT or
 /NMI depending on choice (see system control below) */
-static nec765_interface pcw_nec765_interface =
+static const nec765_interface pcw_nec765_interface =
 {
 	pcw_fdc_interrupt,
 	NULL
@@ -215,7 +215,7 @@ static void	pcw_trigger_fdc_int(void)
 }
 
 /* fdc interrupt callback. set/clear fdc int */
-void pcw_fdc_interrupt(int state)
+static void pcw_fdc_interrupt(int state)
 {
 	pcw_system_status &= ~(1<<5);
 
@@ -712,7 +712,7 @@ static ADDRESS_MAP_START(pcw_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x000, 0x07f) AM_READWRITE(pcw_fdc_r,					pcw_fdc_w)
 	AM_RANGE(0x080, 0x0ef) AM_READWRITE(pcw_expansion_r,			pcw_expansion_w)
 	AM_RANGE(0x0f0, 0x0f3) AM_WRITE(								pcw_bank_select_w)
-	AM_RANGE(0x0f4, 0x0f4) AM_READWRITE(pcw_interrupt_counter_r,	pcw_bank_force_selection_w)	
+	AM_RANGE(0x0f4, 0x0f4) AM_READWRITE(pcw_interrupt_counter_r,	pcw_bank_force_selection_w)
 	AM_RANGE(0x0f5, 0x0f5) AM_WRITE(								pcw_roller_ram_addr_w)
 	AM_RANGE(0x0f6, 0x0f6) AM_WRITE(								pcw_pointer_table_top_scan_w)
 	AM_RANGE(0x0f7, 0x0f7) AM_WRITE(								pcw_vdu_video_control_register_w)
@@ -727,7 +727,7 @@ static ADDRESS_MAP_START(pcw9512_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x000, 0x07f) AM_READWRITE(pcw_fdc_r,					pcw_fdc_w)
 	AM_RANGE(0x080, 0x0ef) AM_READWRITE(pcw_expansion_r,			pcw_expansion_w)
 	AM_RANGE(0x0f0, 0x0f3) AM_WRITE(								pcw_bank_select_w)
-	AM_RANGE(0x0f4, 0x0f4) AM_READWRITE(pcw_interrupt_counter_r,	pcw_bank_force_selection_w)	
+	AM_RANGE(0x0f4, 0x0f4) AM_READWRITE(pcw_interrupt_counter_r,	pcw_bank_force_selection_w)
 	AM_RANGE(0x0f5, 0x0f5) AM_WRITE(								pcw_roller_ram_addr_w)
 	AM_RANGE(0x0f6, 0x0f6) AM_WRITE(								pcw_pointer_table_top_scan_w)
 	AM_RANGE(0x0f7, 0x0f7) AM_WRITE(								pcw_vdu_video_control_register_w)
@@ -776,9 +776,9 @@ static DRIVER_INIT(pcw)
 	roller_ram_offset = 0;
 
 	/* timer interrupt */
-	timer_pulse(ATTOTIME_IN_HZ(300), 0, pcw_timer_interrupt);
+	timer_pulse(ATTOTIME_IN_HZ(300), NULL, 0, pcw_timer_interrupt);
 
-	timer_set(attotime_zero, 0, setup_beep);
+	timer_set(attotime_zero, NULL, 0, setup_beep);
 }
 
 

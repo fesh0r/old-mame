@@ -29,10 +29,10 @@
 *      linux-2.6.6/include/asm-mips/sgi/hpc3.h
 *    NetBSD: http://www.netbsd.org/
 *    gxemul: http://gavare.se/gxemul/
-* 
+*
 * Gentoo LiveCD r5 boot instructions:
 *     mess -cdrom gentoor5.chd ip225015
-*     enter the command interpreter and type "sashARCS".  press enter and 
+*     enter the command interpreter and type "sashARCS".  press enter and
 *     it'll autoboot.
 *
 * IRIX boot instructions:
@@ -75,9 +75,9 @@ INLINE void verboselog( int n_level, const char *s_fmt, ... )
 	}
 }
 
-UINT8 nRTC_Regs[0x80];
-UINT8 nRTC_UserRAM[0x200];
-UINT8 nRTC_RAM[0x800];
+static UINT8 nRTC_Regs[0x80];
+static UINT8 nRTC_UserRAM[0x200];
+static UINT8 nRTC_RAM[0x800];
 
 static UINT32 nHPC_SCSI0Descriptor, nHPC_SCSI0DMACtrl;
 
@@ -385,11 +385,11 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 	}
 }
 
-UINT32 nHPC3_enetr_nbdp;
-UINT32 nHPC3_enetr_cbp;
-UINT32 nHPC3_hd0_register;
-UINT32 nHPC3_hd0_regs[0x20];
-UINT32 nHPC3_hd1_regs[0x20];
+static UINT32 nHPC3_enetr_nbdp;
+static UINT32 nHPC3_enetr_cbp;
+//UINT32 nHPC3_hd0_register;
+//UINT32 nHPC3_hd0_regs[0x20];
+//UINT32 nHPC3_hd1_regs[0x20];
 
 static READ32_HANDLER( hpc3_hd_enet_r )
 {
@@ -507,9 +507,9 @@ static WRITE32_HANDLER( hpc3_hd0_w )
 	}
 }
 
-UINT32 nHPC3_unk0;
-UINT32 nHPC3_unk1;
-UINT32 nHPC3_IC_Unk0;
+static UINT32 nHPC3_unk0;
+static UINT32 nHPC3_unk1;
+static UINT32 nHPC3_IC_Unk0;
 
 static READ32_HANDLER( hpc3_pbus4_r )
 {
@@ -933,8 +933,8 @@ static WRITE32_HANDLER( ip22_write_ram )
 	COMBINE_DATA(&ip22_mainram[offset]);
 }
 
-UINT32 nHAL2_IAR;
-UINT32 nHAL2_IDR[4];
+static UINT32 nHAL2_IAR;
+static UINT32 nHAL2_IDR[4];
 
 #define H2_IAR_TYPE			0xf000
 #define H2_IAR_NUM			0x0f00
@@ -1097,11 +1097,11 @@ static WRITE32_HANDLER( hal2_w )
 #define PBUS_DMADESC_TXD		0x00008000
 #define PBUS_DMADESC_BC			0x00003fff
 
-UINT8 nPBUS_DMA_Active;
-UINT32 nPBUS_DMA_CurPtr;
-UINT32 nPBUS_DMA_DescPtr;
-UINT32 nPBUS_DMA_NextPtr;
-UINT32 nPBUS_DMA_WordsLeft;
+static UINT8 nPBUS_DMA_Active;
+static UINT32 nPBUS_DMA_CurPtr;
+static UINT32 nPBUS_DMA_DescPtr;
+static UINT32 nPBUS_DMA_NextPtr;
+static UINT32 nPBUS_DMA_WordsLeft;
 
 static TIMER_CALLBACK(ip22_dma)
 {
@@ -1131,7 +1131,7 @@ static TIMER_CALLBACK(ip22_dma)
 				return;
 			}
 		}
-		timer_set(ATTOTIME_IN_HZ(44100), 0, ip22_dma);
+		timer_set(ATTOTIME_IN_HZ(44100), NULL, 0, ip22_dma);
 	}
 }
 
@@ -1201,7 +1201,7 @@ static WRITE32_HANDLER( hpc3_pbusdma_w )
 		verboselog( 0, "    FIFO End: Rowe %04x\n", ( data & PBUS_CTRL_FIFO_END ) >> 24 );
 		if( ( data & PBUS_CTRL_DMASTART ) || ( data & PBUS_CTRL_LOAD_EN ) )
 		{
-			timer_set(ATTOTIME_IN_HZ(44100), 0, ip22_dma);
+			timer_set(ATTOTIME_IN_HZ(44100), NULL, 0, ip22_dma);
 			nPBUS_DMA_Active = 1;
 		}
 		return;
@@ -1227,14 +1227,13 @@ static ADDRESS_MAP_START( ip225015_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE( 0x20000000, 0x27ffffff ) AM_RAM AM_SHARE(1) AM_WRITE(ip22_write_ram)
 ADDRESS_MAP_END
 
-UINT32 nIntCounter;
+static UINT32 nIntCounter;
 
 // mc_update wants once every millisecond (1/1000th of a second)
 static TIMER_CALLBACK(ip22_timer)
 {
-	mc_update(machine, 0);
-
-	timer_set(ATTOTIME_IN_MSEC(1), 0, ip22_timer);
+	mc_update();
+	timer_set(ATTOTIME_IN_MSEC(1), NULL, 0, ip22_timer);
 }
 
 static MACHINE_RESET( ip225015 )
@@ -1246,7 +1245,7 @@ static MACHINE_RESET( ip225015 )
 	RTC_REGISTERB = 0x08;
 	RTC_REGISTERD = 0x80;
 
-	timer_set(ATTOTIME_IN_MSEC(1), 0, ip22_timer);
+	timer_set(ATTOTIME_IN_MSEC(1), NULL, 0, ip22_timer);
 
 	// set up low RAM mirror
 	memory_set_bankptr(1, ip22_mainram);
@@ -1345,7 +1344,7 @@ static void scsi_irq(int state)
 			{
 				UINT32 wptr, tmpword;
 				int words, sptr, twords;
-		
+
 				words = wd33c93_get_dma_count();
 				words /= 4;
 
@@ -1371,7 +1370,7 @@ static void scsi_irq(int state)
 						{
 							tmpword = dma_buffer[sptr]<<24 | dma_buffer[sptr+1]<<16 | dma_buffer[sptr+2]<<8 | dma_buffer[sptr+3];
 						}
-					
+
 						program_write_dword(wptr, tmpword);
 						wptr += 4;
 						sptr += 4;
@@ -1424,14 +1423,14 @@ static void scsi_irq(int state)
 	}
 }
 
-static SCSIConfigTable dev_table =
+static const SCSIConfigTable dev_table =
 {
         1,                                      /* 1 SCSI device */
-        { { SCSI_ID_4, 0, SCSI_DEVICE_CDROM },  /* SCSI ID 4, using CD 0, and it's a CD-ROM */ 
-	  { SCSI_ID_2, 0, SCSI_DEVICE_CDROM } } /* SCSI ID 2, using HD 0, and it's a CD-ROM */ 
+        { { SCSI_ID_4, 0, SCSI_DEVICE_CDROM },  /* SCSI ID 4, using CD 0, and it's a CD-ROM */
+	  { SCSI_ID_2, 0, SCSI_DEVICE_CDROM } } /* SCSI ID 2, using HD 0, and it's a CD-ROM */
 };
 
-static struct WD33C93interface scsi_intf =
+static const struct WD33C93interface scsi_intf =
 {
 	&dev_table,		/* SCSI device table */
 	&scsi_irq,		/* command completion IRQ */
@@ -1539,7 +1538,7 @@ static INTERRUPT_GEN( ip22_vbl )
 	}
 }
 
-static struct mips3_config config =
+static const struct mips3_config config =
 {
 	32768,	/* code cache size */
 	32768	/* data cache size */
@@ -1571,7 +1570,7 @@ static void ip22_harddisk_getinfo(const device_class *devclass, UINT32 state, un
 }
 #endif
 
-MACHINE_DRIVER_START( ip225015 )
+static MACHINE_DRIVER_START( ip225015 )
 	MDRV_CPU_ADD_TAG( "main", R5000BE, 50000000*3 )
 	MDRV_CPU_CONFIG( config )
 	MDRV_CPU_PROGRAM_MAP( ip225015_map, 0 )
@@ -1600,12 +1599,12 @@ MACHINE_DRIVER_START( ip225015 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
-MACHINE_DRIVER_START( ip224613 )
+static MACHINE_DRIVER_START( ip224613 )
 	MDRV_IMPORT_FROM( ip225015 )
 	MDRV_CPU_REPLACE( "main", R4600BE, 133333333 )
 MACHINE_DRIVER_END
 
-MACHINE_DRIVER_START( ip244415 )
+static MACHINE_DRIVER_START( ip244415 )
 	MDRV_IMPORT_FROM( ip225015 )
 	MDRV_CPU_REPLACE( "main", R4600BE, 150000000 )
 MACHINE_DRIVER_END

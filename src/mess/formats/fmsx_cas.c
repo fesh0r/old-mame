@@ -16,11 +16,11 @@ static int fmsx_cas_to_wav_size (const UINT8 *casdata, int caslen)
 	if (memcmp (casdata, CasHeader, sizeof (CasHeader) ) ) return -1;
 
 	pos = size = 0;
-	 
+
 	while (pos < caslen)
 	{
 		if ( (pos + 8) < caslen)
-			if (!memcmp (casdata + pos, CasHeader, 8) ) 
+			if (!memcmp (casdata + pos, CasHeader, 8) )
 			{
 				size += (CAS_EMPTY_PERIODS + CAS_HEADER_PERIODS) * CAS_PERIOD;
 				pos += 8;
@@ -149,7 +149,7 @@ static int fmsx_cas_fill_wave(INT16 *buffer, int length, UINT8 *bytes)
 }
 
 
-static struct CassetteLegacyWaveFiller fmsx_legacy_fill_wave =
+static const struct CassetteLegacyWaveFiller fmsx_legacy_fill_wave =
 {
 	fmsx_cas_fill_wave,						/* fill_wave */
 	-1,										/* chunk_size */
@@ -176,7 +176,7 @@ static casserr_t fmsx_cas_load(cassette_image *cassette)
 
 
 
-struct CassetteFormat fmsx_cas_format =
+static const struct CassetteFormat fmsx_cas_format =
 {
 	"tap",
 	fmsx_cas_identify,

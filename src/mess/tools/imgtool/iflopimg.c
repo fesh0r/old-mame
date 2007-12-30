@@ -29,7 +29,7 @@ imgtoolerr_t imgtool_floppy_error(floperr_t err)
 
 		case FLOPPY_ERROR_UNSUPPORTED:
 			return IMGTOOLERR_UNIMPLEMENTED;
-			
+
 		default:
 			return IMGTOOLERR_UNEXPECTED;
 	}
@@ -68,7 +68,7 @@ static UINT64 imgtool_floppy_filesizeproc(void *file)
 	return stream_size((imgtool_stream *) file);
 }
 
-static struct io_procs imgtool_ioprocs =
+static const struct io_procs imgtool_ioprocs =
 {
 	imgtool_floppy_closeproc,
 	imgtool_floppy_seekproc,
@@ -77,7 +77,7 @@ static struct io_procs imgtool_ioprocs =
 	imgtool_floppy_filesizeproc
 };
 
-static struct io_procs imgtool_noclose_ioprocs =
+static const struct io_procs imgtool_noclose_ioprocs =
 {
 	NULL,
 	imgtool_floppy_seekproc,
@@ -200,7 +200,7 @@ static void imgtool_floppy_close(imgtool_image *img)
 
 
 
-imgtoolerr_t imgtool_floppy_get_sector_size(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, UINT32 *sector_size)
+static imgtoolerr_t imgtool_floppy_get_sector_size(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, UINT32 *sector_size)
 {
 	floperr_t ferr;
 
@@ -213,7 +213,7 @@ imgtoolerr_t imgtool_floppy_get_sector_size(imgtool_image *image, UINT32 track, 
 
 
 
-imgtoolerr_t imgtool_floppy_read_sector(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, void *buffer, size_t len)
+static imgtoolerr_t imgtool_floppy_read_sector(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, void *buffer, size_t len)
 {
 	floperr_t ferr;
 
@@ -226,7 +226,7 @@ imgtoolerr_t imgtool_floppy_read_sector(imgtool_image *image, UINT32 track, UINT
 
 
 
-imgtoolerr_t imgtool_floppy_write_sector(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, const void *buffer, size_t len)
+static imgtoolerr_t imgtool_floppy_write_sector(imgtool_image *image, UINT32 track, UINT32 head, UINT32 sector, const void *buffer, size_t len)
 {
 	floperr_t ferr;
 
@@ -340,7 +340,7 @@ static imgtoolerr_t imgtool_floppy_transfer_sector_tofrom_stream(imgtool_image *
 		if (err)
 			goto done;
 	}
-	
+
 	err = FLOPPY_ERROR_SUCCESS;
 
 done:

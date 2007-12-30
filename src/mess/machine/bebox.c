@@ -249,7 +249,7 @@ static void bebox_update_interrupts(void)
 	for (cpunum = 0; cpunum < 2; cpunum++)
 	{
 		interrupt = bebox_interrupts & bebox_cpu_imask[cpunum];
-		
+
 		if (LOG_INTERRUPTS)
 		{
 			logerror("\tbebox_update_interrupts(): CPU #%d [%08X|%08X] IRQ %s\n", cpunum,
@@ -303,8 +303,7 @@ static void bebox_set_irq_bit(unsigned int interrupt_bit, int val)
 	if (LOG_INTERRUPTS)
 	{
 		/* make sure that we don't shoot ourself in the foot */
-		if ((interrupt_bit > sizeof(interrupt_names) / sizeof(interrupt_names[0])) && !interrupt_names[interrupt_bit])
-			fatalerror("Raising invalid interrupt %u", interrupt_bit);
+		assert_always((interrupt_bit < ARRAY_LENGTH(interrupt_names)) && (interrupt_names[interrupt_bit] != NULL), "Raising invalid interrupt");
 
 		logerror("bebox_set_irq_bit(): pc[0]=0x%08x pc[1]=0x%08x %s interrupt #%u (%s)\n",
 			(unsigned) cpunum_get_reg(0, REG_PC),
@@ -451,7 +450,7 @@ READ64_HANDLER( bebox_800003F0_r )
 		result &= ~(0xFF << 8);
 		result |= ide_controller_0_r(0x3F6) << 8;
 	}
-	
+
 	if (((mem_mask >> 0) & 0xFF) == 0)
 	{
 		result &= ~(0xFF << 0);
@@ -467,7 +466,7 @@ WRITE64_HANDLER( bebox_800003F0_w )
 
 	if (((mem_mask >> 8) & 0xFF) == 0)
 		ide_controller_0_w(0x3F6, (data >> 8) & 0xFF);
-	
+
 	if (((mem_mask >> 0) & 0xFF) == 0)
 		ide_controller_0_w(0x3F7, (data >> 0) & 0xFF);
 }
@@ -480,7 +479,7 @@ static void bebox_ide_interrupt(int state)
 }
 
 
-static struct ide_interface bebox_ide_interface =
+static const struct ide_interface bebox_ide_interface =
 {
 	bebox_ide_interrupt
 };
@@ -938,7 +937,7 @@ static const struct pci_device_info scsi53c810_callbacks =
 	scsi53c810_pci_write
 };
 
-static SCSIConfigTable dev_table =
+static const SCSIConfigTable dev_table =
 {
 	2, /* 2 SCSI devices */
 	{
@@ -947,7 +946,7 @@ static SCSIConfigTable dev_table =
 	}
 };
 
-static struct LSI53C810interface scsi53c810_intf =
+static const struct LSI53C810interface scsi53c810_intf =
 {
 	&dev_table,		/* SCSI device table */
 	&scsi53c810_irq_callback,

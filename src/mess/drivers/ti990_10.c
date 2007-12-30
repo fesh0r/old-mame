@@ -179,7 +179,7 @@ static ADDRESS_MAP_START(ti990_10_readcru, ADDRESS_SPACE_IO, 8)
 
 ADDRESS_MAP_END
 
-static ti990_10reset_param reset_params =
+static const ti990_10reset_param reset_params =
 {
 	/*idle_callback*/NULL,
 	rset_callback,
@@ -216,7 +216,7 @@ static MACHINE_DRIVER_START(ti990_10)
 	MDRV_SCREEN_SIZE(560, 280)
 	MDRV_SCREEN_VISIBLE_AREA(0, 560-1, 0, /*250*/280-1)
 
-	MDRV_GFXDECODE(vdt911_gfxdecodeinfo)
+	MDRV_GFXDECODE(vdt911)
 	MDRV_PALETTE_LENGTH(vdt911_palette_size)
 	MDRV_COLORTABLE_LENGTH(vdt911_colortable_size)
 

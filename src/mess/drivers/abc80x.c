@@ -289,7 +289,7 @@ static ADDRESS_MAP_START( abc77_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(I8039_p1, I8039_p1) AM_READ(abc77_data_r)
 	AM_RANGE(I8039_p2, I8039_p2) AM_WRITE(abc77_data_w)
 	AM_RANGE(I8039_t1, I8039_t1) AM_READ(abc77_clock_r)
-	AM_RANGE(I8039_bus, I8039_bus) AM_READ(port_tag_to_handler8("DSW"))
+	AM_RANGE(I8039_bus, I8039_bus) AM_READ_PORT("DSW")
 ADDRESS_MAP_END
 
 // ABC 802
@@ -535,11 +535,11 @@ static const gfx_layout charlayout_abc802_80 =
 
 /* Graphics Decode Info */
 
-static GFXDECODE_START( gfxdecodeinfo_abc800m )
+static GFXDECODE_START( abc800m )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout_abc800m, 0, 2 )
 GFXDECODE_END
 
-static GFXDECODE_START( gfxdecodeinfo_abc802 )
+static GFXDECODE_START( abc802 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout_abc802_40, 0, 8 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout_abc802_80, 0, 8 )
 GFXDECODE_END
@@ -590,7 +590,7 @@ static int dart_serial_receive(int ch)
 	return -1;
 }
 
-static z80dart_interface abc800_dart_intf =
+static const z80dart_interface abc800_dart_intf =
 {
 	ABC800_X01/2/2,			/* clock */
 	0,						/* interrupt handler */
@@ -617,7 +617,7 @@ static WRITE8_HANDLER( abc802_dart_rts_w )
 	}
 }
 
-static z80dart_interface abc802_dart_intf =
+static const z80dart_interface abc802_dart_intf =
 {
 	ABC800_X01/2/2,			/* clock */
 	0,						/* interrupt handler */
@@ -628,7 +628,7 @@ static z80dart_interface abc802_dart_intf =
 	dart_serial_receive		/* receive handler */
 };
 
-static struct z80_irq_daisy_chain abc800_daisy_chain[] =
+static const struct z80_irq_daisy_chain abc800_daisy_chain[] =
 {
 	{ z80ctc_reset, z80ctc_irq_state, z80ctc_irq_ack, z80ctc_irq_reti, 0 },
 	{ z80sio_reset, z80sio_irq_state, z80sio_irq_ack, z80sio_irq_reti, 0 },
@@ -651,7 +651,7 @@ static MACHINE_START( abc800 )
 	state_save_register_global(abc77_keylatch);
 	state_save_register_global(abc77_clock);
 
-	abc800_ctc_timer = timer_alloc(abc800_ctc_tick);
+	abc800_ctc_timer = timer_alloc(abc800_ctc_tick, NULL);
 	timer_adjust(abc800_ctc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(ABC800_X01/2/2/2));
 
 	z80ctc_init(0, &abc800_ctc_intf);
@@ -659,7 +659,7 @@ static MACHINE_START( abc800 )
 	z80dart_init(0, &abc800_dart_intf);
 }
 
-INTERRUPT_GEN( abc802_vblank_interrupt )
+static INTERRUPT_GEN( abc802_vblank_interrupt )
 {
 	z80dart_set_ri(0, 0);
 	z80dart_set_ri(0, 1);
@@ -668,7 +668,7 @@ INTERRUPT_GEN( abc802_vblank_interrupt )
 static MACHINE_START( abc802 )
 {
 	machine_start_abc800(machine);
-	
+
 	z80dart_init(0, &abc802_dart_intf);
 
 	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1), 0);
@@ -683,7 +683,7 @@ static MACHINE_RESET( abc802 )
 static MACHINE_START( abc806 )
 {
 	machine_start_abc800(machine);
-	
+
 	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1), 0);
 	memory_configure_bank(1, 1, 1, mess_ram, 0);
 }
@@ -716,7 +716,7 @@ static MACHINE_DRIVER_START( abc800m )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*6, 24*10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 80*6-1, 0, 24*10-1)
-	MDRV_GFXDECODE(gfxdecodeinfo_abc800m)
+	MDRV_GFXDECODE(abc800m)
 	MDRV_PALETTE_LENGTH(2)
 
 	MDRV_PALETTE_INIT(abc800m)
@@ -726,7 +726,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abc800c )
 	MDRV_IMPORT_FROM(abc800m)
-	
+
 	MDRV_SCREEN_SIZE(40*6, 24*10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40*6-1, 0, 24*10-1)
 	MDRV_PALETTE_LENGTH(8)
@@ -741,11 +741,11 @@ static MACHINE_DRIVER_START( abc802 )
 	MDRV_CPU_PROGRAM_MAP(abc802_map, 0)
 	MDRV_CPU_IO_MAP(abc802_io_map, 0)
 	MDRV_CPU_VBLANK_INT(abc802_vblank_interrupt, 1)
-	
+
 	MDRV_MACHINE_START(abc802)
 	MDRV_MACHINE_RESET(abc802)
 
-	MDRV_GFXDECODE(gfxdecodeinfo_abc802)
+	MDRV_GFXDECODE(abc802)
 	MDRV_PALETTE_INIT(abc800m)
 	MDRV_VIDEO_START(abc802)
 	MDRV_VIDEO_UPDATE(abc802)
@@ -756,7 +756,7 @@ static MACHINE_DRIVER_START( abc806 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(abc806_map, 0)
 	MDRV_CPU_IO_MAP(abc806_io_map, 0)
-	
+
 	MDRV_MACHINE_START(abc806)
 	MDRV_MACHINE_RESET(abc806)
 MACHINE_DRIVER_END
@@ -942,7 +942,7 @@ static void abc800_printer_getinfo(const device_class *devclass, UINT32 state, u
 	}
 }
 
-DEVICE_LOAD( abc800_serial )
+static DEVICE_LOAD( abc800_serial )
 {
 	/* filename specified */
 	if (serial_device_load(image)==INIT_PASS)

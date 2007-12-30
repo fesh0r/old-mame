@@ -129,7 +129,7 @@ static int genesis_isSMD(unsigned char *buf,unsigned int len)
 }
 
 
-int device_load_genesis_cart(mess_image *image)
+static int device_load_genesis_cart(mess_image *image)
 {
 	unsigned char *tmpROMnew, *tmpROM;
 	unsigned char *secondhalf;
@@ -199,7 +199,7 @@ int device_load_genesis_cart(mess_image *image)
 		if (!strncmp((char *)&ROM[0x2120], "SUPER STREET FIGHTER2", 20))
 		{
 			is_ssf2 = 1;
-		}		
+		}
 	}
 
 	ROM = memory_region(REGION_CPU1);	/* 68000 ROM region */
@@ -272,7 +272,7 @@ SYSTEM_CONFIG_START(genesis)
 	CONFIG_DEVICE(genesis_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-WRITE16_HANDLER( genesis_ssf2_bank_w )
+static WRITE16_HANDLER( genesis_ssf2_bank_w )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 

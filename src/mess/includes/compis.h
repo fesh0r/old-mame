@@ -5,8 +5,10 @@
 
 	Per Ola Ingvarsson
 	Tomas Karlsson
-		
+
  ******************************************************************************/
+
+/*----------- defined in machine/compis.c -----------*/
 
 DRIVER_INIT(compis);
 MACHINE_RESET(compis);

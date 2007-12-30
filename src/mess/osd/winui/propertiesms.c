@@ -19,16 +19,16 @@
 #include "screenshot.h"
 #include "datamap.h"
 #include "bitmask.h"
-#include "mame32.h"
+#include "winui.h"
 #include "directories.h"
-#include "m32util.h"
-#include "m32opts.h"
+#include "mui_util.h"
+#include "mui_opts.h"
 #include "resourcems.h"
 #include "mess.h"
 #include "utils.h"
 #include "propertiesms.h"
 #include "optionsms.h"
-#include "ms32util.h"
+#include "msuiutil.h"
 #include "messopts.h"
 #include "strconv.h"
 #include "winutf8.h"
@@ -191,7 +191,7 @@ static BOOL SoftwareDirectories_OnEndLabelEdit(HWND hDlg, NMHDR* pNMHDR)
         }
         else
         {
-            if (win_message_box_utf8(NULL, "Directory does not exist, continue anyway?", MAME32NAME, MB_OKCANCEL) == IDOK)
+            if (win_message_box_utf8(NULL, "Directory does not exist, continue anyway?", MAMEUINAME, MB_OKCANCEL) == IDOK)
                 bResult = TRUE;
         }
     }
@@ -426,7 +426,7 @@ static BOOL RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 			// add this option to the combo box
 			(void)ComboBox_InsertString(control, i, win_tstring_strdup(t_ramstring));
 			(void)ComboBox_SetItemData(control, i, ram);
-			
+
 			free(t_ramstring);
 
 			// is this the current option?  record the index if so

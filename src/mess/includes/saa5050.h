@@ -4,7 +4,9 @@
 
 ***********************************************************************/
 
-extern MACHINE_DRIVER_EXTERN( vh_saa5050 );
+/*----------- defined in video/saa5050.c -----------*/
+
+MACHINE_DRIVER_EXTERN( vh_saa5050 );
 
 #define SAA5050_VBLANK 2500
 

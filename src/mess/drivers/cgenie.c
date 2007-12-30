@@ -55,7 +55,7 @@ static ADDRESS_MAP_START (cgenie_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (cgenie_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) ) 
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0xf8, 0xf8) AM_READWRITE( cgenie_sh_control_port_r, cgenie_sh_control_port_w )
 	AM_RANGE(0xf9, 0xf9) AM_READWRITE( cgenie_sh_data_port_r, cgenie_sh_data_port_w )
 	AM_RANGE(0xfa, 0xfa) AM_READWRITE( cgenie_index_r, cgenie_index_w )
@@ -220,8 +220,8 @@ static INPUT_PORTS_START( cgenie )
 	PORT_BIT(0x08, 0x00, IPT_BUTTON2) PORT_NAME("Joy 1 [#]") PORT_CODE(KEYCODE_SLASH_PAD) PORT_CODE(JOYCODE_BUTTON1)
 	PORT_BIT(0x10, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 1 [2]") PORT_CODE(KEYCODE_2_PAD) PORT_CODE(JOYCODE_BUTTON2)
 	PORT_BIT(0x20, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 1 [5]") PORT_CODE(KEYCODE_5_PAD) PORT_CODE(JOYCODE_BUTTON5)
-	PORT_BIT(0x40, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 1 [8]") PORT_CODE(KEYCODE_8_PAD) 
-	PORT_BIT(0x80, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 1 [0]") PORT_CODE(KEYCODE_0_PAD) 
+	PORT_BIT(0x40, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 1 [8]") PORT_CODE(KEYCODE_8_PAD)
+	PORT_BIT(0x80, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 1 [0]") PORT_CODE(KEYCODE_0_PAD)
 	PORT_START /* IN14 */
 	PORT_BIT(0x01, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 1 [1]") PORT_CODE(KEYCODE_1_PAD) PORT_CODE(JOYCODE_BUTTON3)
 	PORT_BIT(0x02, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 1 [4]") PORT_CODE(KEYCODE_4_PAD) PORT_CODE(JOYCODE_BUTTON6)
@@ -229,7 +229,7 @@ static INPUT_PORTS_START( cgenie )
 	PORT_BIT(0x08, 0x00, IPT_BUTTON1) PORT_NAME("Joy 1 [*]") PORT_CODE(KEYCODE_ASTERISK) PORT_CODE(JOYCODE_BUTTON1)
 	PORT_BIT(0x10, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 2 [3]") PORT_CODE(JOYCODE_BUTTON2)
 	PORT_BIT(0x20, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 2 [6]") PORT_CODE(JOYCODE_BUTTON5)
-	PORT_BIT(0x40, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 2 [9]") 
+	PORT_BIT(0x40, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 2 [9]")
 	PORT_BIT(0x80, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 2 [#]") PORT_CODE(JOYCODE_BUTTON1)
 
 	PORT_START /* IN15 */
@@ -243,7 +243,7 @@ static INPUT_PORTS_START( cgenie )
 	PORT_BIT(0x80, 0x00, IPT_UNKNOWN) PORT_NAME("Joy 2 [*]") PORT_CODE(JOYCODE_BUTTON1)
 INPUT_PORTS_END
 
-gfx_layout cgenie_charlayout =
+static const gfx_layout cgenie_charlayout =
 {
 	8,8,		   /* 8*8 characters */
 	384,		   /* 256 fixed + 128 defineable characters */
@@ -265,12 +265,12 @@ static const gfx_layout cgenie_gfxlayout =
 	8*8 			/* every char takes 8 bytes */
 };
 
-static GFXDECODE_START( cgenie_gfxdecodeinfo )
+static GFXDECODE_START( cgenie )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, cgenie_charlayout, 0, 3*16 )
 	GFXDECODE_ENTRY( REGION_GFX2, 0, cgenie_gfxlayout, 3*16*2, 3*4 )
 GFXDECODE_END
 
-static unsigned char cgenie_palette[] = {
+static const unsigned char cgenie_palette[] = {
 	 0*4,  0*4,  0*4,  /* background   */
 
 /* this is the 'RGB monitor' version, strong and clean */
@@ -329,7 +329,7 @@ static unsigned char cgenie_palette[] = {
 
 };
 
-static unsigned short cgenie_colortable[] =
+static const unsigned short cgenie_colortable[] =
 {
 	0, 1, 0, 2, 0, 3, 0, 4, /* RGB monitor set of text colors */
 	0, 5, 0, 6, 0, 7, 0, 8,
@@ -359,7 +359,7 @@ static PALETTE_INIT( cgenie )
 }
 
 
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
 	cgenie_psg_port_a_r,
 	cgenie_psg_port_b_r,
@@ -381,13 +381,13 @@ static MACHINE_DRIVER_START( cgenie )
 	MDRV_INTERLEAVE(4)
 
 	MDRV_MACHINE_START( cgenie )
-	
+
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(48*8, (32)*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 48*8-1,0*8,32*8-1)
-	MDRV_GFXDECODE( cgenie_gfxdecodeinfo )
+	MDRV_GFXDECODE( cgenie )
 	MDRV_PALETTE_LENGTH(sizeof(cgenie_palette) / sizeof(cgenie_palette[0]) / 3)
 	MDRV_COLORTABLE_LENGTH(sizeof(cgenie_colortable) / sizeof(cgenie_colortable[0]))
 	MDRV_PALETTE_INIT( cgenie )
@@ -401,7 +401,7 @@ static MACHINE_DRIVER_START( cgenie )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD(AY8910, 2000000)
 	MDRV_SOUND_CONFIG(ay8910_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)	
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 MACHINE_DRIVER_END
 
 /***************************************************************************

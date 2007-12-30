@@ -19,7 +19,7 @@
 #include "sound/psx.h"
 #include "debugger.h"
 
-struct
+static struct
 {
 	UINT8 id[ 8 ];
 	UINT32 text;	/* SCE only */
@@ -186,7 +186,7 @@ static TIMER_CALLBACK(psx_pad_ack)
 		if( !m_pad[ n_port ].b_ack )
 		{
 			m_pad[ n_port ].b_ack = 1;
-			timer_set( ATTOTIME_IN_USEC( 2 ), n_port, psx_pad_ack );
+			timer_set( ATTOTIME_IN_USEC( 2 ), NULL, n_port, psx_pad_ack );
 		}
 	}
 }
@@ -299,7 +299,7 @@ static void psx_pad( int n_port, int n_data )
 	if( b_ack )
 	{
 		m_pad[ n_port ].b_ack = 0;
-		timer_set( ATTOTIME_IN_USEC( 10 ), n_port, psx_pad_ack );
+		timer_set( ATTOTIME_IN_USEC( 10 ), NULL, n_port, psx_pad_ack );
 	}
 }
 
@@ -544,7 +544,7 @@ static void (*psx_cdcmds[])(void) =
 
 /* ----------------------------------------------------------------------- */
 
-READ32_HANDLER( psx_cd_r )
+static READ32_HANDLER( psx_cd_r )
 {
 	UINT32 result = 0;
 
@@ -596,7 +596,7 @@ READ32_HANDLER( psx_cd_r )
 	return result;
 }
 
-WRITE32_HANDLER( psx_cd_w )
+static WRITE32_HANDLER( psx_cd_w )
 {
 	void (*psx_cdcmd)(void);
 
@@ -766,7 +766,7 @@ static INPUT_PORTS_START( psx )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_PLAYER(2) PORT_NAME("P2 L2")
 INPUT_PORTS_END
 
-static struct PSXSPUinterface psxspu_interface =
+static const struct PSXSPUinterface psxspu_interface =
 {
 	&g_p_n_psxram,
 	psx_irq_set,

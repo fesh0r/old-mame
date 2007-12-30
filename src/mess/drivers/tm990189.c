@@ -67,7 +67,7 @@ enum
 {
 	tm990_189_palette_size = 3
 };
-unsigned char tm990_189_palette[tm990_189_palette_size*3] =
+static const unsigned char tm990_189_palette[tm990_189_palette_size*3] =
 {
 	0x00,0x00,0x00,	/* black */
 	0xFF,0x00,0x00	/* red for LEDs */
@@ -189,7 +189,7 @@ static emu_timer *rs232_input_timer;
 
 static MACHINE_RESET( tm990_189 )
 {
-	displayena_timer = timer_alloc(NULL);
+	displayena_timer = timer_alloc(NULL, NULL);
 
 	hold_load();
 
@@ -216,12 +216,12 @@ static MACHINE_START( tm990_189_v )
 
 static MACHINE_RESET( tm990_189_v )
 {
-	displayena_timer = timer_alloc(NULL);
+	displayena_timer = timer_alloc(NULL, NULL);
 
-	joy1x_timer = timer_alloc(NULL);
-	joy1y_timer = timer_alloc(NULL);
-	joy2x_timer = timer_alloc(NULL);
-	joy2y_timer = timer_alloc(NULL);
+	joy1x_timer = timer_alloc(NULL, NULL);
+	joy1y_timer = timer_alloc(NULL, NULL);
+	joy2x_timer = timer_alloc(NULL, NULL);
+	joy2y_timer = timer_alloc(NULL, NULL);
 
 	hold_load();
 
@@ -313,21 +313,31 @@ static void update_common(mame_bitmap *bitmap,
 
 static VIDEO_UPDATE( tm990_189 )
 {
-	update_common(bitmap, 580, 150, 110, 508, 387, 456, 507, 478, Machine->pens[1], Machine->pens[0]);
+	update_common(bitmap, 580, 150, 110, 508, 387, 456, 507, 478, machine->pens[1], machine->pens[0]);
 	return 0;
+}
+
+static VIDEO_START( tm990_189_v )
+{
+	/* NPW 27-Feb-2006 - ewwww gross!!! maybe this can be fixed when
+	 * multimonitor support is added?*/
+	LED_display_window_left = machine->screen[0].visarea.min_x;
+	LED_display_window_top = machine->screen[0].visarea.max_y - 32;
+	LED_display_window_width = machine->screen[0].visarea.max_x - machine->screen[0].visarea.min_x;
+	LED_display_window_height = 32;
 }
 
 static VIDEO_UPDATE( tm990_189_v )
 {
 	video_update_tms9928a(machine, screen, bitmap, cliprect);
 
-	plot_box(bitmap, LED_display_window_left, LED_display_window_top, LED_display_window_width, LED_display_window_height, Machine->pens[1]);
+	plot_box(bitmap, LED_display_window_left, LED_display_window_top, LED_display_window_width, LED_display_window_height, machine->pens[1]);
 	update_common(bitmap,
 					LED_display_window_left, LED_display_window_top,
 					LED_display_window_left, LED_display_window_top+16,
 					LED_display_window_left+80, LED_display_window_top+16,
 					LED_display_window_left+128, LED_display_window_top+16,
-					Machine->pens[6], Machine->pens[1]);
+					machine->pens[6], machine->pens[1]);
 	return 0;
 }
 
@@ -357,7 +367,7 @@ static void hold_load(void)
 {
 	load_state = TRUE;
 	field_interrupts();
-	timer_set(ATTOTIME_IN_MSEC(100), 0, clear_load);
+	timer_set(ATTOTIME_IN_MSEC(100), NULL, 0, clear_load);
 }
 
 /*
@@ -477,7 +487,7 @@ static int device_load_tm990_189_rs232(mess_image *image)
 	rs232_fp = image;
 
 	tms9902_set_dsr(id, 1);
-	rs232_input_timer = timer_alloc(rs232_input_callback);
+	rs232_input_timer = timer_alloc(rs232_input_callback, NULL);
 	timer_adjust(rs232_input_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(10));
 
 	return INIT_PASS;
@@ -793,7 +803,7 @@ static MACHINE_DRIVER_START(tm990_189)
 	MDRV_SCREEN_SIZE(750, 532)
 	MDRV_SCREEN_VISIBLE_AREA(0, 750-1, 0, 532-1)
 
-	/*MDRV_GFXDECODE(tm990_189_gfxdecodeinfo)*/
+	/*MDRV_GFXDECODE(tm990_189)*/
 	MDRV_PALETTE_LENGTH(tm990_189_palette_size)
 	MDRV_COLORTABLE_LENGTH(/*tm990_189_colortable_size*/0)
 
@@ -809,6 +819,11 @@ static MACHINE_DRIVER_START(tm990_189)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD(SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)MACHINE_DRIVER_END
+
+#define LEFT_BORDER		15
+#define RIGHT_BORDER		15
+#define TOP_BORDER_60HZ		27
+#define BOTTOM_BORDER_60HZ	24
 
 static MACHINE_DRIVER_START(tm990_189_v)
 
@@ -831,17 +846,11 @@ static MACHINE_DRIVER_START(tm990_189_v)
 	/*MDRV_INTERLEAVE(interleave)*/
 
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_SIZE(LEFT_BORDER+32*8+RIGHT_BORDER, TOP_BORDER_60HZ+24*8+BOTTOM_BORDER_60HZ + 32)
+	MDRV_SCREEN_VISIBLE_AREA(LEFT_BORDER-12, LEFT_BORDER+32*8+12-1, TOP_BORDER_60HZ-9, TOP_BORDER_60HZ+24*8+9-1 + 32)
 	MDRV_VIDEO_EOF(tm990_189)
+	MDRV_VIDEO_START(tm990_189_v)
 	MDRV_VIDEO_UPDATE(tm990_189_v)
-
-	/* NPW 27-Feb-2006 - ewwww gross!!! maybe this can be fixed when 
-	 * multimonitor support is added?*/
-	LED_display_window_left = machine->screen[0].defstate.visarea.min_x;
-	LED_display_window_top = machine->screen[0].defstate.visarea.max_y;
-	LED_display_window_width = machine->screen[0].defstate.visarea.max_x - machine->screen[0].defstate.visarea.min_x;
-	LED_display_window_height = 32;
-	machine->screen[0].defstate.visarea.max_y += 32;
-	machine->screen[0].defstate.height += 32;
 
 	/* sound hardware */
 	/* one two-level buzzer */
@@ -909,14 +918,14 @@ static INPUT_PORTS_START(tm990_189)
 		PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("@ /") PORT_CODE(KEYCODE_MINUS)
 		PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("> %") PORT_CODE(KEYCODE_EQUALS)
 		PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("0 ^") PORT_CODE(KEYCODE_0)
-		
+
 	PORT_START    /* row 2 */
 		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("1 .") PORT_CODE(KEYCODE_1)
 		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("2 ;") PORT_CODE(KEYCODE_2)
 		PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("3 :") PORT_CODE(KEYCODE_3)
 		PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("4 ?") PORT_CODE(KEYCODE_4)
 		PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("5 !") PORT_CODE(KEYCODE_5)
-		
+
 	PORT_START    /* row 3 */
 		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("6 _") PORT_CODE(KEYCODE_6)
 		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7 \"") PORT_CODE(KEYCODE_7)

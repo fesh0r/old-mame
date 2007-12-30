@@ -81,7 +81,7 @@ static const gfx_layout char_layout_80_l =
 	8 * 2           /* code takes 8 times 8 bits */
 };
 
-static GFXDECODE_START( gfxdecodeinfo )
+static GFXDECODE_START( pc8801 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, char_layout_80_l, 0, 16 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, char_layout_40L_l, 0, 16 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, char_layout_40R_l, 0, 16 )
@@ -373,7 +373,7 @@ static INPUT_PORTS_START( pc88sr )
 INPUT_PORTS_END
 
 
-ADDRESS_MAP_START( pc8801_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc8801_mem , ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE(0x0000, 0x5fff) AM_RAMBANK(1)
     AM_RANGE(0x6000, 0x7fff) AM_RAMBANK(2)
     AM_RANGE(0x8000, 0x83ff) AM_RAMBANK(3)
@@ -382,8 +382,8 @@ ADDRESS_MAP_START( pc8801_mem , ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE(0xf000, 0xffff) AM_RAMBANK(6)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( pc88sr_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) ) 
+static ADDRESS_MAP_START( pc88sr_io, ADDRESS_SPACE_IO, 8)
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
 	AM_RANGE(0x00, 0x00) AM_READ( input_port_0_r )  /* keyboard */
 	AM_RANGE(0x01, 0x01) AM_READ( input_port_1_r )  /* keyboard */
@@ -447,13 +447,13 @@ static INTERRUPT_GEN( pc8801fd_interrupt )
 {
 }
 
-ADDRESS_MAP_START( pc8801fd_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( pc8801fd_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x07ff) AM_ROM
 	AM_RANGE( 0x4000, 0x7fff) AM_RAM
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( pc8801fd_io , ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) ) 
+static ADDRESS_MAP_START( pc8801fd_io , ADDRESS_SPACE_IO, 8)
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0xf8, 0xf8) AM_READ( pc8801fd_nec765_tc )
 	AM_RANGE(0xfa, 0xfa) AM_READ( nec765_status_r )
 	AM_RANGE(0xfb, 0xfb) AM_READWRITE( nec765_data_r, nec765_data_w )
@@ -492,7 +492,7 @@ ROM_END
 
 static  READ8_HANDLER(opn_dummy_input){return 0xff;}
 
-static struct YM2203interface ym2203_interface =
+static const struct YM2203interface ym2203_interface =
 {
 	opn_dummy_input,
 	opn_dummy_input,
@@ -529,7 +529,7 @@ static MACHINE_DRIVER_START( pc88srl )
 	/*MDRV_ASPECT_RATIO(8,5)*/
 	MDRV_SCREEN_SIZE(640, 220)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 200-1)
-	MDRV_GFXDECODE( gfxdecodeinfo )
+	MDRV_GFXDECODE( pc8801 )
 	MDRV_PALETTE_LENGTH(18)
 	MDRV_COLORTABLE_LENGTH(32)
 	MDRV_PALETTE_INIT( pc8801 )

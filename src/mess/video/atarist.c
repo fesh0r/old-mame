@@ -30,154 +30,177 @@ static struct SHIFTER
 	int bitplane;
 	int shift;
 	int h, v;
+	int de;
+	int x_start, x_end, y_start, y_end, hblank_start, vblank_start;
 } shifter;
 
 static emu_timer *atarist_glue_timer;
 static emu_timer *atarist_shifter_timer;
-static mame_bitmap *atarist_bitmap;
+
+INLINE pen_t atarist_shift_mode_0(void)
+{
+	int color = (BIT(shifter.rr[3], 15) << 3) | (BIT(shifter.rr[2], 15) << 2) | (BIT(shifter.rr[1], 15) << 1) | BIT(shifter.rr[0], 15);
+
+	shifter.rr[0] <<= 1;
+	shifter.rr[1] <<= 1;
+	shifter.rr[2] <<= 1;
+	shifter.rr[3] <<= 1;
+
+	return Machine->pens[color];
+}
+
+INLINE pen_t atarist_shift_mode_1(void)
+{
+	int color = (BIT(shifter.rr[1], 15) << 1) | BIT(shifter.rr[0], 15);
+
+	shifter.rr[0] <<= 1;
+	shifter.rr[1] <<= 1;
+	shifter.shift++;
+
+	if (shifter.shift == 16)
+	{
+		shifter.rr[0] = shifter.rr[2];
+		shifter.rr[1] = shifter.rr[3];
+		shifter.rr[2] = shifter.rr[3] = 0;
+		shifter.shift = 0;
+	}
+
+	return Machine->pens[color];
+}
+
+INLINE pen_t atarist_shift_mode_2(void)
+{
+	int color = BIT(shifter.rr[0], 15);
+
+	shifter.rr[0] <<= 1;
+	shifter.shift++;
+
+	switch (shifter.shift)
+	{
+	case 16:
+		shifter.rr[0] = shifter.rr[1];
+		shifter.rr[1] = shifter.rr[2];
+		shifter.rr[2] = shifter.rr[3];
+		shifter.rr[3] = 0;
+		break;
+
+	case 32:
+		shifter.rr[0] = shifter.rr[1];
+		shifter.rr[1] = shifter.rr[2];
+		shifter.rr[2] = 0;
+		break;
+
+	case 48:
+		shifter.rr[0] = shifter.rr[1];
+		shifter.rr[1] = 0;
+		shifter.shift = 0;
+		break;
+	}
+
+	return Machine->pens[color];
+}
 
 static TIMER_CALLBACK(atarist_shifter_tick)
 {
 	int y = video_screen_get_vpos(0);
 	int x = video_screen_get_hpos(0);
-	int color;
+
+	pen_t pen;
 
 	switch (shifter.mode)
 	{
-	case 0: // 320 x 200, 4 Plane
-		color = (BIT(shifter.rr[3], 15) << 3) | (BIT(shifter.rr[2], 15) << 2) | (BIT(shifter.rr[1], 15) << 1) | BIT(shifter.rr[0], 15);
-		
-		*BITMAP_ADDR32(atarist_bitmap, y, x) = Machine->pens[color];
-
-		shifter.rr[0] <<= 1;
-		shifter.rr[1] <<= 1;
-		shifter.rr[2] <<= 1;
-		shifter.rr[3] <<= 1;
+	case 0:
+		pen = atarist_shift_mode_0();
 		break;
 
-	case 1: // 640 x 200, 2 Plane
-		color = (BIT(shifter.rr[1], 15) << 1) | BIT(shifter.rr[0], 15);
-
-		*BITMAP_ADDR32(atarist_bitmap, y, x) = Machine->pens[color];
-
-		shifter.rr[0] <<= 1;
-		shifter.rr[1] <<= 1;
-		shifter.shift++;
-
-		if (shifter.shift == 15)
-		{
-			shifter.rr[0] = shifter.rr[2];
-			shifter.rr[1] = shifter.rr[3];
-			shifter.rr[2] = shifter.rr[3] = 0;
-			shifter.shift = 0;
-		}
+	case 1:
+		pen = atarist_shift_mode_1();
 		break;
 
-	case 2: // 640 x 400, 1 Plane
-		// unimplemented
+	case 2:
+		pen = atarist_shift_mode_2();
 		break;
+
+	default:
+		pen = get_black_pen(machine);
+		break;
+	}
+
+	*BITMAP_ADDR32(tmpbitmap, y, x) = pen;
+}
+
+INLINE void atarist_shifter_load(void)
+{
+	UINT8 *RAM = memory_region(REGION_CPU1) + shifter.ofs;
+
+	shifter.ir[shifter.bitplane] = (RAM[1] << 8) | RAM[0];
+	shifter.bitplane++;
+	shifter.ofs += 2;
+
+	if (shifter.bitplane == 4)
+	{
+		shifter.bitplane = 0;
+
+		shifter.rr[0] = shifter.ir[0];
+		shifter.rr[1] = shifter.ir[1];
+		shifter.rr[2] = shifter.ir[2];
+		shifter.rr[3] = shifter.ir[3];
 	}
 }
 
 static TIMER_CALLBACK(atarist_glue_tick)
 {
-	UINT8 *RAM = memory_region(REGION_CPU1) + shifter.ofs;
+	int y = video_screen_get_vpos(0);
+	int x = video_screen_get_hpos(0);
 
-	int hcount = video_screen_get_hpos(0) / 4;
-	int vcount = video_screen_get_vpos(0);
+	int v = (y >= shifter.y_start) && (y < shifter.y_end);
+	int h = (x >= shifter.x_start) && (x < shifter.x_end);
 
-	int de;
+	int de = h && v;
 
+	if (de != shifter.de)
+	{
+		mfp68901_tbi_w(0, de);
+		shifter.de = de;
+	}
+
+	if (de)
+	{
+		atarist_shifter_load();
+	}
+
+	if ((y == shifter.vblank_start) && (x == 0))
+	{
+		cpunum_set_input_line(0, MC68000_IRQ_4, HOLD_LINE);
+		shifter.ofs = shifter.base;
+	}
+
+	if (x == shifter.hblank_start)
+	{
+		cpunum_set_input_line(0, MC68000_IRQ_2, HOLD_LINE);
+		shifter.ofs += (shifter.lineofs * 2); // STe
+	}
+}
+
+static void atarist_set_screen_parameters(void)
+{
 	if (shifter.sync & 0x02)
 	{
-		// 50 Hz
-
-		switch (hcount)
-		{
-		case ATARIST_HBDEND_PAL:
-			shifter.h = ASSERT_LINE;
-			break;
-		case ATARIST_HBDSTART_PAL:
-			shifter.h = CLEAR_LINE;
-			break;
-		case ATARIST_HBSTART_PAL/4:
-			cpunum_set_input_line(0, MC68000_IRQ_2, HOLD_LINE);
-			shifter.ofs += (shifter.lineofs * 2); // STe
-			break;
-		}
-
-		switch (vcount)
-		{
-		case ATARIST_VBDEND_PAL:
-			shifter.v = ASSERT_LINE;
-			break;
-		case ATARIST_VBDSTART_PAL:
-			shifter.v = CLEAR_LINE;
-			break;
-		case ATARIST_VBSTART_PAL:
-			if (hcount == 0)
-			{
-				cpunum_set_input_line(0, MC68000_IRQ_4, HOLD_LINE);
-				shifter.ofs = shifter.base;
-			}
-			break;
-		}
+		shifter.x_start = ATARIST_HBDEND_PAL;
+		shifter.x_end = ATARIST_HBDSTART_PAL;
+		shifter.y_start = ATARIST_VBDEND_PAL;
+		shifter.y_end = ATARIST_VBDSTART_PAL;
+		shifter.hblank_start = ATARIST_HBSTART_PAL;
+		shifter.vblank_start = ATARIST_VBSTART_PAL;
 	}
 	else
 	{
-		// 60 Hz
-
-		switch (hcount)
-		{
-		case ATARIST_HBDEND_NTSC:
-			shifter.h = ASSERT_LINE;
-			break;
-		case ATARIST_HBDSTART_NTSC:
-			shifter.h = CLEAR_LINE;
-			break;
-		case ATARIST_HBSTART_NTSC/4:
-			cpunum_set_input_line(0, MC68000_IRQ_2, HOLD_LINE);
-			shifter.ofs += (shifter.lineofs * 2); // STe
-			break;
-		}
-
-		switch (vcount)
-		{
-		case ATARIST_VBDEND_NTSC:
-			shifter.v = ASSERT_LINE;
-			break;
-		case ATARIST_VBDSTART_NTSC:
-			shifter.v = CLEAR_LINE;
-			break;
-		case ATARIST_VBSTART_NTSC:
-			if (hcount == 0)
-			{
-				cpunum_set_input_line(0, MC68000_IRQ_4, HOLD_LINE);
-				shifter.ofs = shifter.base;
-			}
-			break;
-		}
-	}
-
-	de = shifter.h && shifter.v;
-
-	mfp68901_tbi_w(0, de);
-	
-	if (de)
-	{
-		shifter.ir[shifter.bitplane] = (RAM[1] << 8) | RAM[0];
-		shifter.bitplane++;
-		shifter.ofs += 2;
-		
-		if (shifter.bitplane == 4)
-		{
-			shifter.bitplane = 0;
-			
-			shifter.rr[0] = shifter.ir[0];
-			shifter.rr[1] = shifter.ir[1];
-			shifter.rr[2] = shifter.ir[2];
-			shifter.rr[3] = shifter.ir[3];
-		}
+		shifter.x_start = ATARIST_HBDEND_NTSC;
+		shifter.x_end = ATARIST_HBDSTART_NTSC;
+		shifter.y_start = ATARIST_VBDEND_NTSC;
+		shifter.y_end = ATARIST_VBDSTART_NTSC;
+		shifter.hblank_start = ATARIST_HBSTART_NTSC;
+		shifter.vblank_start = ATARIST_VBSTART_NTSC;
 	}
 }
 
@@ -192,7 +215,7 @@ READ16_HANDLER( atarist_shifter_base_r )
 	case 0x01:
 		return (shifter.base >> 8) & 0xff;
 	}
-	
+
 	return 0;
 }
 
@@ -235,6 +258,7 @@ WRITE16_HANDLER( atarist_shifter_sync_w )
 {
 	shifter.sync = data >> 8;
 	logerror("SHIFTER Sync %x\n", shifter.sync);
+	atarist_set_screen_parameters();
 }
 
 READ16_HANDLER( atarist_shifter_mode_r )
@@ -252,7 +276,7 @@ READ16_HANDLER( atarist_shifter_palette_r )
 {
 	return shifter.palette[offset];
 }
-		
+
 WRITE16_HANDLER( atarist_shifter_palette_w )
 {
 	shifter.palette[offset] = data;
@@ -344,7 +368,7 @@ WRITE16_HANDLER( atariste_shifter_pixelofs_w )
 
 /* Atari ST Blitter */
 
-static const int BLITTER_NOPS[16][4] = 
+static const int BLITTER_NOPS[16][4] =
 {
 	{ 1, 1, 1, 1 },
 	{ 2, 2, 3, 3 },
@@ -374,8 +398,6 @@ static struct BLITTER
 	UINT8 hop, op, ctrl, skew;
 	UINT32 srcbuf;
 } blitter;
-
-static emu_timer *blitter_timer;
 
 static void atarist_blitter_source(void)
 {
@@ -449,7 +471,7 @@ static TIMER_CALLBACK( atarist_blitter_tick )
 		{
 			blitter.src += blitter.src_inc_x;
 			blitter.dst += blitter.dst_inc_x;
-			
+
 			if (blitter.xcount == 1)
 			{
 				if (!(blitter.skew & ATARIST_BLITTER_SKEW_NFSR))
@@ -681,7 +703,7 @@ WRITE16_HANDLER( atarist_blitter_ctrl_w )
 			if ((data >> 8) & ATARIST_BLITTER_CTRL_BUSY)
 			{
 				int nops = BLITTER_NOPS[blitter.op][blitter.hop]; // each NOP takes 4 cycles
-				timer_pulse(ATTOTIME_IN_HZ((Y2/4)/(4*nops)), 0, atarist_blitter_tick);
+				timer_set(ATTOTIME_IN_HZ((Y2/4)/(4*nops)), NULL, 0, atarist_blitter_tick);
 			}
 		}
 	}
@@ -695,14 +717,11 @@ WRITE16_HANDLER( atarist_blitter_ctrl_w )
 
 VIDEO_START( atarist )
 {
-	atarist_shifter_timer = timer_alloc(atarist_shifter_tick);
-	atarist_glue_timer = timer_alloc(atarist_glue_tick);
-	blitter_timer = timer_alloc(atarist_blitter_tick);
+	atarist_shifter_timer = timer_alloc(atarist_shifter_tick, NULL);
+	atarist_glue_timer = timer_alloc(atarist_glue_tick, NULL);
 
-	timer_adjust(atarist_glue_timer, video_screen_get_time_until_pos(0,0,4), 0, ATTOTIME_IN_HZ(Y2/16)); // 500 ns
 	timer_adjust(atarist_shifter_timer, video_screen_get_time_until_pos(0,0,0), 0, ATTOTIME_IN_HZ(Y2/4)); // 125 ns
-
-	atarist_bitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, Machine->screen[0].format);
+	timer_adjust(atarist_glue_timer, video_screen_get_time_until_pos(0,0,0), 0, ATTOTIME_IN_HZ(Y2/16)); // 500 ns
 
 	memset(&shifter, 0, sizeof(shifter));
 
@@ -719,6 +738,7 @@ VIDEO_START( atarist )
 	state_save_register_global(shifter.shift);
 	state_save_register_global(shifter.h);
 	state_save_register_global(shifter.v);
+	state_save_register_global(shifter.de);
 
 	state_save_register_global_array(blitter.halftone);
 	state_save_register_global(blitter.src_inc_x);
@@ -738,12 +758,7 @@ VIDEO_START( atarist )
 	state_save_register_global(blitter.ctrl);
 	state_save_register_global(blitter.skew);
 
-	state_save_register_bitmap("video", 0, "atarist_bitmap", atarist_bitmap);
-}
+	atarist_set_screen_parameters();
 
-VIDEO_UPDATE( atarist )
-{
-	copybitmap(bitmap, atarist_bitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
-
-	return 0;
+	video_start_generic_bitmapped(machine);
 }

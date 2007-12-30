@@ -5,7 +5,7 @@
 
 	Per Ola Ingvarsson
 	Tomas Karlsson
-			
+
  ******************************************************************************/
 
 /*-------------------------------------------------------------------------*/
@@ -15,6 +15,7 @@
 #include "driver.h"
 #include "cpu/i86/i186intf.h"
 #include "video/generic.h"
+#include "video/i82720.h"
 #include "machine/8255ppi.h"
 #include "machine/mm58274c.h"
 #include "machine/pic8259.h"
@@ -92,7 +93,7 @@ static struct i186_state
 } i186;
 
 /* Keyboard */
-const UINT8 compis_keyb_codes[6][16] = {
+static const UINT8 compis_keyb_codes[6][16] = {
 {0x39, 0x32, 0x29, 0x20, 0x17, 0x0e, 0x05, 0x56, 0x4d, 0x44, 0x08, 0x57, 0x59, 0x4e, 0x43, 0x3a},
 {0x31, 0x28, 0x1f, 0x16, 0x0d, 0x04, 0x55, 0x4c, 0x4f, 0x58, 0x00, 0x07, 0xff, 0x42, 0x3b, 0x30},
 {0x27, 0x1e, 0x15, 0x0c, 0x03, 0x54, 0x06, 0x50, 0x01, 0xfe, 0x38, 0x2f, 0x26, 0x1d, 0x14, 0x0b},
@@ -182,17 +183,19 @@ static TYP_COMPIS compis;
 /* Name: compis_irq_set                                                    */
 /* Desc: IRQ - Issue an interrupt request                                  */
 /*-------------------------------------------------------------------------*/
+#ifdef UNUSED_FUNCTION
 void compis_irq_set(UINT8 irq)
 {
 	cpunum_set_input_line_vector(0, 0, irq);
 	cpunum_set_input_line(0, 0, HOLD_LINE);
 }
+#endif
 
 /*-------------------------------------------------------------------------*/
 /*  OSP PIC 8259                                                           */
 /*-------------------------------------------------------------------------*/
 
-void compis_osp_pic_irq(UINT8 irq)
+static void compis_osp_pic_irq(UINT8 irq)
 {
 	pic8259_set_irq_line(0, irq, 1);
 	pic8259_set_irq_line(0, irq, 0);
@@ -211,7 +214,7 @@ WRITE16_HANDLER ( compis_osp_pic_w )
 /*-------------------------------------------------------------------------*/
 /*  Keyboard                                                               */
 /*-------------------------------------------------------------------------*/
-void compis_keyb_update(void)
+static void compis_keyb_update(void)
 {
 	UINT8 key_code;
 	UINT8 key_status;
@@ -219,7 +222,7 @@ void compis_keyb_update(void)
 	UINT8 icol;
 	UINT16 data;
 	UINT16 ibit;
-	
+
 	key_code = 0;
 	key_status = 0x80;
 
@@ -265,7 +268,7 @@ void compis_keyb_update(void)
 	}
 }
 
-void compis_keyb_init(void)
+static void compis_keyb_init(void)
 {
 	compis.keyboard.key_code = 0;
 	compis.keyboard.key_status = 0x80;
@@ -284,7 +287,7 @@ static void compis_fdc_reset(void)
 	nec765_set_reset_state(1);
 }
 
-void compis_fdc_tc(int state)
+static void compis_fdc_tc(int state)
 {
 	/* Terminal count if iSBX-218A has DMA enabled */
   	if (readinputport(7))
@@ -293,7 +296,7 @@ void compis_fdc_tc(int state)
 	}
 }
 
-void compis_fdc_int(int state)
+static void compis_fdc_int(int state)
 {
 	/* No interrupt requests if iSBX-218A has DMA enabled */
   	if (!readinputport(7) && state)
@@ -311,7 +314,7 @@ static void compis_fdc_dma_drq(int state, int read)
 	}
 }
 
-static nec765_interface compis_fdc_interface = 
+static const nec765_interface compis_fdc_interface =
 {
 	compis_fdc_int,
 	compis_fdc_dma_drq
@@ -326,7 +329,7 @@ READ16_HANDLER (compis_fdc_dack_r)
   	{
 		data = nec765_dack_r(0);
 	}
-	
+
 	return data;
 }
 
@@ -426,12 +429,12 @@ static WRITE8_HANDLER ( compis_ppi_port_c_w )
 	/* FDC Reset */
 	if (data & 0x40)
 		compis_fdc_reset();
-  
+
 	/* FDC Terminal count */
 	compis_fdc_tc((data & 0x80)?1:0);
 }
 
-static ppi8255_interface compis_ppi_interface =
+static const ppi8255_interface compis_ppi_interface =
 {
     1,
     {NULL},
@@ -456,7 +459,7 @@ WRITE16_HANDLER ( compis_ppi_w )
 /*  PIT 8253                                                               */
 /*-------------------------------------------------------------------------*/
 
-static struct pit8253_config compis_pit_config[2] =
+static const struct pit8253_config compis_pit_config[2] =
 {
 {
 	TYPE8253,
@@ -523,7 +526,7 @@ WRITE16_HANDLER ( compis_rtc_w )
 /*-------------------------------------------------------------------------*/
 /*  USART 8251                                                             */
 /*-------------------------------------------------------------------------*/
-void compis_usart_rxready(int state)
+static void compis_usart_rxready(int state)
 {
 /*
 	if (state)
@@ -531,7 +534,7 @@ void compis_usart_rxready(int state)
 */
 }
 
-static struct msm8251_interface compis_usart_interface=
+static const struct msm8251_interface compis_usart_interface=
 {
 	NULL,
 	NULL,
@@ -849,15 +852,15 @@ static void internal_timer_update(int which,
 			internal_timer_sync(which);
 			update_int_timer = 1;
 		}
-      
+
 		t->maxB = new_maxB;
-      
+
 		if (new_maxB == 0)
 		{
          		new_maxB = 0x10000;
       		}
    	}
-		
+
 
 	/* handle control changes */
 	if (new_control != -1)
@@ -977,7 +980,7 @@ static void update_dma_control(int which, int new_control)
 	/* check for control bits we don't handle */
 	diff = new_control ^ d->control;
 	if (diff & 0x6811)
-	  logerror("%05X:ERROR! - unsupported DMA mode %04X\n", 
+	  logerror("%05X:ERROR! - unsupported DMA mode %04X\n",
 		   activecpu_get_pc(),
 		   new_control);
 
@@ -1516,17 +1519,17 @@ WRITE16_HANDLER( i186_internal_port_w )
 /* Name: compis                                                            */
 /* Desc: CPU - Initialize the 80186 CPU                                    */
 /*-------------------------------------------------------------------------*/
-void compis_cpu_init(void)
+static void compis_cpu_init(void)
 {
 	/* create timers here so they stick around */
-	i186.timer[0].int_timer = timer_alloc(internal_timer_int);
-	i186.timer[1].int_timer = timer_alloc(internal_timer_int);
-	i186.timer[2].int_timer = timer_alloc(internal_timer_int);
-	i186.timer[0].time_timer = timer_alloc(NULL);
-	i186.timer[1].time_timer = timer_alloc(NULL);
-	i186.timer[2].time_timer = timer_alloc(NULL);
-	i186.dma[0].finish_timer = timer_alloc(dma_timer_callback);
-	i186.dma[1].finish_timer = timer_alloc(dma_timer_callback);
+	i186.timer[0].int_timer = timer_alloc(internal_timer_int, NULL);
+	i186.timer[1].int_timer = timer_alloc(internal_timer_int, NULL);
+	i186.timer[2].int_timer = timer_alloc(internal_timer_int, NULL);
+	i186.timer[0].time_timer = timer_alloc(NULL, NULL);
+	i186.timer[1].time_timer = timer_alloc(NULL, NULL);
+	i186.timer[2].time_timer = timer_alloc(NULL, NULL);
+	i186.dma[0].finish_timer = timer_alloc(dma_timer_callback, NULL);
+	i186.dma[1].finish_timer = timer_alloc(dma_timer_callback, NULL);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -1554,8 +1557,15 @@ static int compis_irq_callback(int irqline)
 	return pic8259_acknowledge(0);
 }
 
+static const compis_gdc_interface i82720_interface =
+{
+	GDC_MODE_HRG,
+	0x8000
+};
+
 DRIVER_INIT( compis )
 {
+	compis_init( &i82720_interface );
 	cpunum_set_irq_callback(0,	compis_irq_callback);
 	pic8259_init(2, compis_pic_set_int_line);
 	memset (&compis, 0, sizeof (compis) );
@@ -1572,10 +1582,10 @@ MACHINE_RESET( compis )
 
 	/* OSP PIT 8254 */
 	pit8253_init(2, compis_pit_config);
-		
+
 	/* PPI */
 	ppi8255_init(&compis_ppi_interface);
-	    
+
 	/* FDC */
 	nec765_init(&compis_fdc_interface, NEC765A);
 	compis_fdc_reset();

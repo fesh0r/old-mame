@@ -316,7 +316,7 @@ int AY3600_init()
 
 	/* We poll the keyboard periodically to scan the keys.  This is
 	actually consistent with how the AY-3600 keyboard controller works. */
-	timer_pulse(ATTOTIME_IN_HZ(60), 0, AY3600_poll);
+	timer_pulse(ATTOTIME_IN_HZ(60), NULL, 0, AY3600_poll);
 
 	/* Set Caps Lock light to ON, since that's how we default it. */
 	set_led_status(1,1);
@@ -361,7 +361,7 @@ static TIMER_CALLBACK(AY3600_poll)
 	/* only repeat keys on a 2/2+ if special REPT key is pressed */
 	if (a2_has_repeat())
 		time_until_repeat = readinputportbytag("keyb_repeat") & 0x01 ? 0 : ~0;
-			
+
 	/* check caps lock and set LED here */
 	if (pressed_specialkey(SPECIALKEY_CAPSLOCK))
 	{

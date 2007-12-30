@@ -27,6 +27,8 @@
 
 /* Function prototypes */
 
+/*----------- defined in machine/sms.c -----------*/
+
 WRITE8_HANDLER(sms_cartram_w);
 WRITE8_HANDLER(sms_cartram2_w);
 WRITE8_HANDLER(sms_fm_detect_w);
@@ -48,7 +50,7 @@ WRITE8_HANDLER(gg_psg_w);
 
 void setup_rom(void);
 
-void check_pause_button( void );
+void sms_check_pause_button( void );
 
 DEVICE_INIT( sms_cart );
 DEVICE_LOAD( sms_cart );

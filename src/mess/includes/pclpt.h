@@ -8,7 +8,9 @@
 extern "C" {
 #endif
 
-typedef enum { 
+/*----------- defined in machine/pclpt.c -----------*/
+
+typedef enum {
 	LPT_UNIDIRECTIONAL
 //	, LPT_BIDIRECTIONAL
 // epp, ecp
@@ -21,9 +23,9 @@ typedef struct {
 	// dma for ecp
 } PC_LPT_CONFIG;
 
-void pc_lpt_config(int nr, PC_LPT_CONFIG *config);
+void pc_lpt_config(int nr, const PC_LPT_CONFIG *config);
 
-void pc_lpt_set_device(int nr, CENTRONICS_DEVICE *device);
+void pc_lpt_set_device(int nr, const CENTRONICS_DEVICE *device);
 
 /* line definitions in centroni.h */
 /* only those lines in mask are modified */

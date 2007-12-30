@@ -10,7 +10,7 @@
 static pc_video_update_proc pc_aga_choosevideomode(int *width, int *height, struct mscrtc6845 *crtc);
 
 
-gfx_layout europc_cga_charlayout =
+const gfx_layout europc_cga_charlayout =
 {
 	8,16,					/* 8 x 32 characters */
 	256,                    /* 256 characters */
@@ -26,7 +26,7 @@ gfx_layout europc_cga_charlayout =
 	8*16                     /* every char takes 8 bytes */
 };
 
-gfx_layout europc_mda_charlayout =
+const gfx_layout europc_mda_charlayout =
 {
 	9,32,					/* 9 x 32 characters (9 x 15 is the default, but..) */
 	256,					/* 256 characters */
@@ -44,7 +44,7 @@ gfx_layout europc_mda_charlayout =
 	8*16
 };
 
-gfx_layout pc200_mda_charlayout =
+static const gfx_layout pc200_mda_charlayout =
 {
 	9,32,					/* 9 x 32 characters (9 x 15 is the default, but..) */
 	256,					/* 256 characters */
@@ -60,7 +60,7 @@ gfx_layout pc200_mda_charlayout =
 	8*16 					/* every char takes 8 bytes (upper half) */
 };
 
-gfx_layout pc200_cga_charlayout =
+static const gfx_layout pc200_cga_charlayout =
 {
 	8,16,               /* 8 x 16 characters */
 	256,                    /* 256 characters */
@@ -77,7 +77,7 @@ gfx_layout pc200_cga_charlayout =
 };
 
 
-GFXDECODE_START( europc_gfxdecodeinfo )
+GFXDECODE_START( europc )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, europc_cga_charlayout, 0, 256 )   /* single width */
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, europc_cga_charlayout, 0, 256 )   /* single width */
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, europc_cga_charlayout, 0, 256 )   /* single width */
@@ -88,7 +88,7 @@ GFXDECODE_START( europc_gfxdecodeinfo )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x1000, europc_mda_charlayout, 256*2+16*2+96*4, 256 )   /* single width */
 GFXDECODE_END
 
-GFXDECODE_START( aga_gfxdecodeinfo )
+GFXDECODE_START( aga )
 /* The four CGA fonts */
 	GFXDECODE_ENTRY( REGION_GFX1, 0x1000, pc200_cga_charlayout, 0, 256 )   /* single width */
 	GFXDECODE_ENTRY( REGION_GFX1, 0x3000, pc200_cga_charlayout, 0, 256 )   /* single width */
@@ -200,7 +200,7 @@ static void pc_aga_cursor(struct mscrtc6845_cursor *cursor)
 }
 
 
-static struct mscrtc6845_config config= { 14318180 /*?*/, pc_aga_cursor };
+static const struct mscrtc6845_config config= { 14318180 /*?*/, pc_aga_cursor };
 
 VIDEO_START( pc_aga )
 {
@@ -208,7 +208,7 @@ VIDEO_START( pc_aga )
 
 	pc_mda_europc_init();
 
-	buswidth = cputype_databus_width(Machine->drv->cpu[0].type, ADDRESS_SPACE_PROGRAM);
+	buswidth = cputype_databus_width(machine->drv->cpu[0].type, ADDRESS_SPACE_PROGRAM);
 	switch(buswidth)
 	{
 		case 8:
@@ -241,7 +241,7 @@ VIDEO_START( pc200 )
 
 	video_start_pc_aga(machine);
 
-	buswidth = cputype_databus_width(Machine->drv->cpu[0].type, ADDRESS_SPACE_PROGRAM);
+	buswidth = cputype_databus_width(machine->drv->cpu[0].type, ADDRESS_SPACE_PROGRAM);
 	switch(buswidth)
 	{
 		case 8:
@@ -297,7 +297,7 @@ WRITE8_HANDLER ( pc_aga_videoram_w )
  READ8_HANDLER( pc_aga_videoram_r )
 {
 	switch (aga.mode) {
-	case AGA_COLOR: 
+	case AGA_COLOR:
 		if (offset>=0x8000) return videoram[offset-0x8000];
 		return 0;
 	case AGA_MONO:
@@ -311,7 +311,7 @@ READ8_HANDLER( pc200_videoram_r )
 {
 	switch (aga.mode)
 	{
-		default: 
+		default:
 			if (offset>=0x8000) return videoram[offset-0x8000];
 			return 0;
 		case AGA_MONO:
@@ -363,7 +363,7 @@ WRITE8_HANDLER( pc200_cga_w )
 
 /* The bottom 3 bits of this port are:
  * Bit 2: Disable AGA
- * Bit 1: Select MDA 
+ * Bit 1: Select MDA
  * Bit 0: Select external display (monitor) rather than internal display
  *       (TV for PC200; LCD for PPC512) */
 		if ((pc200.porte & 7) != (data & 7))

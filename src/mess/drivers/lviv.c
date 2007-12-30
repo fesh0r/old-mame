@@ -30,7 +30,7 @@ xx.07.2002	Improved port and memory mapping (Raphael Nabet).
 
 Notes on emulation status and to do list:
 -----------------------------------------
-1. LIMITATION: Printer is not emulated. 
+1. LIMITATION: Printer is not emulated.
 2. LIMITATION: Timings are not implemented, due to it emulated machine runs
    twice fast as orginal.
 3. LIMITATION: .RSS files are not supported.
@@ -104,9 +104,9 @@ Keyboard:
 ---------
 	Reset - connected to CPU reset line
 
-				     Port D0 				
-	--------T-------T-------T-------T-------T-------T-------T-------¬        
-	|   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   | 
+				     Port D0
+	--------T-------T-------T-------T-------T-------T-------T-------¬
+	|   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
 	+-------+-------+-------+-------+-------+-------+-------+-------+---¬
 	| Shift |   ;   |       |  CLS  | Space |   R   |   G   |   6   | 0 |
 	+-------+-------+-------+-------+-------+-------+-------+-------+---+
@@ -292,17 +292,17 @@ Timings:
 
 /* I/O ports */
 
-ADDRESS_MAP_START( lviv_readport , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( lviv_readport , ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0x00, 0xff) AM_READ( lviv_io_r )
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( lviv_writeport , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( lviv_writeport , ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0x00, 0xff) AM_WRITE( lviv_io_w )
 ADDRESS_MAP_END
 
 /* memory w/r functions */
 
-ADDRESS_MAP_START( lviv_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( lviv_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK1)
 	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(MRA8_BANK2, MWA8_BANK2)
 	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK3, MWA8_BANK3)

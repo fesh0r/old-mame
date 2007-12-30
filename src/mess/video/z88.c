@@ -3,7 +3,7 @@
   z88.c
 
   Functions to emulate the video hardware of the Acorn Z88
-  
+
 ***************************************************************************/
 
 #include "driver.h"
@@ -23,7 +23,7 @@ INLINE void z88_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
 ***************************************************************************/
 
 /* two colours */
-static unsigned short z88_colour_table[Z88_NUM_COLOURS] =
+static const unsigned short z88_colour_table[Z88_NUM_COLOURS] =
 {
 	0, 1, 2
 };
@@ -181,27 +181,27 @@ VIDEO_UPDATE( z88 )
 			/* inverted graphics? */
 				if (byte1 & Z88_SCR_HW_REV)
 				{
-				pen1 = Machine->pens[0];
-				
+				pen1 = machine->pens[0];
+
 				if (byte1 & Z88_SCR_HW_GRY)
 				{
-					pen0 = Machine->pens[2];
+					pen0 = machine->pens[2];
 				}
 				else
 				{
-					pen0 = Machine->pens[1];
+					pen0 = machine->pens[1];
 				}
 				}
 				else
-                {       
-				pen0 = Machine->pens[0];
+                {
+				pen0 = machine->pens[0];
 				if (byte1 & Z88_SCR_HW_GRY)
 				{
-					pen1 = Machine->pens[2];
+					pen1 = machine->pens[2];
 				}
 				else
 				{
-					pen1 = Machine->pens[1];
+					pen1 = machine->pens[1];
 				}
 			}
 
@@ -273,6 +273,6 @@ VIDEO_UPDATE( z88 )
 		}
 
 		stored_ptr+=256;
-	}		
+	}
 	return 0;
 }

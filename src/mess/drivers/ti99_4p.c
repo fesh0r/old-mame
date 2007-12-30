@@ -216,10 +216,10 @@ static INPUT_PORTS_START(ti99_4p)
 INPUT_PORTS_END
 
 
-static GFXDECODE_START( gfxdecodeinfo )
+static GFXDECODE_START( ti99_4p )
 GFXDECODE_END
 
-static struct TMS5220interface tms5220interface =
+static const struct TMS5220interface tms5220interface =
 {
 	NULL,						/* no IRQ callback */
 #if 1

@@ -96,7 +96,7 @@ static const tms5501_init_param dai_tms5501_init_param =
 	2000000.
 };
 
-static ppi8255_interface dai_ppi82555_intf =
+static const ppi8255_interface dai_ppi82555_intf =
 {
 	1, 			/* 1 chip */
 	{ NULL, NULL },		/* Port A read */
@@ -104,7 +104,7 @@ static ppi8255_interface dai_ppi82555_intf =
 	{ NULL, NULL },		/* Port C read */
 };
 
-static struct pit8253_config dai_pit8253_intf =
+static const struct pit8253_config dai_pit8253_intf =
 {
 	TYPE8253,
 	{
@@ -137,7 +137,7 @@ MACHINE_START( dai )
 	ppi8255_init(&dai_ppi82555_intf);
 	pit8253_init(1, &dai_pit8253_intf);
 
-	timer_set(attotime_zero, 0, dai_bootstrap_callback);
+	timer_set(attotime_zero, NULL, 0, dai_bootstrap_callback);
 }
 
 /***************************************************************************

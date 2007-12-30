@@ -494,7 +494,7 @@ INPUT_PORTS_END
 /*
 	TMS0285 speech synthesizer
 */
-static struct TMS5220interface tms5220interface =
+static const struct TMS5220interface tms5220interface =
 {
 	NULL,						/* no IRQ callback */
 	spchroms_read,				/* speech ROM read handler */
@@ -649,6 +649,7 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	MDRV_SCREEN_REFRESH_RATE(60)	/* or 50Hz */
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
+        MDRV_MACHINE_START( ti99_4ev_60hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */

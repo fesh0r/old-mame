@@ -5,9 +5,9 @@
 	Video driver for the Intel 82720 and NEC uPD7220 GDC.
 	Per Ola Ingvarsson
 	Tomas Karlsson
-	
+
  ******************************************************************************/
- 
+
 #include "driver.h"
 
 #define COMPIS_PALETTE_SIZE           16
@@ -24,10 +24,10 @@ WRITE16_HANDLER ( compis_gdc_w );
 */
 void compis_gdc_vblank_int (void);
 #define GDC_LPF         262     /* number of lines in a single frame */
-INTERRUPT_GEN(gdc_line_interrupt);
 /*
 ** Call this function to render the screen.
 */
+PALETTE_INIT( compis_gdc );
 VIDEO_START ( compis_gdc );
 VIDEO_UPDATE( compis_gdc );
 /*
@@ -35,20 +35,17 @@ VIDEO_UPDATE( compis_gdc );
 */
 typedef enum
 {
-	GDC_MODE_HRG,		
+	GDC_MODE_HRG,
 	GDC_MODE_UHRG
 } compis_gdc_modes;
 
 /*
 ** MachineDriver video declarations for the i82720 chip
 */
-typedef struct compis_gdc_interface
+typedef struct _compis_gdc_interface
 {
 	compis_gdc_modes mode;
 	UINT32	vramsize;
 } compis_gdc_interface;
 
-extern void mdrv_compisgdc(machine_config *machine,
-                           const compis_gdc_interface *intf);
-
-#define MDRV_COMPISGDC(intf)		mdrv_compisgdc(machine, (intf));
+void compis_init(const compis_gdc_interface *intf);

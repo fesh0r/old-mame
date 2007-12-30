@@ -16,7 +16,7 @@ Bruce Tomlin (hardware info)
 #include "devices/cartslot.h"
 #include "sound/ay8910.h"
 
-ADDRESS_MAP_START( vectrex_map , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( vectrex_map , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x7fff) AM_ROM
 	AM_RANGE( 0xc800, 0xcbff) AM_RAM AM_MIRROR( 0x0400 ) AM_BASE(&vectrex_ram_base) AM_SIZE(&vectrex_ram_size)
 	AM_RANGE( 0xd000, 0xd7ff) AM_READWRITE( via_0_r, via_0_w )
@@ -84,7 +84,7 @@ INPUT_PORTS_END
 
 
 
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
 	input_port_0_r,
 	0,
@@ -108,7 +108,7 @@ static MACHINE_DRIVER_START( vectrex )
 	MDRV_PALETTE_LENGTH(256 + 32768)
 	/*MDRV_ASPECT_RATIO(3, 4)*/
 
-	MDRV_VIDEO_START( vectrex )	
+	MDRV_VIDEO_START( vectrex )
 	MDRV_VIDEO_UPDATE( vectrex )
 
 	/* sound hardware */
@@ -117,7 +117,7 @@ static MACHINE_DRIVER_START( vectrex )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD(AY8910, 1500000)
 	MDRV_SOUND_CONFIG(ay8910_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)	
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 MACHINE_DRIVER_END
 
 static void vectrex_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
@@ -163,11 +163,11 @@ ROM_END
   after that 2 and 3. You can leave the screen where you enter
   ads by pressing 8 several times.
 
-  Character matrix is: 
+  Character matrix is:
 
   btn| 1  2  3  4  5  6  7  8
   ---+------------------------
-  1  | 0  1  2  3  4  5  6  7  
+  1  | 0  1  2  3  4  5  6  7
   2  | 8  9  A  B  C  D  E  F
   3  | G  H  I  J  K  L  M  N
   4  | O  P  Q  R  S  T  U  V
@@ -183,7 +183,7 @@ ROM_END
 
 *****************************************************************/
 
-ADDRESS_MAP_START( raaspec_map , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( raaspec_map , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x7fff) AM_ROM
 	AM_RANGE( 0x8000, 0x87ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE( 0xa000, 0xa000) AM_WRITE( raaspec_led_w )

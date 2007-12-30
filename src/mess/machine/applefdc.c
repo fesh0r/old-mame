@@ -1,7 +1,7 @@
 /*********************************************************************
 
 	applefdc.c
-	
+
 	Implementation of various Apple Floppy Disk Controllers, including
 	the classic Apple controller and the IWM (Integrated Woz Machine)
 	chip
@@ -16,7 +16,7 @@
 	XGS and KEGS emulators which also contain IWM emulations.
 
 	TODO
-	  -	Implement the unimplemented IWM modes 
+	  -	Implement the unimplemented IWM modes
 			- IWM_MODE_CLOCKSPEED
 			- IWM_MODE_BITCELLTIME
 			- IWM_MODE_HANDSHAKEPROTOCOL
@@ -101,7 +101,7 @@ void applefdc_init(const struct applefdc_interface *intf)
 {
 	applefdc_lines = 0;
 	iwm_mode = 0x1f;	/* default value needed by Lisa 2 - no, I don't know if it is true */
-	motor_timer = timer_alloc(iwm_turnmotor_onoff);
+	motor_timer = timer_alloc(iwm_turnmotor_onoff, NULL);
 	if (intf)
 		iwm_intf = *intf;
 	else
@@ -360,7 +360,7 @@ UINT8 applefdc_r(offs_t offset)
 					}
 					else
 						result = applefdc_read_reg(0);
-						
+
 					break;
 				case 0x0D:
 					result = applefdc_read_reg(IWM_Q6);

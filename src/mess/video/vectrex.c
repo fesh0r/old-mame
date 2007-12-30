@@ -32,11 +32,11 @@ static WRITE8_HANDLER( v_via_pb_w );
 static WRITE8_HANDLER ( v_via_ca2_w );
 static WRITE8_HANDLER ( v_via_cb2_w );
 
-static struct via6522_interface vectrex_via6522_interface =
+static const struct via6522_interface vectrex_via6522_interface =
 {
 	v_via_pa_r, v_via_pb_r,         /* read PA/B */
 	0, 0, 0, 0,                     /* read ca1, cb1, ca2, cb2 */
-	v_via_pa_w, v_via_pb_w,         /* write PA/B */ 
+	v_via_pa_w, v_via_pb_w,         /* write PA/B */
 	0, 0, v_via_ca2_w, v_via_cb2_w, /* write ca1, cb1, ca2, cb2 */
 	v_via_irq,                      /* IRQ */
 };
@@ -100,7 +100,7 @@ void vectrex_add_point (int x, int y, rgb_t color, int intensity)
 /*********************************************************************
   Lightpen
  *********************************************************************/
-static TIMER_CALLBACK(lightpen_trigger)
+static void lightpen_trigger(void)
 {
 	if (vectrex_lightpen_port & 1)
 	{
@@ -111,6 +111,11 @@ static TIMER_CALLBACK(lightpen_trigger)
 	{
 		cpunum_set_input_line(0, M6809_FIRQ_LINE, PULSE_LINE);
 	}
+}
+
+static TIMER_CALLBACK(lightpen_trigger_callback)
+{
+	lightpen_trigger();
 }
 
 static int lightpen_check (void)
@@ -142,7 +147,7 @@ static void lightpen_show (void)
 			lightpen_down=0;
 			color=0x00ffffff;
 		}
-		
+
 		pen_x = readinputport(8)*(x_max/0xff);
 		pen_y = readinputport(7)*(y_max/0xff);
 
@@ -152,7 +157,7 @@ static void lightpen_show (void)
 		vector_add_point(pen_x-250000,pen_y+250000,color,0xff);
 	}
 	else
-		lightpen_down=0;	
+		lightpen_down=0;
 }
 
 /*********************************************************************
@@ -253,15 +258,15 @@ VIDEO_START( vectrex )
 {
 	int width, height;
 
-	width = Machine->screen[0].width;
-	height = Machine->screen[0].height;
+	width = machine->screen[0].width;
+	height = machine->screen[0].height;
 
-	x_center=((Machine->screen[0].visarea.max_x
-		  -Machine->screen[0].visarea.min_x) / 2) << VEC_SHIFT;
-	y_center=((Machine->screen[0].visarea.max_y
-		  -Machine->screen[0].visarea.min_y) / 2) << VEC_SHIFT;
-	x_max = Machine->screen[0].visarea.max_x << VEC_SHIFT;
-	y_max = Machine->screen[0].visarea.max_y << VEC_SHIFT;
+	x_center=((machine->screen[0].visarea.max_x
+		  -machine->screen[0].visarea.min_x) / 2) << VEC_SHIFT;
+	y_center=((machine->screen[0].visarea.max_y
+		  -machine->screen[0].visarea.min_y) / 2) << VEC_SHIFT;
+	x_max = machine->screen[0].visarea.max_x << VEC_SHIFT;
+	y_max = machine->screen[0].visarea.max_y << VEC_SHIFT;
 
 	via_config(0, &vectrex_via6522_interface);
 	via_reset();
@@ -269,10 +274,10 @@ VIDEO_START( vectrex )
 
 	imager_freq = 1;
 
-	imager_timer = timer_alloc(vectrex_imager_right_eye);
+	imager_timer = timer_alloc(vectrex_imager_right_eye, NULL);
 	timer_adjust(imager_timer, ATTOTIME_IN_HZ(imager_freq), 2, ATTOTIME_IN_HZ(imager_freq));
 
-	lp_t = timer_alloc(lightpen_trigger);
+	lp_t = timer_alloc(lightpen_trigger_callback, NULL);
 
 	video_start_vector(machine);
 }
@@ -306,7 +311,7 @@ static WRITE8_HANDLER ( v_via_pb_w )
 				 * off when the beam reaches the pen. Exact
 				 * timing is important here.
 				 *
-				 *    lightpen 
+				 *    lightpen
 				 *       ^
 				 *  _   /|
 				 *  b  / |
@@ -413,13 +418,13 @@ static WRITE8_HANDLER ( v_via_cb2_w )
 		{
 			/* RAMP inactive */
 			/* This generates a dot (here we take the dwell time into account) */
-			
+
 			if (data)
 				vectrex_dot();
 		}
 		else
 		{
-			/* RAMP active 
+			/* RAMP active
 			 * Take MAX because RAMP is slower than BLANK
 			 */
 			time_now = MAX(attotime_to_double(timer_get_time()),start_time);
@@ -427,7 +432,7 @@ static WRITE8_HANDLER ( v_via_cb2_w )
 			start_time = time_now;
 		}
 		if (data & lightpen_check())
-			lightpen_trigger(Machine, 0);
+			lightpen_trigger();
 
 		blank = data;
 	}
@@ -439,7 +444,7 @@ static WRITE8_HANDLER ( v_via_cb2_w )
 
 *****************************************************************/
 
-static struct via6522_interface spectrum1_via6522_interface =
+static const struct via6522_interface spectrum1_via6522_interface =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ v_via_pa_r, s1_via_pb_r, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B1,CA/B2 */ v_via_pa_w, v_via_pb_w, 0, 0, v_via_ca2_w, v_via_cb2_w,
@@ -455,12 +460,12 @@ WRITE8_HANDLER( raaspec_led_w )
 
 VIDEO_START( raaspec )
 {
-	x_center=((Machine->screen[0].visarea.max_x
-		  -Machine->screen[0].visarea.min_x)/2) << VEC_SHIFT;
-	y_center=((Machine->screen[0].visarea.max_y
-		  -Machine->screen[0].visarea.min_y)/2) << VEC_SHIFT;
-	x_max = Machine->screen[0].visarea.max_x << VEC_SHIFT;
-	y_max = Machine->screen[0].visarea.max_y << VEC_SHIFT;
+	x_center=((machine->screen[0].visarea.max_x
+		  -machine->screen[0].visarea.min_x)/2) << VEC_SHIFT;
+	y_center=((machine->screen[0].visarea.max_y
+		  -machine->screen[0].visarea.min_y)/2) << VEC_SHIFT;
+	x_max = machine->screen[0].visarea.max_x << VEC_SHIFT;
+	y_max = machine->screen[0].visarea.max_y << VEC_SHIFT;
 
 	via_config(0, &spectrum1_via6522_interface);
 	via_reset();

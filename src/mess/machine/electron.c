@@ -13,7 +13,7 @@
 #include "devices/cassette.h"
 
 ULA ula;
-emu_timer *electron_tape_timer;
+static emu_timer *electron_tape_timer;
 
 static mess_image *cassette_device_image( void ) {
 	return image_from_devtype_and_index( IO_CASSETTE, 0 );
@@ -94,7 +94,7 @@ static TIMER_CALLBACK(electron_tape_timer_handler)
 	}
 }
 
-READ8_HANDLER( electron_read_keyboard ) {
+static READ8_HANDLER( electron_read_keyboard ) {
 	UINT8 data = 0;
 	int i;
 	//logerror( "PC=%04x: keyboard read from paged rom area, address: %04x", activecpu_get_pc(), offset );
@@ -236,7 +236,7 @@ WRITE8_HANDLER( electron_ula_w ) {
 		// video_update
 		ula.current_pal[i+10] = (ula.current_pal[i+10] & 0x06) | ((data & 0x08) >> 3);
 		ula.current_pal[i+8] = (ula.current_pal[i+8] & 0x06) | ((data & 0x04) >> 2);
-		ula.current_pal[i+2] = (ula.current_pal[i+2] & 0x04) | (((data & 0x20) >> 4) | ((data & 0x02) >> 1));  
+		ula.current_pal[i+2] = (ula.current_pal[i+2] & 0x04) | (((data & 0x20) >> 4) | ((data & 0x02) >> 1));
 		ula.current_pal[i] = (ula.current_pal[i] & 0x04) | (((data & 0x10) >> 3) | ((data & 0x01)));
 		break;
 	}
@@ -289,11 +289,11 @@ static void electron_reset(running_machine *machine)
 MACHINE_START( electron )
 {
 	memory_configure_bank(2, 0, 16, memory_region(REGION_USER1), 0x4000);
-	
+
 	ula.interrupt_status = 0x82;
 	ula.interrupt_control = 0x00;
-	timer_set( attotime_zero, 0, setup_beep );
-	electron_tape_timer = timer_alloc( electron_tape_timer_handler );
+	timer_set( attotime_zero, NULL, 0, setup_beep );
+	electron_tape_timer = timer_alloc( electron_tape_timer_handler, NULL );
 	add_reset_callback(machine, electron_reset);
 }
 

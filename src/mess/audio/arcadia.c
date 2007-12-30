@@ -52,7 +52,7 @@ static void arcadia_update(void *param,stream_sample_t **inputs, stream_sample_t
 	stream_sample_t *buffer = _buffer[0];
 
 	for (i = 0; i < length; i++, buffer++)
-	{	
+	{
 		*buffer = 0;
 		if (arcadia_sound.reg[1] && arcadia_sound.pos <= arcadia_sound.size/2)
 		{
@@ -71,7 +71,7 @@ static void arcadia_update(void *param,stream_sample_t **inputs, stream_sample_t
 /* Sound handler start              */
 /************************************/
 
-void *arcadia_custom_start(int clock, const struct CustomSound_interface *config)
+static void *arcadia_custom_start(int clock, const struct CustomSound_interface *config)
 {
     arcadia_sound.channel = stream_create(0, 1, Machine->sample_rate, 0, arcadia_update);
     return (void *) ~0;
@@ -79,7 +79,7 @@ void *arcadia_custom_start(int clock, const struct CustomSound_interface *config
 
 
 
-struct CustomSound_interface arcadia_sound_interface =
+const struct CustomSound_interface arcadia_sound_interface =
 {
 	arcadia_custom_start
 };

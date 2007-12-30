@@ -172,7 +172,7 @@ typedef struct
 	} d64;
 } CBM_Drive_Emu;
 
-CBM_Drive_Emu vc1541_static= { 0 }, *vc1541 = &vc1541_static;
+static CBM_Drive_Emu vc1541_static= { 0 }, *vc1541 = &vc1541_static;
 
 /* four different frequencies for the 4 different zones on the disk */
 static double vc1541_times[4]= {
@@ -315,7 +315,7 @@ static void vc1541_sector_to_gcr(int track, int sector)
 	gcr_double_2_gcr(0, 0, 0, 0, vc1541->head.data+i);i+=5;
 }
 
-ADDRESS_MAP_START( vc1541_readmem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( vc1541_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x07ff) AM_READ( MRA8_RAM)
 	AM_RANGE(0x1800, 0x180f) AM_READ( via_2_r)		   /* 0 and 1 used in vc20 */
 	AM_RANGE(0x1810, 0x189f) AM_READ( MRA8_NOP) /* for debugger */
@@ -324,14 +324,14 @@ ADDRESS_MAP_START( vc1541_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xc000, 0xffff) AM_READ( MRA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( vc1541_writemem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( vc1541_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE( MWA8_RAM)
 	AM_RANGE(0x1800, 0x180f) AM_WRITE( via_2_w)
 	AM_RANGE(0x1c00, 0x1c0f) AM_WRITE( via_3_w)
 	AM_RANGE(0xc000, 0xffff) AM_WRITE( MWA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( dolphin_readmem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( dolphin_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x07ff) AM_READ( MRA8_RAM)
 	AM_RANGE(0x1800, 0x180f) AM_READ( via_2_r)		   /* 0 and 1 used in vc20 */
 	AM_RANGE(0x1c00, 0x1c0f) AM_READ( via_3_r)
@@ -339,7 +339,7 @@ ADDRESS_MAP_START( dolphin_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xa000, 0xffff) AM_READ( MRA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( dolphin_writemem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( dolphin_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE( MWA8_RAM)
 	AM_RANGE(0x1800, 0x180f) AM_WRITE( via_2_w)
 	AM_RANGE(0x1c00, 0x1c0f) AM_WRITE( via_3_w)
@@ -594,7 +594,7 @@ static WRITE8_HANDLER( vc1541_via1_write_portb )
 	vc1541->led = data & 8;
 }
 
-static struct via6522_interface via2 =
+static const struct via6522_interface via2 =
 {
 	0,								   /*vc1541_via0_read_porta, */
 	vc1541_via0_read_portb,
@@ -634,7 +634,7 @@ DEVICE_LOAD(vc1541)
 
 	logerror("floppy image %s loaded\n", image_filename(image));
 
-	vc1541->timer = timer_alloc(vc1541_timer);
+	vc1541->timer = timer_alloc(vc1541_timer, NULL);
 	return INIT_PASS;
 }
 
@@ -956,19 +956,19 @@ int c1551_config (int id, int mode, C1551_CONFIG *config)
 
 	/* time should be small enough to allow quitting of the irq
 	   line before the next interrupt is triggered */
-	vc1541->drive.c1551.timer = timer_alloc(c1551_timer);
+	vc1541->drive.c1551.timer = timer_alloc(c1551_timer, NULL);
 	timer_adjust(vc1541->drive.c1551.timer, attotime_zero, 0, ATTOTIME_IN_HZ(60));
 	return 0;
 }
 
-ADDRESS_MAP_START( c1551_readmem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( c1551_readmem , ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE(0x0000, 0x0001) AM_READ( c1551_port_r)
 	AM_RANGE(0x0002, 0x07ff) AM_READ( MRA8_RAM)
     AM_RANGE(0x4000, 0x4007) AM_READ( tpi6525_0_port_r)
 	AM_RANGE(0xc000, 0xffff) AM_READ( MRA8_ROM)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( c1551_writemem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( c1551_writemem , ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE(0x0000, 0x0001) AM_WRITE( c1551_port_w)
 	AM_RANGE(0x0002, 0x07ff) AM_WRITE( MWA8_RAM)
     AM_RANGE(0x4000, 0x4007) AM_WRITE( tpi6525_0_port_w)

@@ -8,12 +8,12 @@
 
 static struct hd63450 dmac;
 
-TIMER_CALLBACK(dma_transfer_timer);
-void dma_transfer_abort(int channel);
-void dma_transfer_halt(int channel);
-void dma_transfer_continue(int channel);
+static TIMER_CALLBACK(dma_transfer_timer);
+static void dma_transfer_abort(int channel);
+static void dma_transfer_halt(int channel);
+static void dma_transfer_continue(int channel);
 
-void hd63450_init(struct hd63450_interface* intf)
+void hd63450_init(const struct hd63450_interface* intf)
 {
 	int x;
 
@@ -21,7 +21,7 @@ void hd63450_init(struct hd63450_interface* intf)
 	dmac.intf = intf;
 	for(x=0;x<4;x++)
 	{
-		dmac.timer[x] = timer_alloc(dma_transfer_timer);
+		dmac.timer[x] = timer_alloc(dma_transfer_timer, NULL);
 		dmac.reg[x].niv = 0x0f;  // defaults?
 		dmac.reg[x].eiv = 0x0f;
 	}
@@ -36,7 +36,7 @@ int hd63450_read(int offset, UINT16 mem_mask)
 
 	switch(reg)
 	{
-	case 0x00:  // CSR / CER 
+	case 0x00:  // CSR / CER
 		return (dmac.reg[channel].csr << 8) | dmac.reg[channel].cer;
 	case 0x02:  // DCR / OCR
 		return (dmac.reg[channel].dcr << 8) | dmac.reg[channel].ocr;
@@ -84,8 +84,8 @@ void hd63450_write(int offset, int data, UINT16 mem_mask)
 	reg = offset & 0x1f;
 	switch(reg)
 	{
-	case 0x00:  // CSR / CER 
-		if(ACCESSING_MSB) 
+	case 0x00:  // CSR / CER
+		if(ACCESSING_MSB)
 		{
 //			dmac.reg[channel].csr = (data & 0xff00) >> 8;
 //			logerror("DMA#%i: Channel status write : %02x\n",channel,dmac.reg[channel].csr);
@@ -93,24 +93,24 @@ void hd63450_write(int offset, int data, UINT16 mem_mask)
 		// CER is read-only, so no action needed there.
 		break;
 	case 0x02:  // DCR / OCR
-		if(ACCESSING_MSB) 
+		if(ACCESSING_MSB)
 		{
 			dmac.reg[channel].dcr = (data & 0xff00) >> 8;
 			logerror("DMA#%i: Device Control write : %02x\n",channel,dmac.reg[channel].dcr);
 		}
-		if(ACCESSING_LSB) 
+		if(ACCESSING_LSB)
 		{
 			dmac.reg[channel].ocr = data & 0x00ff;
 			logerror("DMA#%i: Operation Control write : %02x\n",channel,dmac.reg[channel].ocr);
 		}
 		break;
 	case 0x03:  // SCR / CCR
-		if(ACCESSING_MSB) 
+		if(ACCESSING_MSB)
 		{
 			dmac.reg[channel].scr = (data & 0xff00) >> 8;
 			logerror("DMA#%i: Sequence Control write : %02x\n",channel,dmac.reg[channel].scr);
 		}
-		if(ACCESSING_LSB) 
+		if(ACCESSING_LSB)
 		{
 			dmac.reg[channel].ccr = data & 0x00ff;
 			if((data & 0x0080))// && !dmac.intf->dma_read[channel] && !dmac.intf->dma_write[channel])
@@ -205,10 +205,10 @@ void dma_transfer_start(int channel, int dir)
 	if((dmac.reg[channel].dcr & 0xc0) == 0x00)  // Burst transfer
 	{
 		cpunum_set_input_line(dmac.intf->cpu,INPUT_LINE_HALT,ASSERT_LINE);
-		timer_adjust(dmac.timer[channel],attotime_zero,channel, double_to_attotime(dmac.intf->burst_clock[channel]));
+		timer_adjust(dmac.timer[channel],attotime_zero,channel, dmac.intf->burst_clock[channel]);
 	}
 	else
-		timer_adjust(dmac.timer[channel],ATTOTIME_IN_USEC(500),channel, double_to_attotime(dmac.intf->clock[channel]));
+		timer_adjust(dmac.timer[channel],ATTOTIME_IN_USEC(500),channel, dmac.intf->clock[channel]);
 
 
 	dmac.transfer_size[channel] = dmac.reg[channel].mtc;
@@ -216,12 +216,12 @@ void dma_transfer_start(int channel, int dir)
 	logerror("DMA: Transfer begins: size=0x%08x\n",dmac.transfer_size[channel]);
 }
 
-TIMER_CALLBACK(dma_transfer_timer)
+static TIMER_CALLBACK(dma_transfer_timer)
 {
 	hd63450_single_transfer(param);
 }
 
-void dma_transfer_abort(int channel)
+static void dma_transfer_abort(int channel)
 {
 	logerror("DMA#%i: Transfer aborted\n",channel);
 	timer_adjust(dmac.timer[channel],attotime_zero,0,attotime_zero);
@@ -231,18 +231,18 @@ void dma_transfer_abort(int channel)
 	dmac.reg[channel].csr &= ~0x08;  // channel no longer active
 }
 
-void dma_transfer_halt(int channel)
+static void dma_transfer_halt(int channel)
 {
 	dmac.halted[channel] = 1;
 	timer_adjust(dmac.timer[channel],attotime_zero,0,attotime_zero);
 }
 
-void dma_transfer_continue(int channel)
+static void dma_transfer_continue(int channel)
 {
 	if(dmac.halted[channel] != 0)
 	{
 		dmac.halted[channel] = 0;
-		timer_adjust(dmac.timer[channel],attotime_zero,channel, double_to_attotime(dmac.intf->clock[channel]));
+		timer_adjust(dmac.timer[channel],attotime_zero,channel, dmac.intf->clock[channel]);
 	}
 }
 
@@ -266,7 +266,7 @@ void hd63450_single_transfer(int x)
 				else
 				{
 					switch(dmac.reg[x].ocr & 0x30)  // operation size
-					{	
+					{
 					case 0x00:  // 8 bit
 						data = program_read_byte(dmac.reg[x].dar);  // read from device address
 						program_write_byte(dmac.reg[x].mar, data);  // write to memory address
@@ -304,10 +304,10 @@ void hd63450_single_transfer(int x)
 				else
 				{
 					switch(dmac.reg[x].ocr & 0x30)  // operation size
-					{	
+					{
 					case 0x00:  // 8 bit
 						data = program_read_byte(dmac.reg[x].mar);  // read from memory address
-						program_write_byte(dmac.reg[x].dar, data);  // write to device address 
+						program_write_byte(dmac.reg[x].dar, data);  // write to device address
 						datasize = 1;
 						break;
 					case 0x10:  // 16 bit

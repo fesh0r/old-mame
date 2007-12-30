@@ -23,7 +23,7 @@
 
 unsigned char * lviv_video_ram;
 
-UINT8 lviv_ppi_port_outputs[2][3];
+static UINT8 lviv_ppi_port_outputs[2][3];
 
 static UINT8 startup_mem_map;
 
@@ -195,7 +195,7 @@ WRITE8_HANDLER ( lviv_io_w )
 }
 
 
-static ppi8255_interface lviv_ppi8255_interface =
+static const ppi8255_interface lviv_ppi8255_interface =
 {
 	2,
 	{lviv_ppi_0_porta_r, lviv_ppi_1_porta_r},
@@ -226,7 +226,7 @@ MACHINE_RESET( lviv )
 	memory_set_bankptr(3, memory_region(REGION_CPU1) + 0x010000);
 	memory_set_bankptr(4, memory_region(REGION_CPU1) + 0x010000);
 
-	/*timer_pulse(TIME_IN_NSEC(200), 0, lviv_draw_pixel);*/
+	/*timer_pulse(TIME_IN_NSEC(200), NULL, 0, lviv_draw_pixel);*/
 
 	/*memset(mess_ram, 0, sizeof(unsigned char)*0xffff);*/
 }
@@ -334,7 +334,7 @@ SNAPSHOT_LOAD( lviv )
 
 	lviv_setup_snapshot (lviv_snapshot_data);
 
-	dump_registers();	
+	dump_registers();
 
 	free(lviv_snapshot_data);
 

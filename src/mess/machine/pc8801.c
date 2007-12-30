@@ -37,7 +37,7 @@ static void *ext_bank_80[4],*ext_bank_88[256];
 static UINT8 extmem_ctrl[2];
 
 static int use_5FD;
-void pc8801_init_5fd(void);
+static void pc8801_init_5fd(void);
 
 static void pc88sr_init_fmsound(void);
 static int enable_FM_IRQ;
@@ -175,7 +175,7 @@ static void pc8801_init_interrupt(void)
 	interrupt_mask_reg=0xf8;
 	interrupt_trig_reg=0x0;
 	cpunum_set_irq_callback(0,pc8801_interupt_callback);
-	timer_pulse(ATTOTIME_IN_HZ(600),0,pc8801_timer_interrupt);
+	timer_pulse(ATTOTIME_IN_HZ(600),NULL, 0,pc8801_timer_interrupt);
 }
 
 WRITE8_HANDLER(pc88sr_outport_30)
@@ -631,10 +631,7 @@ static void pc8801_init_bank(int hireso)
       return;
     }
     if(num80!=0 || num88!=0 || numIO!=0) {
-      if((extRAM=malloc(num80*0x8000+num88*0x20000+numIO*0x100000))==NULL) {
-	logerror ("pc8801: out of memory!\n");
-	return;
-      }
+      extRAM=malloc_or_die(num80*0x8000+num88*0x20000+numIO*0x100000);
       e=extRAM;
       for(i=0;i<num80;i++) {
 	ext_bank_80[i]=e;
@@ -776,7 +773,7 @@ static READ8_HANDLER( load_8255_chip0_C )	{ return load_8255_C(0); }
 static READ8_HANDLER( load_8255_chip1_C )	{ return load_8255_C(1); }
 
 
-const ppi8255_interface pc8801_8255_config =
+static const ppi8255_interface pc8801_8255_config =
 {
 	2,
 	{ load_8255_chip0_A, load_8255_chip1_A },
@@ -805,13 +802,13 @@ static void pc8801_fdc_dma_drq(int state, int read_)
 {
 }
 
-static struct nec765_interface pc8801_fdc_interface=
+static const struct nec765_interface pc8801_fdc_interface=
 {
 	pc8801_fdc_interrupt,
 	pc8801_fdc_dma_drq
 };
 
-void pc8801_init_5fd(void)
+static void pc8801_init_5fd(void)
 {
 	use_5FD = (input_port_18_r(0)&0x80)!=0x00;
 	ppi8255_init(&pc8801_8255_config);

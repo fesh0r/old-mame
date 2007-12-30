@@ -118,7 +118,7 @@ static int add_filter_entry(char *dest, size_t dest_len, const char *description
 //	customize_input
 //============================================================
 
-static void customize_input(HWND wnd, const char *title, int cust_type, int player, int inputclass, const char *section)
+static void customize_input(HWND wnd, const char *title, artwork_cust_type cust_type, int player, int inputclass, const char *section)
 {
 	dialog_box *dlg;
 	input_port_entry *in;
@@ -292,7 +292,7 @@ static void customize_switches(HWND wnd, int title_string_num, UINT32 ipt_name, 
 	input_port_entry *in;
 	const char *switch_name = NULL;
 	UINT32 type;
-	
+
 	dlg = win_dialog_init(ui_getstring(title_string_num), NULL);
 	if (!dlg)
 		goto done;
@@ -397,7 +397,7 @@ static void customize_analogcontrols(HWND wnd)
 	const char *name;
 	char buf[255];
 	static const struct dialog_layout layout = { 120, 52 };
-	
+
 	dlg = win_dialog_init(ui_getstring(UI_analogcontrols), &layout);
 	if (!dlg)
 		goto done;
@@ -505,17 +505,17 @@ static void state_dialog(HWND wnd, win_file_dialog_type dlgtype,
 
 
 
-void state_load(HWND wnd, running_machine *machine)
+static void state_load(HWND wnd, running_machine *machine)
 {
 	state_dialog(wnd, WIN_FILE_DIALOG_OPEN, OFN_FILEMUSTEXIST, mame_schedule_load, machine);
 }
 
-void state_save_as(HWND wnd, running_machine *machine)
+static void state_save_as(HWND wnd, running_machine *machine)
 {
 	state_dialog(wnd, WIN_FILE_DIALOG_SAVE, OFN_OVERWRITEPROMPT, mame_schedule_save, machine);
 }
 
-void state_save(running_machine *machine)
+static void state_save(running_machine *machine)
 {
 	mame_schedule_save(machine, state_filename);
 }
@@ -555,7 +555,7 @@ static void format_combo_changed(dialog_box *dialog, HWND dlgwnd, NMHDR *notific
 
 	// compute our parameters
 	dev = params->dev;
-	guide = dev->createimage_optguide;	
+	guide = dev->createimage_optguide;
 	optspec = dev->createimage_options[format_combo_val].optspec;
 
 	// set the default extension
@@ -611,7 +611,7 @@ static void storeval_option_resolution(void *storeval_param, int val)
 	struct storeval_optres_params *params;
 	const struct IODevice *dev;
 	char buf[16];
-	
+
 	params = (struct storeval_optres_params *) storeval_param;
 	dev = params->fdparams->dev;
 
@@ -764,7 +764,7 @@ static int add_filter_entry(char *dest, size_t dest_len, const char *description
 
 	// add the description
 	pos += snprintf(&dest[pos], dest_len - pos, "%s (", description);
-	
+
 	// add the extensions to the description
 	pos += copy_extension_list(&dest[pos], dest_len - pos, extensions);
 
@@ -903,7 +903,7 @@ static void paste(void)
 
 	if (!OpenClipboard(NULL))
 		return;
-	
+
 	h = GetClipboardData(CF_TEXT);
 	if (h)
 	{
@@ -930,7 +930,7 @@ static void paste(void)
 
 static void pause(running_machine *machine)
 {
-	mame_pause(machine, !mame_is_paused(machine));
+	mame_pause(machine, !winwindow_ui_is_paused());
 }
 
 
@@ -1347,23 +1347,23 @@ static void prepare_menus(HWND wnd)
 			img = image_from_device_and_index(dev, i);
 
 			if (!dev->not_working)
-			{	
+			{
 				new_item = ID_DEVICE_0 + (image_absolute_index(img) * DEVOPTION_MAX);
 				flags_for_exists = MF_STRING;
-	
+
 				if (!image_exists(img))
 					flags_for_exists |= MF_GRAYED;
-	
+
 				flags_for_writing = flags_for_exists;
 				if (!image_is_writable(img))
 					flags_for_writing |= MF_GRAYED;
-	
+
 				sub_menu = CreateMenu();
 				append_menu_uistring(sub_menu, MF_STRING,		new_item + DEVOPTION_OPEN,		UI_mount);
-	
+
 				if (dev->creatable)
 					append_menu_uistring(sub_menu, MF_STRING,	new_item + DEVOPTION_CREATE,	UI_create);
-	
+
 				append_menu_uistring(sub_menu, flags_for_exists,	new_item + DEVOPTION_CLOSE,	UI_unmount);
 
 #if HAS_WAVE
@@ -1606,7 +1606,7 @@ static void help_about_thissystem(HWND wnd)
 static mess_image *decode_deviceoption(int command, int *devoption)
 {
 	int absolute_index;
-	
+
 	command -= ID_DEVICE_0;
 	absolute_index = command / DEVOPTION_MAX;
 
@@ -1633,6 +1633,19 @@ static void set_window_orientation(win_window_info *window, int orientation)
 
 
 //============================================================
+//	pause_for_command
+//============================================================
+
+static int pause_for_command(UINT command)
+{
+	// we really should be more conservative and only pause for commands
+	// that do dialog stuff
+	return (command != ID_OPTIONS_PAUSE);
+}
+
+
+
+//============================================================
 //	invoke_command
 //============================================================
 
@@ -1647,6 +1660,10 @@ static int invoke_command(HWND wnd, UINT command)
 	const char *section;
 	LONG_PTR ptr = GetWindowLongPtr(wnd, GWLP_USERDATA);
 	win_window_info *window = (win_window_info *)ptr;
+
+	// pause while invoking certain commands
+	if (pause_for_command(command))
+		winwindow_ui_pause_from_window_thread(TRUE);
 
 	switch(command)
 	{
@@ -1871,6 +1888,11 @@ static int invoke_command(HWND wnd, UINT command)
 			}
 			break;
 	}
+
+	// resume emulation
+	if (pause_for_command(command))
+		winwindow_ui_pause_from_window_thread(FALSE);
+
 	return handled;
 }
 
@@ -1880,7 +1902,7 @@ static int invoke_command(HWND wnd, UINT command)
 //	set_menu_text
 //============================================================
 
-void set_menu_text(HMENU menu_bar, int command, const char *text)
+static void set_menu_text(HMENU menu_bar, int command, const char *text)
 {
 	TCHAR *t_text;
 	MENUITEMINFO mii;
@@ -1893,7 +1915,7 @@ void set_menu_text(HMENU menu_bar, int command, const char *text)
 	mii.cbSize = sizeof(mii);
 	mii.fMask = MIIM_TYPE;
 	mii.dwTypeData = t_text;
-	SetMenuItemInfo(menu_bar, command, FALSE, &mii);	
+	SetMenuItemInfo(menu_bar, command, FALSE, &mii);
 
 	// cleanup
 	free(t_text);

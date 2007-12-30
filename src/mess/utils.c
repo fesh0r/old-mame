@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <stdlib.h>
+#include "glob.h"
 #include "utils.h"
 
 char *strncpyz(char *dest, const char *source, size_t len)
@@ -225,7 +226,7 @@ static int is_delim(char c)
 	an extension list
 -------------------------------------------------*/
 
-int internal_find_extension(const char *extension_list, const char *target_extension)
+static int internal_find_extension(const char *extension_list, const char *target_extension)
 {
 	/* this version allows target_extension to be delimited with a comma */
 	int pos = 0;
@@ -363,3 +364,16 @@ int utils_validitychecks(void)
 	return error;
 }
 
+void expand_wildcards(int *argc, char **argv[])
+{
+	int i;
+	glob_t g;
+
+	memset(&g, 0, sizeof(g));
+
+	for (i = 0; i < *argc; i++)
+		glob((*argv)[i], (g.gl_pathc > 0) ? GLOB_APPEND|GLOB_NOCHECK : GLOB_NOCHECK, NULL, &g);
+
+	*argc = g.gl_pathc;
+	*argv = g.gl_pathv;
+}

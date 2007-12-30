@@ -41,7 +41,7 @@ typedef struct
 	UINT8 *data;
 	UINT32 size;
 	int pin_scl, pin_sda, inp;
-	BOOL active;
+	int active;
 	int bits;
 	UINT8 data_recv_index, data_recv[50];
 	UINT8 mode, pos;
@@ -55,8 +55,8 @@ void pcf8593_init( void)
 	_logerror( 0, "pcf8593_init\n");
 	memset( &rtc, 0, sizeof( rtc));
 	rtc.size = 16;
-	rtc.data = malloc( rtc.size);
-	rtc.timer = timer_alloc( pcf8593_timer_callback );
+	rtc.data = malloc_or_die( rtc.size);
+	rtc.timer = timer_alloc( pcf8593_timer_callback , NULL);
 	timer_adjust( rtc.timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(1));
 	pcf8593_reset();
 }
@@ -202,7 +202,7 @@ static UINT8 bcd_to_dec( UINT8 data)
 	return (data & 0x0F) + (((data & 0xF0) >> 4) * 10);
 }
 
-void pcf8593_set_time( int hour, int minute, int second)
+static void pcf8593_set_time( int hour, int minute, int second)
 {
 	RTC_SET_TIME_HOUR( hour);
 	RTC_SET_TIME_MINUTE( minute);
@@ -210,7 +210,7 @@ void pcf8593_set_time( int hour, int minute, int second)
 	rtc.data[1] = 0; // hundreds of a seconds
 }
 
-void pcf8593_set_date( int year, int month, int day)
+static void pcf8593_set_date( int year, int month, int day)
 {
 	RTC_SET_DATE_YEAR( year);
 	RTC_SET_DATE_MONTH( month);

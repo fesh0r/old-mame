@@ -33,7 +33,7 @@ static pc_video_update_proc pc_t1t_choosevideomode(int *width, int *height, stru
 
 **************************************************************************/
 
-static unsigned short pcjr_colortable[] =
+static const unsigned short pcjr_colortable[] =
 {
      0, 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0,10, 0,11, 0,12, 0,13, 0,14, 0,15,
      1, 0, 1, 1, 1, 2, 1, 3, 1, 4, 1, 5, 1, 6, 1, 7, 1, 8, 1, 9, 1,10, 1,11, 1,12, 1,13, 1,14, 1,15,
@@ -89,13 +89,13 @@ static const gfx_layout t1t_charlayout =
     8*8                     /* every char takes 8 bytes */
 };
 
-static GFXDECODE_START( t1000hx_gfxdecodeinfo )
+static GFXDECODE_START( t1000hx )
 	GFXDECODE_ENTRY( REGION_CPU1, 0xffa6e, t1t_charlayout, 0, 128 )	/* single width */
 	GFXDECODE_ENTRY( REGION_CPU1, 0xfc0a8, t1t_charlayout, 0, 128 )	/* single width */
 	GFXDECODE_ENTRY( REGION_GFX1, 0x1000, t1t_gfxlayout_4bpp, 256*2+16*2+2*4, 16 )	/* 160x200 4bpp gfx */
 GFXDECODE_END
 
-static GFXDECODE_START( t1000sx_gfxdecodeinfo )
+static GFXDECODE_START( t1000sx )
 	GFXDECODE_ENTRY( REGION_CPU1, 0xffa6e, t1t_charlayout, 0, 128 )	/* single width */
 	GFXDECODE_ENTRY( REGION_CPU1, 0xf40a3, t1t_charlayout, 0, 128 )	/* single width */
 	GFXDECODE_ENTRY( REGION_GFX1, 0x1000, t1t_gfxlayout_4bpp, 256*2+16*2+2*4, 16 )	/* 160x200 4bpp gfx */
@@ -106,7 +106,7 @@ MACHINE_DRIVER_START( pcvideo_t1000hx )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*8, 25*9)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1, 0,25*9-1)
-	MDRV_GFXDECODE(t1000hx_gfxdecodeinfo)
+	MDRV_GFXDECODE(t1000hx)
 	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
 	MDRV_COLORTABLE_LENGTH(sizeof(pcjr_colortable) / sizeof(pcjr_colortable[0]))
 	MDRV_PALETTE_INIT(pcjr)
@@ -117,7 +117,7 @@ MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( pcvideo_t1000sx )
 	MDRV_IMPORT_FROM( pcvideo_t1000hx )
-	MDRV_GFXDECODE( t1000sx_gfxdecodeinfo )
+	MDRV_GFXDECODE( t1000sx )
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -135,12 +135,12 @@ static PALETTE_INIT( pcjr )
 	memcpy(colortable, pcjr_colortable, sizeof(pcjr_colortable));
 }
 
-static struct { 
+static struct {
 	UINT8 mode_control, color_select;
 	UINT8 status;
 
 	int full_refresh;
-	
+
 	// used in tandy1000hx; used in pcjr???
 	struct {
 		UINT8 index;
@@ -151,7 +151,7 @@ static struct {
 		   2 border color
 		   3 mode control 2
 		   4 reset
-		   0x10-0x1f palette registers 
+		   0x10-0x1f palette registers
 		*/
 	} reg;
 
@@ -214,7 +214,7 @@ static void pc_t1t_cursor(struct mscrtc6845_cursor *cursor)
 		dirtybuffer[cursor->pos*2] = 1;
 }
 
-static struct mscrtc6845_config config= { 14318180 /*?*/, pc_t1t_cursor };
+static const struct mscrtc6845_config config= { 14318180 /*?*/, pc_t1t_cursor };
 
 
 static VIDEO_START( pc_t1t )
@@ -324,7 +324,7 @@ static void pc_t1t_vga_data_w(int data)
         case 0x14: case 0x15: case 0x16: case 0x17:
         case 0x18: case 0x19: case 0x1a: case 0x1b:
         case 0x1c: case 0x1d: case 0x1e: case 0x1f:
-			palette_set_color_rgb(Machine, pcjr.reg.index-0x10, 
+			palette_set_color_rgb(Machine, pcjr.reg.index-0x10,
 								 cga_palette[data&0xf][0],
 								 cga_palette[data&0xf][1],
 								 cga_palette[data&0xf][2]);
@@ -498,7 +498,7 @@ static void t1t_plot_char(mame_bitmap *bitmap, const rectangle *r, UINT8 ch, UIN
 	gfx_element *gfx;
 
 	gfx = Machine->gfx[ch & 0x80 ? 1 : 0];
-	drawgfx(bitmap, gfx, ch & 0x7f, attr, 
+	drawgfx(bitmap, gfx, ch & 0x7f, attr,
 			0, 0, r->min_x, r->min_y, r, TRANSPARENCY_NONE, 0);
 
 	height = r->max_y - r->min_y + 1;
@@ -532,27 +532,27 @@ static void t1t_text_inten(mame_bitmap *bitmap, struct mscrtc6845 *crtc)
 
 	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height) {
 
-		for (sx=0, r.min_x=0, r.max_x=7; sx<columns; 
+		for (sx=0, r.min_x=0, r.max_x=7; sx<columns;
 			 sx++, offs=(offs+2)&0x3fff, r.min_x+=8, r.max_x+=8)
 		{
 			if (!dirtybuffer || dirtybuffer[offs] || dirtybuffer[offs+1])
 			{
 				UINT8 ch = pcjr.displayram[offs];
 				UINT8 attr = pcjr.displayram[offs + 1];
-				
+
 				t1t_plot_char(bitmap, &r, ch, attr);
 
 				if (cursor.on && (pcjr.pc_framecnt & 32) && (offs == cursor.pos * 2))
 				{
 					int k = height - cursor.top;
 					rectangle rect2 = r;
-					rect2.min_y += cursor.top; 
+					rect2.min_y += cursor.top;
 					if (cursor.bottom<height)
 						k=cursor.bottom-cursor.top+1;
 
 					if (k>0)
-						plot_box(bitmap, r.min_x, 
-									r.min_y+cursor.top, 
+						plot_box(bitmap, r.min_x,
+									r.min_y+cursor.top,
 									8, k, Machine->pens[7]);
 				}
 
@@ -584,14 +584,14 @@ static void t1t_text_blink(mame_bitmap *bitmap, struct mscrtc6845 *crtc)
 
 	for (sy=0, r.min_y=0, r.max_y=height-1; sy<lines; sy++, r.min_y+=height,r.max_y+=height)
 	{
-		for (sx=0, r.min_x=0, r.max_x=7; sx<columns; 
+		for (sx=0, r.min_x=0, r.max_x=7; sx<columns;
 			sx++, offs=(offs+2)&0x3fff, r.min_x+=8, r.max_x+=8)
 		{
 			if (!dirtybuffer || dirtybuffer[offs] || dirtybuffer[offs+1])
 			{
 				UINT8 ch = pcjr.displayram[offs + 0];
 				UINT8 attr = pcjr.displayram[offs + 1];
-					
+
 				if (attr & 0x80)	/* blinking ? */
 				{
 					if (pcjr.pc_blink)
@@ -612,8 +612,8 @@ static void t1t_text_blink(mame_bitmap *bitmap, struct mscrtc6845 *crtc)
 						k = cursor.bottom - cursor.top + 1;
 
 					if (k>0)
-						plot_box(bitmap, r.min_x, 
-							r.min_y+cursor.top, 
+						plot_box(bitmap, r.min_x,
+							r.min_y+cursor.top,
 							8, k, Machine->pens[7]);
 				}
 

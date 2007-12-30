@@ -1,5 +1,5 @@
 /******************************************************************************
- * 
+ *
  *	Acorn Archimedes 310
  *
  *	Skeleton: Juergen Buchmueller <pullmoll@t-online.de>, Jul 2000
@@ -85,11 +85,11 @@ static UINT32 a310_sndstart, a310_sndend, a310_sndcur;
 
 static emu_timer *vbl_timer, *timer[4], *snd_timer;
 
-VIDEO_START( a310 )
+static VIDEO_START( a310 )
 {
 }
 
-VIDEO_UPDATE( a310 )
+static VIDEO_UPDATE( a310 )
 {
 	return 0;
 }
@@ -131,7 +131,7 @@ static TIMER_CALLBACK( a310_audio_tick )
 	if (a310_sndcur >= a310_sndend)
 	{
 		a310_request_irq_b(A310_IRQB_SOUND_EMPTY);
-	}	
+	}
 }
 
 static TIMER_CALLBACK( a310_vblank )
@@ -157,7 +157,7 @@ static TIMER_CALLBACK( a310_timer )
 	// all timers always run
 	a310_set_timer(param);
 
-	// but only timers 0 and 1 generate IRQs	
+	// but only timers 0 and 1 generate IRQs
 	switch (param)
 	{
 		case 0:
@@ -167,7 +167,7 @@ static TIMER_CALLBACK( a310_timer )
 		case 1:
 			a310_request_irq_a(A310_IRQA_TIMER1);
 			break;
-	}	
+	}
 }
 
 static void a310_memc_reset(void)
@@ -199,7 +199,7 @@ static void a310_wd177x_callback(wd17xx_state_t event, void *param)
 		case WD17XX_IRQ_SET:
 			a310_request_fiq(A310_FIQ_FLOPPY);
 			break;
-			 
+
 		case WD17XX_DRQ_CLR:
 			a310_iocregs[12] &= ~A310_FIQ_FLOPPY_DRQ;
 			break;
@@ -216,19 +216,19 @@ static MACHINE_START( a310 )
 	a310_pagesize = 0;
 	wd17xx_init(WD_TYPE_1772, a310_wd177x_callback, NULL);
 
-	vbl_timer = timer_alloc(a310_vblank);
+	vbl_timer = timer_alloc(a310_vblank, NULL);
 	timer_adjust(vbl_timer, attotime_never, 0, attotime_never);
 
-	timer[0] = timer_alloc(a310_timer);
-	timer[1] = timer_alloc(a310_timer);
-	timer[2] = timer_alloc(a310_timer);
-	timer[3] = timer_alloc(a310_timer);
+	timer[0] = timer_alloc(a310_timer, NULL);
+	timer[1] = timer_alloc(a310_timer, NULL);
+	timer[2] = timer_alloc(a310_timer, NULL);
+	timer[3] = timer_alloc(a310_timer, NULL);
 	timer_adjust(timer[0], attotime_never, 0, attotime_never);
 	timer_adjust(timer[1], attotime_never, 0, attotime_never);
 	timer_adjust(timer[2], attotime_never, 0, attotime_never);
 	timer_adjust(timer[3], attotime_never, 0, attotime_never);
 
-	snd_timer = timer_alloc(a310_audio_tick);
+	snd_timer = timer_alloc(a310_audio_tick, NULL);
 	timer_adjust(snd_timer, attotime_never, 0, attotime_never);
 
 	// reset the DAC to centerline
@@ -238,20 +238,20 @@ static MACHINE_START( a310 )
 static READ32_HANDLER(logical_r)
 {
 	UINT32 page, poffs;
-	
+
 	// are we mapping in the boot ROM?
 	if (a310_latchrom)
 	{
 		UINT32 *rom;
-		
+
 		rom = (UINT32 *)memory_region(REGION_CPU1);
-		
-		return rom[offset & 0x1fffff];		
+
+		return rom[offset & 0x1fffff];
 	}
 	else
 	{
 		// figure out the page number and offset in the page
-		page = (offset<<2) / page_sizes[a310_pagesize]; 
+		page = (offset<<2) / page_sizes[a310_pagesize];
 		poffs = (offset<<2) % page_sizes[a310_pagesize];
 
 //		printf("Reading offset %x (addr %x): page %x (size %d %d) offset %x ==> %x %x\n", offset, offset<<2, page, a310_pagesize, page_sizes[a310_pagesize], poffs, a310_pages[page], a310_pages[page]*page_sizes[a310_pagesize]);
@@ -281,7 +281,7 @@ static WRITE32_HANDLER(logical_w)
 	else
 	{
 		// figure out the page number and offset in the page
-		page = (offset<<2) / page_sizes[a310_pagesize]; 
+		page = (offset<<2) / page_sizes[a310_pagesize];
 		poffs = (offset<<2) % page_sizes[a310_pagesize];
 
 //		printf("Writing offset %x (addr %x): page %x (size %d %d) offset %x ==> %x %x\n", offset, offset<<2, page, a310_pagesize, page_sizes[a310_pagesize], poffs, a310_pages[page], a310_pages[page]*page_sizes[a310_pagesize]);
@@ -311,11 +311,11 @@ static OPBASE_HANDLER( a310_setopbase )
 		opcode_mask = 0x1fffff;
 		opcode_memory_min = 0;
 		opcode_memory_max = 0x1fffff;
-		opcode_base = opcode_arg_base = memory_region(REGION_CPU1);		
+		opcode_base = opcode_arg_base = memory_region(REGION_CPU1);
 	}
 	else	// executing from logical memory
-	{	
-		UINT32 page = address / page_sizes[a310_pagesize];  
+	{
+		UINT32 page = address / page_sizes[a310_pagesize];
 
 		opcode_mask = page_sizes[a310_pagesize]-1;
 		opcode_memory_min = page * page_sizes[a310_pagesize];
@@ -331,7 +331,7 @@ static DRIVER_INIT(a310)
 	memory_set_opbase_handler(0, a310_setopbase);
 }
 
-static const char *ioc_regnames[] = 
+static const char *const ioc_regnames[] =
 {
 	"(rw) Control",					// 0
 	"(read) Keyboard receive (write) keyboard send",	// 1
@@ -373,7 +373,7 @@ static void latch_timer_cnt(int tmr)
 
 	time = attotime_to_double(timer_timeelapsed(timer[tmr]));
 	time *= 2000000.0;	// find out how many 2 MHz ticks have gone by
-	a310_timerout[tmr] = a310_timercnt[tmr] - (UINT32)time; 
+	a310_timerout[tmr] = a310_timercnt[tmr] - (UINT32)time;
 }
 
 static READ32_HANDLER(ioc_r)
@@ -560,7 +560,7 @@ static WRITE32_HANDLER(vidc_w)
 {
 	UINT32 reg = data>>24;
 	UINT32 val = data & 0xffffff;
-	static const char *vrnames[] = 
+	static const char *vrnames[] =
 	{
 		"horizontal total",
 		"horizontal sync width",
@@ -602,7 +602,7 @@ static WRITE32_HANDLER(vidc_w)
 			// slightly hacky: fire off a VBL right now.  the BIOS doesn't wait long enough otherwise.
 			timer_adjust(vbl_timer, attotime_zero, 0, attotime_never);
 		}
-	
+
 		a310_vidregs[reg] = val>>12;
 	}
 	else
@@ -664,7 +664,7 @@ static WRITE32_HANDLER(memc_w)
 	else
 	{
 		logerror("MEMC non-reg: W %x @ %x (mask %08x)\n", data, offset, mem_mask);
-	}	
+	}
 }
 
 /*
@@ -711,7 +711,7 @@ static WRITE32_HANDLER(memc_page_w)
 			break;
 
 		case 1:
-			phys = ((data & 0x7f) >> 1) | (data & 1) ? 0x40 : 0; 
+			phys = ((data & 0x7f) >> 1) | (data & 1) ? 0x40 : 0;
 			log = (data & 0xc00)>>10;
 			log <<= 23;
 			log |= (data & 0x7fe000);

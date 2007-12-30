@@ -69,7 +69,7 @@ static void svi318_uart8250_interrupt(int nr, int state)
 	cpunum_set_input_line(0, 0, (state ? HOLD_LINE : CLEAR_LINE));
 }
 
-static uart8250_interface svi318_uart8250_interface[1] =
+static const uart8250_interface svi318_uart8250_interface[1] =
 {
 	{
 		TYPE8250,
@@ -224,7 +224,7 @@ static WRITE8_HANDLER ( svi318_ppi_port_c_w )
 	cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0), (data & 0x20) ? -1.0 : +1.0);
 }
 
-static ppi8255_interface svi318_ppi8255_interface =
+static const ppi8255_interface svi318_ppi8255_interface =
 {
 	1,
 	{svi318_ppi_port_a_r},
@@ -365,7 +365,7 @@ WRITE8_HANDLER( svi318_fdc_density_side_w )
 	wd17xx_set_density(data & 0x01 ? DEN_FM_LO:DEN_MFM_LO);
 
 	wd17xx_set_side(data & 0x02 ? 1:0);
-            
+
 	image = image_from_devtype_and_index(IO_FLOPPY, svi318_fdc.driveselect);
 	if (image_exists(image))
 	{
@@ -387,8 +387,8 @@ static unsigned long svi318_calcoffset(UINT8 t, UINT8 h, UINT8 s,
 {
 	unsigned long o;
 
-	if ((t==0) && (h==0)) 
-		o = (s-first_sector_id)*128; 
+	if ((t==0) && (h==0))
+		o = (s-first_sector_id)*128;
 	else
 		o = ((t*heads+h)*17+s-first_sector_id)*256-2048; /* (17*256)-(18*128)=2048 */
 
@@ -552,7 +552,7 @@ DRIVER_INIT( svi318 )
 
 	memset(&svi, 0, sizeof (svi) );
 
-	if ( ! strcmp( Machine->gamedrv->name, "svi318" ) || ! strcmp( Machine->gamedrv->name, "svi318n" ) ) {
+	if ( ! strcmp( machine->gamedrv->name, "svi318" ) || ! strcmp( machine->gamedrv->name, "svi318n" ) ) {
 		svi.svi318 = 1;
 	}
 

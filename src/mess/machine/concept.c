@@ -47,7 +47,7 @@ static WRITE8_HANDLER(via_out_cb2);
 static void via_irq_func(int state);
 
 
-static struct via6522_interface concept_via6522_intf =
+static const struct via6522_interface concept_via6522_intf =
 {	/* main via */
 	via_in_a, via_in_b,
 	NULL, NULL,
@@ -71,7 +71,7 @@ static UINT32 KeyStateSave[/*4*/3];
 
 /* Expansion slots */
 
-struct
+static struct
 {
 	read8_handler reg_read;
 	write8_handler reg_write;
@@ -457,7 +457,7 @@ WRITE16_HANDLER(concept_io_w)
 			{
 				int slot = ((offset >> 4) & 7) - 1;
 #if VERBOSE
-				logerror("concept_io_w: Slot I/O register written for slot %d at address 0x03%4.4x, data: 0x%4.4x\n", 
+				logerror("concept_io_w: Slot I/O register written for slot %d at address 0x03%4.4x, data: 0x%4.4x\n",
 					slot, offset << 1, data);
 #endif
 				if (expansion_slots[slot].reg_write)

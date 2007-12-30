@@ -18,6 +18,8 @@ typedef struct {
 	int devicenr;
 } VC1541_CONFIG;
 
+/*----------- defined in machine/vc1541.c -----------*/
+
 DEVICE_LOAD(vc1541);
 DEVICE_UNLOAD(vc1541);
 
@@ -42,12 +44,12 @@ void c2031_device_getinfo(const device_class *devclass, UINT32 state, union devi
 void c1551_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info);
 void c1571_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info);
 
-extern MACHINE_DRIVER_EXTERN( cpu_vc1540 );
-extern MACHINE_DRIVER_EXTERN( cpu_vc1541 );
-extern MACHINE_DRIVER_EXTERN( cpu_c2031 );
-extern MACHINE_DRIVER_EXTERN( cpu_dolphin );
-extern MACHINE_DRIVER_EXTERN( cpu_c1551 );
-extern MACHINE_DRIVER_EXTERN( cpu_c1571 );
+MACHINE_DRIVER_EXTERN( cpu_vc1540 );
+MACHINE_DRIVER_EXTERN( cpu_vc1541 );
+MACHINE_DRIVER_EXTERN( cpu_c2031 );
+MACHINE_DRIVER_EXTERN( cpu_dolphin );
+MACHINE_DRIVER_EXTERN( cpu_c1551 );
+MACHINE_DRIVER_EXTERN( cpu_c1571 );
 
 #define VC1540_ROM(cpu) \
 	ROM_REGION(0x10000,cpu,0) \

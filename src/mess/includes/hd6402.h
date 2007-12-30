@@ -7,8 +7,8 @@ be wired up in any order to a I/O output.
 
   to set an input to a specified state.
 
-  The outputs can also be wired in any order to a I/O port, so 
-  a callback is executed with the updated output state. 
+  The outputs can also be wired in any order to a I/O port, so
+  a callback is executed with the updated output state.
   Use
 
 	hd6402_set_callback
@@ -73,6 +73,8 @@ struct hd6402
 	struct serial_transmit_register transmit_reg;
 	struct data_form data_form;
 };
+
+/*----------- defined in machine/hd6402.c -----------*/
 
 /* reset */
 void	hd6402_reset(void);

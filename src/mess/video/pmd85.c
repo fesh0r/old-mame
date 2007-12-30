@@ -13,14 +13,14 @@
 #include "video/generic.h"
 #include "includes/pmd85.h"
 
-unsigned char pmd85_palette[3*3] =
+const unsigned char pmd85_palette[3*3] =
 {
 	0x00, 0x00, 0x00,
 	0x7f, 0x7f, 0x7f,
 	0xff, 0xff, 0xff
 };
 
-unsigned short pmd85_colortable[1][3] ={
+const unsigned short pmd85_colortable[1][3] ={
 	{ 0, 1, 2 }
 };
 
@@ -62,7 +62,7 @@ VIDEO_UPDATE( pmd85 )
 {
 	int pmd85_scanline;
 
-	for (pmd85_scanline=0; pmd85_scanline<256; pmd85_scanline++)                  	
+	for (pmd85_scanline=0; pmd85_scanline<256; pmd85_scanline++)
 		pmd85_draw_scanline (bitmap, pmd85_scanline);
 	return 0;
 }

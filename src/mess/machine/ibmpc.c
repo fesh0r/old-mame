@@ -94,7 +94,7 @@ static WRITE8_HANDLER ( pc_ppi_portc_w );
 
 /* PC-XT has a 8255 which is connected to keyboard and other
 status information */
-ppi8255_interface pc_ppi8255_interface =
+const ppi8255_interface pc_ppi8255_interface =
 {
 	1,
 	{pc_ppi_porta_r},
@@ -118,14 +118,14 @@ static struct {
 	/* KB port A */
 	if (pc_ppi.keyboard_disabled)
 	{
-		/*   0  0 - no floppy drives  
-		 *   1  Not used  
-		 * 2-3  The number of memory banks on the system board  
+		/*   0  0 - no floppy drives
+		 *   1  Not used
+		 * 2-3  The number of memory banks on the system board
 		 * 4-5  Display mode
 		 *	    11 = monochrome
 		 *      10 - color 80x25
-		 *      01 - color 40x25  
-		 * 6-7  The number of floppy disk drives  
+		 *      01 - color 40x25
+		 * 6-7  The number of floppy disk drives
 		 */
 		data = readinputport(1);
 	}
@@ -227,7 +227,7 @@ static TIMER_CALLBACK(pc_rtc_timer)
 void pc_rtc_init(void)
 {
 	memset(&pc_rtc,0,sizeof(pc_rtc));
-	pc_rtc.timer = timer_alloc(pc_rtc_timer);
+	pc_rtc.timer = timer_alloc(pc_rtc_timer, NULL);
 	timer_adjust(pc_rtc.timer, attotime_zero, 0, attotime_make(1, 0));
 }
 

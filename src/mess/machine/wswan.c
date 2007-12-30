@@ -23,8 +23,8 @@ TODO:
 
 enum enum_system { WSWAN=0, WSC };
 enum enum_sram { SRAM_NONE=0, SRAM_64K, SRAM_256K, SRAM_512K, SRAM_1M, SRAM_2M, EEPROM_1K, EEPROM_16K, EEPROM_8K, SRAM_UNKNOWN };
-const char* wswan_sram_str[] = { "none", "64Kbit SRAM", "256Kbit SRAM", "512Kbit SRAM", "1Mbit SRAM", "2Mbit SRAM", "1Kbit EEPROM", "16Kbit EEPROM", "8Kbit EEPROM", "Unknown" };
-const int wswan_sram_size[] = { 0, 64*1024/8, 256*1024/8, 512*1024/8, 1024*1024/8, 2*1024*1024/8,  1024/8, 16*1024/8, 8*1024/8, 0 };
+static const char* wswan_sram_str[] = { "none", "64Kbit SRAM", "256Kbit SRAM", "512Kbit SRAM", "1Mbit SRAM", "2Mbit SRAM", "1Kbit EEPROM", "16Kbit EEPROM", "8Kbit EEPROM", "Unknown" };
+static const int wswan_sram_size[] = { 0, 64*1024/8, 256*1024/8, 512*1024/8, 1024*1024/8, 2*1024*1024/8,  1024/8, 16*1024/8, 8*1024/8, 0 };
 
 struct EEPROM {
 	UINT8	mode;		/* eeprom mode */
@@ -64,11 +64,11 @@ struct VDP vdp;
 static struct EEPROM eeprom;
 static struct RTC rtc;
 static struct SoundDMA sound_dma;
-UINT8 *ws_ram;
-UINT8 *ws_bios_bank = NULL;
+static UINT8 *ws_ram;
+static UINT8 *ws_bios_bank = NULL;
 static UINT8 wswan_bios_disabled;
 UINT8 ws_portram[256];
-static UINT8 ws_portram_init[256] =
+static const UINT8 ws_portram_init[256] =
 {
 	0x00, 0x00, 0x00/*?*/, 0xbb, 0x00, 0x00, 0x00, 0x26, 0xfe, 0xde, 0xf9, 0xfb, 0xdb, 0xd7, 0x7f, 0xf5,
 	0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x9e, 0x9b, 0x00, 0x00, 0x00, 0x00, 0x99, 0xfd, 0xb7, 0xdf,
@@ -117,14 +117,14 @@ static UINT8 ws_portram_init[256] =
 	EA 00 00 FF FF jmp FFFFh:0000h
 
 */
-static UINT8 ws_fake_bios_code[] = {
+static const UINT8 ws_fake_bios_code[] = {
 	0xfc, 0xbc, 0x00, 0x20, 0x68, 0x00, 0x00, 0x07, 0x68, 0x00, 0xf0, 0x1f, 0xbf, 0x00, 0x04, 0xbe,
 	0xe0, 0xff, 0xb9, 0x10, 0x00, 0xf3, 0xa4, 0xb0, 0x2f, 0xe6, 0xc0, 0xea, 0x00, 0x04, 0x00, 0x00,
 	0xe4, 0xa0, 0x0c, 0x01, 0xe6, 0xa0, 0xea, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0xea, 0xc0, 0xff, 0x00, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-void wswan_handle_irqs( void ) {
+static void wswan_handle_irqs( void ) {
 	if ( ws_portram[0xb2] & ws_portram[0xb6] & WSWAN_IFLAG_HBLTMR ) {
 		cpunum_set_input_line_and_vector( 0, 0, HOLD_LINE, ws_portram[0xb0] + WSWAN_INT_HBLTMR );
 	} else if ( ws_portram[0xb2] & ws_portram[0xb6] & WSWAN_IFLAG_VBL ) {
@@ -146,14 +146,14 @@ void wswan_handle_irqs( void ) {
 	}
 }
 
-void wswan_set_irq_line(int irq) {
+static void wswan_set_irq_line(int irq) {
 	if ( ws_portram[0xb2] & irq ) {
 		ws_portram[0xb6] |= irq;
 		wswan_handle_irqs();
 	}
 }
 
-void wswan_clear_irq_line(int irq) {
+static void wswan_clear_irq_line(int irq) {
 	ws_portram[0xb6] &= ~irq;
 	wswan_handle_irqs();
 }
@@ -259,7 +259,7 @@ MACHINE_RESET( wswan )
 
 	/* Set up RTC timer */
 	if ( rtc.present ) {
-		timer_pulse( ATTOTIME_IN_SEC(1), 0, wswan_rtc_callback );
+		timer_pulse( ATTOTIME_IN_SEC(1), NULL, 0, wswan_rtc_callback );
 	}
 
 }
@@ -299,7 +299,7 @@ READ8_HANDLER( wswan_port_r )
 {
 	UINT8 value = ws_portram[offset];
 
-	if ( offset != 2 ) 
+	if ( offset != 2 )
 	logerror( "PC=%X: port read %02X\n", activecpu_get_pc(), offset );
 	switch( offset )
 	{
@@ -572,7 +572,7 @@ WRITE8_HANDLER( wswan_port_w )
 				   Bit 4-7 - Palette 0 index 3 */
 		case 0x22:	/* Bit 0-3 - Palette 1 index 0
 				   Bit 4-7 - Palette 1 index 1 */
-		case 0x23:	/* Bit 0-3 - Palette 1 index 2 
+		case 0x23:	/* Bit 0-3 - Palette 1 index 2
 				   Bit 4-7 - Palette 1 index 3 */
 		case 0x24:	/* Bit 0-3 - Palette 2 index 0
 				   Bit 4-7 - Palette 2 index 1 */
@@ -1245,7 +1245,7 @@ static const char* wswan_determine_sram( UINT8 data ) {
 
 #ifdef MAME_DEBUG
 enum enum_romsize { ROM_4M=0, ROM_8M, ROM_16M, ROM_32M, ROM_64M, ROM_128M, ROM_UNKNOWN };
-const char* wswan_romsize_str[] = {
+static const char* wswan_romsize_str[] = {
 	"4Mbit", "8Mbit", "16Mbit", "32Mbit", "64Mbit", "128Mbit", "Unknown"
 };
 
@@ -1405,7 +1405,7 @@ INTERRUPT_GEN(wswan_scanline_interrupt)
 		}
 	}
 
-//	vdp.current_line = (vdp.current_line + 1) % 159; 
+//	vdp.current_line = (vdp.current_line + 1) % 159;
 
 	if ( vdp.current_line == vdp.line_compare ) {
 		wswan_set_irq_line( WSWAN_IFLAG_LCMP );

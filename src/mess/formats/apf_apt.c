@@ -18,7 +18,7 @@ static INT16 xor_wave_state = WAVEENTRY_HIGH^WAVEENTRY_LOW;
 /* 500 microsecond of bit 0 and 1000 microsecond of bit 1 */
 
 static INT16 *apf_emit_level(INT16 *p, int count)
-{	
+{
 	int i;
 
 	for (i=0; i<count; i++)
@@ -29,7 +29,7 @@ static INT16 *apf_emit_level(INT16 *p, int count)
 	return p;
 }
 
-/* 4 periods at 1200hz */ 
+/* 4 periods at 1200hz */
 static INT16* apf_output_bit(INT16 *p, UINT8 b)
 {
 	if (b)
@@ -111,7 +111,7 @@ static int apf_cassette_fill_wave(INT16 *buffer, int length, UINT8 *bytes)
 
 
 
-static struct CassetteLegacyWaveFiller apf_legacy_fill_wave =
+static const struct CassetteLegacyWaveFiller apf_legacy_fill_wave =
 {
 	apf_cassette_fill_wave,					/* fill_wave */
 	-1,										/* chunk_size */
@@ -138,7 +138,7 @@ static casserr_t apf_apt_load(cassette_image *cassette)
 
 
 
-struct CassetteFormat apf_apt_format =
+static const struct CassetteFormat apf_apt_format =
 {
 	"apt",
 	apf_apt_identify,

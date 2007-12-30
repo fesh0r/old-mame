@@ -6,6 +6,8 @@
 it is from cpu to fdc */
 #define I8271_FLAGS_DATA_DIRECTION 0x02
 
+/*----------- defined in machine/i8271.c -----------*/
+
 typedef enum
 {
 	I8271_STATE_EXECUTION_READ = 0,
@@ -49,7 +51,7 @@ typedef struct I8271
 	/* mode special register */
 	unsigned long Mode;
 
-	
+
 	/* drive outputs */
 	int drive;
 	int side;
@@ -79,7 +81,7 @@ typedef struct I8271
 
 	/* sector counter and id counter */
 	int Counter;
-	
+
 	/* ==0, to cpu, !=0 =from cpu */
 	int data_direction;
 	i8271_interface	fdc_interface;
@@ -146,7 +148,7 @@ typedef struct I8271
 #define I8271_STATUS_NON_DMA_REQUEST	0x004
 
 /* initialise emulation */
-void i8271_init(i8271_interface *);
+void i8271_init(const i8271_interface *);
 /* reset */
 void i8271_reset(void);
 

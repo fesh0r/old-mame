@@ -30,7 +30,7 @@ UINT8 *cgenie_fontram;
 
 
 int cgenie_tv_mode = -1;
-int cgenie_load_cas = 0;
+static int cgenie_load_cas = 0;
 static int port_ff = 0xff;
 
 #define CGENIE_DRIVE_INFO
@@ -59,7 +59,7 @@ typedef struct
 	UINT8 DDGA; 	 /* Disk Directory Granule allocation (number of driectory granules) */
 }	PDRIVE;
 
-static PDRIVE pd_list[12] = {
+static const PDRIVE pd_list[12] = {
 	{0x14, 0x28, 0x07, 0x28, 0x0A, 0x02, 0x00, 0x00, 0x05, 0x02}, /* CMD"<0=A" 40 tracks, SS, SD */
 	{0x14, 0x28, 0x07, 0x28, 0x14, 0x04, 0x00, 0x40, 0x05, 0x04}, /* CMD"<0=B" 40 tracks, DS, SD */
 	{0x18, 0x30, 0x53, 0x28, 0x12, 0x03, 0x00, 0x03, 0x05, 0x03}, /* CMD"<0=C" 40 tracks, SS, DD */
@@ -115,6 +115,8 @@ static int get_cycles;
 /* a prototype to be called from cgenie_stop_machine */
 static void tape_put_close(running_machine *machine);
 
+/* Buffer for image reads */
+static UINT8 *image_buff;
 
 static OPBASE_HANDLER (opbaseoverride)
 {
@@ -132,13 +134,7 @@ static OPBASE_HANDLER (opbaseoverride)
 
 		if (image_exists(img))
 		{
-			buff = (UINT8*) malloc(65536);
-			if( !buff )
-			{
-				logerror("failed to allocate 64K buff\n");
-				return address;
-			}
-
+			buff = image_buff;
 			size = image_fread(img, buff, 65536);
 			s = buff;
 			if( memcmp(s, TAPE_HEADER, sizeof(TAPE_HEADER)-1) == 0 )
@@ -211,7 +207,6 @@ static OPBASE_HANDLER (opbaseoverride)
 				}
 				activecpu_set_reg(REG_PC, entry);
 			}
-			free(buff);
 		}
 		memory_set_opbase_handler(0,NULL);
 	}
@@ -318,6 +313,7 @@ MACHINE_START( cgenie )
 	in_sync = 0;
 	put_cycles = 0;
 	get_cycles = 0;
+	image_buff = auto_malloc(65536);
 
 	/*
 	 * Every fifth cycle is a wait cycle, so I reduced

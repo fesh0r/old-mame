@@ -11,7 +11,7 @@
 	until A15 is asserted.  The Z80 NOP instruction is 0x00, so the effect is
 	to cause reset to skip all memory up to 0x8000, where the actual handling
 	code resides.
-	
+
 ****************************************************************************/
 
 #include "driver.h"
@@ -36,7 +36,7 @@ static UINT8 mbee_busnop = 0;
 
 UINT8 *mbee_workram;
 
-static z80pio_interface pio_intf =
+static const z80pio_interface pio_intf =
 {
 	pio_interrupt,	/* callback when change interrupt status */
 	0,				/* portA ready active callback (do not support yet)*/
@@ -64,7 +64,7 @@ READ8_HANDLER( mbee_lowram_r )
 	return mbee_workram[offset];
 }
 
-offs_t mbee_opbase_handler(offs_t address)
+static offs_t mbee_opbase_handler(offs_t address)
 {
 	if (address > 0x7fff)
 	{
@@ -74,7 +74,7 @@ offs_t mbee_opbase_handler(offs_t address)
 	return address;
 }
 
-offs_t mbee56_opbase_handler(offs_t address)
+static offs_t mbee56_opbase_handler(offs_t address)
 {
 	if (address > 0xdfff)
 	{
@@ -212,7 +212,9 @@ DEVICE_LOAD( mbee_cart )
 {
 	int size = image_length(image);
 	UINT8 *mem = malloc(size);
-	if( mem )
+	if (!mem)
+		return INIT_FAIL;
+
 	{
 		if( image_fread(image, mem, size) == size )
 		{

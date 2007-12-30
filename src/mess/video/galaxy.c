@@ -14,7 +14,7 @@
 
 static int horizontal_pos = 0x0b;
 
-gfx_layout galaxy_charlayout =
+const gfx_layout galaxy_charlayout =
 {
 	8, 13,				/* 8x8 characters */
 	128,				/* 128 characters */
@@ -27,13 +27,13 @@ gfx_layout galaxy_charlayout =
 	8 				/* each character takes 1 consecutive byte */
 };
 
-unsigned char galaxy_palette[2*3] =
+const unsigned char galaxy_palette[2*3] =
 {
 	0xff, 0xff, 0xff,		/* White */
 	0x00, 0x00, 0x00		/* Black */
 };
 
-unsigned short galaxy_colortable[1][2] =
+const unsigned short galaxy_colortable[1][2] =
 {
 	{0, 1}
 };
@@ -63,7 +63,7 @@ VIDEO_UPDATE( galaxy )
 		black_area.max_x = 32*8-1;
 		black_area.min_y = 0;
 		black_area.max_y = 16*13-1;
-		fillbitmap(bitmap, Machine->pens[1], &black_area);
+		fillbitmap(bitmap, machine->pens[1], &black_area);
 		fast_mode = TRUE;
 		return 0;
 	}
@@ -74,18 +74,18 @@ VIDEO_UPDATE( galaxy )
 		horizontal_pos = program_read_byte(0x2ba8);
 		if (horizontal_pos > 0x0b)
 		{
-			black_area.min_x =  0; 
+			black_area.min_x =  0;
 			black_area.max_x =  8*(horizontal_pos-0x0b)-1;
 		}
 		if (horizontal_pos < 0x0b)
 		{
-			black_area.min_x = 8*(21+horizontal_pos); 
+			black_area.min_x = 8*(21+horizontal_pos);
 			black_area.max_x = 32*8-1;
 		}
 		if (horizontal_pos == 0x0b)
-			black_area.min_x =  black_area.max_x = 0; 
-		fillbitmap(bitmap, Machine->pens[1], &black_area);
-	}	
+			black_area.min_x =  black_area.max_x = 0;
+		fillbitmap(bitmap, machine->pens[1], &black_area);
+	}
 
 	for( offs = 0; offs < 512; offs++ )
 	{
@@ -93,7 +93,7 @@ VIDEO_UPDATE( galaxy )
 		int code = videoram[offs];
 
 		sx = (offs % 32) * 8 + horizontal_pos*8-88;
-	
+
 		if (sx>=0 && sx<32*8)
 		{
 			if ((code>63 && code<96) || (code>127 && code<192))
@@ -101,7 +101,7 @@ VIDEO_UPDATE( galaxy )
 			if (code>191)
 				code-=128;
 			sy = (offs / 32) * 13;
-			drawgfx(bitmap, Machine->gfx[0], code & 0x7f, 1, 0,0, sx,sy,
+			drawgfx(bitmap, machine->gfx[0], code & 0x7f, 1, 0,0, sx,sy,
 				NULL, TRANSPARENCY_NONE, 0);
 		}
 	}

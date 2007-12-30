@@ -42,23 +42,24 @@
 #define _NR_GB_VID_REGS		0x40
 
 static UINT8 bg_zbuf[160];
-UINT8 gb_vid_regs[_NR_GB_VID_REGS];
+static UINT8 gb_vid_regs[_NR_GB_VID_REGS];
 static UINT16 cgb_bpal[32];	/* CGB current background palette table */
 static UINT16 cgb_spal[32];	/* CGB current background palette table */
-UINT16 sgb_pal[128];	/* SGB palette remapping */
 static UINT8 gb_bpal[4];	/* Background palette		*/
 static UINT8 gb_spal0[4];	/* Sprite 0 palette		*/
 static UINT8 gb_spal1[4];	/* Sprite 1 palette		*/
-UINT8 *gb_oam = NULL;
-UINT8 *gb_vram = NULL;
-int gbc_hdma_enabled;
-UINT8	*gb_chrgen;	/* Character generator           */
-UINT8	*gb_bgdtab;	/* Background character table    */
-UINT8	*gb_wndtab;	/* Window character table        */
-UINT8	gb_tile_no_mod;
-UINT8	*gbc_chrgen;	/* Character generator           */
-UINT8	*gbc_bgdtab;	/* Background character table    */
-UINT8	*gbc_wndtab;	/* Window character table        */
+static UINT8 *gb_oam;
+UINT8 *gb_vram;
+static double lcd_time;
+static UINT8 *gb_vram_ptr;
+static int gbc_hdma_enabled;
+static UINT8	*gb_chrgen;	/* Character generator           */
+static UINT8	*gb_bgdtab;	/* Background character table    */
+static UINT8	*gb_wndtab;	/* Window character table        */
+static UINT8	gb_tile_no_mod;
+static UINT8	*gbc_chrgen;	/* Character generator           */
+static UINT8	*gbc_bgdtab;	/* Background character table    */
+static UINT8	*gbc_wndtab;	/* Window character table        */
 
 struct layer_struct {
 	UINT8  enabled;
@@ -85,20 +86,23 @@ static struct gb_lcd_struct {
 	int	end_x;				/* Pixel to end drawing (exclusive) */
 	int mode;				/* Keep track of internal STAT mode */
 	int lcd_irq_line;
+	int triggering_line_irq;
 	int line_irq;
 	int mode_irq;
 	int delayed_line_irq;
+	int sprite_cycles;
+	int scrollx_adjust;
 	struct layer_struct	layer[2];
 	emu_timer	*lcd_timer;
 } gb_lcd;
 
-void (*update_scanline)(void);
+static void (*update_scanline)(void);
 
 /* Prototypes */
 static TIMER_CALLBACK(gb_lcd_timer_proc);
 static void gb_lcd_switch_on( void );
 
-static unsigned char palette[] =
+static const unsigned char palette[] =
 {
 /* Simple black and white palette */
 /*	0xFF,0xFF,0xFF,
@@ -119,7 +123,7 @@ static unsigned char palette[] =
 	0x41,0x41,0x41,		/* Dark       */
 };
 
-static unsigned char palette_megaduck[] = {
+static const unsigned char palette_megaduck[] = {
 	0x6B, 0xA6, 0x4A, 0x43, 0x7A, 0x63, 0x25, 0x59, 0x55, 0x12, 0x42, 0x4C
 };
 
@@ -193,7 +197,7 @@ INLINE void gb_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
   Select which sprites should be drawn for the current scanline and return the
   number of sprites selected.
  */
-static int gb_select_sprites( void ) {
+static void gb_select_sprites( void ) {
 	int	i, yindex, line, height;
 	UINT8	*oam = gb_oam + 39 * 4;
 
@@ -220,9 +224,9 @@ static int gb_select_sprites( void ) {
 					gb_lcd.sprCount++;
 				}
 			}
+			oam -= 4;
 		}
 	}
-	return gb_lcd.sprCount;
 }
 
 INLINE void gb_update_sprites (void)
@@ -801,11 +805,11 @@ INLINE void cgb_update_sprites (void) {
 			xindex = oam[1] - 8;
 			if (oam[3] & 0x40)		   /* flip y ? */
 			{
-				data = *((UINT16 *) &GBC_VRAMMap[(oam[3] & 0x8)>>3][(oam[2] & tilemask) * 16 + (height - 1 - line + oam[0]) * 2]);
+				data = *((UINT16 *) &gb_vram[ ((oam[3] & 0x8)<<10) + (oam[2] & tilemask) * 16 + (height - 1 - line + oam[0]) * 2]);
 			}
 			else
 			{
-				data = *((UINT16 *) &GBC_VRAMMap[(oam[3] & 0x8)>>3][(oam[2] & tilemask) * 16 + (line - oam[0]) * 2]);
+				data = *((UINT16 *) &gb_vram[ ((oam[3] & 0x8)<<10) + (oam[2] & tilemask) * 16 + (line - oam[0]) * 2]);
 			}
 #ifndef LSB_FIRST
 			data = (data << 8) | (data >> 8);
@@ -1017,9 +1021,127 @@ static void cgb_update_scanline (void) {
 	profiler_mark(PROFILER_END);
 }
 
-void gb_video_init( void ) {
-	int	i;
+/* OAM contents on power up.
 
+The OAM area seems contain some kind of unit fingerprint. On each boot
+the data is almost always the same. Some random bits are flipped between
+different boots. It is currently unknown how much these fingerprints
+differ between different units.
+
+OAM fingerprints taken from Wilbert Pol's own unit.
+*/
+
+static const UINT8 dmg_oam_fingerprint[0x100] = {
+	0xD8, 0xE6, 0xB3, 0x89, 0xEC, 0xDE, 0x11, 0x62, 0x0B, 0x7E, 0x48, 0x9E, 0xB9, 0x6E, 0x26, 0xC9,
+	0x36, 0xF4, 0x7D, 0xE4, 0xD9, 0xCE, 0xFA, 0x5E, 0xA3, 0x77, 0x60, 0xFC, 0x1C, 0x64, 0x8B, 0xAC,
+	0xB6, 0x74, 0x3F, 0x9A, 0x0E, 0xFE, 0xEA, 0xA9, 0x40, 0x3A, 0x7A, 0xB6, 0xF2, 0xED, 0xA8, 0x3E,
+	0xAF, 0x2C, 0xD2, 0xF2, 0x01, 0xE0, 0x5B, 0x3A, 0x53, 0x6A, 0x1C, 0x6C, 0x20, 0xD9, 0x22, 0xB4,
+	0x8C, 0x38, 0x71, 0x69, 0x3E, 0x93, 0xA3, 0x22, 0xCE, 0x76, 0x24, 0xE7, 0x1A, 0x14, 0x6B, 0xB1,
+	0xF9, 0x3D, 0xBF, 0x3D, 0x74, 0x64, 0xCB, 0xF5, 0xDC, 0x9A, 0x53, 0xC6, 0x0E, 0x78, 0x34, 0xCB,
+	0x42, 0xB3, 0xFF, 0x07, 0x73, 0xAE, 0x6C, 0xA2, 0x6F, 0x6A, 0xA4, 0x66, 0x0A, 0x8C, 0x40, 0xB3,
+	0x9A, 0x3D, 0x39, 0x78, 0xAB, 0x29, 0xE7, 0xC5, 0x7A, 0xDD, 0x51, 0x95, 0x2B, 0xE4, 0x1B, 0xF6,
+	0x31, 0x16, 0x34, 0xFE, 0x11, 0xF2, 0x5E, 0x11, 0xF3, 0x95, 0x66, 0xB9, 0x37, 0xC2, 0xAD, 0x6D,
+	0x1D, 0xA7, 0x79, 0x06, 0xD7, 0xE5, 0x8F, 0xFA, 0x9C, 0x02, 0x0C, 0x31, 0x8B, 0x17, 0x2E, 0x31,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+static const UINT8 mgb_oam_fingerprint[0x100] = {
+	0xB9, 0xE9, 0x0D, 0x69, 0xBB, 0x7F, 0x00, 0x80, 0xE9, 0x7B, 0x79, 0xA2, 0xFD, 0xCF, 0xD8, 0x0A,
+	0x87, 0xEF, 0x44, 0x11, 0xFE, 0x37, 0x10, 0x21, 0xFA, 0xFF, 0x00, 0x17, 0xF6, 0x4F, 0x83, 0x03,
+	0x3A, 0xF4, 0x00, 0x24, 0xBB, 0xAE, 0x05, 0x01, 0xFF, 0xF7, 0x12, 0x48, 0xA7, 0x5E, 0xF6, 0x28,
+	0x5B, 0xFF, 0x2E, 0x10, 0xFF, 0xB9, 0x50, 0xC8, 0xAF, 0x77, 0x2C, 0x1A, 0x62, 0xD7, 0x81, 0xC2,
+	0xFD, 0x5F, 0xA0, 0x94, 0xAF, 0xFF, 0x51, 0x20, 0x36, 0x76, 0x50, 0x0A, 0xFD, 0xF6, 0x20, 0x00,
+	0xFE, 0xF7, 0xA0, 0x68, 0xFF, 0xFC, 0x29, 0x51, 0xA3, 0xFA, 0x06, 0xC4, 0x94, 0xFF, 0x39, 0x0A,
+	0xFF, 0x6C, 0x20, 0x20, 0xF1, 0xAD, 0x0C, 0x81, 0x56, 0xFB, 0x03, 0x82, 0xFF, 0xFF, 0x08, 0x58,
+	0x96, 0x7E, 0x01, 0x4D, 0xFF, 0xE4, 0x82, 0xE3, 0x3D, 0xBB, 0x54, 0x00, 0x3D, 0xF3, 0x04, 0x21,
+	0xB7, 0x39, 0xCC, 0x10, 0xF9, 0x5B, 0x80, 0x50, 0x3F, 0x6A, 0x1C, 0x21, 0x1F, 0xFA, 0xA8, 0x52,
+	0x5F, 0xB3, 0x44, 0xA1, 0x96, 0x1E, 0x00, 0x27, 0x63, 0x77, 0x30, 0x54, 0x37, 0x6F, 0x60, 0x22,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+static const UINT8 cgb_oam_fingerprint[0x100] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x74, 0xFF, 0x09, 0x00, 0x9D, 0x61, 0xA8, 0x28, 0x36, 0x1E, 0x58, 0xAA, 0x75, 0x74, 0xA1, 0x42,
+	0x05, 0x96, 0x40, 0x09, 0x41, 0x02, 0x60, 0x00, 0x1F, 0x11, 0x22, 0xBC, 0x31, 0x52, 0x22, 0x54,
+	0x22, 0xA9, 0xC4, 0x00, 0x1D, 0xAD, 0x80, 0x0C, 0x5D, 0xFA, 0x51, 0x92, 0x93, 0x98, 0xA4, 0x04,
+	0x22, 0xA9, 0xC4, 0x00, 0x1D, 0xAD, 0x80, 0x0C, 0x5D, 0xFA, 0x51, 0x92, 0x93, 0x98, 0xA4, 0x04,
+	0x22, 0xA9, 0xC4, 0x00, 0x1D, 0xAD, 0x80, 0x0C, 0x5D, 0xFA, 0x51, 0x92, 0x93, 0x98, 0xA4, 0x04,
+	0x22, 0xA9, 0xC4, 0x00, 0x1D, 0xAD, 0x80, 0x0C, 0x5D, 0xFA, 0x51, 0x92, 0x93, 0x98, 0xA4, 0x04
+};
+
+/*
+  For an AGS in CGB mode this data is:
+static const UINT8 abs_oam_fingerprint[0x100] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
+	0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB,
+	0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
+	0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD,
+	0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE,
+	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
+*/
+
+enum {
+	GB_LCD_STATE_LYXX_M3=1,
+	GB_LCD_STATE_LYXX_PRE_M0,
+	GB_LCD_STATE_LYXX_M0,
+	GB_LCD_STATE_LYXX_M0_PRE_INC,
+	GB_LCD_STATE_LYXX_M0_INC,
+	GB_LCD_STATE_LY00_M2,
+	GB_LCD_STATE_LYXX_M2,
+	GB_LCD_STATE_LY9X_M1,
+	GB_LCD_STATE_LY9X_M1_INC,
+	GB_LCD_STATE_LY00_M1,
+	GB_LCD_STATE_LY00_M1_1,
+	GB_LCD_STATE_LY00_M1_2,
+	GB_LCD_STATE_LY00_M0
+};
+
+static TIMER_CALLBACK( gb_video_init_vbl ) {
+	cpunum_set_input_line( 0, VBL_INT, ASSERT_LINE );
+}
+
+void gb_video_init( int mode ) {
+	int	i;
+	int vram_size = 0x2000;
+
+	switch( mode ) {
+	case GB_VIDEO_CGB:	vram_size = 0x4000; break;
+	}
+	gb_vram = new_memory_region( Machine, REGION_GFX1, vram_size, 0 );
+	gb_oam = new_memory_region( Machine, REGION_GFX2, 0x100, 0 );
+	memset( gb_vram, 0, vram_size );
+
+	gb_vram_ptr = gb_vram;
 	gb_chrgen = gb_vram;
 	gb_bgdtab = gb_vram + 0x1C00;
 	gb_wndtab = gb_vram + 0x1C00;
@@ -1041,70 +1163,90 @@ void gb_video_init( void ) {
 		gb_bpal[i] = gb_spal0[i] = gb_spal1[i] = i;
 	}
 
-	/* initialize OAM extra area */
-	for( i = 0xa0; i < 0x100; i++ ) {
-		gb_oam[i] = 0x00;
-	}
-
-	/* set the scanline update function */
-	update_scanline = gb_update_scanline;
-
-	gb_lcd.lcd_timer = timer_alloc( gb_lcd_timer_proc );
+	gb_lcd.lcd_timer = timer_alloc( gb_lcd_timer_proc , NULL);
 	timer_adjust( gb_lcd.lcd_timer, ATTOTIME_IN_CYCLES(456,0), 0, attotime_never );
-}
 
-void sgb_video_init( void ) {
-	gb_video_init();
+	switch( mode ) {
+	case GB_VIDEO_DMG:
+		/* set the scanline update function */
+		update_scanline = gb_update_scanline;
 
-	/* Override the scanline refresh function */
-	update_scanline = sgb_update_scanline;
-}
+		memcpy( gb_oam, dmg_oam_fingerprint, 0x100 );
 
-/* The CGB seems to have some data in the FEA0-FEFF area upon booting.
-   The contents of this area are almost the same on each boot, but always
-   a couple of bits are different.
-   The data could be some kind of fingerprint for each CGB, I've just taken
-   this data from my CGB on a boot once.
-*/
+		break;
+	case GB_VIDEO_MGB:
+		/* set the scanline update function */
+		update_scanline = gb_update_scanline;
+		/* Initialize part of VRAM. This code must be deleted when we have added the bios dump */
+		for( i = 1; i < 0x0D; i++ ) {
+			gb_vram[ 0x1903 + i ] = i;
+			gb_vram[ 0x1923 + i ] = i + 0x0C;
+		}
+		gb_vram[ 0x1910 ] = 0x19;
 
-static const UINT8 cgb_oam_extra[0x60] = {
-	0x74, 0xFF, 0x09, 0x00, 0x9D, 0x61, 0xA8, 0x28, 0x36, 0x1E, 0x58, 0xAA, 0x75, 0x74, 0xA1, 0x42,
-	0x05, 0x96, 0x40, 0x09, 0x41, 0x02, 0x60, 0x00, 0x1F, 0x11, 0x22, 0xBC, 0x31, 0x52, 0x22, 0x54,
-	0x22, 0xA9, 0xC4, 0x00, 0x1D, 0xAD, 0x80, 0x0C, 0x5D, 0xFA, 0x51, 0x92, 0x93, 0x98, 0xA4, 0x04,
-	0x22, 0xA9, 0xC4, 0x00, 0x1D, 0xAD, 0x80, 0x0C, 0x5D, 0xFA, 0x51, 0x92, 0x93, 0x98, 0xA4, 0x04,
-	0x22, 0xA9, 0xC4, 0x00, 0x1D, 0xAD, 0x80, 0x0C, 0x5D, 0xFA, 0x51, 0x92, 0x93, 0x98, 0xA4, 0x04,
-	0x22, 0xA9, 0xC4, 0x00, 0x1D, 0xAD, 0x80, 0x0C, 0x5D, 0xFA, 0x51, 0x92, 0x93, 0x98, 0xA4, 0x04
-};
 
-/*
-  For an AGB in CGB mode this data is:
-	0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
-	0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB,
-	0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
-	0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD,
-	0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-*/
+		memcpy( gb_oam, mgb_oam_fingerprint, 0x100 );
 
-void gbc_video_init( void ) {
-	int i;
+		/* Make sure the VBlank interrupt is set when the first instruction gets executed */
+		timer_set( ATTOTIME_IN_CYCLES(1,0), NULL, 0, gb_video_init_vbl );
 
-	gb_video_init();
+		/* Initialize some video registers */
+		gb_video_w( 0x0, 0x91 );    /* LCDCONT */
+		gb_video_w( 0x7, 0xFC );    /* BGRDPAL */
+		gb_video_w( 0x8, 0xFC );    /* SPR0PAL */
+		gb_video_w( 0x9, 0xFC );    /* SPR1PAL */
 
-	for( i = 0; i < sizeof(cgb_oam_extra); i++ ) {
-		gb_oam[ 0xa0 + i] = cgb_oam_extra[i];
+		break;
+	case GB_VIDEO_SGB:
+		/* set the scanline update function */
+		update_scanline = sgb_update_scanline;
+
+		/* Initialize part of VRAM. This code must be deleted when we have added the bios dump */
+		for( i = 1; i < 0x0D; i++ ) {
+			gb_vram[ 0x1903 + i ] = i;
+			gb_vram[ 0x1923 + i ] = i + 0x0C;
+		}
+		gb_vram[ 0x1910 ] = 0x19;
+
+		/* Make sure the VBlank interrupt is set when the first instruction gets executed */
+		timer_set( ATTOTIME_IN_CYCLES(1,0), NULL, 0, gb_video_init_vbl );
+
+		/* Initialize some video registers */
+		gb_video_w( 0x0, 0x91 );    /* LCDCONT */
+		gb_video_w( 0x7, 0xFC );    /* BGRDPAL */
+		gb_video_w( 0x8, 0xFC );    /* SPR0PAL */
+		gb_video_w( 0x9, 0xFC );    /* SPR1PAL */
+
+		break;
+	case GB_VIDEO_CGB:
+		/* set the scanline update function */
+		update_scanline = cgb_update_scanline;
+
+		memcpy( gb_oam, cgb_oam_fingerprint, 0x100 );
+
+		gb_chrgen = gb_vram;
+		gbc_chrgen = gb_vram + 0x2000;
+		gb_bgdtab = gb_wndtab = gb_vram + 0x1C00;
+		gbc_bgdtab = gbc_wndtab = gb_vram + 0x3C00;
+
+		/* HDMA disabled */
+		gbc_hdma_enabled = 0;
+
+		/* Make sure the VBlank interrupt is set when the first instruction gets executed */
+		timer_set( ATTOTIME_IN_CYCLES(1,0), NULL, 0, gb_video_init_vbl );
+
+		/* Initialize some video registers */
+		gbc_video_w( 0x0, 0x91 );    /* LCDCONT */
+		gbc_video_w( 0x7, 0xFC );    /* BGRDPAL */
+		gbc_video_w( 0x8, 0xFC );    /* SPR0PAL */
+		gbc_video_w( 0x9, 0xFC );    /* SPR1PAL */
+		gbc_video_w( 0x0F, 0x00 );
+		CURLINE = gb_lcd.current_line = 0x90;
+		LCDSTAT = ( LCDSTAT & 0xF8 ) | 0x01;
+		gb_lcd.mode = 1;
+		timer_adjust( gb_lcd.lcd_timer, ATTOTIME_IN_CYCLES(292,0), GB_LCD_STATE_LY9X_M1_INC, attotime_never );
+		break;
 	}
-
-	gb_chrgen = GBC_VRAMMap[0];
-	gbc_chrgen = GBC_VRAMMap[1];
-	gb_bgdtab = gb_wndtab = GBC_VRAMMap[0] + 0x1C00;
-	gbc_bgdtab = gbc_wndtab = GBC_VRAMMap[1] + 0x1C00;
-
-	/* Override the scanline update function */
-	update_scanline = cgb_update_scanline;
-
-	/* HDMA disabled */
-	gbc_hdma_enabled = 0;
 }
 
 static void gbc_hdma(UINT16 length) {
@@ -1138,27 +1280,27 @@ static void gb_increment_scanline( void ) {
 	}
 }
 
-enum {
-	GB_LCD_STATE_LYXX_M3=1,
-	GB_LCD_STATE_LYXX_M0,
-	GB_LCD_STATE_LYXX_M0_2,
-	GB_LCD_STATE_LYXX_M0_PRE_INC,
-	GB_LCD_STATE_LYXX_M0_INC,
-	GB_LCD_STATE_LY00_M2,
-	GB_LCD_STATE_LYXX_M2,
-	GB_LCD_STATE_LY9X_M1,
-	GB_LCD_STATE_LY9X_M1_INC,
-	GB_LCD_STATE_LY00_M1,
-	GB_LCD_STATE_LY00_M1_1,
-	GB_LCD_STATE_LY00_M1_2,
-	GB_LCD_STATE_LY00_M0
-};
-
 static TIMER_CALLBACK(gb_lcd_timer_proc)
 {
+	static const int sprite_cycles[] = { 0, 8, 20, 32, 44, 52, 64, 76, 88, 96, 108 };
 	int mode = param;
+
 	if ( LCDCONT & 0x80 ) {
 		switch( mode ) {
+		case GB_LCD_STATE_LYXX_PRE_M0:	/* Just before switching to mode 0 */
+			gb_lcd.mode = 0;
+			if ( LCDSTAT & 0x08 ) {
+				if ( ! gb_lcd.mode_irq ) {
+					if ( ! gb_lcd.line_irq && ! gb_lcd.delayed_line_irq ) {
+						gb_lcd.mode_irq = 1;
+						cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
+					}
+				} else {
+					gb_lcd.mode_irq = 0;
+				}
+			}
+			timer_adjust( gb_lcd.lcd_timer, ATTOTIME_IN_CYCLES(4,0), GB_LCD_STATE_LYXX_M0, attotime_never );
+			break;
 		case GB_LCD_STATE_LYXX_M0:		/* Switch to mode 0 */
 			/* update current scanline */
 			update_scanline();
@@ -1178,15 +1320,19 @@ static TIMER_CALLBACK(gb_lcd_timer_proc)
 			/* Check for HBLANK DMA */
 			if( gbc_hdma_enabled )
 				gbc_hdma(0x10);
-			timer_adjust( gb_lcd.lcd_timer, ATTOTIME_IN_CYCLES(196 - 10 * gb_lcd.sprCount,0), GB_LCD_STATE_LYXX_M0_PRE_INC, attotime_never );
+			timer_adjust( gb_lcd.lcd_timer, ATTOTIME_IN_CYCLES(196 - gb_lcd.scrollx_adjust - gb_lcd.sprite_cycles,0), GB_LCD_STATE_LYXX_M0_PRE_INC, attotime_never );
 			break;
 		case GB_LCD_STATE_LYXX_M0_PRE_INC:	/* Just before incrementing the line counter go to mode 2 internally */
 			if ( CURLINE < 143 ) {
 				gb_lcd.mode = 2;
-				if ( ! gb_lcd.mode_irq ) {
-					if ( ( LCDSTAT & 0x20 ) && ( LCDSTAT & 0x40 ) && ( CMPLINE == CURLINE + 1 ) ) {
-						gb_lcd.mode_irq = 1;
-						cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
+				if ( LCDSTAT & 0x20 ) {
+					if ( ! gb_lcd.mode_irq ) {
+						if ( ! gb_lcd.line_irq && ! gb_lcd.delayed_line_irq ) {
+							gb_lcd.mode_irq = 1;
+							cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
+						}
+					} else {
+						gb_lcd.mode_irq = 0;
 					}
 				}
 			}
@@ -1195,8 +1341,10 @@ static TIMER_CALLBACK(gb_lcd_timer_proc)
 		case GB_LCD_STATE_LYXX_M0_INC:	/* Increment LY, stay in M0 for 4 more cycles */
 			gb_increment_scanline();
 			gb_lcd.delayed_line_irq = gb_lcd.line_irq;
-			gb_lcd.line_irq = ( ( CMPLINE == CURLINE ) && ( LCDSTAT & 0x40 ) ) ? 1 : 0;
-			if ( ! gb_lcd.delayed_line_irq && gb_lcd.line_irq && ! ( LCDSTAT & 0x20 ) ) {
+			gb_lcd.triggering_line_irq = ( ( CMPLINE == CURLINE ) && ( LCDSTAT & 0x40 ) ) ? 1 : 0;
+			gb_lcd.line_irq = 0;
+			if ( ! gb_lcd.mode_irq && ! gb_lcd.delayed_line_irq && gb_lcd.triggering_line_irq && ! ( LCDSTAT & 0x20 ) ) {
+				gb_lcd.line_irq = gb_lcd.triggering_line_irq;
 				cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
 			}
 			/* Reset LY==LYC STAT bit */
@@ -1208,12 +1356,10 @@ static TIMER_CALLBACK(gb_lcd_timer_proc)
 				/* Internally switch to mode 2 */
 				gb_lcd.mode = 2;
 				/* Generate lcd interrupt if requested */
-				if ( ! gb_lcd.mode_irq && ( LCDSTAT & 0x20 ) && 
-					 ( ( ! gb_lcd.line_irq && ! gb_lcd.delayed_line_irq ) || ! ( LCDSTAT & 0x40 ) ) ) {
+				if ( ! gb_lcd.mode_irq && ( LCDSTAT & 0x20 ) &&
+					 ( ( ! gb_lcd.triggering_line_irq && ! gb_lcd.delayed_line_irq ) || ! ( LCDSTAT & 0x40 ) ) ) {
 					gb_lcd.mode_irq = 1;
 					cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
-				} else {
-					gb_lcd.mode_irq = 0;
 				}
 				timer_adjust( gb_lcd.lcd_timer, ATTOTIME_IN_CYCLES(4,0), GB_LCD_STATE_LYXX_M2, attotime_never );
 			}
@@ -1223,7 +1369,7 @@ static TIMER_CALLBACK(gb_lcd_timer_proc)
 			gb_lcd.mode = 2;
 			LCDSTAT = ( LCDSTAT & 0xFC ) | 0x02;
 			/* Generate lcd interrupt if requested */
-			if ( ( LCDSTAT & 0x20 ) && ! gb_lcd.line_irq ) {
+			if ( ( LCDSTAT & 0x20 ) && ! gb_lcd.line_irq && ! gb_lcd.line_irq ) {
 				cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
 			}
 			/* Mode 2 lasts approximately 80 clock cycles */
@@ -1233,10 +1379,11 @@ static TIMER_CALLBACK(gb_lcd_timer_proc)
 			/* Update STAT register to the correct state */
 			LCDSTAT = (LCDSTAT & 0xFC) | 0x02;
 			/* Generate lcd interrupt if requested */
-			if ( ( gb_lcd.delayed_line_irq && gb_lcd.line_irq && ! ( LCDSTAT & 0x20 ) ) ||
+			if ( ( gb_lcd.delayed_line_irq && gb_lcd.triggering_line_irq && ! ( LCDSTAT & 0x20 ) ) ||
 				 ( !gb_lcd.mode_irq && ! gb_lcd.line_irq && ! gb_lcd.delayed_line_irq && ( LCDSTAT & 0x20 ) ) ) {
 				cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
 			}
+			gb_lcd.line_irq = gb_lcd.triggering_line_irq;
 			/* Check if LY==LYC STAT bit should be set */
 			if ( CURLINE == CMPLINE ) {
 				LCDSTAT |= 0x04;
@@ -1246,11 +1393,18 @@ static TIMER_CALLBACK(gb_lcd_timer_proc)
 			break;
 		case GB_LCD_STATE_LYXX_M3:		/* Switch to mode 3 */
 			gb_select_sprites();
+			gb_lcd.sprite_cycles = sprite_cycles[ gb_lcd.sprCount ];
 			/* Set Mode 3 lcdstate */
 			gb_lcd.mode = 3;
 			LCDSTAT = (LCDSTAT & 0xFC) | 0x03;
-			/* Mode 3 lasts for approximately 172+#sprites*10 clock cycles */
-			timer_adjust( gb_lcd.lcd_timer, ATTOTIME_IN_CYCLES(172 + 10 * gb_lcd.sprCount,0), GB_LCD_STATE_LYXX_M0, attotime_never );
+			/* Check for compensations of x-scroll register */
+			if ( ( SCROLLX & 0x07 ) > 2 ) {
+				gb_lcd.scrollx_adjust = 4;
+			} else {
+				gb_lcd.scrollx_adjust = 0;
+			}
+			/* Mode 3 lasts for approximately 172+cycles needed to handle sprites clock cycles */
+			timer_adjust( gb_lcd.lcd_timer, ATTOTIME_IN_CYCLES(168 + gb_lcd.scrollx_adjust + gb_lcd.sprite_cycles,0), GB_LCD_STATE_LYXX_PRE_M0, attotime_never );
 			gb_lcd.start_x = 0;
 			break;
 		case GB_LCD_STATE_LY9X_M1:		/* Switch to or stay in mode 1 */
@@ -1292,28 +1446,27 @@ static TIMER_CALLBACK(gb_lcd_timer_proc)
 				if ( gb_lcd.line_irq ) {
 					cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
 				}
-			} else {
-				gb_lcd.delayed_line_irq = gb_lcd.line_irq;
 			}
+			gb_lcd.delayed_line_irq = gb_lcd.delayed_line_irq | gb_lcd.line_irq;
 			if ( CURLINE == CMPLINE ) {
 				LCDSTAT |= 0x04;
 			}
 			gb_increment_scanline();
-			gb_lcd.line_irq = ( ( CMPLINE == CURLINE ) && ( LCDSTAT & 0x40 ) ) ? 1 : 0;
-//			if ( ! gb_lcd.delayed_line_irq && gb_lcd.line_irq ) {
-//				cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
-//			}
+			gb_lcd.triggering_line_irq = ( ( CMPLINE == CURLINE ) && ( LCDSTAT & 0x40 ) ) ? 1 : 0;
+			gb_lcd.line_irq = 0;
 			LCDSTAT &= 0xFB;
 			timer_adjust( gb_lcd.lcd_timer, ATTOTIME_IN_CYCLES(4/*8*/,0), GB_LCD_STATE_LY00_M1_1, attotime_never );
 			break;
 		case GB_LCD_STATE_LY00_M1_1:
-			if ( ! gb_lcd.delayed_line_irq && gb_lcd.line_irq ) {
+			if ( ! gb_lcd.delayed_line_irq && gb_lcd.triggering_line_irq ) {
+				gb_lcd.line_irq = gb_lcd.triggering_line_irq;
 				cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
 			}
 			timer_adjust( gb_lcd.lcd_timer, ATTOTIME_IN_CYCLES(4,0), GB_LCD_STATE_LY00_M1_2, attotime_never );
 			break;
 		case GB_LCD_STATE_LY00_M1_2:	/* Rest of line #0 during VBlank */
-			if ( gb_lcd.delayed_line_irq && gb_lcd.line_irq ) {
+			if ( gb_lcd.delayed_line_irq && gb_lcd.triggering_line_irq ) {
+				gb_lcd.line_irq = gb_lcd.triggering_line_irq;
 				cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
 			}
 			if ( CURLINE == CMPLINE ) {
@@ -1368,25 +1521,50 @@ READ8_HANDLER( gb_video_r ) {
 	return gb_vid_regs[offset];
 }
 
-/* Ignore write when LCD is on and STAT is 02 or 03 */
-int gb_video_oam_locked( void ) {
-	gb_video_up_to_date();
-	if ( ( LCDCONT & 0x80 ) && ( LCDSTAT & 0x02 ) ) {
+/* Returns true when LCD is on and STAT is 02 */
+INLINE int gb_video_oam_locked( void ) {
+	if ( ( LCDCONT & 0x80 ) && ( ( LCDSTAT & 0x03 ) == 0x02 ) ) {
 		return 1;
 	}
 	return 0;
 }
 
-/* Ignore write when LCD is on and STAT is not 03 */
-int gb_video_vram_locked( void ) {
-	gb_video_up_to_date();
+/* Returns true when LCD is on and STAT is 03 */
+INLINE int gb_video_vram_locked( void ) {
 	if ( ( LCDCONT & 0x80 ) && ( ( LCDSTAT & 0x03 ) == 0x03 ) ) {
 		return 1;
 	}
 	return 0;
 }
 
+READ8_HANDLER( gb_vram_r ) {
+	gb_video_up_to_date();
+	return gb_video_vram_locked() ? 0xFF : gb_vram_ptr[offset];
+}
+
+WRITE8_HANDLER( gb_vram_w ) {
+	gb_video_up_to_date();
+	if ( gb_video_vram_locked() ) {
+		return;
+	}
+	gb_vram_ptr[offset] = data;
+}
+
+READ8_HANDLER( gb_oam_r ) {
+	gb_video_up_to_date();
+	return ( gb_video_oam_locked() || gb_video_vram_locked() ) ? 0xFF : gb_oam[offset];
+}
+
+WRITE8_HANDLER( gb_oam_w ) {
+	gb_video_up_to_date();
+	if ( gb_video_oam_locked() || gb_video_vram_locked() || offset >= 0xa0 ) {
+		return;
+	}
+	gb_oam[offset] = data;
+}
+
 WRITE8_HANDLER ( gb_video_w ) {
+	gb_video_up_to_date();
 	switch (offset) {
 	case 0x00:						/* LCDC - LCD Control */
 		gb_chrgen = gb_vram + ((data & 0x10) ? 0x0000 : 0x0800);
@@ -1411,14 +1589,33 @@ WRITE8_HANDLER ( gb_video_w ) {
 		   interrupt to be triggered.
 		 */
 		if ( LCDCONT & 0x80 ) {
-			/* Are these triggers correct? */
-			if ( ( gb_lcd.mode != 2 ) || ( ! ( data & 0x40 ) && ! ( LCDSTAT & 0x40 ) ) ) {
+			/* Triggers seen so far:
+			   - 0x40 -> 0x00 - trigger
+			   - 0x00 -> 0x08 - trigger
+			   - 0x08 -> 0x00 - don't trigger
+			   - 0x00 -> 0x20 (mode 3) - trigger
+			   - 0x00 -> 0x60 (mode 2) - don't trigger
+			   - 0x20 -> 0x60 (mode 3) - trigger
+			   - 0x20 -> 0x40 (mode 3) - trigger
+			   - 0x40 -> 0x20 (mode 2) - don't trigger
+			   - 0x40 -> 0x08 (mode 0) - don't trigger
+			   - 0x00 -> 0x40 - trigger only if LY==LYC
+			*/
+			if ( ! gb_lcd.mode_irq && ( ( gb_lcd.mode == 1 ) ||
+				( ( LCDSTAT & 0x40 ) && ! ( data & 0x68 ) ) ||
+				( ! ( LCDSTAT & 0x40 ) && ( data & 0x40 ) && ( LCDSTAT & 0x04 ) ) ||
+				( ! ( LCDSTAT & 0x48 ) && ( data & 0x08 ) ) ||
+				( ( LCDSTAT & 0x60 ) == 0x00 && ( data & 0x60 ) == 0x20 ) ||
+				( ( LCDSTAT & 0x60 ) == 0x20 && ( data & 0x40 ) )
+				) ) {
 				cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
 			}
-			if ( ! ( LCDSTAT & 0x40 ) && ( data & 0x40 ) ) {
-				if ( LCDSTAT & 0x04 ) {
-					cpunum_set_input_line( 0, LCD_INT, HOLD_LINE );
-				}
+			/*
+			   - 0x20 -> 0x08/0x18/0x28/0x48 (mode 0, after m2int) - trigger
+			   - 0x20 -> 0x00/0x10/0x20/0x40 (mode 0, after m2int) - trigger (stat bug)
+			*/
+			if ( gb_lcd.mode_irq && gb_lcd.mode == 0 && ( LCDSTAT & 0x20 ) == 0x20 ) {
+				cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
 			}
 		}
 		break;
@@ -1434,6 +1631,7 @@ WRITE8_HANDLER ( gb_video_w ) {
 				}
 			} else {
 				LCDSTAT &= 0xFB;
+				gb_lcd.triggering_line_irq = 0;
 			}
 		}
 		break;
@@ -1482,27 +1680,36 @@ WRITE8_HANDLER ( gbc_video_w ) {
 	static const UINT16 gbc_to_gb_pal[4] = {32767, 21140, 10570, 0};
 	static UINT16 BP = 0, OP = 0;
 
+	gb_video_up_to_date();
 	switch( offset ) {
 	case 0x00:      /* LCDC - LCD Control */
-		gb_chrgen = GBC_VRAMMap[0] + ((data & 0x10) ? 0x0000 : 0x0800);
-		gbc_chrgen = GBC_VRAMMap[1] + ((data & 0x10) ? 0x0000 : 0x0800);
+		gb_chrgen = gb_vram + ((data & 0x10) ? 0x0000 : 0x0800);
+		gbc_chrgen = gb_vram + ((data & 0x10) ? 0x2000 : 0x2800);
 		gb_tile_no_mod = (data & 0x10) ? 0x00 : 0x80;
-		gb_bgdtab = GBC_VRAMMap[0] + ((data & 0x08) ? 0x1C00 : 0x1800);
-		gbc_bgdtab = GBC_VRAMMap[1] + ((data & 0x08) ? 0x1C00 : 0x1800);
-		gb_wndtab = GBC_VRAMMap[0] + ((data & 0x40) ? 0x1C00 : 0x1800);
-		gbc_wndtab = GBC_VRAMMap[1] + ((data & 0x40) ? 0x1C00 : 0x1800);
+		gb_bgdtab = gb_vram + ((data & 0x08) ? 0x1C00 : 0x1800);
+		gbc_bgdtab = gb_vram + ((data & 0x08) ? 0x3C00 : 0x3800);
+		gb_wndtab = gb_vram + ((data & 0x40) ? 0x1C00 : 0x1800);
+		gbc_wndtab = gb_vram + ((data & 0x40) ? 0x3C00 : 0x3800);
 		/* if LCD controller is switched off, set STAT to 00 */
 		if ( ! ( data & 0x80 ) ) {
 			LCDSTAT &= ~0x03;
 			CURLINE = 0;
 		}
-                /* If LCD is being switched on */
-                if ( !( LCDCONT & 0x80 ) && ( data & 0x80 ) ) {
+		/* If LCD is being switched on */
+		if ( !( LCDCONT & 0x80 ) && ( data & 0x80 ) ) {
 			gb_lcd_switch_on();
-                }
+		}
 		break;
 	case 0x01:      /* STAT - LCD Status */
 		data = 0x80 | (data & 0x78) | (LCDSTAT & 0x07);
+		if ( LCDCONT & 0x80 ) {
+			/*
+			   - 0x20 -> 0x08/0x18/0x28/0x48 (mode 0, after m2int) - trigger
+			*/
+			if ( gb_lcd.mode_irq && gb_lcd.mode == 0 && ( LCDSTAT & 0x28 ) == 0x20 && ( data & 0x08 ) ) {
+				cpunum_set_input_line(0, LCD_INT, HOLD_LINE);
+			}
+		}
 		break;
 	case 0x07:      /* BGP - GB background palette */
 		/* Some GBC games are lazy and still call this */
@@ -1531,6 +1738,10 @@ WRITE8_HANDLER ( gbc_video_w ) {
 			cgb_spal[6] = gbc_to_gb_pal[(data & 0x30) >> 4];
 			cgb_spal[7] = gbc_to_gb_pal[(data & 0xC0) >> 6];
 		}
+		break;
+	case 0x0F:		/* VBK - VRAM bank select */
+		gb_vram_ptr = gb_vram + ( data & 0x01 ) * 0x2000;
+		data |= 0xFE;
 		break;
 	case 0x11:      /* HDMA1 - HBL General DMA - Source High */
 		break;

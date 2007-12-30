@@ -198,17 +198,17 @@ static const gfx_layout comquest_charlayout =
         8*8
 };
 
-static GFXDECODE_START( comquest_gfxdecodeinfo )
+static GFXDECODE_START( comquest )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, comquest_charlayout, 0, 2 )
 GFXDECODE_END
 
-static unsigned char comquest_palette[] =
+static const unsigned char comquest_palette[] =
 {
 	0, 0, 0,
 	255,255,255
 };
 
-static unsigned short comquest_colortable[1][2] = {
+static const unsigned short comquest_colortable[1][2] = {
 	{ 0, 1 },
 };
 
@@ -224,7 +224,7 @@ static MACHINE_RESET( comquest )
 //	memory_set_bankptr(1,mem+0x00000);
 }
 
-UINT32 amask= 0xffff;
+static const UINT32 amask= 0xffff;
 
 
 static MACHINE_DRIVER_START( comquest )
@@ -270,7 +270,7 @@ static MACHINE_DRIVER_START( comquest )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*4, 128)	/* 160 x 102 */
 	MDRV_SCREEN_VISIBLE_AREA(0, 64*4-1, 0, 128-1)
-	MDRV_GFXDECODE( comquest_gfxdecodeinfo )
+	MDRV_GFXDECODE( comquest )
 	MDRV_PALETTE_LENGTH( sizeof(comquest_palette) / 3)
 	MDRV_COLORTABLE_LENGTH( sizeof(comquest_colortable) / sizeof(comquest_colortable[0][0]) )
 	MDRV_PALETTE_INIT( comquest )

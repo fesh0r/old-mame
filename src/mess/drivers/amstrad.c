@@ -78,6 +78,7 @@ Some bugs left :
 #include "inputx.h"
 #include "mslegacy.h"
 #include "sound/ay8910.h"
+#include "formats/tzx_cas.h"
 
 #ifdef AMSTRAD_VIDEO_EVENT_LIST
 /* for event list */
@@ -96,18 +97,18 @@ Some bugs left :
 // This is the sequence for unlocking the ASIC in the CPC+/GX4000
 // These are outed to port &bc00, after syncing the lock by outing a non-zero value then a zero to &bc00
 // To lock the ASIC again, repeat the sequence without the last &ee
-unsigned char asic_unlock_seq[15] =
+static const unsigned char asic_unlock_seq[15] =
 {
 	0xff, 0x77, 0xb3, 0x51, 0xa8, 0xd4, 0x62, 0x39, 0x9c, 0x46, 0x2b, 0x15, 0x8a, 0xcd, 0xee
 };
 
 int amstrad_system_type;
-int amstrad_plus_lower;  // CPC+/GX4000 cartridge bank loaded in lower ROM area
-int amstrad_plus_lower_addr;  // CPC+/GX4000 lower ROM area address / ASIC register page enable
-int amstrad_plus_lower_enabled;  // secondary lower ROM select in use?
+static int amstrad_plus_lower;  // CPC+/GX4000 cartridge bank loaded in lower ROM area
+static int amstrad_plus_lower_addr;  // CPC+/GX4000 lower ROM area address / ASIC register page enable
+static int amstrad_plus_lower_enabled;  // secondary lower ROM select in use?
 int amstrad_plus_asic_enabled;  // ASIC enabled
-int amstrad_plus_asic_regpage;  // ASIC register page enabled
-int amstrad_plus_asic_seqptr;   // current position in the ASIC unlocking sequence
+static int amstrad_plus_asic_regpage;  // ASIC register page enabled
+static int amstrad_plus_asic_seqptr;   // current position in the ASIC unlocking sequence
 int amstrad_plus_pri;  // Programmable raster interrupt, 0=disabled.
 int amstrad_plus_irq_cause;  // part of the interrupt vector for IM 2.  6 = raster IRQ, 4 = DMA channel 2, 2 = DMA channel 1, 0 = DMA channel 0
 int amstrad_plus_scroll_x;  // soft scroll - horizontal (0-15), in mode 2 pixels
@@ -118,12 +119,12 @@ int amstrad_plus_dma_0_addr;   // DMA channel address
 int amstrad_plus_dma_1_addr;
 int amstrad_plus_dma_2_addr;
 int amstrad_plus_dma_prescaler[3];  // DMA channel prescaler
-int amstrad_plus_dma_clear;  // set if DMA interrupts are to be cleared automatically
+static int amstrad_plus_dma_clear;  // set if DMA interrupts are to be cleared automatically
 
 extern int amstrad_scanline;
 extern int prev_reg;
 
-void amstrad_plus_seqcheck(int data);
+static void amstrad_plus_seqcheck(int data);
 static WRITE8_HANDLER( amstrad_plus_asic_4000_w );
 static WRITE8_HANDLER( amstrad_plus_asic_6000_w );
 static READ8_HANDLER( amstrad_plus_asic_4000_r );
@@ -153,7 +154,7 @@ static unsigned char previous_printer_data_byte;
 static unsigned char *Amstrad_UpperRom;
 /* There are 8 different ram configurations which work on the currently selected 64k logical block.
    The following tables show the possible ram configurations :*/
-static int RamConfigurations[8 * 4] =
+static const int RamConfigurations[8 * 4] =
 {
 	0, 1, 2, 3, 					   /* config 0 */
 	0, 1, 2, 7, 					   /* config 1 */
@@ -337,7 +338,7 @@ static WRITE8_HANDLER ( amstrad_ppi_portc_w )
 /* -----------------------------
    - amstrad_ppi8255_interface -
    -----------------------------*/
-static ppi8255_interface amstrad_ppi8255_interface =
+static const ppi8255_interface amstrad_ppi8255_interface =
 {
 	1,                       /* number of PPIs to emulate */
 	{amstrad_ppi_porta_r},   /* port A read */
@@ -349,7 +350,7 @@ static ppi8255_interface amstrad_ppi8255_interface =
 };
 
 /* Amstrad NEC765 interface doesn't use interrupts or DMA! */
-static nec765_interface amstrad_nec765_interface =
+static const nec765_interface amstrad_nec765_interface =
 {
 	NULL,
 	NULL
@@ -458,7 +459,7 @@ void amstrad_setUpperRom(void)
 	}
 }
 
-void AmstradCPC_SetLowerRom(int Data)
+static void AmstradCPC_SetLowerRom(int Data)
 {
 	if(amstrad_plus_asic_enabled != 0)
 	{
@@ -1245,7 +1246,7 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 }
 
 // Handler for checking the ASIC unlocking sequence
-void amstrad_plus_seqcheck(int data)
+static void amstrad_plus_seqcheck(int data)
 {
 	static int prev_data;
 
@@ -1604,7 +1605,7 @@ void amstrad_reset_machine(void)
 	multiface_reset();
 }
 
-void kccomp_reset_machine(void)
+static void kccomp_reset_machine(void)
 {
 	/* enable lower rom (OS rom) */
 	amstrad_GateArray_write(0x089);
@@ -1614,7 +1615,7 @@ void kccomp_reset_machine(void)
 }
 
 /* the following timings have been measured! */
-static UINT8 amstrad_cycle_table_op[256] = {
+static const UINT8 amstrad_cycle_table_op[256] = {
 	 4, 12,  8,  8,  4,  4,  8,  4,  4, 12,  8,  8,  4,  4,  8,  4,
 	12, 12,  8,  8,  4,  4,  8,  4, 12, 12,  8,  8,  4,  4,  8,  4,
 	 8, 12, 20,  8,  4,  4,  8,  4,  8, 12, 20,  8,  4,  4,  8,  4,
@@ -1633,7 +1634,7 @@ static UINT8 amstrad_cycle_table_op[256] = {
 	 8, 12, 12,  4, 12, 16,  8, 16,  8,  8, 12,  4, 12,  4,  8, 16
 };
 
-static UINT8 amstrad_cycle_table_cb[256]=
+static const UINT8 amstrad_cycle_table_cb[256]=
 {
 	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
 	 4,  4,  4,  4,  4,  4, 12,  4,  4,  4,  4,  4,  4,  4, 12,  4,
@@ -1654,7 +1655,7 @@ static UINT8 amstrad_cycle_table_cb[256]=
 };
 
 
-static UINT8 amstrad_cycle_table_ed[256]=
+static const UINT8 amstrad_cycle_table_ed[256]=
 {
 	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
 	 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,
@@ -1675,7 +1676,7 @@ static UINT8 amstrad_cycle_table_ed[256]=
 };
 
 
-static UINT8 amstrad_cycle_table_xy[256]=
+static const UINT8 amstrad_cycle_table_xy[256]=
 {
 	 4, 12,  8,  8,  4,  4,  8,  4,  4, 12,  8,  8,  4,  4,  8,  4,
 	12, 12,  8,  8,  4,  4,  8,  4, 12, 12,  8,  8,  4,  4,  8,  4,
@@ -1695,7 +1696,7 @@ static UINT8 amstrad_cycle_table_xy[256]=
 	 8, 12, 12,  4, 12, 16,  8, 16,  8,  8, 12,  4, 12,  4,  8, 16
 };
 
-static UINT8 amstrad_cycle_table_xycb[256]=
+static const UINT8 amstrad_cycle_table_xycb[256]=
 {
 	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
 	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
@@ -1715,7 +1716,7 @@ static UINT8 amstrad_cycle_table_xycb[256]=
 	20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20
 };
 
-static UINT8 amstrad_cycle_table_ex[256]=
+static const UINT8 amstrad_cycle_table_ex[256]=
 {
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 	 4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -1807,8 +1808,8 @@ static void amstrad_common_init(void)
 The CRTC generates a memory address using it's MA and RA signal outputs
 The Gate-Array fetches two bytes for each address*/
 
-//	timer_pulse(ATTOTIME_IN_USEC(AMSTRAD_US_PER_SCANLINE), 0, amstrad_vh_execute_crtc_cycles);
-	timer_pulse(ATTOTIME_IN_USEC(1), 0, amstrad_vh_execute_crtc_cycles_callback);
+//	timer_pulse(ATTOTIME_IN_USEC(AMSTRAD_US_PER_SCANLINE), NULL, 0, amstrad_vh_execute_crtc_cycles);
+	timer_pulse(ATTOTIME_IN_USEC(1), NULL, 0, amstrad_vh_execute_crtc_cycles_callback);
 
 	/* The opcode timing in the Amstrad is different to the opcode
 	timing in the core for the Z80 CPU.
@@ -1820,12 +1821,12 @@ The Gate-Array fetches two bytes for each address*/
 
 	/* Using the cool code Juergen has provided, I will override
 	the timing tables with the values for the amstrad */
-	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_op, amstrad_cycle_table_op);
-	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_cb, amstrad_cycle_table_cb);
-	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_ed, amstrad_cycle_table_ed);
-	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_xy, amstrad_cycle_table_xy);
-	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_xycb, amstrad_cycle_table_xycb);
-	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_ex, amstrad_cycle_table_ex);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_op, (void*)amstrad_cycle_table_op);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_cb, (void*)amstrad_cycle_table_cb);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_ed, (void*)amstrad_cycle_table_ed);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_xy, (void*)amstrad_cycle_table_xy);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_xycb, (void*)amstrad_cycle_table_xycb);
+	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_ex, (void*)amstrad_cycle_table_ex);
 
 	/* Juergen is a cool dude! */
 	cpunum_set_irq_callback(0, amstrad_cpu_acknowledge_int);
@@ -1982,7 +1983,7 @@ static INPUT_PORTS_START( amstrad_keyboard )
 	/* keyboard line 1 */
 	PORT_START_TAG("keyboard_row_1")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x87\xA6")          PORT_CODE(KEYCODE_LEFT)       PORT_CHAR(UCHAR_MAMEKEY(LEFT))
-	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Copy")                  PORT_CODE(KEYCODE_HOME)       PORT_CHAR(UCHAR_MAMEKEY(END))
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Copy")                  PORT_CODE(KEYCODE_END)        PORT_CHAR(UCHAR_MAMEKEY(END))
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad 7")              PORT_CODE(KEYCODE_7_PAD)      PORT_CHAR(UCHAR_MAMEKEY(7_PAD))
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad 8")              PORT_CODE(KEYCODE_8_PAD)      PORT_CHAR(UCHAR_MAMEKEY(8_PAD))
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad 5")              PORT_CODE(KEYCODE_5_PAD)      PORT_CHAR(UCHAR_MAMEKEY(5_PAD))
@@ -2004,9 +2005,9 @@ static INPUT_PORTS_START( amstrad_keyboard )
 
 	/* keyboard row 3 */
 	PORT_START_TAG("keyboard_row_3")
-	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x91 \xC2\xA3") PORT_CODE(KEYCODE_EQUALS)     PORT_CHAR('^') PORT_CHAR('\xa3')
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x91 \xC2\xA3") PORT_CODE(KEYCODE_EQUALS)     PORT_CHAR('^') PORT_CHAR(0xa3)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_MINUS)      PORT_CHAR('-') PORT_CHAR('=')
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_OPENBRACE)  PORT_CHAR('@') PORT_CHAR('|')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("@ \xC2\xA6")            PORT_CODE(KEYCODE_OPENBRACE)  PORT_CHAR('@') PORT_CHAR('|')
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_P)          PORT_CHAR('p') PORT_CHAR('P')
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_QUOTE)      PORT_CHAR(';') PORT_CHAR('+')
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_COLON)      PORT_CHAR(':') PORT_CHAR('*')
@@ -2163,15 +2164,160 @@ As far as I know, the KC compact used HD6845S only.
 
 INPUT_PORTS_END
 
-static INPUT_PORTS_START(amstrad)
-
+static INPUT_PORTS_START(cpc464)
 	PORT_INCLUDE( amstrad_keyboard )
 	PORT_INCLUDE( crtc_links )
+INPUT_PORTS_END
 
+static INPUT_PORTS_START(cpc664)
+	PORT_INCLUDE( amstrad_keyboard )
+
+	PORT_MODIFY("keyboard_row_0")
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f9")             PORT_CODE(KEYCODE_9_PAD)      PORT_CHAR(UCHAR_MAMEKEY(9_PAD))
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f6")             PORT_CODE(KEYCODE_6_PAD)      PORT_CHAR(UCHAR_MAMEKEY(6_PAD))
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f3")             PORT_CODE(KEYCODE_3_PAD)      PORT_CHAR(UCHAR_MAMEKEY(3_PAD))
+
+	PORT_MODIFY("keyboard_row_1")
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f7")             PORT_CODE(KEYCODE_7_PAD)      PORT_CHAR(UCHAR_MAMEKEY(7_PAD))
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f8")             PORT_CODE(KEYCODE_8_PAD)      PORT_CHAR(UCHAR_MAMEKEY(8_PAD))
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f5")             PORT_CODE(KEYCODE_5_PAD)      PORT_CHAR(UCHAR_MAMEKEY(5_PAD))
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f1")             PORT_CODE(KEYCODE_1_PAD)      PORT_CHAR(UCHAR_MAMEKEY(1_PAD))
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f2")             PORT_CODE(KEYCODE_2_PAD)      PORT_CHAR(UCHAR_MAMEKEY(2_PAD))
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f0")             PORT_CODE(KEYCODE_0_PAD)      PORT_CHAR(UCHAR_MAMEKEY(0_PAD))
+
+	PORT_MODIFY("keyboard_row_2")
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR('[') PORT_CHAR('{')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_BACKSLASH)  PORT_CHAR(']') PORT_CHAR('}')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f4")             PORT_CODE(KEYCODE_4_PAD)      PORT_CHAR(UCHAR_MAMEKEY(4_PAD))
+
+	PORT_INCLUDE( crtc_links )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START(cpc6128)
+	PORT_INCLUDE( amstrad_keyboard )
+
+	PORT_MODIFY("keyboard_row_0")
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f9")                    PORT_CODE(KEYCODE_9_PAD)      PORT_CHAR(UCHAR_MAMEKEY(9_PAD))
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f6")                    PORT_CODE(KEYCODE_6_PAD)      PORT_CHAR(UCHAR_MAMEKEY(6_PAD))
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f3")                    PORT_CODE(KEYCODE_3_PAD)      PORT_CHAR(UCHAR_MAMEKEY(3_PAD))
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Enter")                 PORT_CODE(KEYCODE_RALT)       PORT_CHAR(UCHAR_MAMEKEY(ENTER_PAD))
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(".")                     PORT_CODE(KEYCODE_DEL_PAD)    PORT_CHAR(UCHAR_MAMEKEY(DEL_PAD))
+
+	PORT_MODIFY("keyboard_row_1")
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Copy")                  PORT_CODE(KEYCODE_LALT)       PORT_CHAR(UCHAR_MAMEKEY(END))
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f7")                    PORT_CODE(KEYCODE_7_PAD)      PORT_CHAR(UCHAR_MAMEKEY(7_PAD))
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f8")                    PORT_CODE(KEYCODE_8_PAD)      PORT_CHAR(UCHAR_MAMEKEY(8_PAD))
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f5")                    PORT_CODE(KEYCODE_5_PAD)      PORT_CHAR(UCHAR_MAMEKEY(5_PAD))
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f1")                    PORT_CODE(KEYCODE_1_PAD)      PORT_CHAR(UCHAR_MAMEKEY(1_PAD))
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f2")                    PORT_CODE(KEYCODE_2_PAD)      PORT_CHAR(UCHAR_MAMEKEY(2_PAD))
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f0")                    PORT_CODE(KEYCODE_0_PAD)      PORT_CHAR(UCHAR_MAMEKEY(0_PAD))
+
+	PORT_MODIFY("keyboard_row_2")
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR('[') PORT_CHAR('{')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Return")                PORT_CODE(KEYCODE_ENTER)      PORT_CHAR(13)
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_BACKSLASH)  PORT_CHAR(']') PORT_CHAR('}')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f4")                    PORT_CODE(KEYCODE_4_PAD)      PORT_CHAR(UCHAR_MAMEKEY(4_PAD))
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_RCONTROL)   PORT_CHAR('\\') PORT_CHAR('`')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Control")               PORT_CODE(KEYCODE_LCONTROL)   PORT_CHAR(UCHAR_SHIFT_2)
+
+	PORT_INCLUDE( crtc_links )
+INPUT_PORTS_END
+
+/* This CPC6128 sold in France has the AZERTY layout. Reference: http://amstrad.cpc.free.fr/amstrad/cpc6128.htm */
+static INPUT_PORTS_START(cpc6128f)
+	PORT_INCLUDE( amstrad_keyboard )
+
+	PORT_MODIFY("keyboard_row_0")
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f9")                    PORT_CODE(KEYCODE_9_PAD)      PORT_CHAR(UCHAR_MAMEKEY(9_PAD))
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f6")                    PORT_CODE(KEYCODE_6_PAD)      PORT_CHAR(UCHAR_MAMEKEY(6_PAD))
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f3")                    PORT_CODE(KEYCODE_3_PAD)      PORT_CHAR(UCHAR_MAMEKEY(3_PAD))
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Enter")                 PORT_CODE(KEYCODE_RALT)       PORT_CHAR(UCHAR_MAMEKEY(ENTER_PAD))
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(".")                     PORT_CODE(KEYCODE_DEL_PAD)    PORT_CHAR(UCHAR_MAMEKEY(DEL_PAD))
+
+	PORT_MODIFY("keyboard_row_1")
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Copy")                  PORT_CODE(KEYCODE_LALT)       PORT_CHAR(UCHAR_MAMEKEY(END))
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f7")                    PORT_CODE(KEYCODE_7_PAD)      PORT_CHAR(UCHAR_MAMEKEY(7_PAD))
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f8")                    PORT_CODE(KEYCODE_8_PAD)      PORT_CHAR(UCHAR_MAMEKEY(8_PAD))
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f5")                    PORT_CODE(KEYCODE_5_PAD)      PORT_CHAR(UCHAR_MAMEKEY(5_PAD))
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f1")                    PORT_CODE(KEYCODE_1_PAD)      PORT_CHAR(UCHAR_MAMEKEY(1_PAD))
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f2")                    PORT_CODE(KEYCODE_2_PAD)      PORT_CHAR(UCHAR_MAMEKEY(2_PAD))
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f0")                    PORT_CODE(KEYCODE_0_PAD)      PORT_CHAR(UCHAR_MAMEKEY(0_PAD))
+
+	PORT_MODIFY("keyboard_row_2")
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR('*') PORT_CHAR('<')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Return")                PORT_CODE(KEYCODE_ENTER)      PORT_CHAR(13)
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_BACKSLASH)  PORT_CHAR('#') PORT_CHAR('>')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f4")                    PORT_CODE(KEYCODE_4_PAD)      PORT_CHAR(UCHAR_MAMEKEY(4_PAD))
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_RCONTROL)   PORT_CHAR('$') PORT_CHAR('@') PORT_CHAR('\\')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Control")               PORT_CODE(KEYCODE_LCONTROL)   PORT_CHAR(UCHAR_SHIFT_2)
+
+	PORT_MODIFY("keyboard_row_3")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_EQUALS)     PORT_CHAR('-') PORT_CHAR('_')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_MINUS)      PORT_CHAR(')') PORT_CHAR('[')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("^   \xC2\xA6")          PORT_CODE(KEYCODE_OPENBRACE)  PORT_CHAR('^') PORT_CHAR('|')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\xB9   %")          PORT_CODE(KEYCODE_QUOTE)      PORT_CHAR(0xF9) PORT_CHAR('%')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_COLON)      PORT_CHAR('m') PORT_CHAR('M')
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_SLASH)      PORT_CHAR('=') PORT_CHAR('+')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_STOP)       PORT_CHAR(':') PORT_CHAR('/')
+
+	PORT_MODIFY("keyboard_row_4")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\xA0   0")          PORT_CODE(KEYCODE_0)          PORT_CHAR(0xE0) PORT_CHAR('0')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\xA7   9")          PORT_CODE(KEYCODE_9)          PORT_CHAR(0xE7) PORT_CHAR('9')
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_M)          PORT_CHAR(',') PORT_CHAR('?')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_COMMA)      PORT_CHAR(';') PORT_CHAR('.')
+
+	PORT_MODIFY("keyboard_row_5")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_8)          PORT_CHAR('!') PORT_CHAR('8')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\xA9   7")          PORT_CODE(KEYCODE_7)          PORT_CHAR(0xE8) PORT_CHAR('7')
+
+	PORT_MODIFY("keyboard_row_6")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_6)          PORT_CHAR(']') PORT_CHAR('6')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_5)          PORT_CHAR('(') PORT_CHAR('5')
+
+	PORT_MODIFY("keyboard_row_7")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_4)          PORT_CHAR('\'') PORT_CHAR('4')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_3)          PORT_CHAR('\"') PORT_CHAR('3')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_W)          PORT_CHAR('z') PORT_CHAR('Z')
+
+	PORT_MODIFY("keyboard_row_8")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_1)          PORT_CHAR('&') PORT_CHAR('1')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\xA9   2   ~")      PORT_CODE(KEYCODE_2)          PORT_CHAR(0xE9) PORT_CHAR('2') PORT_CHAR('~')
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_Q)          PORT_CHAR('a') PORT_CHAR('A')
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_A)          PORT_CHAR('q') PORT_CHAR('Q')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_Z)          PORT_CHAR('w') PORT_CHAR('W')
+
+	PORT_INCLUDE( crtc_links )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START(kccomp)
+// The BIOS of the KC Compact would be able to recognize the keypresses generated by f5-f9. Unfortunately
+// these keys are not present on the keyboard! Reference: http://www.cepece.info/amstrad/docs/kcc/kcc01.jpg
 	PORT_INCLUDE( amstrad_keyboard )
+
+	PORT_MODIFY("keyboard_row_0")
+	PORT_BIT(0x08, 0x08, IPT_UNUSED)
+	PORT_BIT(0x10, 0x10, IPT_UNUSED)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f3")                    PORT_CODE(KEYCODE_3_PAD)      PORT_CHAR(UCHAR_MAMEKEY(3_PAD))
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Enter")                 PORT_CODE(KEYCODE_LCONTROL)   PORT_CHAR(UCHAR_MAMEKEY(ENTER_PAD))
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(".")                     PORT_CODE(KEYCODE_DEL_PAD)    PORT_CHAR(UCHAR_MAMEKEY(DEL_PAD))
+
+	PORT_MODIFY("keyboard_row_1")
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Copy")                  PORT_CODE(KEYCODE_RALT)       PORT_CHAR(UCHAR_MAMEKEY(END))
+	PORT_BIT(0x04, 0x04, IPT_UNUSED)
+	PORT_BIT(0x08, 0x08, IPT_UNUSED)
+	PORT_BIT(0x10, 0x10, IPT_UNUSED)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f1")                    PORT_CODE(KEYCODE_1_PAD)      PORT_CHAR(UCHAR_MAMEKEY(1_PAD))
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f2")                    PORT_CODE(KEYCODE_2_PAD)      PORT_CHAR(UCHAR_MAMEKEY(2_PAD))
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f0")                    PORT_CODE(KEYCODE_0_PAD)      PORT_CHAR(UCHAR_MAMEKEY(0_PAD))
+
+	PORT_MODIFY("keyboard_row_2")
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR('[') PORT_CHAR('{')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Return")                PORT_CODE(KEYCODE_ENTER)      PORT_CHAR(13)
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_BACKSLASH)  PORT_CHAR(']') PORT_CHAR('}')
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f4")                    PORT_CODE(KEYCODE_4_PAD)      PORT_CHAR(UCHAR_MAMEKEY(4_PAD))
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_RCONTROL)   PORT_CHAR('\\') PORT_CHAR('`')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Control")               PORT_CODE(KEYCODE_LALT)       PORT_CHAR(UCHAR_SHIFT_2)
+
 INPUT_PORTS_END
 
 static INPUT_PORTS_START(plus)
@@ -2244,7 +2390,7 @@ INPUT_PORTS_END
 /* --------------------
    - AY8910_interface -
    --------------------*/
-static struct AY8910interface ay8912_interface =
+static const struct AY8910interface ay8912_interface =
 {
 	amstrad_psg_porta_read,	/* portA read */
 	amstrad_psg_porta_read,	/* portB read */
@@ -2264,7 +2410,7 @@ static const gfx_layout asic_sprite_layout =
 	16*16*8
 };
 
-static GFXDECODE_START( asic_sprite_gfxdecodeinfo )
+static GFXDECODE_START( asic_sprite )
 	GFXDECODE_ENTRY( REGION_USER1, 0, asic_sprite_layout, 32, 1 )
 GFXDECODE_END
 
@@ -2336,7 +2482,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( cpcplus )
 	MDRV_IMPORT_FROM( amstrad )
 	MDRV_SCREEN_REFRESH_RATE( AMSTRAD_FPS )
-	MDRV_GFXDECODE( asic_sprite_gfxdecodeinfo )
+	MDRV_GFXDECODE( asic_sprite )
 	MDRV_MACHINE_START( plus )
 	MDRV_MACHINE_RESET( plus )
 	MDRV_SCREEN_SIZE(800, 312)
@@ -2376,6 +2522,7 @@ static void cpc6128_cassette_getinfo(const device_class *devclass, UINT32 state,
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_COUNT:							info->i = 1; break;
 		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
+		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *)cdt_cassette_formats; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
@@ -2413,7 +2560,7 @@ static void cpcplus_cartslot_getinfo(const device_class *devclass, UINT32 state,
 		case DEVINFO_PTR_LOAD:							info->load = device_load_amstrad_plus_cartridge; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cpr"); break;
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cpr,bin"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
@@ -2517,12 +2664,12 @@ ROM_START(gx4000)
 	ROM_REGION(0x4000, REGION_USER1,0)
 ROM_END
 
-/*      YEAR  NAME    PARENT	COMPAT  MACHINE    INPUT    INIT    CONFIG,  COMPANY               FULLNAME */
-COMP( 1984, cpc464,   0,		0,		amstrad,  amstrad,	0,		cpc6128, "Amstrad plc", "Amstrad CPC464", 0)
-COMP( 1985, cpc664,   cpc464,	0,		amstrad,  amstrad,	0,	    cpc6128, "Amstrad plc", "Amstrad CPC664", 0)
-COMP( 1985, cpc6128,  cpc464,	0,		amstrad,  amstrad,	0,	    cpc6128, "Amstrad plc", "Amstrad CPC6128", 0)
-COMP( 1985, cpc6128f, cpc464,   0,      amstrad,  amstrad, 0, cpc6128, "Amstrad plc", "Amstrad CPC6128 Azerty French Keyboard", 0)
-COMP( 1990, cpc464p,  0,		0,		cpcplus,  plus,	0,	    cpcplus, "Amstrad plc", "Amstrad CPC464+", 0)
-COMP( 1990, cpc6128p, 0,		0,		cpcplus,  plus,	0,	    cpcplus, "Amstrad plc", "Amstrad CPC6128+", 0)
-COMP( 1989, kccomp,   cpc464,	0,		kccomp,   kccomp,	0,	    cpc6128, "VEB Mikroelektronik", "KC Compact", 0)
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE  INPUT     INIT CONFIG   COMPANY                FULLNAME */
+COMP( 1984, cpc464,   0,        0,      amstrad, cpc464,   0,   cpc6128, "Amstrad plc",         "Amstrad CPC464", 0)
+COMP( 1985, cpc664,   cpc464,   0,      amstrad, cpc664,   0,   cpc6128, "Amstrad plc",         "Amstrad CPC664", 0)
+COMP( 1985, cpc6128,  cpc464,   0,      amstrad, cpc6128,  0,   cpc6128, "Amstrad plc",         "Amstrad CPC6128", 0)
+COMP( 1985, cpc6128f, cpc464,   0,      amstrad, cpc6128f, 0,   cpc6128, "Amstrad plc",         "Amstrad CPC6128 (France, AZERTY Keyboard)", 0)
+COMP( 1990, cpc464p,  0,        0,      cpcplus, plus,     0,   cpcplus, "Amstrad plc",         "Amstrad CPC464+", 0)
+COMP( 1990, cpc6128p, 0,        0,      cpcplus, plus,     0,   cpcplus, "Amstrad plc",         "Amstrad CPC6128+", 0)
+COMP( 1989, kccomp,   cpc464,   0,      kccomp,  kccomp,   0,   cpc6128, "VEB Mikroelektronik", "KC Compact", 0)
 

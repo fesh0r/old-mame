@@ -42,7 +42,7 @@ struct msm8251
 	UINT8 mode_byte;
 
 	/* data being received */
-	UINT8 data;	
+	UINT8 data;
 
 	/* receive reg */
 	struct serial_receive_register receive_reg;
@@ -63,6 +63,8 @@ struct msm8251
 /* reading and writing data register share the same address,
 and reading status and writing control share the same address */
 
+/*----------- defined in machine/msm8251.c -----------*/
+
 /* read data register */
  READ8_HANDLER(msm8251_data_r);
 /* read status register */
@@ -74,7 +76,7 @@ WRITE8_HANDLER(msm8251_control_w);
 
 
 /* init chip, set interface, and do main setup */
-void msm8251_init(struct msm8251_interface *);
+void msm8251_init(const struct msm8251_interface *);
 /* reset the chip */
 void msm8251_reset(void);
 

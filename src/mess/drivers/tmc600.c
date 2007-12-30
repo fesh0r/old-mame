@@ -112,25 +112,25 @@ static WRITE8_HANDLER( vismac_data_w )
 		// set character color
 		vismac_color_latch = data;
 		break;
-	
+
 	case 0x30:
 		// write cdp1869 command on the data bus
 		vismac_bkg_latch = data & 0x07;
 		cdp1869_out3_w(0, data);
 		break;
-	
+
 	case 0x40:
 		cdp1869_out4_w(0, data);
 		break;
-	
+
 	case 0x50:
 		cdp1869_out5_w(0, data);
 		break;
-	
+
 	case 0x60:
 		cdp1869_out6_w(0, data);
 		break;
-	
+
 	case 0x70:
 		cdp1869_out7_w(0, data);
 		break;
@@ -301,7 +301,7 @@ static void tmc600_q_w(int level)
 {
 }
 
-static CDP1802_CONFIG tmc600_cdp1802_config =
+static const CDP1802_CONFIG tmc600_cdp1802_config =
 {
 	tmc600_mode_r,
 	tmc600_ef_r,
@@ -336,7 +336,7 @@ static MACHINE_RESET( tmc600 )
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( tmc600 )
-	
+
 	// basic system hardware
 
 	MDRV_CPU_ADD(CDP1802, 3579545)	// ???
@@ -396,7 +396,7 @@ ROM_END
 
 /* System Configuration */
 
-QUICKLOAD_LOAD( tmc600 )
+static QUICKLOAD_LOAD( tmc600 )
 {
 	image_fread(image, memory_region(REGION_CPU1) + 0x6300, 0x9500);
 

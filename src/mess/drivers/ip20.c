@@ -51,7 +51,7 @@ static VIDEO_UPDATE( ip204415 )
 	return 0;
 }
 
-static struct EEPROM_interface eeprom_interface_93C56 =
+static const struct EEPROM_interface eeprom_interface_93C56 =
 {
 	7,					// address bits	7
 	16,					// data bits	16
@@ -468,7 +468,7 @@ static WRITE32_HANDLER( int_w )
 
 static INTERRUPT_GEN( ip20_update_chips )
 {
-	mc_update(Machine, 0);
+	mc_update();
 	nRTC_Temp++;
 	if( nRTC_Temp == 100 )
 	{
@@ -562,13 +562,13 @@ static void scsi_irq(int state)
 {
 }
 
-static SCSIConfigTable dev_table =
+static const SCSIConfigTable dev_table =
 {
         1,                                      /* 1 SCSI device */
         { { SCSI_ID_6, 0, SCSI_DEVICE_CDROM } } /* SCSI ID 6, using CHD 0, and it's a CD-ROM */
 };
 
-static struct WD33C93interface scsi_intf =
+static const struct WD33C93interface scsi_intf =
 {
 	&dev_table,		/* SCSI device table */
 	&scsi_irq,		/* command completion IRQ */
@@ -597,13 +597,13 @@ static void ip20_chdcd_getinfo(const device_class *devclass, UINT32 state, union
 	}
 }
 
-static struct mips3_config config =
+static const struct mips3_config config =
 {
 	32768,	/* code cache size */
 	32768	/* data cache size */
 };
 
-MACHINE_DRIVER_START( ip204415 )
+static MACHINE_DRIVER_START( ip204415 )
 	MDRV_CPU_ADD_TAG( "main", R4600BE, 50000000*3 )
 	MDRV_CPU_CONFIG( config )
 	MDRV_CPU_PROGRAM_MAP( ip204415_map, 0 )

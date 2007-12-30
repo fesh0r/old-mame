@@ -56,7 +56,7 @@ Nascom Memory map
 #include "mslegacy.h"
 
 /* Memory w/r functions */
-ADDRESS_MAP_START( nascom1_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( nascom1_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x0800, 0x0bff) AM_READWRITE( videoram_r, videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM
@@ -68,8 +68,8 @@ ADDRESS_MAP_START( nascom1_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 /* port i/o functions */
-ADDRESS_MAP_START( nascom1_io , ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) ) 
+static ADDRESS_MAP_START( nascom1_io , ADDRESS_SPACE_IO, 8)
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x00) AM_READWRITE( nascom1_port_00_r, nascom1_port_00_w )
 	AM_RANGE(0x01, 0x01) AM_READWRITE( nascom1_port_01_r, nascom1_port_01_w )
 	AM_RANGE(0x02, 0x02) AM_READ( nascom1_port_02_r )
@@ -89,7 +89,7 @@ static const gfx_layout nascom1_charlayout =
 	8 * 16
 };
 
-static GFXDECODE_START( nascom1_gfxdecodeinfo )
+static GFXDECODE_START( nascom1 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, nascom1_charlayout, 0, 1 )
 GFXDECODE_END
 
@@ -105,17 +105,17 @@ static const gfx_layout nascom2_charlayout =
 	8 * 16
 };
 
-static GFXDECODE_START( nascom2_gfxdecodeinfo )
+static GFXDECODE_START( nascom2 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, nascom2_charlayout, 0, 1 )
 GFXDECODE_END
 
-static	unsigned	char	nascom1_palette[] =
+static const unsigned char nascom1_palette[] =
 {
 	0x00, 0x00, 0x00,	/* Black */
 	0xff, 0xff, 0xff	/* White */
 };
 
-static	unsigned	short	nascom1_colortable[] =
+static const unsigned short nascom1_colortable[] =
 {
 	0, 1
 };
@@ -236,7 +236,7 @@ static MACHINE_DRIVER_START( nascom1 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(48 * 8, 16 * 16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 48 * 8 - 1, 0, 16 * 16 - 1)
-	MDRV_GFXDECODE( nascom1_gfxdecodeinfo )
+	MDRV_GFXDECODE( nascom1 )
 	MDRV_PALETTE_LENGTH( sizeof (nascom1_palette) / 3 )
 	MDRV_COLORTABLE_LENGTH( sizeof (nascom1_colortable) )
 	MDRV_PALETTE_INIT( nascom1 )
@@ -251,7 +251,7 @@ static MACHINE_DRIVER_START( nascom2 )
 	MDRV_CPU_REPLACE( "main", Z80, 2000000 )
 	MDRV_SCREEN_SIZE(48 * 8, 16 * 14)
 	MDRV_SCREEN_VISIBLE_AREA(0, 48 * 8 - 1, 0, 16 * 14 - 1)
-	MDRV_GFXDECODE( nascom2_gfxdecodeinfo )
+	MDRV_GFXDECODE( nascom2 )
 	MDRV_VIDEO_UPDATE( nascom2 )
 MACHINE_DRIVER_END
 

@@ -12,8 +12,6 @@
 
 #ifdef WIN32
 #include <windows.h>
-#include <tchar.h>
-#include "strconv.h"
 #endif /* WIN32 */
 
 #include "core.h"
@@ -231,7 +229,7 @@ parseerror:
 
 static input_code messtest_token_to_code(const char *token)
 {
-	static struct
+	static const struct
 	{
 		int				code;
 		const char *	codename;
@@ -611,7 +609,7 @@ void report_message(messtest_messagetype_t msgtype, const char *fmt, ...)
 		state = STATE_ABORTED;
 		final_time = timer_get_time();
 		if (final_time > 0.0)
-			dump_screenshot(); 
+			dump_screenshot();
 	}
 */
 }

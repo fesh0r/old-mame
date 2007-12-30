@@ -80,7 +80,7 @@ void artwork_use_device_art(mess_image *img, const char *defaultartfile)
 
 /********************************************************************/
 
-int artwork_get_inputscreen_customizations(png_info *png, int cust_type,
+int artwork_get_inputscreen_customizations(png_info *png, artwork_cust_type cust_type,
 	const char *section,
 	struct inputform_customization *customizations,
 	int customizations_length)
@@ -97,7 +97,7 @@ int artwork_get_inputscreen_customizations(png_info *png, int cust_type,
 	int enabled = TRUE;
 	int item_count = 0;
 
-	static const char *cust_files[] =
+	static const char *const cust_files[] =
 	{
 		"ctrlr.png",		"ctrlr.ini",
 		"keyboard.png",		"keyboard.ini"
@@ -166,7 +166,7 @@ int artwork_get_inputscreen_customizations(png_info *png, int cust_type,
 							customizations->y = y1;
 							customizations->width = x2 - x1;
 							customizations->height = y2 - y1;
-							customizations++;				
+							customizations++;
 							customizations_length--;
 							item_count++;
 						}

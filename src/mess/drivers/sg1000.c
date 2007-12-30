@@ -69,6 +69,11 @@ static READ8_HANDLER( tvdraw_data_r )
 	return tvdraw_data;
 }
 
+static READ8_HANDLER( sg1000_joysel_r )
+{
+	return 0x80;
+}
+
 /* Memory Maps */
 
 // SG-1000
@@ -86,7 +91,8 @@ static ADDRESS_MAP_START( sg1000_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
 	AM_RANGE(0xdc, 0xdc) AM_READ(input_port_0_r)
 	AM_RANGE(0xdd, 0xdd) AM_READ(input_port_1_r)
-	AM_RANGE(0xde, 0xdf) AM_NOP
+	AM_RANGE(0xde, 0xde) AM_READ(sg1000_joysel_r) AM_WRITENOP
+	AM_RANGE(0xdf, 0xdf) AM_NOP
 ADDRESS_MAP_END
 
 // SC-3000
@@ -148,7 +154,7 @@ static INPUT_PORTS_START( sg1000 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
-	
+
 	PORT_START_TAG("PB7")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
@@ -387,7 +393,7 @@ static WRITE8_HANDLER( sc3000_ppi8255_c_w )
 	keylatch = data & 0x07;
 }
 
-static ppi8255_interface sc3000_ppi8255_intf =
+static const ppi8255_interface sc3000_ppi8255_intf =
 {
 	1, 						// 1 chip
 	{ sc3000_ppi8255_a_r },	// Port A read
@@ -417,16 +423,16 @@ static READ8_HANDLER( sf7000_ppi8255_a_r )
 		PA0		INT from FDC
 		PA1		BUSY from Centronics printer
 		PA2		INDEX from FDD
-		PA3		
-		PA4		
-		PA5		
-		PA6		
-		PA7		
+		PA3
+		PA4
+		PA5
+		PA6
+		PA7
 	*/
 
 	int centronics_handshake = centronics_read_handshake(1);
 	int busy = 0;
-	
+
 	if ((centronics_handshake & CENTRONICS_NOT_BUSY) == 0)
 	{
 		busy = 0x02;
@@ -470,7 +476,7 @@ static WRITE8_HANDLER( sf7000_ppi8255_c_w )
 
 	floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), (data & 0x02) ? 0 : 1);
 	floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1, 0);
-	
+
 	nec765_set_tc_state(data & 0x04);
 
 	if (data & 0x08)
@@ -483,7 +489,7 @@ static WRITE8_HANDLER( sf7000_ppi8255_c_w )
 	centronics_write_handshake(1, (data & 0x80) ? 0 : CENTRONICS_STROBE, CENTRONICS_STROBE);
 }
 
-static ppi8255_interface sf7000_ppi8255_intf =
+static const ppi8255_interface sf7000_ppi8255_intf =
 {
 	2, 											// 2 chips
 	{ sc3000_ppi8255_a_r, sf7000_ppi8255_a_r },	// Port A read
@@ -505,20 +511,20 @@ static void sf7000_fdc_index_callback(mess_image *img, int state)
 	sf7000_fdc_index = state;
 }
 
-static struct nec765_interface sf7000_nec765_interface =
+static const struct nec765_interface sf7000_nec765_interface =
 {
 	sf7000_fdc_interrupt,
 	NULL
 };
 
-static struct msm8251_interface sf7000_uart_interface =
+static const struct msm8251_interface sf7000_uart_interface =
 {
 	NULL,
 	NULL,
 	NULL
 };
 
-static CENTRONICS_CONFIG sf7000_centronics_config[1] = {
+static const CENTRONICS_CONFIG sf7000_centronics_config[1] = {
 	{
 		PRINTER_IBM,
 		NULL
@@ -784,7 +790,7 @@ static void sf7000_printer_getinfo(const device_class *devclass, UINT32 state, u
 	}
 }
 
-DEVICE_LOAD( sf7000_floppy )
+static DEVICE_LOAD( sf7000_floppy )
 {
 	if (image_has_been_created(image))
 		return INIT_FAIL;
@@ -795,7 +801,7 @@ DEVICE_LOAD( sf7000_floppy )
 		{
 			/* image, tracks, sides, sectors per track, sector length, first sector id, offset of track 0, track skipping */
 			basicdsk_set_geometry(image, 40, 1, 16, 256, 1, 0, FALSE);
-			
+
 			return INIT_PASS;
 		}
 	}
@@ -815,7 +821,7 @@ static void sf7000_floppy_getinfo(const device_class *devclass, UINT32 state, un
 	}
 }
 
-DEVICE_LOAD( sf7000_serial )
+static DEVICE_LOAD( sf7000_serial )
 {
 	/* filename specified */
 	if (serial_device_load(image)==INIT_PASS)

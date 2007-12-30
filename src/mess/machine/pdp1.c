@@ -164,10 +164,10 @@ static void pdp1_machine_reset(running_machine *machine)
 	pdp1_reset_param.hw_mul_div = (config >> pdp1_config_hw_mul_div_bit) & pdp1_config_hw_mul_div_mask;
 	pdp1_reset_param.type_20_sbs = (config >> pdp1_config_type_20_sbs_bit) & pdp1_config_type_20_sbs_mask;
 
-	tape_reader.timer = timer_alloc(reader_callback);
-	tape_puncher.timer = timer_alloc(puncher_callback);
-	typewriter.tyo_timer = timer_alloc(tyo_callback);
-	dpy_timer = timer_alloc(dpy_callback);
+	tape_reader.timer = timer_alloc(reader_callback, NULL);
+	tape_puncher.timer = timer_alloc(puncher_callback, NULL);
+	typewriter.tyo_timer = timer_alloc(tyo_callback, NULL);
+	dpy_timer = timer_alloc(dpy_callback, NULL);
 
 	/* reset device state */
 	tape_reader.rcl = tape_reader.rc = 0;
@@ -246,7 +246,7 @@ MACHINE_START( pdp1 )
 		0x00,0x00,0xf8,0x10,0x20,0x40,0xf8,0x00,0x08,0x10,0x10,0x20,0x10,0x10,0x08,0x00,
 		0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x40,0x20,0x20,0x10,0x20,0x20,0x40,0x00,
 		0x00,0x68,0xb0,0x00,0x00,0x00,0x00,0x00,0x20,0x50,0x20,0x50,0xa8,0x50,0x00,0x00,
-		
+
 		/* non-spacing middle dot */
 		0x00,
 		0x00,
@@ -622,14 +622,14 @@ void iot_rpa(int op2, int nac, int mb, int *io, int ac)
  * Reader Buffer 100 010 101 001 011 111
  *
  * (Vertical dashed line indicates sprocket holes and the symbols "X" indicate holes
- * punched in tape). 
+ * punched in tape).
  *
  * If bits 5 and 6 of the rpb instruction are both zero (720002), the contents of
  * the Reader Buffer must be transferred to the IO Register by executing
  * a rrb instruction.  When the Reader Buffer has information ready to be transferred
  * to the IO Register, Status Register Bit 1 is set to one.  If bits 5 and 6 are
  * different (730002 or 724002) the 18-bit word read from tape is automatically
- * transferred to the IO Register via the Reader Buffer. 
+ * transferred to the IO Register via the Reader Buffer.
  */
 void iot_rpb(int op2, int nac, int mb, int *io, int ac)
 {
@@ -687,11 +687,11 @@ void iot_ppa(int op2, int nac, int mb, int *io, int ac)
 */
 /*
  * Punch Perforated Tape, Binary
- * ppb Addres 0006 
+ * ppb Addres 0006
  *
  * For each In-Out Transfer instruction one line of tape is punched. In-Out Register
  * Bit 5 conditions Hole 1. Bit 4 conditions Hole 2, etc. Bit 0 conditions Hole 6.
- * Hole 7 is left blank. Hole 8 is always punched in this mode. 
+ * Hole 7 is left blank. Hole 8 is always punched in this mode.
  */
 void iot_ppb(int op2, int nac, int mb, int *io, int ac)
 {
@@ -798,7 +798,7 @@ static void typewriter_out(UINT8 data)
 			/* Black: ignore */
 			//color = color_typewriter_black;
 			{
-				static char black[5] = { '\033', '[', '3', '0', 'm' };
+				static const char black[5] = { '\033', '[', '3', '0', 'm' };
 				image_fwrite(typewriter.fd, black, sizeof(black));
 			}
 			break;
@@ -807,7 +807,7 @@ static void typewriter_out(UINT8 data)
 			/* Red: ignore */
 			//color = color_typewriter_red;
 			{
-				static char red[5] = { '\033', '[', '3', '1', 'm' };
+				static const char red[5] = { '\033', '[', '3', '1', 'm' };
 				image_fwrite(typewriter.fd, red, sizeof(red));
 			}
 			break;
@@ -825,7 +825,7 @@ static void typewriter_out(UINT8 data)
 		case 077:
 			/* Carriage Return */
 			{
-				static char line_end[2] = { '\r', '\n' };
+				static const char line_end[2] = { '\r', '\n' };
 				image_fwrite(typewriter.fd, line_end, sizeof(line_end));
 			}
 			break;
@@ -1041,10 +1041,10 @@ static TIMER_CALLBACK(il_timer_callback)
 
 static void parallel_drum_init(void)
 {
-	parallel_drum.rotation_timer = timer_alloc(NULL);
+	parallel_drum.rotation_timer = timer_alloc(NULL, NULL);
 	timer_adjust(parallel_drum.rotation_timer, PARALLEL_DRUM_ROTATION_TIME, 0, PARALLEL_DRUM_ROTATION_TIME);
 
-	parallel_drum.il_timer = timer_alloc(il_timer_callback);
+	parallel_drum.il_timer = timer_alloc(il_timer_callback, NULL);
 	parallel_drum_set_il(0);
 }
 #endif

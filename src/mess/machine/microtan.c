@@ -37,7 +37,7 @@ static int via_1_irq_line = CLEAR_LINE;
 static int kbd_irq_line = CLEAR_LINE;
 
 static UINT8 keyrows[10] = { 0,0,0,0,0,0,0,0,0,0 };
-static char keyboard[8][9][8] = {
+static const char keyboard[8][9][8] = {
     { /* normal */
         { 27,'1','2','3','4','5','6','7'},
         {'8','9','0','-','=','`',127,  9},
@@ -291,7 +291,7 @@ static void via_1_irq(int state)
  * VIA read wrappers
  **************************************************************/
 #if VERBOSE
-static char *via_name[16] = {
+static const char *const via_name[16] = {
     "PB  ","PA  ","DDRB","DDRA",
     "T1CL","T1CH","T1LL","T1LH",
     "T2CL","T2CH","SR  ","ACR ",
@@ -331,7 +331,7 @@ WRITE8_HANDLER( microtan_via_1_w )
 /**************************************************************
  * VIA interface structure
  **************************************************************/
-static struct via6522_interface via6522[2] =
+static const struct via6522_interface via6522[2] =
 {
     {   /* VIA#1 at bfc0-bfcf*/
         via_0_in_a,   via_0_in_b,
@@ -434,7 +434,7 @@ WRITE8_HANDLER ( microtan_bffx_w )
         break;
     case 1: /* BFF1: write delayed NMI */
         LOG(("microtan_bff1_w: %d <- %02x (delayed NMI)\n", offset, data));
-        timer_set(ATTOTIME_IN_CYCLES(8,0), 0, microtan_pulse_nmi);
+        timer_set(ATTOTIME_IN_CYCLES(8,0), NULL, 0, microtan_pulse_nmi);
         break;
     case 2: /* BFF2: write keypad column write (what is this meant for?) */
         LOG(("microtan_bff2_w: %d <- %02x (keypad column)\n", offset, data));
@@ -965,5 +965,5 @@ MACHINE_RESET( microtan )
 
 	acia_6551_init();
 
-	microtan_timer = timer_alloc(microtan_read_cassette);
+	microtan_timer = timer_alloc(microtan_read_cassette, NULL);
 }

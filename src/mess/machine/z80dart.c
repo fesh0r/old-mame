@@ -267,7 +267,7 @@ INLINE attotime compute_time_per_character(z80dart *dart, int which)
     z80dart_init - initialize a single DART chip
 -------------------------------------------------*/
 
-void z80dart_init(int which, z80dart_interface *intf)
+void z80dart_init(int which, const z80dart_interface *intf)
 {
 	z80dart *dart = darts + which;
 
@@ -275,8 +275,8 @@ void z80dart_init(int which, z80dart_interface *intf)
 
 	memset(dart, 0, sizeof(*dart));
 
-	dart->chan[0].receive_timer = timer_alloc(serial_callback);
-	dart->chan[1].receive_timer = timer_alloc(serial_callback);
+	dart->chan[0].receive_timer = timer_alloc(serial_callback, NULL);
+	dart->chan[1].receive_timer = timer_alloc(serial_callback, NULL);
 
 	dart->irq_cb = intf->irq_cb;
 	dart->dtr_changed_cb = intf->dtr_changed_cb;
@@ -539,7 +539,7 @@ static TIMER_CALLBACK(change_input_line)
 	int ch = param & 1;
 	UINT8 old;
 	char linename[4];
-	
+
 	switch (line)
 	{
 	case DART_RR0_CTS:
@@ -579,7 +579,7 @@ static TIMER_CALLBACK(change_input_line)
 void z80dart_set_cts(int which, int ch, int state)
 {
 	/* operate deferred */
-	timer_set(attotime_zero, (DART_RR0_CTS << 8) + (state != 0) * 0x80 + which * 2 + ch, change_input_line);
+	timer_set(attotime_zero, NULL, (DART_RR0_CTS << 8) + (state != 0) * 0x80 + which * 2 + ch, change_input_line);
 }
 
 
@@ -591,7 +591,7 @@ void z80dart_set_cts(int which, int ch, int state)
 void z80dart_set_dcd(int which, int ch, int state)
 {
 	/* operate deferred */
-	timer_set(attotime_zero, (DART_RR0_DCD << 8) + (state != 0) * 0x80 + which * 2 + ch, change_input_line);
+	timer_set(attotime_zero, NULL, (DART_RR0_DCD << 8) + (state != 0) * 0x80 + which * 2 + ch, change_input_line);
 }
 
 
@@ -603,7 +603,7 @@ void z80dart_set_dcd(int which, int ch, int state)
 void z80dart_set_ri(int which, int state)
 {
 	/* operate deferred */
-	timer_set(attotime_zero, (DART_RR0_RI << 8) + (state != 0) * 0x80 + which * 2, change_input_line);
+	timer_set(attotime_zero, NULL, (DART_RR0_RI << 8) + (state != 0) * 0x80 + which * 2, change_input_line);
 }
 
 

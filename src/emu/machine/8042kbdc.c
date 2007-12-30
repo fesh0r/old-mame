@@ -522,7 +522,7 @@ WRITE8_HANDLER(kbdc8042_8_w)
 			break;
 		case 0xaa:	/* selftest */
 			if (Machine->drv->cpu[0].type == CPU_I486)
-				timer_set(ATTOTIME_IN_MSEC(10), 0x55, at_8042_receive_timer); /* HACK */
+				timer_set(ATTOTIME_IN_MSEC(10), NULL, 0x55, at_8042_receive_timer); /* HACK */
 			else
 				at_8042_receive(0x55);
 			break;

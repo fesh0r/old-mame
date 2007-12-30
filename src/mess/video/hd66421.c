@@ -113,7 +113,7 @@ PALETTE_INIT( hd66421 )
 	}
 }
 
-void hd66421_state_save( void)
+static void hd66421_state_save( void)
 {
 	const char *name = "hd66421";
 	state_save_register_item( name, 0, lcd.idx);
@@ -144,7 +144,7 @@ VIDEO_UPDATE( hd66421 )
 		if (temp <  0) temp =  0;
 		if (temp > 31) temp = 31;
 		bright = 1.0 * temp / 31;
-		pen[i] = Machine->pens[i];
+		pen[i] = machine->pens[i];
 		#ifdef BRIGHTNESS_DOES_NOT_WORK
 		palette_set_color( machine, pen[i], 255 * bright, 255 * bright, 255 * bright);
 		#else

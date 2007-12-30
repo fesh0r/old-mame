@@ -431,7 +431,7 @@ static int TEDTIME_TO_CYCLES(attotime t)
 #define MULTICOLOR2 (ted7360[0x18]&0x7f)
 #define FRAMECOLOR (ted7360[0x19]&0x7f)
 
-unsigned char ted7360_palette[] =
+const unsigned char ted7360_palette[] =
 {
 /* black, white, red, cyan */
 /* purple, green, blue, yellow */
@@ -480,7 +480,7 @@ unsigned char ted7360_palette[] =
 	0xd1, 0xff, 0xff, 0xeb, 0xff, 0xff, 0xff, 0xf8, 0xff, 0xed, 0xff, 0xbc
 };
 
-struct CustomSound_interface ted7360_sound_interface =
+const struct CustomSound_interface ted7360_sound_interface =
 {
 	ted7360_custom_start
 };
@@ -522,7 +522,7 @@ static const gfx_layout cursorlayout =
 	8 * 8
 };
 
-static UINT8 cursormask[] =
+static const UINT8 cursormask[] =
 {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 static gfx_element *cursorelement;
 
@@ -534,9 +534,9 @@ void ted7360_init (int pal)
 	lines = TED7360_LINES;
 	chargenaddr = bitmapaddr = videoaddr = 0;
 	timer1_active = timer2_active = timer3_active = 0;
-	timer1 = timer_alloc(ted7360_timer_timeout);
-	timer2 = timer_alloc(ted7360_timer_timeout);
-	timer3 = timer_alloc(ted7360_timer_timeout);
+	timer1 = timer_alloc(ted7360_timer_timeout, NULL);
+	timer2 = timer_alloc(ted7360_timer_timeout, NULL);
+	timer3 = timer_alloc(ted7360_timer_timeout, NULL);
 }
 
 void ted7360_set_dma (read8_handler dma_read,
@@ -952,9 +952,9 @@ VIDEO_START( ted7360 )
 	decodegfx(cursorelement, cursormask, 0, 1);
 	/* 7-Sep-2007 - After 0.118u5, you cannot revector the color table */
 	/* cursorelement->colortable = cursorcolortable; */
-	cursorcolortable[1] = Machine->pens[1];
+	cursorcolortable[1] = machine->pens[1];
 	cursorelement->total_colors = 2;
-	ted7360_bitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	ted7360_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
 	add_exit_callback(machine, ted7360_video_stop);
 }
 

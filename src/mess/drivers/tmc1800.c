@@ -203,7 +203,7 @@ static void tmc1800_q_w(int level)
 {
 }
 
-static CDP1802_CONFIG tmc1800_config =
+static const CDP1802_CONFIG tmc1800_config =
 {
 	tmc1800_mode_r,
 	tmc1800_ef_r,
@@ -241,7 +241,7 @@ static void tmc2000_q_w(int level)
 	set_led_status(1, level);
 }
 
-static CDP1802_CONFIG tmc2000_config =
+static const CDP1802_CONFIG tmc2000_config =
 {
 	tmc1800_mode_r,
 	tmc2000_ef_r,
@@ -284,7 +284,7 @@ static MACHINE_RESET( tmc2000 )
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( tmc1800 )
-	
+
 	// basic system hardware
 
 	MDRV_CPU_ADD(CDP1802, 1750000)	// 1.75 MHz
@@ -308,7 +308,7 @@ static MACHINE_DRIVER_START( tmc1800 )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( tmc2000 )
-	
+
 	// basic system hardware
 
 	MDRV_CPU_ADD(CDP1802, CDP1864_CLK_FREQ)	// 1.75 MHz
@@ -420,12 +420,12 @@ static TIMER_CALLBACK(setup_beep)
 
 static DRIVER_INIT( tmc1800 )
 {
-	timer_set(attotime_zero, 0, setup_beep);
+	timer_set(attotime_zero, NULL, 0, setup_beep);
 }
 
 static DRIVER_INIT( tmc2000 )
 {
-	timer_set(attotime_zero, 0, setup_beep);
+	timer_set(attotime_zero, NULL, 0, setup_beep);
 	cdp1864_configure(&tmc2000_CDP1864_interface);
 }
 

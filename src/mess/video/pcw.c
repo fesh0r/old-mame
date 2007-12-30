@@ -28,7 +28,7 @@ extern unsigned short roller_ram_offset;
 extern unsigned char pcw_vdu_video_control_register;
 
 /* two colours */
-static unsigned short pcw_colour_table[PCW_NUM_COLOURS] =
+static const unsigned short pcw_colour_table[PCW_NUM_COLOURS] =
 {
 	0, 1
 };
@@ -70,9 +70,9 @@ VIDEO_UPDATE( pcw )
 		pen1^=1;
 		pen0^=1;
 	}
-	
-	pen0 = Machine->pens[pen0];
-	pen1 = Machine->pens[pen1];
+
+	pen0 = machine->pens[pen0];
+	pen1 = machine->pens[pen1];
 
 	/* video enable? */
 	if ((pcw_vdu_video_control_register & (1<<6))!=0)

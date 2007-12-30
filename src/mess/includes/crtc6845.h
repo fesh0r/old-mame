@@ -37,6 +37,8 @@ extern "C" {
 
 ***************************************************************************/
 
+/*----------- defined in video/crtc6845.c -----------*/
+
 /* opaque structure representing a crtc8645 chip */
 struct mscrtc6845;
 
@@ -86,7 +88,7 @@ void mscrtc6845_set_char_lines(struct mscrtc6845 *crtc, UINT8 lines);
 
 int mscrtc6845_get_personality(struct mscrtc6845 *crtc);
 
-/* cursor off, cursor on, cursor 16 frames on/off, cursor 32 frames on/off 
+/* cursor off, cursor on, cursor 16 frames on/off, cursor 32 frames on/off
 	start line, end line */
 void mscrtc6845_get_cursor(struct mscrtc6845 *crtc, struct mscrtc6845_cursor *cursor);
 
@@ -98,7 +100,7 @@ WRITE8_HANDLER ( mscrtc6845_0_port_w );
 
 /* to be called when reading from port */
  READ8_HANDLER ( mscrtc6845_0_port_r );
-	
+
 /***************************************************************************
 
 	6845 variant macros

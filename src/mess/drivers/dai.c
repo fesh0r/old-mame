@@ -34,7 +34,7 @@ Memory map:
 		fc00-fcff 8253 programmable interval timer
 		fd00-fdff discrete devices
 		fe00-feff 8255 PIO (DCE bus)
-		ff00-ffff timer + 5501 interrupt controller 
+		ff00-ffff timer + 5501 interrupt controller
 
 Interrupts:
 -----------
@@ -70,11 +70,11 @@ Timings:
 #include "mslegacy.h"
 
 /* I/O ports */
-ADDRESS_MAP_START( dai_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( dai_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* memory w/r functions */
-ADDRESS_MAP_START( dai_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( dai_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0xbfff) AM_RAMBANK(1)
 	AM_RANGE( 0xc000, 0xdfff) AM_ROM
 	AM_RANGE( 0xe000, 0xefff) AM_ROMBANK(2)
@@ -170,7 +170,7 @@ static INPUT_PORTS_START (dai)
 		PORT_BIT(0xcb, IP_ACTIVE_HIGH, IPT_UNUSED)
 INPUT_PORTS_END
 
-static struct CassetteOptions dai_cassette_options = {
+static const struct CassetteOptions dai_cassette_options = {
 	1,		/* channels */
 	16,		/* bits per sample */
 	44100		/* sample frequency */

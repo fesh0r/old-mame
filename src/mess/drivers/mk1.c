@@ -157,8 +157,9 @@ static TIMER_CALLBACK( mk1_update_leds ) {
 }
 
 
-static MACHINE_START( mk1 ) {
-	timer_pulse( ATTOTIME_IN_HZ(30), 0, mk1_update_leds );
+static MACHINE_START( mk1 )
+{
+	timer_pulse( ATTOTIME_IN_HZ(30), NULL, 0, mk1_update_leds );
 }
 
 static MACHINE_DRIVER_START( mk1 )
@@ -187,7 +188,7 @@ static void mk1_interrupt( UINT16 addr, int level ) {
     cpunum_set_input_line( 0, 0, level ? F8_INT_INTR : F8_INT_NONE );
 }
 
-static F3853_CONFIG mk1_config = {
+static const F3853_CONFIG mk1_config = {
 	MAIN_CLOCK,
 	mk1_interrupt
 };

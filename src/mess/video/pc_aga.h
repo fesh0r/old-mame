@@ -20,10 +20,10 @@
 
 #include "driver.h"
 
-extern gfx_layout europc_cga_charlayout;
-extern gfx_layout europc_mda_charlayout;
-GFXDECODE_EXTERN( europc_gfxdecodeinfo );
-GFXDECODE_EXTERN( aga_gfxdecodeinfo );
+extern const gfx_layout europc_cga_charlayout;
+extern const gfx_layout europc_mda_charlayout;
+GFXDECODE_EXTERN( europc );
+GFXDECODE_EXTERN( aga );
 
 extern PALETTE_INIT( pc_aga );
 
@@ -33,7 +33,6 @@ void pc_aga_set_mode(AGA_MODE mode);
 
 extern VIDEO_START( pc_aga );
 extern VIDEO_START( pc200 );
-extern VIDEO_UPDATE( pc_aga );
 
 extern void pc_aga_timer(void);
 
@@ -49,6 +48,4 @@ READ8_HANDLER( pc200_cga_r );
 WRITE8_HANDLER( pc200_cga_w );
 READ16_HANDLER( pc200_cga16le_r );
 WRITE16_HANDLER( pc200_cga16le_w );
-
-extern VIDEO_UPDATE( pc_200 );
 

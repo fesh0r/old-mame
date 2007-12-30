@@ -27,7 +27,7 @@
 #include "sound/speaker.h"
 
 UINT8 atom_8255_porta;
-UINT8 atom_8255_portb;
+static UINT8 atom_8255_portb;
 UINT8 atom_8255_portc;
 
 /* printer data written */
@@ -104,7 +104,7 @@ static WRITE8_HANDLER(atom_via_out_ca2_func)
 	previous_ca2_data = data;
 }
 
-struct via6522_interface atom_6522_interface=
+static const struct via6522_interface atom_6522_interface=
 {
 	atom_via_in_a_func,		/* printer status */
 	NULL,
@@ -123,7 +123,7 @@ struct via6522_interface atom_6522_interface=
 
 
 
-static	ppi8255_interface	atom_8255_int =
+static const ppi8255_interface atom_8255_int =
 {
 	1,
 	{atom_8255_porta_r},
@@ -157,7 +157,7 @@ static void atom_8271_interrupt_callback(int state)
 	previous_i8271_int_state = state;
 }
 
-static struct i8271_interface atom_8271_interface=
+static const struct i8271_interface atom_8271_interface=
 {
 	atom_8271_interrupt_callback,
 	NULL
@@ -251,7 +251,7 @@ MACHINE_RESET( atom )
 	via_reset();
 
 	timer_state = 0;
-	timer_pulse(ATTOTIME_IN_HZ(2400*2), 0, atom_timer_callback);
+	timer_pulse(ATTOTIME_IN_HZ(2400*2), NULL, 0, atom_timer_callback);
 
 	memory_set_opbase_handler(0,atom_opbase_handler);
 }
@@ -358,6 +358,7 @@ DEVICE_LOAD( atom_floppy )
 	/* ilogerror("8255: Read port b: %02X %02X\n",
 			readinputport ((atom_8255.atom_8255_porta & 0x0f) + 1),
 			readinputport (11) & 0xc0); */
+// TODO: convert to readinputportbytag
 	return ((readinputport ((atom_8255_porta & 0x0f) + 1) & 0x3f) |
 											(readinputport (11) & 0xc0));
 }
@@ -379,7 +380,7 @@ READ8_HANDLER ( atom_8255_portc_r )
 	}
 
 	atom_8255_portc |= (m6847_get_field_sync() ? 0x00 : 0x80);
-	atom_8255_portc |= (readinputport(12) & 0x40);
+	atom_8255_portc |= (readinputportbytag("keyboard_12") & 0x40);
 	/* logerror("8255: Read port c (%02X)\n",atom_8255.atom_8255_portc); */
 	return (atom_8255_portc);
 }

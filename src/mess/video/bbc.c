@@ -15,12 +15,12 @@
 //#include "video/bbctext.h"
 
 
-void BBC_draw_hi_res(void);
-void BBC_draw_teletext(void);
+static void BBC_draw_hi_res(void);
+static void BBC_draw_teletext(void);
 
 static void (*draw_function)(void);
 
-void BBC_draw_RGB_in(int offset,int data);
+static void BBC_draw_RGB_in(int offset,int data);
 
 /************************************************************************
  * video_refresh flag is used in optimising the screen redrawing
@@ -205,7 +205,7 @@ BBCsaa5050= {
 	BBC_draw_RGB_in,
 };
 
-void BBC_draw_teletext(void)
+static void BBC_draw_teletext(void)
 {
 
 	//Teletext Latch bits 0 to 5 go to bits 0 to 5 on the Teletext chip
@@ -247,15 +247,15 @@ static int videoULA_characters_per_line;
 static int videoULA_teletext_normal_select;
 static int videoULA_flash_colour_select;
 
-static int pixels_per_byte_set[8]={ 2,4,8,16,1,2,4,8 };
+static const int pixels_per_byte_set[8]={ 2,4,8,16,1,2,4,8 };
 static int pixels_per_byte;
 
-static int emulation_pixels_per_real_pixel_set[4]={ 8,4,2,1 };
+static const int emulation_pixels_per_real_pixel_set[4]={ 8,4,2,1 };
 static int emulation_pixels_per_real_pixel;
 
 static int emulation_pixels_per_byte;
 
-static int width_of_cursor_set[8]={ 0,0,1,2,1,0,2,4 };
+static const int width_of_cursor_set[8]={ 0,0,1,2,1,0,2,4 };
 static int emulation_cursor_size=1;
 static int cursor_state=0;
 
@@ -380,7 +380,7 @@ static void BBC_ula_drawpixel(int col,int number_of_pixels)
 
 // the Video ULA hi-res shift registers, pallette lookup and display enabled circuits
 
-void BBC_draw_hi_res(void)
+static void BBC_draw_hi_res(void)
 {
 	int meml;
 	unsigned char i=0;
@@ -422,7 +422,7 @@ void BBC_draw_hi_res(void)
 
 // RGB input to the Video ULA from the Teletext IC
 // Just pass on the output at the correct pixel size.
-void BBC_draw_RGB_in(int offset,int data)
+static void BBC_draw_RGB_in(int offset,int data)
 {
 	BBC_ula_drawpixel(data,emulation_pixels_per_real_pixel);
 }

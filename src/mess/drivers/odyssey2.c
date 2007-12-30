@@ -13,13 +13,13 @@
 #include "devices/cartslot.h"
 #include "inputx.h"
 
-ADDRESS_MAP_START( odyssey2_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( odyssey2_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x03FF) AM_ROM
 	AM_RANGE( 0x0400, 0x0BFF) AM_RAMBANK(1)
 	AM_RANGE( 0x0C00, 0x0FFF) AM_RAMBANK(2)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( odyssey2_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( odyssey2_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0x00,		 0xff)		AM_READWRITE( odyssey2_bus_r, odyssey2_bus_w)
 	AM_RANGE( I8039_p1,	 I8039_p1)	AM_READWRITE( odyssey2_getp1, odyssey2_putp1 )
 	AM_RANGE( I8039_p2,	 I8039_p2)	AM_READWRITE( odyssey2_getp2, odyssey2_putp2 )
@@ -105,7 +105,7 @@ static const gfx_layout odyssey2_graphicslayout =
 	1,                      /* 1 bits per pixel */
 	{ 0 },                  /* no bitplanes; 1 bit per pixel */
 	/* x offsets */
-	{ 
+	{
 	0,
 	1,
 	2,
@@ -128,7 +128,7 @@ static const gfx_layout odyssey2_spritelayout =
 	1,                      /* 1 bits per pixel */
 	{ 0 },                  /* no bitplanes; 1 bit per pixel */
 	/* x offsets */
-	{ 
+	{
 	7,6,5,4,3,2,1,0
 	},
 	/* y offsets */
@@ -136,7 +136,7 @@ static const gfx_layout odyssey2_spritelayout =
 	1*8
 };
 
-static GFXDECODE_START( odyssey2_gfxdecodeinfo )
+static GFXDECODE_START( odyssey2 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, odyssey2_graphicslayout, 0, 2 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, odyssey2_spritelayout, 0, 2 )
 GFXDECODE_END
@@ -159,7 +159,7 @@ static MACHINE_DRIVER_START( odyssey2 )
 
 	MDRV_SCREEN_SIZE(320,300)
 	MDRV_SCREEN_VISIBLE_AREA(0,160-1,0,240-1)
-	MDRV_GFXDECODE( odyssey2_gfxdecodeinfo )
+	MDRV_GFXDECODE( odyssey2 )
 	MDRV_PALETTE_LENGTH(24)
 	MDRV_COLORTABLE_LENGTH(2)
 	MDRV_PALETTE_INIT( odyssey2 )

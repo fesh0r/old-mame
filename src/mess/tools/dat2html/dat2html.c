@@ -16,7 +16,7 @@
 #include "osdmess.h"
 #include "utils.h"
 
-void replace_lt_gt(char *line)
+static void replace_lt_gt(char *line)
 {
 	char buff[1024] = "", *src = line, *dst = buff;
 
@@ -38,7 +38,7 @@ void replace_lt_gt(char *line)
 	strcpy(line, buff);
 }
 
-void a_href_url(char *line)
+static void a_href_url(char *line)
 {
 	char buff[1024], c;
 	char *url_beg = strstr(line, "http://"), *url_end;
@@ -143,14 +143,14 @@ int CLIB_DECL main(int ac, char **av)
 				{
 					char *eq = strchr(line, '=');
 					strcpy(system_name, eq + 1);
-								
+
 					sprintf(system_filename, "%s/%s.htm", html_directory, system_name);
 					fprintf(html, "&bull;&nbsp;&nbsp;<a href=\"%s\">%s</a>\n", system_filename, system_name);
-					
+
 					systemcount++;
 
                     			html_system = fopen(system_filename, "w");
-					
+
 					if( !html_system )
 					{
 						fprintf(stderr, "cannot create system_name file '%s'.\n", system_filename);

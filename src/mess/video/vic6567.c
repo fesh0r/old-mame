@@ -155,7 +155,7 @@
 #define FOREGROUNDCOLOR (vic2.reg[0x24]&0xf)
 #define FRAMECOLOR (vic2.reg[0x20]&0xf)
 
-unsigned char vic2_palette[] =
+const unsigned char vic2_palette[] =
 {
 /* black, white, red, cyan */
 /* purple, green, blue, yellow */
@@ -653,7 +653,7 @@ VIDEO_START( vic2 )
 {
 	int i;
 
-	vic2.bitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	vic2.bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
 
 	if (vic2.vic3) {
 		vic2.screen[0] = (UINT8*)auto_malloc (sizeof (UINT8) * 216 * 656 / 8);
@@ -1319,7 +1319,7 @@ INTERRUPT_GEN( vic2_raster_irq )
 		if (LIGHTPEN_BUTTON)
 		{
 			/* lightpen timer starten */
-			timer_set (attotime_make(0, 0), 1, vic2_timer_timeout);
+			timer_set (attotime_make(0, 0), NULL, 1, vic2_timer_timeout);
 		}
 	}
 	if (vic2.rasterline == C64_2_RASTERLINE (RASTERLINE))

@@ -1,5 +1,18 @@
 /***************************************************************************
 
+  M.A.M.E.UI  -  Multiple Arcade Machine Emulator with User Interface
+  Win32 Portions Copyright (C) 1997-2003 Michael Soderstrom and Chris Kirmse,
+  Copyright (C) 2003-2007 Chris Kirmse and the MAME32/MAMEUI team.
+
+  This file is part of MAMEUI, and may only be used, modified and
+  distributed under the terms of the MAME license, in "readme.txt".
+  By continuing to use, modify or distribute this file you indicate
+  that you have read the license and understand and accept it fully.
+
+ ***************************************************************************/
+
+/***************************************************************************
+
     mkhelp.c
 
     Simple resource HIDC to Help entry tool.
@@ -12,8 +25,8 @@
 #include "osdcore.h"
 
 
-int compare( const void *arg1, const void *arg2 );
-void extract_help_ids(const char *buffer, FILE *fp);
+static int compare( const void *arg1, const void *arg2 );
+static void extract_help_ids(const char *buffer, FILE *fp);
 
 /*-------------------------------------------------
     main - primary entry point
@@ -88,13 +101,13 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-int compare( const void *arg1, const void *arg2 )
+static int compare( const void *arg1, const void *arg2 )
 {
    /* Compare all of both strings: */
    return _stricmp( * ( char** ) arg1, * ( char** ) arg2 );
 }
 
-void extract_help_ids(const char *buffer, FILE *fp)
+static void extract_help_ids(const char *buffer, FILE *fp)
 {
 	const char *ptr = buffer;
 	char **help_ids = malloc(500 * sizeof(char *));

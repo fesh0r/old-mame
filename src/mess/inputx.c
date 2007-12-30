@@ -20,6 +20,7 @@
 #define NUM_SIMUL_KEYS	(UCHAR_SHIFT_END - UCHAR_SHIFT_BEGIN + 1)
 #define LOG_INPUTX		0
 #define DUMP_CODES		0
+#define SPACE_COUNT		3
 
 typedef struct _mess_input_code mess_input_code;
 struct _mess_input_code
@@ -48,7 +49,7 @@ struct _char_info
 
 static const char_info charinfo[] =
 {
-	{ 0x0008,					"Backspace",	NULL },		/* Backspace */	
+	{ 0x0008,					"Backspace",	NULL },		/* Backspace */
 	{ 0x0009,					"Tab",			"    " },	/* Tab */
 	{ 0x000c,					"Clear",		NULL },		/* Clear */
 	{ 0x000d,					"Enter",		NULL },		/* Enter */
@@ -277,7 +278,7 @@ static const char_info charinfo[] =
 	{ 0xffeb,					NULL,			"\xE2\x86\x92" },	/* fullwidth right arrow */
 	{ 0xffec,					NULL,			"\xE2\x86\x93" },	/* fullwidth down arrow */
 	{ 0xffed,					NULL,			"\xE2\x96\xAA" },	/* fullwidth solid box */
-	{ 0xffee,					NULL,			"\xE2\x97\xA6" },	/* fullwidth open circle */	
+	{ 0xffee,					NULL,			"\xE2\x97\xA6" },	/* fullwidth open circle */
 	{ UCHAR_MAMEKEY(F1),		"F1",			NULL },		/* F1 function key */
 	{ UCHAR_MAMEKEY(F2),		"F2",			NULL },		/* F2 function key */
 	{ UCHAR_MAMEKEY(F3),		"F3",			NULL },		/* F3 function key */
@@ -582,7 +583,7 @@ static void execute_input(int ref, int params, const char *param[])
 
 static void setup_keybuffer(void)
 {
-	inputx_timer = timer_alloc(inputx_timerproc);
+	inputx_timer = timer_alloc(inputx_timerproc, NULL);
 	keybuffer = auto_malloc(sizeof(key_buffer));
 	memset(keybuffer, 0, sizeof(*keybuffer));
 }
@@ -946,12 +947,14 @@ void inputx_handle_mess_extensions(input_port_entry *ipt)
 				/ sizeof(ipt->keyboard.chars[0])); i++)
 			{
 				ch = ipt->keyboard.chars[i];
-				pos += sprintf(&buf[pos], "%s ", inputx_key_name(ch));
+				pos += snprintf(&buf[pos], ARRAY_LENGTH(buf) - pos, "%-*s ", MAX(SPACE_COUNT - 1, 0), inputx_key_name(ch));
 			}
 
+			/* trim extra spaces */
 			rtrim(buf);
 
-			if (buf[0])
+			/* specify the key name */
+			if (buf[0] != '\0')
 				ipt->name = auto_strdup(buf);
 			else
 				ipt->name = "Unnamed Key";

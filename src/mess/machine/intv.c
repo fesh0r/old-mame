@@ -408,9 +408,11 @@ DEVICE_LOAD( intv_cart )
 	return intv_load_rom_file(image, 1);
 }
 
+#ifdef UNUSED_FUNCTION
 DRIVER_INIT( intv )
 {
 }
+#endif
 
 /* Set Reset and INTR/INTRM Vector */
 MACHINE_RESET( intv )
@@ -434,7 +436,7 @@ INTERRUPT_GEN( intv_interrupt )
 {
 	cpunum_set_input_line(0, CP1610_INT_INTRM, ASSERT_LINE);
 	sr1_int_pending = 1;
-	timer_set(ATTOTIME_IN_CYCLES(3791, 0), 0, intv_interrupt_complete);
+	timer_set(ATTOTIME_IN_CYCLES(3791, 0), NULL, 0, intv_interrupt_complete);
 	stic_screenrefresh();
 }
 

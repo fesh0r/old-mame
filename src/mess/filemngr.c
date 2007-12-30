@@ -193,10 +193,10 @@ static char *update_entered_string(void)
 }
 
 
-char current_filespecification[32] = "*.*";
-const char fs_directory[] = "[DIR]";
-const char fs_device[] = "[DRIVE]";
-const char fs_file[] = "[FILE]";
+static char current_filespecification[32] = "*.*";
+static const char fs_directory[] = "[DIR]";
+static const char fs_device[] = "[DRIVE]";
+static const char fs_file[] = "[FILE]";
 /*const char fs_archive[] = "[ARCHIVE]"; */
 
 static ui_menu_item *fs_item;
@@ -213,7 +213,7 @@ enum {
 	FILESELECT_DEVICE,
 	FILESELECT_DIRECTORY,
 	FILESELECT_FILE
-} FILESELECT_ENTRY_TYPE;
+};
 
 
 static void fs_free(void)
@@ -268,7 +268,7 @@ static int fs_alloc(void)
 			exit(-1);
 		}
 	}
-	
+
 	memset(&fs_item[fs_total], 0, sizeof(fs_item[fs_total]));
 	fs_order[fs_total] = fs_total;
 	return fs_total++;
@@ -291,7 +291,7 @@ static void fs_generate_filelist(void)
 	osd_directory *dir;
 	int qsort_start, count, i, n;
 	ui_menu_item *tmp_menu_item;
-	int *tmp_types;	
+	int *tmp_types;
 
 	/* just to be safe */
 	fs_free();

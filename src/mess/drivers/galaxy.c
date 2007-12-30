@@ -30,21 +30,21 @@ To do:
 #include "includes/galaxy.h"
 #include "devices/snapquik.h"
 
-ADDRESS_MAP_START (galaxy_readport, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START (galaxy_readport, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START (galaxy_writeport, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START (galaxy_writeport, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 
-ADDRESS_MAP_START (galaxy_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START (galaxy_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(MRA8_ROM, MWA8_ROM)
 	AM_RANGE(0x2000, 0x2037) AM_MIRROR(0x07c0) AM_READ( galaxy_keyboard_r )
 	AM_RANGE(0x2038, 0x203f) AM_MIRROR(0x07c0) AM_READWRITE( galaxy_latch_r, galaxy_latch_w )
 ADDRESS_MAP_END
 
 
-static GFXDECODE_START( galaxy_gfxdecodeinfo )
+static GFXDECODE_START( galaxy )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, galaxy_charlayout, 0, 2 )
 GFXDECODE_END
 
@@ -136,7 +136,7 @@ static MACHINE_DRIVER_START( galaxy )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 218)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 218-1)
-	MDRV_GFXDECODE( galaxy_gfxdecodeinfo )
+	MDRV_GFXDECODE( galaxy )
 	MDRV_PALETTE_LENGTH(sizeof (galaxy_palette) / 3)
 	MDRV_COLORTABLE_LENGTH(sizeof (galaxy_colortable))
 	MDRV_PALETTE_INIT( galaxy )

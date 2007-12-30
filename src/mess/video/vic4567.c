@@ -14,7 +14,7 @@
 #define VIC3_BITPLANE_IADDR(x) ( x&1 ? VIC3_BITPLANE_IADDR_HELPER(x)+0x10000 \
 								: VIC3_BITPLANE_IADDR_HELPER(x) )
 
-unsigned char vic3_palette[0x100*3]={0};
+const unsigned char vic3_palette[0x100*3]={0};
 
 static struct {
 	struct {
@@ -786,7 +786,7 @@ INTERRUPT_GEN( vic3_raster_irq )
 		if (LIGHTPEN_BUTTON)
 		{
 			/* lightpen timer starten */
-			timer_set (attotime_make(0, 0), 1, vic2_timer_timeout);
+			timer_set (attotime_make(0, 0), NULL, 1, vic2_timer_timeout);
 		}
 		//state_display(vic2.bitmap);
 	}

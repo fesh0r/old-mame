@@ -1,6 +1,6 @@
 /****************************************************************************
 	Mac hardware
-	
+
 	The hardware for Mac 128k, 512k, 512ke, Plus (SCSI, SCC, etc).
 
 	Nate Woods
@@ -8,7 +8,7 @@
 	Raphael Nabet
 
 	Mac Model Feature Summary:
-		
+
 						CPU		FDC		Keyb	PRAM	ROMMir
 		 - Mac 128k		68k		IWM		orig	orig	???
 		 - Mac 512k		68k		IWM		orig	orig	???
@@ -77,7 +77,7 @@ static WRITE8_HANDLER(mac_via_out_cb2);
 static void mac_via_irq(int state);
 static offs_t mac_dasm_override(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 
-static struct via6522_interface mac_via6522_intf =
+static const struct via6522_interface mac_via6522_intf =
 {
 	mac_via_in_a, mac_via_in_b,
 	NULL, NULL,
@@ -434,7 +434,7 @@ static TIMER_CALLBACK(kbd_clock)
 		}
 		else
 		{
-			/* Communication is over */ 
+			/* Communication is over */
 			kbd_comm = FALSE;
 		}
 	}
@@ -445,7 +445,7 @@ static void kbd_shift_out(int data)
 	if (kbd_comm == TRUE)
 	{
 		kbd_shift_reg = data;
-		timer_set(ATTOTIME_IN_MSEC(1), 0, kbd_clock);
+		timer_set(ATTOTIME_IN_MSEC(1), NULL, 0, kbd_clock);
 	}
 }
 
@@ -456,7 +456,7 @@ static WRITE8_HANDLER(mac_via_out_cb2)
 		/* Mac pulls CB2 down to initiate communication */
 		kbd_comm = TRUE;
 		kbd_receive = TRUE;
-		timer_set(ATTOTIME_IN_USEC(100), 0, kbd_clock);
+		timer_set(ATTOTIME_IN_USEC(100), NULL, 0, kbd_clock);
 	}
 	if (kbd_comm == TRUE && kbd_receive == TRUE)
 	{
@@ -489,7 +489,7 @@ static void keyboard_receive(int val)
 
 		keyboard_reply = scan_keyboard();
 		if (keyboard_reply == 0x7B)
-		{	
+		{
 			/* if NULL, wait until key pressed or timeout */
 			timer_adjust(inquiry_timeout,
 				attotime_make(0, DOUBLE_TO_ATTOSECONDS(0.25)),
@@ -903,7 +903,7 @@ static void rtc_execute_cmd(int data)
 	if (rtc_state == RTC_STATE_XPCOMMAND)
 	{
 		rtc_xpaddr = ((rtc_cmd & 7)<<5) | ((data&0x7c)>>2);
-		if ((rtc_cmd & 0x80) != 0)	
+		if ((rtc_cmd & 0x80) != 0)
 		{
 			// read command
 			if (LOG_RTC)
@@ -1076,7 +1076,7 @@ NVRAM_HANDLER( mac )
 			struct tm mac_reference;
 			UINT32 seconds;
 
-			mame_get_base_datetime(Machine, &systime);
+			mame_get_base_datetime(machine, &systime);
 
 			/* The count starts on 1st January 1904 */
 			mac_reference.tm_sec = 0;
@@ -1327,9 +1327,9 @@ MACHINE_RESET(mac)
 	mac_set_sound_buffer(0);
 
 	if (mac_model == MODEL_MAC_SE)
-		timer_set(attotime_zero, 0, set_memory_overlay_callback);
+		timer_set(attotime_zero, NULL, 0, set_memory_overlay_callback);
 
-	mac_scanline_timer = timer_alloc(mac_scanline_tick);
+	mac_scanline_timer = timer_alloc(mac_scanline_tick, NULL);
 	timer_adjust(mac_scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_never);
 }
 
@@ -1365,7 +1365,7 @@ static void mac_driver_init(mac_model_t model)
 	/* setup keyboard */
 	keyboard_init();
 
-	inquiry_timeout = timer_alloc(inquiry_timeout_func);
+	inquiry_timeout = timer_alloc(inquiry_timeout_func, NULL);
 
 	cpuintrf_set_dasm_override(0, mac_dasm_override);
 
@@ -1386,14 +1386,14 @@ DRIVER_INIT(mac512ke)
 	mac_driver_init(MODEL_MAC_512KE);
 }
 
-static SCSIConfigTable dev_table =
+static const SCSIConfigTable dev_table =
 {
 	2,                                      /* 2 SCSI devices */
 	{ { SCSI_ID_5, 1, SCSI_DEVICE_HARDDISK },  /* SCSI ID 5, using CHD 1, and it's a harddisk */
 	 { SCSI_ID_6, 0, SCSI_DEVICE_HARDDISK } } /* SCSI ID 6, using CHD 0, and it's a harddisk */
 };
 
-static struct NCR5380interface macplus_5380intf =
+static const struct NCR5380interface macplus_5380intf =
 {
 	&dev_table,	// SCSI device table
 	NULL		// IRQ (unconnected on the Mac Plus)

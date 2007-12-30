@@ -101,7 +101,7 @@ registers common to all modes:
 //#define VERBOSE
 
 /* mask data with these values when writing */
-static unsigned char rtc_write_masks[16*4]=
+static const unsigned char rtc_write_masks[16*4]=
 {
 	0x0f,0x07,0x0f,0x07,0x0f,0x03,0x07,0x0f,0x03,0x0f,0x03,0x0f,0x0f,0x0f, 0x0f, 0x0f,
 	0x00,0x00,0x0f,0x07,0x0f,0x03,0x07,0x0f,0x03,0x00,0x01,0x03,0x00,0x0f, 0x0f, 0x0f,
@@ -152,7 +152,7 @@ void tc8521_save_stream(mame_file *file)
 static void tc8521_set_alarm_output(void)
 {
 	unsigned char alarm_output;
-	
+
 	alarm_output = 0;
 
 	/* what happens when all are enabled? I assume they are all or'd together */
@@ -181,7 +181,7 @@ static void tc8521_set_alarm_output(void)
 		/* alarm output enabled? */
 		alarm_output &= ~1;
 	}
-	
+
     if (rtc.interface.alarm_output_callback!=NULL)
     {
 		rtc.interface.alarm_output_callback(alarm_output);
@@ -291,13 +291,13 @@ static TIMER_CALLBACK(tc8521_timer_callback)
 
 
 
-void tc8521_init(struct tc8521_interface *intf)
+void tc8521_init(const struct tc8521_interface *intf)
 {
 	memset(&rtc, 0, sizeof(struct tc8521));
 	memset(&rtc.interface, 0, sizeof(struct tc8521_interface));
 	if (intf)
 		memcpy(&rtc.interface, intf, sizeof(struct tc8521_interface));
-	timer_pulse(ATTOTIME_IN_HZ(32), 0, tc8521_timer_callback);
+	timer_pulse(ATTOTIME_IN_HZ(32), NULL, 0, tc8521_timer_callback);
 }
 
  READ8_HANDLER(tc8521_r)
@@ -314,7 +314,7 @@ void tc8521_init(struct tc8521_interface *intf)
 				logerror("8521 RTC R: %04x %02x\n", offset, rtc.registers[offset]);
 #endif
         		return rtc.registers[offset];
-		
+
 			default:
 				break;
 		}

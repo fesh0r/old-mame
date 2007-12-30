@@ -246,7 +246,7 @@ void c128_bankswitch_64 (int reset)
 	game=c64_game;
 }
 
-UINT8 c128_mmu[0x0b];
+static UINT8 c128_mmu[0x0b];
 static int c128_mmu_helper[4] =
 {0x400, 0x1000, 0x2000, 0x4000};
 static int mmu_cpu=0;
@@ -529,7 +529,7 @@ static void c128_bankswitch (int reset)
 			 * (presumably set up by CPU #1.) This always worked, but when I
 			 * changed the m8502 CPU core to use an internal memory map, it
 			 * started BRK-ing forever when trying to execute 0x0000.
-			 * 
+			 *
 			 * I am not sure whether the C128 actually executes this invalid
 			 * memory or if this is a bug in the C128 driver.  In any case, the
 			 * driver used to work with this behavior, so I am doing this hack

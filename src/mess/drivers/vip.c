@@ -1,7 +1,7 @@
 /*
 
 	TODO:
-	
+
 	- pcb layout guru-style readme
 	- tape interface
 	- discrete sound from NE555
@@ -130,7 +130,7 @@ static void vip_q_w(int level)
 	set_led_status(1, level);
 }
 
-static CDP1802_CONFIG vip_config = 
+static const CDP1802_CONFIG vip_config =
 {
 	vip_mode_r,
 	vip_ef_r,
@@ -215,7 +215,7 @@ ROM_END
 
 /* System Configuration */
 
-QUICKLOAD_LOAD( vip )
+static QUICKLOAD_LOAD( vip )
 {
 	int size = image_length(image);
 
@@ -278,7 +278,7 @@ static DRIVER_INIT( vip )
 	// turn on power led
 	set_led_status(0, 1);
 
-	timer_set(attotime_zero, 0, setup_beep);
+	timer_set(attotime_zero, NULL, 0, setup_beep);
 }
 
 /* System Drivers */

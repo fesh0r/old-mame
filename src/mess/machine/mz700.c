@@ -38,7 +38,7 @@ static WRITE8_HANDLER ( pio_port_a_w );
 static WRITE8_HANDLER ( pio_port_b_w );
 static WRITE8_HANDLER ( pio_port_c_w );
 
-static ppi8255_interface ppi8255 = {
+static const ppi8255_interface ppi8255 = {
     1,
 	{pio_port_a_r},
 	{pio_port_b_r},
@@ -55,7 +55,7 @@ static void pit_clk_0(double clock);
 static void pit_clk_1(double clock);
 static void pit_irq_2(int which);
 
-struct pit8253_config pit8253 =
+static const struct pit8253_config pit8253 =
 {
 	TYPE8253,
 	{
@@ -89,12 +89,12 @@ DRIVER_INIT(mz700)
 
 MACHINE_RESET(mz700)
 {
-	ne556_timer[0] = timer_alloc(ne556_callback);
+	ne556_timer[0] = timer_alloc(ne556_callback, NULL);
 	timer_adjust(ne556_timer[0], ATTOTIME_IN_HZ(1.5), 0, ATTOTIME_IN_HZ(1.5));
-	/*timer_pulse(ATTOTIME_IN_HZ(1.5), 0, ne556_callback)*/
-	ne556_timer[1] = timer_alloc(ne556_callback);
+	/*timer_pulse(ATTOTIME_IN_HZ(1.5), NULL, 0, ne556_callback)*/
+	ne556_timer[1] = timer_alloc(ne556_callback, NULL);
 	timer_adjust(ne556_timer[1], ATTOTIME_IN_HZ(34.5), 1, ATTOTIME_IN_HZ(34.5));
-	/*timer_pulse(ATTOTIME_IN_HZ(34.5), 1, ne556_callback)*/
+	/*timer_pulse(ATTOTIME_IN_HZ(34.5), NULL, 1, ne556_callback)*/
 }
 
 

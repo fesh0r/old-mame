@@ -35,7 +35,7 @@
 #endif
 #endif
 
-static unsigned char intv_palette[] =
+static const unsigned char intv_palette[] =
 {
 	0x00, 0x00, 0x00, /* BLACK */
 	0x00, 0x2D, 0xFF, /* BLUE */
@@ -82,7 +82,7 @@ static PALETTE_INIT( intv )
 	}
 }
 
-static struct AY8910interface ay8910_interface =
+static const struct AY8910interface ay8910_interface =
 {
 	intv_right_control_r,
 	intv_left_control_r,
@@ -92,7 +92,7 @@ static struct AY8910interface ay8910_interface =
 
 /* graphics output */
 
-gfx_layout intv_gromlayout =
+static const gfx_layout intv_gromlayout =
 {
 	16, 16,
 	256,
@@ -104,7 +104,7 @@ gfx_layout intv_gromlayout =
 	8 * 16
 };
 
-gfx_layout intv_gramlayout =
+static const gfx_layout intv_gramlayout =
 {
 	16, 16,
 	64,
@@ -116,7 +116,7 @@ gfx_layout intv_gramlayout =
 	8 * 8
 };
 
-gfx_layout intvkbd_charlayout =
+static const gfx_layout intvkbd_charlayout =
 {
 	8, 8,
 	256,
@@ -127,12 +127,12 @@ gfx_layout intvkbd_charlayout =
 	8 * 8
 };
 
-static GFXDECODE_START( intv_gfxdecodeinfo )
+static GFXDECODE_START( intv )
 	GFXDECODE_ENTRY( REGION_CPU1, 0x3000<<1, intv_gromlayout, 0, 256 )
 	GFXDECODE_ENTRY( 0, 0, intv_gramlayout, 0, 256 )    /* Dynamically decoded from RAM */
 GFXDECODE_END
 
-static GFXDECODE_START( intvkbd_gfxdecodeinfo )
+static GFXDECODE_START( intvkbd )
 	GFXDECODE_ENTRY( REGION_CPU1, 0x3000<<1, intv_gromlayout, 0, 256 )
 	GFXDECODE_ENTRY( 0, 0, intv_gramlayout, 0, 256 )    /* Dynamically decoded from RAM */
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, intvkbd_charlayout, 0, 256 )
@@ -358,7 +358,7 @@ static MACHINE_DRIVER_START( intv )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 24*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40*8-1, 0, 24*8-1)
-	MDRV_GFXDECODE( intv_gfxdecodeinfo )
+	MDRV_GFXDECODE( intv )
 	MDRV_PALETTE_LENGTH(32)
 	MDRV_COLORTABLE_LENGTH(2 * 2 * 16 * 16)
 	MDRV_PALETTE_INIT( intv )
@@ -370,7 +370,7 @@ static MACHINE_DRIVER_START( intv )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(AY8910, 3579545/2)
 	MDRV_SOUND_CONFIG(ay8910_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)	
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 
@@ -386,7 +386,7 @@ static MACHINE_DRIVER_START( intvkbd )
 	MDRV_INTERLEAVE(100)
 
     /* video hardware */
-	MDRV_GFXDECODE( intvkbd_gfxdecodeinfo )
+	MDRV_GFXDECODE( intvkbd )
 	MDRV_VIDEO_START( intvkbd )
 	MDRV_VIDEO_UPDATE( intvkbd )
 MACHINE_DRIVER_END
@@ -497,6 +497,6 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*    YEAR  NAME		PARENT	COMPAT	MACHINE   INPUT     INIT		CONFIG		COMPANY      FULLNAME */
-CONS( 1979, intv,		0,		0,		intv,     intv, 	NULL,		intv,		"Mattel",    "Intellivision", GAME_NOT_WORKING )
-CONS( 1981, intvsrs,	0,		0,		intv,     intv, 	NULL,		intv,		"Mattel",    "Intellivision (Sears)", GAME_NOT_WORKING )
-COMP( 1981, intvkbd,	0,		0,		intvkbd,  intvkbd, 	NULL,		intvkbd,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)
+CONS( 1979, intv,		0,		0,		intv,     intv, 	0,			intv,		"Mattel",    "Intellivision", GAME_NOT_WORKING )
+CONS( 1981, intvsrs,	0,		0,		intv,     intv, 	0,			intv,		"Mattel",    "Intellivision (Sears)", GAME_NOT_WORKING )
+COMP( 1981, intvkbd,	0,		0,		intvkbd,  intvkbd, 	0,			intvkbd,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)

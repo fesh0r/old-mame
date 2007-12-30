@@ -3,7 +3,6 @@
 #include <ctype.h>
 #include <shlwapi.h>
 
-#include "strconv.h"
 #include "assoc.h"
 
 
@@ -29,7 +28,7 @@ static void get_open_command(const struct win_association_info *assoc,
 	int i;
 
 	GetModuleFileName(GetModuleHandle(NULL), buf, buflen);
-	
+
 	for (i = 0; buf[i]; i++)
 		buf[i] = toupper(buf[i]);
 	buf[i++] = ' ';

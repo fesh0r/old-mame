@@ -21,11 +21,11 @@
 
    0x20 input 8 bit direct
    0x24 input 8 bit with dma
-   
+
    0xd1 speaker on
    0xd3 speaker off
    0xd8 read speaker
-   
+
    0x40 samplerate adjust
 
    0x48 blockgroesse einstellen
@@ -141,11 +141,11 @@ static int soundblaster_operation(int data)
 	}
 	return 0;
 }
-	
+
 WRITE8_HANDLER( soundblaster_w )
 {
 	switch (offset) {
-	case 6: 
+	case 6:
 		if (data!=0) { //reset
 		} else { // reset off
 		}
@@ -169,7 +169,7 @@ WRITE8_HANDLER( soundblaster_w )
 }
 
 #if 0
-struct CustomSound_interface soundblaster_interface = {
+const struct CustomSound_interface soundblaster_interface = {
 	soundblaster_start,
 	soundblaster_stop,
 	soundblaster_update

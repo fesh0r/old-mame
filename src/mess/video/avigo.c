@@ -16,7 +16,7 @@
 ***************************************************************************/
 
 /* backdrop */
-struct artwork_info *avigo_backdrop;
+//struct artwork_info *avigo_backdrop;
 
 /* mem size = 0x017c0 */
 
@@ -45,7 +45,7 @@ static const gfx_layout pointerlayout =
 	8 * 8
 };
 
-static UINT8 pointermask[] =
+static const UINT8 pointermask[] =
 {
 	0x00, 0x70, 0x60, 0x50, 0x08, 0x04, 0x00, 0x00,		/* blackmask */
 	0xf0, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00	/* whitemask */
@@ -129,23 +129,23 @@ VIDEO_START( avigo )
 
     /* allocate video memory */
     avigo_video_memory = auto_malloc(((AVIGO_SCREEN_WIDTH>>3)*AVIGO_SCREEN_HEIGHT));
-	Machine->gfx[0] = stylus_pointer = allocgfx(&pointerlayout);
+	machine->gfx[0] = stylus_pointer = allocgfx(&pointerlayout);
 	decodegfx(stylus_pointer, pointermask, 0, 1);
 	/* 7-Sep-2007 - After 0.118u5, you cannot revector the color table */
 	/*stylus_pointer->colortable = stylus_color_table;*/
 	stylus_pointer->total_colors = 3;
-	stylus_color_table[1] = Machine->pens[0];
-	stylus_color_table[2] = Machine->pens[1]; 
+	stylus_color_table[1] = machine->pens[0];
+	stylus_color_table[2] = machine->pens[1];
 }
 
 /* two colours */
-static unsigned short avigo_colour_table[AVIGO_NUM_COLOURS] =
+static const unsigned short avigo_colour_table[AVIGO_NUM_COLOURS] =
 {
 	0, 1
 };
 
 /* black/white */
-static unsigned char avigo_palette[AVIGO_NUM_COLOURS * 3] =
+static const unsigned char avigo_palette[AVIGO_NUM_COLOURS * 3] =
 {
     0x0ff, 0x0ff, 0x0ff,
     0x000, 0x000, 0x000
@@ -162,23 +162,23 @@ PALETTE_INIT( avigo )
 
 	/* load backdrop */
 #if 0
-	backdrop_name = malloc(strlen(Machine->gamedrv->name)+4+1);
+	backdrop_name = malloc(strlen(machine->gamedrv->name)+4+1);
 
     if (backdrop_name!=NULL)
 	{
-		strcpy(backdrop_name, Machine->gamedrv->name);
+		strcpy(backdrop_name, machine->gamedrv->name);
 		strcat(backdrop_name, ".png");
 
 		logerror("%s\n",backdrop_name);
 
-        artwork_load(&avigo_backdrop, backdrop_name, used,Machine->drv->total_colors-used);
+        artwork_load(&avigo_backdrop, backdrop_name, used,machine->drv->total_colors-used);
 
 		if (avigo_backdrop)
 		{
 #ifdef AVIGO_VIDEO_DEBUG
 			logerror("backdrop %s successfully loaded\n", backdrop_name);
 #endif
-            memcpy (&sys_palette[used * 3], avigo_backdrop->orig_palette, 
+            memcpy (&sys_palette[used * 3], avigo_backdrop->orig_palette,
                     avigo_backdrop->num_pens_used * 3 * sizeof (unsigned char));
 		}
 		else
@@ -191,8 +191,8 @@ PALETTE_INIT( avigo )
 	}
 #endif
 }
-unsigned int avigo_ad_x;
-unsigned int avigo_ad_y;
+static unsigned int avigo_ad_x;
+static unsigned int avigo_ad_y;
 
 
 
@@ -210,15 +210,15 @@ VIDEO_UPDATE( avigo )
 	rectangle r;
 
 	/* draw avigo display */
-    pens[0] = Machine->pens[0];
-    pens[1] = Machine->pens[1];
+    pens[0] = machine->pens[0];
+    pens[1] = machine->pens[1];
 
     for (y=0; y<AVIGO_SCREEN_HEIGHT; y++)
     {
         int by;
 
         unsigned char *line_ptr = avigo_video_memory +  (y*(AVIGO_SCREEN_WIDTH>>3));
-		
+
         x = 0;
         for (by=((AVIGO_SCREEN_WIDTH>>3)-1); by>=0; by--)
         {
@@ -236,7 +236,7 @@ VIDEO_UPDATE( avigo )
             }
 
             x = px;
-                            
+
             line_ptr = line_ptr+1;
         }
      }

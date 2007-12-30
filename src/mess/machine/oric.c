@@ -253,7 +253,7 @@ PB5
 PB6
  tape connector motor control 0
 
-PB7 
+PB7
  tape connector output high 1
 
  */
@@ -352,7 +352,7 @@ static void oric_printer_handshake_in(int number, int data, int mask)
     via_set_input_ca1(0, acknowledge);
 }
 
-static CENTRONICS_CONFIG oric_cent_config[1]={
+static const CENTRONICS_CONFIG oric_cent_config[1]={
 	{
 		PRINTER_CENTRONICS,
 		oric_printer_handshake_in
@@ -452,7 +452,7 @@ CB2
 
 */
 
-struct via6522_interface oric_6522_interface=
+static const struct via6522_interface oric_6522_interface=
 {
 	oric_via_in_a_func,
 	oric_via_in_b_func,
@@ -1101,7 +1101,7 @@ static void oric_common_init_machine(void)
 	oric_irqs = 0;
 	oric_ram_0x0c000 = NULL;
 
-    timer_pulse(ATTOTIME_IN_HZ(4800), 0, oric_refresh_tape);
+    timer_pulse(ATTOTIME_IN_HZ(4800), NULL, 0, oric_refresh_tape);
 
 	via_reset();
 	via_config(0, &oric_6522_interface);
@@ -1116,7 +1116,7 @@ static void oric_common_init_machine(void)
 MACHINE_START( oric )
 {
 	oric_common_init_machine();
-	
+
 	oric_is_telestrat = 0;
 
 	oric_ram_0x0c000 = auto_malloc(16384);
@@ -1216,7 +1216,7 @@ READ8_HANDLER ( oric_IO_r )
 	{
 		if ((offset & 0x0f)!=0x0d)
 		{
-			logerror("via 0 r: %04x %04x\n",offset, (unsigned) cpunum_get_reg(0, REG_PC)); 
+			logerror("via 0 r: %04x %04x\n",offset, (unsigned) cpunum_get_reg(0, REG_PC));
 		}
 	}
 	/* it is repeated */
@@ -1256,7 +1256,7 @@ WRITE8_HANDLER ( oric_IO_w )
 #endif
 	if (enable_logging)
 	{
-		logerror("via 0 w: %04x %02x %04x\n",offset,data,(unsigned) cpunum_get_reg(0, REG_PC)); 
+		logerror("via 0 w: %04x %02x %04x\n",offset,data,(unsigned) cpunum_get_reg(0, REG_PC));
 	}
 
 	via_0_w(offset & 0x0f,data);
@@ -1433,7 +1433,7 @@ static void	telestrat_via2_irq_func(int state)
 
     oric_refresh_ints();
 }
-struct via6522_interface telestrat_via2_interface=
+static const struct via6522_interface telestrat_via2_interface=
 {
 	telestrat_via2_in_a_func,
 	telestrat_via2_in_b_func,

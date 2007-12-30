@@ -76,7 +76,7 @@ int pc1350_ina(void)
 	if (t&0x20) {
 		if (PC1350_KEY_UP) data|=1;
 		if (PC1350_KEY_DOWN) data|=2;
-		if (PC1350_KEY_LEFT) data|=4; 
+		if (PC1350_KEY_LEFT) data|=4;
 		if (PC1350_KEY_RIGHT) data|=8;
 		if (PC1350_KEY_B) data|=0x10;
 		if (PC1350_KEY_G) data|=0x20;
@@ -115,7 +115,7 @@ int pc1350_ina(void)
 	if (PC1350_KEY_OFF&&(outa&0xc0) ) data|=0xc0;
 
 	// missing lshift
-	
+
 	return data;
 }
 
@@ -160,7 +160,7 @@ static TIMER_CALLBACK(pc1350_power_up)
 
 MACHINE_START( pc1350 )
 {
-	timer_set(ATTOTIME_IN_SEC(1), 0, pc1350_power_up);
+	timer_set(ATTOTIME_IN_SEC(1), NULL, 0, pc1350_power_up);
 
 	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, MRA8_BANK1);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, MWA8_BANK1);

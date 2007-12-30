@@ -1,6 +1,8 @@
 #ifndef __TED7360_H_
 #define __TED7360_H_
 
+/*----------- defined in video/ted7360.c -----------*/
+
 /*
  * if you need this chip in another mame/mess emulation than let it me know
  * I will split this from the c16 driver
@@ -14,7 +16,7 @@
 /* pal version */
 /* dma_read: videochip fetched 1 byte data from system bus */
 extern void ted7360_init (int pal);
-extern void ted7360_set_dma (read8_handler dma_read, 
+extern void ted7360_set_dma (read8_handler dma_read,
 							 read8_handler dma_read_rom);
 
 #define TED7360NTSC_VRETRACERATE 60
@@ -46,10 +48,10 @@ extern void ted7360_set_dma (read8_handler dma_read,
 
 extern VIDEO_START( ted7360 );
 extern VIDEO_UPDATE( ted7360 );
-extern unsigned char ted7360_palette[16 * 8 * 3];
+extern const unsigned char ted7360_palette[16 * 8 * 3];
 
 /* to be inserted in GameDriver-Structure */
-extern struct CustomSound_interface ted7360_sound_interface;
+extern const struct CustomSound_interface ted7360_sound_interface;
 
 /* to be called when writting to port */
 extern WRITE8_HANDLER ( ted7360_port_w );
@@ -62,13 +64,13 @@ extern void ted7360_frame_interrupt (void);
 extern void ted7360_raster_interrupt (void);
 
 /* private area */
-
-/* from audio/pc.c */
-void *ted7360_custom_start (int clock, const struct CustomSound_interface *config);
-void ted7360_soundport_w (int mode, int data);
-
 extern UINT8 ted7360[0x20];
 extern int ted7360_pal;
 extern int ted7360_rom;
+
+/*----------- defined in audio/ted7360.c -----------*/
+
+void *ted7360_custom_start (int clock, const struct CustomSound_interface *config);
+void ted7360_soundport_w (int mode, int data);
 
 #endif

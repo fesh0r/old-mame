@@ -66,7 +66,7 @@ static int input_latch, output_latch;
 
 static int ide_irq, clk_irq;
 
-struct ide_interface ti99_ide_interface =
+static const struct ide_interface ti99_ide_interface =
 {
 	ide_interrupt_callback
 };
@@ -102,14 +102,19 @@ static void clk_interrupt_callback(int state)
 }
 
 /*
-	Reset ide card, set up handlers
+	Initializes the ide card, set up handlers
 */
-void ti99_ide_init(int in_tms9995_mode)
+void ti99_ide_init()
 {
 	rtc65271_init(memory_region(region_dsr) + offset_ide_ram2, clk_interrupt_callback);
-
 	ti99_ide_RAM = memory_region(region_dsr) + offset_ide_ram;
+}
 
+/*
+	Reset ide card, set up handlers
+*/
+void ti99_ide_reset(int in_tms9995_mode)
+{
 	ti99_peb_set_card_handlers(0x1000, & ide_handlers);
 
 	cur_page = 0;

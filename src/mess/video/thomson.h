@@ -6,7 +6,7 @@
 
 **********************************************************************/
 
-/* 
+/*
    TO7 video:
    one line (64 us) =
       56 left border pixels ( 7 us)
@@ -72,7 +72,7 @@ extern struct thom_vsignal thom_get_vsignal ( void );
 extern unsigned to7_lightpen_gpl ( int decx, int decy );
 
 /* video position corresponding to lightpen (with some offset) */
-extern struct thom_vsignal thom_get_lightpen_vsignal ( int xdec, int ydec, 
+extern struct thom_vsignal thom_get_lightpen_vsignal ( int xdec, int ydec,
 						       int xdec2 );
 
 /* specify a lightpencall-back function, called nb times per frame */
@@ -85,8 +85,6 @@ extern VIDEO_START  ( thom );
 extern VIDEO_UPDATE ( thom );
 extern PALETTE_INIT ( thom );
 extern VIDEO_EOF    ( thom );
-
-extern void thom_video_postload ( void );
 
 /* pass video init signal */
 extern void thom_set_init_callback ( void (*cb) ( int init ) );
@@ -129,9 +127,6 @@ extern void thom_floppy_active ( int write );
 /***************************** TO7 / T9000 *************************/
 
 extern WRITE8_HANDLER ( to7_vram_w );
-
-/* specific TO7 / T9000 lightpen code (no video gate-array) */
-extern unsigned to7_lightpen_gpl ( int decx, int decy );
 
 
 /***************************** TO7/70 ******************************/

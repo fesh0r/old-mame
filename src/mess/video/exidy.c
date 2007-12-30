@@ -20,13 +20,13 @@ VIDEO_START( exidy )
 }
 
 /* two colours */
-static unsigned short exidy_colour_table[EXIDY_NUM_COLOURS] =
+static const unsigned short exidy_colour_table[EXIDY_NUM_COLOURS] =
 {
 	0, 1
 };
 
 /* black/white */
-static unsigned char exidy_palette[EXIDY_NUM_COLOURS * 3] =
+static const unsigned char exidy_palette[EXIDY_NUM_COLOURS * 3] =
 {
     0x000, 0x000, 0x000,
     0x0ff, 0x0ff, 0x0ff
@@ -50,8 +50,8 @@ VIDEO_UPDATE( exidy )
 	int x,y;
 	int pens[2];
 
-	pens[0] = Machine->pens[0];
-	pens[1] = Machine->pens[1];
+	pens[0] = machine->pens[0];
+	pens[1] = machine->pens[1];
 
 	for (y=0; y<EXIDY_SCREEN_HEIGHT>>3; y++)
 	{
@@ -66,7 +66,7 @@ VIDEO_UPDATE( exidy )
 
 			/* prom at 0x0f800, user chars from 0x0fc00 */
 			char_addr = 0x0f800 + (ch<<3);
-		
+
 			for (cheight=0; cheight<8; cheight++)
 			{
 				int byte;

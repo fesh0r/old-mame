@@ -3,6 +3,7 @@
 #include "cpu/m68000/m68000.h"
 #include "devices/cartslot.h"
 #include "includes/serial.h"
+#include "sound/speaker.h"
 #include "video/generic.h"
 #include "video/zx8301.h"
 #include "inputx.h"
@@ -17,17 +18,16 @@
 
 	TODO:
 
-	- RTC register write
-	- proper pound key code (£)
-	- speaker sound
 	- microdrive simulation
-	- M68008 opcode reading interface
+	- RTC register write
 	- serial data latching?
 	- transmit interrupt timing
 	- interface interrupt
 	- accurate screen timings
-	- emulate COMCTL properly
 	- ZX8301 cycle stealing
+	- emulate COMCTL properly
+	- emulate microdrive properly
+	- get modified Danish version to boot (e.g. MD_DESEL was patched to jump to 0x1cd5e)
 
 */
 
@@ -60,11 +60,27 @@
 #define ZX8302_INT_FRAME		0x08
 #define ZX8302_INT_EXTERNAL		0x10
 
-#define ZX8302_STATUS_BUFFER_FULL	0x02
+#define ZX8302_STATUS_NETWORK_PORT		0x01
+#define ZX8302_STATUS_TX_BUFFER_FULL	0x02
+#define ZX8302_STATUS_RX_BUFFER_FULL	0x04
+#define ZX8302_STATUS_MICRODRIVE_GAP	0x08
 
 #define ZX8302_TXD_START	0
 #define ZX8302_TXD_STOP		9
 #define ZX8302_TXD_STOP2	10
+
+#define MDV_SECTOR_COUNT	255
+#define MDV_SECTOR_LENGTH	686
+#define MDV_IMAGE_LENGTH	(MDV_SECTOR_COUNT * MDV_SECTOR_LENGTH)
+
+#define MDV_PREAMBLE_LENGTH			12
+#define MDV_GAP_LENGTH				120
+
+#define MDV_OFFSET_HEADER_PREAMBLE	0
+#define MDV_OFFSET_HEADER			MDV_OFFSET_HEADER_PREAMBLE + MDV_PREAMBLE_LENGTH
+#define MDV_OFFSET_DATA_PREAMBLE	28
+#define MDV_OFFSET_DATA				MDV_OFFSET_DATA_PREAMBLE + MDV_PREAMBLE_LENGTH
+#define MDV_OFFSET_GAP				566
 
 static struct ZX8302
 {
@@ -81,10 +97,13 @@ static struct ZX8302
 	int ser1_rxd, ser1_cts;
 	int ser2_txd, ser2_dtr;
 	int netout, netin;
-	int mdrdw, mdselck, mdseld, erase, raw1, raw2;
+	int mdrdw, mdselck, mdseld, erase;
+	int mdv_motor, mdv_offset;
 } zx8302;
 
 static emu_timer *zx8302_txd_timer, *zx8302_ipc_timer, *zx8302_rtc_timer, *zx8302_gap_timer;
+
+static UINT8 *mdv_image;
 
 static void zx8302_interrupt(UINT8 line)
 {
@@ -140,7 +159,7 @@ static TIMER_CALLBACK( zx8302_txd_tick )
 	case ZX8302_TXD_STOP2:
 		zx8302_txd(1);
 		zx8302.tx_bits = ZX8302_TXD_START;
-		zx8302.status &= ~ZX8302_STATUS_BUFFER_FULL;
+		zx8302.status &= ~ZX8302_STATUS_TX_BUFFER_FULL;
 		zx8302_interrupt(ZX8302_INT_TRANSMIT);
 		break;
 	}
@@ -158,7 +177,10 @@ static TIMER_CALLBACK( zx8302_rtc_tick )
 
 static TIMER_CALLBACK( zx8302_gap_tick )
 {
-	zx8302_interrupt(ZX8302_INT_GAP);
+	if (zx8302.mdv_motor)
+	{
+		zx8302_interrupt(ZX8302_INT_GAP);
+	}
 }
 
 static READ8_HANDLER( zx8302_rtc_r )
@@ -194,24 +216,82 @@ static WRITE8_HANDLER( zx8302_control_w )
 	timer_adjust(zx8302_ipc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(baudx4));
 }
 
+static UINT8 zx8302_get_microdrive_status(void)
+{
+	UINT8 status = 0;
+
+	if (zx8302.mdv_motor)
+	{
+		switch (zx8302.mdv_offset % MDV_SECTOR_LENGTH)
+		{
+		case MDV_OFFSET_HEADER_PREAMBLE:
+			zx8302.status &= ~ZX8302_STATUS_MICRODRIVE_GAP;
+			zx8302.mdv_offset += MDV_PREAMBLE_LENGTH;
+			break;
+
+		case MDV_OFFSET_HEADER:
+			zx8302.status |= ZX8302_STATUS_RX_BUFFER_FULL;
+			break;
+
+		case MDV_OFFSET_DATA_PREAMBLE:
+			zx8302.status &= ~ZX8302_STATUS_RX_BUFFER_FULL;
+			zx8302.mdv_offset += MDV_PREAMBLE_LENGTH;
+			break;
+
+		case MDV_OFFSET_DATA:
+			zx8302.status |= ZX8302_STATUS_RX_BUFFER_FULL;
+			break;
+
+		case MDV_OFFSET_GAP:
+			zx8302.status &= ~ZX8302_STATUS_RX_BUFFER_FULL;
+			zx8302.status |= ZX8302_STATUS_MICRODRIVE_GAP;
+			zx8302.mdv_offset += MDV_GAP_LENGTH;
+			break;
+		}
+	}
+
+	return status;
+}
+
+static READ8_HANDLER( zx8302_mdv_track_r )
+{
+	UINT8 data = mdv_image[zx8302.mdv_offset];
+
+	zx8302.mdv_offset++;
+
+	if (zx8302.mdv_offset == MDV_IMAGE_LENGTH)
+	{
+		zx8302.mdv_offset = 0;
+	}
+
+	return data;
+}
+
 static READ8_HANDLER( zx8302_status_r )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		Network port
 		1		Transmit buffer full
-		2		
-		3		
+		2		Receive buffer full
+		3		Microdrive GAP
 		4		SER1 DTR
 		5		SER2 CTS
 		6		Latched COMCTL
 		7		Latched COMDATA
 
 	*/
-	
-	UINT8 data = (zx8302.comdata_l << 7) | (zx8302.comctl << 6) | (zx8302.ser1_cts << 5)| (zx8302.ser2_dtr << 4) | (zx8302.status & 0x0f); 
+
+	UINT8 data = 0;
+
+	data |= zx8302.comdata_l << 7;
+	data |= zx8302.comctl << 6;
+	data |= zx8302.ser1_cts << 5;
+	data |= zx8302.ser2_dtr << 4;
+	data |= zx8302_get_microdrive_status();
+	data |= zx8302.status;
 
 	zx8302.comctl = 1;
 
@@ -226,36 +306,55 @@ static TIMER_CALLBACK( zx8302_delayed_ipc_command )
 
 static WRITE8_HANDLER( zx8302_ipc_command_w )
 {
-	timer_set(ATTOTIME_IN_NSEC(480), data, zx8302_delayed_ipc_command);
+	timer_set(ATTOTIME_IN_NSEC(480), NULL, data, zx8302_delayed_ipc_command);
 }
+
+/*
+static int zx8302_get_selected_microdrive(void)
+{
+	int i;
+
+	for (i = 0; i < 8; i++)
+	{
+		if (BIT(zx8302.mdv_motor, i)) return 8 - i;
+	}
+
+	return 0;
+}
+*/
 
 static WRITE8_HANDLER( zx8302_mdv_control_w )
 {
 	/*
-	MDV control
-	at reset; and after data transfer of any mdv
-		(02 00) 8 times			stop all motors
-	start an mdvN:
-		(03 01) (02 00) N-1 times	start motorN
-	format (erase):
-		0a
-		(0e 0e) 0a per header and per sector
-	format (verify):
-		02
-		(02 02) after finding pulses per header/sector
-	format (write directory):
-		0a (0e 0e) 02 write sector
-	format (find sector 0):
-		(02 02) after pulses
-	format (write directory):
-		0a (0e 0e) 02 write sector
-		(02 00) 8 times 		stop motor
 
-	read sector:
-		(02 02) after pulses
-		get 4 bytes
-		(02 02) indication to skip PLL sequence: 6*00,2*ff
+		bit		description
+
+		0		MDSELDH
+		1		MDSELCKH
+		2		MDRDWL
+		3		ERASE
+		4
+		5
+		6
+		7
+
 	*/
+
+	zx8302.mdseld = BIT(data, 0);
+	zx8302.mdselck = BIT(data, 1);
+	zx8302.mdrdw = BIT(data, 2) ? 0 : 1;
+	zx8302.erase = BIT(data, 3);
+
+	// Microdrive selection shift register
+
+	if (zx8302.mdselck)
+	{
+		zx8302.mdv_motor >>= 1;
+		zx8302.mdv_motor |= (zx8302.mdseld << 7);
+
+		zx8302.mdv_offset = 0;
+		zx8302.status &= ~ZX8302_STATUS_RX_BUFFER_FULL;
+	}
 }
 
 static READ8_HANDLER( zx8302_irq_status_r )
@@ -273,20 +372,10 @@ static WRITE8_HANDLER( zx8302_irq_acknowledge_w )
 	}
 }
 
-static READ8_HANDLER( zx8302_mdv_track1_r )
-{
-	return 0;
-}
-
-static READ8_HANDLER( zx8302_mdv_track2_r )
-{
-	return 0;
-}
-
 static WRITE8_HANDLER( zx8302_data_w )
 {
 	zx8302.tdr = data;
-	zx8302.status |= ZX8302_STATUS_BUFFER_FULL;
+	zx8302.status |= ZX8302_STATUS_TX_BUFFER_FULL;
 }
 
 static INTERRUPT_GEN( zx8302_int )
@@ -301,6 +390,7 @@ static struct IPC
 	UINT8 keylatch;
 	int ser1_txd, ser1_dtr;
 	int ser2_rxd, ser2_cts;
+	int ipl;
 } ipc;
 
 static WRITE8_HANDLER( ipc_link_hack_w )
@@ -354,9 +444,9 @@ static WRITE8_HANDLER( ipc_link_hack_w )
 static WRITE8_HANDLER( ipc_port1_w )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		Keyboard column output (KBO0)
 		1		Keyboard column output (KBO1)
 		2		Keyboard column output (KBO2)
@@ -374,9 +464,9 @@ static WRITE8_HANDLER( ipc_port1_w )
 static WRITE8_HANDLER( ipc_port2_w )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		Serial data input (SER2 RxD, SER1 TxD)
 		1		Speaker output
 		2		Interrupt output (IPL0-2)
@@ -390,27 +480,36 @@ static WRITE8_HANDLER( ipc_port2_w )
 
 	int ipl = (BIT(data, 2) << 1) | BIT(data, 3);
 
-	switch (ipl)
+	if (ipl != ipc.ipl)
 	{
-	case 0:
-		cpunum_set_input_line(0, MC68000_IRQ_2, CLEAR_LINE);
-		cpunum_set_input_line(0, MC68000_IRQ_5, CLEAR_LINE);
-		cpunum_set_input_line(0, MC68000_IRQ_7, HOLD_LINE);
-		break;
-	case 1: // CTRL-ALT-7
-		cpunum_set_input_line(0, MC68000_IRQ_2, CLEAR_LINE);
-		cpunum_set_input_line(0, MC68000_IRQ_5, HOLD_LINE);
-		cpunum_set_input_line(0, MC68000_IRQ_7, CLEAR_LINE);
-		break;
-	case 2:
-		cpunum_set_input_line(0, MC68000_IRQ_2, HOLD_LINE);
-		cpunum_set_input_line(0, MC68000_IRQ_5, CLEAR_LINE);
-		cpunum_set_input_line(0, MC68000_IRQ_7, CLEAR_LINE);
-		break;
-	case 3:
-		// do nothing
-		break;
+		switch (ipl)
+		{
+		case 0:
+			cpunum_set_input_line(0, MC68000_IRQ_2, CLEAR_LINE);
+			cpunum_set_input_line(0, MC68000_IRQ_5, CLEAR_LINE);
+			cpunum_set_input_line(0, MC68000_IRQ_7, HOLD_LINE);
+			break;
+		case 1: // CTRL-ALT-7
+			cpunum_set_input_line(0, MC68000_IRQ_2, CLEAR_LINE);
+			cpunum_set_input_line(0, MC68000_IRQ_5, HOLD_LINE);
+			cpunum_set_input_line(0, MC68000_IRQ_7, CLEAR_LINE);
+			break;
+		case 2:
+			cpunum_set_input_line(0, MC68000_IRQ_2, HOLD_LINE);
+			cpunum_set_input_line(0, MC68000_IRQ_5, CLEAR_LINE);
+			cpunum_set_input_line(0, MC68000_IRQ_7, CLEAR_LINE);
+			break;
+		case 3:
+			cpunum_set_input_line(0, MC68000_IRQ_2, CLEAR_LINE);
+			cpunum_set_input_line(0, MC68000_IRQ_5, CLEAR_LINE);
+			cpunum_set_input_line(0, MC68000_IRQ_7, CLEAR_LINE);
+			break;
+		}
+
+		ipc.ipl = ipl;
 	}
+
+	speaker_level_w(0, BIT(data, 1));
 
 	ipc.ser2_cts = BIT(data, 4);
 	ipc.ser1_dtr = BIT(data, 5);
@@ -421,9 +520,9 @@ static WRITE8_HANDLER( ipc_port2_w )
 static READ8_HANDLER( ipc_port2_r )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		Serial data input (SER2 RxD, SER1 TxD)
 		1		Speaker output
 		2		Interrupt output (IPL0-2)
@@ -450,9 +549,9 @@ static READ8_HANDLER( ipc_t1_r )
 static READ8_HANDLER( ipc_bus_r )
 {
 	/*
-		
+
 		bit		description
-		
+
 		0		Keyboard row input (KBI0)
 		1		Keyboard row input (KBI1)
 		2		Keyboard row input (KBI2)
@@ -481,20 +580,22 @@ static READ8_HANDLER( ipc_bus_r )
 static ADDRESS_MAP_START( ql_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000000, 0x00bfff) AM_ROM	// System ROM
 	AM_RANGE(0x00c000, 0x00ffff) AM_ROM // Cartridge ROM
+	AM_RANGE(0x010000, 0x017fff) AM_NOP // expansion I/O
 	AM_RANGE(0x018000, 0x018003) AM_READ(zx8302_rtc_r)
 	AM_RANGE(0x018000, 0x018001) AM_WRITE(zx8302_rtc_w)
 	AM_RANGE(0x018002, 0x018002) AM_WRITE(zx8302_control_w)
 	AM_RANGE(0x018003, 0x018003) AM_WRITE(zx8302_ipc_command_w)
 	AM_RANGE(0x018020, 0x018020) AM_READWRITE(zx8302_status_r, zx8302_mdv_control_w)
 	AM_RANGE(0x018021, 0x018021) AM_READWRITE(zx8302_irq_status_r, zx8302_irq_acknowledge_w)
-	AM_RANGE(0x018022, 0x018022) AM_READWRITE(zx8302_mdv_track1_r, zx8302_data_w)
-	AM_RANGE(0x018023, 0x018023) AM_READ(zx8302_mdv_track2_r) AM_WRITENOP
+	AM_RANGE(0x018022, 0x018022) AM_READWRITE(zx8302_mdv_track_r, zx8302_data_w)
+	AM_RANGE(0x018023, 0x018023) AM_READ(zx8302_mdv_track_r) AM_WRITENOP
 	AM_RANGE(0x018063, 0x018063) AM_WRITE(zx8301_control_w)
+	AM_RANGE(0x01c000, 0x01ffff) AM_ROM // expansion I/O
 	AM_RANGE(0x020000, 0x02ffff) AM_RAM AM_BASE(&videoram)
 	AM_RANGE(0x030000, 0x03ffff) AM_RAM // onboard RAM
-	AM_RANGE(0x040000, 0x0bffff) AM_RAM // 512KB add-on RAM
+	AM_RANGE(0x040000, 0x0bffff) AM_RAM // 512KB expansion RAM
 	AM_RANGE(0x0c0000, 0x0dffff) AM_NOP // 8x16KB device slots
-	AM_RANGE(0x0e0000, 0x0fffff) AM_ROM // add-on ROM
+	AM_RANGE(0x0e0000, 0x0fffff) AM_NOP // expansion I/O
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ipc_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -525,13 +626,13 @@ static INPUT_PORTS_START( ql )
 
 	PORT_START_TAG("ROW1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13) PORT_NAME("ENTER")
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT)) PORT_NAME("\xE2\x86\x90")
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP)) PORT_NAME("\xE2\x86\x91")
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_ESC) PORT_CHAR(UCHAR_MAMEKEY(ESC)) PORT_NAME("ESC @") PORT_CHAR('\x1B') PORT_CHAR('@')
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT)) PORT_NAME("\xE2\x86\x92")
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT)) PORT_NAME("\xe2\x86\x90")
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP)) PORT_NAME("\xe2\x86\x91")
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_ESC) PORT_CHAR(UCHAR_MAMEKEY(ESC)) PORT_NAME("ESC @") PORT_CHAR('\x1b') PORT_CHAR('@')
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT)) PORT_NAME("\xe2\x86\x92")
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_BACKSLASH) PORT_CHAR('\\') PORT_CHAR('|')
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ') PORT_NAME("SPACE") 
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN)) PORT_NAME("\xE2\x86\x93")
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ') PORT_NAME("SPACE")
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN)) PORT_NAME("\xe2\x86\x93")
 
 	PORT_START_TAG("ROW2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(']') PORT_CHAR('}')
@@ -539,7 +640,7 @@ static INPUT_PORTS_START( ql )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('>')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_C) PORT_CHAR('C')
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_B) PORT_CHAR('B')
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_TILDE) PORT_CHAR(0x00A3) PORT_CHAR('~') // U+00A3
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_TILDE) PORT_NAME("\xc2\xa3 ~") PORT_CHAR(0xa3) PORT_CHAR('~') // £ ~
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_M) PORT_CHAR('M')
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('\'') PORT_CHAR('\"')
 
@@ -618,23 +719,23 @@ static INPUT_PORTS_START( ql_es )
 	PORT_INCLUDE(ql)
 
 	PORT_MODIFY("ROW1")
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_BACKSLASH) PORT_CHAR(']') PORT_CHAR('ü') PORT_CHAR('Ü') // U+00FC U+00DC
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_BACKSLASH) PORT_NAME("] \xc3\x9c") PORT_CHAR(']') PORT_CHAR(0xfc) PORT_CHAR(0xdc) // ] Ü
 
 	PORT_MODIFY("ROW2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR('`') PORT_CHAR('^')
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('!')
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_TILDE) PORT_CHAR('[') PORT_CHAR('ç') PORT_CHAR('Ç') // U+00E7 U+00C7
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_TILDE) PORT_NAME("[ \xc3\x87") PORT_CHAR('[') PORT_CHAR(0xe7) PORT_CHAR(0xc7) // [ Ç
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(';') PORT_CHAR(':')
 
 	PORT_MODIFY("ROW3")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('\'') PORT_CHAR('"')
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR('ñ') PORT_CHAR('Ñ') // U+00F1 U+00D1
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_NAME("\xc3\x91") PORT_CHAR(0xf1) PORT_CHAR(0xd1) // Ñ
 
 	PORT_MODIFY("ROW4")
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('¡') // U+00A1
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_NAME("1 \xc2\xa1") PORT_CHAR('1') PORT_CHAR(0xa1) // 1 ¡
 
 	PORT_MODIFY("ROW6")
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('¿') // U+00BF
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_NAME("2 \xc2\xbf") PORT_CHAR('2') PORT_CHAR(0xbf) // 2 ¿
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('/')
 
 	PORT_MODIFY("ROW7")
@@ -656,19 +757,19 @@ static INPUT_PORTS_START( ql_de )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Y) PORT_CHAR('Y')
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR(':')
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_TILDE) PORT_CHAR('\\') PORT_CHAR('^')
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('ä') PORT_CHAR('Ä') // UU+00E4 UU+00C4
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_NAME("\xc3\x84") PORT_CHAR(0xe4) PORT_CHAR(0xc4) // Ä
 
 	PORT_MODIFY("ROW3")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('ü') PORT_CHAR('Ü') //
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_NAME("\xc3\x9c") PORT_CHAR(0xfc) PORT_CHAR(0xdc) // Ü
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('#') PORT_CHAR('\'')
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR('ö') PORT_CHAR('Ö') // UU+00F6 UU+00D6
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_NAME("\xc3\x96") PORT_CHAR(0xf6) PORT_CHAR(0xd6) // Ö
 
 	PORT_MODIFY("ROW4")
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('§') // UU+00A7
-	
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3) PORT_NAME("3 \xc2\xa3") PORT_CHAR('3') PORT_CHAR(0xa7) // 3 £
+
 	PORT_MODIFY("ROW5")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR('(')
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS) PORT_CHAR('ß') PORT_CHAR('?') // UU+00DF
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS) PORT_NAME("\xc3\x9f ?") PORT_CHAR(0xdf) PORT_CHAR('?') // ß ?
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z) PORT_CHAR('Z')
 
 	PORT_MODIFY("ROW6")
@@ -688,7 +789,7 @@ static INPUT_PORTS_START( ql_it )
 	PORT_MODIFY("ROW0")
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_5) PORT_CHAR('(') PORT_CHAR('5')
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_4) PORT_CHAR('\'') PORT_CHAR('4')
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('è') PORT_CHAR('7') // UU+00E8
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("7 \xc3\xa8") PORT_CODE(KEYCODE_7) PORT_CHAR('è') PORT_CHAR('7') // è 7
 
 	PORT_MODIFY("ROW1")
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_BACKSLASH) PORT_CHAR('<') PORT_CHAR('>')
@@ -697,33 +798,45 @@ static INPUT_PORTS_START( ql_it )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR('$') PORT_CHAR('&')
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_W) PORT_CHAR('W')
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR(':') PORT_CHAR('/')
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_TILDE) PORT_CHAR('*') PORT_CHAR('§') // U+00A7
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("* \xc2\xa7") PORT_CODE(KEYCODE_TILDE) PORT_CHAR('*') PORT_CHAR(0xa7) // * §
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('?')
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('ù') PORT_CHAR('%') // U+00F9
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xc3\xb9 %") PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(0xf9) PORT_CHAR('%') // ù %
 
 	PORT_MODIFY("ROW3")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('ì') PORT_CHAR('=') // UU+00EC
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xc3\xac =") PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR(0xec) PORT_CHAR('=') // ì =
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('-') PORT_CHAR('+')
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_M) PORT_CHAR('M')
 
 	PORT_MODIFY("ROW4")
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3) PORT_CHAR('"') PORT_CHAR('3') 
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3) PORT_CHAR('"') PORT_CHAR('3')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CHAR('#') PORT_CHAR('1')
 
 	PORT_MODIFY("ROW5")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CHAR('ç') PORT_CHAR('9') // UU+00E7
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xc3\xa7 9") PORT_CODE(KEYCODE_9) PORT_CHAR(0xe7) PORT_CHAR('9') // ç 9
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z) PORT_CHAR('Z')
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS) PORT_CHAR(')') PORT_CHAR('\\')
 
 	PORT_MODIFY("ROW6")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CHAR('^') PORT_CHAR('8')
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CHAR('é') PORT_CHAR('2') // UU+00E9
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xc3\xa9 2") PORT_CODE(KEYCODE_2) PORT_CHAR(0xe9) PORT_CHAR('2') // é 2
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CHAR('_') PORT_CHAR('6')
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CHAR('à') PORT_CHAR('0') // UU+00E0
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xc3\xa0 0") PORT_CODE(KEYCODE_0) PORT_CHAR(0xe0) PORT_CHAR('0') // à 0
 
 	PORT_MODIFY("ROW7")
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('ò') PORT_CHAR('!') // UU+00F2
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xc3\xb2 !") PORT_CODE(KEYCODE_SLASH) PORT_CHAR(0xf2) PORT_CHAR('!') // ò !
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR('.')
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( ql_fr )
+	PORT_INCLUDE(ql)
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( ql_se )
+	PORT_INCLUDE(ql)
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( ql_dk )
+	PORT_INCLUDE(ql)
 INPUT_PORTS_END
 
 /* Machine Drivers */
@@ -753,22 +866,24 @@ static MACHINE_START( ql )
 	state_save_register_global(zx8302.mdselck);
 	state_save_register_global(zx8302.mdseld);
 	state_save_register_global(zx8302.erase);
-	state_save_register_global(zx8302.raw1);
-	state_save_register_global(zx8302.raw2);
+	state_save_register_global(zx8302.mdv_motor);
+	state_save_register_global(zx8302.mdv_offset);
 
 	memset(&zx8302, 0, sizeof(zx8302));
 	zx8302.comctl = 1;
 	zx8302.comdata = 1;
 
-	zx8302_txd_timer = timer_alloc(zx8302_txd_tick);
-	zx8302_ipc_timer = timer_alloc(zx8302_ipc_tick);
-	zx8302_rtc_timer = timer_alloc(zx8302_rtc_tick);
-	zx8302_gap_timer = timer_alloc(zx8302_gap_tick);
+	zx8302_txd_timer = timer_alloc(zx8302_txd_tick, NULL);
+	zx8302_ipc_timer = timer_alloc(zx8302_ipc_tick, NULL);
+	zx8302_rtc_timer = timer_alloc(zx8302_rtc_tick, NULL);
+	zx8302_gap_timer = timer_alloc(zx8302_gap_tick, NULL);
 
 	timer_adjust(zx8302_rtc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(X2/32768));
 	timer_adjust(zx8302_gap_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(31));
 
 	zx8302.ctr = time(NULL) + 283996800;
+
+	mdv_image = auto_malloc(MDV_IMAGE_LENGTH);
 
 	// IPC
 
@@ -777,6 +892,7 @@ static MACHINE_START( ql )
 	state_save_register_global(ipc.ser1_dtr);
 	state_save_register_global(ipc.ser2_rxd);
 	state_save_register_global(ipc.ser2_cts);
+	state_save_register_global(ipc.ipl);
 
 	memset(&ipc, 0, sizeof(ipc));
 }
@@ -807,6 +923,11 @@ static MACHINE_DRIVER_START( ql )
 	MDRV_PALETTE_INIT(zx8301)
 	MDRV_VIDEO_START(zx8301)
 	MDRV_VIDEO_UPDATE(zx8301)
+
+	// sound hardware
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD(SPEAKER, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ql_ntsc )
@@ -928,6 +1049,7 @@ ROM_START( ql_dk )
     ROM_REGION( 0x400000, REGION_CPU1, 0 )
     ROM_LOAD( "mgd.ic33", 0x000000, 0x008000, BAD_DUMP CRC(f57755eb) SHA1(dc57939ffb8741e17967a1d2479c339750ec7ff6) )
     ROM_LOAD( "mgd.ic34", 0x008000, 0x004000, BAD_DUMP CRC(1892465a) SHA1(0ff3046b5276da6639d3fe79b22ae25cc265d540) )
+	ROM_LOAD( "extra.rom", 0x01c000, 0x004000, NO_DUMP )
 
 	ROM_REGION( 0x800, REGION_CPU2, 0 )
 	ROM_LOAD( "ipc8049.ic24", 0x0000, 0x0800, CRC(6a0d1f20) SHA1(fcb1c97ee7c66e5b6d8fbb57c06fd2f6509f2e1b) )
@@ -939,9 +1061,12 @@ static DEVICE_LOAD( ql_microdrive )
 {
 	int	filesize = image_length(image);
 
-	if (filesize == 174930)
+	if (filesize == MDV_IMAGE_LENGTH)
 	{
-		return INIT_PASS;
+		if (image_fread(image, mdv_image, filesize) == filesize)
+		{
+			return INIT_PASS;
+		}
 	}
 
 	return INIT_FAIL;
@@ -953,7 +1078,11 @@ static void ql_microdrive_getinfo(const device_class *devclass, UINT32 state, un
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case DEVINFO_INT_COUNT:							info->i = 1; break;
+
+		case DEVINFO_INT_READABLE:						info->i = 1; break;
+		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_PTR_LOAD:							info->load = device_load_ql_microdrive; break;
@@ -1003,11 +1132,15 @@ static void ql_serial_getinfo(const device_class *devclass, UINT32 state, union 
 
 static DEVICE_LOAD( ql_cart )
 {
+	UINT8 *ptr = memory_region(REGION_CPU1) + 0x00c000;
 	int	filesize = image_length(image);
 
 	if (filesize <= 16 * 1024)
 	{
-		return INIT_PASS;
+		if (image_fread(image, ptr, filesize) == filesize)
+		{
+			return INIT_PASS;
+		}
 	}
 
 	return INIT_FAIL;
@@ -1024,7 +1157,7 @@ static void ql_cartslot_getinfo( const device_class *devclass, UINT32 state, uni
 		info->load = device_load_ql_cart;
 		break;
 	case DEVINFO_STR_FILE_EXTENSIONS:
-		strcpy(info->s = device_temp_str(), "qlc");
+		strcpy(info->s = device_temp_str(), "bin");
 		break;
 	default:
 		cartslot_device_getinfo( devclass, state, info );
@@ -1043,12 +1176,12 @@ SYSTEM_CONFIG_END
 /* Computer Drivers */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY                     FULLNAME        FLAGS */
-COMP( 1984, ql,     0,      0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (UK)",      GAME_NO_SOUND )
-COMP( 1985, ql_us,  ql,     0,      ql_ntsc,    ql,     0,      ql,     "Sinclair Research Ltd",    "QL (USA)",     GAME_NO_SOUND )
-COMP( 1985, ql_es,  ql,     0,      ql,         ql_es,  0,      ql,     "Sinclair Research Ltd",    "QL (Spain)",   GAME_NO_SOUND )
-COMP( 1985, ql_fr,  ql,     0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (France)",  GAME_NO_SOUND )
-COMP( 1985, ql_de,  ql,     0,      ql,         ql_de,  0,      ql,     "Sinclair Research Ltd",    "QL (Germany)", GAME_NO_SOUND )
-COMP( 1985, ql_it,  ql,     0,      ql,         ql_it,  0,      ql,     "Sinclair Research Ltd",    "QL (Italy)",   GAME_NO_SOUND )
-COMP( 1985, ql_se,  ql,     0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (Sweden)",  GAME_NO_SOUND )
-COMP( 1985, ql_dk,  ql,     0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (Denmark)", GAME_NOT_WORKING )
-COMP( 1985, ql_gr,  ql,     0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (Greece)",  GAME_NO_SOUND )
+COMP( 1984, ql,     0,      0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (UK)",      GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_us,  ql,     0,      ql_ntsc,    ql,     0,      ql,     "Sinclair Research Ltd",    "QL (USA)",     GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_es,  ql,     0,      ql,         ql_es,  0,      ql,     "Sinclair Research Ltd",    "QL (Spain)",   GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_fr,  ql,     0,      ql,         ql_fr,  0,      ql,     "Sinclair Research Ltd",    "QL (France)",  GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_de,  ql,     0,      ql,         ql_de,  0,      ql,     "Sinclair Research Ltd",    "QL (Germany)", GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_it,  ql,     0,      ql,         ql_it,  0,      ql,     "Sinclair Research Ltd",    "QL (Italy)",   GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_se,  ql,     0,      ql,         ql_se,  0,      ql,     "Sinclair Research Ltd",    "QL (Sweden)",  GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_dk,  ql,     0,      ql,         ql_dk,  0,      ql,     "Sinclair Research Ltd",    "QL (Denmark)", GAME_NOT_WORKING )
+COMP( 1985, ql_gr,  ql,     0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (Greece)",  GAME_SUPPORTS_SAVE )

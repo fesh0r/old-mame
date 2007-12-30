@@ -44,7 +44,6 @@ void *pc_vga_memory(void);
 size_t pc_vga_memory_size(void);
 
 READ8_HANDLER( ega_port_03c0_r );
-READ8_HANDLER( ega_port_03d0_r );
 
 READ8_HANDLER( paradise_ega_03c0_r );
 READ16_HANDLER( paradise_ega16le_03c0_r );
@@ -103,7 +102,7 @@ WRITE16_HANDLER( vga_port16le_03d0_w );
   ROM_LOAD("oakvga.bin", 0xc0000, 0x8000, CRC(318c5f43))
 */
 #if 0
-        int i; 
+        int i;
         UINT8 *memory=memory_region(REGION_CPU1)+0xc0000;
         UINT8 chksum;
 

@@ -102,7 +102,7 @@ enum
 
 static DRIVER_INIT(tutor)
 {
-	tape_interrupt_timer = timer_alloc(tape_interrupt_handler);
+	tape_interrupt_timer = timer_alloc(tape_interrupt_handler, NULL);
 
 	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + basic_base, 0);
 	memory_configure_bank(1, 1, 1, memory_region(REGION_CPU1) + cartridge_base, 0);
@@ -547,7 +547,7 @@ static INPUT_PORTS_START(tutor)
 INPUT_PORTS_END
 
 
-static struct tms9995reset_param tutor_processor_config =
+static const struct tms9995reset_param tutor_processor_config =
 {
 #if 0
 	REGION_CPU1,/* region for processor RAM */

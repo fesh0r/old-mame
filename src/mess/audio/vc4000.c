@@ -48,7 +48,7 @@ static void vc4000_update(void *param,stream_sample_t **inputs, stream_sample_t 
 	stream_sample_t *buffer = _buffer[0];
 
 	for (i = 0; i < length; i++, buffer++)
-	{	
+	{
 		*buffer = 0;
 		if (vc4000_sound.reg[0] && vc4000_sound.pos <= vc4000_sound.size/2)
 		{
@@ -67,7 +67,7 @@ static void vc4000_update(void *param,stream_sample_t **inputs, stream_sample_t 
 /* Sound handler start              */
 /************************************/
 
-void *vc4000_custom_start(int clock, const struct CustomSound_interface *config)
+static void *vc4000_custom_start(int clock, const struct CustomSound_interface *config)
 {
     vc4000_sound.channel = stream_create(0, 1, Machine->sample_rate, 0, vc4000_update);
     return (void *) ~0;
@@ -75,7 +75,7 @@ void *vc4000_custom_start(int clock, const struct CustomSound_interface *config)
 
 
 
-struct CustomSound_interface vc4000_sound_interface =
+const struct CustomSound_interface vc4000_sound_interface =
 {
 	vc4000_custom_start
 };

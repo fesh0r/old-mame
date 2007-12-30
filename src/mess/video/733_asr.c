@@ -46,7 +46,7 @@ static const rectangle asr_scroll_clear_window =
 	asr_window_offset_y+asr_window_height-1					/* max_y */
 };
 
-struct
+static struct
 {
 	/*UINT8 OutQueue[ASROutQueueSize];
 	int OutQueueHead;
@@ -79,13 +79,13 @@ enum
 	AM_enint_mask = 1 << 6
 };
 
-static unsigned char asr_palette[asr733_palette_size*3] =
+static const unsigned char asr_palette[asr733_palette_size*3] =
 {
 	255, 255, 255,
 	0, 0, 0
 };
 
-static unsigned short asr_colortable[asr733_colortable_size] =
+static const unsigned short asr_colortable[asr733_colortable_size] =
 {
 	0, 1
 };
@@ -106,7 +106,7 @@ static const gfx_layout fontlayout =
 	8*8 /* every char takes 8 consecutive bytes */
 };
 
-GFXDECODE_START( asr733_gfxdecodeinfo )
+GFXDECODE_START( asr733 )
 	GFXDECODE_ENTRY( asr733_chr_region, 0, fontlayout, 0, 1 )
 GFXDECODE_END
 
@@ -434,7 +434,7 @@ void asr733_refresh(mame_bitmap *bitmap, int unit, int x, int y)
 }
 
 
-static unsigned char key_translate[3][51] =
+static const unsigned char key_translate[3][51] =
 {
 	{	/* unshifted */
 		'1',

@@ -24,7 +24,7 @@
  * needs little more testing with working dipswitches */
 /*#define GFX */
 
-unsigned char vic6560_palette[] =
+const unsigned char vic6560_palette[] =
 {
 /* ripped from vice, a very excellent emulator */
 /* black, white, red, cyan */
@@ -37,7 +37,7 @@ unsigned char vic6560_palette[] =
 	0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0x00, 0xa0, 0xff, 0xff, 0xff, 0x00
 };
 
-struct CustomSound_interface vic6560_sound_interface =
+const struct CustomSound_interface vic6560_sound_interface =
 {
 	vic6560_custom_start
 };
@@ -122,7 +122,7 @@ static const gfx_layout pointerlayout =
 	8 * 8
 };
 
-static UINT8 pointermask[] =
+static const UINT8 pointermask[] =
 {
 	0x00, 0x70, 0x60, 0x50, 0x08, 0x04, 0x00, 0x00,		/* blackmask */
 	0xf0, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00	/* whitemask */
@@ -161,16 +161,16 @@ static void vic6560_video_stop(running_machine *machine)
 
 VIDEO_START( vic6560 )
 {
-	black = Machine->pens[0];
-	white = Machine->pens[1];
+	black = machine->pens[0];
+	white = machine->pens[1];
 	pointerelement = allocgfx(&pointerlayout);
 	decodegfx(pointerelement, pointermask, 0, 1);
 	/* 7-Sep-2007 - After 0.118u5, you cannot revector the color table */
 	/* pointerelement->colortable = pointercolortable; */
-	pointercolortable[1] = Machine->pens[1];
-	pointercolortable[2] = Machine->pens[0];
+	pointercolortable[1] = machine->pens[1];
+	pointercolortable[2] = machine->pens[0];
 	pointerelement->total_colors = 3;
-	vic6560_bitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	vic6560_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
 	add_exit_callback(machine, vic6560_video_stop);
 }
 

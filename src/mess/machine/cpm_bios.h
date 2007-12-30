@@ -145,18 +145,15 @@ typedef struct {
 	cpm_dpb dpb;			/* associated dpb */
 } dsk_fmt;
 
-extern dsk_fmt formats[];
-
 /* these are in cpm_bios.c */
 DEVICE_LOAD( cpm_floppy );
-extern int cpm_init(int n, const char *ids[]);
+extern int cpm_init(int n, const char *const ids[]);
 
 extern READ8_HANDLER ( cpm_bios_command_r );
 extern WRITE8_HANDLER ( cpm_bios_command_w );
 
 /* these are in cpm_disk.c */
 extern int cpm_disk_select_format(int disk, const char *disk_id);
-extern void cpm_disk_open_image(void);
 extern void cpm_disk_home(void);
 extern void cpm_disk_set_track(int t);
 extern void cpm_disk_set_sector(int s);

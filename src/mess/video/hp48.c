@@ -4,7 +4,7 @@
 
 #include "includes/hp48.h"
 
-static unsigned char hp48_palette[] =
+static const UINT8 hp48_palette[] =
 {
 	49,70,64,	/* background */
 	40,35,55,	/* symbol color */
@@ -13,7 +13,7 @@ static unsigned char hp48_palette[] =
 };
 
 /* 32 contrast steps */
-unsigned short hp48_colortable[0x20][2] = {
+const UINT16 hp48_colortable[0x20][2] = {
 	{ 0, 2 },
 	{ 0, 2 },
 	{ 0, 2 },
@@ -66,7 +66,7 @@ VIDEO_START( hp48 )
 	{
 		char backdrop_name[200];
 	    /* try to load a backdrop for the machine */
-		sprintf (backdrop_name, "%s.png", Machine->gamedrv->name);
+		sprintf (backdrop_name, "%s.png", machine->gamedrv->name);
 		backdrop_load(backdrop_name, 8);
 	}
 #endif
@@ -79,17 +79,17 @@ static void hp48_draw_special(mame_bitmap *bitmap,int x, int y, const char *figu
 	int j, xi=0;
 	for (j=0; figure[j]; j++) {
 		switch (figure[j]) {
-		case '1': 
+		case '1':
 			*BITMAP_ADDR16(bitmap, y, x+xi) = color;
 			xi++;
 			break;
-		case ' ': 
+		case ' ':
 			xi++;
 			break;
 		case '\r':
 			xi=0;
 			y++;
-			break;				
+			break;
 		};
 	}
 }
@@ -97,7 +97,7 @@ static void hp48_draw_special(mame_bitmap *bitmap,int x, int y, const char *figu
 
 #define LCD_LINES (hp48_hardware.data[0x28]|((hp48_hardware.data[0x29]&3)<<4)
 
-static const char *hp48_orange={ 
+static const char *hp48_orange={
 	"11111111111\r"
 	"111 1111111\r"
 	"11  1111111\r"
@@ -165,14 +165,14 @@ VIDEO_UPDATE( hp48 )
 	int contrast=(hp48_hardware.data[1]|((hp48_hardware.data[2]&1)<<4));
 
 	/* HJB: we cannot initialize array with values from other arrays, thus... */
-    color[0] = Machine->pens[0];
-//    color[0] = Machine->pens[1];
-	color[1] = Machine->pens[1];
+    color[0] = machine->pens[0];
+//    color[0] = machine->pens[1];
+	color[1] = machine->pens[1];
 
 
 	for (y=0,i=LCD_BASE_ADDRESS; y<64; y+=8, i+=LCD_LINE_OFFSET) {
 		for (x=0; x<131; x++) {
-			drawgfx(bitmap, Machine->gfx[0], 
+			drawgfx(bitmap, machine->gfx[0],
 					program_read_byte(i+x),
 					contrast,0,0,
 					x*2+RIGHT,y*2+DOWN,

@@ -17,18 +17,18 @@
 
 #include "bitmask.h"
 #include "TreeView.h"
-#include "M32Util.h"
+#include "mui_util.h"
 #include "resource.h"
 #include "directories.h"
-#include "m32opts.h"
+#include "mui_opts.h"
 #include "splitters.h"
 #include "help.h"
-#include "audit32.h"
+#include "mui_audit.h"
 #include "screenshot.h"
-#include "win32ui.h"
+#include "winui.h"
 #include "properties.h"
 
-#include "ms32util.h"
+#include "msuiutil.h"
 #include "resourcems.h"
 #include "propertiesms.h"
 
@@ -160,8 +160,8 @@ const ICONDATA g_iconData[] =
 
 const TCHAR g_szPlayGameString[] = TEXT("&Run %s");
 const char g_szGameCountString[] = "%d systems";
-const char g_szHistoryFileName[] = "sysinfo.dat";
-const char g_szMameInfoFileName[] = "messinfo.dat";
+static const char g_szHistoryFileName[] = "sysinfo.dat";
+static const char g_szMameInfoFileName[] = "messinfo.dat";
 
 static BOOL FilterAvailable(int driver_index)
 {

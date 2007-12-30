@@ -20,10 +20,10 @@ enum
 	vdt911_chr_region_len	= vdt911_japanese_chr_offset+256*vdt911_single_char_len
 };
 
-GFXDECODE_EXTERN( vdt911_gfxdecodeinfo );
+GFXDECODE_EXTERN( vdt911 );
 
-extern unsigned char vdt911_palette[];
-extern unsigned short vdt911_colortable[];
+extern const unsigned char vdt911_palette[];
+extern const unsigned short vdt911_colortable[];
 enum
 {
 	vdt911_palette_size = 3 /** 3*/,
@@ -55,7 +55,7 @@ typedef struct vdt911_init_params_t
 PALETTE_INIT( vdt911 );
 
 void vdt911_init(void);
-int vdt911_init_term(int unit, const vdt911_init_params_t *params);
+void vdt911_init_term(int unit, const vdt911_init_params_t *params);
 
 void vdt911_reset(void);
 

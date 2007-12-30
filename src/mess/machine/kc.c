@@ -217,7 +217,7 @@ static void kc85_fdc_dma_drq(int state, int read_)
 		kc85_disc_hw_input_gate |=(1<<7);
 }
 
-static struct nec765_interface kc_fdc_interface=
+static const struct nec765_interface kc_fdc_interface=
 {
 	kc85_fdc_interrupt,
 	kc85_fdc_dma_drq
@@ -231,12 +231,12 @@ static TIMER_CALLBACK(kc85_disk_reset_timer_callback)
 
 static void kc_disc_interface_init(void)
 {
-	timer_set(attotime_zero, 0, kc85_disk_reset_timer_callback);
+	timer_set(attotime_zero, NULL, 0, kc85_disk_reset_timer_callback);
 
 	nec765_init(&kc_fdc_interface,NEC765A);
 
 	/* reset ctc */
-	z80ctc_reset(1); 
+	z80ctc_reset(1);
 
 	/* hold cpu at reset */
 	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
@@ -287,21 +287,21 @@ struct kc85_module
 	void (*enable)(int state);
 };
 /*
-static struct kc85_module kc85_v24_module=
+static const struct kc85_module kc85_v24_module=
 {
 	0x0ee,
 	"M003",
 	"V24"
 };
 */
-static struct kc85_module kc85_disk_interface_device=
+static const struct kc85_module kc85_disk_interface_device=
 {
 	0x0a7,
 	"D004",
 	"Disk Interface"
 };
 
-static struct kc85_module	*modules[256>>2];
+static const struct kc85_module *modules[256>>2];
 /*
 
 	port xx80
@@ -410,7 +410,7 @@ static TIMER_CALLBACK(kc_cassette_timer_callback)
 
 static void	kc_cassette_init(void)
 {
-	kc_cassette_timer = timer_alloc(kc_cassette_timer_callback);
+	kc_cassette_timer = timer_alloc(kc_cassette_timer_callback, NULL);
 }
 
 static void	kc_cassette_set_motor(int motor_state)
@@ -902,10 +902,10 @@ static void kc_keyboard_init(void)
 	keyboard_data.head = (keyboard_data.tail = 0);
 
 	/* 50hz is just a arbitrary value - used to put scan-codes into the queue for transmitting */
-	timer_pulse(ATTOTIME_IN_HZ(50), 0, kc_keyboard_update);
+	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, kc_keyboard_update);
 
 	/* timer to transmit pulses to kc base unit */
-	timer_pulse(ATTOTIME_IN_USEC(1024), 0, kc_keyboard_transmit_timer_callback);
+	timer_pulse(ATTOTIME_IN_USEC(1024), NULL, 0, kc_keyboard_transmit_timer_callback);
 
 	/* kc keyboard is not transmitting */
 	keyboard_data.transmit_state = KC_KEYBOARD_TRANSMIT_IDLE;
@@ -918,7 +918,7 @@ static void kc_keyboard_init(void)
 	z80pio_bstb_w(0,0);
 
 
-	for (i=0; i<KC_KEYBOARD_NUM_LINES; i++)
+	for (i=0; i<KC_KEYBOARD_NUM_LINES-1; i++)
 	{
 		/* read input port */
 		kc_previous_keyboard[i] = readinputport(i);
@@ -1719,7 +1719,7 @@ static OPBASE_HANDLER( kc85_3_opbaseoverride )
 static OPBASE_HANDLER( kc85_4_opbaseoverride )
 {
 	memory_set_opbase_handler(0,0);
-	
+
 	kc85_4_update_0x00000();
 
 	return (cpunum_get_reg(0, REG_PC) & 0x0ffff);
@@ -1806,7 +1806,7 @@ static void kc85_pio_brdy_callback(int state)
 #endif
 }
 
-static z80pio_interface kc85_pio_intf =
+static const z80pio_interface kc85_pio_intf =
 {
 	kc85_pio_interrupt,		/* callback when change interrupt status */
 	kc85_pio_ardy_callback,	/* portA ready active callback */
@@ -1891,8 +1891,8 @@ static void	kc85_common_init(void)
 	kc85_50hz_state = 0;
 	kc85_15khz_state = 0;
 	kc85_15khz_count = 0;
-	timer_pulse(ATTOTIME_IN_HZ(15625), 0, kc85_15khz_timer_callback);
-	timer_set(attotime_zero, 0, kc85_reset_timer_callback);
+	timer_pulse(ATTOTIME_IN_HZ(15625), NULL, 0, kc85_15khz_timer_callback);
+	timer_set(attotime_zero, NULL, 0, kc85_reset_timer_callback);
 	kc85_module_system_init();
 }
 

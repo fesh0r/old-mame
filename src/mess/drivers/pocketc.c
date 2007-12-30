@@ -105,8 +105,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc1403_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_ROM
-	AM_RANGE( 0x3000, 0x30bf) AM_READWRITE( pc1403_lcd_read, pc1403_lcd_write )  
-	AM_RANGE( 0x3800, 0x3fff) AM_READWRITE( pc1403_asic_read, pc1403_asic_write )    
+	AM_RANGE( 0x3000, 0x30bf) AM_READWRITE( pc1403_lcd_read, pc1403_lcd_write )
+	AM_RANGE( 0x3800, 0x3fff) AM_READWRITE( pc1403_asic_read, pc1403_asic_write )
 	AM_RANGE( 0x4000, 0x7fff) AM_ROMBANK(1)
 	AM_RANGE( 0xe000, 0xffff) AM_RAM
 ADDRESS_MAP_END
@@ -490,15 +490,15 @@ static const gfx_layout pc1251_charlayout =
 	1*8
 };
 
-static GFXDECODE_START( pc1401_gfxdecodeinfo )
+static GFXDECODE_START( pc1401 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, pc1401_charlayout, 0, 8 )
 GFXDECODE_END
 
-static GFXDECODE_START( pc1251_gfxdecodeinfo )
+static GFXDECODE_START( pc1251 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, pc1251_charlayout, 0, 8 )
 GFXDECODE_END
 
-static SC61860_CONFIG config={
+static const SC61860_CONFIG config={
     pc1401_reset, pc1401_brk, NULL,
     pc1401_ina, pc1401_outa,
     pc1401_inb, pc1401_outb,
@@ -529,7 +529,7 @@ static MACHINE_DRIVER_START( pc1401 )
 	MDRV_SCREEN_VISIBLE_AREA(0, 594-1, 0, 273-1)
 //	MDRV_SCREEN_SIZE(640, 273)
 //	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 273-1)
-	MDRV_GFXDECODE( pc1401_gfxdecodeinfo )
+	MDRV_GFXDECODE( pc1401 )
 	MDRV_PALETTE_LENGTH(248 + 32768)
 	MDRV_COLORTABLE_LENGTH( 16 )
 	MDRV_PALETTE_INIT( pocketc )
@@ -542,7 +542,7 @@ static MACHINE_DRIVER_START( pc1401 )
 MACHINE_DRIVER_END
 
 
-static SC61860_CONFIG pc1251_config =
+static const SC61860_CONFIG pc1251_config =
 {
     NULL, pc1251_brk, NULL,
     pc1251_ina, pc1251_outa,
@@ -563,13 +563,13 @@ static MACHINE_DRIVER_START( pc1251 )
 	MDRV_SCREEN_VISIBLE_AREA(0, 608-1, 0, 300-1)
 //	MDRV_SCREEN_SIZE(640, 334)
 //	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 334-1)
-	MDRV_GFXDECODE( pc1251_gfxdecodeinfo )
+	MDRV_GFXDECODE( pc1251 )
 
 	MDRV_VIDEO_UPDATE( pc1251 )
 MACHINE_DRIVER_END
 
 
-static SC61860_CONFIG pc1350_config =
+static const SC61860_CONFIG pc1350_config =
 {
     NULL, pc1350_brk,NULL,
     pc1350_ina, pc1350_outa,
@@ -600,7 +600,7 @@ static MACHINE_DRIVER_START( pc1350 )
 MACHINE_DRIVER_END
 
 
-static SC61860_CONFIG pc1403_config =
+static const SC61860_CONFIG pc1403_config =
 {
     NULL, pc1403_brk, NULL,
     pc1403_ina, pc1403_outa,
@@ -698,8 +698,8 @@ SYSTEM_CONFIG_END
 */
 
 /* cpu lh5801
-   pc1500 
-   clone tandy pc2 look into drivers/pc1500.c 
+   pc1500
+   clone tandy pc2 look into drivers/pc1500.c
    pc1600
 */
 

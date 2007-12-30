@@ -24,7 +24,7 @@ static INT8 frame_count;
 #define SAA5050_BLACK   0
 #define SAA5050_WHITE   7
 
-struct	{
+static struct {
 	UINT16	saa5050_flags;
 	UINT8	saa5050_forecol;
 	UINT8	saa5050_backcol;
@@ -68,13 +68,13 @@ static const gfx_layout saa5050_lolayout =
 	8 * 10
 };
 
-static GFXDECODE_START( saa5050_gfxdecodeinfo )
+static GFXDECODE_START( saa5050 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_charlayout, 0, 128 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_hilayout, 0, 128 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_lolayout, 0, 128 )
 GFXDECODE_END
 
-static unsigned char saa5050_palette[8 * 3] =
+static const UINT8 saa5050_palette[8 * 3] =
 {
 	0x00, 0x00, 0x00,	/* black */
 	0xff, 0x00, 0x00,	/* red */
@@ -86,7 +86,7 @@ static unsigned char saa5050_palette[8 * 3] =
 	0xff, 0xff, 0xff	/* white */
 };
 
-static	unsigned	short	saa5050_colortable[64 * 2] =	/* bgnd, fgnd */
+static const UINT16 saa5050_colortable[64 * 2] =	/* bgnd, fgnd */
 {
 	0,1, 0,1, 0,2, 0,3, 0,4, 0,5, 0,6, 0,7,
 	1,0, 1,1, 1,2, 1,3, 1,4, 1,5, 1,6, 1,7,
@@ -218,15 +218,15 @@ static VIDEO_UPDATE( saa5050 )
 				colour = saa5050_state.saa5050_forecol | (saa5050_state.saa5050_backcol << 3);
 			if (saa5050_state.saa5050_flags & SAA5050_DBLHI)
 			{
-				drawgfx (bitmap, Machine->gfx[1], code, colour, 0, 0,
-					sx * 6, sy * 10, &Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
-				drawgfx (bitmap, Machine->gfx[2], code, colour, 0, 0,
-					sx * 6, (sy + 1) * 10, &Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+				drawgfx (bitmap, machine->gfx[1], code, colour, 0, 0,
+					sx * 6, sy * 10, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+				drawgfx (bitmap, machine->gfx[2], code, colour, 0, 0,
+					sx * 6, (sy + 1) * 10, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
 			}
 			else
 			{
-				drawgfx (bitmap, Machine->gfx[0], code, colour, 0, 0,
-					sx * 6, sy * 10, &Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+				drawgfx (bitmap, machine->gfx[0], code, colour, 0, 0,
+					sx * 6, sy * 10, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
 			}
 		}
 		if (saa5050_state.saa5050_flags & SAA5050_DBLHI)
@@ -247,7 +247,7 @@ MACHINE_DRIVER_START( vh_saa5050 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40 * 6, 24 * 10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40 * 6 - 1, 0, 24 * 10 - 1)
-	MDRV_GFXDECODE( saa5050_gfxdecodeinfo )
+	MDRV_GFXDECODE( saa5050 )
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_COLORTABLE_LENGTH(128)
 	MDRV_PALETTE_INIT(saa5050)

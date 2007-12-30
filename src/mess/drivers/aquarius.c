@@ -34,7 +34,7 @@ Aquarius Memory map
 
 /* port i/o functions */
 
-ADDRESS_MAP_START( aquarius_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( aquarius_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0xfc, 0xfc) AM_WRITE( aquarius_port_fc_w)
 	AM_RANGE(0xfe, 0xfe) AM_READWRITE( aquarius_port_fe_r, aquarius_port_fe_w)
@@ -43,7 +43,7 @@ ADDRESS_MAP_END
 
 /* Memory w/r functions */
 
-ADDRESS_MAP_START( aquarius_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( aquarius_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x2fff) AM_NOP
 	AM_RANGE(0x3000, 0x37ff) AM_READWRITE(videoram_r, aquarius_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
@@ -66,7 +66,7 @@ static const gfx_layout aquarius_charlayout =
 	8 * 8
 };
 
-static GFXDECODE_START( aquarius_gfxdecodeinfo )
+static GFXDECODE_START( aquarius )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, aquarius_charlayout, 0, 256 )
 GFXDECODE_END
 
@@ -90,7 +90,7 @@ static const rgb_t aquarius_palette[] =
 	MAKE_RGB(0x7f, 0x7f, 0x7f)	/* Dark Gray */
 };
 
-static unsigned short aquarius_colortable[] =
+static const unsigned short aquarius_colortable[] =
 {
     0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0,10, 0,11, 0,12, 0,13, 0,14, 0,15, 0,
     0, 1, 1, 1, 2, 1, 3, 1, 4, 1, 5, 1, 6, 1, 7, 1, 8, 1, 9, 1,10, 1,11, 1,12, 1,13, 1,14, 1,15, 1,
@@ -229,7 +229,7 @@ static MACHINE_DRIVER_START( aquarius )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40 * 8, 24 * 8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40 * 8 - 1, 0, 24 * 8 - 1)
-	MDRV_GFXDECODE( aquarius_gfxdecodeinfo )
+	MDRV_GFXDECODE( aquarius )
 	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(aquarius_palette))
 	MDRV_COLORTABLE_LENGTH(sizeof (aquarius_colortable))
 	MDRV_PALETTE_INIT( aquarius )

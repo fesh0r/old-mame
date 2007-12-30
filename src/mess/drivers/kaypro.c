@@ -18,7 +18,7 @@ static ADDRESS_MAP_START( kaypro_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-ADDRESS_MAP_START( kaypro_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( kaypro_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE( BIOS_CONST,  BIOS_CONST)  AM_READWRITE( kaypro_const_r, kaypro_const_w )
 	AM_RANGE( BIOS_CONIN,  BIOS_CONIN)  AM_READWRITE( kaypro_conin_r, kaypro_conin_w )
@@ -191,11 +191,11 @@ static const gfx_layout charlayout =
 	FW * FH         /* every char takes 16 bytes */
 };
 
-static GFXDECODE_START( gfxdecodeinfo )
+static GFXDECODE_START( kaypro )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0, 4 )
 GFXDECODE_END
 
-static unsigned char kaypro_palette[] =
+static const unsigned char kaypro_palette[] =
 {
       0,  0,  0,    /* black */
       0,240,  0,    /* green */
@@ -209,7 +209,7 @@ static unsigned char kaypro_palette[] =
     240,240,240,
 };
 
-static unsigned short kaypro_colortable[] =
+static const unsigned short kaypro_colortable[] =
 {
     0,  1,      /* green on black */
     0,  2,      /* dim green on black */
@@ -242,7 +242,7 @@ static MACHINE_DRIVER_START( kaypro )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*KAYPRO_FONT_W, 25*KAYPRO_FONT_H)
 	MDRV_SCREEN_VISIBLE_AREA(0*KAYPRO_FONT_W, 80*KAYPRO_FONT_W-1, 0*KAYPRO_FONT_H, 25*KAYPRO_FONT_H-1)
-	MDRV_GFXDECODE( gfxdecodeinfo )
+	MDRV_GFXDECODE( kaypro )
 	MDRV_PALETTE_LENGTH(sizeof(kaypro_palette) / 3)
 	MDRV_COLORTABLE_LENGTH(sizeof(kaypro_colortable) / sizeof(kaypro_colortable[0]))
 	MDRV_PALETTE_INIT( kaypro )

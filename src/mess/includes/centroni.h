@@ -1,5 +1,5 @@
 /*
-  defines centronics/parallel port printer interface  
+  defines centronics/parallel port printer interface
 
   provides a centronics printer simulation (sends output to IO_PRINTER)
 */
@@ -13,8 +13,8 @@
 extern "C" {
 #endif
 
-typedef enum { 
-	PRINTER_CENTRONICS, 
+typedef enum {
+	PRINTER_CENTRONICS,
 	PRINTER_IBM // select line not important
 } PRINTER_TYPE;
 
@@ -44,14 +44,16 @@ typedef struct {
 	void (*handshake_out)(int n, int data, int mask);
 } CENTRONICS_CONFIG;
 
-void centronics_config(int nr, CENTRONICS_CONFIG *config);
+/*----------- defined in machine/centroni.c -----------*/
+
+void centronics_config(int nr, const CENTRONICS_CONFIG *config);
 
 void centronics_write_data(int nr, UINT8 data);
 void centronics_write_handshake(int nr, int data, int mask);
 UINT8 centronics_read_data(int nr);
 int centronics_read_handshake(int nr);
 
-extern CENTRONICS_DEVICE CENTRONICS_PRINTER_DEVICE;
+extern const CENTRONICS_DEVICE CENTRONICS_PRINTER_DEVICE;
 
 #ifdef __cplusplus
 }
