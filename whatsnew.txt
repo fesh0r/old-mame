@@ -1,3 +1,45 @@
+0.123
+-----
+
+
+MAMETesters Bugs Fixed
+----------------------
+taito_f3.c0122u8red [Aaron Giles]
+dubugchunklength0122u7gre [Aaron Giles]
+m62.c0122u7yel [Aaron Giles]
+qix.c0122u8red [Atari Ace]
+yard.c0122u7yel [Aaron Giles]
+
+
+
+Source Changes
+--------------
+Fixed crash in debugcmt with starting with no game on the command-line.
+[Andrew Gardner]
+
+Fixed PSR transfers in the ARM7 core. [R. Belmont]
+
+Fixed regression in cpu_spinuntil* calls that broke a number of games.
+[Aaron Giles]
+
+Fixed ADPCM in m62 games. Did some additional cleanup. [Aaron Giles]
+
+Fixed palette gradient for promutrv. [Pierpaolo Prazzoli]
+
+Fixed watchdog behavior when not explicitly specified. [Aaron Giles]
+
+Fixed sprite placement again in chinagat driver. [Aaron Giles]
+
+Fixed incorrect default screen siz
+
+
+
+New clones added
+----------------
+Vs. Janshi Brandnew Stars (MegaSystem32 Version) [David Haywood]
+
+
+
 0.122u8
 -------
 
@@ -907,7 +949,7 @@ Added support for outputting 64-bit target addresses in the i386dasm.
 [Aaron Giles]
 
 Added MESS PC-Engine emulatation system. Fixed MAME debug build under
-VC2003. [David Haywood]
+VC2003. [Mariusz Wojcieszek]
 
 Unified memory maps in tmnt.c and twin16.c. Reversed ROM set names 
 of Cuebrick World and Japan versions. Changed some function names to 
@@ -935,8 +977,8 @@ based on empirical evidence that is somehow works. [Emuman]
 
 New games added or promoted from NOT_WORKING status
 ---------------------------------------------------
-Name Club Ver.3 (J 970723 V1.000) [David Haywood]
-Blazing Lazers [David Haywood, Charles MacDonald, Mr. Do]
+Name Club Ver.3 (J 970723 V1.000) [David Haywood, Mariusz Wojcieszek]
+Blazing Lazers [Mariusz Wojcieszek, Charles MacDonald, Mr. Do]
 
 
 
@@ -951,7 +993,7 @@ Gee Bee (F.lli Bertolino license) [Corrado Tomaselli]
 New games marked as GAME_NOT_WORKING
 ------------------------------------
 Road Runner (Midway) [Zsolt Vasvari, Guru]
-Paranoia [David Haywood]
+Paranoia [Mariusz Wojcieszek]
 
 
 
