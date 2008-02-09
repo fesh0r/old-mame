@@ -24,6 +24,11 @@
       SYS386 seems like a lower-cost version of single-board SPI.
       It has a 40MHz AMD 386 and a considerably weaker sound system (dual MSM6295).
 
+NOTES:
+
+    rjetus:
+    - If you get a blank screen on startup you need to press F2 and choose "Reset settings",
+      followed by "Exit". This will create a proper NVRAM
 
 TODO:
 - Alpha blending. Screen shot on www.system16.com show that during attract mode
@@ -664,6 +669,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/ds2404.h"
 #include "machine/eeprom.h"
 #include "machine/intelfsh.h"
@@ -835,7 +841,7 @@ static READ32_HANDLER( sound_fifo_status_r )
 
 static READ32_HANDLER( spi_int_r )
 {
-	cpunum_set_input_line( 0, 0,CLEAR_LINE );
+	cpunum_set_input_line(Machine, 0, 0,CLEAR_LINE );
 	return 0xffffffff;
 }
 
@@ -907,9 +913,9 @@ logerror("z80 data = %08x mask = %08x\n",data,mem_mask);
 	if( !(mem_mask & 0x000000ff) ) {
 		if( data & 0x1 ) {
 			z80_prg_fifo_pos = 0;
-			cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE );
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE );
 		} else {
-			cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE );
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE );
 		}
 	}
 }
@@ -1102,13 +1108,9 @@ static WRITE8_HANDLER( flashrom_write )
 static void irqhandler(int state)
 {
 	if (state)
-	{
-		cpunum_set_input_line_and_vector(1, 0, ASSERT_LINE, 0xd7);	// IRQ is RST10
-	}
+		cpunum_set_input_line_and_vector(Machine, 1, 0, ASSERT_LINE, 0xd7);	// IRQ is RST10
 	else
-	{
-		cpunum_set_input_line(1, 0, CLEAR_LINE);
-	}
+		cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
 }
 
 static const struct YMF271interface ymf271_interface =
@@ -1726,7 +1728,7 @@ static NVRAM_HANDLER( sxx2f )
 
 static INTERRUPT_GEN( spi_interrupt )
 {
-	cpunum_set_input_line( 0, 0, ASSERT_LINE );
+	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE );
 }
 
 static int spi_irq_callback(int irq)
@@ -1744,7 +1746,7 @@ static MACHINE_RESET( spi )
 	UINT8 *rombase = memory_region(REGION_USER1);
 	UINT8 flash_data = rombase[0x1ffffc];
 
-	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE );
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE );
 	cpunum_set_irq_callback(0, spi_irq_callback);
 
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000680, 0x00000683, 0, 0, sound_fifo_r);
@@ -3018,7 +3020,7 @@ ROM_END
 
 
 /* SPI */
-GAME( 1995, senkyu,    0,       spi,      spi_3button, senkyu,   ROT0,   "Seibu Kaihatsu", "Senkyu (Japan)",  GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
+GAME( 1995, senkyu,    0,       spi,      spi_3button, senkyu,   ROT0,   "Seibu Kaihatsu", "Senkyu (Japan, set 1)",  GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
 GAME( 1995, senkyua,   senkyu,  spi,      spi_3button, senkyua,  ROT0,   "Seibu Kaihatsu", "Senkyu (Japan, set 2)",  GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
 GAME( 1995, batlball,  senkyu,  spi,      spi_3button, batlball, ROT0,   "Seibu Kaihatsu (Tuning License)", "Battle Balls (Germany)",  GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
 GAME( 1995, batlbala,  senkyu,  spi,      spi_3button, batlball, ROT0,   "Seibu Kaihatsu (Metrotainment License)", "Battle Balls (Asia)",  GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )

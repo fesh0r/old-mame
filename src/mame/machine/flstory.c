@@ -8,7 +8,10 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
+extern UINT8 *onna34ro_workram;
+extern UINT8 *victnine_workram;
 
 static UINT8 from_main,from_mcu;
 static int mcu_sent = 0,main_sent = 0;
@@ -68,7 +71,7 @@ WRITE8_HANDLER( flstory_68705_portB_w )
 	if ((ddrB & 0x02) && (~data & 0x02) && (portB_out & 0x02))
 	{
 		portA_in = from_main;
-		if (main_sent) cpunum_set_input_line(2,0,CLEAR_LINE);
+		if (main_sent) cpunum_set_input_line(Machine, 2,0,CLEAR_LINE);
 		main_sent = 0;
 logerror("read command %02x from main cpu\n",portA_in);
 	}
@@ -115,7 +118,7 @@ WRITE8_HANDLER( flstory_mcu_w )
 logerror("%04x: mcu_w %02x\n",activecpu_get_pc(),data);
 	from_main = data;
 	main_sent = 1;
-	cpunum_set_input_line(2,0,ASSERT_LINE);
+	cpunum_set_input_line(Machine, 2,0,ASSERT_LINE);
 }
 
 READ8_HANDLER( flstory_mcu_r )
@@ -140,8 +143,7 @@ READ8_HANDLER( flstory_mcu_status_r )
 
 WRITE8_HANDLER( onna34ro_mcu_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
-	UINT16 score_adr = RAM[0xe29e]*0x100 + RAM[0xe29d];
+	UINT16 score_adr = onna34ro_workram[0x29e]*0x100 + onna34ro_workram[0x29d];
 
 	switch (data)
 	{
@@ -152,13 +154,16 @@ WRITE8_HANDLER( onna34ro_mcu_w )
 			from_mcu = 0x6a;
 			break;
 		case 0x40:
-			from_mcu = RAM[score_adr];			/* score l*/
+			if(score_adr >= 0xe000 && score_adr < 0xe800)
+				from_mcu = onna34ro_workram[score_adr - 0xe000];			/* score l*/
 			break;
 		case 0x41:
-			from_mcu = RAM[score_adr+1];		/* score m*/
+			if(score_adr >= 0xe000 && score_adr < 0xe800)
+				from_mcu = onna34ro_workram[(score_adr+1) - 0xe000];		/* score m*/
 			break;
 		case 0x42:
-			from_mcu = RAM[score_adr+2] & 0x0f;	/* score h*/
+			if(score_adr >= 0xe000 && score_adr < 0xe800)
+				from_mcu = onna34ro_workram[(score_adr+2) - 0xe000] & 0x0f;	/* score h*/
 			break;
 		default:
 			from_mcu = 0x80;
@@ -178,7 +183,7 @@ READ8_HANDLER( onna34ro_mcu_status_r )
 }
 
 
-#define VICTNINE_MCU_SEED	(memory_region(REGION_CPU1)[0xE685])
+#define VICTNINE_MCU_SEED	(victnine_workram[0x685])
 
 static const UINT8 victnine_mcu_data[0x100] =
 {
@@ -245,9 +250,7 @@ WRITE8_HANDLER( victnine_mcu_w )
 		}
 		else if (data >= 0x38 && data <= 0x3a)
 		{
-			UINT8 *RAM = memory_region(REGION_CPU1);
-
-			from_mcu = RAM[0xe691 - 0x38 + data];
+			from_mcu = victnine_workram[0x691 - 0x38 + data];
 		}
 		else
 		{

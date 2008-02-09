@@ -87,17 +87,13 @@ PROM  : Type MB7051
 
 
 
-#include <math.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
-
-//VIDEO_START( shougi )
-//{
-//  generic_vh_start();
-//}
-
 #include "video/resnet.h"
+
+
 /***************************************************************************
 
   Convert the color PROMs into a more useable format.
@@ -162,31 +158,25 @@ int offs;
 
 	for (offs = 0;offs <0x4000; offs++)
 	{
-	//  if (dirtybuffer[offs])
+		int sx, sy, x, data1, data2, color, data;
+
+		sx = offs >> 8;		/*00..0x3f (64*4=256)*/
+		sy = offs & 0xff;	/*00..0xff*/
+//      if (flipscreen[0]) sx = 31 - sx;
+//      if (flipscreen[1]) sy = 31 - sy;
+
+		data1 = videoram[offs];				/* color */
+		data2 = videoram[0x4000 + offs];	/* pixel data */
+
+		for (x=0; x<4; x++) /*4 pixels per byte (2 bitplanes in 2 nibbles: 1st=bits 7-4, 2nd=bits 3-0)*/
 		{
-			int sx, sy, x, data1, data2, color, data;
+			color= ((data1>>x) & 1) | (((data1>>(4+x)) & 1)<<1);
+			data = ((data2>>x) & 1) | (((data2>>(4+x)) & 1)<<1);
 
-	//      dirtybuffer[offs] = 0;
-
-			sx = offs >> 8;		/*00..0x3f (64*4=256)*/
-			sy = offs & 0xff;	/*00..0xff*/
-	//      if (flipscreen[0]) sx = 31 - sx;
-	//      if (flipscreen[1]) sy = 31 - sy;
-
-			data1 = videoram[offs];				/* color */
-			data2 = videoram[0x4000 + offs];	/* pixel data */
-
-			for (x=0; x<4; x++) /*4 pixels per byte (2 bitplanes in 2 nibbles: 1st=bits 7-4, 2nd=bits 3-0)*/
-			{
-				color= ((data1>>x) & 1) | (((data1>>(4+x)) & 1)<<1);
-				data = ((data2>>x) & 1) | (((data2>>(4+x)) & 1)<<1);
-
-				*BITMAP_ADDR16(bitmap, 255-sy, 255-(sx*4 + x)) = color*4 + data;
-			}
+			*BITMAP_ADDR16(bitmap, 255-sy, 255-(sx*4 + x)) = color*4 + data;
 		}
 	}
-	/* copy the character mapped graphics */
-	//copybitmap(bitmap,tmpbitmap,0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+
 	return 0;
 }
 
@@ -237,13 +227,13 @@ static WRITE8_HANDLER( shougi_watchdog_reset_w )
 static WRITE8_HANDLER( shougi_mcu_halt_off_w )
 {
 	/* logerror("mcu HALT OFF"); */
-	cpunum_set_input_line(2, INPUT_LINE_HALT, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( shougi_mcu_halt_on_w )
 {
 	/* logerror("mcu HALT ON"); */
-	cpunum_set_input_line(2, INPUT_LINE_HALT,ASSERT_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT,ASSERT_LINE);
 }
 
 
@@ -254,8 +244,8 @@ static WRITE8_HANDLER( nmi_disable_and_clear_line_w )
 	nmi_enabled = 0; /* disable NMIs */
 
 	/* NMI lines are tied together on both CPUs and connected to the LS74 /Q output */
-	cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
-	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( nmi_enable_w )
@@ -268,8 +258,8 @@ static INTERRUPT_GEN( shougi_vblank_nmi )
 	if ( nmi_enabled == 1 )
 	{
 		/* NMI lines are tied together on both CPUs and connected to the LS74 /Q output */
-		cpunum_set_input_line(0, INPUT_LINE_NMI, ASSERT_LINE);
-		cpunum_set_input_line(1, INPUT_LINE_NMI, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
 	}
 }
 
@@ -301,7 +291,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 //  AM_RANGE(0x7800, 0x78ff) AM_WRITE(cpu_sharedram_main_w) AM_BASE(&cpu_sharedram)/* sharedram main/sub */
 //  AM_RANGE(0x7800, 0x7bff) AM_READ(cpu_sharedram_r)/* 2114 x 2 (0x400 x 4bit each) */
 
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(videoram_w) AM_READ(MRA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)	/* 4116 x 16 (32K) */
+	AM_RANGE(0x8000, 0xffff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)	/* 4116 x 16 (32K) */
 ADDRESS_MAP_END
 
 /* sub */
@@ -390,7 +380,6 @@ static MACHINE_DRIVER_START( shougi )
 	MDRV_PALETTE_LENGTH(32)
 
 	MDRV_PALETTE_INIT(shougi)
-	MDRV_VIDEO_START(generic)
 	MDRV_VIDEO_UPDATE(shougi)
 
 	/* sound hardware */

@@ -2,7 +2,7 @@
 //
 //  sound.c - Win32 implementation of MAME sound routines
 //
-//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+//  Copyright Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -20,6 +20,7 @@
 #include "osdepend.h"
 #include "driver.h"
 #include "osdepend.h"
+#include "deprecat.h"
 
 // MAMEOS headers
 #include "winmain.h"

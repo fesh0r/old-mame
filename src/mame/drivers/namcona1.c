@@ -173,6 +173,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "namcona1.h"
 #include "sound/c140.h"
 #include "sound/namcona.h"
@@ -646,7 +647,7 @@ static WRITE16_HANDLER( namcona1_mcu_w )
  */
 static void write_version_info( void )
 {
-	const UINT16 source[0x8] =
+	static const UINT16 source[0x8] =
 	{ /* "NSA-BIOS ver"... */
 		0x534e,0x2d41,0x4942,0x534f,0x7620,0x7265,0x2e31,0x3133
 	};
@@ -778,7 +779,7 @@ static READ16_HANDLER( custom_key_r )
 		if( offset==4 ) keyseq = 0;
 		if( offset==3 )
 		{
-			const UINT16 data[] =
+			static const UINT16 data[] =
 			{
 				0x0000,0x2000,0x2100,0x2104,0x0106,0x0007,0x4003,0x6021,
 				0x61a0,0x31a4,0x9186,0x9047,0xc443,0x6471,0x6db0,0x39bc,
@@ -1075,7 +1076,7 @@ static WRITE16_HANDLER( mcu_mailbox_w_68k )
 {
 //  logerror("mailbox_w_68k: %x @ %x\n", data, offset);
 
-	if (offset == 4) cpunum_set_input_line(1, M37710_LINE_IRQ0, HOLD_LINE);
+	if (offset == 4) cpunum_set_input_line(Machine, 1, M37710_LINE_IRQ0, HOLD_LINE);
 
 	COMBINE_DATA(&mcu_mailbox[offset%8]);
 }
@@ -1193,7 +1194,7 @@ static WRITE8_HANDLER( port4_w )
 		logerror("launching 68k, PC=%x\n", activecpu_get_pc());
 
 		// reset and launch the 68k
-		cpunum_set_input_line(0, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, INPUT_LINE_RESET, CLEAR_LINE);
 	}
 
 	mcu_port4 = data;
@@ -1272,7 +1273,7 @@ static MACHINE_START( namcona1 )
 // for games with the MCU emulated, the MCU boots the 68000.  don't allow it before that.
 static MACHINE_RESET( namcona1_mcu )
 {
-	cpunum_set_input_line(0, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, ASSERT_LINE);
 
 	mcu_port5 = 1;
 }
@@ -1315,7 +1316,7 @@ static INTERRUPT_GEN( namcona1_interrupt )
 	{
 		if( (namcona1_vreg[0x1a/2]&(1<<level))==0 )
 		{
-			cpunum_set_input_line(0, level+1, HOLD_LINE);
+			cpunum_set_input_line(machine, 0, level+1, HOLD_LINE);
 		}
 	}
 }
@@ -1327,10 +1328,10 @@ static INTERRUPT_GEN( namcona1_interrupt )
 static INTERRUPT_GEN( mcu_interrupt )
 {
 	if (cpu_getiloops() == 0)
- 		cpunum_set_input_line(1, M37710_LINE_IRQ1, HOLD_LINE);
+ 		cpunum_set_input_line(machine, 1, M37710_LINE_IRQ1, HOLD_LINE);
 	else if (cpu_getiloops() == 1)
 	{
-		cpunum_set_input_line(1, M37710_LINE_ADC, HOLD_LINE);
+		cpunum_set_input_line(machine, 1, M37710_LINE_ADC, HOLD_LINE);
 	}
 }
 
@@ -1820,17 +1821,17 @@ ROM_START( xday2 )
 ROM_END
 
 // NA-1 (C69 MCU)
-GAME( 1992,bkrtmaq,  0,        namcona1w, namcona1_quiz,bkrtmaq,  ROT0, "Namco", "Bakuretsu Quiz Ma-Q Dai Bouken (Japan)", GAME_IMPERFECT_SOUND )
-GAME( 1992,cgangpzl, 0,        namcona1w, namcona1_joy,	cgangpzl, ROT0, "Namco", "Cosmo Gang the Puzzle (US)", GAME_IMPERFECT_SOUND )
-GAME( 1992,cgangpzj, cgangpzl, namcona1w, namcona1_joy,	cgangpzl, ROT0, "Namco", "Cosmo Gang the Puzzle (Japan)", GAME_IMPERFECT_SOUND )
-GAME( 1992,exvania,  0,        namcona1,  namcona1_joy,	exbania,  ROT0, "Namco", "Exvania (Japan)", GAME_IMPERFECT_SOUND )
-GAME( 1992,fghtatck, 0,        namcona1,  namcona1_joy,	fa,       ROT90,"Namco", "Fighter & Attacker (US)", GAME_IMPERFECT_SOUND )
-GAME( 1992,fa,       fghtatck, namcona1,  namcona1_joy,	fa,       ROT90,"Namco", "F/A (Japan)", GAME_IMPERFECT_SOUND )
-GAME( 1992,swcourt,  0,        namcona1w, namcona1_joy,	swcourt,  ROT0, "Namco", "Super World Court (World)", GAME_IMPERFECT_SOUND )
-GAME( 1992,swcourtj, swcourt,  namcona1w, namcona1_joy,	swcourt,  ROT0, "Namco", "Super World Court (Japan)", GAME_IMPERFECT_SOUND )
-GAME( 1993,emeraldj, emeralda, namcona1w, namcona1_joy,	emeraldj, ROT0, "Namco", "Emeraldia (Japan Version B)", GAME_IMPERFECT_SOUND ) /* Parent is below on NA-2 Hardware */
-GAME( 1993,emerldja, emeralda, namcona1w, namcona1_joy,	emeraldj, ROT0, "Namco", "Emeraldia (Japan)", GAME_IMPERFECT_SOUND ) /* Parent is below on NA-2 Hardware */
-GAME( 1993,tinklpit, 0,        namcona1w, namcona1_joy,	tinklpit, ROT0, "Namco", "Tinkle Pit (Japan)", GAME_IMPERFECT_SOUND )
+GAME( 1992,bkrtmaq,  0,        namcona1w, namcona1_quiz,bkrtmaq,  ROT0, "Namco", "Bakuretsu Quiz Ma-Q Dai Bouken (Japan)", 0 )
+GAME( 1992,cgangpzl, 0,        namcona1w, namcona1_joy,	cgangpzl, ROT0, "Namco", "Cosmo Gang the Puzzle (US)", 0 )
+GAME( 1992,cgangpzj, cgangpzl, namcona1w, namcona1_joy,	cgangpzl, ROT0, "Namco", "Cosmo Gang the Puzzle (Japan)", 0 )
+GAME( 1992,exvania,  0,        namcona1,  namcona1_joy,	exbania,  ROT0, "Namco", "Exvania (Japan)", 0 )
+GAME( 1992,fghtatck, 0,        namcona1,  namcona1_joy,	fa,       ROT90,"Namco", "Fighter & Attacker (US)", 0 )
+GAME( 1992,fa,       fghtatck, namcona1,  namcona1_joy,	fa,       ROT90,"Namco", "F/A (Japan)", 0 )
+GAME( 1992,swcourt,  0,        namcona1w, namcona1_joy,	swcourt,  ROT0, "Namco", "Super World Court (World)", 0 )
+GAME( 1992,swcourtj, swcourt,  namcona1w, namcona1_joy,	swcourt,  ROT0, "Namco", "Super World Court (Japan)", 0 )
+GAME( 1993,emeraldj, emeralda, namcona1w, namcona1_joy,	emeraldj, ROT0, "Namco", "Emeraldia (Japan Version B)", 0 ) /* Parent is below on NA-2 Hardware */
+GAME( 1993,emerldja, emeralda, namcona1w, namcona1_joy,	emeraldj, ROT0, "Namco", "Emeraldia (Japan)", 0 ) /* Parent is below on NA-2 Hardware */
+GAME( 1993,tinklpit, 0,        namcona1w, namcona1_joy,	tinklpit, ROT0, "Namco", "Tinkle Pit (Japan)", 0 )
 
 // NA-2 (C70 MCU)
 GAME( 1992,knckhead, 0,        namcona2,  namcona2_joy,	knckhead, ROT0, "Namco", "Knuckle Heads (World)", GAME_IMPERFECT_SOUND )

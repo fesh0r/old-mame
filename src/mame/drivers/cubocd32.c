@@ -48,7 +48,6 @@
 #include "sound/custom.h"
 #include "includes/amiga.h"
 #include "includes/cubocd32.h"
-//#include "memconv.h"
 
 //READWRITE16BETO32BE(amiga_cia32,amiga_cia_r,amiga_cia_w)
 //READWRITE16BETO32BE(amiga_custom32,amiga_custom_r,amiga_custom_w)
@@ -104,7 +103,7 @@ static WRITE32_HANDLER( aga_overlay_w )
 			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x1fffff, 0, 0, MWA32_BANK1);
 		else
 			/* overlay enabled, map Amiga system ROM on 0x000000 */
-			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x1fffff, 0, 0, MWA32_ROM);
+			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x1fffff, 0, 0, MWA32_UNMAP);
 	}
 }
 
@@ -384,7 +383,7 @@ static DRIVER_INIT( cd32 )
 	memory_configure_bank(1, 1, 1, memory_region(REGION_USER1), 0);
 
 	/* intialize akiko */
-	amiga_akiko_init();
+	amiga_akiko_init(machine);
 }
 
 /***************************************************************************************************/

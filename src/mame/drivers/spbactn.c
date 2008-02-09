@@ -126,6 +126,7 @@ cpu #0 (PC=00001A1A): unmapped memory word write to 00090030 = 00F7 & 00FF
 *******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
@@ -139,7 +140,7 @@ static WRITE16_HANDLER( soundcommand_w )
 	if (ACCESSING_LSB)
 	{
 		soundlatch_w(offset,data & 0xff);
-		cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+		cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
@@ -343,7 +344,7 @@ GFXDECODE_END
 
 static void irqhandler(int linestate)
 {
-	cpunum_set_input_line(1,0,linestate);
+	cpunum_set_input_line(Machine, 1,0,linestate);
 }
 
 static const struct YM3812interface ym3812_interface =

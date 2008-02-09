@@ -11,10 +11,11 @@
 */
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "i386.h"
 #include "i386intf.h"
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 #include "debug/debugcpu.h"
 #endif
 
@@ -442,7 +443,7 @@ static void I386OP(decode_two_byte)(void)
 
 /*************************************************************************/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 
 static UINT64 i386_debug_segbase(UINT32 ref, UINT32 params, UINT64 *param)
 {
@@ -484,7 +485,7 @@ static void i386_debug_setup(void)
 	symtable_add_function(global_symtable, "seglimit", 0, 1, 1, i386_debug_seglimit);
 }
 
-#endif /* defined(MAME_DEBUG) */
+#endif /* defined(ENABLE_DEBUGGER) */
 
 /*************************************************************************/
 
@@ -716,7 +717,7 @@ static int i386_execute(int num_cycles)
 		I.segment_prefix = 0;
 		I.prev_eip = I.eip;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(I.pc);
 
 		i386_check_irq_line();
 		I386OP(decode_opcode)();
@@ -740,12 +741,12 @@ static int translate_address_cb(int space, offs_t *addr)
 	return result;
 }
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t i386_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	return i386_dasm_one(buffer, pc, oprom, I.sreg[CS].d ? 32 : 16);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 static void i386_set_info(UINT32 state, cpuinfo *info)
 {
@@ -855,6 +856,7 @@ void i386_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 32;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 15;							break;
@@ -967,7 +969,7 @@ void i386_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_BURN:		      				info->burn = NULL;						break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER: 			info->icount = &I.cycles;				break;
 		case CPUINFO_PTR_TRANSLATE:						info->translate = translate_address_cb;	break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = i386_dasm;			break;
 		case CPUINFO_PTR_DEBUG_SETUP_COMMANDS:			info->setup_commands = i386_debug_setup; break;
 #endif
@@ -977,7 +979,7 @@ void i386_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Intel 386");			break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) 2003-2004 Ville Linde"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Ville Linde"); break;
 
 		case CPUINFO_STR_FLAGS:	   						sprintf(info->s, "%08X", get_flags());	break;
 

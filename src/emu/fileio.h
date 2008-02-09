@@ -4,7 +4,7 @@
 
     Core file I/O interface functions and definitions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -141,7 +141,7 @@ UINT32 mame_fwrite(mame_file *file, const void *buffer, UINT32 length);
 int mame_fputs(mame_file *f, const char *s);
 
 /* printf-style text write to a file */
-int CLIB_DECL mame_fprintf(mame_file *f, const char *fmt, ...);
+int CLIB_DECL mame_fprintf(mame_file *f, const char *fmt, ...) ATTR_PRINTF(2,3);
 
 
 

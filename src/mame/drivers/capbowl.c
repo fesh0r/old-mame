@@ -88,6 +88,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/ticket.h"
 #include "cpu/m6809/m6809.h"
 #include "capbowl.h"
@@ -111,7 +112,7 @@ static UINT8 last_trackball_val[2];
 static INTERRUPT_GEN( capbowl_interrupt )
 {
 	if (readinputport(4) & 1)	/* get status of the F2 key */
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);	/* trigger self test */
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);	/* trigger self test */
 }
 
 
@@ -191,7 +192,7 @@ static WRITE8_HANDLER( track_reset_w )
 
 static WRITE8_HANDLER( capbowl_sndcmd_w )
 {
-	cpunum_set_input_line(1, M6809_IRQ_LINE, HOLD_LINE);
+	cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, HOLD_LINE);
 	soundlatch_w(offset, data);
 }
 
@@ -206,7 +207,7 @@ static WRITE8_HANDLER( capbowl_sndcmd_w )
 
 static void firqhandler(int irq)
 {
-	cpunum_set_input_line(1, 1, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 1, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -349,28 +350,26 @@ static const struct YM2203interface ym2203_interface =
 static MACHINE_DRIVER_START( capbowl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6809E, MASTER_CLOCK/4)
+	MDRV_CPU_ADD_TAG("main", M6809E, MASTER_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(capbowl_map,0)
 	MDRV_CPU_VBLANK_INT(capbowl_interrupt,1)
 
-	MDRV_CPU_ADD(M6809E, MASTER_CLOCK/4)
 	/* audio CPU */
+	MDRV_CPU_ADD(M6809E, MASTER_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-
-	MDRV_SCREEN_REFRESH_RATE(57)
 
 	MDRV_MACHINE_RESET(capbowl)
 	MDRV_NVRAM_HANDLER(capbowl)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(360, 256)
-	MDRV_SCREEN_VISIBLE_AREA(0, 359, 0, 244)
-	MDRV_PALETTE_LENGTH(4096)
-
 	MDRV_VIDEO_START(capbowl)
 	MDRV_VIDEO_UPDATE(capbowl)
+
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MDRV_SCREEN_SIZE(360, 256)
+	MDRV_SCREEN_VISIBLE_AREA(0, 359, 0, 244)
+	MDRV_SCREEN_REFRESH_RATE(57)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

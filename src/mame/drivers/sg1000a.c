@@ -112,6 +112,7 @@ CN4               CN5
 ******************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/sn76496.h"
 #include "video/tms9928a.h"
 #include "machine/segacrpt.h"
@@ -248,7 +249,7 @@ static INTERRUPT_GEN( sg100a_interrupt )
 
 static void vdp_interrupt (int state)
 {
-	cpunum_set_input_line(0,0, HOLD_LINE);
+	cpunum_set_input_line(Machine, 0,0, HOLD_LINE);
 }
 
 static const TMS9928a_interface tms9928a_interface =
@@ -323,7 +324,7 @@ static DRIVER_INIT( sg1000a )
 
 static DRIVER_INIT(chwrestl)
 {
-	driver_init_sg1000a(machine);
+	DRIVER_INIT_CALL(sg1000a);
 	regulus_decode();
 }
 

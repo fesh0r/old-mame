@@ -3,7 +3,7 @@
  *   arm7core.c
  *   Portable ARM7TDMI Core Emulator
  *
- *   Copyright (c) 2004 Steve Ellenoff, all rights reserved.
+ *   Copyright Steve Ellenoff, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -125,7 +125,7 @@ WRITE32_HANDLER((*arm7_coproc_rt_w_callback));  //holder for the co processor Re
 void (*arm7_coproc_dt_r_callback)(UINT32 insn, UINT32* prn, UINT32 (*read32)(int addr));
 void (*arm7_coproc_dt_w_callback)(UINT32 insn, UINT32* prn, void (*write32)(int addr, UINT32 data));
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 //custom dasm callback handlers for co-processor instructions
 char *(*arm7_dasm_cop_dt_callback)( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0 );
 char *(*arm7_dasm_cop_rt_callback)( char *pBuf, UINT32 opcode, char *pConditionCode, char *pBuf0 );
@@ -1202,10 +1202,10 @@ static void HandlePSRTransfer( UINT32 insn )
 	newval |= 0x10;
 
         //Update the Register
-        SET_REGISTER(reg, val);
+        SET_REGISTER(reg, newval);
 
         //Switch to new mode if changed
-        if( (val & MODE_FLAG) != oldmode)
+        if( (newval & MODE_FLAG) != oldmode)
             SwitchMode(GET_MODE);
 
     }

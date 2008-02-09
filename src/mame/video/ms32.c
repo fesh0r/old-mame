@@ -13,6 +13,7 @@ priority should be given to
 
 
 #include "driver.h"
+#include "deprecat.h"
 
 //UINT32 *ms32_fce00000;
 UINT32 *ms32_roz_ctrl;
@@ -87,6 +88,7 @@ VIDEO_START( ms32 )
 	if (!strcmp(machine->gamedrv->name,"47pie2"))	ms32_reverse_sprite_order = 0;
 	if (!strcmp(machine->gamedrv->name,"47pie2o"))	ms32_reverse_sprite_order = 0;
 	if (!strcmp(machine->gamedrv->name,"hayaosi3"))	ms32_reverse_sprite_order = 0;
+	if (!strcmp(machine->gamedrv->name,"bnstars"))	ms32_reverse_sprite_order = 0;
 
 	// tp2m32 doesn't set the brightness registers so we need sensible defaults
 	brt[0] = brt[1] = 0xffff;

@@ -4,7 +4,7 @@
 
     mamedriv.c substitute file for "tiny" MAME builds.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
     The list of used drivers. Drivers have to be included here to be recognized
@@ -43,6 +43,8 @@ const game_driver * const drivers[] =
 	DRIVER( alienar ) 	/* (c) 1985 Duncan Brown */
 	DRIVER( carpolo )	/* (c) 1977 Exidy */
 	DRIVER( sidetrac )	/* (c) 1979 Exidy */
+	DRIVER( targ )		/* (c) 1980 Exidy */
+	DRIVER( spectar )	/* (c) 1980 Exidy */
 	DRIVER( teetert )	/* (c) 1982 Exidy */
 	DRIVER( circus )	/* (c) 1977 Exidy */
 	DRIVER( robotbwl )	/* (c) 197? Exidy */

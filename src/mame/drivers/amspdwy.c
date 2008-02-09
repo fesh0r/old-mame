@@ -14,6 +14,7 @@ Sound:  YM2151
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2151intf.h"
 
 /* Variables & functions defined in video: */
@@ -43,7 +44,7 @@ VIDEO_UPDATE( amspdwy );
     Or last value when wheel delta = 0
 */
 #define AMSPDWY_WHEEL_R( _n_ ) \
-READ8_HANDLER( amspdwy_wheel_##_n_##_r ) \
+static READ8_HANDLER( amspdwy_wheel_##_n_##_r ) \
 { \
 	static UINT8 wheel_old, ret; \
 	UINT8 wheel = readinputport(5 + _n_); \
@@ -68,15 +69,14 @@ static READ8_HANDLER( amspdwy_sound_r )
 static WRITE8_HANDLER( amspdwy_sound_w )
 {
 	soundlatch_w(0,data);
-	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( amspdwy_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM				)	// ROM
 //  AM_RANGE(0x8000, 0x801f) AM_READ(MRA8_RAM               )   // Palette
-	AM_RANGE(0x9000, 0x93ff) AM_READ(videoram_r			)	// Layer
-	AM_RANGE(0x9400, 0x97ff) AM_READ(videoram_r			)	// Mirror?
-	AM_RANGE(0x9800, 0x9bff) AM_READ(colorram_r			)	// Layer
+	AM_RANGE(0x9000, 0x93ff) AM_MIRROR(0x0400) AM_READ(MRA8_RAM)	// Layer, mirrored?
+	AM_RANGE(0x9800, 0x9bff) AM_READ(MRA8_RAM			)	// Layer
 	AM_RANGE(0x9c00, 0x9fff) AM_READ(MRA8_RAM				)	// Unused?
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r		)	// DSW 1
 	AM_RANGE(0xa400, 0xa400) AM_READ(input_port_1_r		)	// DSW 2
@@ -90,8 +90,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( amspdwy_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM							)	// ROM
 	AM_RANGE(0x8000, 0x801f) AM_WRITE(amspdwy_paletteram_w) AM_BASE(&paletteram	)	// Palette
-	AM_RANGE(0x9000, 0x93ff) AM_WRITE(amspdwy_videoram_w) AM_BASE(&videoram		)	// Layer
-	AM_RANGE(0x9400, 0x97ff) AM_WRITE(amspdwy_videoram_w				)	// Mirror?
+	AM_RANGE(0x9000, 0x93ff) AM_MIRROR(0x0400) AM_WRITE(amspdwy_videoram_w) AM_BASE(&videoram)	// Layer, mirrored?
 	AM_RANGE(0x9800, 0x9bff) AM_WRITE(amspdwy_colorram_w) AM_BASE(&colorram		)	// Layer
 	AM_RANGE(0x9c00, 0x9fff) AM_WRITE(MWA8_RAM							)	// Unused?
 //  AM_RANGE(0xa000, 0xa000) AM_WRITE(MWA8_NOP                          )   // ?
@@ -260,7 +259,7 @@ GFXDECODE_END
 
 static void irq_handler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2151interface amspdwy_ym2151_interface =

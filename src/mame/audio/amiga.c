@@ -10,6 +10,7 @@
 
 #include "driver.h"
 #include "streams.h"
+#include "deprecat.h"
 #include "includes/amiga.h"
 #include "cpu/m68000/m68000.h"
 
@@ -20,8 +21,8 @@
  *
  *************************************/
 
-#define LOG(x)
-//#define LOG(x)    logerror x
+#define VERBOSE 0
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 
 

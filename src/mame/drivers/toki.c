@@ -8,6 +8,22 @@ driver by Jarek Parchanski
 Coin inputs are handled by the sound CPU, so they don't work with sound
 disabled. Use the service switch instead.
 
+--
+Mametesters bug tokiu056gre - "tokiu: "0000000" is always displayed as the top hiscore during gameplay,
+regardless of what it actually is. This does not happen in the other Toki sets."
+
+Notes by bmcphail@vcmame.net, 1/1/2008
+
+Toki stores high score at $60008 in main ram (init code at $ADA, compared with player score at $1A1BA)
+Tokiu stores high score at $60010 instead (init code at $B16, equivalent compare code at $1a204), $60008
+is used for different purposes in many parts of the code.
+
+Both games feature a common routine ($1cba2 in toki, $1cbfa in tokiu) that prints the high score to screen,
+the problem is that the version in Tokiu has not been adjusted for the different high score location and
+it reads from the $68008 location instead of $680010.  From analysing the code I'm certain this is a bug
+in the original USA version code and not an emulation bug.
+
+
 
 TODO
 ----
@@ -19,6 +35,7 @@ for now. Even at 12 this slowdown still happens a little.
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "audio/seibu.h"
 #include "sound/3812intf.h"
@@ -45,7 +62,7 @@ WRITE16_HANDLER( toki_foreground_videoram16_w );
 static WRITE16_HANDLER( tokib_soundcommand16_w )
 {
 	soundlatch_w(0,data & 0xff);
-	cpunum_set_input_line(1, 0, HOLD_LINE);
+	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 }
 
 static READ16_HANDLER( pip16_r )
@@ -65,7 +82,7 @@ static void toki_adpcm_int (int data)
 
 	toggle ^= 1;
 	if (toggle)
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( toki_adpcm_control_w )
@@ -409,10 +426,6 @@ GFXDECODE_END
 
 /*****************************************************************************/
 
-/* Parameters: YM3812 frequency, Oki frequency, Oki memory region */
-SEIBU_SOUND_SYSTEM_YM3812_HARDWARE
-
-
 static const struct MSM5205interface msm5205_interface =
 {
 	toki_adpcm_int,	/* interrupt function */
@@ -423,11 +436,11 @@ static const struct MSM5205interface msm5205_interface =
 static MACHINE_DRIVER_START( toki ) /* KOYO 20.000MHz near the cpu */
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,20000000/2) 	/* 10 MHz Toshiba TMP68000P-10 */
+	MDRV_CPU_ADD(M68000,20000000/2) 	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(toki_map,0)
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)/* VBL */
 
-	SEIBU_SOUND_SYSTEM_CPU(20000000/5)	/* 4MHz Zilog Z0840004PSC */
+	SEIBU_SOUND_SYSTEM_CPU(14318180/4)	/* verifed on pcb */
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_MACHINE_RESET(seibu_sound_1)
@@ -445,7 +458,7 @@ static MACHINE_DRIVER_START( toki ) /* KOYO 20.000MHz near the cpu */
 	MDRV_VIDEO_UPDATE(toki)
 
 	/* sound hardware */
-	SEIBU_SOUND_SYSTEM_YM3812_INTERFACE(14318180/4,1320000,1)
+	SEIBU_SOUND_SYSTEM_YM3812_INTERFACE(14318180/4,1000000,1) /* verifed on pcb */
 MACHINE_DRIVER_END
 
 
@@ -714,6 +727,18 @@ ROM_END
 
 static DRIVER_INIT( toki )
 {
+	UINT8 *ROM = memory_region(REGION_SOUND1);
+	UINT8 *buffer = malloc_or_die(0x20000);
+	int i;
+
+	memcpy(buffer,ROM,0x20000);
+	for( i = 0; i < 0x20000; i++ )
+	{
+		ROM[i] = buffer[BITSWAP24(i,23,22,21,20,19,18,17,16,13,14,15,12,11,10,9,8,7,6,5,4,3,2,1,0)];
+	}
+
+	free(buffer);
+
 	seibu_sound_decrypt(REGION_CPU2,0x2000);
 }
 
@@ -787,6 +812,20 @@ static DRIVER_INIT(jujub)
 			UINT8 src = decrypt[i];
 			rom[i] = src^0x55;
 		}
+	}
+
+	{
+		UINT8 *ROM = memory_region(REGION_SOUND1);
+		UINT8 *buffer = malloc_or_die(0x20000);
+		int i;
+
+		memcpy(buffer,ROM,0x20000);
+		for( i = 0; i < 0x20000; i++ )
+		{
+			ROM[i] = buffer[BITSWAP24(i,23,22,21,20,19,18,17,16,13,14,15,12,11,10,9,8,7,6,5,4,3,2,1,0)];
+		}
+
+		free(buffer);
 	}
 }
 

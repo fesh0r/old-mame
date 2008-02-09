@@ -3,7 +3,7 @@
  *   arm7exec.c
  *   Portable ARM7TDMI Core Emulator
  *
- *   Copyright (c) 2004 Steve Ellenoff, all rights reserved.
+ *   Copyright Steve Ellenoff, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -47,7 +47,7 @@
     ARM7_ICOUNT = cycles;
     do
     {
-    	CALL_MAME_DEBUG;
+    	CALL_DEBUGGER(R15);
 
 	/* handle Thumb instructions if active */
 	if( T_IS_SET(GET_CPSR) )
@@ -1109,12 +1109,23 @@
 				}
 				break;
 			case 0xe: /* B #offs */
-				offs = ( insn & THUMB_BRANCH_OFFS ) << 1;
-				if( offs & 0x00000800 )
-				{
-					offs |= 0xfffff800;
-				}
-				R15 += 4 + offs;
+                if( insn & THUMB_BLOP_LO )
+                {
+                    addr = GET_REGISTER(14);
+                    addr += ( insn & THUMB_BLOP_OFFS ) << 1;
+                    addr &= 0xfffffffc;
+                    SET_REGISTER( 14, ( R15 + 4 ) | 1 );
+                    R15 = addr;
+                }
+                else
+                {
+                    offs = ( insn & THUMB_BRANCH_OFFS ) << 1;
+                    if( offs & 0x00000800 )
+                    {
+                        offs |= 0xfffff800;
+                    }
+                    R15 += 4 + offs;
+                }
 				break;
 			case 0xf: /* BL */
 				if( insn & THUMB_BLOP_LO )

@@ -1096,7 +1096,7 @@ static void hng64_drawtilemap3(running_machine *machine, mame_bitmap *bitmap, co
 
 //  usrintf_showmessage("%d", hng64_hackTm3Count) ;
 
-	if (hng64_hackTm3Count/4 < Machine->screen[0].visarea.max_y)
+	if (hng64_hackTm3Count/4 < machine->screen[0].visarea.max_y)
 	{
 		for (i = 0; i < hng64_hackTm3Count/4; i++)
 		{
@@ -1278,8 +1278,8 @@ VIDEO_UPDATE( hng64 )
 	/* hack to enable 2nd cpu when key is pressed */
 //  if ( input_code_pressed_once(KEYCODE_L) )
 //  {
-//      cpunum_set_input_line(1, INPUT_LINE_HALT, CLEAR_LINE);
-//      cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
+//      cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+//      cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 //  }
 
 	/* AJG */

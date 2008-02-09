@@ -1,14 +1,14 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/z80pio.h"
 #include "machine/z80ctc.h"
 #include "sound/samples.h"
-#include <math.h>
 
 
 /* z80 pio */
 static void pio_interrupt(int state)
 {
-	cpunum_set_input_line(1, 0, state);
+	cpunum_set_input_line(Machine, 1, 0, state);
 }
 
 static const z80pio_interface pio_intf =
@@ -21,7 +21,7 @@ static const z80pio_interface pio_intf =
 /* z80 ctc */
 static void ctc_interrupt (int state)
 {
-	cpunum_set_input_line(1, 0, state);
+	cpunum_set_input_line(Machine, 1, 0, state);
 }
 
 static z80ctc_interface ctc_intf =
@@ -69,7 +69,7 @@ void senjyo_sh_start(void)
     int i;
 
 	/* z80 ctc init */
-	ctc_intf.baseclock = Machine->drv->cpu[1].clock;
+	ctc_intf.baseclock = cpunum_get_clock(1);
 	z80ctc_init (0, &ctc_intf);
 
 	/* z80 pio init */

@@ -27,6 +27,7 @@ TODO:
 
 ***************************************************************************/
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/okim6295.h"
 
 VIDEO_START( zerozone );
@@ -61,7 +62,7 @@ static WRITE16_HANDLER( zerozone_sound_w )
 	if (ACCESSING_MSB)
 	{
 		soundlatch_w(offset,data >> 8);
-		cpunum_set_input_line_and_vector(1,0,HOLD_LINE,0xff);
+		cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
 	}
 }
 

@@ -64,6 +64,7 @@ Dumped by Uki
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ymz280b.h"
 
 extern UINT32* skns_spc_regs;
@@ -80,9 +81,9 @@ static INTERRUPT_GEN( galpani3_vblank ) // 2, 3, 5 ?
 {
 	switch ( cpu_getiloops() )
 	{
-		case 2:  cpunum_set_input_line(0, 2, HOLD_LINE); break;
-		case 1:  cpunum_set_input_line(0, 3, HOLD_LINE); break;
-		case 0:  cpunum_set_input_line(0, 5, HOLD_LINE); break;
+		case 2:  cpunum_set_input_line(machine, 0, 2, HOLD_LINE); break;
+		case 1:  cpunum_set_input_line(machine, 0, 3, HOLD_LINE); break;
+		case 0:  cpunum_set_input_line(machine, 0, 5, HOLD_LINE); break;
 	}
 }
 
@@ -286,7 +287,7 @@ static void galpani3_mcu_run(void)
    * com2=com3=0xFFFF -> status reading only
 */
 #define GALPANI3_MCU_COM_W(_n_) \
-WRITE16_HANDLER( galpani3_mcu_com##_n_##_w ) \
+static WRITE16_HANDLER( galpani3_mcu_com##_n_##_w ) \
 { \
 	COMBINE_DATA(&galpani3_mcu_com[_n_]); \
 	if (galpani3_mcu_com[0] != 0xFFFF)	return; \

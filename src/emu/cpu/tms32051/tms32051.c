@@ -4,9 +4,10 @@
    Written by Ville Linde
 */
 
+#include "debugger.h"
+#include "deprecat.h"
 #include "cpuintrf.h"
 #include "tms32051.h"
-#include "debugger.h"
 
 static void delay_slot(UINT16 startpc);
 static void save_interrupt_context(void);
@@ -360,7 +361,7 @@ static int tms_execute(int num_cycles)
 		}
 
 		ppc = tms.pc;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(tms.pc);
 
 		tms.op = ROPCODE();
 		tms32051_opcode_table[tms.op >> 8]();
@@ -572,6 +573,7 @@ static void tms_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 6;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -626,9 +628,9 @@ static void tms_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = tms_exit;					break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = tms_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = tms32051_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_READ:							info->read = tms_debug_read;			break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &tms_icount;				break;
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_internal_pgm; break;
@@ -638,7 +640,7 @@ static void tms_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "TMS3205x");			break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) 2005-2006 Ville Linde"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Ville Linde"); break;
 
 		case CPUINFO_STR_FLAGS:							strcpy(info->s, " ");					break;
 

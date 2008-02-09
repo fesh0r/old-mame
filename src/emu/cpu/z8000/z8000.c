@@ -4,7 +4,7 @@
  *   Portable Z8000(2) emulator
  *   Z8000 MAME interface
  *
- *   Copyright (C) 1998,1999,2000 Juergen Buchmueller, all rights reserved.
+ *   Copyright Juergen Buchmueller, all rights reserved.
  *   You can contact me at juergen@mame.net or pullmoll@stop1984.com
  *
  *   - This source code is released as freeware for non-commercial purposes
@@ -44,6 +44,7 @@
  *****************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "z8000.h"
 #include "z8000cpu.h"
 #include "osd_cpu.h"
@@ -51,11 +52,7 @@
 #define VERBOSE 0
 
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 /* opcode execution table */
 Z8000_exec *z8000_exec = NULL;
@@ -483,7 +480,7 @@ static int z8000_execute(int cycles)
         if (IRQ_REQ)
 			Interrupt();
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PC);
 
 		if (IRQ_REQ & Z8000_HALT)
         {
@@ -633,6 +630,7 @@ void z8000_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 2;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0xff;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 6;							break;
@@ -691,9 +689,9 @@ void z8000_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = z8000_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = z8000_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = z8000_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &z8000_ICount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -701,7 +699,7 @@ void z8000_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Zilog Z8000");			break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.1");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) 1998,1999 Juergen Buchmueller, all rights reserved."); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Juergen Buchmueller, all rights reserved."); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c",

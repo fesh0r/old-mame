@@ -217,6 +217,7 @@ Custom: GX61A01
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/upd7810/upd7810.h"
 #include "homedata.h"
@@ -233,12 +234,12 @@ static int vblank;
 static INTERRUPT_GEN( homedata_irq )
 {
 	vblank = 1;
-	cpunum_set_input_line(0,M6809_FIRQ_LINE,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,M6809_FIRQ_LINE,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( upd7807_irq )
 {
-	cpunum_set_input_line(1,UPD7810_INTF1,HOLD_LINE);
+	cpunum_set_input_line(machine, 1,UPD7810_INTF1,HOLD_LINE);
 }
 
 
@@ -326,7 +327,7 @@ static WRITE8_HANDLER( mrokumei_sound_io_w )
 static WRITE8_HANDLER( mrokumei_sound_cmd_w )
 {
 	soundlatch_w(offset,data);
-	cpunum_set_input_line(1,0,HOLD_LINE);
+	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 }
 
 

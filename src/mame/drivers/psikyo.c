@@ -61,6 +61,7 @@ This was pointed out by Bart Puype
 *****/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2610intf.h"
 #include "sound/ymf278b.h"
 
@@ -164,7 +165,7 @@ static READ32_HANDLER( gunbird_input_r )
 static TIMER_CALLBACK( psikyo_soundlatch_callback )
 {
 	psikyo_soundlatch = param;
-	cpunum_set_input_line(1, INPUT_LINE_NMI, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
 	z80_nmi = 1;
 }
 
@@ -370,7 +371,7 @@ ADDRESS_MAP_END
 
 static void sound_irq( int irq )
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static READ8_HANDLER( psikyo_soundlatch_r )
@@ -380,7 +381,7 @@ static READ8_HANDLER( psikyo_soundlatch_r )
 
 static WRITE8_HANDLER( psikyo_clear_nmi_w )
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 	z80_nmi = 0;
 }
 
@@ -1664,9 +1665,9 @@ MACHINE_DRIVER_END
 static void irqhandler(int linestate)
 {
 	if (linestate)
-		cpunum_set_input_line(1, 0, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, 0, ASSERT_LINE);
 	else
-		cpunum_set_input_line(1, 0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
 }
 
 static const struct YMF278B_interface ymf278b_interface =

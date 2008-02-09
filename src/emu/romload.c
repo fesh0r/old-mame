@@ -4,7 +4,7 @@
 
     ROM loading functions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -16,8 +16,7 @@
 #include "harddisk.h"
 #include "config.h"
 #include "ui.h"
-#include <stdarg.h>
-#include <ctype.h>
+#include "deprecat.h"
 
 
 //#define LOG_LOAD
@@ -162,7 +161,7 @@ const rom_entry *rom_next_chunk(const rom_entry *romp)
     debugload - log data to a file
 -------------------------------------------------*/
 
-static void CLIB_DECL debugload(const char *string, ...)
+static void CLIB_DECL ATTR_PRINTF(1,2) debugload(const char *string, ...)
 {
 #ifdef LOG_LOAD
 	static int opened;
@@ -397,7 +396,7 @@ static void display_loading_rom_message(const char *name, rom_load_data *romdata
 	else
 		sprintf(buffer, "Loading Complete");
 
-	ui_set_startup_text(buffer, FALSE);
+	ui_set_startup_text(Machine, buffer, FALSE);
 }
 
 

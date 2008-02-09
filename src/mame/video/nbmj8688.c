@@ -7,6 +7,7 @@
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "nb1413m3.h"
 
 
@@ -697,8 +698,8 @@ VIDEO_UPDATE( mbmj8688 )
 		if (mjsikaku_flipscreen) scrolly =   mjsikaku_scrolly;
 		else                     scrolly = (-mjsikaku_scrolly) & 0xff;
 
-		copybitmap(bitmap, mjsikaku_tmpbitmap, 0, 0, 0, scrolly,       cliprect, TRANSPARENCY_NONE, 0);
-		copybitmap(bitmap, mjsikaku_tmpbitmap, 0, 0, 0, scrolly - 256, cliprect, TRANSPARENCY_NONE, 0);
+		copybitmap(bitmap, mjsikaku_tmpbitmap, 0, 0, 0, scrolly,       cliprect);
+		copybitmap(bitmap, mjsikaku_tmpbitmap, 0, 0, 0, scrolly - 256, cliprect);
 	}
 	else
 	{
@@ -713,7 +714,7 @@ VIDEO_UPDATE( mbmj8688_LCD )
 {
 	int x, y, b;
 
-	if(screen==0) video_update_mbmj8688(machine,screen,bitmap,cliprect);
+	if(screen==0) VIDEO_UPDATE_CALL(mbmj8688);
 
 	if (screen==1)
 	{

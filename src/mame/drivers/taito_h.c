@@ -128,6 +128,7 @@ Recordbr: loads of unmapped IOC reads and writes.
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "taitoipt.h"
 #include "audio/taitosnd.h"
 #include "video/taitoic.h"
@@ -160,7 +161,7 @@ VIDEO_UPDATE( dleague );
 /* Handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface syvalion_ym2610_interface =
@@ -274,7 +275,7 @@ static ADDRESS_MAP_START( syvalion_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x300000, 0x300001) AM_READ(MRA16_NOP)
 	AM_RANGE(0x300002, 0x300003) AM_READ(taitosound_comm16_lsb_r)
 	AM_RANGE(0x400000, 0x420fff) AM_READ(TC0080VCO_word_r)
-	AM_RANGE(0x500800, 0x500fff) AM_READ(paletteram16_word_r)
+	AM_RANGE(0x500800, 0x500fff) AM_READ(MRA16_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( syvalion_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -297,7 +298,7 @@ static ADDRESS_MAP_START( recordbr_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x300000, 0x300001) AM_READ(MRA16_NOP)
 	AM_RANGE(0x300002, 0x300003) AM_READ(taitosound_comm16_lsb_r)
 	AM_RANGE(0x400000, 0x420fff) AM_READ(TC0080VCO_word_r)
-	AM_RANGE(0x500800, 0x500fff) AM_READ(paletteram16_word_r)
+	AM_RANGE(0x500800, 0x500fff) AM_READ(MRA16_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( recordbr_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -319,7 +320,7 @@ static ADDRESS_MAP_START( dleague_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x300000, 0x300001) AM_READ(MRA16_NOP)
 	AM_RANGE(0x300002, 0x300003) AM_READ(taitosound_comm16_lsb_r)
 	AM_RANGE(0x400000, 0x420fff) AM_READ(TC0080VCO_word_r)
-	AM_RANGE(0x500800, 0x500fff) AM_READ(paletteram16_word_r)
+	AM_RANGE(0x500800, 0x500fff) AM_READ(MRA16_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dleague_writemem, ADDRESS_SPACE_PROGRAM, 16 )

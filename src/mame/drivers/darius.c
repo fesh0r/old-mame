@@ -126,9 +126,8 @@ sounds.
 
 ***************************************************************************/
 
-#include <stdarg.h>
-#include <math.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "video/taitoic.h"
 #include "cpu/z80/z80.h"
 #include "audio/taitosnd.h"
@@ -149,29 +148,15 @@ static UINT16 cpua_ctrl;
 static UINT16 coin_word=0;
 
 extern UINT16 *darius_fg_ram;
-READ16_HANDLER ( darius_fg_layer_r );
 WRITE16_HANDLER( darius_fg_layer_w );
 
-static size_t sharedram_size;
-static UINT16 *sharedram;
-
-
-static READ16_HANDLER( sharedram_r )
-{
-	return sharedram[offset];
-}
-
-static WRITE16_HANDLER( sharedram_w )
-{
-	COMBINE_DATA(&sharedram[offset]);
-}
 
 static void parse_control( void )	/* assumes Z80 sandwiched between 68Ks */
 {
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
        if cpu B is disabled !! */
-	cpunum_set_input_line(2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 }
 
@@ -189,11 +174,6 @@ static WRITE16_HANDLER( cpua_ctrl_w )
 static WRITE16_HANDLER( darius_watchdog_w )
 {
 	watchdog_reset_w(0,data);
-}
-
-static READ16_HANDLER( paletteram16_r )
-{
-	return paletteram16[offset];
 }
 
 
@@ -272,10 +252,10 @@ static ADDRESS_MAP_START( darius_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080000, 0x08ffff) AM_READ(MRA16_RAM)		/* main RAM */
 	AM_RANGE(0xc00000, 0xc0001f) AM_READ(darius_ioc_r)	/* inputs, sound */
 	AM_RANGE(0xd00000, 0xd0ffff) AM_READ(PC080SN_word_0_r)	/* tilemaps */
-	AM_RANGE(0xd80000, 0xd80fff) AM_READ(paletteram16_r)	/* palette */
-	AM_RANGE(0xe00100, 0xe00fff) AM_READ(MRA16_RAM)		/* sprite ram */
-	AM_RANGE(0xe01000, 0xe02fff) AM_READ(sharedram_r)
-	AM_RANGE(0xe08000, 0xe0ffff) AM_READ(darius_fg_layer_r)	/* front tilemap */
+	AM_RANGE(0xd80000, 0xd80fff) AM_READ(MRA16_RAM)	/* palette */
+	AM_RANGE(0xe00100, 0xe00fff) AM_RAM AM_SHARE(1) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xe01000, 0xe02fff) AM_RAM AM_SHARE(2)
+	AM_RANGE(0xe08000, 0xe0ffff) AM_READWRITE(MRA16_RAM, darius_fg_layer_w) AM_SHARE(3) AM_BASE(&darius_fg_ram)
 	AM_RANGE(0xe10000, 0xe10fff) AM_READ(MRA16_RAM)		/* ??? */
 ADDRESS_MAP_END
 
@@ -290,16 +270,15 @@ static ADDRESS_MAP_START( darius_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xd40000, 0xd40003) AM_WRITE(PC080SN_xscroll_word_0_w)
 	AM_RANGE(0xd50000, 0xd50003) AM_WRITE(PC080SN_ctrl_word_0_w)
 	AM_RANGE(0xd80000, 0xd80fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xe00100, 0xe00fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe01000, 0xe02fff) AM_WRITE(sharedram_w) AM_BASE(&sharedram) AM_SIZE(&sharedram_size)
-	AM_RANGE(0xe08000, 0xe0ffff) AM_WRITE(darius_fg_layer_w) AM_BASE(&darius_fg_ram)
 	AM_RANGE(0xe10000, 0xe10fff) AM_WRITE(MWA16_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius_cpub_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
 	AM_RANGE(0x040000, 0x04ffff) AM_READ(MRA16_RAM)	/* local RAM */
-	AM_RANGE(0xe01000, 0xe02fff) AM_READ(sharedram_r)
+	AM_RANGE(0xe00100, 0xe00fff) AM_RAM AM_SHARE(1)
+	AM_RANGE(0xe01000, 0xe02fff) AM_RAM AM_SHARE(2)
+	AM_RANGE(0xe08000, 0xe0ffff) AM_READWRITE(MRA16_RAM, darius_fg_layer_w) AM_SHARE(3)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius_cpub_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -307,9 +286,6 @@ static ADDRESS_MAP_START( darius_cpub_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x040000, 0x04ffff) AM_WRITE(MWA16_RAM)
 	AM_RANGE(0xc00000, 0xc0007f) AM_WRITE(darius_ioc_w)	/* only writes $c00050 (?) */
 	AM_RANGE(0xd80000, 0xd80fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w)
-	AM_RANGE(0xe00100, 0xe00fff) AM_WRITE(spriteram16_w)	/* some writes */
-	AM_RANGE(0xe01000, 0Xe02fff) AM_WRITE(sharedram_w)
-	AM_RANGE(0xe08000, 0xe0ffff) AM_WRITE(darius_fg_layer_w)	/* a few writes */
 ADDRESS_MAP_END
 
 
@@ -542,9 +518,7 @@ ADDRESS_MAP_END
 static void darius_adpcm_int (int data)
 {
 	if (nmi_enable)
-	{
-		cpunum_set_input_line(3, INPUT_LINE_NMI, PULSE_LINE);
-	}
+		cpunum_set_input_line(Machine, 3, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static const struct MSM5205interface msm5205_interface =
@@ -829,7 +803,7 @@ GFXDECODE_END
 /* handler called by the YM2203 emulator when the internal timers cause an IRQ */
 static void irqhandler(int irq)	/* assumes Z80 sandwiched between 68Ks */
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface ym2203_interface_1 =

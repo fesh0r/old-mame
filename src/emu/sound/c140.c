@@ -401,12 +401,25 @@ static void update_stereo(void *param, stream_sample_t **inputs, stream_sample_t
 					if( cnt )
 					{
 						prevdt=lastdt;
-						lastdt=pSampleData[pos];
-						if ((v->mode & 0x40) && (info->banking_type == C140_TYPE_ASIC219))
+
+						if (info->banking_type == C140_TYPE_ASIC219)
 						{
-							lastdt ^= 0x80;	// flip signedness
+							lastdt = pSampleData[BYTE_XOR_BE(pos)];
+
+							// Sign + magnitude format
+							if ((v->mode & 0x01) && (lastdt & 0x80))
+								lastdt = -(lastdt & 0x7f);
+
+							// Sign flip
+							if (v->mode & 0x40)
+								lastdt = -lastdt;
 						}
-						dltdt=(lastdt - prevdt);
+						else
+						{
+							lastdt=pSampleData[pos];
+						}
+
+						dltdt = (lastdt - prevdt);
 					}
 
 					/* Caclulate the sample value */
@@ -514,7 +527,7 @@ void c140_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "Namco PCM";					break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
 	}
 }
 

@@ -15,6 +15,7 @@ Tilemap flip flags were reversed
 */
 
 #include "driver.h"
+#include "deprecat.h"
 
 #define SUPRNOVA_DECODE_BUFFER_SIZE 0x2000
 
@@ -898,7 +899,7 @@ VIDEO_UPDATE(skns)
 			{
 				if (skns_v3t_dirty[i] == 1)
 				{
-					decodechar(machine->gfx[1], i, (UINT8*)btiles, machine->drv->gfxdecodeinfo[0].gfxlayout);
+					decodechar(machine->gfx[1], i, (UINT8*)btiles);
 
 					skns_v3t_dirty[i] = 0;
 				}
@@ -924,7 +925,7 @@ VIDEO_UPDATE(skns)
 			{
 				if (skns_v3t_4bppdirty[i] == 1)
 				{
-					decodechar(machine->gfx[3], i, (UINT8*)btiles, machine->drv->gfxdecodeinfo[3].gfxlayout);
+					decodechar(machine->gfx[3], i, (UINT8*)btiles);
 
 					skns_v3t_4bppdirty[i] = 0;
 				}

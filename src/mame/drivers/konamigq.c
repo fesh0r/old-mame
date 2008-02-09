@@ -46,6 +46,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/mips/psx.h"
 #include "includes/psx.h"
 #include "machine/konamigx.h"
@@ -66,7 +67,7 @@ static WRITE32_HANDLER( soundr3k_w )
 		sndto000[ ( offset << 1 ) + 1 ] = data >> 16;
 		if( offset == 3 )
 		{
-			cpunum_set_input_line( 1, 1, HOLD_LINE );
+			cpunum_set_input_line(Machine, 1, 1, HOLD_LINE );
 		}
 	}
 	if( ACCESSING_LSW32 )
@@ -140,10 +141,10 @@ static WRITE32_HANDLER( eeprom_w )
 	EEPROM_write_bit( ( data & 0x01 ) ? 1 : 0 );
 	EEPROM_set_clock_line( ( data & 0x04 ) ? ASSERT_LINE : CLEAR_LINE );
 	EEPROM_set_cs_line( ( data & 0x02 ) ? CLEAR_LINE : ASSERT_LINE );
-	cpunum_set_input_line(1, INPUT_LINE_RESET, ( data & 0x40 ) ? CLEAR_LINE : ASSERT_LINE );
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ( data & 0x40 ) ? CLEAR_LINE : ASSERT_LINE );
 }
 
-static UINT32 eeprom_bit_r(void *param)
+static CUSTOM_INPUT( eeprom_bit_r )
 {
 	return EEPROM_read_bit();
 }
@@ -346,10 +347,16 @@ static DRIVER_INIT( konamigq )
 	m_p_n_pcmram = memory_region( REGION_SOUND1 ) + 0x80000;
 }
 
+static void konamigq_exit(running_machine *machine)
+{
+	am53cf96_exit(&scsi_intf);
+}
+
 static MACHINE_START( konamigq )
 {
 	/* init the scsi controller and hook up it's DMA */
 	am53cf96_init(&scsi_intf);
+	add_exit_callback(machine, konamigq_exit);
 	psx_dma_install_read_handler(5, scsi_dma_read);
 	psx_dma_install_write_handler(5, scsi_dma_write);
 
@@ -367,7 +374,7 @@ static MACHINE_RESET( konamigq )
 
 static MACHINE_DRIVER_START( konamigq )
 	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
+	MDRV_CPU_ADD( PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( konamigq_map, 0 )
 	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
 

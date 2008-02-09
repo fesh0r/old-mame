@@ -1,4 +1,5 @@
 #include "debugger.h"
+#include "deprecat.h"
 #include "i960.h"
 #include "i960dis.h"
 #include <math.h>
@@ -593,9 +594,9 @@ static void do_ret(void)
 		x = program_read_dword(i960.r[I960_FP]-16);
 		y = program_read_dword(i960.r[I960_FP]-12);
 		do_ret_0();
-		i960.AC = x;
+		i960.AC = y;
 		// #### test supervisor
-		i960.PC = y;
+		i960.PC = x;
 
 		// check for another IRQ now that we're back
 		check_irqs();
@@ -618,7 +619,7 @@ static int i960_execute(int cycles)
 	check_irqs();
 	while(i960_icount >= 0) {
 		i960.PIP = i960.IP;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(i960.IP);
 
 		i960.bursting = 0;
 
@@ -2067,7 +2068,7 @@ static void i960_init(int index, int clock, const void *config, int (*irqcallbac
 	state_save_register_item_array("i960", index, i960.rcache_frame_addr);
 }
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t i960_disasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	disassemble_t dis;
@@ -2080,7 +2081,7 @@ static offs_t i960_disasm(char *buffer, offs_t pc, const UINT8 *oprom, const UIN
 
 	return dis.IPinc | dis.disflags | DASMFLAG_SUPPORTED;
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 static void i960_reset(void)
 {
@@ -2118,9 +2119,9 @@ void i960_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_PTR_EXIT:						info->exit        = 0;							break;
 	case CPUINFO_PTR_EXECUTE:					info->execute     = i960_execute;				break;
 	case CPUINFO_PTR_BURN:						info->burn        = 0;							break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	case CPUINFO_PTR_DISASSEMBLE:				info->disassemble = i960_disasm;				break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:		info->icount      = &i960_icount;				break;
 	case CPUINFO_INT_CONTEXT_SIZE:				info->i           = sizeof(i960_state);			break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:		info->i           = 4;							break;
@@ -2152,6 +2153,8 @@ void i960_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_INT_ENDIANNESS:			info->i = CPU_IS_LE;								break;
 	case CPUINFO_INT_INPUT_LINES:			info->i = 4;										break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:	info->i = -1;										break;
+	case CPUINFO_INT_CLOCK_MULTIPLIER:		info->i = 1;										break;
+	case CPUINFO_INT_CLOCK_DIVIDER:			info->i = 1;										break;
 
 		// CPU main state
 	case CPUINFO_INT_PC:					info->i = i960.IP;									break;

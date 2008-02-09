@@ -20,6 +20,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "rendlay.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
@@ -34,7 +35,7 @@
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate1 = 0;
 	int newstate2 = 0;
@@ -46,14 +47,14 @@ static void update_interrupts(void)
 		newstate2 |= 1;
 
 	if (newstate1)
-		cpunum_set_input_line(0, newstate1, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate1, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 
 	if (newstate2)
-		cpunum_set_input_line(2, newstate2, ASSERT_LINE);
+		cpunum_set_input_line(machine, 2, newstate2, ASSERT_LINE);
 	else
-		cpunum_set_input_line(2, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 2, 7, CLEAR_LINE);
 
 	/* check for screen swapping */
 	temp = readinputport(2);
@@ -73,14 +74,14 @@ static MACHINE_RESET( cyberbal )
 	cyberbal_sound_reset();
 
 	/* CPU 2 doesn't run until reset */
-	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
 
 	/* make sure we're pointing to the right screen by default */
 	cyberbal_set_screen(0);
 }
 
 
-static void cyberb2p_update_interrupts(void)
+static void cyberb2p_update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -90,9 +91,9 @@ static void cyberb2p_update_interrupts(void)
 		newstate |= 3;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -148,7 +149,7 @@ static READ16_HANDLER( sound_state_r )
 
 static WRITE16_HANDLER( p2_reset_w )
 {
-	cpunum_set_input_line(2, INPUT_LINE_RESET, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 
@@ -1006,21 +1007,21 @@ static const UINT16 default_eeprom[] =
 static DRIVER_INIT( cyberbal )
 {
 	atarigen_eeprom_default = default_eeprom;
-	atarigen_slapstic_init(0, 0x018000, 0);
+	atarigen_slapstic_init(0, 0x018000, 0, 0);
 }
 
 
 static DRIVER_INIT( cyberbt )
 {
 	atarigen_eeprom_default = default_eeprom;
-	atarigen_slapstic_init(0, 0x018000, 116);
+	atarigen_slapstic_init(0, 0x018000, 0, 116);
 }
 
 
 static DRIVER_INIT( cyberb2p )
 {
 	atarigen_eeprom_default = default_eeprom;
-	atarijsa_init(1, 3, 2, 0x8000);
+	atarijsa_init(machine, 2, 0x8000);
 }
 
 

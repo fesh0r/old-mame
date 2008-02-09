@@ -63,6 +63,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
 #include "machine/eeprom.h"
@@ -107,7 +108,7 @@ static WRITE32_HANDLER( color_ram_w )
 
 static TIMER_CALLBACK( groundfx_interrupt5 )
 {
-	cpunum_set_input_line(0,5,HOLD_LINE); //from 5... ADC port
+	cpunum_set_input_line(machine, 0,5,HOLD_LINE); //from 5... ADC port
 }
 
 
@@ -400,7 +401,7 @@ static MACHINE_RESET( groundfx )
 static INTERRUPT_GEN( groundfx_interrupt )
 {
 	frame_counter^=1;
-	cpunum_set_input_line(0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( groundfx )

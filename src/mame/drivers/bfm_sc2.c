@@ -137,6 +137,7 @@ Adder hardware:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 
 #include "video/bfm_adr2.h"
@@ -145,8 +146,6 @@ Adder hardware:
 #include "sound/upd7759.h"
 
 /* fruit machines only */
-//#include "video/bfm_dm01.h"
-//#include "video/awpvid.h"
 #include "machine/steppers.h" // stepper motor
 
 #include "machine/bfm_bd1.h"  // vfd
@@ -163,14 +162,23 @@ Adder hardware:
 #include "slots.lh"
 
 #ifdef MAME_DEBUG
-#define LOG_SERIAL(x) logerror x	// log serial communication between mainboard (scorpion2) and videoboard (adder2)
-#define UART_LOG(x) logerror x		//enable UART data logging
-#define LOG(x) logerror x
+#define VERBOSE 1
 #else
-#define LOG_SERIAL(x)
-#define UART_LOG(x)
-#define LOG(x)
+#define VERBOSE 0
 #endif
+
+// log serial communication between mainboard (scorpion2) and videoboard (adder2)
+#define LOG_SERIAL(x) do { if (VERBOSE) logerror x; } while (0)
+#define UART_LOG(x) do { if (VERBOSE) logerror x; } while (0)
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
+
+#ifndef AWP_VIDEO //Defined for fruit machines with mechanical reels
+#define draw_reel(x)
+#else
+#define draw_reel(x) awp_draw_reel x
+#endif
+
+#define MASTER_CLOCK		(XTAL_8MHz)
 
 // local prototypes ///////////////////////////////////////////////////////
 
@@ -258,13 +266,13 @@ static UINT8 input_override[64];// bit pattern, bit set means this input is over
 */
 ///////////////////////////////////////////////////////////////////////////
 
-static void send_to_adder(int data)
+static void send_to_adder(running_machine *machine, int data)
 {
 	adder2_data_from_sc2 = 1;
 	adder2_sc2data       = data;
 
 	adder2_acia_triggered = 1;
-	cpunum_set_input_line(1, M6809_IRQ_LINE, HOLD_LINE );
+	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, HOLD_LINE );
 
 	LOG_SERIAL(("sadder  %02X  (%c)\n",data, data ));
 }
@@ -515,26 +523,9 @@ static INTERRUPT_GEN( timer_irq )
 		irq_timer_stat = 0x01;
 		irq_status     = 0x02;
 
-		cpunum_set_input_line(0, M6809_IRQ_LINE, HOLD_LINE );
+		cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, PULSE_LINE );
 	}
 }
-
-///////////////////////////////////////////////////////////////////////////
-
-#ifdef UNUSED_FUNCTION
-static WRITE8_HANDLER( reel12_w )
-{
-	reel12_latch = data;
-
-	if ( Stepper_update(0, data   ) ) reel_changed |= 0x01;
-	if ( Stepper_update(1, data>>4) ) reel_changed |= 0x02;
-
-	if ( Stepper_optic_state(0) ) optic_pattern |=  0x01;
-	else                          optic_pattern &= ~0x01;
-	if ( Stepper_optic_state(1) ) optic_pattern |=  0x02;
-	else                          optic_pattern &= ~0x02;
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -584,6 +575,9 @@ static WRITE8_HANDLER( reel34_w )
 	else                          optic_pattern &= ~0x04;
 	if ( Stepper_optic_state(3) ) optic_pattern |=  0x08;
 	else                          optic_pattern &= ~0x08;
+
+	draw_reel((2));
+	draw_reel((3));
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -599,6 +593,9 @@ static WRITE8_HANDLER( reel56_w )
 	else                          optic_pattern &= ~0x10;
 	if ( Stepper_optic_state(5) ) optic_pattern |=  0x20;
 	else                          optic_pattern &= ~0x20;
+
+	draw_reel((4));
+	draw_reel((5));
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -607,77 +604,23 @@ static WRITE8_HANDLER( reel56_w )
 
 static WRITE8_HANDLER( mmtr_w )
 {
+	int i;
 	int  changed = mmtr_latch ^ data;
 	long cycles  = ATTOTIME_TO_CYCLES(0, timer_get_time() );
 
 	mmtr_latch = data;
 
-	if ( changed & 0x01 )
-	{
-		if ( Mechmtr_update(0, cycles, data & 0x01 ) )
-		{
-			sc2gui_update_mmtr |= 0x01;
-		}
-	}
-
-	if ( changed & 0x02 )
-	{
-		if ( Mechmtr_update(1, cycles, data & 0x02 ) )
-		{
-			sc2gui_update_mmtr |= 0x02;
-		}
-	}
-
-	if ( changed & 0x04 )
-	{
-		if ( Mechmtr_update(2, cycles, data & 0x04 ) )
-		{
-			sc2gui_update_mmtr |= 0x04;
-		}
-	}
-
-	if ( changed & 0x08 )
-	{
-		if ( Mechmtr_update(3, cycles, data & 0x08 ) )
-		{
-			sc2gui_update_mmtr |= 0x08;
-		}
-	}
-
-
-	if ( changed & 0x10 )
-	{
-		if ( Mechmtr_update(4, cycles, data & 0x10 ) )
-		{
-			sc2gui_update_mmtr |= 0x10;
-		}
-	}
-
-	if ( changed & 0x20 )
-	{
-		if ( Mechmtr_update(5, cycles, data & 0x20 ) )
-		{
-			sc2gui_update_mmtr |= 0x20;
-		}
-	}
-
-	if ( changed & 0x40 )
-	{
-		if ( Mechmtr_update(6, cycles, data & 0x40 ) )
-		{
-			sc2gui_update_mmtr |= 0x40;
-		}
-	}
-
-	if ( changed & 0x80 )
-	{
-		if ( Mechmtr_update(7, cycles, data & 0x80 ) )
-		{
-			sc2gui_update_mmtr |= 0x80;
-		}
-	}
-
-	if ( data & 0x1F ) cpunum_set_input_line(0, M6809_FIRQ_LINE, PULSE_LINE );
+	for (i = 0; i<8; i++)
+ 	{
+		if ( changed & (1 << i) )
+ 		{
+			if ( Mechmtr_update(i, cycles, data & (1 << i) ) )
+			{
+				sc2gui_update_mmtr |= (1 << i);
+			}
+ 		}
+ 	}
+	if ( data & 0x1F ) cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, ASSERT_LINE );
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -760,7 +703,7 @@ static WRITE8_HANDLER( volume_override_w )
 
 	if ( old != volume_override )
 	{
-		float percent = volume_override?1.0:(32-global_volume)/32.0;
+		float percent = volume_override? 1.0f : (32-global_volume)/32.0f;
 
 		sndti_set_output_gain(SOUND_YM2413,  0, 0, percent);
 		sndti_set_output_gain(SOUND_YM2413,  0, 1, percent);
@@ -789,7 +732,7 @@ static WRITE8_HANDLER( nec_latch_w )
 
 	upd7759_port_w(0, data&0x3F);	// setup sample
 	upd7759_start_w(0, 0);
-	upd7759_start_w(0, 1);			// start
+	upd7759_start_w(0, 1);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -872,7 +815,7 @@ static WRITE8_HANDLER( expansion_latch_w )
 			}
 
 			{
-				float percent = volume_override?1.0:(32-global_volume)/32.0;
+				float percent = volume_override ? 1.0f : (32-global_volume)/32.0f;
 
 				sndti_set_output_gain(SOUND_YM2413,  0, 0, percent);
 				sndti_set_output_gain(SOUND_YM2413,  0, 1, percent);
@@ -946,15 +889,6 @@ static WRITE8_HANDLER( coininhib_w )
 		i++;
 	}
 }
-
-///////////////////////////////////////////////////////////////////////////
-
-#ifdef UNUSED_FUNCTION
-static READ8_HANDLER( direct_input_r )
-{
-	return 0;
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -1138,7 +1072,7 @@ static WRITE8_HANDLER( uart2data_w )
 
 static WRITE8_HANDLER( vid_uart_tx_w )
 {
-	send_to_adder(data);
+	send_to_adder(Machine, data);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1479,7 +1413,6 @@ static int read_e2ram(void)
 	return e2data_pin;
 }
 
-
 static const UINT16 AddressDecode[]=
 {
 	0x0800,0x1000,0x0001,0x0004,0x0008,0x0020,0x0080,0x0200,
@@ -1552,7 +1485,7 @@ static void decode_mainrom(int rom_region)
 static MACHINE_RESET( init )
 {
 	// reset adder2
-	machine_reset_adder2(machine);
+	MACHINE_RESET_CALL(adder2);
 
 	// reset the board //////////////////////////////////////////////////////
 
@@ -1569,7 +1502,7 @@ static VIDEO_UPDATE( addersc2 )
 		output_set_value("door",( Scorpion2_GetSwitchState(sc2_door_state>>4, sc2_door_state & 0x0F) ) );
 	}
 
-	return video_update_adder2(machine,screen,bitmap,cliprect);
+	return VIDEO_UPDATE_CALL(adder2);
 }
 
 // memory map for scorpion2 board video addon /////////////////////////////
@@ -3031,11 +2964,11 @@ static INPUT_PORTS_START( pokio )
 
 INPUT_PORTS_END
 
- static const struct upd7759_interface upd7759_interface =
- {
+static const struct upd7759_interface upd7759_interface =
+{
 	REGION_SOUND1,		/* memory region */
 	0
- };
+};
 
 ///////////////////////////////////////////////////////////////////////////
 // machine driver for scorpion2 board + adder2 expansion //////////////////
@@ -3044,7 +2977,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( scorpion2_vid )
 	MDRV_MACHINE_RESET( init )							// main scorpion2 board initialisation
 	MDRV_INTERLEAVE(16)									// needed for serial communication !!
-	MDRV_CPU_ADD_TAG("main", M6809, 2000000 )			// 6809 CPU at 2 Mhz
+	MDRV_CPU_ADD_TAG("main", M6809, MASTER_CLOCK/4 )	// 6809 CPU at 2 Mhz
 	MDRV_CPU_PROGRAM_MAP(memmap_vid,0)					// setup scorpion2 board memorymap
 	MDRV_CPU_PERIODIC_INT(timer_irq, 1000)				// generate 1000 IRQ's per second
 
@@ -3063,11 +2996,10 @@ static MACHINE_DRIVER_START( scorpion2_vid )
 	MDRV_VIDEO_UPDATE(addersc2)
 
 	MDRV_PALETTE_LENGTH(16)
-	MDRV_COLORTABLE_LENGTH(16)
 	MDRV_PALETTE_INIT(adder2)
 	MDRV_GFXDECODE(adder2)
 
-	MDRV_CPU_ADD_TAG("adder2", M6809, 2000000 )			// adder2 board 6809 CPU at 2 Mhz
+	MDRV_CPU_ADD_TAG("adder2", M6809, MASTER_CLOCK/4 )	// adder2 board 6809 CPU at 2 Mhz
 	MDRV_CPU_PROGRAM_MAP(adder2_memmap,0)				// setup adder2 board memorymap
 	MDRV_CPU_VBLANK_INT(adder2_vbl, 1)					// board has a VBL IRQ
 
@@ -3076,7 +3008,7 @@ static MACHINE_DRIVER_START( scorpion2_vid )
 	MDRV_SOUND_CONFIG(upd7759_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(YM2413, 3579545)
+	MDRV_SOUND_ADD(YM2413, XTAL_3_579545MHz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

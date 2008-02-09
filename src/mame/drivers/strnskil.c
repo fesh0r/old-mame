@@ -15,6 +15,7 @@ Notes:
 *****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/sn76496.h"
 
 static UINT8 *strnskil_sharedram;
@@ -124,7 +125,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( strnskil_readmem2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(spriteram_r)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
 	AM_RANGE(0xc800, 0xcfff) AM_READ(MRA8_RAM)
 ADDRESS_MAP_END
 

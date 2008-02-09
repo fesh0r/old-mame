@@ -1,7 +1,7 @@
  /**************************************************************************\
  *                Texas Instruments TMS320x25 DSP Emulator                  *
  *                                                                          *
- *                 Copyright (C) 2001-2002+ Tony La Porta                   *
+ *                 Copyright Tony La Porta                                  *
  *                      Written for the MAME project.                       *
  *                                                                          *
  *                                                                          *
@@ -118,8 +118,9 @@ Table 3-2.  TMS32025/26 Memory Blocks
 
 
 
-#include "tms32025.h"
 #include "debugger.h"
+#include "deprecat.h"
+#include "tms32025.h"
 
 
 #define CLK 4	/* 1 cycle equals 4 clock ticks */		/* PE/DI */
@@ -1981,7 +1982,7 @@ static int tms32025_execute(int cycles)
 	while (R.idle && tms32025_icount > 0)
 		process_timer(tms32025_icount);
 
-	if (tms32025_icount <= 0) CALL_MAME_DEBUG;
+	if (tms32025_icount <= 0) CALL_DEBUGGER(R.PC);
 
 
 	while (tms32025_icount > 0)
@@ -1994,7 +1995,7 @@ static int tms32025_execute(int cycles)
 
 		R.PREVPC = R.PC;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(R.PC);
 
 		R.opcode.d = M_RDOP(R.PC);
 		R.PC++;
@@ -2019,7 +2020,7 @@ static int tms32025_execute(int cycles)
 		if (R.init_load_addr == 2) {		/* Repeat next instruction */
 			R.PREVPC = R.PC;
 
-			CALL_MAME_DEBUG;
+			CALL_DEBUGGER(R.PC);
 
 			R.opcode.d = M_RDOP(R.PC);
 			R.PC++;
@@ -2315,6 +2316,7 @@ void tms32025_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 6;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -2383,9 +2385,9 @@ void tms32025_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = tms32025_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = tms32025_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = tms32025_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_READ:							info->read = tms32025_read;				break;
 		case CPUINFO_PTR_WRITE:							info->write = tms32025_write;			break;
 		case CPUINFO_PTR_READOP:						info->readop = tms32025_readop;			break;
@@ -2396,7 +2398,7 @@ void tms32025_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Texas Instruments TMS320x25"); break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.10");				break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) 2001 by Tony La Porta"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Tony La Porta"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "arp%d%c%c%c%cdp%03x  arb%d%c%c%c%c%c%c%c%c%c%c%cpm%d",

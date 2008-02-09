@@ -32,6 +32,7 @@ Memo:
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/msm5205.h"
@@ -120,7 +121,7 @@ static void ojankohs_adpcm_int(int irq)
 
 	/* generate an NMI if we're out of data */
 	if (!ojankohs_vclk_left)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( ojankoc_ctrl_w )

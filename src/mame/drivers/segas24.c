@@ -332,6 +332,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m68000/m68k.h"
 #include "segas24.h"
 #include "system16.h"
@@ -692,14 +693,14 @@ static void reset_reset(void)
 	int changed = resetcontrol ^ prev_resetcontrol;
 	if(changed & 2) {
 		if(resetcontrol & 2) {
-			cpunum_set_input_line(1, INPUT_LINE_HALT, CLEAR_LINE);
-			cpunum_set_input_line(1, INPUT_LINE_RESET, PULSE_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 //          mame_printf_debug("enable 2nd cpu!\n");
 //          DEBUGGER_BREAK;
 			s24_fd1094_machine_init();
 
 		} else
-			cpunum_set_input_line(1, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 	}
 	if(changed & 4)
 		sndti_reset(SOUND_YM2151, 0);
@@ -722,8 +723,8 @@ static void reset_bank(void)
 {
 	if (memory_region(REGION_USER1))
 	{
-		memory_set_bankptr(1, memory_region(REGION_USER1) + curbank * 0x40000);
-		memory_set_bankptr(2, memory_region(REGION_USER1) + curbank * 0x40000);
+		memory_set_bank(1, curbank & 15);
+		memory_set_bank(2, curbank & 15);
 	}
 }
 
@@ -824,9 +825,9 @@ static TIMER_CALLBACK( irq_timer_cb )
 {
 	irq_timer_pend0 = irq_timer_pend1 = 1;
 	if(irq_allow0 & (1 << IRQ_TIMER))
-		cpunum_set_input_line(0, IRQ_TIMER+1, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, IRQ_TIMER+1, ASSERT_LINE);
 	if(irq_allow1 & (1 << IRQ_TIMER))
-		cpunum_set_input_line(1, IRQ_TIMER+1, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, IRQ_TIMER+1, ASSERT_LINE);
 }
 
 static void irq_init(void)
@@ -869,13 +870,13 @@ static WRITE16_HANDLER(irq_w)
 		break;
 	case 2:
 		irq_allow0 = data;
-		cpunum_set_input_line(0, IRQ_TIMER+1, irq_timer_pend0 && (irq_allow0 & (1 << IRQ_TIMER)) ? ASSERT_LINE : CLEAR_LINE);
-		cpunum_set_input_line(0, IRQ_YM2151+1, irq_yms && (irq_allow0 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, IRQ_TIMER+1, irq_timer_pend0 && (irq_allow0 & (1 << IRQ_TIMER)) ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, IRQ_YM2151+1, irq_yms && (irq_allow0 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
 		break;
 	case 3:
 		irq_allow1 = data;
-		cpunum_set_input_line(1, IRQ_TIMER+1, irq_timer_pend1 && (irq_allow1 & (1 << IRQ_TIMER)) ? ASSERT_LINE : CLEAR_LINE);
-		cpunum_set_input_line(1, IRQ_YM2151+1, irq_yms && (irq_allow1 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, IRQ_TIMER+1, irq_timer_pend1 && (irq_allow1 & (1 << IRQ_TIMER)) ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, IRQ_YM2151+1, irq_yms && (irq_allow1 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
 		break;
 	}
 }
@@ -886,7 +887,7 @@ static int ggground_kludge;
   don't get uploaded correctly and you see nothing */
 static TIMER_CALLBACK( gground_generate_kludge_irq )
 {
-		cpunum_set_input_line(1, 5, HOLD_LINE);
+		cpunum_set_input_line(machine, 1, 5, HOLD_LINE);
 }
 
 
@@ -907,7 +908,7 @@ static READ16_HANDLER(irq_r)
 		if (activecpu_get_pc()==0x084ba)
 		{
 			/* Clear IRQ line so IRQ doesn't happen too early */
-			cpunum_set_input_line(1, 5, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 1, 5, CLEAR_LINE);
 
 			/* set a timer to generate an irq at the needed point */
 			if (ggground_kludge == 1)
@@ -931,7 +932,7 @@ static READ16_HANDLER(irq_r)
 		if (activecpu_get_pc()==0x084bc)
 		{
 			/* Clear IRQ line so IRQ doesn't happen too early */
-			cpunum_set_input_line(1, 5, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 1, 5, CLEAR_LINE);
 
 			/* set a timer to generate an irq at the needed point */
 			if (ggground_kludge == 1)
@@ -946,11 +947,11 @@ static READ16_HANDLER(irq_r)
 	switch(offset) {
 	case 2:
 		irq_timer_pend0 = 0;
-		cpunum_set_input_line(0, IRQ_TIMER+1, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, IRQ_TIMER+1, CLEAR_LINE);
 		break;
 	case 3:
 		irq_timer_pend1 = 0;
-		cpunum_set_input_line(1, IRQ_TIMER+1, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, IRQ_TIMER+1, CLEAR_LINE);
 		break;
 	}
 	return 0xffff;
@@ -962,10 +963,10 @@ static INTERRUPT_GEN(irq_vbl)
 	int mask = 1 << irq;
 
 	if(irq_allow0 & mask)
-		cpunum_set_input_line(0, 1+irq, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 1+irq, HOLD_LINE);
 
 	if(irq_allow1 & mask)
-		cpunum_set_input_line(1, 1+irq, HOLD_LINE);
+		cpunum_set_input_line(machine, 1, 1+irq, HOLD_LINE);
 
 	if(!cpu_getiloops()) {
 		// Ensure one index pulse every 20 frames
@@ -980,8 +981,8 @@ static INTERRUPT_GEN(irq_vbl)
 static void irq_ym(int irq)
 {
 	irq_yms = irq;
-	cpunum_set_input_line(0, IRQ_YM2151+1, irq_yms && (irq_allow0 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(1, IRQ_YM2151+1, irq_yms && (irq_allow1 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, IRQ_YM2151+1, irq_yms && (irq_allow0 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, IRQ_YM2151+1, irq_yms && (irq_allow1 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -1254,9 +1255,18 @@ static NVRAM_HANDLER(system24)
 		mame_fread(file, memory_region(REGION_USER2), 2*track_size);
 }
 
+static MACHINE_START( system24 )
+{
+	if (memory_region(REGION_USER1))
+	{
+		memory_configure_bank(1, 0, 16, memory_region(REGION_USER1), 0x40000);
+		memory_configure_bank(2, 0, 16, memory_region(REGION_USER1), 0x40000);
+	}
+}
+
 static MACHINE_RESET(system24)
 {
-	cpunum_set_input_line(1, INPUT_LINE_HALT, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 	prev_resetcontrol = resetcontrol = 0x06;
 	fdc_init();
 	curbank = 0;
@@ -1907,6 +1917,7 @@ static MACHINE_DRIVER_START( system24 )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
 	MDRV_INTERLEAVE(4)
 
+	MDRV_MACHINE_START(system24)
 	MDRV_MACHINE_RESET(system24)
 	MDRV_NVRAM_HANDLER(system24)
 
@@ -1985,7 +1996,7 @@ ROM_START( qrouka )
 	ROM_LOAD16_BYTE( "14485", 0x000000, 0x20000, CRC(fc0085f9) SHA1(0250d1e17e19b541b85198ec4207e55bfbd5c32e) )
 	ROM_LOAD16_BYTE( "14484", 0x000001, 0x20000, CRC(f51c641c) SHA1(3f2fd0be7d58c75e88565393da5e810655413b53) )
 
-	ROM_REGION16_BE( 0x200000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
 	ROM_LOAD16_BYTE( "14482", 0x000000, 0x80000, CRC(7a13dd97) SHA1(bfe9950d2cd41f3f866520923c1ed7b8da1990ec) )
 	ROM_LOAD16_BYTE( "14483", 0x100000, 0x80000, CRC(f3eb51a0) SHA1(6904830ff5e7aa5f016e115572fb6da678896ede) )
 ROM_END
@@ -2027,7 +2038,7 @@ ROM_START( bnzabros )
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION16_BE( 0x200000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
 	ROM_LOAD16_BYTE( "mpr-13188-h.2",  0x000000, 0x80000, CRC(d3802294) SHA1(7608e71e8ef398ac24dbf851994253bca5ace625) )
 	ROM_LOAD16_BYTE( "mpr-13187-h.1",  0x000001, 0x80000, CRC(e3d8c5f7) SHA1(5b1e8646debee2f2ef272ddd3320b0a17192fbbe) )
 	ROM_LOAD16_BYTE( "mpr-13190.4",    0x100000, 0x40000, CRC(0b4df388) SHA1(340478bba82069ab745d6d8703e6801411fd2fc4) )
@@ -2044,7 +2055,7 @@ ROM_START( bnzabrsj )
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION16_BE( 0x200000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
 	ROM_LOAD16_BYTE( "mpr-13188-h.2",  0x000000, 0x80000, CRC(d3802294) SHA1(7608e71e8ef398ac24dbf851994253bca5ace625) )
 	ROM_LOAD16_BYTE( "mpr-13187-h.1",  0x000001, 0x80000, CRC(e3d8c5f7) SHA1(5b1e8646debee2f2ef272ddd3320b0a17192fbbe) )
 	ROM_LOAD16_BYTE( "mpr-13190.4",    0x100000, 0x40000, CRC(0b4df388) SHA1(340478bba82069ab745d6d8703e6801411fd2fc4) )
@@ -2217,7 +2228,7 @@ ROM_START( dcclub )
 	ROM_LOAD16_BYTE( "epr13948.bin", 0x000000, 0x20000, CRC(d6a031c8) SHA1(45b7e3cd2c7412e24f547cd4185166199d3938d5) )
 	ROM_LOAD16_BYTE( "epr13947.bin", 0x000001, 0x20000, CRC(7e3cff5e) SHA1(ff8cb776d2491796feeb8892c7e644e590438945) )
 
-	ROM_REGION16_BE( 0x200000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
 	ROM_LOAD16_BYTE( "epr-15345.2",  0x000000, 0x80000, CRC(d9e120c2) SHA1(b18b76733078d8534c6f0d8950632ab51e6a10ab) )
 	ROM_LOAD16_BYTE( "epr-15344.1",  0x000001, 0x80000, CRC(8f8b9f74) SHA1(de6b923118bea60197547ad016cb5d5e1a8f372b) )
 	ROM_LOAD16_BYTE( "mpr-14097-t.4",0x100000, 0x80000, CRC(4bd74cae) SHA1(5aa90bd5d2b8e2338ef0fe41d1f794e8d51321e1) )
@@ -2229,7 +2240,7 @@ ROM_START( dcclubj )
 	ROM_LOAD16_BYTE( "epr13948.bin", 0x000000, 0x20000, CRC(d6a031c8) SHA1(45b7e3cd2c7412e24f547cd4185166199d3938d5) )
 	ROM_LOAD16_BYTE( "epr13947.bin", 0x000001, 0x20000, CRC(7e3cff5e) SHA1(ff8cb776d2491796feeb8892c7e644e590438945) )
 
-	ROM_REGION16_BE( 0x200000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
 	ROM_LOAD16_BYTE( "epr-14095a.2", 0x000000, 0x80000, CRC(88d184e9) SHA1(519F3A22E1619DE9D5F13A45B85EBD249EBFA979) )
 	ROM_LOAD16_BYTE( "epr-14094a.1", 0x000001, 0x80000, CRC(7dd2b7d4) SHA1(C7EAF9E2700E0C55F7E867F5CD3FFAA5AAE97956) )
 	ROM_LOAD16_BYTE( "mpr-14097-t.4",0x100000, 0x80000, CRC(4bd74cae) SHA1(5aa90bd5d2b8e2338ef0fe41d1f794e8d51321e1) )
@@ -2278,7 +2289,7 @@ ROM_END
 /* 01 */GAME( 1988, hotrodj,  hotrod,   system24, hotrodj,  hotrod,   ROT0,   "Sega", "Hot Rod (Japan, 4 Players, Floppy Based)", GAME_NO_SOUND )
 /* 02 */GAME( 1988, sspirits, 0,        system24, sspirits, sspirits, ROT270, "Sega", "Scramble Spirits (World, Floppy Based)", 0 )
 /* 02 */GAME( 1988, sspiritj, sspirits, system24, sspirits, sspiritj, ROT270, "Sega", "Scramble Spirits (Japan, Floppy DS3-5000-02-REV-A Based)", 0 )
-/* 02 */GAME( 1988, sspirtfc, sspirits, system24, sspirits, sspirits, ROT270, "Sega", "Scramble Spirits (World set 2?, Floppy Based, FD1094 317-0058-02c)",GAME_NOT_WORKING ) /* MISSING disk image */
+/* 02 */GAME( 1988, sspirtfc, sspirits, system24, sspirits, sspirits, ROT270, "Sega", "Scramble Spirits (World, Floppy Based, FD1094 317-0058-02c)",GAME_NOT_WORKING ) /* MISSING disk image */
 /* 03 */GAME( 1988, gground,  0,        system24, gground,  gground,  ROT270, "Sega", "Gain Ground (World, 3 Players, Floppy Based, FD1094 317-0058-03c?)", 0 )
 /* 03 */GAME( 1988, ggroundj, gground,  system24, gground,  gground,  ROT270, "Sega", "Gain Ground (Japan, 2 Players, Floppy Based, FD1094 317-0058-03b)", 0 )
 /* 04 */GAME( 1989, crkdown,  0,        system24, crkdown,  crkdown,  ROT0,   "Sega", "Crack Down (World, Floppy Based, FD1094 317-0058-04c)", GAME_IMPERFECT_GRAPHICS ) // clipping probs / solid layer probs? (radar display)

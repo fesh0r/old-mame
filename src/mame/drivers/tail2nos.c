@@ -10,6 +10,7 @@ press F1+F3 to see ROM/RAM tests and the final animation
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/z80/z80.h"
 #include "sound/2608intf.h"
@@ -41,7 +42,7 @@ static WRITE16_HANDLER( sound_command_w )
 	if (ACCESSING_LSB)
 	{
 		soundlatch_w(offset,data & 0xff);
-		cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+		cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
@@ -246,7 +247,7 @@ GFXDECODE_END
 
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2608interface ym2608_interface =
@@ -264,12 +265,12 @@ static const struct YM2608interface ym2608_interface =
 static MACHINE_DRIVER_START( tail2nos )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,20000000/2)	/* 10 MHz (?) */
+	MDRV_CPU_ADD(M68000,XTAL_20MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
 
-	MDRV_CPU_ADD(Z80,8000000/2)
-	/* audio CPU */	/* 4 MHz ??? */
+	MDRV_CPU_ADD(Z80,XTAL_20MHz/4)	/* verified on pcb */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 								/* IRQs are triggered by the YM2608 */
@@ -292,7 +293,7 @@ static MACHINE_DRIVER_START( tail2nos )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2608, 8000000)
+	MDRV_SOUND_ADD(YM2608, XTAL_8MHz)	/* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2608_interface)
 	MDRV_SOUND_ROUTE(0, "left",  0.25)
 	MDRV_SOUND_ROUTE(0, "right", 0.25)

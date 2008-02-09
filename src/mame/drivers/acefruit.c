@@ -13,7 +13,7 @@ Inputs and Dip Switches by Stephh
 
 #include "sidewndr.lh"
 
-static void acefruit_update_irq( int vpos )
+static void acefruit_update_irq(running_machine *machine, int vpos )
 {
 	int col;
 	int row = vpos / 8;
@@ -26,7 +26,7 @@ static void acefruit_update_irq( int vpos )
 		switch( color )
 		{
 		case 0x0c:
-			cpunum_set_input_line( 0, 0, HOLD_LINE );
+			cpunum_set_input_line(machine, 0, 0, HOLD_LINE );
 			break;
 		}
 	}
@@ -39,7 +39,7 @@ static TIMER_CALLBACK( acefruit_refresh )
 	int vpos = video_screen_get_vpos( 0 );
 
 	video_screen_update_partial( 0, vpos );
-	acefruit_update_irq( vpos );
+	acefruit_update_irq(machine, vpos );
 
 	vpos = ( ( vpos / 8 ) + 1 ) * 8;
 
@@ -53,7 +53,7 @@ static VIDEO_START( acefruit )
 
 static INTERRUPT_GEN( acefruit_vblank )
 {
-	cpunum_set_input_line( 0, 0, HOLD_LINE );
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE );
 	timer_adjust( acefruit_refresh_timer, attotime_zero, 0, attotime_never );
 }
 
@@ -84,7 +84,7 @@ static VIDEO_UPDATE( acefruit )
 			{
 				int y;
 				int x;
-				int spriteskip[] = { 1, 2, 4 };
+				static const int spriteskip[] = { 1, 2, 4 };
 				int spritesize = spriteskip[ color - 5 ];
 				const gfx_element *gfx = machine->gfx[ 0 ];
 
@@ -139,7 +139,7 @@ static VIDEO_UPDATE( acefruit )
 	return 0;
 }
 
-static UINT32 sidewndr_payout_r(void *param)
+static CUSTOM_INPUT( sidewndr_payout_r )
 {
 	int bit_mask = (FPTR)param;
 
@@ -155,7 +155,7 @@ static UINT32 sidewndr_payout_r(void *param)
 	}
 }
 
-static UINT32 starspnr_coinage_r(void *param)
+static CUSTOM_INPUT( starspnr_coinage_r )
 {
 	int bit_mask = (FPTR)param;
 
@@ -175,7 +175,7 @@ static UINT32 starspnr_coinage_r(void *param)
 	}
 }
 
-static UINT32 starspnr_payout_r(void *param)
+static CUSTOM_INPUT( starspnr_payout_r )
 {
 	int bit_mask = (FPTR)param;
 

@@ -27,13 +27,36 @@ struct tms5110_info
 	const struct TMS5110interface *intf;
 	sound_stream *stream;
 	void *chip;
+	INT32 speech_rom_bitnum;
 };
 
 
 /* static function prototypes */
 static void tms5110_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length);
 
+static int speech_rom_read_bit(void)
+{
+	struct tms5110_info *info = sndti_token(SOUND_TMS5110, 0);
+	const UINT8 *table = memory_region(info->intf->rom_region);
 
+	int r;
+
+	if (info->speech_rom_bitnum<0)
+		r = 0;
+	else
+		r = (table[info->speech_rom_bitnum >> 3] >> (0x07 - (info->speech_rom_bitnum & 0x07))) & 1;
+
+	info->speech_rom_bitnum++;
+
+	return r;
+}
+
+static void speech_rom_set_addr(int addr)
+{
+	struct tms5110_info *info = sndti_token(SOUND_TMS5110, 0);
+
+	info->speech_rom_bitnum = addr * 8 - 1;
+}
 
 /******************************************************************************
 
@@ -43,14 +66,14 @@ static void tms5110_update(void *param, stream_sample_t **inputs, stream_sample_
 
 static void *tms5110_start(int sndindex, int clock, const void *config)
 {
-	static const struct TMS5110interface dummy = { 0 };
+	static const struct TMS5110interface dummy = { -1 };
 	struct tms5110_info *info;
 
 	info = auto_malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
 	info->intf = config ? config : &dummy;
 
-	info->chip = tms5110_create(sndindex);
+	info->chip = tms5110_create(sndindex, TMS5110_IS_5110A);
 	if (!info->chip)
 		return NULL;
 	sndintrf_register_token(info);
@@ -58,12 +81,21 @@ static void *tms5110_start(int sndindex, int clock, const void *config)
 	/* initialize a stream */
 	info->stream = stream_create(0, 1, clock / 80, info, tms5110_update);
 
-    if (info->intf->M0_callback==NULL)
-    {
-		logerror("\n file: 5110intf.c, tms5110_start(), line 53:\n  Missing _mandatory_ 'M0_callback' function pointer in the TMS5110 interface\n  This function is used by TMS5110 to call for a single bits\n  needed to generate the speech\n  Aborting startup...\n");
-		return NULL;
-    }
-    tms5110_set_M0_callback(info->chip, info->intf->M0_callback );
+	if (info->intf->rom_region == -1 )
+	{
+	    if (info->intf->M0_callback==NULL)
+	    {
+			logerror("\n file: 5110intf.c, tms5110_start(), line 53:\n  Missing _mandatory_ 'M0_callback' function pointer in the TMS5110 interface\n  This function is used by TMS5110 to call for a single bits\n  needed to generate the speech\n  Aborting startup...\n");
+			return NULL;
+	    }
+	    tms5110_set_M0_callback(info->chip, info->intf->M0_callback );
+	    tms5110_set_load_address(info->chip, info->intf->load_address );
+	}
+	else
+	{
+	    tms5110_set_M0_callback(info->chip, speech_rom_read_bit );
+	    tms5110_set_load_address(info->chip, speech_rom_set_addr );
+	}
 
     /* reset the 5110 */
     tms5110_reset_chip(info->chip);
@@ -72,6 +104,47 @@ static void *tms5110_start(int sndindex, int clock, const void *config)
     return info;
 }
 
+static void *tms5100_start(int sndindex, int clock, const void *config)
+{
+	struct tms5110_info *info = tms5110_start(sndindex, clock, config);
+	tms5110_set_variant(info->chip, TMS5110_IS_5100);
+	return info;
+}
+
+static void *tms5110a_start(int sndindex, int clock, const void *config)
+{
+	struct tms5110_info *info = tms5110_start(sndindex, clock, config);
+	tms5110_set_variant(info->chip, TMS5110_IS_5110A);
+	return info;
+}
+
+static void *cd2801_start(int sndindex, int clock, const void *config)
+{
+	struct tms5110_info *info = tms5110_start(sndindex, clock, config);
+	tms5110_set_variant(info->chip, TMS5110_IS_CD2801);
+	return info;
+}
+
+static void *tmc0281_start(int sndindex, int clock, const void *config)
+{
+	struct tms5110_info *info = tms5110_start(sndindex, clock, config);
+	tms5110_set_variant(info->chip, TMS5110_IS_TMC0281);
+	return info;
+}
+
+static void *cd2802_start(int sndindex, int clock, const void *config)
+{
+	struct tms5110_info *info = tms5110_start(sndindex, clock, config);
+	tms5110_set_variant(info->chip, TMS5110_IS_CD2802);
+	return info;
+}
+
+static void *m58817_start(int sndindex, int clock, const void *config)
+{
+	struct tms5110_info *info = tms5110_start(sndindex, clock, config);
+	tms5110_set_variant(info->chip, TMS5110_IS_M58817);
+	return info;
+}
 
 
 /******************************************************************************
@@ -219,12 +292,12 @@ static void tms5110_set_info(void *token, UINT32 state, sndinfo *info)
 	}
 }
 
-
 void tms5110_get_info(void *token, UINT32 state, sndinfo *info)
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case SNDINFO_INT_ALIAS:							info->i = SOUND_TMS5110;				break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case SNDINFO_PTR_SET_INFO:						info->set_info = tms5110_set_info;		break;
@@ -237,7 +310,69 @@ void tms5110_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "TI Speech";					break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
 	}
 }
+
+void tms5100_get_info(void *token, UINT32 state, sndinfo *info)
+{
+	switch (state)
+	{
+		case SNDINFO_PTR_START:							info->start = tms5100_start;			break;
+		case SNDINFO_STR_NAME:							info->s = "TMS5100";					break;
+		default: 										tms5110_get_info(token, state, info);	break;
+	}
+}
+
+void tms5110a_get_info(void *token, UINT32 state, sndinfo *info)
+{
+	switch (state)
+	{
+		case SNDINFO_PTR_START:							info->start = tms5110a_start;			break;
+		case SNDINFO_STR_NAME:							info->s = "TMS5100A";					break;
+		default: 										tms5110_get_info(token, state, info);	break;
+	}
+}
+
+void cd2801_get_info(void *token, UINT32 state, sndinfo *info)
+{
+	switch (state)
+	{
+		case SNDINFO_PTR_START:							info->start = cd2801_start;				break;
+		case SNDINFO_STR_NAME:							info->s = "CD2801";						break;
+		default: 										tms5110_get_info(token, state, info);	break;
+	}
+}
+
+void tmc0281_get_info(void *token, UINT32 state, sndinfo *info)
+{
+	switch (state)
+	{
+		case SNDINFO_PTR_START:							info->start = tmc0281_start;			break;
+		case SNDINFO_STR_NAME:							info->s = "TMS5100";					break;
+		default: 										tms5110_get_info(token, state, info);	break;
+	}
+}
+
+void cd2802_get_info(void *token, UINT32 state, sndinfo *info)
+{
+	switch (state)
+	{
+		case SNDINFO_PTR_START:							info->start = cd2802_start;				break;
+		case SNDINFO_STR_NAME:							info->s = "CD2802";						break;
+		default: 										tms5110_get_info(token, state, info);	break;
+	}
+}
+
+void m58817_get_info(void *token, UINT32 state, sndinfo *info)
+{
+	switch (state)
+	{
+		case SNDINFO_PTR_START:							info->start = m58817_start;				break;
+		case SNDINFO_STR_NAME:							info->s = "M58817";						break;
+		default: 										tms5110_get_info(token, state, info);	break;
+	}
+}
+
+
 

@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "video/taitoic.h"
 
 #define TC0100SCN_GFX_NUM 1
@@ -830,7 +831,7 @@ WRITE16_HANDLER( contcirc_out_w )
 	if (ACCESSING_LSB)
 	{
 		/* bit 0 = reset sub CPU */
-		cpunum_set_input_line(1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 
 		/* bits 1-3 n.c. */
 

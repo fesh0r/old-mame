@@ -4,7 +4,7 @@
 
     Core MAME video routines.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -117,7 +117,7 @@ int video_screen_exists(int scrnum);
 /* ----- global rendering ----- */
 
 /* update the screen, handling frame skipping and rendering */
-void video_frame_update(int debug);
+void video_frame_update(running_machine *machine, int debug);
 
 
 /* ----- throttling/frameskipping/performance ----- */

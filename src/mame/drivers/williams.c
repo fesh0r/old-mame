@@ -523,17 +523,15 @@ ADDRESS_MAP_END
 void defender_install_io_space(void)
 {
 	/* this routine dynamically installs the memory mapped above from c000-cfff */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc00f, 0, 0x03e0, williams_paletteram_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc010, 0xc01f, 0, 0x03e0, defender_video_control_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc3ff, 0xc3ff, 0, 0,      williams_watchdog_reset_w);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc400, 0xc4ff, 0, 0x0300, MRA8_BANK3);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc400, 0xc4ff, 0, 0x0300, williams_cmos_w);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcbff, 0, 0x03e0, williams_video_counter_r);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xcc00, 0xcc03, 0, 0x03e0, pia_1_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xcc00, 0xcc03, 0, 0x03e0, pia_1_w);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xcc04, 0xcc07, 0, 0x03e0, pia_0_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xcc04, 0xcc07, 0, 0x03e0, pia_0_w);
+	memory_install_write8_handler     (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc00f, 0, 0x03e0, MWA8_BANK4);
+	memory_install_write8_handler     (0, ADDRESS_SPACE_PROGRAM, 0xc010, 0xc01f, 0, 0x03e0, defender_video_control_w);
+	memory_install_write8_handler     (0, ADDRESS_SPACE_PROGRAM, 0xc3ff, 0xc3ff, 0, 0,      williams_watchdog_reset_w);
+	memory_install_readwrite8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc400, 0xc4ff, 0, 0x0300, MRA8_BANK3, williams_cmos_w);
+	memory_install_read8_handler      (0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcbff, 0, 0x03e0, williams_video_counter_r);
+	memory_install_readwrite8_handler (0, ADDRESS_SPACE_PROGRAM, 0xcc00, 0xcc03, 0, 0x03e0, pia_1_r, pia_1_w);
+	memory_install_readwrite8_handler (0, ADDRESS_SPACE_PROGRAM, 0xcc04, 0xcc07, 0, 0x03e0, pia_0_r, pia_0_w);
 	memory_set_bankptr(3, generic_nvram);
+	memory_set_bankptr(4, paletteram);
 }
 
 
@@ -547,7 +545,7 @@ void defender_install_io_space(void)
 static ADDRESS_MAP_START( williams_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x8fff) AM_READWRITE(MRA8_BANK1, MWA8_RAM) AM_BASE(&williams_videoram)
 	AM_RANGE(0x9000, 0xbfff) AM_RAM
-	AM_RANGE(0xc000, 0xc00f) AM_MIRROR(0x03f0) AM_WRITE(williams_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xc000, 0xc00f) AM_MIRROR(0x03f0) AM_WRITE(MWA8_RAM) AM_BASE(&paletteram)
 	AM_RANGE(0xc804, 0xc807) AM_MIRROR(0x00f0) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xc80c, 0xc80f) AM_MIRROR(0x00f0) AM_READWRITE(pia_1_r, pia_1_w)
 	AM_RANGE(0xc900, 0xc9ff) AM_WRITE(williams_vram_select_w)
@@ -556,6 +554,22 @@ static ADDRESS_MAP_START( williams_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xcbff, 0xcbff) AM_WRITE(williams_watchdog_reset_w)
 	AM_RANGE(0xcc00, 0xcfff) AM_READWRITE(MRA8_RAM, williams_cmos_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xd000, 0xffff) AM_ROM
+ADDRESS_MAP_END
+
+
+static ADDRESS_MAP_START( williams_extra_ram_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x8fff) AM_READWRITE(MRA8_BANK1, MWA8_RAM) AM_BASE(&williams_videoram)
+	AM_RANGE(0x9000, 0xbfff) AM_RAM
+	AM_RANGE(0xc000, 0xc00f) AM_MIRROR(0x03f0) AM_WRITE(MWA8_RAM) AM_BASE(&paletteram)
+	AM_RANGE(0xc804, 0xc807) AM_MIRROR(0x00f0) AM_READWRITE(pia_0_r, pia_0_w)
+	AM_RANGE(0xc80c, 0xc80f) AM_MIRROR(0x00f0) AM_READWRITE(pia_1_r, pia_1_w)
+	AM_RANGE(0xc900, 0xc9ff) AM_WRITE(sinistar_vram_select_w)
+	AM_RANGE(0xca00, 0xca07) AM_MIRROR(0x00f8) AM_WRITE(williams_blitter_w)
+	AM_RANGE(0xcb00, 0xcbff) AM_READ(williams_video_counter_r)
+	AM_RANGE(0xcbff, 0xcbff) AM_WRITE(williams_watchdog_reset_w)
+	AM_RANGE(0xcc00, 0xcfff) AM_READWRITE(MRA8_RAM, williams_cmos_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0xd000, 0xdfff) AM_RAM
+	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 
@@ -569,10 +583,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( blaster_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1, MWA8_RAM) AM_BASE(&williams_videoram)
 	AM_RANGE(0x4000, 0x8fff) AM_READWRITE(MRA8_BANK2, MWA8_RAM)
-	AM_RANGE(0xbb00, 0xbbff) AM_WRITE(blaster_palette_0_w) AM_BASE(&blaster_palette_0)
-	AM_RANGE(0xbc00, 0xbcff) AM_WRITE(blaster_scanline_control_w) AM_BASE(&blaster_scanline_control)
+	AM_RANGE(0xbb00, 0xbbff) AM_WRITE(MWA8_RAM) AM_BASE(&blaster_palette_0)
+	AM_RANGE(0xbc00, 0xbcff) AM_WRITE(MWA8_RAM) AM_BASE(&blaster_scanline_control)
 	AM_RANGE(0x9000, 0xbfff) AM_RAM
-	AM_RANGE(0xc000, 0xc00f) AM_MIRROR(0x03f0) AM_WRITE(williams_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xc000, 0xc00f) AM_MIRROR(0x03f0) AM_WRITE(MWA8_RAM) AM_BASE(&paletteram)
 	AM_RANGE(0xc804, 0xc807) AM_MIRROR(0x00f0) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xc80c, 0xc80f) AM_MIRROR(0x00f0) AM_READWRITE(pia_1_r, pia_1_w)
 	AM_RANGE(0xc900, 0xc93f) AM_WRITE(blaster_vram_select_w)
@@ -613,6 +627,29 @@ static ADDRESS_MAP_START( williams2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xcbe0, 0xcbef) AM_READ(williams2_video_counter_r)
 	AM_RANGE(0xcc00, 0xcfff) AM_READWRITE(MRA8_RAM, williams_cmos_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xd000, 0xffff) AM_ROM
+ADDRESS_MAP_END
+
+
+static ADDRESS_MAP_START( williams2_extra_ram_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_READWRITE(MRA8_BANK1, MWA8_RAM) AM_BASE(&williams_videoram)
+	AM_RANGE(0x8000, 0xbfff) AM_RAM
+	AM_RANGE(0xc000, 0xc7ff) AM_READWRITE(MRA8_RAM, williams2_tileram_w) AM_BASE(&williams2_tileram)
+	AM_RANGE(0xc800, 0xc87f) AM_WRITE(williams2_bank_select_w)
+	AM_RANGE(0xc880, 0xc887) AM_MIRROR(0x0078) AM_WRITE(williams_blitter_w)
+	AM_RANGE(0xc900, 0xc97f) AM_WRITE(williams2_watchdog_reset_w)
+	AM_RANGE(0xc980, 0xc983) AM_MIRROR(0x0070) AM_READWRITE(pia_1_r, pia_1_w)
+	AM_RANGE(0xc984, 0xc987) AM_MIRROR(0x0070) AM_READWRITE(pia_0_r, pia_0_w)
+	AM_RANGE(0xc98c, 0xc98f) AM_MIRROR(0x0070) AM_WRITE(williams2_7segment_w)
+	AM_RANGE(0xcb00, 0xcb1f) AM_WRITE(williams2_fg_select_w)
+	AM_RANGE(0xcb20, 0xcb3f) AM_WRITE(williams2_bg_select_w)
+	AM_RANGE(0xcb40, 0xcb5f) AM_WRITE(williams2_xscroll_low_w)
+	AM_RANGE(0xcb60, 0xcb7f) AM_WRITE(williams2_xscroll_high_w)
+	AM_RANGE(0xcb80, 0xcb9f) AM_WRITE(defender_video_control_w)
+	AM_RANGE(0xcba0, 0xcbbf) AM_WRITE(williams2_blit_window_enable_w)
+	AM_RANGE(0xcbe0, 0xcbef) AM_READ(williams2_video_counter_r)
+	AM_RANGE(0xcc00, 0xcfff) AM_READWRITE(MRA8_RAM, williams_cmos_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0xd000, 0xdfff) AM_RAM
+	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 
@@ -1370,18 +1407,17 @@ static MACHINE_DRIVER_START( defender )
 	MDRV_CPU_ADD_TAG("main", M6809, MASTER_CLOCK/3/4)
 	MDRV_CPU_PROGRAM_MAP(defender_map,0)
 
-	MDRV_CPU_ADD_TAG("sound", M6808, SOUND_CLOCK/4)
+	MDRV_CPU_ADD_TAG("sound", M6808, SOUND_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(defender_sound_map,0)
 
 	MDRV_MACHINE_RESET(defender)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_PALETTE_LENGTH(16)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_SCANLINE)
 
 	MDRV_SCREEN_ADD("main", 0)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK*2/3, 512, 10, 304, 260, 7, 245)
 
 	MDRV_VIDEO_START(williams)
@@ -1418,6 +1454,16 @@ static MACHINE_DRIVER_START( williams )
 MACHINE_DRIVER_END
 
 
+static MACHINE_DRIVER_START( williams_extra_ram )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(williams)
+
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_PROGRAM_MAP(williams_extra_ram_map,0)
+MACHINE_DRIVER_END
+
+
 static MACHINE_DRIVER_START( alienar )
 
 	/* basic machine hardware */
@@ -1434,7 +1480,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( sinistar )
 
 	/* basic machine hardware */
-	MDRV_IMPORT_FROM(williams)
+	MDRV_IMPORT_FROM(williams_extra_ram)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD(HC55516, 0)
@@ -1445,10 +1491,14 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( playball )
 
 	/* basic machine hardware */
-	MDRV_IMPORT_FROM(sinistar)
+	MDRV_IMPORT_FROM(williams)
 
 	/* video hardware */
 	MDRV_SCREEN_VISIBLE_AREA(6, 298-1, 8, 239-1)
+
+	/* sound hardware */
+	MDRV_SOUND_ADD(HC55516, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
 
@@ -1463,8 +1513,6 @@ static MACHINE_DRIVER_START( blaster )
 	MDRV_MACHINE_RESET(blaster)
 
 	/* video hardware */
-	MDRV_PALETTE_LENGTH(16+256)
-
 	MDRV_VIDEO_START(blaster)
 	MDRV_VIDEO_UPDATE(blaster)
 MACHINE_DRIVER_END
@@ -1476,19 +1524,19 @@ static MACHINE_DRIVER_START( williams2 )
 	MDRV_CPU_ADD_TAG("main", M6809, MASTER_CLOCK/3/4)
 	MDRV_CPU_PROGRAM_MAP(williams2_map,0)
 
-	MDRV_CPU_ADD_TAG("sound", M6808, MASTER_CLOCK/3/4)	/* yes, this is different from the older games */
+	MDRV_CPU_ADD_TAG("sound", M6808, MASTER_CLOCK/3)	/* yes, this is different from the older games */
 	MDRV_CPU_PROGRAM_MAP(williams2_sound_map,0)
 
 	MDRV_MACHINE_RESET(williams2)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_GFXDECODE(williams2)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_SCANLINE)
 	MDRV_PALETTE_LENGTH(1024)
+	MDRV_GFXDECODE(williams2)
 
 	MDRV_SCREEN_ADD("main", 0)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK*2/3, 512, 8, 284, 260, 8, 248)
 
 	MDRV_VIDEO_START(williams2)
@@ -1499,6 +1547,16 @@ static MACHINE_DRIVER_START( williams2 )
 
 	MDRV_SOUND_ADD_TAG("wmsdac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( williams2_extra_ram )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(williams2)
+
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_PROGRAM_MAP(williams2_extra_ram_map,0)
 MACHINE_DRIVER_END
 
 
@@ -2593,13 +2651,6 @@ static DRIVER_INIT( sinistar )
 {
 	CONFIGURE_BLITTER(WILLIAMS_BLITTER_SC01, 0x7400);
 	CONFIGURE_PIAS(williams_49way_pia_0_intf, williams_pia_1_intf, sinistar_snd_pia_intf);
-
-	/* install clipping circuit control */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc900, 0xc9ff, 0, 0, sinistar_vram_select_w);
-
-	/* install RAM instead of ROM in the Dxxx slot */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, MRA8_RAM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, MWA8_RAM);
 }
 
 
@@ -2676,11 +2727,7 @@ static DRIVER_INIT( mysticm )
 {
 	CONFIGURE_BLITTER(WILLIAMS_BLITTER_SC02, 0x9000);
 	CONFIGURE_TILEMAP(WILLIAMS_TILEMAP_MYSTICM);
-	CONFIGURE_PIAS(mysticm_pia_0_intf, williams2_pia_1_intf, williams2_snd_pia_intf);
-
-	/* install RAM instead of ROM in the Dxxx slot */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, MRA8_RAM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, MWA8_RAM);
+	CONFIGURE_PIAS(mysticm_pia_0_intf, mysticm_pia_1_intf, williams2_snd_pia_intf);
 }
 
 
@@ -2688,7 +2735,7 @@ static DRIVER_INIT( tshoot )
 {
 	CONFIGURE_BLITTER(WILLIAMS_BLITTER_SC02, 0x9000);
 	CONFIGURE_TILEMAP(WILLIAMS_TILEMAP_TSHOOT);
-	CONFIGURE_PIAS(tshoot_pia_0_intf, williams2_pia_1_intf, tshoot_snd_pia_intf);
+	CONFIGURE_PIAS(tshoot_pia_0_intf, tshoot_pia_1_intf, tshoot_snd_pia_intf);
 }
 
 
@@ -2697,10 +2744,6 @@ static DRIVER_INIT( inferno )
 	CONFIGURE_BLITTER(WILLIAMS_BLITTER_SC02, 0x9000);
 	CONFIGURE_TILEMAP(WILLIAMS_TILEMAP_TSHOOT);
 	CONFIGURE_PIAS(williams2_muxed_pia_0_intf, williams2_pia_1_intf, williams2_snd_pia_intf);
-
-	/* install RAM instead of ROM in the Dxxx slot */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, MRA8_RAM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, MWA8_RAM);
 }
 
 
@@ -2720,49 +2763,49 @@ static DRIVER_INIT( joust2 )
  *************************************/
 
 /* Defender hardware games */
-GAME( 1980, defender, 0,        defender, defender, defender, ROT0,   "Williams", "Defender (Red label)", GAME_SUPPORTS_SAVE )
-GAME( 1980, defendg,  defender, defender, defender, defender, ROT0,   "Williams", "Defender (Green label)", GAME_SUPPORTS_SAVE )
-GAME( 1980, defendw,  defender, defender, defender, defender, ROT0,   "Williams", "Defender (White label)", GAME_SUPPORTS_SAVE )
-GAME( 1980, defndjeu, defender, defender, defender, defndjeu, ROT0,   "Jeutel", "Defender (bootleg)", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-GAME( 1980, tornado1, defender, defender, defender, defndjeu, ROT0,   "Jeutel", "Tornado (bootleg set 1)", GAME_SUPPORTS_SAVE )
-GAME( 1980, tornado2, defender, defender, defender, defndjeu, ROT0,   "Jeutel", "Tornado (bootleg set 2)", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE ) // bad dump?
-GAME( 1980, zero,     defender, defender, defender, defndjeu, ROT0,   "Jeutel", "Zero", GAME_SUPPORTS_SAVE )
-GAME( 1980, zero2,    defender, defender, defender, defndjeu, ROT0,   "Amtec", "Zero (set 2)", GAME_SUPPORTS_SAVE )
-GAME( 1980, defcmnd,  defender, defender, defender, defender, ROT0,   "bootleg", "Defense Command (set 1)", GAME_SUPPORTS_SAVE )
-GAME( 1981, defence,  defender, defender, defender, defender, ROT0,   "Outer Limits", "Defence Command", GAME_SUPPORTS_SAVE )
-GAME( 1981, startrkd, defender, defender, defender, defender, ROT0,   "bootleg", "Star Trek (Defender bootleg)", GAME_SUPPORTS_SAVE )
-GAME( 1980, mayday,   0,        defender, mayday,   mayday,   ROT0,   "<unknown>", "Mayday (set 1)", GAME_SUPPORTS_SAVE )
-GAME( 1980, maydaya,  mayday,   defender, mayday,   mayday,   ROT0,   "<unknown>", "Mayday (set 2)", GAME_SUPPORTS_SAVE )
-GAME( 1980, maydayb,  mayday,   defender, mayday,   mayday,   ROT0,   "<unknown>", "Mayday (set 3)", GAME_SUPPORTS_SAVE )
-GAME( 1981, colony7,  0,        defender, colony7,  defender, ROT270, "Taito", "Colony 7 (set 1)", GAME_SUPPORTS_SAVE )
-GAME( 1981, colony7a, colony7,  defender, colony7,  defender, ROT270, "Taito", "Colony 7 (set 2)", GAME_SUPPORTS_SAVE )
-GAME( 1982, jin,      0,        jin,      jin,      defender, ROT90,  "Falcon", "Jin", GAME_SUPPORTS_SAVE )
+GAME( 1980, defender, 0,        defender,            defender, defender, ROT0,   "Williams", "Defender (Red label)", GAME_SUPPORTS_SAVE )
+GAME( 1980, defendg,  defender, defender,            defender, defender, ROT0,   "Williams", "Defender (Green label)", GAME_SUPPORTS_SAVE )
+GAME( 1980, defendw,  defender, defender,            defender, defender, ROT0,   "Williams", "Defender (White label)", GAME_SUPPORTS_SAVE )
+GAME( 1980, defndjeu, defender, defender,            defender, defndjeu, ROT0,   "Jeutel", "Defender (bootleg)", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+GAME( 1980, tornado1, defender, defender,            defender, defndjeu, ROT0,   "Jeutel", "Tornado (bootleg set 1)", GAME_SUPPORTS_SAVE )
+GAME( 1980, tornado2, defender, defender,            defender, defndjeu, ROT0,   "Jeutel", "Tornado (bootleg set 2)", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE ) // bad dump?
+GAME( 1980, zero,     defender, defender,            defender, defndjeu, ROT0,   "Jeutel", "Zero (set 1)", GAME_SUPPORTS_SAVE )
+GAME( 1980, zero2,    defender, defender,            defender, defndjeu, ROT0,   "Amtec", "Zero (set 2)", GAME_SUPPORTS_SAVE )
+GAME( 1980, defcmnd,  defender, defender,            defender, defender, ROT0,   "bootleg", "Defense Command", GAME_SUPPORTS_SAVE )
+GAME( 1981, defence,  defender, defender,            defender, defender, ROT0,   "Outer Limits", "Defence Command", GAME_SUPPORTS_SAVE )
+GAME( 1981, startrkd, defender, defender,            defender, defender, ROT0,   "bootleg", "Star Trek (Defender bootleg)", GAME_SUPPORTS_SAVE )
+GAME( 1980, mayday,   0,        defender,            mayday,   mayday,   ROT0,   "<unknown>", "Mayday (set 1)", GAME_SUPPORTS_SAVE )
+GAME( 1980, maydaya,  mayday,   defender,            mayday,   mayday,   ROT0,   "<unknown>", "Mayday (set 2)", GAME_SUPPORTS_SAVE )
+GAME( 1980, maydayb,  mayday,   defender,            mayday,   mayday,   ROT0,   "<unknown>", "Mayday (set 3)", GAME_SUPPORTS_SAVE )
+GAME( 1981, colony7,  0,        defender,            colony7,  defender, ROT270, "Taito", "Colony 7 (set 1)", GAME_SUPPORTS_SAVE )
+GAME( 1981, colony7a, colony7,  defender,            colony7,  defender, ROT270, "Taito", "Colony 7 (set 2)", GAME_SUPPORTS_SAVE )
+GAME( 1982, jin,      0,        jin,                 jin,      defender, ROT90,  "Falcon", "Jin", GAME_SUPPORTS_SAVE )
 
 /* Standard Williams hardware */
-GAME( 1981, stargate, 0,        williams, stargate, stargate, ROT0,   "Williams", "Stargate", GAME_SUPPORTS_SAVE )
-GAME( 1982, robotron, 0,        williams, robotron, robotron, ROT0,   "Williams", "Robotron (Solid Blue label)", GAME_SUPPORTS_SAVE )
-GAME( 1982, robotryo, robotron, williams, robotron, robotron, ROT0,   "Williams", "Robotron (Yellow/Orange label)", GAME_SUPPORTS_SAVE )
-GAME( 1982, joust,    0,        williams, joust,    joust,    ROT0,   "Williams", "Joust (White/Green label)", GAME_SUPPORTS_SAVE )
-GAME( 1982, joustr,   joust,    williams, joust,    joust,    ROT0,   "Williams", "Joust (Solid Red label)", GAME_SUPPORTS_SAVE )
-GAME( 1982, joustwr,  joust,    williams, joust,    joust,    ROT0,   "Williams", "Joust (White/Red label)", GAME_SUPPORTS_SAVE )
-GAME( 1982, bubbles,  0,        williams, bubbles,  bubbles,  ROT0,   "Williams", "Bubbles", GAME_SUPPORTS_SAVE )
-GAME( 1982, bubblesr, bubbles,  williams, bubbles,  bubbles,  ROT0,   "Williams", "Bubbles (Solid Red label)", GAME_SUPPORTS_SAVE )
-GAME( 1982, bubblesp, bubbles,  williams, bubbles,  bubbles,  ROT0,   "Williams", "Bubbles (prototype version)", GAME_SUPPORTS_SAVE )
-GAME( 1982, splat,    0,        williams, splat,    splat,    ROT0,   "Williams", "Splat!", GAME_SUPPORTS_SAVE )
-GAME( 1982, sinistar, 0,        sinistar, sinistar, sinistar, ROT270, "Williams", "Sinistar (revision 3)", GAME_SUPPORTS_SAVE )
-GAME( 1982, sinista1, sinistar, sinistar, sinistar, sinistar, ROT270, "Williams", "Sinistar (prototype version)", GAME_SUPPORTS_SAVE )
-GAME( 1982, sinista2, sinistar, sinistar, sinistar, sinistar, ROT270, "Williams", "Sinistar (revision 2)", GAME_SUPPORTS_SAVE )
-GAME( 1983, playball, 0,        playball, playball, playball, ROT270, "Williams", "PlayBall! (prototype)", GAME_SUPPORTS_SAVE )
-GAME( 1983, blaster,  0,        blaster,  blaster,  blaster,  ROT0,   "Williams", "Blaster", GAME_SUPPORTS_SAVE )
-GAME( 1983, blast30,  blaster,  blaster,  blaster,  blaster,  ROT0,   "Williams", "Blaster (early 30 wave version)", GAME_SUPPORTS_SAVE )
-GAME( 1983, blastkit, blaster,  blaster,  blastkit, blastkit, ROT0,   "Williams", "Blaster (kit)", GAME_SUPPORTS_SAVE )
-GAME( 1985, spdball,  0,        williams, spdball,  spdball,  ROT0,   "Williams", "Speed Ball (prototype)", GAME_SUPPORTS_SAVE )
-GAME( 1985, alienar,  0,        alienar,  alienar,  alienar,  ROT0,   "Duncan Brown", "Alien Arena", GAME_SUPPORTS_SAVE )
-GAME( 1985, alienaru, alienar,  alienar,  alienar,  alienaru, ROT0,   "Duncan Brown", "Alien Arena (Stargate Upgrade)", GAME_SUPPORTS_SAVE )
-GAME( 1987, lottofun, 0,        williams, lottofun, lottofun, ROT0,   "H.A.R. Management", "Lotto Fun", GAME_SUPPORTS_SAVE )
+GAME( 1981, stargate, 0,        williams,            stargate, stargate, ROT0,   "Williams", "Stargate", GAME_SUPPORTS_SAVE )
+GAME( 1982, robotron, 0,        williams,            robotron, robotron, ROT0,   "Williams", "Robotron (Solid Blue label)", GAME_SUPPORTS_SAVE )
+GAME( 1982, robotryo, robotron, williams,            robotron, robotron, ROT0,   "Williams", "Robotron (Yellow/Orange label)", GAME_SUPPORTS_SAVE )
+GAME( 1982, joust,    0,        williams,            joust,    joust,    ROT0,   "Williams", "Joust (White/Green label)", GAME_SUPPORTS_SAVE )
+GAME( 1982, joustr,   joust,    williams,            joust,    joust,    ROT0,   "Williams", "Joust (Solid Red label)", GAME_SUPPORTS_SAVE )
+GAME( 1982, joustwr,  joust,    williams,            joust,    joust,    ROT0,   "Williams", "Joust (White/Red label)", GAME_SUPPORTS_SAVE )
+GAME( 1982, bubbles,  0,        williams,            bubbles,  bubbles,  ROT0,   "Williams", "Bubbles", GAME_SUPPORTS_SAVE )
+GAME( 1982, bubblesr, bubbles,  williams,            bubbles,  bubbles,  ROT0,   "Williams", "Bubbles (Solid Red label)", GAME_SUPPORTS_SAVE )
+GAME( 1982, bubblesp, bubbles,  williams,            bubbles,  bubbles,  ROT0,   "Williams", "Bubbles (prototype version)", GAME_SUPPORTS_SAVE )
+GAME( 1982, splat,    0,        williams,            splat,    splat,    ROT0,   "Williams", "Splat!", GAME_SUPPORTS_SAVE )
+GAME( 1982, sinistar, 0,        sinistar,            sinistar, sinistar, ROT270, "Williams", "Sinistar (revision 3)", GAME_SUPPORTS_SAVE )
+GAME( 1982, sinista1, sinistar, sinistar,            sinistar, sinistar, ROT270, "Williams", "Sinistar (prototype version)", GAME_SUPPORTS_SAVE )
+GAME( 1982, sinista2, sinistar, sinistar,            sinistar, sinistar, ROT270, "Williams", "Sinistar (revision 2)", GAME_SUPPORTS_SAVE )
+GAME( 1983, playball, 0,        playball,            playball, playball, ROT270, "Williams", "PlayBall! (prototype)", GAME_SUPPORTS_SAVE )
+GAME( 1983, blaster,  0,        blaster,             blaster,  blaster,  ROT0,   "Williams", "Blaster", GAME_SUPPORTS_SAVE )
+GAME( 1983, blast30,  blaster,  blaster,             blaster,  blaster,  ROT0,   "Williams", "Blaster (early 30 wave version)", GAME_SUPPORTS_SAVE )
+GAME( 1983, blastkit, blaster,  blaster,             blastkit, blastkit, ROT0,   "Williams", "Blaster (kit)", GAME_SUPPORTS_SAVE )
+GAME( 1985, spdball,  0,        williams,            spdball,  spdball,  ROT0,   "Williams", "Speed Ball (prototype)", GAME_SUPPORTS_SAVE )
+GAME( 1985, alienar,  0,        alienar,             alienar,  alienar,  ROT0,   "Duncan Brown", "Alien Arena", GAME_SUPPORTS_SAVE )
+GAME( 1985, alienaru, alienar,  alienar,             alienar,  alienaru, ROT0,   "Duncan Brown", "Alien Arena (Stargate Upgrade)", GAME_SUPPORTS_SAVE )
+GAME( 1987, lottofun, 0,        williams,            lottofun, lottofun, ROT0,   "H.A.R. Management", "Lotto Fun", GAME_SUPPORTS_SAVE )
 
 /* 2nd Generation Williams hardware with tilemaps */
-GAME( 1983, mysticm,  0,        williams2,mysticm,  mysticm,  ROT0,   "Williams", "Mystic Marathon", GAME_SUPPORTS_SAVE )
-GAME( 1984, tshoot,   0,        williams2,tshoot,   tshoot,   ROT0,   "Williams", "Turkey Shoot", GAME_SUPPORTS_SAVE )
-GAME( 1984, inferno,  0,        williams2,inferno,  inferno,  ROT0,   "Williams", "Inferno", GAME_SUPPORTS_SAVE )
-GAME( 1986, joust2,   0,        joust2,   joust2,   joust2,   ROT270, "Williams", "Joust 2 - Survival of the Fittest (set 1)", GAME_SUPPORTS_SAVE )
+GAME( 1983, mysticm,  0,        williams2_extra_ram, mysticm,  mysticm,  ROT0,   "Williams", "Mystic Marathon", GAME_SUPPORTS_SAVE )
+GAME( 1984, tshoot,   0,        williams2,           tshoot,   tshoot,   ROT0,   "Williams", "Turkey Shoot", GAME_SUPPORTS_SAVE )
+GAME( 1984, inferno,  0,        williams2_extra_ram, inferno,  inferno,  ROT0,   "Williams", "Inferno", GAME_SUPPORTS_SAVE )
+GAME( 1986, joust2,   0,        joust2,              joust2,   joust2,   ROT270, "Williams", "Joust 2 - Survival of the Fittest (set 1)", GAME_SUPPORTS_SAVE )

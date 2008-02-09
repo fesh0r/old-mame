@@ -25,7 +25,7 @@
  * 256VF is not being used, so counting is from 248...255, 0...255, ....
  */
 
-#define MASTER_CLOCK		 	61440000
+#define MASTER_CLOCK		 	XTAL_61_44MHz
 #define CLOCK_1H				(MASTER_CLOCK / 5 / 4)
 #define CLOCK_16H				(CLOCK_1H / 16)
 #define CLOCK_1VF				((CLOCK_16H) / 12 / 2)
@@ -39,9 +39,7 @@
 #define VBSTART					(240)
 #define VBEND					(16)
 
-#define I8035_MASTER_CLOCK		(6000000)
-#define I8035_DIVIDER			(15)
-#define I8035_CLOCK				(I8035_MASTER_CLOCK/I8035_DIVIDER)
+#define I8035_CLOCK				(XTAL_6MHz)
 
 #define HARDWARE_TYPE_TAG		"HARDWARE_TYPE"
 #define HARDWARE_TKG04			0
@@ -63,15 +61,7 @@ struct _dkong_state
 	UINT8	hardware_type;
 
 	/* sound state */
-	UINT8 dkongjr_latch[10];
-	UINT8 sh_climb_count;
-
-	UINT8 has_discrete_interface;
-
 	UINT8 page,mcustatus;
-
-	double envelope,tt;
-	UINT8 decay;
 	UINT8 portT;
 
 	/* video state */
@@ -93,7 +83,7 @@ struct _dkong_state
 
 	/* Specific states */
 	INT8 decrypt_counter;
-	int hunchloopback;
+	UINT8 hunchloopback;
 
 	/* Save state relevant */
 	UINT8	gfx_bank, palette_bank;

@@ -3,9 +3,7 @@
  *   i8x41.c
  *   Portable UPI-41/8041/8741/8042/8742 emulator V0.2
  *
- *   Copyright (c) 1999 Juergen Buchmueller, all rights reserved.
- *
- *   Copyright (C) 1998,1999,2000 Juergen Buchmueller, all rights reserved.
+ *   Copyright Juergen Buchmueller, all rights reserved.
  *   You can contact me at juergen@mame.net or pullmoll@stop1984.com
  *
  *   - This source code is released as freeware for non-commercial purposes
@@ -89,6 +87,7 @@
  *****************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "i8x41.h"
 
 typedef struct {
@@ -1378,7 +1377,7 @@ static int i8x41_execute(int cycles)
 
 		PPC = PC;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PC);
 
 		PC += 1;
 		i8x41_ICount -= i8x41_cycles[op];
@@ -2199,6 +2198,7 @@ void i8x41_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 2;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = I8X41_CLOCK_DIVIDER;			break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 2;							break;
@@ -2270,9 +2270,9 @@ void i8x41_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = i8x41_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = i8x41_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = i8x41_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &i8x41_ICount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -2280,7 +2280,7 @@ void i8x41_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Intel 8x41");			break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "0.3");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) 1999 Juergen Buchmueller, all rights reserved."); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Juergen Buchmueller, all rights reserved."); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",

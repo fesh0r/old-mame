@@ -4,7 +4,7 @@
 
     Cheat system.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -18,7 +18,7 @@
 
 void cheat_init(running_machine *machine);
 
-int cheat_menu(int selection);
+int cheat_menu(running_machine *machine, int selection);
 
 void cheat_display_watches(void);
 

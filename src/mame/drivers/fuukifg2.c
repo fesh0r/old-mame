@@ -33,6 +33,7 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
 #include "sound/okim6295.h"
@@ -78,7 +79,7 @@ static WRITE16_HANDLER( fuuki16_sound_command_w )
 	if (ACCESSING_LSB)
 	{
 		soundlatch_w(0,data & 0xff);
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 //      cpu_spinuntil_time(ATTOTIME_IN_USEC(50));   // Allow the other CPU to reply
 		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(50)); // Fixes glitching in rasters
 	}
@@ -88,8 +89,7 @@ static ADDRESS_MAP_START( fuuki16_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM					)	// ROM
 	AM_RANGE(0x400000, 0x40ffff) AM_READ(MRA16_RAM					)	// RAM
 	AM_RANGE(0x500000, 0x507fff) AM_READ(MRA16_RAM					)	// Layers
-	AM_RANGE(0x600000, 0x601fff) AM_READ(spriteram16_r				)	// Sprites
-	AM_RANGE(0x608000, 0x609fff) AM_READ(spriteram16_r				)	// Sprites (? Mirror ?)
+	AM_RANGE(0x600000, 0x601fff) AM_MIRROR(0x008000) AM_READ(MRA16_RAM	)	// Sprites, mirrored?
 	AM_RANGE(0x700000, 0x703fff) AM_READ(MRA16_RAM					)	// Palette
 	AM_RANGE(0x800000, 0x800001) AM_READ(input_port_0_word_r		)	// Buttons (Inputs)
 	AM_RANGE(0x810000, 0x810001) AM_READ(input_port_1_word_r		)	// P1 + P2
@@ -107,8 +107,7 @@ static ADDRESS_MAP_START( fuuki16_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x504000, 0x505fff) AM_WRITE(fuuki16_vram_2_w) AM_BASE(&fuuki16_vram_2	)	//
 	AM_RANGE(0x506000, 0x507fff) AM_WRITE(fuuki16_vram_3_w) AM_BASE(&fuuki16_vram_3	)	//
 	AM_RANGE(0x506000, 0x507fff) AM_WRITE(MWA16_RAM							)	//
-	AM_RANGE(0x600000, 0x601fff) AM_WRITE(spriteram16_w) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x608000, 0x609fff) AM_WRITE(spriteram16_w						)	// Sprites (? Mirror ?)
+	AM_RANGE(0x600000, 0x601fff) AM_MIRROR(0x008000) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites, mirrored?
 	AM_RANGE(0x700000, 0x703fff) AM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16	)	// Palette
 	AM_RANGE(0x8c0000, 0x8c001f) AM_WRITE(fuuki16_vregs_w) AM_BASE(&fuuki16_vregs )	// Video Registers
 	AM_RANGE(0x8a0000, 0x8a0001) AM_WRITE(fuuki16_sound_command_w			)	// To Sound CPU
@@ -501,7 +500,7 @@ GFXDECODE_END
 
 static void soundirq(int state)
 {
-	cpunum_set_input_line(1, 0, state);
+	cpunum_set_input_line(Machine, 1, 0, state);
 }
 
 static const struct YM3812interface fuuki16_ym3812_intf =
@@ -523,21 +522,21 @@ static const struct YM3812interface fuuki16_ym3812_intf =
 
 static TIMER_CALLBACK( level_1_interrupt_callback )
 {
-	cpunum_set_input_line(0, 1, PULSE_LINE);
+	cpunum_set_input_line(machine, 0, 1, PULSE_LINE);
 	timer_set(video_screen_get_time_until_pos(0, 248, 0), NULL, 0, level_1_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( vblank_interrupt_callback )
 {
-	cpunum_set_input_line(0, 3, PULSE_LINE);	// VBlank IRQ
+	cpunum_set_input_line(machine, 0, 3, PULSE_LINE);	// VBlank IRQ
 	timer_set(video_screen_get_time_until_pos(0, machine->screen[0].visarea.max_y + 1, 0), NULL, 0, vblank_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( raster_interrupt_callback )
 {
-	cpunum_set_input_line(0, 5, PULSE_LINE);	// Raster Line IRQ
+	cpunum_set_input_line(machine, 0, 5, PULSE_LINE);	// Raster Line IRQ
 	video_screen_update_partial(0, video_screen_get_vpos(0));
 	timer_adjust(raster_interrupt_timer, video_screen_get_frame_period(0), 0, attotime_zero);
 }

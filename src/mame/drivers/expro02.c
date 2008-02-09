@@ -119,6 +119,7 @@ U78 (22CV10)
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/kaneko16.h"
 #include "sound/okim6295.h"
 
@@ -277,7 +278,7 @@ ADDRESS_MAP_END
 
 static INTERRUPT_GEN( galsnew_interrupt )
 {
-	cpunum_set_input_line(0, cpu_getiloops() + 3, HOLD_LINE);	/* IRQs 5, 4, and 3 */
+	cpunum_set_input_line(machine, 0, cpu_getiloops() + 3, HOLD_LINE);	/* IRQs 5, 4, and 3 */
 }
 
 static MACHINE_RESET( galsnew )

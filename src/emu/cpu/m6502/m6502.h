@@ -3,9 +3,9 @@
  *   m6502.h
  *   Portable 6502/65c02/65sc02/6510/n2a03 emulator interface
  *
- *   Copyright (c) 1998,1999,2000 Juergen Buchmueller, all rights reserved.
- *   65sc02 core Copyright (c) 2000 Peter Trauner.
- *   Deco16 portions Copyright (c) 2001 Bryan McPhail.
+ *   Copyright Juergen Buchmueller, all rights reserved.
+ *   65sc02 core Copyright Peter Trauner.
+ *   Deco16 portions Copyright Bryan McPhail.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -54,7 +54,7 @@ enum {
 };
 
 #define M6502_IRQ_LINE		0
-/* use cpunum_set_input_line(cpu, M6502_SET_OVERFLOW, level)
+/* use cpunum_set_input_line(machine, cpu, M6502_SET_OVERFLOW, level)
    to change level of the so input line
    positiv edge sets overflow flag */
 #define M6502_SET_OVERFLOW	1
@@ -71,7 +71,7 @@ enum
 
 extern void m6502_get_info(UINT32 state, cpuinfo *info);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern unsigned m6502_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 
@@ -94,7 +94,7 @@ extern unsigned m6502_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UI
 
 extern void m6510_get_info(UINT32 state, cpuinfo *info);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern unsigned m6510_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 
@@ -201,7 +201,7 @@ extern void n2a03_irq(void);
 
 extern void m65c02_get_info(UINT32 state, cpuinfo *info);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern unsigned m65c02_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 
@@ -226,7 +226,7 @@ extern unsigned m65c02_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const U
 
 extern void m65sc02_get_info(UINT32 state, cpuinfo *info);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern unsigned m65sc02_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 #endif
@@ -251,7 +251,7 @@ extern unsigned m65sc02_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const 
 extern void deco16_get_info(UINT32 state, cpuinfo *info);
 #endif
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern unsigned deco16_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 

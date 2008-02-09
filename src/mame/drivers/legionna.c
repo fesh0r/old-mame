@@ -91,6 +91,7 @@ Preliminary COP MCU memory map
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "audio/seibu.h"
 #include "sound/3812intf.h"
@@ -1009,7 +1010,7 @@ static UINT16 cop2_hit_prot(void)
 //  xp = (param1 & 0x00f0) >> 4;
 //  yp = (param1 & 0x0f00) >> 8;
 
-//  ui_popup("%04x %04x",param1,param2);
+//  popmessage("%04x %04x",param1,param2);
 
 	xp = 0;
 	yp = 0;
@@ -1172,7 +1173,7 @@ static WRITE16_HANDLER( cop2_mcu_w )
 		case (0x420/2):
 		{
 			//coin counter write
-			//ui_popup("%04x",mcu_ram[offset]);
+			//popmessage("%04x",mcu_ram[offset]);
 			prot_bcd[0] = protection_bcd_jsr(mcu_ram[offset]);
 			//prot_bcd = mcu_ram[offset] - 0x22;
 			break;
@@ -1205,7 +1206,7 @@ static WRITE16_HANDLER( cop2_mcu_w )
 				break;
 				case 0x4100: break;
 				case 0x41c0: break;
-				//default: ui_popup("%04x",mcu_ram[offset]);
+				//default: popmessage("%04x",mcu_ram[offset]);
 			}
 			break;
 		}
@@ -1471,7 +1472,7 @@ static READ16_HANDLER( sdgndmrb_cop_mcu_r )
   	if(offset > (0x500/2) && offset < (0x600/2))
   	{
   		logerror("CPU0 PC %06x MCU read offset: %04x\n",activecpu_get_previouspc(),offset*2);
-		//ui_popup("PC %06x MCU read: %04x",activecpu_get_previouspc(),offset*2);
+		//popmessage("PC %06x MCU read: %04x",activecpu_get_previouspc(),offset*2);
 	}
 
 	return mcu_ram[offset];
@@ -1501,7 +1502,7 @@ static WRITE16_HANDLER( sdgndmrb_cop_mcu_w )
 				break;
 				case 0x4100: break;
 				case 0x41c0: break;
-				//default: ui_popup("%04x",mcu_ram[offset]);
+				//default: popmessage("%04x",mcu_ram[offset]);
 			}
 			break;
 		}
@@ -1614,7 +1615,7 @@ static WRITE16_HANDLER( sdgndmrb_cop_mcu_w )
 		case (0x420/2):
 		{
 			//coin counter write
-			//ui_popup("%04x",mcu_ram[offset]);
+			//popmessage("%04x",mcu_ram[offset]);
 			prot_bcd[0] = protection_bcd_jsr(mcu_ram[offset]);
 			//prot_bcd = mcu_ram[offset] - 0x22;
 			break;
@@ -1656,7 +1657,7 @@ static WRITE16_HANDLER( sdgndmrb_cop_mcu_w )
 			{
 				case 0xa180:/*do the job [1]*/
 				{
-					//ui_popup("%08x %08x %04x",dma_src,dma_dst,dma_size);
+					//popmessage("%08x %08x %04x",dma_src,dma_dst,dma_size);
 					/*fix the offset for easier reading*/
 					dma_src+=4;
 					//dma_dst+=4;
@@ -1842,7 +1843,7 @@ static WRITE16_HANDLER( sdgndmrb_cop_mcu_w )
 
 //      default:
 //      logerror("CPU0 PC %06x MCU write offset: %04x data: %04x\n",activecpu_get_previouspc(),offset*2,data);
-//      ui_popup("CPU0 PC %06x MCU write offset: %04x data: %04x",activecpu_get_previouspc(),offset*2,data);
+//      popmessage("CPU0 PC %06x MCU write offset: %04x data: %04x",activecpu_get_previouspc(),offset*2,data);
 	}
 }
 
@@ -2564,7 +2565,7 @@ static WRITE16_HANDLER( copdxbl_0_w )
 		case (0x65c/2):
 		{
 			soundlatch_w(1,data&0xff);
-			cpunum_set_input_line( 1, INPUT_LINE_NMI, PULSE_LINE );
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE );
 			break;
 		}
 		/*video regs (not scrollram,something else)*/
@@ -2581,7 +2582,7 @@ static WRITE16_HANDLER( copdxbl_0_w )
 		/*case (0x740/2):
         {
             soundlatch_w(1,data&0x00ff);
-            cpunum_set_input_line( 1, INPUT_LINE_NMI, PULSE_LINE );
+            cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE );
             break;
         }*/
 		#if 0
@@ -3456,13 +3457,6 @@ static GFXDECODE_START( sdgndmrb )
 	GFXDECODE_ENTRY( REGION_GFX5, 0, legionna_tilelayout,   32*16, 16 )
 	GFXDECODE_ENTRY( REGION_GFX6, 0, legionna_tilelayout,   16*16, 16 )
 GFXDECODE_END
-
-/*****************************************************************************/
-
-/* Parameters: YM3812 frequency, Oki frequency, Oki memory region */
-SEIBU_SOUND_SYSTEM_YM3812_HARDWARE
-
-SEIBU_SOUND_SYSTEM_YM2151_HARDWARE
 
 /*****************************************************************************/
 
@@ -4385,7 +4379,7 @@ GAME( 1993, godzilla, 0,        godzilla, godzilla, 0,        ROT0, "Banpresto",
 GAME( 1993, sdgndmrb, 0,        sdgndmrb, sdgndmrb, 0, 		  ROT0, "Banpresto", "SD Gundam Sangokushi Rainbow Tairiku Senki", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
 GAME( 1993, denjinmk, 0,        denjinmk, godzilla, 0,        ROT0, "Banpresto", "Denjin Makai", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
 
-GAME( 1992, cupsoc,   0,        cupsoc,  cupsoc,    0,        ROT0, "Seibu", "Seibu Cup Soccer", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
+GAME( 1992, cupsoc,   0,        cupsoc,  cupsoc,    0,        ROT0, "Seibu", "Seibu Cup Soccer (set 1)", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
 GAME( 1992, cupsoc2,  cupsoc,   cupsoc,  cupsoc,    0,        ROT0, "Seibu", "Seibu Cup Soccer (set 2)", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
 GAME( 1992, olysoc92, cupsoc,   cupsoc,  cupsoc,    0,        ROT0, "Seibu", "Olympic Soccer '92", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
-GAME( 1992, cupsocbl, cupsoc,   cupsocbl, cupsoc,   cupsoc, ROT0, "bootleg", "Seibu Cup Soccer (bootleg)", GAME_NOT_WORKING | GAME_NO_SOUND )
+GAME( 1992, cupsocbl, cupsoc,   cupsocbl, cupsoc,   cupsoc,   ROT0, "bootleg", "Seibu Cup Soccer (bootleg)", GAME_NOT_WORKING | GAME_NO_SOUND )

@@ -4,7 +4,7 @@
 
     x64 Dynamic recompiler support routines.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -65,7 +65,9 @@
 #include "x64drc.h"
 #include "debugger.h"
 
-#include <stddef.h>
+#ifdef ENABLE_DEBUGGER
+#include "deprecat.h"
+#endif
 
 
 
@@ -173,7 +175,7 @@ drc_core *drc_init(UINT8 cpunum, drc_config *config)
 		goto error;
 
 	/* get pointers to external C functions */
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	drc->mame_debug_hook = (x86code *)mame_debug_hook;
 #endif
 	drc->recompile_code = (x86code *)recompile_code;
@@ -419,7 +421,7 @@ void drc_invalidate_code_range(drc_core *drc, UINT32 startpc, UINT32 endpc)
 
 void drc_append_call_debugger(drc_core *drc)
 {
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	if (Machine->debug_mode)
 		emit_call_m64(DRCTOP, MDRC(&drc->mame_debug_hook));							// call mame_debug_hook
 #endif
@@ -521,9 +523,10 @@ void drc_append_restore_sse_rounding(drc_core *drc)
 
 static void append_entry_point(drc_core *drc)
 {
-	int pushbytes = 8 * (5 + (REG_NV5 != REG_NONE) + (REG_NV6 != REG_NONE));
+	int pushbytes = 8 * (6 + (REG_NV5 != REG_NONE) + (REG_NV6 != REG_NONE));
 
 	/* save non-volatile registers */
+	emit_push_r64(DRCTOP, REG_DRC);													// push drc
 	emit_push_r64(DRCTOP, REG_NV0);													// push nv0
 	emit_push_r64(DRCTOP, REG_NV1); 												// push nv1
 	emit_push_r64(DRCTOP, REG_NV2);													// push nv2
@@ -561,7 +564,7 @@ static void append_entry_point(drc_core *drc)
 
 static void append_exit_point(drc_core *drc)
 {
-	int pushbytes = 8 * (5 + (REG_NV5 != REG_NONE) + (REG_NV6 != REG_NONE));
+	int pushbytes = 8 * (6 + (REG_NV5 != REG_NONE) + (REG_NV6 != REG_NONE));
 
 	/* on exit, P1 must contain the final PC */
 	emit_mov_m32_r32(DRCTOP, MDRC(drc->pcptr), REG_P1);								// mov  [pc],p1
@@ -580,6 +583,7 @@ static void append_exit_point(drc_core *drc)
 	emit_pop_r64(DRCTOP, REG_NV2);													// pop nv2
 	emit_pop_r64(DRCTOP, REG_NV1);													// pop nv1
 	emit_pop_r64(DRCTOP, REG_NV0);													// pop nv0
+	emit_pop_r64(DRCTOP, REG_DRC);													// pop drc
 	emit_ret(DRCTOP);																// ret
 }
 

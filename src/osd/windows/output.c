@@ -2,7 +2,7 @@
 //
 //  output.c - Win32 implementation of MAME output routines
 //
-//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+//  Copyright Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -14,6 +14,7 @@
 // MAME headers
 #include "osdepend.h"
 #include "driver.h"
+#include "deprecat.h"
 
 // MAMEOS headers
 #include "output.h"

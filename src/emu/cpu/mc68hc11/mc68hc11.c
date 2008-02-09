@@ -5,6 +5,7 @@
  */
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "mc68hc11.h"
 
 enum {
@@ -388,7 +389,7 @@ static int hc11_execute(int cycles)
 		UINT8 op;
 
 		hc11.ppc = hc11.pc;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(hc11.pc);
 
 		op = FETCH();
 		hc11_optable[op]();
@@ -423,6 +424,7 @@ void mc68hc11_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 5;							break;
@@ -460,9 +462,9 @@ void mc68hc11_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = hc11_exit;					break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = hc11_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = hc11_disasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &hc11.icount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -470,7 +472,7 @@ void mc68hc11_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Motorola MC68HC11");	break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) 2004 Ville Linde"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Ville Linde"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",

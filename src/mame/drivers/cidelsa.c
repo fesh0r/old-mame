@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "cpu/cop400/cop400.h"
 #include "video/cdp1869.h"
@@ -456,12 +457,12 @@ static INTERRUPT_GEN( altair_interrupt )
 	switch (scanline)
 	{
 	case CDP1869_SCANLINE_PREDISPLAY_START_PAL:
-		cpunum_set_input_line(0, INPUT_LINE_IRQ0, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
 		cdp1869_prd = 1; // inverted
 		break;
 
 	case CDP1869_SCANLINE_PREDISPLAY_END_PAL:
-		cpunum_set_input_line(0, INPUT_LINE_IRQ0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
 		cdp1869_prd = 0; // inverted
 		break;
 	}
@@ -503,7 +504,7 @@ static MACHINE_START( draco )
 
 static MACHINE_RESET( destryer )
 {
-	cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 }
 
 /* Machine Drivers */

@@ -7,6 +7,7 @@ driver by Nicola Salmoria
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "machine/eeprom.h"
@@ -56,17 +57,17 @@ static READ8_HANDLER( rollerg_sound_r )
 
 static WRITE8_HANDLER( soundirq_w )
 {
-	cpunum_set_input_line_and_vector(1,0,HOLD_LINE,0xff);
+	cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
 }
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( sound_arm_nmi_w )
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 	timer_set(ATTOTIME_IN_USEC(50), NULL,0,nmi_callback);	/* kludge until the K053260 is emulated correctly */
 }
 
@@ -87,7 +88,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0300, 0x030f) AM_READ(K053244_r)
 	AM_RANGE(0x0800, 0x0fff) AM_READ(rollerg_K051316_r)
 	AM_RANGE(0x1000, 0x17ff) AM_READ(K053245_r)
-	AM_RANGE(0x1800, 0x1fff) AM_READ(paletteram_r)
+	AM_RANGE(0x1800, 0x1fff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x2000, 0x3aff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x4000, 0x7fff) AM_READ(MRA8_BANK1)
 	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
@@ -225,7 +226,7 @@ static INPUT_PORTS_START( rollerg )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN3 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
 INPUT_PORTS_END
 
 

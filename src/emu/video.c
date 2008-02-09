@@ -4,7 +4,7 @@
 
     Core MAME video routines.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -14,10 +14,11 @@
 #include "profiler.h"
 #include "png.h"
 #include "debugger.h"
-#include "video/vector.h"
 #include "render.h"
 #include "rendutil.h"
 #include "ui.h"
+#include "deprecat.h"
+#include "video/vector.h"
 
 #include "snap.lh"
 
@@ -28,7 +29,8 @@
 ***************************************************************************/
 
 #define LOG_THROTTLE				(0)
-#define LOG_PARTIAL_UPDATES(x)		/* logerror x */
+#define VERBOSE						(0)
+#define LOG_PARTIAL_UPDATES(x)		do { if (VERBOSE) logerror x; } while (0)
 
 
 
@@ -66,6 +68,7 @@ struct _internal_screen_info
 	attoseconds_t			pixeltime;			/* attoseconds per pixel */
 	attotime 				vblank_time;		/* time of last VBLANK start */
 	emu_timer *				scanline0_timer;	/* scanline 0 timer */
+	emu_timer *				scanline_timer;		/* scanline timer */
 
 	/* movie recording */
 	mame_file *				movie_file;			/* handle to the open movie file */
@@ -175,6 +178,7 @@ static void decode_graphics(running_machine *machine, const gfx_decode_entry *gf
 
 /* global rendering */
 static TIMER_CALLBACK( scanline0_callback );
+static TIMER_CALLBACK( scanline_update_callback );
 static int finish_screen_updates(running_machine *machine);
 
 /* throttling/frameskipping/performance */
@@ -324,6 +328,13 @@ void video_init(running_machine *machine)
 
 			/* reset VBLANK timing */
 			info->vblank_time = attotime_sub_attoseconds(attotime_zero, machine->screen[0].vblank);
+
+			/* allocate a timer to generate per-scanline updates */
+			if (machine->drv->video_attributes & VIDEO_UPDATE_SCANLINE)
+			{
+				info->scanline_timer = timer_alloc(scanline_update_callback, NULL);
+				timer_adjust(info->scanline_timer, video_screen_get_time_until_pos(scrnum, 0, 0), scrnum, attotime_never);
+			}
 
 			/* register for save states */
 			state_save_register_item("video", scrnum, info->vblank_time.seconds);
@@ -498,8 +509,15 @@ static void allocate_graphics(running_machine *machine, const gfx_decode_entry *
 		int region_length = 8 * memory_region_length(gfxdecodeinfo[i].memory_region);
 		int xscale = (gfxdecodeinfo[i].xscale == 0) ? 1 : gfxdecodeinfo[i].xscale;
 		int yscale = (gfxdecodeinfo[i].yscale == 0) ? 1 : gfxdecodeinfo[i].yscale;
-		UINT32 extxoffs[MAX_ABS_GFX_SIZE], extyoffs[MAX_ABS_GFX_SIZE];
+		UINT32 *extpoffs, extxoffs[MAX_ABS_GFX_SIZE], extyoffs[MAX_ABS_GFX_SIZE];
 		gfx_layout glcopy;
+		const gfx_layout *gl = gfxdecodeinfo[i].gfxlayout;
+		int israw = (gl->planeoffset[0] == GFX_RAW);
+		int planes = gl->planes;
+		UINT16 width = gl->width;
+		UINT16 height = gl->height;
+		UINT32 total = gl->total;
+		UINT32 charincrement = gl->charincrement;
 		int j;
 
 		/* make a copy of the layout */
@@ -519,48 +537,50 @@ static void allocate_graphics(running_machine *machine, const gfx_decode_entry *
 		glcopy.extxoffs = extxoffs;
 		glcopy.extyoffs = extyoffs;
 
+		extpoffs = glcopy.planeoffset;
+
 		/* expand X and Y by the scale factors */
 		if (xscale > 1)
 		{
-			glcopy.width *= xscale;
-			for (j = glcopy.width - 1; j >= 0; j--)
+			width *= xscale;
+			for (j = width - 1; j >= 0; j--)
 				extxoffs[j] = extxoffs[j / xscale];
 		}
 		if (yscale > 1)
 		{
-			glcopy.height *= yscale;
-			for (j = glcopy.height - 1; j >= 0; j--)
+			height *= yscale;
+			for (j = height - 1; j >= 0; j--)
 				extyoffs[j] = extyoffs[j / yscale];
 		}
 
 		/* if the character count is a region fraction, compute the effective total */
-		if (IS_FRAC(glcopy.total))
+		if (IS_FRAC(total))
 		{
 			if (region_length == 0)
 				continue;
-			glcopy.total = region_length / glcopy.charincrement * FRAC_NUM(glcopy.total) / FRAC_DEN(glcopy.total);
+			total = region_length / charincrement * FRAC_NUM(total) / FRAC_DEN(total);
 		}
 
 		/* for non-raw graphics, decode the X and Y offsets */
-		if (glcopy.planeoffset[0] != GFX_RAW)
+		if (!israw)
 		{
 			/* loop over all the planes, converting fractions */
-			for (j = 0; j < glcopy.planes; j++)
+			for (j = 0; j < planes; j++)
 			{
-				UINT32 value = glcopy.planeoffset[j];
+				UINT32 value = extpoffs[j];
 				if (IS_FRAC(value))
-					glcopy.planeoffset[j] = FRAC_OFFSET(value) + region_length * FRAC_NUM(value) / FRAC_DEN(value);
+					extpoffs[j] = FRAC_OFFSET(value) + region_length * FRAC_NUM(value) / FRAC_DEN(value);
 			}
 
 			/* loop over all the X/Y offsets, converting fractions */
-			for (j = 0; j < glcopy.width; j++)
+			for (j = 0; j < width; j++)
 			{
 				UINT32 value = extxoffs[j];
 				if (IS_FRAC(value))
 					extxoffs[j] = FRAC_OFFSET(value) + region_length * FRAC_NUM(value) / FRAC_DEN(value);
 			}
 
-			for (j = 0; j < glcopy.height; j++)
+			for (j = 0; j < height; j++)
 			{
 				UINT32 value = extyoffs[j];
 				if (IS_FRAC(value))
@@ -568,20 +588,26 @@ static void allocate_graphics(running_machine *machine, const gfx_decode_entry *
 			}
 		}
 
-		/* otherwise, just use yoffset[0] as the line modulo */
+		/* otherwise, just use the line modulo */
 		else
 		{
 			int base = gfxdecodeinfo[i].start;
 			int end = region_length/8;
-			while (glcopy.total > 0)
+			int linemod = gl->yoffset[0];
+			while (total > 0)
 			{
-				int elementbase = base + (glcopy.total - 1) * glcopy.charincrement / 8;
-				int lastpixelbase = elementbase + glcopy.height * glcopy.yoffset[0] / 8 - 1;
+				int elementbase = base + (total - 1) * charincrement / 8;
+				int lastpixelbase = elementbase + height * linemod / 8 - 1;
 				if (lastpixelbase < end)
 					break;
-				glcopy.total--;
+				total--;
 			}
 		}
+
+		/* update glcopy */
+		glcopy.width = width;
+		glcopy.height = height;
+		glcopy.total = total;
 
 		/* allocate the graphics */
 		machine->gfx[i] = allocgfx(&glcopy);
@@ -628,7 +654,7 @@ static void decode_graphics(running_machine *machine, const gfx_decode_entry *gf
 
 					/* display some startup text */
 					sprintf(buffer, "Decoding (%d%%)", curgfx * 100 / totalgfx);
-					ui_set_startup_text(buffer, FALSE);
+					ui_set_startup_text(machine, buffer, FALSE);
 				}
 			}
 
@@ -740,7 +766,10 @@ void video_screen_configure(int scrnum, int width, int height, const rectangle *
 	}
 
 	/* recompute the VBLANK timing */
-	cpu_compute_vblank_timing();
+	{
+		extern void cpu_compute_vblank_timing(running_machine *machine);
+		cpu_compute_vblank_timing(Machine);
+	}
 
 	/* if we are on scanline 0 already, reset the update timer immediately */
 	/* otherwise, defer until the next scanline 0 */
@@ -1014,12 +1043,34 @@ static TIMER_CALLBACK( scanline0_callback )
 
 
 /*-------------------------------------------------
+    scanline_update_callback - perform partial
+    updates on each scanline
+-------------------------------------------------*/
+
+static TIMER_CALLBACK( scanline_update_callback )
+{
+	video_private *viddata = machine->video_data;
+	int scrnum = param & 0xff;
+	int scanline = param >> 8;
+
+	/* force a partial update to the current scanline */
+	video_screen_update_partial(scrnum, scanline);
+
+	/* compute the next visible scanline */
+	scanline++;
+	if (scanline > machine->screen[scrnum].visarea.max_y)
+		scanline = machine->screen[scrnum].visarea.min_y;
+	timer_adjust(viddata->scrinfo[scrnum].scanline_timer, video_screen_get_time_until_pos(scrnum, scanline, 0), (scanline << 8) | scrnum, attotime_never);
+}
+
+
+/*-------------------------------------------------
     video_frame_update - handle frameskipping and
     UI, plus updating the screen during normal
     operations
 -------------------------------------------------*/
 
-void video_frame_update(int debug)
+void video_frame_update(running_machine *machine, int debug)
 {
 	attotime current_time = timer_get_time();
 	int skipped_it = global.skipping_this_frame;
@@ -1040,7 +1091,7 @@ void video_frame_update(int debug)
 	}
 
 	/* draw the user interface */
-	ui_update_and_render();
+	ui_update_and_render(machine);
 
 	/* if we're throttling, synchronize before rendering */
 	if (!debug && !skipped_it && effective_throttle())
@@ -1368,13 +1419,8 @@ static void update_throttle(attotime emutime)
 	/* apply speed factor to emu time */
 	if (global.speed != 0 && global.speed != 100)
 	{
-		/* multiply emutime by 100 */
-		emutime = attotime_mul(emutime, 100);
-
-		/* divide emutime by the global speed factor */
-		emutime.attoseconds /= global.speed;
-		emutime.attoseconds += (emutime.seconds % global.speed) * (ATTOSECONDS_PER_SECOND / global.speed);
-		emutime.seconds /= global.speed;
+		/* multiply emutime by 100, then divide by the global speed factor */
+		emutime = attotime_div(attotime_mul(emutime, 100), global.speed);
 	}
 
 	/* compute conversion factors up front */
@@ -1537,7 +1583,7 @@ static void update_frameskip(void)
 	/* if we're throttling and autoframeskip is on, adjust */
 	if (effective_throttle() && effective_autoframeskip() && global.frameskip_counter == 0)
 	{
-		float speed = global.speed * 0.01;
+		double speed = global.speed * 0.01;
 
 		/* if we're too fast, attempt to increase the frameskip */
 		if (global.speed_percent >= 0.995 * speed)

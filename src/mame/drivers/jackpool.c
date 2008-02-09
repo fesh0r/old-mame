@@ -9,6 +9,7 @@ Copyright (C) 1992 HI-TECH Software..Brisbane, QLD Australia
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/okim6295.h"
 
 
@@ -75,7 +76,6 @@ static WRITE16_HANDLER( jackpool_layer2_videoram_w )
 
 static READ16_HANDLER( jackpool_io_r )
 {
-//  return mame_rand(Machine);
 	return 0xffff;
 }
 
@@ -168,7 +168,7 @@ GFXDECODE_END
 /* verify */
 static INTERRUPT_GEN( jackpool_interrupt )
 {
-	cpunum_set_input_line(0, cpu_getiloops()+1, HOLD_LINE);	/* IRQs 3, 2, and 1 */
+	cpunum_set_input_line(machine, 0, cpu_getiloops()+1, HOLD_LINE);	/* IRQs 3, 2, and 1 */
 }
 
 

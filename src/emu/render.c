@@ -4,7 +4,7 @@
 
     Core rendering system.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -44,7 +44,7 @@
 #include "config.h"
 #include "output.h"
 #include "xmlfile.h"
-#include <math.h>
+#include "deprecat.h"
 
 
 
@@ -1531,12 +1531,15 @@ const render_primitive_list *render_target_get_primitives(render_target *target)
 		prim->flags = PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA);
 		append_render_primitive(&target->primlist[listnum], prim);
 
-		prim = alloc_render_primitive(RENDER_PRIMITIVE_QUAD);
-		set_render_bounds_xy(&prim->bounds, 1.0f, 1.0f, (float)(target->width - 1), (float)(target->height - 1));
-		set_render_color(&prim->color, 1.0f, 0.0f, 0.0f, 0.0f);
-		prim->texture.base = NULL;
-		prim->flags = PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA);
-		append_render_primitive(&target->primlist[listnum], prim);
+		if ((target->width > 1) && (target->height > 1))
+		{
+			prim = alloc_render_primitive(RENDER_PRIMITIVE_QUAD);
+			set_render_bounds_xy(&prim->bounds, 1.0f, 1.0f, (float)(target->width - 1), (float)(target->height - 1));
+			set_render_color(&prim->color, 1.0f, 0.0f, 0.0f, 0.0f);
+			prim->texture.base = NULL;
+			prim->flags = PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA);
+			append_render_primitive(&target->primlist[listnum], prim);
+		}
 	}
 
 	/* process the UI if we are the UI target */

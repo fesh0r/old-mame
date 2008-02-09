@@ -35,6 +35,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/6522via.h"
 #include "sound/ay8910.h"
 
@@ -210,7 +211,7 @@ INPUT_PORTS_END
 
 static TIMER_CALLBACK( via_irq_delayed )
 {
-	cpunum_set_input_line(0, 0, param);
+	cpunum_set_input_line(machine, 0, 0, param);
 }
 
 static void via_irq(int state)

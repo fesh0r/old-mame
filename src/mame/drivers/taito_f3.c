@@ -36,6 +36,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "taito_f3.h"
 #include "sound/es5506.h"
@@ -118,12 +119,12 @@ static WRITE32_HANDLER( f3_control_w )
 
 static WRITE32_HANDLER( f3_sound_reset_0_w )
 {
-	cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 static WRITE32_HANDLER( f3_sound_reset_1_w )
 {
-	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static WRITE32_HANDLER( f3_sound_bankswitch_w )
@@ -387,19 +388,19 @@ GFXDECODE_END
 
 static TIMER_CALLBACK( f3_interrupt3 )
 {
-	cpunum_set_input_line(0, 3, HOLD_LINE);	// some signal from video hardware?
+	cpunum_set_input_line(machine, 0, 3, HOLD_LINE);	// some signal from video hardware?
 }
 
 static INTERRUPT_GEN( f3_interrupt2 )
 {
-	cpunum_set_input_line(0, 2, HOLD_LINE);	// vblank
+	cpunum_set_input_line(machine, 0, 2, HOLD_LINE);	// vblank
 	timer_set( ATTOTIME_IN_CYCLES(10000,0), NULL, 0, f3_interrupt3);
 }
 
 static MACHINE_RESET( f3 )
 {
 	taito_f3_soundsystem_reset();
-	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 
 	f3_68681_reset();
 }
@@ -3550,7 +3551,7 @@ GAME( 1994, spcinvdj, spacedx,  f3,      f3, spcinvdj, ROT0,   "Taito Corporatio
 GAME( 1994, pwrgoal,  0,        f3_224a, f3, hthero95, ROT0,   "Taito Corporation Japan",   "Taito Power Goal (Ver 2.5O 1994/11/03)", 0 )
 GAME( 1994, hthero95, pwrgoal,  f3_224a, f3, hthero95, ROT0,   "Taito Corporation",         "Hat Trick Hero '95 (Ver 2.5J 1994/11/03)", 0 )
 GAME( 1994, hthro95u, pwrgoal,  f3_224a, f3, hthero95, ROT0,   "Taito America Corporation", "Hat Trick Hero '95 (Ver 2.5A 1994/11/03)", 0 )
-GAME( 1994, qtheater, 0,        f3_224c, f3, qtheater, ROT0,   "Taito Corporation",         "Quiz Theater - 3tsu no Monogatari (Ver 2.3J 1994/11/10)", GAME_IMPERFECT_SOUND )
+GAME( 1994, qtheater, 0,        f3_224c, f3, qtheater, ROT0,   "Taito Corporation",         "Quiz Theater - 3tsu no Monogatari (Ver 2.3J 1994/11/10)", 0 )
 GAME( 1994, elvactr,  0,        f3,      f3, elvactr,  ROT0,   "Taito Corporation Japan",   "Elevator Action Returns (Ver 2.2O 1995/02/20)", 0 )
 GAME( 1994, elvactrj, elvactr,  f3,      f3, elvactr,  ROT0,   "Taito Corporation",         "Elevator Action Returns (Ver 2.2J 1995/02/20)", 0 )
 GAME( 1994, elvact2u, elvactr,  f3,      f3, elvactr,  ROT0,   "Taito America Corporation", "Elevator Action II (Ver 2.2A 1995/02/20)", 0 )

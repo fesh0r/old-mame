@@ -32,9 +32,13 @@
 /**   Added 4 cycle penalty when leaving HALT state for     **/
 /**   newer versions of the cpu core                        **/
 /**                                                         **/
+/** 1.4:                                                    **/
+/**   Split fetch and execute cycles.                       **/
+/**                                                         **/
 /*************************************************************/
-#include "z80gb.h"
 #include "debugger.h"
+#include "deprecat.h"
+#include "z80gb.h"
 
 #define FLAG_Z	0x80
 #define FLAG_N  0x40
@@ -62,6 +66,9 @@ typedef struct {
 	int	(*irq_callback)(int irqline);
 	/* Timer stuff */
 	void	(*timer_callback)(int cycles);
+	/* Fetch & execute related */
+	int		execution_state;
+	UINT8	op;
 	/* Others */
 	int gb_speed;
 	int gb_speed_change_pending;
@@ -209,6 +216,7 @@ static void z80gb_reset(void)
 	Regs.w.IE = 0;
 	Regs.w.IF = 0;
 
+	Regs.w.execution_state = 0;
 	Regs.w.doHALTbug = 0;
 	Regs.w.ei_delay = 0;
 	Regs.w.gb_speed_change_pending = 0;
@@ -246,15 +254,19 @@ INLINE void z80gb_ProcessInterrupts (void)
 					Regs.w.enable &= ~HALTED;
 					Regs.w.IF &= ~(1 << irqline);
 					Regs.w.PC++;
-					if ( ! Regs.w.enable & IME ) {
-						if ( Regs.w.features & Z80GB_FEATURE_HALT_BUG ) {
+					if ( Regs.w.features & Z80GB_FEATURE_HALT_BUG ) {
+						if ( ! Regs.w.enable & IME ) {
 							/* Old cpu core (dmg/mgb/sgb) */
 							/* check if the HALT bug should be performed */
 							if ( Regs.w.haltIFstatus ) {
 								Regs.w.doHALTbug = 1;
 							}
-						} else {
-							/* New cpu core (cgb/agb/ags) */
+						}
+					} else {
+						/* New cpu core (cgb/agb/ags) */
+						/* Adjust for internal syncing with video core */
+						/* This feature needs more investigation */
+						if ( irqline < 2 ) {
 							CYCLES_PASSED( 4 );
 						}
 					}
@@ -282,28 +294,33 @@ INLINE void z80gb_ProcessInterrupts (void)
 /**********************************************************/
 static int z80gb_execute (int cycles)
 {
-	UINT8 x;
-
 	z80gb_ICount = cycles;
 
 	do
 	{
-		z80gb_ProcessInterrupts ();
-		CALL_MAME_DEBUG;
-		if ( Regs.w.enable & HALTED ) {
-			CYCLES_PASSED( Cycles[0x76] );
-		} else {
-			x = mem_ReadByte (Regs.w.PC++);
-			if ( Regs.w.doHALTbug ) {
-				Regs.w.PC--;
-				Regs.w.doHALTbug = 0;
-			}
-			CYCLES_PASSED( Cycles[x] );
-			switch (x)
-			{
+		if ( Regs.w.execution_state ) {
+			UINT8	x;
+			/* Execute instruction */
+			switch( Regs.w.op ) {
 #include "opc_main.h"
 			}
+		} else {
+			/* Fetch and count cycles */
+			z80gb_ProcessInterrupts ();
+			CALL_DEBUGGER(Regs.w.PC);
+			if ( Regs.w.enable & HALTED ) {
+				CYCLES_PASSED( Cycles[0x76] );
+				Regs.w.execution_state = 1;
+			} else {
+				Regs.w.op = mem_ReadByte (Regs.w.PC++);
+				if ( Regs.w.doHALTbug ) {
+					Regs.w.PC--;
+					Regs.w.doHALTbug = 0;
+				}
+				CYCLES_PASSED( Cycles[Regs.w.op] );
+			}
 		}
+		Regs.w.execution_state ^= 1;
 	} while (z80gb_ICount > 0);
 
 	return cycles - z80gb_ICount;
@@ -403,6 +420,7 @@ void z80gb_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_INT_INPUT_LINES:						info->i = 5;							break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0xff;							break;
 	case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+	case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 	case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 	case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -437,7 +455,7 @@ void z80gb_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_INT_REGISTER + Z80GB_HL:			info->i = Regs.w.HL;					break;
 	case CPUINFO_INT_REGISTER + Z80GB_IE:			info->i = Regs.w.IE;					break;
 	case CPUINFO_INT_REGISTER + Z80GB_IF:			info->i = Regs.w.IF;					break;
-	case CPUINFO_INT_REGISTER + Z80GB_SPEED:		info->i = 0x7E | ( ( Regs.w.gb_speed - 1 ) << 7 ) | Regs.w.gb_speed_change_pending;
+	case CPUINFO_INT_REGISTER + Z80GB_SPEED:		info->i = 0x7E | ( ( Regs.w.gb_speed - 1 ) << 7 ) | Regs.w.gb_speed_change_pending; break;
 
 	/* --- the following bits of info are returned as pointers to data or functions --- */
 	case CPUINFO_PTR_SET_INFO:						info->setinfo = z80gb_set_info;			break;
@@ -448,7 +466,7 @@ void z80gb_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_PTR_EXECUTE:						info->execute = z80gb_execute;			break;
 	case CPUINFO_PTR_BURN:							info->burn = z80gb_burn;						break;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = z80gb_dasm;	break;
 #endif
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &z80gb_ICount;			break;
@@ -456,9 +474,9 @@ void z80gb_get_info(UINT32 state, cpuinfo *info)
 	/* --- the following bits of info are returned as NULL-terminated strings --- */
 	case CPUINFO_STR_NAME: 							strcpy(info->s, "Z80GB"); break;
 	case CPUINFO_STR_CORE_FAMILY: 					strcpy(info->s, "Nintendo Z80"); break;
-	case CPUINFO_STR_CORE_VERSION: 					strcpy(info->s, "1.3"); break;
+	case CPUINFO_STR_CORE_VERSION: 					strcpy(info->s, "1.4"); break;
 	case CPUINFO_STR_CORE_FILE: 					strcpy(info->s, __FILE__); break;
-	case CPUINFO_STR_CORE_CREDITS: 					strcpy(info->s, "Copyright (C) 2000 by The MESS Team."); break;
+	case CPUINFO_STR_CORE_CREDITS: 					strcpy(info->s, "Copyright The MESS Team."); break;
 
 	case CPUINFO_STR_FLAGS:
 		sprintf(info->s, "%c%c%c%c%c%c%c%c",

@@ -239,6 +239,7 @@
 ******************************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/pokey.h"
 
 
@@ -315,7 +316,7 @@ static TIMER_CALLBACK( clock_irq )
 
 	/* assert the IRQ if not already asserted */
 	irq_state = (~curv >> 5) & 1;
-	cpunum_set_input_line(0, 0, irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, irq_state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* force an update while we're here */
 	video_screen_update_partial(0, v_to_scanline(curv));
@@ -325,7 +326,7 @@ static TIMER_CALLBACK( clock_irq )
 }
 
 
-static UINT32 get_vblank(void *param)
+static CUSTOM_INPUT( get_vblank )
 {
 	int v = scanline_to_v(video_screen_get_vpos(0));
 	return v < 24;
@@ -345,9 +346,9 @@ static TIMER_CALLBACK( adjust_cpu_speed )
 
 	/* starting at scanline 224, the CPU runs at half speed */
 	if (curv == 224)
-		cpunum_set_clock(0, MASTER_CLOCK/16);
+		cpunum_set_clock(machine, 0, MASTER_CLOCK/16);
 	else
-		cpunum_set_clock(0, MASTER_CLOCK/8);
+		cpunum_set_clock(machine, 0, MASTER_CLOCK/8);
 
 	/* scanline for the next run */
 	curv ^= 224;
@@ -355,7 +356,7 @@ static TIMER_CALLBACK( adjust_cpu_speed )
 }
 
 
-static offs_t missile_opbase_handler(offs_t address)
+static OPBASE_HANDLER( missile_opbase_handler )
 {
 	/* offset accounts for lack of A15 decoding */
 	int offset = address & 0x8000;
@@ -410,7 +411,7 @@ static MACHINE_START( missile )
 
 static MACHINE_RESET( missile )
 {
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	irq_state = 0;
 }
 
@@ -610,14 +611,14 @@ static WRITE8_HANDLER( missile_w )
 
 	/* watchdog */
 	else if (offset >= 0x4c00 && offset < 0x4d00)
-		watchdog_reset();
+		watchdog_reset(Machine);
 
 	/* interrupt ack */
 	else if (offset >= 0x4d00 && offset < 0x4e00)
 	{
 		if (irq_state)
 		{
-			cpunum_set_input_line(0, 0, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 			irq_state = 0;
 		}
 	}

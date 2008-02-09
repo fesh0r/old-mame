@@ -2,7 +2,7 @@
 //
 //  main.c - Win32 main program
 //
-//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+//  Copyright Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -28,6 +28,7 @@ extern int utf8_main(int argc, char **argv);
 #ifndef MESSLIB
 #if !defined(WINUI) || defined(MESS)
 #undef main
+#undef wmain
 #endif
 #endif
 

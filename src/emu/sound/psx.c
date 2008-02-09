@@ -16,7 +16,7 @@
 
 #define VERBOSE_LEVEL ( 0 )
 
-INLINE void verboselog( int n_level, const char *s_fmt, ... )
+INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
 {
 	if( VERBOSE_LEVEL >= n_level )
 	{
@@ -336,7 +336,7 @@ static void *psxspu_start(int sndindex, int clock, const void *config)
 	state_save_register_item_array( "psx", sndindex, chip->m_p_n_adsrvolume );
 	state_save_register_item_array( "psx", sndindex, chip->m_p_n_repeataddress );
 	state_save_register_item_array( "psx", sndindex, chip->m_p_n_effect );
-	state_save_register_item_array( "psx", sndindex, chip->m_p_n_spuram );
+	state_save_register_item_pointer( "psx", sndindex, chip->m_p_n_spuram, SPU_RAM_SIZE/2 );
 	state_save_register_item_array( "psx", sndindex, chip->m_p_n_blockaddress );
 	state_save_register_item_array( "psx", sndindex, chip->m_p_n_blockoffset );
 	state_save_register_item_array( "psx", sndindex, chip->m_p_n_blockstatus );
@@ -689,7 +689,7 @@ void psxspu_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "Sony custom";				break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
 	}
 }
 

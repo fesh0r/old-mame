@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "r3000.h"
 
 
@@ -750,7 +751,7 @@ static int r3000_execute(int cycles)
 
 		/* debugging */
 		r3000.ppc = r3000.pc;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(r3000.pc);
 
 		/* instruction fetch */
 		op = ROPCODE(r3000.pc);
@@ -932,7 +933,7 @@ static int r3000_execute(int cycles)
     DISASSEMBLY HOOK
 ***************************************************************************/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t r3000_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	extern unsigned dasmr3k(char *, unsigned, UINT32);
@@ -944,7 +945,7 @@ static offs_t r3000_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT
 
 	return dasmr3k(buffer, pc, op);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -1214,6 +1215,7 @@ static void r3000_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 6;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -1286,9 +1288,9 @@ static void r3000_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = r3000_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = r3000_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = r3000_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &r3000_icount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1296,7 +1298,7 @@ static void r3000_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "MIPS II");				break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) Aaron Giles 2000-2002"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Aaron Giles"); break;
 
 		case CPUINFO_STR_FLAGS:							strcpy(info->s, " ");					break;
 
@@ -1373,6 +1375,42 @@ void r3000le_get_info(UINT32 state, cpuinfo *info)
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "R3000 (little)");		break;
+
+		default:										r3000_get_info(state, info);			break;
+	}
+}
+
+
+void r3041be_get_info(UINT32 state, cpuinfo *info)
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case CPUINFO_PTR_RESET:							info->reset = r3000be_reset;			break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case CPUINFO_STR_NAME:							strcpy(info->s, "R3041 (big)");			break;
+
+		default:										r3000_get_info(state, info);			break;
+	}
+}
+
+
+void r3041le_get_info(UINT32 state, cpuinfo *info)
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case CPUINFO_PTR_RESET:							info->reset = r3000le_reset;			break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case CPUINFO_STR_NAME:							strcpy(info->s, "R3041 (little)");		break;
 
 		default:										r3000_get_info(state, info);			break;
 	}

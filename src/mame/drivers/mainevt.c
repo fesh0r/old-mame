@@ -21,6 +21,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2151intf.h"
@@ -38,7 +39,7 @@ VIDEO_START( dv );
 static INTERRUPT_GEN( mainevt_interrupt )
 {
 	if (K052109_is_IRQ_enabled())
-		irq0_line_hold();
+		irq0_line_hold(machine, cpunum);
 }
 
 
@@ -52,7 +53,7 @@ static WRITE8_HANDLER( dv_nmienable_w )
 static INTERRUPT_GEN( dv_interrupt )
 {
 	if (nmi_enable)
-		nmi_line_pulse();
+		nmi_line_pulse(machine, cpunum);
 }
 
 
@@ -88,7 +89,7 @@ static WRITE8_HANDLER( mainevt_coin_w )
 
 static WRITE8_HANDLER( mainevt_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(1,0,HOLD_LINE,0xff);
+	cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
 }
 
 static WRITE8_HANDLER( mainevt_sh_irqcontrol_w )
@@ -706,7 +707,7 @@ static const struct upd7759_interface upd7759_interface =
 static MACHINE_DRIVER_START( mainevt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(HD6309, 3000000)	/* ?? */
+	MDRV_CPU_ADD(HD6309, 3000000*4)	/* ?? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT(mainevt_interrupt,1)
 
@@ -745,7 +746,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( devstors )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(HD6309, 3000000)	/* ?? */
+	MDRV_CPU_ADD(HD6309, 3000000*4)	/* ?? */
 	MDRV_CPU_PROGRAM_MAP(dv_readmem,dv_writemem)
 	MDRV_CPU_VBLANK_INT(dv_interrupt,1)
 

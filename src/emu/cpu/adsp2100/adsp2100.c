@@ -27,8 +27,8 @@
             3c00-3fff = 1k Internal Control regs            3c00-3fff = 1k Internal Control regs
 
 
-    For ADSP-2105, ADSP-2115, ADSP-2104
-    -----------------------------------
+    For ADSP-2105, ADSP-2115
+    ------------------------
 
         MMAP = 0                                        MMAP = 1
 
@@ -46,6 +46,29 @@
             3000-33ff = 1k External DWAIT3                  3000-33ff = 1k External DWAIT3
             3400-37ff = 1k External DWAIT4                  3400-37ff = 1k External DWAIT4
             3800-39ff = 512 Internal RAM                    3800-39ff = 512 Internal RAM
+            3a00-3bff = 512 Reserved                        3a00-3bff = 512 Reserved
+            3c00-3fff = 1k Internal Control regs            3c00-3fff = 1k Internal Control regs
+
+
+    For ADSP-2104
+    -------------
+
+        MMAP = 0                                        MMAP = 1
+
+        Automatic boot loading                          No auto boot loading
+
+        Program Space:                                  Program Space:
+            0000-01ff = 512 Internal RAM (booted)           0000-37ff = 14k External access
+            0400-07ff = 1k Reserved                         3800-3bff = 1k Internal RAM
+            0800-3fff = 14k External access                 3c00-3fff = 1k Reserved
+
+        Data Space:                                     Data Space:
+            0000-03ff = 1k External DWAIT0                  0000-03ff = 1k External DWAIT0
+            0400-07ff = 1k External DWAIT1                  0400-07ff = 1k External DWAIT1
+            0800-2fff = 10k External DWAIT2                 0800-2fff = 10k External DWAIT2
+            3000-33ff = 1k External DWAIT3                  3000-33ff = 1k External DWAIT3
+            3400-37ff = 1k External DWAIT4                  3400-37ff = 1k External DWAIT4
+            3800-38ff = 256 Internal RAM                    3800-38ff = 256 Internal RAM
             3a00-3bff = 512 Reserved                        3a00-3bff = 512 Reserved
             3c00-3fff = 1k Internal Control regs            3c00-3fff = 1k Internal Control regs
 
@@ -73,6 +96,7 @@
 ***************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "adsp2100.h"
 
 
@@ -694,7 +718,6 @@ static void adsp2100_init(int index, int clock, const void *config, int (*irqcal
 	state_save_register_item("adsp2100", index, adsp2100.fl0);
 	state_save_register_item("adsp2100", index, adsp2100.fl1);
 	state_save_register_item("adsp2100", index, adsp2100.fl2);
-
 	state_save_register_item("adsp2100", index, adsp2100.idma_addr);
 	state_save_register_item("adsp2100", index, adsp2100.idma_cache);
 	state_save_register_item("adsp2100", index, adsp2100.idma_offs);
@@ -702,7 +725,6 @@ static void adsp2100_init(int index, int clock, const void *config, int (*irqcal
 	state_save_register_item("adsp2100", index, adsp2100.imask);
 	state_save_register_item("adsp2100", index, adsp2100.icntl);
 	state_save_register_item("adsp2100", index, adsp2100.ifc);
-
 	state_save_register_item_array("adsp2100", index, adsp2100.irq_state);
 	state_save_register_item_array("adsp2100", index, adsp2100.irq_latch);
 	state_save_register_item("adsp2100", index, adsp2100.interrupt_cycles);
@@ -929,7 +951,7 @@ static int adsp2100_execute(int cycles)
 
 		/* debugging */
 		adsp2100.ppc = adsp2100.pc;	/* copy PC to previous PC */
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(adsp2100.pc);
 
 #if TRACK_HOTSPOTS
 		pcbucket[adsp2100.pc & 0x3fff]++;
@@ -1669,9 +1691,9 @@ static int adsp2100_execute(int cycles)
     DEBUGGER DEFINITIONS
 ***************************************************************************/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern offs_t adsp2100_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -1800,6 +1822,7 @@ static void adsp21xx_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					/* set per CPU */						break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -1925,9 +1948,9 @@ static void adsp21xx_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = adsp2100_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = adsp2100_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = adsp2100_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &adsp2100_icount;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1935,7 +1958,7 @@ static void adsp21xx_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "ADSP21xx");			break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "2.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) Aaron Giles, 1999-2004"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Aaron Giles"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",

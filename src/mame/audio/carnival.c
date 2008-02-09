@@ -1,6 +1,6 @@
 /*****************************************************************************/
 /*                                                                           */
-/*                    (C) Copyright 1998  Peter J.C.Clare                    */
+/*                    (C) Copyright       Peter J.C.Clare                    */
 /*                                                                           */
 /*****************************************************************************/
 /*                                                                           */
@@ -37,6 +37,7 @@
 /*****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/i8039/i8039.h"
 #include "sound/ay8910.h"
 #include "sound/samples.h"
@@ -228,20 +229,14 @@ WRITE8_HANDLER( carnival_audio_2_w )
 	port2State = data;
 
 	if ( bitsGoneLow & OUT_PORT_2_BEAR )
-	{
 		PLAY( SND_BEAR, 0 );
-	}
 
 	if ( bitsGoneLow & OUT_PORT_2_RANKING )
-	{
 		PLAY( SND_RANKING, 0 );
-	}
 
 	if ( bitsGoneHigh & OUT_PORT_2_MUSIC_RESET )
-	{
 		/* reset output is no longer asserted active low */
-		cpunum_set_input_line(CPU_MUSIC_ID, INPUT_LINE_RESET, PULSE_LINE );
-	}
+		cpunum_set_input_line(Machine, CPU_MUSIC_ID, INPUT_LINE_RESET, PULSE_LINE );
 }
 
 
@@ -302,7 +297,7 @@ ADDRESS_MAP_END
 
 
 MACHINE_DRIVER_START( carnival_audio )
-	MDRV_CPU_ADD(I8039,( ( 3579545 / 5 ) / 3 ))
+	MDRV_CPU_ADD(I8039, 3579545)
 	MDRV_CPU_PROGRAM_MAP(carnival_audio_map,0)
 	MDRV_CPU_IO_MAP(carnival_audio_io_map,0)
 

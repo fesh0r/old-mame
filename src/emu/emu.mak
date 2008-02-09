@@ -4,7 +4,7 @@
 #
 #   MAME emulation core makefile
 #
-#   Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+#   Copyright Nicola Salmoria and the MAME Team.
 #   Visit http://mamedev.org for licensing and usage restrictions.
 #
 ###########################################################################
@@ -73,7 +73,6 @@ EMUOBJS = \
 	$(EMUOBJ)/ui.o \
 	$(EMUOBJ)/uigfx.o \
 	$(EMUOBJ)/uimenu.o \
-	$(EMUOBJ)/uitext.o \
 	$(EMUOBJ)/validity.o \
 	$(EMUOBJ)/video.o \
 
@@ -82,7 +81,7 @@ EMUOBJS += \
 	$(EMUOBJ)/profiler.o
 endif
 
-ifdef DEBUG
+ifdef DEBUGGER
 EMUOBJS += \
 	$(EMUOBJ)/debug/debugcmd.o \
 	$(EMUOBJ)/debug/debugcmt.o \
@@ -161,6 +160,7 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/x76f041.o \
 	$(EMUMACHINE)/x76f100.o \
 	$(EMUMACHINE)/z80ctc.o \
+	$(EMUMACHINE)/z80dma.o \
 	$(EMUMACHINE)/z80pio.o \
 	$(EMUMACHINE)/z80sio.o \
 
@@ -190,7 +190,7 @@ include $(EMUSRC)/cpu/cpu.mak
 
 $(LIBCPU): $(CPUOBJS)
 
-ifdef DEBUG
+ifdef DEBUGGER
 $(LIBCPU): $(DBGOBJS)
 endif
 

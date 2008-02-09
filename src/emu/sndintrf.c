@@ -4,7 +4,7 @@
 
     Core sound interface functions and definitions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -26,11 +26,7 @@
 
 #define VERBOSE			(0)
 
-#if VERBOSE
-#define VPRINTF(x) mame_printf_debug x
-#else
-#define VPRINTF(x)
-#endif
+#define VPRINTF(x) do { if (VERBOSE) mame_printf_debug x; } while (0)
 
 
 
@@ -54,8 +50,8 @@ typedef struct _sndintrf_data sndintrf_data;
 struct _sndintrf_data
 {
 	sound_interface	intf;	 		/* copy of the interface data */
-	sound_type			sndtype; 		/* type index of this sound chip */
-	sound_type			aliastype;		/* aliased type index of this sound chip */
+	sound_type		sndtype; 		/* type index of this sound chip */
+	sound_type		aliastype;		/* aliased type index of this sound chip */
 	int				index; 			/* index of this sound chip */
 	int				clock; 			/* clock for this sound chip */
 	void *			token;			/* dynamically allocated token data */
@@ -111,7 +107,15 @@ void namco_63701x_get_info(void *token, UINT32 state, sndinfo *info);
 void namcona_get_info(void *token, UINT32 state, sndinfo *info);
 void tms36xx_get_info(void *token, UINT32 state, sndinfo *info);
 void tms3615_get_info(void *token, UINT32 state, sndinfo *info);
+void tms5100_get_info(void *token, UINT32 state, sndinfo *info);
 void tms5110_get_info(void *token, UINT32 state, sndinfo *info);
+void tms5110a_get_info(void *token, UINT32 state, sndinfo *info);
+void cd2801_get_info(void *token, UINT32 state, sndinfo *info);
+void tmc0281_get_info(void *token, UINT32 state, sndinfo *info);
+void cd2802_get_info(void *token, UINT32 state, sndinfo *info);
+void m58817_get_info(void *token, UINT32 state, sndinfo *info);
+void tmc0285_get_info(void *token, UINT32 state, sndinfo *info);
+void tms5200_get_info(void *token, UINT32 state, sndinfo *info);
 void tms5220_get_info(void *token, UINT32 state, sndinfo *info);
 void vlm5030_get_info(void *token, UINT32 state, sndinfo *info);
 void adpcm_get_info(void *token, UINT32 state, sndinfo *info);
@@ -120,6 +124,8 @@ void msm5205_get_info(void *token, UINT32 state, sndinfo *info);
 void msm5232_get_info(void *token, UINT32 state, sndinfo *info);
 void upd7759_get_info(void *token, UINT32 state, sndinfo *info);
 void hc55516_get_info(void *token, UINT32 state, sndinfo *info);
+void mc3417_get_info(void *token, UINT32 state, sndinfo *info);
+void mc3418_get_info(void *token, UINT32 state, sndinfo *info);
 void k005289_get_info(void *token, UINT32 state, sndinfo *info);
 void k007232_get_info(void *token, UINT32 state, sndinfo *info);
 void k051649_get_info(void *token, UINT32 state, sndinfo *info);
@@ -164,7 +170,6 @@ void sid6581_get_info(void *token, UINT32 state, sndinfo *info);
 void sid8580_get_info(void *token, UINT32 state, sndinfo *info);
 void sp0256_get_info(void *token, UINT32 state, sndinfo *info);
 void s14001a_get_info(void *token, UINT32 state, sndinfo *info);
-void m58817_get_info(void *token, UINT32 state, sndinfo *info);
 
 void filter_volume_get_info(void *token, UINT32 state, sndinfo *info);
 void filter_rc_get_info(void *token, UINT32 state, sndinfo *info);
@@ -180,7 +185,7 @@ static sound_interface sndintrf[SOUND_COUNT];
 static const struct
 {
 	sound_type	sndtype;
-	void	(*get_info)(void *token, UINT32 state, sndinfo *info);
+	void		(*get_info)(void *token, UINT32 state, sndinfo *info);
 } sndintrf_map[] =
 {
 	{ SOUND_DUMMY, dummy_sound_get_info },
@@ -289,8 +294,29 @@ static const struct
 #if (HAS_TMS3615)
 	{ SOUND_TMS3615, tms3615_get_info },
 #endif
+#if (HAS_TMS5100)
+	{ SOUND_TMS5100, tms5100_get_info },
+#endif
 #if (HAS_TMS5110)
 	{ SOUND_TMS5110, tms5110_get_info },
+#endif
+#if (HAS_TMS5110A)
+	{ SOUND_TMS5110A, tms5110a_get_info },
+#endif
+#if (HAS_CD2801)
+	{ SOUND_CD2801, cd2801_get_info },
+#endif
+#if (HAS_TMC0281)
+	{ SOUND_TMC0281, tmc0281_get_info },
+#endif
+#if (HAS_CD2802)
+	{ SOUND_CD2802, cd2802_get_info },
+#endif
+#if (HAS_M58817)
+	{ SOUND_M58817, m58817_get_info },
+#endif
+#if (HAS_TMS5200)
+	{ SOUND_TMS5200, tms5200_get_info },
 #endif
 #if (HAS_TMS5220)
 	{ SOUND_TMS5220, tms5220_get_info },
@@ -312,6 +338,8 @@ static const struct
 #endif
 #if (HAS_HC55516)
 	{ SOUND_HC55516, hc55516_get_info },
+	{ SOUND_MC3417, mc3417_get_info },
+	{ SOUND_MC3418, mc3418_get_info },
 #endif
 #if (HAS_K005289)
 	{ SOUND_K005289, k005289_get_info },
@@ -445,9 +473,6 @@ static const struct
 #if (HAS_SP0256)
 	{ SOUND_SP0256, sp0256_get_info },
 #endif
-#if (HAS_M58817)
-	{ SOUND_M58817, m58817_get_info },
-#endif
 
 	{ SOUND_FILTER_VOLUME, filter_volume_get_info },
 	{ SOUND_FILTER_RC, filter_rc_get_info },
@@ -489,7 +514,7 @@ static int totalsnd;
 /*-------------------------------------------------
     sndintrf_init - discover all linked sound
     systems and build a matrix for sound
-    (type,index) pairs for the current Machine
+    (type,index) pairs for the current machine
 -------------------------------------------------*/
 
 void sndintrf_init(running_machine *machine)
@@ -645,6 +670,24 @@ sound_type sndnum_to_sndti(int sndnum, int *index)
 	if (index != NULL)
 		*index = sound[sndnum].index;
 	return sound[sndnum].aliastype;
+}
+
+
+/*-------------------------------------------------
+    sndtype_count - count the number of a
+    given type
+-------------------------------------------------*/
+
+int sndtype_count(sound_type sndtype)
+{
+	int index;
+	int count = 0;
+
+	for (index = 0; index < totalsnd; index++)
+		if (sound[index].sndtype == sndtype)
+			count++;
+
+	return count;
 }
 
 
@@ -966,6 +1009,6 @@ static void dummy_sound_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "Dummy";						break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
 	}
 }

@@ -4,7 +4,7 @@
 
     driver by Steve Baines (sulaco@ntlworld.com) and Frank Palazzolo
 
-    This file is Copyright 1997, Steve Baines.
+    This file is Copyright Steve Baines.
     Modified by Frank Palazzolo for sound support
 
     Games supported:
@@ -23,6 +23,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "video/vector.h"
 #include "video/avgdvg.h"
@@ -77,7 +78,7 @@ static MACHINE_RESET( starwars )
 
 static WRITE8_HANDLER( irq_ack_w )
 {
-	cpunum_set_input_line(0, M6809_IRQ_LINE, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -123,7 +124,7 @@ static WRITE8_HANDLER( esb_slapstic_w )
  *
  *************************************/
 
-OPBASE_HANDLER( esb_setopbase )
+static OPBASE_HANDLER( esb_setopbase )
 {
 	int prevpc = activecpu_get_previouspc();
 
@@ -196,7 +197,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )\
+static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(starwars_sout_w)
 	AM_RANGE(0x0800, 0x0fff) AM_READ(starwars_sin_r)		/* SIN Read */
 	AM_RANGE(0x1000, 0x107f) AM_RAM							/* 6532 ram */

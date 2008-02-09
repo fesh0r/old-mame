@@ -1,6 +1,6 @@
 /*** t11: Portable DEC T-11 emulator ******************************************
 
-    Copyright (C) Aaron Giles 1998-2001
+    Copyright Aaron Giles
 
     System dependencies:    long must be at least 32 bits
                             word must be 16 bit unsigned int
@@ -12,6 +12,7 @@
 *****************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "t11.h"
 
 
@@ -309,6 +310,7 @@ static void t11_init(int index, int clock, const void *config, int (*irqcallback
 	state_save_register_item("t11", index, t11.reg[7].w.l);
 	state_save_register_item("t11", index, t11.psw.w.l);
 	state_save_register_item("t11", index, t11.op);
+	state_save_register_item("t11", index, t11.initial_pc);
 	state_save_register_item("t11", index, t11.wait_state);
 	state_save_register_item("t11", index, t11.irq_state);
 	state_save_register_item("t11", index, t11.interrupt_cycles);
@@ -399,7 +401,7 @@ static int t11_execute(int cycles)
 	{
 		t11.ppc = t11.reg[7];	/* copy PC to previous PC */
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PCD);
 
 		t11.op = ROPCODE();
 		(*opcode_table[t11.op >> 3])();
@@ -459,6 +461,7 @@ void t11_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 4;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 6;							break;
@@ -503,9 +506,9 @@ void t11_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = t11_exit;					break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = t11_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = t11_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &t11_ICount;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -513,7 +516,7 @@ void t11_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "DEC T-11");			break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) Aaron Giles 1998"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Aaron Giles"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",

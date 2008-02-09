@@ -1,7 +1,7 @@
  /**************************************************************************\
  *                      Microchip PIC16C5x Emulator                         *
  *                                                                          *
- *                    Copyright (C) 2003+ Tony La Porta                     *
+ *                    Copyright Tony La Porta                               *
  *                 Originally written for the MAME project.                 *
  *                                                                          *
  *                                                                          *
@@ -26,7 +26,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifdef MAME_DEBUG					/* Compile interface to MAME */
+#ifdef ENABLE_DEBUGGER					/* Compile interface to MAME */
 #include "cpuintrf.h"
 static const UINT8 *rombase;
 static const UINT8 *rambase;

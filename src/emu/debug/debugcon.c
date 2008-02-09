@@ -4,7 +4,7 @@
 
     Debugger console engine.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -15,7 +15,7 @@
 #include "debughlp.h"
 #include "debugvw.h"
 #include "textbuf.h"
-#include <stdarg.h>
+#include "deprecat.h"
 #include <ctype.h>
 
 

@@ -87,7 +87,7 @@ typedef struct {
 } minx_regs;
 
 static minx_regs regs;
-int minx_icount;
+static int minx_icount;
 
 #define rd(offset)	program_read_byte_8( offset )
 #define wr(offset,data)	program_write_byte_8( offset, data )
@@ -141,7 +141,7 @@ static int minx_execute( int cycles ) {
 	minx_icount = cycles;
 
 	do {
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(minx_PC);
 		oldpc = minx_PC;
 		op = rdop();
 		insnminx[op]();
@@ -238,6 +238,7 @@ void minx_get_info( UINT32 state, cpuinfo *info ) {
 	case CPUINFO_INT_INPUT_LINES:				info->i = 1; break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0xff; break;
 	case CPUINFO_INT_ENDIANNESS:				info->i = CPU_IS_BE; break;
+	case CPUINFO_INT_CLOCK_MULTIPLIER:			info->i = 1; break;
 	case CPUINFO_INT_CLOCK_DIVIDER:				info->i = 1; break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1; break;
 	case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 5; break;
@@ -278,7 +279,7 @@ void minx_get_info( UINT32 state, cpuinfo *info ) {
 	case CPUINFO_PTR_EXIT:					info->exit = minx_exit; break;
 	case CPUINFO_PTR_EXECUTE:				info->execute = minx_execute; break;
 	case CPUINFO_PTR_BURN:					info->burn = minx_burn; break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	case CPUINFO_PTR_DISASSEMBLE:				info->disassemble = minx_dasm; break;
 #endif
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &minx_icount; break;
@@ -286,7 +287,7 @@ void minx_get_info( UINT32 state, cpuinfo *info ) {
 	case CPUINFO_STR_CORE_FAMILY:				strcpy( info->s = cpuintrf_temp_str(), "Nintendo Minx" ); break;
 	case CPUINFO_STR_CORE_VERSION:				strcpy( info->s = cpuintrf_temp_str(), "0.1" ); break;
 	case CPUINFO_STR_CORE_FILE:				strcpy( info->s = cpuintrf_temp_str(), __FILE__ ); break;
-	case CPUINFO_STR_CORE_CREDITS:				strcpy( info->s = cpuintrf_temp_str(), "Copyright (C) 2006 by The MESS Team." ); break;
+	case CPUINFO_STR_CORE_CREDITS:				strcpy( info->s = cpuintrf_temp_str(), "Copyright The MESS Team." ); break;
 	case CPUINFO_STR_FLAGS:
 		sprintf( info->s = cpuintrf_temp_str(), "%c%c%c%c%c%c%c%c-%c%c%c%c%c",
 			regs.F & FLAG_I ? 'I' : '.',

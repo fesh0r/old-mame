@@ -7,6 +7,7 @@
 *************************************************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "tlcs90.h"
 
 typedef struct
@@ -1329,7 +1330,7 @@ static int t90_execute(int cycles)
 	do
 	{
 		T90.prvpc.d = T90.pc.d;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(T90.pc.d);
 
 		check_interrupts();
 
@@ -2730,6 +2731,7 @@ void tmp90840_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:								info->i = 1;					break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:						info->i = 0xff;					break;
 		case CPUINFO_INT_ENDIANNESS:								info->i = CPU_IS_LE;			break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:							info->i = 1;					break;
 		case CPUINFO_INT_CLOCK_DIVIDER:								info->i = 1;					break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:						info->i = 1;					break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:						info->i = 6;					break;
@@ -2782,7 +2784,7 @@ void tmp90840_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:										info->exit = t90_exit;				break;
 		case CPUINFO_PTR_EXECUTE:									info->execute = t90_execute;		break;
 		case CPUINFO_PTR_BURN:										info->burn = t90_burn;				break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:								info->disassemble = t90_dasm;		break;
 #endif
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:						info->icount = &t90_ICount;			break;

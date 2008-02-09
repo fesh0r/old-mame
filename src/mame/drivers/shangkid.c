@@ -49,6 +49,7 @@ Games by Nihon Game/Culture Brain:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
@@ -79,18 +80,18 @@ static WRITE8_HANDLER( shangkid_maincpu_bank_w )
 
 static WRITE8_HANDLER( shangkid_bbx_enable_w )
 {
-	cpunum_set_input_line(1, INPUT_LINE_HALT, data?0:1 );
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, data?0:1 );
 }
 
 static WRITE8_HANDLER( shangkid_cpu_reset_w )
 {
 	if( data == 0 )
 	{
-		cpunum_set_input_line(1, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 	}
 	else if( data == 1 )
 	{
-		cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(Machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 	}
 }
 
@@ -114,7 +115,7 @@ static WRITE8_HANDLER( chinhero_bbx_AY8910_write_w )
 		{
 			if( data == 0x01 )
 				/* 0->1 transition triggers interrupt on Sound CPU */
-				cpunum_set_input_line( 2, 0, HOLD_LINE );
+				cpunum_set_input_line(Machine, 2, 0, HOLD_LINE );
 		}
 		break;
 
@@ -137,7 +138,7 @@ static WRITE8_HANDLER( shangkid_bbx_AY8910_write_w )
 		{
 			if( data == 0x01 )
 				/* 0->1 transition triggers interrupt on Sound CPU */
-				cpunum_set_input_line( 2, 0, HOLD_LINE );
+				cpunum_set_input_line(Machine, 2, 0, HOLD_LINE );
 		}
 		else
 			memory_set_bank(2, data ? 0 : 1);
@@ -180,12 +181,12 @@ static DRIVER_INIT( shangkid )
 
 static MACHINE_RESET( chinhero )
 {
-	cpunum_set_input_line(1, INPUT_LINE_HALT, 1 );
+	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, 1 );
 }
 
 static MACHINE_RESET( shangkid )
 {
-	cpunum_set_input_line(1, INPUT_LINE_HALT, 1 );
+	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, 1 );
 
 	memory_set_bank(1, 0);
 	memory_set_bank(2, 0);
@@ -384,16 +385,16 @@ ADDRESS_MAP_END
 static MACHINE_DRIVER_START( chinhero )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", Z80, 3000000) /* ? */
+	MDRV_CPU_ADD_TAG("main", Z80, XTAL_18_432MHz/6) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(chinhero_main_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD_TAG("bbx", Z80, 3000000) /* ? */
+	MDRV_CPU_ADD_TAG("bbx", Z80, XTAL_18_432MHz/6) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(chinhero_bbx_map,0)
 	MDRV_CPU_IO_MAP(chinhero_bbx_portmap,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD_TAG("audio", Z80, 3000000) /* ? */
+	MDRV_CPU_ADD_TAG("audio", Z80, XTAL_18_432MHz/6) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(chinhero_sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 
@@ -421,7 +422,7 @@ static MACHINE_DRIVER_START( chinhero )
 	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD(AY8910, XTAL_18_432MHz/12) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 MACHINE_DRIVER_END
 

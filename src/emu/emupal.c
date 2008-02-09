@@ -4,13 +4,13 @@
 
     Emulator palette handling functions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ******************************************************************************/
 
 #include "driver.h"
-#include <math.h>
+#include "deprecat.h"
 
 #define VERBOSE 0
 
@@ -325,9 +325,8 @@ void palette_set_shadow_dRGB32(running_machine *machine, int mode, int dr, int d
 	stable->db = db;
 	stable->noclip = noclip;
 
-	#if VERBOSE
+	if (VERBOSE)
 		popmessage("shadow %d recalc %d %d %d %02x", mode, dr, dg, db, noclip);
-	#endif
 
 	/* regenerate the table */
 	for (i = 0; i < 32768; i++)
@@ -624,9 +623,9 @@ static void allocate_palette(running_machine *machine, palette_private *palette)
 
 	/* configure the groups */
 	if (palette->shadow_group != 0)
-		palette_group_set_contrast(machine->palette, palette->shadow_group, PALETTE_DEFAULT_SHADOW_FACTOR);
+		palette_group_set_contrast(machine->palette, palette->shadow_group, (float)PALETTE_DEFAULT_SHADOW_FACTOR);
 	if (palette->hilight_group != 0)
-		palette_group_set_contrast(machine->palette, palette->hilight_group, PALETTE_DEFAULT_HIGHLIGHT_FACTOR);
+		palette_group_set_contrast(machine->palette, palette->hilight_group, (float)PALETTE_DEFAULT_HIGHLIGHT_FACTOR);
 
 	/* set the initial colors to a standard rainbow */
 	for (index = 0; index < machine->drv->total_colors; index++)
@@ -727,7 +726,7 @@ static void allocate_shadow_tables(running_machine *machine, palette_private *pa
 		{
 			palette->shadow_table[0].base = table;
 			palette->shadow_table[2].base = table + 32768;
-			configure_rgb_shadows(machine, 0, PALETTE_DEFAULT_SHADOW_FACTOR);
+			configure_rgb_shadows(machine, 0, (float)PALETTE_DEFAULT_SHADOW_FACTOR);
 		}
 	}
 
@@ -750,7 +749,7 @@ static void allocate_shadow_tables(running_machine *machine, palette_private *pa
 		{
 			palette->shadow_table[1].base = table;
 			palette->shadow_table[3].base = table + 32768;
-			configure_rgb_shadows(machine, 1, PALETTE_DEFAULT_HIGHLIGHT_FACTOR);
+			configure_rgb_shadows(machine, 1, (float)PALETTE_DEFAULT_HIGHLIGHT_FACTOR);
 		}
 	}
 
@@ -774,10 +773,6 @@ static void configure_rgb_shadows(running_machine *machine, int mode, float fact
 	/* only applies to RGB direct modes */
 	assert(palette->format != BITMAP_FORMAT_INDEXED16);
 	assert(stable->base != NULL);
-
-	#if VERBOSE
-		popmessage("shadow %d recalc %d %d %d %02x", mode, dr, dg, db, noclip);
-	#endif
 
 	/* regenerate the table */
 	for (i = 0; i < 32768; i++)

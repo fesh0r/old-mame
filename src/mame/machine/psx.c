@@ -6,14 +6,14 @@
 
 ***************************************************************************/
 
-#include <stdarg.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/mips/psx.h"
 #include "includes/psx.h"
 
 #define VERBOSE_LEVEL ( 0 )
 
-INLINE void verboselog( int n_level, const char *s_fmt, ... )
+INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
 {
 	if( VERBOSE_LEVEL >= n_level )
 	{
@@ -70,12 +70,12 @@ static void psx_irq_update( void )
 	if( ( m_n_irqdata & m_n_irqmask ) != 0 )
 	{
 		verboselog( 2, "psx irq assert\n" );
-		cpunum_set_input_line( 0, MIPS_IRQ0, ASSERT_LINE );
+		cpunum_set_input_line(Machine, 0, MIPS_IRQ0, ASSERT_LINE );
 	}
 	else
 	{
 		verboselog( 2, "psx irq clear\n" );
-		cpunum_set_input_line( 0, MIPS_IRQ0, CLEAR_LINE );
+		cpunum_set_input_line(Machine, 0, MIPS_IRQ0, CLEAR_LINE );
 	}
 }
 
@@ -471,7 +471,7 @@ static emu_timer *m_p_timer_root[ 3 ];
 static UINT16 m_p_n_root_count[ 3 ];
 static UINT16 m_p_n_root_mode[ 3 ];
 static UINT16 m_p_n_root_target[ 3 ];
-static UINT32 m_p_n_root_start[ 3 ];
+static UINT64 m_p_n_root_start[ 3 ];
 
 #define RC_STOP ( 0x01 )
 #define RC_RESET ( 0x04 ) /* guess */
@@ -482,7 +482,7 @@ static UINT32 m_p_n_root_start[ 3 ];
 #define RC_CLC ( 0x100 )
 #define RC_DIV ( 0x200 )
 
-static UINT32 psxcpu_gettotalcycles( void )
+static UINT64 psxcpu_gettotalcycles( void )
 {
 	/* TODO: should return the start of the current tick. */
 	return cpunum_gettotalcycles(0) * 2;
@@ -514,7 +514,7 @@ static UINT16 root_current( int n_counter )
 	}
 	else
 	{
-		UINT32 n_current;
+		UINT64 n_current;
 		n_current = psxcpu_gettotalcycles() - m_p_n_root_start[ n_counter ];
 		n_current /= root_divider( n_counter );
 		n_current += m_p_n_root_count[ n_counter ];
@@ -726,7 +726,7 @@ static void sio_timer_adjust( int n_port )
 		if( m_p_n_sio_baud[ n_port ] != 0 && n_prescaler != 0 )
 		{
 			n_time = attotime_mul(ATTOTIME_IN_HZ(33868800), n_prescaler * m_p_n_sio_baud[n_port]);
-			verboselog( 2, "sio_timer_adjust( %d ) = %f ( %d x %d )\n", n_port, n_time, n_prescaler, m_p_n_sio_baud[ n_port ] );
+			verboselog( 2, "sio_timer_adjust( %d ) = %s ( %d x %d )\n", n_port, attotime_string(n_time, 9), n_prescaler, m_p_n_sio_baud[ n_port ] );
 		}
 		else
 		{

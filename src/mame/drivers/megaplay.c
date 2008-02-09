@@ -40,6 +40,7 @@ Only a handful of games were released for this system.
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "genesis.h"
 #include "megadriv.h"
 
@@ -94,7 +95,7 @@ static INTERRUPT_GEN (megaplay_bios_irq)
 			segae_hintpending = 1;
 
 			if  ((segae_vdp_regs[0][0] & 0x10)) {
-				cpunum_set_input_line(2, 0, HOLD_LINE);
+				cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
 				return;
 			}
 
@@ -107,7 +108,7 @@ static INTERRUPT_GEN (megaplay_bios_irq)
 		hintcount = segae_vdp_regs[0][10];
 
 		if ( (sline<0xe0) && (segae_vintpending) ) {
-			cpunum_set_input_line(2, 0, HOLD_LINE);
+			cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
 		}
 	}
 
@@ -464,7 +465,7 @@ static READ8_HANDLER( bank_r )
 	UINT8* game = memory_region(REGION_CPU1);
 
 	if(game_banksel == 0x142) // Genesis I/O
-		return megaplay_genesis_io_r((offset/2) & 0x1f, 0xffff);
+		return megaplay_genesis_io_r((offset & 0x1f) / 2, 0xffff);
 
 	if(bios_mode & MP_ROM)
 	{
@@ -497,7 +498,7 @@ static READ8_HANDLER( bank_r )
 static WRITE8_HANDLER ( bank_w )
 {
 	if(game_banksel == 0x142) // Genesis I/O
-		genesis_io_w((offset/2) & 0x1f, data, 0xffff);
+		genesis_io_w((offset & 0x1f) / 2, data, 0xffff);
 
 	if(offset <= 0x1fff && (bios_width & 0x08))
 		ic37_ram[(0x2000 * (bios_bank & 0x03)) + offset] = data;
@@ -531,7 +532,7 @@ static READ8_HANDLER( megaplay_bios_6404_r )
 static WRITE8_HANDLER( megaplay_bios_6404_w )
 {
 	if(((bios_6404 & 0x0c) == 0x00) && ((data & 0x0c) == 0x0c))
-		cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(Machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 	bios_6404 = data;
 
 //  logerror("BIOS: 0x6404 write: 0x%02x\n",data);
@@ -665,25 +666,25 @@ ADDRESS_MAP_END
 
 
 /* in video/segasyse.c */
-void megaplay_start_video_normal(running_machine *machine);
-void megaplay_update_video_normal(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect );
+VIDEO_START( megaplay_normal );
+VIDEO_UPDATE( megaplay_normal );
 
 /* give us access to the megadriv start and update functions so that we can call them */
-extern UINT32 video_update_megadriv(running_machine *machine, int screen, mame_bitmap *bitmap, const rectangle *cliprect);
-extern void video_start_megadriv(running_machine *machine);
+VIDEO_START( megadriv );
+VIDEO_UPDATE( megadriv );
 
 static VIDEO_START(megplay)
 {
 	//printf("megplay vs\n");
-	video_start_megadriv(Machine);
-	megaplay_start_video_normal(Machine);
+	VIDEO_START_CALL(megadriv);
+	VIDEO_START_CALL(megaplay_normal);
 }
 
 static VIDEO_UPDATE(megplay)
 {
 	//printf("megplay vu\n");
-	video_update_megadriv(machine,0,bitmap,cliprect);
-	megaplay_update_video_normal(machine, bitmap,cliprect);
+	VIDEO_UPDATE_CALL(megadriv);
+	VIDEO_UPDATE_CALL(megaplay_normal);
 	return 0;
 }
 
@@ -1010,7 +1011,7 @@ static DRIVER_INIT (megaplay)
 	ic37_ram = auto_malloc(0x10000);
 	genesis_io_ram = auto_malloc(0x20);
 
-	driver_init_megadrij(machine);
+	DRIVER_INIT_CALL(megadrij);
 	megplay_stat();
 
 	/* for now ... */

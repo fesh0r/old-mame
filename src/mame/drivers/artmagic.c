@@ -16,6 +16,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/tms34010/tms34010.h"
 #include "video/tlc34076.h"
 #include "artmagic.h"
@@ -38,7 +39,7 @@ static UINT8 prot_output_bit;
 static UINT8 prot_bit_index;
 static UINT16 prot_save;
 
-static void (*protection_handler)(void);
+static void (*protection_handler)(running_machine *);
 
 
 
@@ -48,7 +49,7 @@ static void (*protection_handler)(void);
  *
  *************************************/
 
-static void update_irq_state(void)
+static void update_irq_state(running_machine *machine)
 {
 	int irq_lines = 0;
 
@@ -58,16 +59,16 @@ static void update_irq_state(void)
 		irq_lines |= 5;
 
 	if (irq_lines)
-		cpunum_set_input_line(0, irq_lines, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, irq_lines, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
 static void m68k_gen_int(int state)
 {
 	tms_irq = state;
-	update_irq_state();
+	update_irq_state(Machine);
 }
 
 
@@ -81,7 +82,7 @@ static void m68k_gen_int(int state)
 static MACHINE_RESET( artmagic )
 {
 	tms_irq = hack_irq = 0;
-	update_irq_state();
+	update_irq_state(machine);
 	tlc34076_reset(6);
 }
 
@@ -137,9 +138,9 @@ static READ16_HANDLER( ultennis_hack_r )
 	if (activecpu_get_pc() == 0x18c2)
 	{
 		hack_irq = 1;
-		update_irq_state();
+		update_irq_state(Machine);
 		hack_irq = 0;
-		update_irq_state();
+		update_irq_state(Machine);
 	}
 	return readinputport(0);
 }
@@ -152,14 +153,14 @@ static READ16_HANDLER( ultennis_hack_r )
  *
  *************************************/
 
-static void ultennis_protection(void)
+static void ultennis_protection(running_machine *machine)
 {
 	/* check the command byte */
 	switch (prot_input[0])
 	{
 		case 0x00:	/* reset */
 			prot_input_index = prot_output_index = 0;
-			prot_output[0] = mame_rand(Machine);
+			prot_output[0] = mame_rand(machine);
 			break;
 
 		case 0x01:	/* 01 aaaa bbbb cccc dddd (xxxx) */
@@ -242,14 +243,14 @@ static void ultennis_protection(void)
 }
 
 
-static void cheesech_protection(void)
+static void cheesech_protection(running_machine *machine)
 {
 	/* check the command byte */
 	switch (prot_input[0])
 	{
 		case 0x00:	/* reset */
 			prot_input_index = prot_output_index = 0;
-			prot_output[0] = mame_rand(Machine);
+			prot_output[0] = mame_rand(machine);
 			break;
 
 		case 0x01:	/* 01 aaaa bbbb (xxxx) */
@@ -302,7 +303,7 @@ static void cheesech_protection(void)
 }
 
 
-static void stonebal_protection(void)
+static void stonebal_protection(running_machine *machine)
 {
 	/* check the command byte */
 	switch (prot_input[0])
@@ -394,7 +395,7 @@ static WRITE16_HANDLER( protection_bit_w )
 		prot_bit_index = 0;
 
 		/* update the protection state */
-		(*protection_handler)();
+		(*protection_handler)(Machine);
 	}
 }
 
@@ -723,7 +724,7 @@ static MACHINE_DRIVER_START( artmagic )
 	MDRV_CPU_ADD_TAG("main", M68000, MASTER_CLOCK_25MHz/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_CPU_ADD_TAG("tms", TMS34010, MASTER_CLOCK_40MHz/TMS34010_CLOCK_DIVIDER)
+	MDRV_CPU_ADD_TAG("tms", TMS34010, MASTER_CLOCK_40MHz)
 	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(tms_map,0)
 
@@ -733,14 +734,12 @@ static MACHINE_DRIVER_START( artmagic )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_PALETTE_LENGTH(256)
-
-	MDRV_SCREEN_ADD("main", 0)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK_40MHz/6, 428, 0, 320, 313, 0, 256)
-
 	MDRV_VIDEO_START(artmagic)
 	MDRV_VIDEO_UPDATE(tms340x0)
+
+	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK_40MHz/6, 428, 0, 320, 313, 0, 256)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

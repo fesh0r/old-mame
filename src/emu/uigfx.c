@@ -4,7 +4,7 @@
 
     Internal graphics viewer.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -14,6 +14,7 @@
 #include "rendfont.h"
 #include "rendutil.h"
 #include "uigfx.h"
+#include "deprecat.h"
 
 
 
@@ -149,7 +150,7 @@ static void ui_gfx_exit(running_machine *machine)
     ui_gfx_ui_handler - primary UI handler
 -------------------------------------------------*/
 
-UINT32 ui_gfx_ui_handler(UINT32 uistate)
+UINT32 ui_gfx_ui_handler(running_machine *machine, UINT32 uistate)
 {
 	ui_gfx_state *state = &ui_gfx;
 

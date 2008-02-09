@@ -3,7 +3,7 @@
  *   tms7000.c
  *   Portable TMS7000 emulator (Texas Instruments 7000)
  *
- *   Copyright (c) 2001 tim lindner, all rights reserved.
+ *   Copyright tim lindner, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -31,14 +31,11 @@
 #include "cpuintrf.h"
 #include "debugger.h"
 #include "tms7000.h"
+#include "deprecat.h"
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 /* Private prototypes */
 
@@ -293,6 +290,7 @@ void tms7000_get_info(UINT32 state, cpuinfo *info)
         case CPUINFO_INT_INPUT_LINES:	info->i = 3;	break;
         case CPUINFO_INT_DEFAULT_IRQ_VECTOR:	info->i = 0;	break;
         case CPUINFO_INT_ENDIANNESS:	info->i = CPU_IS_BE;	break;
+        case CPUINFO_INT_CLOCK_MULTIPLIER:	info->i = 1;	break;
         case CPUINFO_INT_CLOCK_DIVIDER:	info->i = 1;	break;
         case CPUINFO_INT_MIN_INSTRUCTION_BYTES:	info->i = 1;	break;
         case CPUINFO_INT_MAX_INSTRUCTION_BYTES:	info->i = 4;	break;
@@ -333,7 +331,7 @@ void tms7000_get_info(UINT32 state, cpuinfo *info)
         case CPUINFO_PTR_RESET:	info->reset = tms7000_reset;	break;
         case CPUINFO_PTR_EXECUTE:	info->execute = tms7000_execute;	break;
         case CPUINFO_PTR_BURN:	info->burn = NULL;	/* Not supported */break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
         case CPUINFO_PTR_DISASSEMBLE:	info->disassemble = tms7000_dasm;	break;
 #endif
         case CPUINFO_PTR_INSTRUCTION_COUNTER:	info->icount = &tms7000_icount;	break;
@@ -344,7 +342,7 @@ void tms7000_get_info(UINT32 state, cpuinfo *info)
         case CPUINFO_STR_CORE_FAMILY:	strcpy(info->s = cpuintrf_temp_str(), "Texas Instriuments TMS7000"); break;
         case CPUINFO_STR_CORE_VERSION:	strcpy(info->s = cpuintrf_temp_str(), "1.0"); break;
         case CPUINFO_STR_CORE_FILE:	strcpy(info->s = cpuintrf_temp_str(), __FILE__); break;
-        case CPUINFO_STR_CORE_CREDITS:	strcpy(info->s = cpuintrf_temp_str(), "Copyright (C) tim lindner 2003"); break;
+        case CPUINFO_STR_CORE_CREDITS:	strcpy(info->s = cpuintrf_temp_str(), "Copyright tim lindner"); break;
 
         case CPUINFO_STR_FLAGS:
                 sprintf(info->s = cpuintrf_temp_str(),  "%c%c%c%c%c%c%c%c",
@@ -473,7 +471,7 @@ static int tms7000_execute(int cycles)
 
 	do
 	{
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(pPC);
 
 		if( tms7000.idle_state == 0 )
 		{
@@ -512,7 +510,7 @@ static int tms7000_exl_execute(int cycles)
 
 	do
 	{
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(pPC);
 
 		if( tms7000.idle_state == 0 )
 		{
@@ -564,9 +562,9 @@ static void tms7000_service_timer1( void )
         if( --tms7000.t1_decrementer < 0 ) /* Decrement timer1 register and check for underflow */
         {
             tms7000.t1_decrementer = tms7000.pf[2]; /* Reload decrementer (8 bit) */
-			cpunum_set_input_line( cpu_getactivecpu(), TMS7000_IRQ2_LINE, HOLD_LINE);
-            LOG( ("tms7000: trigger int2 (cycles: %d)\t%d\tdelta %d\n", activecpu_gettotalcycles(), activecpu_gettotalcycles() - tick, tms7000_cycles_per_INT2-(activecpu_gettotalcycles() - tick) );
-			tick = activecpu_gettotalcycles() );
+			cpunum_set_input_line(Machine, cpu_getactivecpu(), TMS7000_IRQ2_LINE, HOLD_LINE);
+            //LOG( ("tms7000: trigger int2 (cycles: %d)\t%d\tdelta %d\n", activecpu_gettotalcycles(), activecpu_gettotalcycles() - tick, tms7000_cycles_per_INT2-(activecpu_gettotalcycles() - tick) );
+			//tick = activecpu_gettotalcycles() );
             /* Also, cascade out to timer 2 - timer 2 unimplemented */
         }
     }

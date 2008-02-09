@@ -4,7 +4,7 @@
 #
 #   Windows-specific makefile
 #
-#   Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+#   Copyright Nicola Salmoria and the MAME Team.
 #   Visit http://mamedev.org for licensing and usage restrictions.
 #
 ###########################################################################
@@ -39,6 +39,19 @@
 ###########################################################################
 ##################   END USER-CONFIGURABLE OPTIONS   ######################
 ###########################################################################
+
+
+#-------------------------------------------------
+# overrides
+#-------------------------------------------------
+
+# turn on unicode for all 64-bit builds regardless
+ifndef UNICODE
+ifdef PTR64
+UNICODE = 1
+endif
+endif
+
 
 
 #-------------------------------------------------
@@ -111,6 +124,11 @@ ifdef PTR64
 CC += /wd4267
 endif
 
+# explicitly set the entry point for UNICODE builds
+ifdef UNICODE
+LD += /ENTRY:wmainCRTStartup
+endif
+
 # add some VC++-specific defines
 DEFS += -D_CRT_SECURE_NO_DEPRECATE -DXML_STATIC -D__inline__=__inline -Dsnprintf=_snprintf
 
@@ -122,11 +140,7 @@ BUILD += $(VCONV)
 
 $(VCONV): $(WINOBJ)/vconv.o
 	@echo Linking $@...
-ifdef PTR64
-	@link.exe /nologo $^ version.lib bufferoverflowu.lib /out:$@
-else
 	@link.exe /nologo $^ version.lib /out:$@
-endif
 
 $(WINOBJ)/vconv.o: $(WINSRC)/vconv.c
 	@echo Compiling $<...
@@ -235,7 +249,7 @@ $(WINOBJ)/drawdd.o : 	$(SRC)/emu/rendersw.c
 $(WINOBJ)/drawgdi.o :	$(SRC)/emu/rendersw.c
 
 # add debug-specific files
-ifdef DEBUG
+ifdef DEBUGGER
 OSDOBJS += \
 	$(WINOBJ)/debugwin.o
 endif
@@ -259,11 +273,15 @@ $(LIBOSD): $(OSDOBJS)
 # rule for making the ledutil sample
 #-------------------------------------------------
 
-ledutil$(EXE): $(WINOBJ)/ledutil.o $(LIBOCORE)
+LEDUTIL = ledutil$(EXE)
+TOOLS += $(LEDUTIL)
+
+LEDUTILOBJS = \
+	$(WINOBJ)/ledutil.o
+
+$(LEDUTIL): $(LEDUTILOBJS) $(LIBOCORE)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
-
-TOOLS += ledutil$(EXE)
 
 
 
@@ -273,11 +291,16 @@ TOOLS += ledutil$(EXE)
 
 VERINFO = $(WINOBJ)/verinfo$(EXE)
 
-$(VERINFO): $(WINOBJ)/verinfo.o $(LIBOCORE)
+ifneq ($(CROSS_BUILD),1)
+BUILD += $(VERINFO)
+
+VERINFOOBJS = \
+	$(WINOBJ)/verinfo.o
+
+$(VERINFO): $(VERINFOOBJS) $(LIBOCORE)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
-
-BUILD += $(VERINFO)
+endif
 
 
 

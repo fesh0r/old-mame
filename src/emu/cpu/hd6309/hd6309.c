@@ -1,7 +1,7 @@
 /*** hd6309: Portable 6309 emulator ******************************************
 
-    Copyright (C) John Butler 1997
-    Copyright (C) Tim Lindner 2000
+    Copyright John Butler
+    Copyright Tim Lindner
 
     References:
 
@@ -103,15 +103,12 @@
 *****************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "hd6309.h"
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 #ifndef true
 #define true 1
@@ -121,7 +118,7 @@
 #define false 0
 #endif
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern offs_t hd6309_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 
@@ -571,7 +568,7 @@ static void set_irq_line(int irqline, int state)
 	{
 		if (hd6309.nmi_state == state) return;
 		hd6309.nmi_state = state;
-		LOG(("HD6309#%d set_irq_line (NMI) %d (PC=%4.4X)\n", cpu_getactivecpu(), state, pPC));
+		LOG(("HD6309#%d set_irq_line (NMI) %d (PC=%4.4X)\n", cpu_getactivecpu(), state, pPC.d));
 		if( state == CLEAR_LINE ) return;
 
 		/* if the stack was not yet initialized */
@@ -610,7 +607,7 @@ static void set_irq_line(int irqline, int state)
 	}
 	else if (irqline < 2)
 	{
-		LOG(("HD6309#%d set_irq_line %d, %d (PC=%4.4X)\n", cpu_getactivecpu(), irqline, state, pPC));
+		LOG(("HD6309#%d set_irq_line %d, %d (PC=%4.4X)\n", cpu_getactivecpu(), irqline, state, pPC.d));
 		hd6309.irq_state[irqline] = state;
 		if (state == CLEAR_LINE) return;
 		CHECK_IRQ_LINES();
@@ -628,7 +625,7 @@ static int hd6309_execute(int cycles)	/* NS 970908 */
 
 	if (hd6309.int_state & (HD6309_CWAI | HD6309_SYNC))
 	{
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PCD);
 		hd6309_ICount = 0;
 	}
 	else
@@ -637,7 +634,7 @@ static int hd6309_execute(int cycles)	/* NS 970908 */
 		{
 			pPPC = pPC;
 
-			CALL_MAME_DEBUG;
+			CALL_DEBUGGER(PCD);
 
 			hd6309.ireg = ROP(PCD);
 			PC++;
@@ -1247,7 +1244,8 @@ void hd6309_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 2;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
-		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
+		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 4;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 5;							break;
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1;							break;
@@ -1294,9 +1292,9 @@ void hd6309_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = hd6309_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = hd6309_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = hd6309_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &hd6309_ICount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1304,7 +1302,7 @@ void hd6309_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Hitachi 6309");		break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.01");				break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) John Butler 1997 and Tim Lindner 2000"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright John Butler and Tim Lindner"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c (MD:%c%c%c%c)",

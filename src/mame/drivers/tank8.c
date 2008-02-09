@@ -5,6 +5,7 @@ Atari Tank 8 driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "tank8.h"
 #include "sound/discrete.h"
 
@@ -13,7 +14,7 @@ static int collision_index;
 
 void tank8_set_collision(int index)
 {
-	cpunum_set_input_line(0, 0, ASSERT_LINE);
+	cpunum_set_input_line(Machine, 0, 0, ASSERT_LINE);
 
 	collision_index = index;
 }
@@ -95,7 +96,7 @@ static WRITE8_HANDLER( tank8_int_reset_w )
 {
 	collision_index &= ~0x3f;
 
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( tank8_crash_w )
@@ -537,8 +538,8 @@ static DRIVER_INIT( decode )
 }
 
 
- GAME( 1976, tank8,  0,     tank8, tank8, 0,	  ROT0, "Atari", "Tank 8 (set 1)", 0)
-GAME( 1976, tank8a, tank8, tank8, tank8, decode, ROT0, "Atari", "Tank 8 (set 2)",  GAME_NOT_WORKING )
-GAME( 1976, tank8b, tank8, tank8, tank8, decode, ROT0, "Atari", "Tank 8 (set 3)",  GAME_NOT_WORKING )
-GAME( 1976, tank8c, tank8, tank8, tank8, 0,      ROT0, "Atari", "Tank 8 (set 4)",  GAME_NOT_WORKING )
-GAME( 1976, tank8d, tank8, tank8, tank8, 0,      ROT0, "Atari", "Tank 8 (set 5)",  GAME_NOT_WORKING )
+GAME( 1976, tank8,    0,        tank8,    tank8,    0,	      ROT0, "Atari", "Tank 8 (set 1)", 0)
+GAME( 1976, tank8a,   tank8,    tank8,    tank8,    decode,   ROT0, "Atari", "Tank 8 (set 2)",  GAME_NOT_WORKING )
+GAME( 1976, tank8b,   tank8,    tank8,    tank8,    decode,   ROT0, "Atari", "Tank 8 (set 3)",  GAME_NOT_WORKING )
+GAME( 1976, tank8c,   tank8,    tank8,    tank8,    0,        ROT0, "Atari", "Tank 8 (set 4)",  GAME_NOT_WORKING )
+GAME( 1976, tank8d,   tank8,    tank8,    tank8,    0,        ROT0, "Atari", "Tank 8 (set 5)",  GAME_NOT_WORKING )

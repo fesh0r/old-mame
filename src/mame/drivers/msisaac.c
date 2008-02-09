@@ -6,8 +6,8 @@
 
 ****************************************************************************/
 
-#include <math.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
@@ -63,7 +63,7 @@ static int sound_nmi_enable,pending_nmi;
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	if (sound_nmi_enable) cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+	if (sound_nmi_enable) cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 	else pending_nmi = 1;
 }
 
@@ -83,7 +83,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{
-		cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+		cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -538,7 +538,7 @@ static MACHINE_DRIVER_START( msisaac )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)	/* source of IRQs is unknown */
 
 #ifdef USE_MCU
-	MDRV_CPU_ADD(M68705,8000000/2/M68705_CLOCK_DIVIDER)  /* 4 MHz */
+	MDRV_CPU_ADD(M68705,8000000/2)  /* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(mcu_readmem,mcu_writemem)
 #endif
 

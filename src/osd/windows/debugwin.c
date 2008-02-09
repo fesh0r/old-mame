@@ -2,7 +2,7 @@
 //
 //  debugwin.c - Win32 debug window handling
 //
-//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+//  Copyright Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -21,11 +21,13 @@
 #include "debug/debugvw.h"
 #include "debug/debugcon.h"
 #include "debug/debugcpu.h"
+#include "deprecat.h"
 
 // MAMEOS headers
 #include "debugwin.h"
 #include "window.h"
 #include "video.h"
+#include "input.h"
 #include "config.h"
 #include "strconv.h"
 #include "winutf8.h"
@@ -132,6 +134,7 @@ struct _debugwin_info
 	UINT32					minwidth, maxwidth;
 	UINT32					minheight, maxheight;
 	void					(*recompute_children)(debugwin_info *);
+	void					(*update_menu)(debugwin_info *);
 
 	int						(*handle_command)(debugwin_info *, WPARAM, LPARAM);
 	int						(*handle_key)(debugwin_info *, WPARAM, LPARAM);
@@ -155,7 +158,7 @@ typedef struct _memorycombo_item memorycombo_item;
 struct _memorycombo_item
 {
 	memorycombo_item *		next;
-	char					name[256];
+	TCHAR					name[256];
 	UINT8					cpunum;
 	UINT8					spacenum;
 	void *					base;
@@ -220,14 +223,14 @@ static void generic_recompute_children(debugwin_info *info);
 static void memory_create_window(void);
 static void memory_recompute_children(debugwin_info *info);
 static void memory_process_string(debugwin_info *info, const char *string);
-static void memory_update_checkmarks(debugwin_info *info);
+static void memory_update_menu(debugwin_info *info);
 static int memory_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lparam);
 static int memory_handle_key(debugwin_info *info, WPARAM wparam, LPARAM lparam);
 
 static void disasm_create_window(void);
 static void disasm_recompute_children(debugwin_info *info);
 static void disasm_process_string(debugwin_info *info, const char *string);
-static void disasm_update_checkmarks(debugwin_info *info);
+static void disasm_update_menu(debugwin_info *info);
 static int disasm_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lparam);
 static int disasm_handle_key(debugwin_info *info, WPARAM wparam, LPARAM lparam);
 static void disasm_update_caption(HWND wnd);
@@ -266,6 +269,9 @@ void osd_wait_for_debugger(void)
 	waiting_for_debugger = TRUE;
 	smart_show_all(TRUE);
 
+	// run input polling to ensure that our status is in sync
+	wininput_poll();
+
 	// get and process messages
 	GetMessage(&message, NULL, 0, 0);
 	last_debugger_update = GetTickCount();
@@ -275,8 +281,10 @@ void osd_wait_for_debugger(void)
 		// check for F10 -- we need to capture that ourselves
 		case WM_SYSKEYDOWN:
 		case WM_SYSKEYUP:
+			if (message.wParam == VK_F4 && message.message == WM_SYSKEYDOWN)
+				SendMessage(GetAncestor(GetFocus(), GA_ROOT), WM_CLOSE, 0, 0);
 			if (message.wParam == VK_F10)
-				SendMessage(GetFocus(), (message.message == WM_SYSKEYDOWN) ? WM_KEYDOWN : WM_KEYUP, message.wParam, message.lParam);
+				SendMessage(GetAncestor(GetFocus(), GA_ROOT), (message.message == WM_SYSKEYDOWN) ? WM_KEYDOWN : WM_KEYUP, message.wParam, message.lParam);
 			break;
 
 		// process everything else
@@ -634,29 +642,23 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 
 		// keydown: handle debugger keys
 		case WM_KEYDOWN:
-		{
 			if ((*info->handle_key)(info, wparam, lparam))
 				info->ignore_char_lparam = lparam >> 16;
 			break;
-		}
 
 		// char: ignore chars associated with keys we've handled
 		case WM_CHAR:
-		{
 			if (info->ignore_char_lparam != (lparam >> 16))
 				return DefWindowProc(wnd, message, wparam, lparam);
 			else
 				info->ignore_char_lparam = 0;
 			break;
-		}
 
 		// activate: set the focus
 		case WM_ACTIVATE:
-		{
 			if (wparam != WA_INACTIVE && info->focuswnd != NULL)
 				SetFocus(info->focuswnd);
 			break;
-		}
 
 		// get min/max info: set the minimum window size
 		case WM_GETMINMAXINFO:
@@ -674,12 +676,10 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 
 		// sizing: recompute child window locations
 		case WM_SIZING:
-		{
 			if (info->recompute_children)
 				(*info->recompute_children)(info);
 			InvalidateRect(wnd, NULL, FALSE);
 			break;
-		}
 
 		// mouse wheel: forward to the first view
 		case WM_MOUSEWHEEL:
@@ -719,6 +719,12 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 			}
 			break;
 		}
+
+		// activate: set the focus
+		case WM_INITMENU:
+			if (info->update_menu != NULL)
+				(*info->update_menu)(info);
+			break;
 
 		// command: handle a comment
 		case WM_COMMAND:
@@ -1717,6 +1723,7 @@ static void memory_determine_combo_items(void)
 	memorycombo_item **tail = &memorycombo;
 	UINT32 cpunum, spacenum;
 	int rgnnum, itemnum;
+	TCHAR *t_cpunum_name, *t_address_space_names;
 
 	// first add all the CPUs' address spaces
 	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
@@ -1731,7 +1738,13 @@ static void memory_determine_combo_items(void)
 					ci->cpunum = cpunum;
 					ci->spacenum = spacenum;
 					ci->prefsize = MIN(cpuinfo->space[spacenum].databytes, 8);
-					sprintf(ci->name, "CPU #%d (%s) %s memory", cpunum, cpunum_name(cpunum), address_space_names[spacenum]);
+					t_cpunum_name = tstring_from_utf8(cpunum_name(cpunum));
+					t_address_space_names = tstring_from_utf8(address_space_names[spacenum]);
+					_sntprintf(ci->name, ARRAY_LENGTH(ci->name), TEXT("CPU #%d (%s) %s memory"), cpunum, t_cpunum_name, t_address_space_names);
+					free(t_address_space_names),
+					t_address_space_names = NULL;
+					free(t_cpunum_name);
+					t_cpunum_name = NULL;
 					*tail = ci;
 					tail = &ci->next;
 				}
@@ -1740,6 +1753,7 @@ static void memory_determine_combo_items(void)
 	// then add all the memory regions
 	for (rgnnum = 0; rgnnum < MAX_MEMORY_REGIONS; rgnnum++)
 	{
+		TCHAR* t_memory_region_name;
 		UINT8 *base = memory_region(rgnnum);
 		UINT32 type = memory_region_type(Machine, rgnnum);
 		if (base != NULL && type > REGION_INVALID && (type - REGION_INVALID) < ARRAY_LENGTH(memory_region_names))
@@ -1764,7 +1778,10 @@ static void memory_determine_combo_items(void)
 			ci->prefsize = MIN(width, 8);
 			ci->offset_xor = width - 1;
 			ci->little_endian = little_endian;
-			strcpy(ci->name, memory_region_names[type - REGION_INVALID]);
+			t_memory_region_name = tstring_from_utf8(memory_region_names[type - REGION_INVALID]);
+			_tcscpy(ci->name, t_memory_region_name);
+			free(t_memory_region_name);
+			t_memory_region_name = NULL;
 			*tail = ci;
 			tail = &ci->next;
 		}
@@ -1776,6 +1793,7 @@ static void memory_determine_combo_items(void)
 		UINT32 valsize, valcount;
 		const char *name;
 		void *base;
+		TCHAR* t_name;
 
 		/* stop when we run out of items */
 		name = state_save_get_indexed_item(itemnum, &base, &valsize, &valcount);
@@ -1791,7 +1809,10 @@ static void memory_determine_combo_items(void)
 			ci->length = valcount * valsize;
 			ci->prefsize = MIN(valsize, 8);
 			ci->little_endian = TRUE;
-			strcpy(ci->name, strrchr(name, '/') + 1);
+			t_name = tstring_from_utf8(name);
+			_tcscpy(ci->name, _tcsrchr(t_name, TEXT('/')) + 1);
+			free(t_name);
+			t_name = NULL;
 			*tail = ci;
 			tail = &ci->next;
 		}
@@ -1812,7 +1833,7 @@ static void memory_update_selection(debugwin_info *info, memorycombo_item *ci)
 	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_RAW_OFFSET_XOR, ci->offset_xor);
 	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_RAW_LITTLE_ENDIAN, ci->little_endian);
 	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, ci->prefsize);
-	win_set_window_text_utf8(info->wnd, ci->name);
+	SetWindowText(info->wnd, ci->name);
 }
 
 
@@ -1835,6 +1856,7 @@ static void memory_create_window(void)
 	// set the handlers
 	info->handle_command = memory_handle_command;
 	info->handle_key = memory_handle_key;
+	info->update_menu = memory_update_menu;
 
 	// create the options menu
 	optionsmenu = CreatePopupMenu();
@@ -1851,7 +1873,6 @@ static void memory_create_window(void)
 	AppendMenu(optionsmenu, MF_ENABLED, ID_INCREASE_MEM_WIDTH, TEXT("Increase bytes per line\tCtrl+P"));
 	AppendMenu(optionsmenu, MF_ENABLED, ID_DECREASE_MEM_WIDTH, TEXT("Decrease bytes per line\tCtrl+O"));
 	AppendMenu(GetMenu(info->wnd), MF_ENABLED | MF_POPUP, (UINT_PTR)optionsmenu, TEXT("Options"));
-	memory_update_checkmarks(info);
 
 	// set up the view to track the initial expression
 	debug_view_begin_update(info->view[0].view);
@@ -1867,7 +1888,7 @@ static void memory_create_window(void)
 	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (LONG_PTR)info);
 	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debug_edit_proc);
 	SendMessage(info->editwnd, WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
-	SendMessage(info->editwnd, WM_SETTEXT, (WPARAM)0, (LPARAM)"0");
+	SendMessage(info->editwnd, WM_SETTEXT, (WPARAM)0, (LPARAM)TEXT("0"));
 	SendMessage(info->editwnd, EM_LIMITTEXT, (WPARAM)MAX_EDIT_STRING, (LPARAM)0);
 	SendMessage(info->editwnd, EM_SETSEL, (WPARAM)0, (LPARAM)-1);
 
@@ -1984,10 +2005,10 @@ static void memory_process_string(debugwin_info *info, const char *string)
 
 
 //============================================================
-//  memory_update_checkmarks
+//  memory_update_menu
 //============================================================
 
-static void memory_update_checkmarks(debugwin_info *info)
+static void memory_update_menu(debugwin_info *info)
 {
 	CheckMenuItem(GetMenu(info->wnd), ID_1_BYTE_CHUNKS, MF_BYCOMMAND | (debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK) == 1? MF_CHECKED : MF_UNCHECKED));
 	CheckMenuItem(GetMenu(info->wnd), ID_2_BYTE_CHUNKS, MF_BYCOMMAND | (debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK) == 2 ? MF_CHECKED : MF_UNCHECKED));
@@ -2039,49 +2060,42 @@ static int memory_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 					debug_view_begin_update(info->view[0].view);
 					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, 1);
 					debug_view_end_update(info->view[0].view);
-					memory_update_checkmarks(info);
 					return 1;
 
 				case ID_2_BYTE_CHUNKS:
 					debug_view_begin_update(info->view[0].view);
 					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, 2);
 					debug_view_end_update(info->view[0].view);
-					memory_update_checkmarks(info);
 					return 1;
 
 				case ID_4_BYTE_CHUNKS:
 					debug_view_begin_update(info->view[0].view);
 					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, 4);
 					debug_view_end_update(info->view[0].view);
-					memory_update_checkmarks(info);
 					return 1;
 
 				case ID_8_BYTE_CHUNKS:
 					debug_view_begin_update(info->view[0].view);
 					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, 8);
 					debug_view_end_update(info->view[0].view);
-					memory_update_checkmarks(info);
 					return 1;
 
 				case ID_LOGICAL_ADDRESSES:
 					debug_view_begin_update(info->view[0].view);
 					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_NO_TRANSLATION, FALSE);
 					debug_view_end_update(info->view[0].view);
-					memory_update_checkmarks(info);
 					return 1;
 
 				case ID_PHYSICAL_ADDRESSES:
 					debug_view_begin_update(info->view[0].view);
 					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_NO_TRANSLATION, TRUE);
 					debug_view_end_update(info->view[0].view);
-					memory_update_checkmarks(info);
 					return 1;
 
 				case ID_REVERSE_VIEW:
 					debug_view_begin_update(info->view[0].view);
 					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_REVERSE_VIEW, !debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_REVERSE_VIEW));
 					debug_view_end_update(info->view[0].view);
-					memory_update_checkmarks(info);
 					return 1;
 
 				case ID_INCREASE_MEM_WIDTH:
@@ -2180,11 +2194,11 @@ static void disasm_create_window(void)
 	AppendMenu(optionsmenu, MF_ENABLED, ID_SHOW_ENCRYPTED, TEXT("Encrypted opcodes\tCtrl+E"));
 	AppendMenu(optionsmenu, MF_ENABLED, ID_SHOW_COMMENTS, TEXT("Comments\tCtrl+M"));
 	AppendMenu(GetMenu(info->wnd), MF_ENABLED | MF_POPUP, (UINT_PTR)optionsmenu, TEXT("Options"));
-	disasm_update_checkmarks(info);
 
 	// set the handlers
 	info->handle_command = disasm_handle_command;
 	info->handle_key = disasm_handle_key;
+	info->update_menu = disasm_update_menu;
 
 	// set up the view to track the initial expression
 	debug_view_begin_update(info->view[0].view);
@@ -2200,7 +2214,7 @@ static void disasm_create_window(void)
 	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (LONG_PTR)info);
 	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debug_edit_proc);
 	SendMessage(info->editwnd, WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
-	SendMessage(info->editwnd, WM_SETTEXT, (WPARAM)0, (LPARAM)"curpc");
+	SendMessage(info->editwnd, WM_SETTEXT, (WPARAM)0, (LPARAM)TEXT("curpc"));
 	SendMessage(info->editwnd, EM_LIMITTEXT, (WPARAM)MAX_EDIT_STRING, (LPARAM)0);
 	SendMessage(info->editwnd, EM_SETSEL, (WPARAM)0, (LPARAM)-1);
 
@@ -2213,13 +2227,17 @@ static void disasm_create_window(void)
 	// populate the combobox
 	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
 	{
+		TCHAR* t_cpunum_name;
 		const debug_cpu_info *cpuinfo = debug_get_cpu_info(cpunum);
 		if (cpuinfo->valid)
 			if (cpuinfo->space[ADDRESS_SPACE_PROGRAM].databytes)
 			{
-				char name[100];
+				TCHAR name[100];
 				int item;
-				sprintf(name, "CPU #%d (%s)", cpunum, cpunum_name(cpunum));
+				t_cpunum_name = tstring_from_utf8(cpunum_name(cpunum));
+				_sntprintf(name, ARRAY_LENGTH(name), TEXT("CPU #%d (%s)"), cpunum, t_cpunum_name);
+				free(t_cpunum_name);
+				t_cpunum_name = NULL;
 				item = SendMessage(info->otherwnd[0], CB_ADDSTRING, 0, (LPARAM)name);
 				if (cpunum == curcpu)
 					cursel = item;
@@ -2321,10 +2339,10 @@ static void disasm_process_string(debugwin_info *info, const char *string)
 
 
 //============================================================
-//  disasm_update_checkmarks
+//  disasm_update_menu
 //============================================================
 
-static void disasm_update_checkmarks(debugwin_info *info)
+static void disasm_update_menu(debugwin_info *info)
 {
 	int rightcol = debug_view_get_property_UINT32(info->view[0].view, DVP_DASM_RIGHT_COLUMN);
 	CheckMenuItem(GetMenu(info->wnd), ID_SHOW_RAW, MF_BYCOMMAND | (rightcol == DVP_DASM_RIGHTCOL_RAW ? MF_CHECKED : MF_UNCHECKED));
@@ -2382,7 +2400,6 @@ static int disasm_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 					debug_view_begin_update(info->view[0].view);
 					debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_RIGHT_COLUMN, DVP_DASM_RIGHTCOL_RAW);
 					debug_view_end_update(info->view[0].view);
-					disasm_update_checkmarks(info);
 					(*info->recompute_children)(info);
 					return 1;
 
@@ -2390,7 +2407,6 @@ static int disasm_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 					debug_view_begin_update(info->view[0].view);
 					debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_RIGHT_COLUMN, DVP_DASM_RIGHTCOL_ENCRYPTED);
 					debug_view_end_update(info->view[0].view);
-					disasm_update_checkmarks(info);
 					(*info->recompute_children)(info);
 					return 1;
 
@@ -2398,7 +2414,6 @@ static int disasm_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 					debug_view_begin_update(info->view[0].view);
 					debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_RIGHT_COLUMN, DVP_DASM_RIGHTCOL_COMMENTS);
 					debug_view_end_update(info->view[0].view);
-					disasm_update_checkmarks(info);
 					(*info->recompute_children)(info);
 					return 1;
 
@@ -2564,7 +2579,6 @@ void console_create_window(void)
 	AppendMenu(optionsmenu, MF_ENABLED, ID_SHOW_ENCRYPTED, TEXT("Encrypted opcodes\tCtrl+E"));
 	AppendMenu(optionsmenu, MF_ENABLED, ID_SHOW_COMMENTS, TEXT("Comments\tCtrl+N"));
 	AppendMenu(GetMenu(info->wnd), MF_ENABLED | MF_POPUP, (UINT_PTR)optionsmenu, TEXT("Options"));
-	disasm_update_checkmarks(info);
 
 	// set the handlers
 	info->handle_command = disasm_handle_command;
@@ -2747,7 +2761,7 @@ static void console_set_cpunum(int cpunum)
 
 	// then update the caption
 	snprintf(title, ARRAY_LENGTH(title), "Debug: %s - CPU %d (%s)", Machine->gamedrv->name, cpu_getactivecpu(), activecpu_name());
-	win_get_window_text_utf8(main_console->wnd, curtitle, sizeof(curtitle) / sizeof(curtitle[0]));
+	win_get_window_text_utf8(main_console->wnd, curtitle, ARRAY_LENGTH(curtitle));
 	if (strcmp(title, curtitle))
 		win_set_window_text_utf8(main_console->wnd, title);
 }

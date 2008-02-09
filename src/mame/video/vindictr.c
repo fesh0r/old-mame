@@ -5,6 +5,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "vindictr.h"
 #include "thunderj.h"
@@ -191,7 +192,7 @@ void vindictr_scanline_update(running_machine *machine, int scrnum, int scanline
 				break;
 
 			case 6:		/* /VIRQ */
-				atarigen_scanline_int_gen();
+				atarigen_scanline_int_gen(machine, 0);
 				break;
 
 			case 7:		/* /PFVS */

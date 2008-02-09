@@ -51,6 +51,7 @@ DAC               -26.6860Mhz
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2610intf.h"
 
 static UINT16 *unkram;
@@ -83,7 +84,7 @@ static VIDEO_UPDATE( drill )
 
 	for (i=0; i<256; i++)
 	{
-		decodechar(machine->gfx[1],i,(UINT8*)&charram[0],machine->drv->gfxdecodeinfo[1].gfxlayout);
+		decodechar(machine->gfx[1],i,(UINT8*)&charram[0]);
 	}
 
 	DRAW_MAP(map1ram,0)
@@ -176,12 +177,12 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( drill_interrupt )
 {
-	cpunum_set_input_line(0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 }
 
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(0,5,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0,5,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =

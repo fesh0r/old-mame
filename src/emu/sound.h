@@ -4,7 +4,7 @@
 
     Core sound interface functions and definitions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -36,6 +36,7 @@ struct _sound_route
 	int			output;					/* output ID */
 	const char *target;					/* tag of the target */
 	float		gain;					/* gain */
+	int			input;					/* input ID, -1 is default behavior */
 };
 
 

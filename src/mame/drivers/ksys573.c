@@ -222,7 +222,7 @@
 
 #define VERBOSE_LEVEL ( 0 )
 
-INLINE void verboselog( int n_level, const char *s_fmt, ... )
+INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
 {
 	if( VERBOSE_LEVEL >= n_level )
 	{
@@ -263,16 +263,16 @@ static NVRAM_HANDLER( konami573 )
 {
 	int i;
 
-	nvram_handler_timekeeper_0( machine, file, read_or_write );
+	NVRAM_HANDLER_CALL(timekeeper_0);
 
 	if( nvram_handler_security_cart_0 != NULL )
 	{
-		nvram_handler_security_cart_0( machine, file, read_or_write );
+		NVRAM_HANDLER_CALL(security_cart_0);
 	}
 
 	if( nvram_handler_security_cart_1 != NULL )
 	{
-		nvram_handler_security_cart_1( machine, file, read_or_write );
+		NVRAM_HANDLER_CALL(security_cart_1);
 	}
 
 	for( i = 0; i < flash_chips; i++ )
@@ -289,7 +289,7 @@ static WRITE32_HANDLER( mb89371_w )
 static READ32_HANDLER( mb89371_r )
 {
 	UINT32 data = 0xffffffff;
-	verboselog( 2, "mb89371_r %08x %08x\n", offset, mem_mask, data );
+	verboselog( 2, "mb89371_r %08x %08x %08x\n", offset, mem_mask, data );
 	return data;
 }
 
@@ -1114,7 +1114,7 @@ static emu_timer *m_p_timer_root[ 3 ];
 static UINT16 m_p_n_root_count[ 3 ];
 static UINT16 m_p_n_root_mode[ 3 ];
 static UINT16 m_p_n_root_target[ 3 ];
-static UINT32 m_p_n_root_start[ 3 ];
+static UINT64 m_p_n_root_start[ 3 ];
 
 #define RC_STOP ( 0x01 )
 #define RC_RESET ( 0x04 ) /* guess */
@@ -1125,7 +1125,7 @@ static UINT32 m_p_n_root_start[ 3 ];
 #define RC_CLC ( 0x100 )
 #define RC_DIV ( 0x200 )
 
-static UINT32 psxcpu_gettotalcycles( void )
+static UINT64 psxcpu_gettotalcycles( void )
 {
 	/* TODO: should return the start of the current tick. */
 	return cpunum_gettotalcycles(0) * 2;
@@ -1157,7 +1157,7 @@ static UINT16 root_current( int n_counter )
 	}
 	else
 	{
-		UINT32 n_current;
+		UINT64 n_current;
 		n_current = psxcpu_gettotalcycles() - m_p_n_root_start[ n_counter ];
 		n_current /= root_divider( n_counter );
 		n_current += m_p_n_root_count[ n_counter ];
@@ -1571,7 +1571,7 @@ static INTERRUPT_GEN( sys573_vblank )
 {
 	update_mode();
 
-	if( strcmp( Machine->gamedrv->name, "ddr2ml" ) == 0 )
+	if( strcmp( machine->gamedrv->name, "ddr2ml" ) == 0 )
 	{
 		/* patch out security-plate error */
 
@@ -1583,7 +1583,7 @@ static INTERRUPT_GEN( sys573_vblank )
 		}
 	}
 
-	psx_vblank();
+	psx_vblank(machine, cpunum);
 }
 
 /*
@@ -1672,7 +1672,7 @@ static WRITE32_HANDLER( ge765pwbba_w )
 
 static DRIVER_INIT( ge765pwbba )
 {
-	driver_init_konami573( machine );
+	DRIVER_INIT_CALL(konami573);
 
 	uPD4701_init( 0 );
 
@@ -1878,7 +1878,7 @@ static void gn845pwbb_clk_w( int offset, int data )
 	verboselog( 2, "stage: %dp data clk=%d state=%d d0=%d shift=%08x bit=%d stage_mask=%08x\n", offset + 1, clk, stage[ offset ].state, stage[ offset ].DO, stage[ offset ].shift, stage[ offset ].bit, stage_mask );
 }
 
-static UINT32 gn845pwbb_read( void *param )
+static CUSTOM_INPUT( gn845pwbb_read )
 {
 	return readinputportbytag( "STAGE" ) & stage_mask;
 }
@@ -1972,7 +1972,7 @@ static void gn845pwbb_output_callback( int offset, int data )
 
 static DRIVER_INIT( ddr )
 {
-	driver_init_konami573( machine );
+	DRIVER_INIT_CALL(konami573);
 
 	gx700pwfbf_init( gn845pwbb_output_callback );
 
@@ -2002,13 +2002,13 @@ static READ32_HANDLER( gtrfrks_io_r )
 		break;
 	}
 
-	verboselog( 2, "gtrfrks_io_r( %08x, %08x ) %08x\n", data );
+	verboselog( 2, "gtrfrks_io_r( %08x, %08x ) %08x\n", offset, mem_mask, data );
 	return data;
 }
 
 static WRITE32_HANDLER( gtrfrks_io_w )
 {
-	verboselog( 2, "gtrfrks_io_w( %08x, %08x ) %08x\n", data );
+	verboselog( 2, "gtrfrks_io_w( %08x, %08x ) %08x\n", offset, mem_mask, data );
 
 	switch( offset )
 	{
@@ -2030,7 +2030,7 @@ static WRITE32_HANDLER( gtrfrks_io_w )
 
 static DRIVER_INIT( gtrfrks )
 {
-	driver_init_konami573( machine );
+	DRIVER_INIT_CALL(konami573);
 
 	memory_install_read32_handler ( 0, ADDRESS_SPACE_PROGRAM, 0x1f600000, 0x1f6000ff, 0, 0, gtrfrks_io_r );
 	memory_install_write32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f600000, 0x1f6000ff, 0, 0, gtrfrks_io_w );
@@ -2340,7 +2340,7 @@ static void gx894pwbba_init( void (*output_callback)( int offset, int data ) )
 
 static DRIVER_INIT( ddrdigital )
 {
-	driver_init_konami573( machine );
+	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( gn845pwbb_output_callback );
 }
@@ -2349,7 +2349,7 @@ static DRIVER_INIT( ddrdigital )
 
 static DRIVER_INIT( gtrfrkdigital )
 {
-	driver_init_konami573( machine );
+	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( NULL );
 
@@ -2414,7 +2414,7 @@ static void ddrsolo_output_callback( int offset, int data )
 
 static DRIVER_INIT( ddrsolo )
 {
-	driver_init_konami573( machine );
+	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( ddrsolo_output_callback );
 }
@@ -2487,14 +2487,14 @@ static void drmn_output_callback( int offset, int data )
 
 static DRIVER_INIT( drmn )
 {
-	driver_init_konami573( machine );
+	DRIVER_INIT_CALL(konami573);
 
 	gx700pwfbf_init( drmn_output_callback );
 }
 
 static DRIVER_INIT( drmndigital )
 {
-	driver_init_konami573( machine );
+	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( drmn_output_callback );
 }
@@ -2621,7 +2621,7 @@ static void dmx_output_callback( int offset, int data )
 
 static WRITE32_HANDLER( dmx_io_w )
 {
-	verboselog( 2, "dmx_io_w( %08x, %08x ) %08x\n", data );
+	verboselog( 2, "dmx_io_w( %08x, %08x ) %08x\n", offset, mem_mask, data );
 
 	switch( offset )
 	{
@@ -2643,7 +2643,7 @@ static WRITE32_HANDLER( dmx_io_w )
 
 static DRIVER_INIT( dmx )
 {
-	driver_init_konami573( machine );
+	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( dmx_output_callback );
 
@@ -2711,7 +2711,7 @@ static void salarymc_lamp_clk_write( int data )
 
 static DRIVER_INIT( salarymc )
 {
-	driver_init_konami573( machine );
+	DRIVER_INIT_CALL(konami573);
 
 	security_bit7_write = salarymc_lamp_data_write;
 	security_bit6_write = salarymc_lamp_rst_write;
@@ -2725,7 +2725,7 @@ static DRIVER_INIT( salarymc )
 
 static MACHINE_DRIVER_START( konami573 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
+	MDRV_CPU_ADD( PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( konami573_map, 0 )
 	MDRV_CPU_VBLANK_INT( sys573_vblank, 1 )
 
@@ -4104,10 +4104,37 @@ ROM_START( gtrfrk3m )
 	ROM_LOAD( "ge949jab.u6",  0x000000, 0x000008, BAD_DUMP CRC(ce84419e) SHA1(839e8ee080ecfc79021a06417d930e8b32dfc6a1) )
 
 	DISK_REGION( REGION_DISKS )
-	DISK_IMAGE_READONLY( "949jab02", 0, MD5(331a7516a33d9cf9f04b8c9aa5de5fc1) SHA1(9aae90c6b0f5c31f47a420f876c0dbc81d43b756) )
+	DISK_IMAGE_READONLY( "949jac01", 0, MD5(0f78f8e06edd3b8fa0abed22155d06d9) SHA1(3e43a5018aa88ed78c9e2fb50f65489a6c7de093) )
+	DISK_IMAGE_READONLY( "949jab02", 1, MD5(331a7516a33d9cf9f04b8c9aa5de5fc1) SHA1(9aae90c6b0f5c31f47a420f876c0dbc81d43b756) )
 ROM_END
 
 ROM_START( gtfrk3ma )
+	ROM_REGION32_LE( 0x080000, REGION_USER1, 0 )
+	SYS573_BIOS_A
+
+	ROM_REGION( 0x0000224, REGION_USER2, 0 ) /* install security cart eeprom */
+	ROM_LOAD( "949jaa.u1",    0x000000, 0x000224, BAD_DUMP CRC(96c21d71) SHA1(871f1f0429154a486e547e182534db1557008dd6) )
+
+	ROM_REGION( 0x0001014, REGION_USER8, 0 ) /* game security cart eeprom */
+	ROM_LOAD( "ge949jab.u1",  0x000000, 0x001014, BAD_DUMP CRC(8645e17f) SHA1(e8a833384cb6bdb05870fcd44e7c8ed48a03c852) )
+
+	ROM_REGION( 0x1000000, REGION_USER3, 0 ) /* onboard flash */
+	ROM_FILL( 0x0000000, 0x1000000, 0xff )
+
+	ROM_REGION( 0x2000000, REGION_USER4, 0 ) /* PCCARD1 */
+	ROM_FILL( 0x0000000, 0x2000000, 0xff )
+
+	ROM_REGION( 0x000008, REGION_USER9, 0 ) /* install security cart id */
+	ROM_LOAD( "949jaa.u6",    0x000000, 0x000008, BAD_DUMP CRC(af09e43c) SHA1(d8372f2d6e0ae07061b496a2242a63e5bc2e54dc) )
+
+	ROM_REGION( 0x000008, REGION_USER10, 0 ) /* game security cart id */
+	ROM_LOAD( "ge949jab.u6",  0x000000, 0x000008, BAD_DUMP CRC(ce84419e) SHA1(839e8ee080ecfc79021a06417d930e8b32dfc6a1) )
+
+	DISK_REGION( REGION_DISKS )
+	DISK_IMAGE_READONLY( "949jab02", 0, MD5(331a7516a33d9cf9f04b8c9aa5de5fc1) SHA1(9aae90c6b0f5c31f47a420f876c0dbc81d43b756) )
+ROM_END
+
+ROM_START( gtfrk3mb )
 	ROM_REGION32_LE( 0x080000, REGION_USER1, 0 )
 	SYS573_BIOS_A
 
@@ -4410,8 +4437,9 @@ GAME( 1999, dsfdcta,  dsfdct,   konami573, ddr,       ddr,        ROT0, "Konami"
 GAME( 1999, drmn2m,   sys573,   konami573, drmn,      drmndigital,ROT0, "Konami", "DrumMania 2nd Mix (GE912 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.5 */
 GAME( 2000, dncfrks,  sys573,   konami573, dmx,       dmx,        ROT0, "Konami", "Dance Freaks (G*874 VER. KAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.6 */
 GAME( 2000, dmx,      dncfrks,  konami573, dmx,       dmx,        ROT0, "Konami", "Dance Maniax (G*874 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.6 */
-GAME( 2000, gtrfrk3m, sys573,   konami573, gtrfrks,   gtrfrkdigital,ROT0, "Konami", "Guitar Freaks 3rd Mix (GE949 VER. JAB)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.4 */
-GAME( 2000, gtfrk3ma, gtrfrk3m, konami573, gtrfrks,   gtrfrkdigital,ROT0, "Konami", "Guitar Freaks 3rd Mix - security cassette versionup (949JAZ02)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.4 */
+GAME( 2000, gtrfrk3m, sys573,   konami573, gtrfrks,   gtrfrkdigital,ROT0, "Konami", "Guitar Freaks 3rd Mix (GE949 VER. JAC)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.4 */
+GAME( 2000, gtfrk3ma, gtrfrk3m, konami573, gtrfrks,   gtrfrkdigital,ROT0, "Konami", "Guitar Freaks 3rd Mix (GE949 VER. JAB)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.4 */
+GAME( 2000, gtfrk3mb, gtrfrk3m, konami573, gtrfrks,   gtrfrkdigital,ROT0, "Konami", "Guitar Freaks 3rd Mix - security cassette versionup (949JAZ02)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.4 */
 GAME( 2000, salarymc, sys573,   konami573, konami573, salarymc,   ROT0, "Konami", "Salary Man Champ (GCA18 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 2000, ddr3mp,   sys573,   konami573, ddr,       ddrdigital, ROT0, "Konami", "Dance Dance Revolution 3rd Mix Plus (G*A22 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.6 */
 GAME( 2000, pcnfrk3m, sys573,   konami573, drmn,      drmndigital,ROT0, "Konami", "Percussion Freaks 3rd Mix (G*A23 VER. KAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.8 */

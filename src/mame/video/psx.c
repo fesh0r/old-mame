@@ -17,15 +17,15 @@
 
 ***************************************************************************/
 
-#include <stdarg.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/psx.h"
 
 #define STOP_ON_ERROR ( 0 )
 
 #define VERBOSE_LEVEL ( 0 )
 
-INLINE void verboselog( int n_level, const char *s_fmt, ... )
+INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
 {
 	if( VERBOSE_LEVEL >= n_level )
 	{
@@ -511,7 +511,7 @@ static int DebugMeshDisplay( mame_bitmap *bitmap, const rectangle *cliprect )
 {
 	if( m_b_debugmesh )
 	{
-		copybitmap( bitmap, debugmesh, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0 );
+		copybitmap( bitmap, debugmesh, 0, 0, 0, 0, cliprect );
 	}
 	m_b_debugclear = 1;
 	return m_b_debugmesh;

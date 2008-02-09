@@ -9,8 +9,9 @@
   Code by Wilbert Pol
 */
 
-#include "sm8500.h"
 #include "debugger.h"
+#include "deprecat.h"
+#include "sm8500.h"
 
 #define FLAG_C	0x80
 #define FLAG_Z	0x40
@@ -215,7 +216,7 @@ static int sm8500_execute( int cycles )
 		UINT32	d1,d2;
 		UINT32	res;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(regs.PC);
 		oldpc = regs.PC;
 		mycycles = 0;
 		sm8500_process_interrupts();
@@ -429,6 +430,7 @@ void sm8500_get_info( UINT32 state, cpuinfo *info )
 	case CPUINFO_INT_INPUT_LINES:				info->i = 8; break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0xff; break;
 	case CPUINFO_INT_ENDIANNESS:				info->i = CPU_IS_BE; break;
+	case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1; break;
 	case CPUINFO_INT_CLOCK_DIVIDER:				info->i = 1; break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1; break;
 	case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 5; break;
@@ -495,7 +497,7 @@ void sm8500_get_info( UINT32 state, cpuinfo *info )
 	case CPUINFO_PTR_EXIT:					info->exit = sm8500_exit; break;
 	case CPUINFO_PTR_EXECUTE:				info->execute = sm8500_execute; break;
 	case CPUINFO_PTR_BURN:					info->burn = sm8500_burn; break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	case CPUINFO_PTR_DISASSEMBLE:			info->disassemble = sm8500_dasm; break;
 #endif
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &sm8500_icount; break;
@@ -504,7 +506,7 @@ void sm8500_get_info( UINT32 state, cpuinfo *info )
 	case CPUINFO_STR_CORE_FAMILY:				strcpy( info->s = cpuintrf_temp_str(), "Sharp SM8500" ); break;
 	case CPUINFO_STR_CORE_VERSION:				strcpy( info->s = cpuintrf_temp_str(), "0.1" ); break;
 	case CPUINFO_STR_CORE_FILE:				strcpy( info->s = cpuintrf_temp_str(), __FILE__ ); break;
-	case CPUINFO_STR_CORE_CREDITS:				strcpy( info->s = cpuintrf_temp_str(), "Copyright (C) 2005 by The MESS Team." ); break;
+	case CPUINFO_STR_CORE_CREDITS:				strcpy( info->s = cpuintrf_temp_str(), "Copyright The MESS Team." ); break;
 	case CPUINFO_STR_FLAGS:
 		sprintf( info->s = cpuintrf_temp_str(), "%c%c%c%c%c%c%c%c",
 			regs.PS1 & FLAG_C ? 'C' : '.',

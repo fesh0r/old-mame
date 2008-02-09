@@ -4,7 +4,7 @@
 #
 #   Rules for building sound cores
 #
-#   Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+#   Copyright Nicola Salmoria and the MAME Team.
 #   Visit http://mamedev.org for licensing and usage restrictions.
 #
 ###########################################################################
@@ -580,27 +580,24 @@ endif
 # Texas Instruments TMS5110 speech synthesizers
 #-------------------------------------------------
 
+SOUNDDEFS += -DHAS_TMS5100=$(if $(filter TMS5100,$(SOUNDS)),1,0)
 SOUNDDEFS += -DHAS_TMS5110=$(if $(filter TMS5110,$(SOUNDS)),1,0)
+SOUNDDEFS += -DHAS_TMS5110A=$(if $(filter TMS5110A,$(SOUNDS)),1,0)
+SOUNDDEFS += -DHAS_CD2801=$(if $(filter CD2801,$(SOUNDS)),1,0)
+SOUNDDEFS += -DHAS_TMC0281=$(if $(filter TMC0281,$(SOUNDS)),1,0)
+SOUNDDEFS += -DHAS_CD2802=$(if $(filter CD2802,$(SOUNDS)),1,0)
+SOUNDDEFS += -DHAS_M58817=$(if $(filter M58817,$(SOUNDS)),1,0)
+SOUNDDEFS += -DHAS_TMS5110=$(if $(filter TMS5110,$(SOUNDS)),1,0)
+SOUNDDEFS += -DHAS_TMC0285=$(if $(filter TMC0285,$(SOUNDS)),1,0)
+SOUNDDEFS += -DHAS_TMS5200=$(if $(filter TMS5200,$(SOUNDS)),1,0)
 SOUNDDEFS += -DHAS_TMS5220=$(if $(filter TMS5220,$(SOUNDS)),1,0)
 
 ifneq ($(filter TMS5110,$(SOUNDS)),)
 SOUNDOBJS += $(SOUNDOBJ)/tms5110.o $(SOUNDOBJ)/5110intf.o
 endif
 
-ifneq ($(filter TMS5220,$(SOUNDS)),)
+ifneq ($(filter TMC0285 TMS5200 TMS5220,$(SOUNDS)),)
 SOUNDOBJS += $(SOUNDOBJ)/tms5220.o $(SOUNDOBJ)/5220intf.o
-endif
-
-
-
-#-------------------------------------------------
-# Mitsubishi M58817 speech synthesizer
-#-------------------------------------------------
-
-SOUNDDEFS += -DHAS_M58817=$(if $(filter M58817,$(SOUNDS)),1,0)
-
-ifneq ($(filter M58817,$(SOUNDS)),)
-SOUNDOBJS += $(SOUNDOBJ)/m58817.o
 endif
 
 

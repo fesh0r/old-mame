@@ -4,7 +4,7 @@
 
     Core CPU interface functions and definitions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -53,6 +53,8 @@ void i8035_get_info(UINT32 state, cpuinfo *info);
 void i8039_get_info(UINT32 state, cpuinfo *info);
 void i8048_get_info(UINT32 state, cpuinfo *info);
 void n7751_get_info(UINT32 state, cpuinfo *info);
+void mb8884_get_info(UINT32 state, cpuinfo *info);
+void m58715_get_info(UINT32 state, cpuinfo *info);
 void i8x41_get_info(UINT32 state, cpuinfo *info);
 void i8051_get_info(UINT32 state, cpuinfo *info);
 void i8052_get_info(UINT32 state, cpuinfo *info);
@@ -113,6 +115,8 @@ void jaguargpu_get_info(UINT32 state, cpuinfo *info);
 void jaguardsp_get_info(UINT32 state, cpuinfo *info);
 void r3000be_get_info(UINT32 state, cpuinfo *info);
 void r3000le_get_info(UINT32 state, cpuinfo *info);
+void r3041be_get_info(UINT32 state, cpuinfo *info);
+void r3041le_get_info(UINT32 state, cpuinfo *info);
 void r4600be_get_info(UINT32 state, cpuinfo *info);
 void r4600le_get_info(UINT32 state, cpuinfo *info);
 void r4650be_get_info(UINT32 state, cpuinfo *info);
@@ -157,6 +161,8 @@ void pentium_get_info(UINT32 state, cpuinfo *info);
 void mediagx_get_info(UINT32 state, cpuinfo *info);
 void i960_get_info(UINT32 state, cpuinfo *info);
 void h8_3002_get_info(UINT32 state, cpuinfo *info);
+void h8_3007_get_info(UINT32 state, cpuinfo *info);
+void h8_3044_get_info(UINT32 state, cpuinfo *info);
 void v810_get_info(UINT32 state, cpuinfo *info);
 void m37702_get_info(UINT32 state, cpuinfo *info);
 void m37710_get_info(UINT32 state, cpuinfo *info);
@@ -213,11 +219,7 @@ void minx_get_info(UINT32 state, cpuinfo *info);
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 
 
@@ -368,6 +370,12 @@ static const struct
 #endif
 #if (HAS_N7751)
 	{ CPU_N7751, n7751_get_info },
+#endif
+#if (HAS_MB8884)
+	{ CPU_MB8884, mb8884_get_info },
+#endif
+#if (HAS_M58715)
+	{ CPU_M58715, m58715_get_info },
 #endif
 #if (HAS_I8X41)
 	{ CPU_I8X41, i8x41_get_info },
@@ -545,6 +553,10 @@ static const struct
 	{ CPU_R3000BE, r3000be_get_info },
 	{ CPU_R3000LE, r3000le_get_info },
 #endif
+#if (HAS_R3041)
+	{ CPU_R3041BE, r3041be_get_info },
+	{ CPU_R3041LE, r3041le_get_info },
+#endif
 #if (HAS_R4600)
 	{ CPU_R4600BE, r4600be_get_info },
 	{ CPU_R4600LE, r4600le_get_info },
@@ -664,6 +676,8 @@ static const struct
 #endif
 #if (HAS_H83002)
 	{ CPU_H83002, h8_3002_get_info },
+	{ CPU_H83007, h8_3007_get_info },
+	{ CPU_H83044, h8_3044_get_info },
 #endif
 #if (HAS_V810)
 	{ CPU_V810, v810_get_info },
@@ -993,12 +1007,12 @@ void cpuintrf_init(running_machine *machine)
 	totalcpu = 0;
 
 	/* compute information about the CPUs now if we have a machine */
-	if (Machine != NULL)
+	if (machine != NULL)
 	{
 		/* loop over all defined CPUs */
 		for (totalcpu = 0; totalcpu < CPU_COUNT; totalcpu++)
 		{
-			cpu_type cputype = Machine->drv->cpu[totalcpu].type;
+			cpu_type cputype = machine->drv->cpu[totalcpu].type;
 			char familyname[256];
 			int j;
 
@@ -1611,6 +1625,7 @@ void dummy_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 1;							break;

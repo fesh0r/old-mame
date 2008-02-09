@@ -155,7 +155,7 @@ static NVRAM_HANDLER( konamigv_93C46 )
 	}
 }
 
-static UINT32 eeprom_bit_r(void *param)
+static CUSTOM_INPUT( eeprom_bit_r )
 {
 	return EEPROM_read_bit();
 }
@@ -306,12 +306,18 @@ static const struct AM53CF96interface scsi_intf =
 	&scsi_irq,		/* command completion IRQ */
 };
 
+static void konamigv_exit(running_machine *machine)
+{
+	am53cf96_exit(&scsi_intf);
+}
+
 static DRIVER_INIT( konamigv )
 {
 	psx_driver_init();
 
 	/* init the scsi controller and hook up it's DMA */
 	am53cf96_init(&scsi_intf);
+	add_exit_callback(machine, konamigv_exit);
 	psx_dma_install_read_handler(5, scsi_dma_read);
 	psx_dma_install_write_handler(5, scsi_dma_write);
 }
@@ -341,7 +347,7 @@ static const struct PSXSPUinterface konamigv_psxspu_interface =
 
 static MACHINE_DRIVER_START( konamigv )
 	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
+	MDRV_CPU_ADD( PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( konamigv_map, 0 )
 	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
 
@@ -438,7 +444,7 @@ INPUT_PORTS_END
 
 static NVRAM_HANDLER( simpbowl )
 {
-	nvram_handler_konamigv_93C46( machine, file, read_or_write );
+	NVRAM_HANDLER_CALL(konamigv_93C46);
 	nvram_handler_intelflash( machine, 0, file, read_or_write );
 	nvram_handler_intelflash( machine, 1, file, read_or_write );
 	nvram_handler_intelflash( machine, 2, file, read_or_write );
@@ -545,7 +551,7 @@ static DRIVER_INIT( simpbowl )
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f6800c0, 0x1f6800c7, 0, 0, trackball_r );
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f6800c8, 0x1f6800cb, 0, 0, unknown_r ); /* ?? */
 
-	driver_init_konamigv(machine);
+	DRIVER_INIT_CALL(konamigv);
 }
 
 static MACHINE_DRIVER_START( simpbowl )
@@ -620,7 +626,7 @@ static WRITE32_HANDLER( btc_trackball_w )
 
 static NVRAM_HANDLER( btchamp )
 {
-	nvram_handler_konamigv_93C46( machine, file, read_or_write );
+	NVRAM_HANDLER_CALL(konamigv_93C46);
 	nvram_handler_intelflash( machine, 0, file, read_or_write );
 }
 
@@ -634,7 +640,7 @@ static DRIVER_INIT( btchamp )
 	memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x1f380000, 0x1f3fffff, 0, 0, btcflash_r );
 	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f380000, 0x1f3fffff, 0, 0, btcflash_w );
 
-	driver_init_konamigv(machine);
+	DRIVER_INIT_CALL(konamigv);
 }
 
 static MACHINE_DRIVER_START( btchamp )
@@ -689,7 +695,7 @@ static DRIVER_INIT( tokimosh )
 	memory_install_read32_handler ( 0, ADDRESS_SPACE_PROGRAM, 0x1f680080, 0x1f680083, 0, 0, tokimeki_serial_r );
 	memory_install_write32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f680090, 0x1f680093, 0, 0, tokimeki_serial_w );
 
-	driver_init_konamigv(machine);
+	DRIVER_INIT_CALL(konamigv);
 }
 
 /*
@@ -726,7 +732,7 @@ static DRIVER_INIT( kdeadeye )
 	memory_install_read32_handler ( 0, ADDRESS_SPACE_PROGRAM, 0x1f380000, 0x1f3fffff, 0, 0, btcflash_r );
 	memory_install_write32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f380000, 0x1f3fffff, 0, 0, btcflash_w );
 
-	driver_init_konamigv(machine);
+	DRIVER_INIT_CALL(konamigv);
 }
 
 static MACHINE_DRIVER_START( kdeadeye )

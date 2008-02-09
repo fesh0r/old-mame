@@ -3,7 +3,7 @@
  *   f8.c
  *   Portable F8 emulator (Fairchild 3850)
  *
- *   Copyright (c) 2000 Juergen Buchmueller, all rights reserved.
+ *   Copyright Juergen Buchmueller, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -26,9 +26,8 @@
    added interrupt functionality
  */
 
-#include <stdio.h>
-#include "cpuintrf.h"
 #include "debugger.h"
+#include "deprecat.h"
 #include "f8.h"
 
 #define S	0x01
@@ -1577,7 +1576,7 @@ static int f8_execute(int cycles)
     do
     {
 	UINT8 op=f8.dbus;
-        CALL_MAME_DEBUG;
+        CALL_DEBUGGER((f8.pc0 - 1) & 0xffff);
 
 	switch( op )
         {
@@ -1892,9 +1891,9 @@ static void f8_set_context (void *src)
 		f8 = *(f8_Regs *) src;
 }
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 unsigned f8_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 static void f8_init (int index, int clock, const void *config, int (*irqcallback)(int))
 {
@@ -2008,6 +2007,7 @@ void f8_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_INT_INPUT_LINES:						info->i = 1;			break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;			break;
 	case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;	break;
+	case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;			break;
 	case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;			break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;			break;
 	case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 3;			break;
@@ -2116,9 +2116,9 @@ void f8_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_PTR_EXECUTE:						info->execute = f8_execute;				break;
 	case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = f8_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &f8_icount;				break;
 
 	/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -2127,7 +2127,7 @@ void f8_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_STR_CORE_VERSION:	strcpy(info->s = cpuintrf_temp_str(), "1.0");			break;
 	case CPUINFO_STR_CORE_FILE:		strcpy(info->s = cpuintrf_temp_str(), __FILE__);		break;
 	case CPUINFO_STR_CORE_CREDITS:	strcpy(info->s = cpuintrf_temp_str(),
-									"Copyright (c) 2000 Juergen Buchmueller, all rights reserved.");
+									"Copyright Juergen Buchmueller, all rights reserved.");
 									break;
 
     case CPUINFO_STR_FLAGS:

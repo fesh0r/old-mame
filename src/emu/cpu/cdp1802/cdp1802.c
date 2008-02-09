@@ -1,6 +1,6 @@
 #include "driver.h"
-#include "state.h"
 #include "debugger.h"
+#include "deprecat.h"
 #include "cdp1802.h"
 
 typedef struct
@@ -211,7 +211,7 @@ static void cdp1802_run(void)
 
 		cdp1802_ICount -= CDP1802_CYCLES_RESET;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(cdp1802.r[cdp1802.p]);
 
 		break;
 
@@ -236,7 +236,7 @@ static void cdp1802_run(void)
 			cdp1802.state = CDP1802_STATE_0_FETCH;
 		}
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(cdp1802.r[cdp1802.p]);
 
 		break;
 
@@ -713,7 +713,7 @@ static void cdp1802_run(void)
 			cdp1802.state = CDP1802_STATE_0_FETCH;
 		}
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(cdp1802.r[cdp1802.p]);
 
 		break;
 
@@ -801,7 +801,7 @@ static void cdp1802_run(void)
 			cdp1802.state = CDP1802_STATE_0_FETCH;
 		}
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(cdp1802.r[cdp1802.p]);
 
 		break;
 	}
@@ -941,6 +941,7 @@ void cdp1802_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 3;							break;
@@ -1001,9 +1002,9 @@ void cdp1802_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = cdp1802_reset;			break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = cdp1802_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = cdp1802_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &cdp1802_ICount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1011,7 +1012,7 @@ void cdp1802_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "CDP1800");				break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) 2007 The MAME team"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 
 		case CPUINFO_STR_REGISTER + CDP1802_PC:	sprintf(info->s, "PC:%.4x", cdp1802.r[cdp1802.p]);	break;
 		case CPUINFO_STR_REGISTER + CDP1802_R0:	sprintf(info->s, "R0:%.4x", cdp1802.r[0]); 		break;

@@ -2,18 +2,15 @@
 
     TMS34010: Portable Texas Instruments TMS34010 emulator
 
-    Copyright (C) Alex Pasadyn/Zsolt Vasvari 1998
+    Copyright Alex Pasadyn/Zsolt Vasvari
     Parts based on code by Aaron Giles
 
 ***************************************************************************/
 
 #ifndef RECURSIVE_INCLUDE
 
-#if LOG_GRAPHICS_OPS
-#define LOGGFX(x) do { if (input_code_pressed(KEYCODE_L)) logerror x ; } while (0)
-#else
-#define LOGGFX(x)
-#endif
+#define LOG_GFX_OPS 0
+#define LOGGFX(x) do { if (LOG_GFX_OPS && input_code_pressed(KEYCODE_L)) logerror x; } while (0)
 
 
 /* Graphics Instructions */

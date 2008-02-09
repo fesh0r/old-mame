@@ -79,6 +79,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 extern UINT8 *popper_videoram, *popper_attribram, *popper_ol_videoram, *popper_ol_attribram, *popper_spriteram;
@@ -149,7 +150,7 @@ static READ8_HANDLER( popper_input_ports_r )
 
 static READ8_HANDLER( popper_soundcpu_nmi_r )
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	return 0;
 }
 

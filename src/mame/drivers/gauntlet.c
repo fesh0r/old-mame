@@ -119,6 +119,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "sound/5220intf.h"
 #include "sound/2151intf.h"
@@ -145,7 +146,7 @@ static UINT16 sound_reset_val;
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -155,9 +156,9 @@ static void update_interrupts(void)
 		newstate |= 6;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -165,7 +166,7 @@ static void scanline_update(running_machine *machine, int scrnum, int scanline)
 {
 	/* sound IRQ is on 32V */
 	if (scanline & 32)
-		atarigen_6502_irq_gen();
+		atarigen_6502_irq_gen(machine, 0);
 	else
 		atarigen_6502_irq_ack_r(0);
 }
@@ -216,7 +217,7 @@ static WRITE16_HANDLER( sound_reset_w )
 
 		if ((oldword ^ sound_reset_val) & 1)
 		{
-			cpunum_set_input_line(1, INPUT_LINE_RESET, (sound_reset_val & 1) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (sound_reset_val & 1) ? CLEAR_LINE : ASSERT_LINE);
 			atarigen_sound_reset();
 		}
 	}
@@ -1636,7 +1637,7 @@ ROM_END
 static void gauntlet_common_init(int slapstic, int vindctr2)
 {
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x038000, slapstic);
+	atarigen_slapstic_init(0, 0x038000, 0, slapstic);
 
 	/* swap the top and bottom halves of the main CPU ROM images */
 	atarigen_swap_mem(memory_region(REGION_CPU1) + 0x000000, memory_region(REGION_CPU1) + 0x008000, 0x8000);

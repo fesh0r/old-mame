@@ -3,7 +3,7 @@
  *   sh2.h
  *   Portable Hitachi SH-2 (SH7600 family) emulator interface
  *
- *   Copyright (c) 2000 Juergen Buchmueller <pullmoll@t-online.de>,
+ *   Copyright Juergen Buchmueller <pullmoll@t-online.de>,
  *   all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
@@ -75,7 +75,7 @@ extern void sh2_get_info(UINT32 state, cpuinfo *info);
 WRITE32_HANDLER( sh2_internal_w );
 READ32_HANDLER( sh2_internal_r );
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern unsigned DasmSH2( char *dst, unsigned pc, UINT16 opcode );
 #endif
 

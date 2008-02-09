@@ -68,7 +68,7 @@ static TILE_GET_INFO( get_playfield_tile_info )
 
 VIDEO_START( atarig1 )
 {
-	static const struct atarirle_desc modesc_hydra =
+	static const atarirle_desc modesc_hydra =
 	{
 		REGION_GFX3,/* region where the GFX data lives */
 		256,		/* number of entries in sprite RAM */
@@ -89,7 +89,7 @@ VIDEO_START( atarig1 )
 		{{ 0 }}						/* mask for the VRAM target */
 	};
 
-	static const struct atarirle_desc modesc_pitfight =
+	static const atarirle_desc modesc_pitfight =
 	{
 		REGION_GFX3,/* region where the GFX data lives */
 		256,		/* number of entries in sprite RAM */
@@ -129,6 +129,12 @@ VIDEO_START( atarig1 )
 	playfield_tile_bank = 0;
 	playfield_xscroll = 0;
 	playfield_yscroll = 0;
+
+	/* state saving */
+	state_save_register_global(current_control);
+	state_save_register_global(playfield_tile_bank);
+	state_save_register_global(playfield_xscroll);
+	state_save_register_global(playfield_yscroll);
 }
 
 
@@ -158,6 +164,7 @@ void atarig1_scanline_update(running_machine *machine, int scrnum, int scanline)
 	/* keep in range */
 	if (base >= &atarigen_alpha[0x800])
 		return;
+	video_screen_update_partial(0, scanline - 1);
 
 	/* update the playfield scrolls */
 	for (i = 0; i < 8; i++)
@@ -213,7 +220,7 @@ VIDEO_UPDATE( atarig1 )
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 0, 0);
 
 	/* copy the motion objects on top */
-	copybitmap(bitmap, atarirle_get_vram(0, 0), 0, 0, 0, 0, cliprect, TRANSPARENCY_PEN, 0);
+	copybitmap_trans(bitmap, atarirle_get_vram(0, 0), 0, 0, 0, 0, cliprect, 0);
 
 	/* add the alpha on top */
 	tilemap_draw(bitmap, cliprect, atarigen_alpha_tilemap, 0, 0);

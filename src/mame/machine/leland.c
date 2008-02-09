@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "cpu/z80/z80.h"
 #include "leland.h"
@@ -155,7 +156,7 @@ WRITE8_HANDLER( alleymas_joystick_kludge )
 {
 	/* catch the case where they clear this memory location at PC $1827 and change */
 	/* the value written to be a 1 */
-	if (safe_activecpu_get_pc() == 0x1827)
+	if (activecpu_get_previouspc() == 0x1827)
 		*alleymas_kludge_mem = 1;
 	else
 		*alleymas_kludge_mem = data;
@@ -464,12 +465,10 @@ MACHINE_RESET( ataxx )
 static TIMER_CALLBACK( leland_interrupt_callback )
 {
 	int scanline = param;
-	extern UINT8 leland_last_scanline_int;
-	leland_last_scanline_int = scanline;
 
 	/* interrupts generated on the VA10 line, which is every */
 	/* 16 scanlines starting with scanline #8 */
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 
 	/* set a timer for the next one */
 	scanline += 16;
@@ -482,11 +481,9 @@ static TIMER_CALLBACK( leland_interrupt_callback )
 static TIMER_CALLBACK( ataxx_interrupt_callback )
 {
 	int scanline = param;
-	extern UINT8 leland_last_scanline_int;
-	leland_last_scanline_int = scanline;
 
 	/* interrupts generated according to the interrupt control register */
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 
 	/* set a timer for the next one */
 	timer_adjust(master_int_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
@@ -497,7 +494,7 @@ INTERRUPT_GEN( leland_master_interrupt )
 {
 	/* check for coins here */
 	if ((readinputport(1) & 0x0e) != 0x0e)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 
@@ -1159,7 +1156,7 @@ READ8_HANDLER( leland_master_input_r )
 
 		case 0x02:	/* /GIN2 */
 		case 0x12:
-			cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 			break;
 
 		case 0x03:	/* /IGID */
@@ -1190,10 +1187,10 @@ WRITE8_HANDLER( leland_master_output_w )
 	switch (offset)
 	{
 		case 0x09:	/* /MCONT */
-			cpunum_set_input_line(1, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 			wcol_enable = (data & 0x02);
-			cpunum_set_input_line(1, INPUT_LINE_NMI, (data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line  (1, 0, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, (data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, 0, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 
 			if (LOG_EEPROM) logerror("%04X:EE write %d%d%d\n", safe_activecpu_get_pc(),
 					(data >> 6) & 1, (data >> 5) & 1, (data >> 4) & 1);
@@ -1214,7 +1211,7 @@ WRITE8_HANDLER( leland_master_output_w )
 		case 0x0d:	/* /BKXH */
 		case 0x0e:	/* /BKYL */
 		case 0x0f:	/* /BKYH */
-			leland_gfx_port_w(offset - 0x0c, data);
+			leland_scroll_w(offset - 0x0c, data);
 			break;
 
 		default:
@@ -1256,7 +1253,7 @@ WRITE8_HANDLER( ataxx_master_output_w )
 		case 0x01:	/* /BKXH */
 		case 0x02:	/* /BKYL */
 		case 0x03:	/* /BKYH */
-			leland_gfx_port_w(offset, data);
+			leland_scroll_w(offset, data);
 			break;
 
 		case 0x04:	/* /MBNK */
@@ -1268,9 +1265,9 @@ WRITE8_HANDLER( ataxx_master_output_w )
 			break;
 
 		case 0x05:	/* /SLV0 */
-			cpunum_set_input_line(1, 0, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line(1, INPUT_LINE_NMI, (data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line(1, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, 0, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, (data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 0x08:	/*  */
@@ -1301,7 +1298,7 @@ WRITE8_HANDLER( leland_gated_paletteram_w )
 READ8_HANDLER( leland_gated_paletteram_r )
 {
 	if (wcol_enable)
-		return paletteram_r(offset);
+		return paletteram[offset];
 	return 0xff;
 }
 
@@ -1340,7 +1337,7 @@ WRITE8_HANDLER( ataxx_paletteram_and_misc_w )
 READ8_HANDLER( ataxx_paletteram_and_misc_r )
 {
 	if (wcol_enable)
-		return paletteram_r(offset);
+		return paletteram[offset];
 	else if (offset == 0x7fc || offset == 0x7fd)
 	{
 		int result = xrom_base[0x00000 | xrom1_addr | ((offset & 1) << 16)];
@@ -1373,13 +1370,8 @@ READ8_HANDLER( leland_sound_port_r )
 
 WRITE8_HANDLER( leland_sound_port_w )
 {
-	int gfx_banks = Machine->gfx[0]->total_elements / 0x400;
-	int gfx_bank_mask = (gfx_banks - 1) << 4;
-	int diff = data ^ leland_gfx_control;
-
-    /* update the graphics banking if necessary */
-    if ((diff & 0x08) || (diff & gfx_bank_mask))
-    	leland_gfx_port_w(-1, data);
+    /* update the graphics banking */
+   	leland_gfx_port_w(0, data);
 
 	/* set the new value */
     leland_gfx_control = data;

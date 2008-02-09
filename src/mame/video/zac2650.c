@@ -5,11 +5,10 @@
 /*************************************************************/
 
 #include "driver.h"
+#include "video/s2636.h"
 
-UINT8 *s2636ram;
 static mame_bitmap *spritebitmap;
 
-static UINT8 dirtychar[256>>3];
 static int CollisionBackground;
 static int CollisionSprite;
 
@@ -28,18 +27,9 @@ WRITE8_HANDLER( tinvader_videoram_w )
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-WRITE8_HANDLER( zac_s2636_w )
-{
-	if (s2636ram[offset] != data)
-    {
-		s2636ram[offset] = data;
-        dirtychar[offset>>3] = 1;
-    }
-}
-
 READ8_HANDLER( zac_s2636_r )
 {
-	if(offset!=0xCB) return s2636ram[offset];
+	if(offset!=0xCB) return s2636_1_ram[offset];
     else return CollisionSprite;
 }
 
@@ -57,10 +47,10 @@ static int SpriteCollision(running_machine *machine, int first,int second)
 	int Checksum=0;
 	int x,y;
 
-    if((s2636ram[first * 0x10 + 10] < 0xf0) && (s2636ram[second * 0x10 + 10] < 0xf0))
+    if((s2636_1_ram[first * 0x10 + 10] < 0xf0) && (s2636_1_ram[second * 0x10 + 10] < 0xf0))
     {
-    	int fx     = (s2636ram[first * 0x10 + 10] * 4)-22;
-        int fy     = (s2636ram[first * 0x10 + 12] * 3)+3;
+    	int fx     = (s2636_1_ram[first * 0x10 + 10] * 4)-22;
+        int fy     = (s2636_1_ram[first * 0x10 + 12] * 3)+3;
 		int expand = (first==1) ? 2 : 1;
 
         /* Draw first sprite */
@@ -96,7 +86,7 @@ static int SpriteCollision(running_machine *machine, int first,int second)
 			    second * 2,
 			    1,
 			    0,0,
-			    (s2636ram[second * 0x10 + 10] * 4)-22,(s2636ram[second * 0x10 + 12] * 3) + 3,
+			    (s2636_1_ram[second * 0x10 + 10] * 4)-22,(s2636_1_ram[second * 0x10 + 12] * 3) + 3,
 			    0, TRANSPARENCY_PEN, 0);
 
         /* Remove fingerprint */
@@ -164,28 +154,23 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap)
     CollisionBackground = 0;	/* Read from 0x1e80 bit 7 */
 
 	// for collision detection checking
-	copybitmap(tmpbitmap,bitmap,0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+	copybitmap(tmpbitmap,bitmap,0,0,0,0,&machine->screen[0].visarea);
 
     for(offs=0;offs<0x50;offs+=0x10)
     {
-    	if((s2636ram[offs+10]<0xF0) && (offs!=0x30))
+    	if((s2636_1_ram[offs+10]<0xF0) && (offs!=0x30))
 		{
             int spriteno = (offs / 8);
-			int expand   = ((s2636ram[0xc0] & (spriteno*2))!=0) ? 2 : 1;
-            int bx       = (s2636ram[offs+10] * 4) - 22;
-            int by       = (s2636ram[offs+12] * 3) + 3;
+			int expand   = ((s2636_1_ram[0xc0] & (spriteno*2))!=0) ? 2 : 1;
+            int bx       = (s2636_1_ram[offs+10] * 4) - 22;
+            int by       = (s2636_1_ram[offs+12] * 3) + 3;
             int x,y;
 
-            if(dirtychar[spriteno])
-            {
-            	/* 16x8 version */
-	   			decodechar(machine->gfx[1],spriteno,s2636ram,machine->drv->gfxdecodeinfo[1].gfxlayout);
+			/* 16x8 version */
+			decodechar(machine->gfx[1],spriteno,s2636_1_ram);
 
-                /* 16x16 version */
-   				decodechar(machine->gfx[2],spriteno,s2636ram,machine->drv->gfxdecodeinfo[2].gfxlayout);
-
-                dirtychar[spriteno] = 0;
-            }
+			/* 16x16 version */
+			decodechar(machine->gfx[2],spriteno,s2636_1_ram);
 
             /* Sprite->Background collision detection */
 			drawgfx(bitmap,machine->gfx[expand],

@@ -92,8 +92,12 @@ static const memory_handlers le_memory =
     structure based on the configured type
 -------------------------------------------------*/
 
-void mips3com_init(mips3_state *mips, mips3_flavor flavor, int bigendian, int index, int clock, const struct mips3_config *config, int (*irqcallback)(int))
+size_t mips3com_init(mips3_state *mips, mips3_flavor flavor, int bigendian, int index, int clock, const struct mips3_config *config, int (*irqcallback)(int), void *memory)
 {
+	/* if no memory, return the amount needed */
+	if (memory == NULL)
+		return config->icache + config->dcache + (sizeof(mips->tlb_table[0]) * (1 << (MIPS3_MAX_PADDR_SHIFT - MIPS3_MIN_PAGE_SHIFT)));
+
 	/* initialize the state */
 	memset(mips, 0, sizeof(*mips));
 
@@ -113,15 +117,16 @@ void mips3com_init(mips3_state *mips, mips3_flavor flavor, int bigendian, int in
 		mips->memory = le_memory;
 
 	/* allocate memory */
-	mips->icache = auto_malloc(config->icache);
-	mips->dcache = auto_malloc(config->dcache);
-	mips->tlb_table = auto_malloc(sizeof(mips->tlb_table[0]) * (1 << (MIPS3_MAX_PADDR_SHIFT - MIPS3_MIN_PAGE_SHIFT)));
+	mips->icache = memory;
+	mips->dcache = (void *)((UINT8 *)memory + config->icache);
+	mips->tlb_table = (void *)((UINT8 *)memory + config->dcache);
 
 	/* allocate a timer for the compare interrupt */
 	mips->compare_int_timer = timer_alloc(compare_int_callback, NULL);
 
 	/* reset the state */
 	mips3com_reset(mips);
+	return 0;
 }
 
 
@@ -139,7 +144,7 @@ void mips3com_reset(mips3_state *mips)
 	mips->cpr[0][COP0_Count] = 0;
 	mips->cpr[0][COP0_Config] = compute_config_register(mips);
 	mips->cpr[0][COP0_PRId] = compute_prid_register(mips);
-	mips->count_zero_time = activecpu_gettotalcycles64();
+	mips->count_zero_time = activecpu_gettotalcycles();
 
 	/* recompute the TLB table */
 	mips3com_recompute_tlb_table(mips);
@@ -151,7 +156,7 @@ void mips3com_reset(mips3_state *mips)
     CPU
 -------------------------------------------------*/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 offs_t mips3com_dasm(mips3_state *mips, char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	extern unsigned dasmmips3(char *, unsigned, UINT32);
@@ -162,7 +167,7 @@ offs_t mips3com_dasm(mips3_state *mips, char *buffer, offs_t pc, const UINT8 *op
 		op = LITTLE_ENDIANIZE_INT32(op);
 	return dasmmips3(buffer, pc, op);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -174,16 +179,13 @@ offs_t mips3com_dasm(mips3_state *mips, char *buffer, offs_t pc, const UINT8 *op
 void mips3com_update_cycle_counting(mips3_state *mips)
 {
 	/* modify the timer to go off */
-	if ((mips->cpr[0][COP0_Status] & 0x8000) && mips->cpr[0][COP0_Compare] != 0xffffffff)
+	if ((mips->cpr[0][COP0_Status] & SR_IMEX5) && mips->cpr[0][COP0_Compare] != 0xffffffff)
 	{
-		UINT32 count = (activecpu_gettotalcycles64() - mips->count_zero_time) / 2;
+		UINT32 count = (activecpu_gettotalcycles() - mips->count_zero_time) / 2;
 		UINT32 compare = mips->cpr[0][COP0_Compare];
 		UINT32 cyclesleft = compare - count;
 		attotime newtime = ATTOTIME_IN_CYCLES(((INT64)cyclesleft * 2), cpu_getactivecpu());
-
-		/* due to accuracy issues, don't bother setting timers unless they're for less than 100msec */
-		if (attotime_compare(newtime, ATTOTIME_IN_MSEC(100)) < 0)
-			timer_adjust(mips->compare_int_timer, newtime, cpu_getactivecpu(), attotime_zero);
+		timer_adjust(mips->compare_int_timer, newtime, cpu_getactivecpu(), attotime_zero);
 	}
 	else
 		timer_adjust(mips->compare_int_timer, attotime_never, cpu_getactivecpu(), attotime_zero);
@@ -360,7 +362,7 @@ void mips3com_tlbwr(mips3_state *mips)
 
 	/* "random" is based off of the current cycle counting through the non-wired pages */
 	if (unwired > 0)
-		index = ((activecpu_gettotalcycles64() - mips->count_zero_time) % unwired + wired) & 0x3f;
+		index = ((activecpu_gettotalcycles() - mips->count_zero_time) % unwired + wired) & 0x3f;
 
 	/* use the common handler to write to this index */
 	tlb_write_common(mips, index);
@@ -530,6 +532,7 @@ void mips3com_get_info(mips3_state *mips, UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 6;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = mips->bigendian ? CPU_IS_BE : CPU_IS_LE; break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -556,7 +559,7 @@ void mips3com_get_info(mips3_state *mips, UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_REGISTER + MIPS3_SR:			info->i = mips->cpr[0][COP0_Status];	break;
 		case CPUINFO_INT_REGISTER + MIPS3_EPC:			info->i = mips->cpr[0][COP0_EPC];		break;
 		case CPUINFO_INT_REGISTER + MIPS3_CAUSE:		info->i = mips->cpr[0][COP0_Cause];		break;
-		case CPUINFO_INT_REGISTER + MIPS3_COUNT:		info->i = ((activecpu_gettotalcycles64() - mips->count_zero_time) / 2); break;
+		case CPUINFO_INT_REGISTER + MIPS3_COUNT:		info->i = ((activecpu_gettotalcycles() - mips->count_zero_time) / 2); break;
 		case CPUINFO_INT_REGISTER + MIPS3_COMPARE:		info->i = mips->cpr[0][COP0_Compare];	break;
 		case CPUINFO_INT_REGISTER + MIPS3_INDEX:		info->i = mips->cpr[0][COP0_Index];		break;
 		case CPUINFO_INT_REGISTER + MIPS3_RANDOM:		info->i = mips->cpr[0][COP0_Random];	break;
@@ -620,7 +623,7 @@ void mips3com_get_info(mips3_state *mips, UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "MIPS III");			break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "3.0");					break;
 		case CPUINFO_STR_CORE_FILE:						/* provided by core */					break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) Aaron Giles 2000-2007"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Aaron Giles"); break;
 
 		case CPUINFO_STR_FLAGS:							strcpy(info->s, " ");					break;
 
@@ -628,7 +631,7 @@ void mips3com_get_info(mips3_state *mips, UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_REGISTER + MIPS3_SR:			sprintf(info->s, "SR: %08X", (UINT32)mips->cpr[0][COP0_Status]); break;
 		case CPUINFO_STR_REGISTER + MIPS3_EPC:			sprintf(info->s, "EPC:%08X", (UINT32)mips->cpr[0][COP0_EPC]); break;
 		case CPUINFO_STR_REGISTER + MIPS3_CAUSE: 		sprintf(info->s, "Cause:%08X", (UINT32)mips->cpr[0][COP0_Cause]); break;
-		case CPUINFO_STR_REGISTER + MIPS3_COUNT: 		sprintf(info->s, "Count:%08X", (UINT32)((activecpu_gettotalcycles64() - mips->count_zero_time) / 2)); break;
+		case CPUINFO_STR_REGISTER + MIPS3_COUNT: 		sprintf(info->s, "Count:%08X", (UINT32)((activecpu_gettotalcycles() - mips->count_zero_time) / 2)); break;
 		case CPUINFO_STR_REGISTER + MIPS3_COMPARE:		sprintf(info->s, "Compare:%08X", (UINT32)mips->cpr[0][COP0_Compare]); break;
 		case CPUINFO_STR_REGISTER + MIPS3_INDEX:		sprintf(info->s, "Index:%08X", (UINT32)mips->cpr[0][COP0_Index]); break;
 		case CPUINFO_STR_REGISTER + MIPS3_RANDOM:		sprintf(info->s, "Random:%08X", (UINT32)mips->cpr[0][COP0_Random]); break;
@@ -721,7 +724,7 @@ void mips3com_get_info(mips3_state *mips, UINT32 state, cpuinfo *info)
 
 static TIMER_CALLBACK( compare_int_callback )
 {
-	cpunum_set_input_line(param, MIPS3_IRQ5, ASSERT_LINE);
+	cpunum_set_input_line(machine, param, MIPS3_IRQ5, ASSERT_LINE);
 }
 
 

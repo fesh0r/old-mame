@@ -4,7 +4,7 @@
 
     Internal graphics viewer.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -25,7 +25,7 @@
 void ui_gfx_init(running_machine *machine);
 
 /* master handler */
-UINT32 ui_gfx_ui_handler(UINT32 state);
+UINT32 ui_gfx_ui_handler(running_machine *machine, UINT32 state);
 
 
 #endif	/* __UIGFX_H__ */

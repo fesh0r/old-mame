@@ -71,6 +71,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "decoprot.h"
 
@@ -110,7 +111,7 @@ WRITE16_HANDLER( deco16_104_prot_w ) /* Wizard Fire */
 {
 	if (offset==(0x150/2)) {
 		soundlatch_w(0,data&0xff);
-		cpunum_set_input_line(1,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 		return;
 	}
 
@@ -228,7 +229,7 @@ WRITE16_HANDLER( deco16_60_prot_w ) /* Edward Randy */
 {
 	if (offset==(0x64/2)) {
 		soundlatch_w(0,data&0xff);
-		cpunum_set_input_line(1,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 	}
 
 	COMBINE_DATA(&deco16_prot_ram[offset]);
@@ -417,7 +418,7 @@ WRITE16_HANDLER( deco16_66_prot_w ) /* Mutant Fighter */
 {
 	if (offset==(0x64/2)) {
 		soundlatch_w(0,data&0xff);
-		cpunum_set_input_line(1,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 		return;
 	}
 
@@ -603,7 +604,7 @@ WRITE16_HANDLER( deco16_104_cninja_prot_w )
 {
 	if (offset==(0xa8/2)) {
 		soundlatch_w(0,data&0xff);
-		cpunum_set_input_line(1,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 		return;
 	}
 
@@ -665,7 +666,7 @@ WRITE16_HANDLER( deco16_146_funkyjet_prot_w )
 
 	if (offset == (0x10a >> 1)) {
 		soundlatch_w(0,data&0xff);
-		cpunum_set_input_line(1,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 		return;
 	}
 }
@@ -701,15 +702,25 @@ READ16_HANDLER( deco16_146_funkyjet_prot_r )
 			return deco16_prot_ram[0x104>>1];
 		case 0x3a8 >> 1: /* See 93e4/9376 */
 			return deco16_prot_ram[0x500>>1];
-		case 0x3e8 >> 1:
+
+		// The top byte of 0x50c is used as a bitmask of completed levels,
+		// checked at end of each (0x0100 = level 1 completed,
+		// 0x3000 = levels 5 & 6 completed, 0x3f00 = levels 1-6 completed, etc)
+		case 0x56c >> 1:
 			return deco16_prot_ram[0x50c>>1];
+
+		// The game compares $ffc0 to check for all 6 basic levels
+		// being completed.  (which is 0x3f00 inverted and shifted)
+		// If wrong value is returned here the level select screen is
+		// incorrectly shown and leads to a crash as that screen
+		// cannot cope with all levels being already completed.
+		case 0x3e8 >> 1:
+			return (deco16_prot_ram[0x50c>>1] >> 8) ^ 0xffff;
 
 		case 0x4e4 >> 1:
 			return deco16_prot_ram[0x702>>1];
 		case 0x562 >> 1:
 			return deco16_prot_ram[0x18e>>1];
-		case 0x56c >> 1:
-			return deco16_prot_ram[0x50c>>1];
 
 		case 0x688 >> 1:
 			return deco16_prot_ram[0x300>>1];
@@ -737,7 +748,8 @@ READ16_HANDLER( deco16_146_funkyjet_prot_r )
 			return (readinputport(3) + (readinputport(4) << 8));
 	}
 
-	if (activecpu_get_pc()!=0xc0ea)	logerror("CPU #0 PC %06x: warning - read unmapped control address %06x\n",activecpu_get_pc(),offset<<1);
+	if (activecpu_get_pc()!=0xc0ea)
+		logerror("CPU #0 PC %06x: warning - read unmapped control address %06x (ctrl %04x)\n",activecpu_get_pc(),offset<<1, readinputport(0));
 
 	return 0;
 }
@@ -774,7 +786,7 @@ WRITE16_HANDLER( deco16_104_rohga_prot_w )
 
 	if (offset==(0xa8/2)) {
 		soundlatch_w(0,data&0xff);
-		cpunum_set_input_line(1,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 		return;
 	}
 
@@ -1205,7 +1217,7 @@ static WRITE16_HANDLER( deco16_146_core_prot_w )
 
 	if (writeport==sndport) {
 		soundlatch_w(0,data&0xff);
-		cpunum_set_input_line(1,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 		return;
 	}
 
@@ -1735,7 +1747,7 @@ WRITE16_HANDLER( dietgo_104_prot_w )
 {
 	if (offset==(0x380/2)) {
 		soundlatch_w(0,data&0xff);
-		cpunum_set_input_line(1,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 		return;
 	}
 	logerror("Protection PC %06x: warning - write unmapped memory address %04x %04x\n",activecpu_get_pc(),offset<<1,data);

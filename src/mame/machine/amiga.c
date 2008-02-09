@@ -9,6 +9,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/amiga.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/6526cia.h"
@@ -33,7 +34,7 @@
  *************************************/
 
 /* 715909 Hz for NTSC, 709379 for PAL */
-#define O2_CLOCK					(Machine->drv->cpu[0].clock / 10)
+#define O2_CLOCK					(cpunum_get_clock(0) / 10)
 
 /* How many CPU cycles we delay until we fire a pending interrupt */
 #define AMIGA_IRQ_DELAY_CYCLES		24
@@ -357,7 +358,7 @@ MACHINE_RESET( amiga )
 
 INTERRUPT_GEN( amiga_scanline_callback )
 {
-	int scanline = Machine->screen[0].height - 1 - cpu_getiloops();
+	int scanline = machine->screen[0].height - 1 - cpu_getiloops();
 
 	/* on the first scanline, we do some extra bookkeeping */
 	if (scanline == 0)
@@ -426,9 +427,9 @@ static void update_irqs(void)
 
 	/* set the highest IRQ line */
 	if (irq >= 0)
-		cpunum_set_input_line(0, irq, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, irq, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 7, CLEAR_LINE);
 }
 
 static TIMER_CALLBACK( amiga_irq_proc )
@@ -443,7 +444,7 @@ static TIMER_CALLBACK( amiga_irq_proc )
  *
  *************************************/
 
-UINT32 amiga_joystick_convert(void *param)
+CUSTOM_INPUT( amiga_joystick_convert )
 {
 	UINT8 bits = readinputportbytag(param);
 	int up = (bits >> 0) & 1;
@@ -1065,9 +1066,8 @@ READ16_HANDLER( amiga_cia_r )
 	/* handle the reads */
 	data = cia_read(which, offset >> 7);
 
-#if LOG_CIA
-	logerror("%06x:cia_%c_read(%03x) = %04x & %04x\n", safe_activecpu_get_pc(), 'A' + ((~offset & 0x0800) >> 11), offset * 2, data << shift, mem_mask ^ 0xffff);
-#endif
+	if (LOG_CIA)
+		logerror("%06x:cia_%c_read(%03x) = %04x & %04x\n", safe_activecpu_get_pc(), 'A' + ((~offset & 0x0800) >> 11), offset * 2, data << shift, mem_mask ^ 0xffff);
 
 	return data << shift;
 }
@@ -1084,9 +1084,8 @@ WRITE16_HANDLER( amiga_cia_w )
 {
 	int which;
 
-#if LOG_CIA
-	logerror("%06x:cia_%c_write(%03x) = %04x & %04x\n", safe_activecpu_get_pc(), 'A' + ((~offset & 0x0800) >> 11), offset * 2, data, mem_mask ^ 0xffff);
-#endif
+	if (LOG_CIA)
+		logerror("%06x:cia_%c_write(%03x) = %04x & %04x\n", safe_activecpu_get_pc(), 'A' + ((~offset & 0x0800) >> 11), offset * 2, data, mem_mask ^ 0xffff);
 
 	/* offsets 0000-07ff reference CIA B, and are accessed via the MSB */
 	if ((offset & 0x0800) == 0)
@@ -1139,7 +1138,7 @@ static void amiga_cia_1_irq(int state)
 
 static void custom_reset(void)
 {
-	int clock = Machine->drv->cpu[0].clock;
+	int clock = cpunum_get_clock(0);
 	UINT16	vidmode = (clock == AMIGA_68000_NTSC_CLOCK || clock == AMIGA_68EC020_NTSC_CLOCK ) ? 0x1000 : 0x0000; /* NTSC or PAL? */
 
 	CUSTOM_REG(REG_DDFSTRT) = 0x18;
@@ -1251,9 +1250,8 @@ READ16_HANDLER( amiga_custom_r )
 			break;
 	}
 
-#if LOG_CUSTOM
-	logerror("%06X:read from custom %s\n", safe_activecpu_get_pc(), amiga_custom_names[offset & 0xff]);
-#endif
+	if (LOG_CUSTOM)
+		logerror("%06X:read from custom %s\n", safe_activecpu_get_pc(), amiga_custom_names[offset & 0xff]);
 
 	return 0xffff;
 }
@@ -1281,9 +1279,8 @@ WRITE16_HANDLER( amiga_custom_w )
 	UINT16 temp;
 	offset &= 0xff;
 
-#if LOG_CUSTOM
-	logerror("%06X:write to custom %s = %04X\n", safe_activecpu_get_pc(), amiga_custom_names[offset & 0xff], data);
-#endif
+	if (LOG_CUSTOM)
+		logerror("%06X:write to custom %s = %04X\n", safe_activecpu_get_pc(), amiga_custom_names[offset & 0xff], data);
 
 	switch (offset)
 	{
@@ -1516,7 +1513,7 @@ void amiga_serial_in_w(UINT16 data)
 attotime amiga_get_serial_char_period(void)
 {
 	UINT32 divisor = (CUSTOM_REG(REG_SERPER) & 0x7fff) + 1;
-	UINT32 baud = Machine->drv->cpu[0].clock / 2 / divisor;
+	UINT32 baud = cpunum_get_clock(0) / 2 / divisor;
 	UINT32 numbits = 2 + ((CUSTOM_REG(REG_SERPER) & 0x8000) ? 9 : 8);
 	return attotime_mul(ATTOTIME_IN_HZ(baud), numbits);
 }

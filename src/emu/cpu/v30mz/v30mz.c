@@ -41,6 +41,7 @@
 ****************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 
 typedef UINT8 BOOLEAN;
 typedef UINT8 BYTE;
@@ -916,12 +917,12 @@ static void set_irq_line(int irqline, int state)
 	}
 }
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t nec_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	return necv_dasm_one(buffer, pc, oprom);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 static void nec_init(int index, int clock, const void *config, int (*irqcallback)(int), int type)
 {
@@ -969,7 +970,7 @@ static int v30mz_execute(int cycles)
 		if (I.no_interrupt)
 			I.no_interrupt--;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER((I.sregs[CS]<<4) + I.ip);
 		nec_instruction[FETCHOP]();
 	}
 
@@ -1047,6 +1048,7 @@ void v30mz_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0xff;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 5;							break;
@@ -1095,9 +1097,9 @@ void v30mz_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = nec_reset;				break;
 		case CPUINFO_PTR_EXIT:							info->exit = nec_exit;					break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = nec_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &nec_ICount;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */

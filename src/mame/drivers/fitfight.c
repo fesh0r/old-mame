@@ -82,12 +82,18 @@ Stephh's notes :
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/upd7810/upd7810.h"
 #include "sound/okim6295.h"
 
 
 UINT16 *fitfight_spriteram;
-UINT16 *fof_100000, *fof_600000, *fof_700000, *fof_800000, *fof_900000, *fof_a00000;
+static UINT16 *fof_100000;
+static UINT16 *fof_600000;
+UINT16 *fof_700000;
+static UINT16 *fof_800000;
+UINT16 *fof_900000;
+UINT16 *fof_a00000;
 
 UINT16 *fof_bak_tileram;
 UINT16 *fof_mid_tileram;
@@ -266,7 +272,7 @@ ADDRESS_MAP_END
 
 static INTERRUPT_GEN( snd_irq )
 {
-	cpunum_set_input_line(1,UPD7810_INTF2,HOLD_LINE);
+	cpunum_set_input_line(machine, 1,UPD7810_INTF2,HOLD_LINE);
 }
 
 static UPD7810_CONFIG sound_cpu_config =

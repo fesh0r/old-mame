@@ -158,6 +158,7 @@ Video sync   6 F   Video sync                 Post   6 F   Post
 // Compiler Directives
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
 
@@ -1001,7 +1002,7 @@ static WRITE8_HANDLER( blitter_w )
 		if (i==0 || (i==4 && !data))
 		{
 			blitter_busy = 0;
-			if (firq_level) cpunum_set_input_line(0, M6809_FIRQ_LINE, ASSERT_LINE); // make up delayed FIRQ's
+			if (firq_level) cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, ASSERT_LINE); // make up delayed FIRQ's
 		}
 		else
 		{
@@ -1499,7 +1500,7 @@ static INTERRUPT_GEN( halleys_interrupt )
 				fftail = (fftail + 1) & (MAX_SOUNDS - 1);
 				latch_delay = (latch_data) ? 0 : 4;
 				soundlatch_w(0, latch_data);
-				cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 			}
 
 			// clear collision list of this frame unconditionally
@@ -1508,16 +1509,16 @@ static INTERRUPT_GEN( halleys_interrupt )
 
 		// In Halley's Comet, NMI is used exclusively to handle coin input
 		case 1:
-			cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 		break;
 
 		// FIRQ drives gameplay; we need both types of NMI each frame.
 		case 2:
-			mVectorType = 1; cpunum_set_input_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
+			mVectorType = 1; cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 		break;
 
 		case 3:
-			mVectorType = 0; cpunum_set_input_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
+			mVectorType = 0; cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 		break;
 	}
 }
@@ -1539,18 +1540,18 @@ static INTERRUPT_GEN( benberob_interrupt )
 				fftail = (fftail + 1) & (MAX_SOUNDS - 1);
 				latch_delay = (latch_data) ? 0 : 4;
 				soundlatch_w(0, latch_data);
-				cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 			}
 		break;
 
 		case 1:
-			cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 		break;
 
 		case 2:
 		case 3:
 			// FIRQ must not happen when the blitter is being updated or it'll cause serious screen artifacts
-			if (!blitter_busy) cpunum_set_input_line(0, M6809_FIRQ_LINE, ASSERT_LINE); else firq_level++;
+			if (!blitter_busy) cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE); else firq_level++;
 		break;
 	}
 }
@@ -1567,7 +1568,7 @@ static WRITE8_HANDLER( firq_ack_w )
 	io_ram[0x9c] = data;
 
 	if (firq_level) firq_level--;
-	cpunum_set_input_line(0, M6809_FIRQ_LINE, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -1947,11 +1948,11 @@ static const struct AY8910interface ay8910_interface =
 
 
 static MACHINE_DRIVER_START( halleys )
-	MDRV_CPU_ADD_TAG("main", M6809, 19968000/4) // 5Mhz?(19.968MHz XTAL)
+	MDRV_CPU_ADD_TAG("main", M6809, 1664000) /* 19968000/12 (verified on pcb) */
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 	MDRV_CPU_VBLANK_INT(halleys_interrupt, 4)
 
-	MDRV_CPU_ADD(Z80, 6000000/2) // 3MHz(6MHz XTAL)
+	MDRV_CPU_ADD(Z80, 6000000/2) /* (verified on pcb) */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem, sound_writemem)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, (double)6000000/(4*16*16*10*16))
@@ -1975,7 +1976,7 @@ static MACHINE_DRIVER_START( halleys )
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 6000000/4)
+	MDRV_SOUND_ADD(AY8910, 6000000/4) /* (verified on pcb) */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
 	MDRV_SOUND_ADD(AY8910, 6000000/4)

@@ -212,6 +212,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/powerpc/ppc.h"
 #include "cpu/sharc/sharc.h"
 #include "machine/konppc.h"
@@ -360,7 +361,7 @@ static void K037122_tile_update(running_machine *machine, int chip)
 			if (K037122_dirty_map[chip][i])
 			{
 				K037122_dirty_map[chip][i] = 0;
-				decodechar(machine->gfx[K037122_gfx_index[chip]], i, (UINT8 *)K037122_char_ram[chip], &K037122_char_layout);
+				decodechar(machine->gfx[K037122_gfx_index[chip]], i, (UINT8 *)K037122_char_ram[chip]);
 			}
 		}
 		tilemap_mark_all_tiles_dirty(K037122_layer[chip][0]);
@@ -488,12 +489,12 @@ static int voodoo_version = 0;
 
 static void voodoo_vblank_0(int param)
 {
-	cpunum_set_input_line(0, INPUT_LINE_IRQ0, ASSERT_LINE);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
 static void voodoo_vblank_1(int param)
 {
-	cpunum_set_input_line(0, INPUT_LINE_IRQ1, ASSERT_LINE);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
 }
 
 static void hornet_exit(running_machine *machine)
@@ -626,11 +627,11 @@ static WRITE32_HANDLER( sysreg_w )
 		{
 			if (data & 0x80)	/* CG Board 1 IRQ Ack */
 			{
-				cpunum_set_input_line(0, INPUT_LINE_IRQ1, CLEAR_LINE);
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
 			}
 			if (data & 0x40)	/* CG Board 0 IRQ Ack */
 			{
-				cpunum_set_input_line(0, INPUT_LINE_IRQ0, CLEAR_LINE);
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
 			}
 			set_cgboard_id((data >> 4) & 0x3);
 		}
@@ -874,7 +875,7 @@ static MACHINE_RESET( hornet )
 {
 	if (memory_region(REGION_USER3))
 		memory_set_bankptr(1, memory_region(REGION_USER3));
-	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
 
 	if (memory_region(REGION_USER5))
 		memory_set_bankptr(5, memory_region(REGION_USER5));
@@ -924,8 +925,8 @@ static MACHINE_RESET( hornet_2board )
 {
 	if (memory_region(REGION_USER3))
 		memory_set_bankptr(1, memory_region(REGION_USER3));
-	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
-	cpunum_set_input_line(3, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, ASSERT_LINE);
 
 	if (memory_region(REGION_USER5))
 		memory_set_bankptr(5, memory_region(REGION_USER5));
@@ -1150,13 +1151,9 @@ static void jamma_w(int length)
 static void sound_irq_callback(int irq)
 {
 	if (irq == 0)
-	{
-		cpunum_set_input_line(1, INPUT_LINE_IRQ1, PULSE_LINE);
-	}
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ1, PULSE_LINE);
 	else
-	{
-		cpunum_set_input_line(1, INPUT_LINE_IRQ2, PULSE_LINE);
-	}
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ2, PULSE_LINE);
 }
 
 static UINT8 backup_ram[0x2000];

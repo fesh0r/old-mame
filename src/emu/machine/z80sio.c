@@ -2,7 +2,7 @@
 
     Z80 SIO (Z8440) implementation
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -20,11 +20,7 @@
 
 #define VERBOSE		1
 
-#if VERBOSE
-#define VPRINTF(x) logerror x
-#else
-#define VPRINTF(x)
-#endif
+#define VPRINTF(x) do { if (VERBOSE) logerror x; } while (0)
 
 
 

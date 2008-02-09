@@ -48,6 +48,7 @@ enum
     RSP_R31,
     RSP_SR,
     RSP_NEXTPC,
+    RSP_STEPCNT,
 };
 
 #define RSP_STATUS_HALT          0x0001
@@ -68,7 +69,7 @@ enum
 
 void rsp_get_info(UINT32 state, cpuinfo *info);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern offs_t rsp_dasm_one(char *buffer, offs_t pc, UINT32 op);
 #endif
 

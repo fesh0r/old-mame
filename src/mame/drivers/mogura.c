@@ -1,6 +1,7 @@
 /* Mogura Desse */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/dac.h"
 
 static UINT8 *mogura_tileram;
@@ -114,7 +115,7 @@ static WRITE8_HANDLER ( mogura_gfxram_w )
 {
 	mogura_gfxram[offset] = data ;
 
-	decodechar(Machine->gfx[0], offset/16, mogura_gfxram, Machine->drv->gfxdecodeinfo[0].gfxlayout);
+	decodechar(Machine->gfx[0], offset/16, mogura_gfxram);
 
 	tilemap_mark_all_tiles_dirty(mogura_tilemap);
 }

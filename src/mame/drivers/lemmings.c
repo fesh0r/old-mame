@@ -16,6 +16,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "lemmings.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
@@ -74,12 +75,12 @@ static WRITE16_HANDLER( lemmings_palette_24bit_w )
 static WRITE16_HANDLER( lemmings_sound_w )
 {
 	soundlatch_w(0,data&0xff);
-	cpunum_set_input_line(1,1,HOLD_LINE);
+	cpunum_set_input_line(Machine, 1,1,HOLD_LINE);
 }
 
 static WRITE8_HANDLER( lemmings_sound_ack_w )
 {
-	cpunum_set_input_line(1,1,CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,1,CLEAR_LINE);
 }
 
 /******************************************************************************/
@@ -261,7 +262,7 @@ GFXDECODE_END
 
 static void sound_irq(int state)
 {
-	cpunum_set_input_line(1,0,state);
+	cpunum_set_input_line(Machine, 1,0,state);
 }
 
 static const struct YM2151interface ym2151_interface =

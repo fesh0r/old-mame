@@ -74,6 +74,7 @@ Known issues:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "machine/8255ppi.h"
 #include "sound/ay8910.h"
@@ -112,7 +113,7 @@ static WRITE8_HANDLER( transmit_data_w )
 }
 static READ8_HANDLER( trigger_slave_nmi_r )
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	return 0;
 }
 
@@ -131,7 +132,7 @@ static int imola_draw_mode;
 static void
 InitializeColors( void )
 { /* optional runtime remapping of colors */
-	const UINT8 color[0x10][3] =
+	static const UINT8 color[0x10][3] =
 	{ /* wrong! need color-accurate screenshots to fix */
 		{ 0x44,0x44,0x00 },
 		{ 0x7f,0xff,0xff },
@@ -365,7 +366,7 @@ static INTERRUPT_GEN( master_interrupt )
 		memcpy( &slave_workram[0x80], mComData, mComCount );
 		mComCount = 0;
 #endif
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 	else
 	{
@@ -386,7 +387,7 @@ static INTERRUPT_GEN( master_interrupt )
 			{
 				oldsteer = (oldsteer+1)&0xf;
 			}
-			cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 } /* master_interrupt */

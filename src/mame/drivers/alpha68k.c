@@ -174,6 +174,7 @@ note: CLUT and color remap PROMs missing
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
@@ -336,7 +337,7 @@ static WRITE16_HANDLER( paddlema_soundlatch_w )
 	if (ACCESSING_LSB)
 	{
 		soundlatch_w(0, data);
-		cpunum_set_input_line(1, 0, HOLD_LINE);
+		cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 	}
 }
 
@@ -345,7 +346,7 @@ static WRITE16_HANDLER( tnexspce_soundlatch_w )
 	if (ACCESSING_LSB)
 	{
 		soundlatch_w(0, data);
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 //ZT
@@ -2030,7 +2031,7 @@ static const struct YM2203interface ym2203_interface =
 
 static void YM3812_irq(int param)
 {
-	cpunum_set_input_line(1, 0, (param) ? HOLD_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 0, (param) ? HOLD_LINE : CLEAR_LINE);
 }
 
 static const struct YM3812interface ym3812_interface =
@@ -2041,9 +2042,9 @@ static const struct YM3812interface ym3812_interface =
 static INTERRUPT_GEN( alpha68k_interrupt )
 {
 	if (cpu_getiloops() == 0)
-		cpunum_set_input_line(0, 1, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 1, HOLD_LINE);
 	else
-		cpunum_set_input_line(0, 2, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
 }
 //ZT
 
@@ -2076,9 +2077,8 @@ static MACHINE_DRIVER_START( sstingry )
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(sstingry)
-	MDRV_PALETTE_LENGTH(256)
+	MDRV_PALETTE_LENGTH(256 + 1)
 //AT
-	MDRV_COLORTABLE_LENGTH(256)
 	MDRV_PALETTE_INIT(kyros)
 //ZT
 	MDRV_VIDEO_UPDATE(sstingry)
@@ -2127,8 +2127,7 @@ static MACHINE_DRIVER_START( kyros )
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(kyros)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(256)
+	MDRV_PALETTE_LENGTH(256 + 1)
 
 	MDRV_PALETTE_INIT(kyros)
 	MDRV_VIDEO_UPDATE(kyros)
@@ -2175,8 +2174,7 @@ static MACHINE_DRIVER_START( jongbou )
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(jongbou)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(256)
+	MDRV_PALETTE_LENGTH(256 + 1)
 
 	MDRV_PALETTE_INIT(kyros)
 	MDRV_VIDEO_UPDATE(kyros)
@@ -2210,8 +2208,7 @@ static MACHINE_DRIVER_START( alpha68k_I )
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(paddle)
 //AT
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(1024)
+	MDRV_PALETTE_LENGTH(1024)
 	MDRV_PALETTE_INIT(paddlem)
 //ZT
 	MDRV_VIDEO_UPDATE(alpha68k_I)
@@ -2428,8 +2425,7 @@ static MACHINE_DRIVER_START( tnexspce )
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(tnexspce)
 
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(1024)
+	MDRV_PALETTE_LENGTH(1024)
 	MDRV_PALETTE_INIT(paddlem)
 	MDRV_VIDEO_UPDATE(alpha68k_I)
 

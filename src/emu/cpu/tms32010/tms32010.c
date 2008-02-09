@@ -1,7 +1,7 @@
  /**************************************************************************\
  *                 Texas Instruments TMS32010 DSP Emulator                  *
  *                                                                          *
- *                  Copyright (C) 1999-2004+ Tony La Porta                  *
+ *                  Copyright Tony La Porta                                 *
  *      You are not allowed to distribute this software commercially.       *
  *                      Written for the MAME project.                       *
  *                                                                          *
@@ -53,16 +53,12 @@
 
 
 
-#include "tms32010.h"
 #include "debugger.h"
+#include "deprecat.h"
+#include "tms32010.h"
 
 
-/* 1 cycle equals 4 clock ticks */
-#if 0
-#define CLK  TMS32010_CLOCK_DIVIDER
-#else
 #define CLK  1		/* Moved the clock timing back into the driver */
-#endif
 
 
 #ifndef INLINE
@@ -794,7 +790,7 @@ static int tms32010_execute(int cycles)
 
 		R.PREVPC = R.PC;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(R.PC);
 
 		R.opcode.d = M_RDOP(R.PC);
 		R.PC++;
@@ -892,7 +888,8 @@ void tms32010_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
-		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = TMS32010_CLOCK_DIVIDER;		break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
+		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 4;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1*CLK;						break;
@@ -933,9 +930,9 @@ void tms32010_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = tms32010_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = tms32010_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = tms32010_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &tms32010_icount;		break;
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_DATA:	info->internal_map = construct_map_tms32010_ram; break;
 
@@ -944,7 +941,7 @@ void tms32010_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Texas Instruments TMS32010"); break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.22");				break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C)1999-2004+ by Tony La Porta"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Tony La Porta"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c",

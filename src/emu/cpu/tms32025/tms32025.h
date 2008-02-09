@@ -1,7 +1,7 @@
  /**************************************************************************\
  *                Texas Instruments TMS320x25 DSP Emulator                  *
  *                                                                          *
- *                 Copyright (C) 2001-2002+ Tony La Porta                   *
+ *                 Copyright Tony La Porta                                  *
  *                      Written for the MAME project.                       *
  *                                                                          *
  *      Note :  This is a word based microcontroller, with addressing       *
@@ -71,7 +71,7 @@ extern void tms32025_get_info(UINT32 state, cpuinfo *info);
 extern void tms32026_get_info(UINT32 state, cpuinfo *info);
 
 
-#ifdef	MAME_DEBUG
+#ifdef	ENABLE_DEBUGGER
 offs_t tms32025_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 

@@ -46,6 +46,7 @@ sprite RAM
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "taitoic.h"
 
 
@@ -54,9 +55,6 @@ extern UINT16	*TC0080VCO_chain_ram_1;
 extern UINT16	*TC0080VCO_spriteram;
 extern UINT16	*TC0080VCO_scroll_ram;
 extern int		TC0080VCO_flipscreen;
-
-/* Needed in the sprite palette color marking */
-extern int TC0080VCO_has_tx;
 
 /* These are hand-tuned values */
 static const int zoomy_conv_table[] =

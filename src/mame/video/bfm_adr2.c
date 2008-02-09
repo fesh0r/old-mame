@@ -91,16 +91,19 @@ E000-FFFF  | R | D D D D D D D D | 8K ROM
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/bfm_bd1.h"  // vfd
 #include "video/bfm_adr2.h"
 #include "rendlay.h"
 
 #ifdef MAME_DEBUG
-#define LOG_CTRL(x) logerror x // show UART information
+#define VERBOSE 1
 #else
-#define LOG_CTRL(x)
+#define VERBOSE 0
 #endif
+
+#define LOG_CTRL(x) do { if (VERBOSE) logerror x; } while (0)
 
 // local vars /////////////////////////////////////////////////////////////
 
@@ -260,7 +263,7 @@ INTERRUPT_GEN( adder2_vbl )
 	if ( adder2_c101 & 0x01 )
 	{
 		adder_vbl_triggered = 1;
-		cpunum_set_input_line(1, M6809_IRQ_LINE, HOLD_LINE );
+		cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, HOLD_LINE );
 	}
 }
 

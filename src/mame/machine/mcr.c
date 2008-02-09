@@ -5,6 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
 #include "machine/z80sio.h"
@@ -15,8 +16,8 @@
 #include "cpu/z80/z80daisy.h"
 #include "mcr.h"
 
-
-#define LOG(x) logerror x
+#define VERBOSE 0
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 
 /*************************************
@@ -189,13 +190,13 @@ static const pia6821_interface zwackery_pia_4_intf =
 
 static void ctc_interrupt(int state)
 {
-	cpunum_set_input_line(0, 0, state);
+	cpunum_set_input_line(Machine, 0, 0, state);
 }
 
 
 static void ipu_ctc_interrupt(int state)
 {
-	cpunum_set_input_line(3, 0, state);
+	cpunum_set_input_line(Machine, 3, 0, state);
 }
 
 
@@ -267,7 +268,7 @@ static z80sio_interface nflfoot_sio_intf =
 MACHINE_START( mcr )
 {
 	/* initialize the CTC */
-	ctc_intf.baseclock = machine->drv->cpu[0].clock;
+	ctc_intf.baseclock = cpunum_get_clock(0);
 	z80ctc_init(0, &ctc_intf);
 
 	state_save_register_global(mcr_cocktail_flip);
@@ -277,16 +278,16 @@ MACHINE_START( mcr )
 MACHINE_START( nflfoot )
 {
 	/* initialize the CTC */
-	ctc_intf.baseclock = machine->drv->cpu[0].clock;
+	ctc_intf.baseclock = cpunum_get_clock(0);
 	z80ctc_init(0, &ctc_intf);
 
-	nflfoot_ctc_intf.baseclock = machine->drv->cpu[3].clock;
+	nflfoot_ctc_intf.baseclock = cpunum_get_clock(3);
 	z80ctc_init(1, &nflfoot_ctc_intf);
 
 	z80pio_init(0, &nflfoot_pio_intf);
 	z80pio_init(1, &nflfoot_pio_intf);
 
-	nflfoot_sio_intf.baseclock = machine->drv->cpu[3].clock;
+	nflfoot_sio_intf.baseclock = cpunum_get_clock(3);
 	z80sio_init(0, &nflfoot_sio_intf);
 
 	/* allocate a timer for the IPU watchdog */
@@ -364,7 +365,7 @@ static void mcr68_common_init(void)
 	}
 
 	/* initialize the clock */
-	m6840_internal_counter_period = ATTOTIME_IN_HZ(Machine->drv->cpu[0].clock / 10);
+	m6840_internal_counter_period = ATTOTIME_IN_HZ(cpunum_get_clock(0) / 10);
 
 	/* reset cocktail flip */
 	mcr_cocktail_flip = 0;
@@ -393,7 +394,7 @@ MACHINE_START( zwackery )
 	pia_config(3, &zwackery_pia_3_intf);
 	pia_config(4, &zwackery_pia_4_intf);
 
-	machine_start_mcr68(machine);
+	MACHINE_START_CALL(mcr68);
 }
 
 
@@ -482,9 +483,9 @@ static void update_mcr68_interrupts(void)
 
 	/* set the new state of the IRQ lines */
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -604,9 +605,9 @@ WRITE8_HANDLER( zwackery_ca2_w )
 }
 
 
-void zwackery_pia_irq(int state)
+static void zwackery_pia_irq(int state)
 {
-	v493_irq_state = state;
+	v493_irq_state = pia_get_irq_a(2) | pia_get_irq_b(2);
 	update_mcr68_interrupts();
 }
 
@@ -1003,7 +1004,7 @@ WRITE8_HANDLER( mcr_ipu_laserdisk_w )
 static TIMER_CALLBACK( ipu_watchdog_reset )
 {
 	logerror("ipu_watchdog_reset\n");
-	cpunum_set_input_line(3, INPUT_LINE_RESET, PULSE_LINE);
+	cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, PULSE_LINE);
 	z80ctc_reset(1);
 	z80pio_reset(0);
 	z80pio_reset(1);

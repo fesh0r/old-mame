@@ -30,7 +30,7 @@
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -40,9 +40,9 @@ static void update_interrupts(void)
 		newstate = 2;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -386,8 +386,8 @@ ROM_END
 static DRIVER_INIT( xybots )
 {
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x008000, 107);
-	atarijsa_init(1, 2, 1, 0x0100);
+	atarigen_slapstic_init(0, 0x008000, 0, 107);
+	atarijsa_init(machine, 1, 0x0100);
 }
 
 

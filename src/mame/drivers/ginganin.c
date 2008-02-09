@@ -49,6 +49,7 @@ f5d6    print 7 digit BCD number: d0.l to (a1)+ color $3000
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/3812intf.h"
 
@@ -327,7 +328,7 @@ static INTERRUPT_GEN( ginganin_sound_interrupt )
 		if (MC6809_CTR > S_TEMPO)
 		{
 			MC6809_CTR = 0;
-			cpunum_set_input_line(1, 0, HOLD_LINE);
+			cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 		}
 		else
 		{

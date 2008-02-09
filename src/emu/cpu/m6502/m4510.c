@@ -3,7 +3,7 @@
  *   m4510.c
  *   Portable 4510 emulator V1.0beta1
  *
- *   Copyright (c) 2000 Peter Trauner, all rights reserved
+ *   Copyright Peter Trauner, all rights reserved
  *   documentation preliminary databook
  *   documentation by michael steil mist@c64.org
  *   available at ftp://ftp.funet.fi/pub/cbm/c65
@@ -101,6 +101,7 @@ z:      xxxx address bits a19 .. a16 for memory accesses with a15 1 ?
  */
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "m6502.h"
 #include "m4510.h"
 
@@ -117,11 +118,7 @@ z:      xxxx address bits a19 .. a16 for memory accesses with a15 1 ?
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 
 typedef struct {
@@ -245,7 +242,7 @@ INLINE void m4510_take_irq(void)
 		P = (P & ~F_D) | F_I;		/* knock out D and set I flag */
 		PCL = RDMEM(EAD);
 		PCH = RDMEM(EAD+1);
-		LOG((errorlog,"M4510#%d takes IRQ ($%04x)\n", cpu_getactivecpu(), PCD));
+		LOG(("M4510#%d takes IRQ ($%04x)\n", cpu_getactivecpu(), PCD));
 		/* call back the cpuintrf to let it clear the line */
 		if (m4510.irq_callback) (*m4510.irq_callback)(0);
 		CHANGE_PC;
@@ -264,7 +261,7 @@ static int m4510_execute(int cycles)
 		UINT8 op;
 		PPC = PCD;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PCD);
 
 		/* if an irq is pending, take it now */
 		if( m4510.pending_irq )
@@ -276,16 +273,16 @@ static int m4510_execute(int cycles)
 		/* check if the I flag was just reset (interrupts enabled) */
 		if( m4510.after_cli )
 		{
-			LOG((errorlog,"M4510#%d after_cli was >0", cpu_getactivecpu()));
+			LOG(("M4510#%d after_cli was >0", cpu_getactivecpu()));
 			m4510.after_cli = 0;
 			if (m4510.irq_state != CLEAR_LINE)
 			{
-				LOG((errorlog,": irq line is asserted: set pending IRQ\n"));
+				LOG((": irq line is asserted: set pending IRQ\n"));
 				m4510.pending_irq = 1;
 			}
 			else
 			{
-				LOG((errorlog,": irq line is clear\n"));
+				LOG((": irq line is clear\n"));
 			}
 		}
 		else
@@ -305,7 +302,7 @@ static void m4510_set_irq_line(int irqline, int state)
 		m4510.nmi_state = state;
 		if( state != CLEAR_LINE )
 		{
-			LOG((errorlog, "M4510#%d set_nmi_line(ASSERT)\n", cpu_getactivecpu()));
+			LOG(("M4510#%d set_nmi_line(ASSERT)\n", cpu_getactivecpu()));
 			EAD = M4510_NMI_VEC;
 			m4510_ICount -= 7;
 			PUSH(PCH);
@@ -314,7 +311,7 @@ static void m4510_set_irq_line(int irqline, int state)
 			P = (P & ~F_D) | F_I;		/* knock out D and set I flag */
 			PCL = RDMEM(EAD);
 			PCH = RDMEM(EAD+1);
-			LOG((errorlog,"M4510#%d takes NMI ($%04x)\n", cpu_getactivecpu(), PCD));
+			LOG(("M4510#%d takes NMI ($%04x)\n", cpu_getactivecpu(), PCD));
 			CHANGE_PC;
 		}
 	}
@@ -323,7 +320,7 @@ static void m4510_set_irq_line(int irqline, int state)
 		m4510.irq_state = state;
 		if( state != CLEAR_LINE )
 		{
-			LOG((errorlog, "M4510#%d set_irq_line(ASSERT)\n", cpu_getactivecpu()));
+			LOG(("M4510#%d set_irq_line(ASSERT)\n", cpu_getactivecpu()));
 			m4510.pending_irq = 1;
 		}
 	}
@@ -437,6 +434,7 @@ void m4510_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 2;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 3;							break;
@@ -493,7 +491,7 @@ void m4510_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = m4510_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = m4510_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m4510_dasm;			break;
 #endif
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &m4510_ICount;			break;
@@ -509,7 +507,7 @@ void m4510_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "CBM Semiconductor Group CSG 65CE02"); break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0beta");				break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) 1998 Juergen Buchmueller\nCopyright (c) 2000 Peter Trauner\nall rights reserved."); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Juergen Buchmueller\nCopyright Peter Trauner\nall rights reserved."); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",

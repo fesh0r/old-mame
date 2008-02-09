@@ -152,7 +152,7 @@ static UINT8 tms5220_ctl;
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -168,9 +168,9 @@ static void update_interrupts(void)
 
 	/* set the new state of the IRQ lines */
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -2139,7 +2139,7 @@ static DRIVER_INIT( marble )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 103);
+	atarigen_slapstic_init(0, 0x080000, 0, 103);
 
 	joystick_type = 0;	/* none */
 	trackball_type = 1;	/* rotated */
@@ -2151,7 +2151,7 @@ static DRIVER_INIT( peterpak )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 107);
+	atarigen_slapstic_init(0, 0x080000, 0, 107);
 
 	joystick_type = 1;	/* digital */
 	trackball_type = 0;	/* none */
@@ -2163,7 +2163,7 @@ static DRIVER_INIT( indytemp )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 105);
+	atarigen_slapstic_init(0, 0x080000, 0, 105);
 
 	/* special case for the Indiana Jones slapstic */
 	memory_set_opbase_handler(0,indytemp_setopbase);
@@ -2178,7 +2178,7 @@ static DRIVER_INIT( roadrunn )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 108);
+	atarigen_slapstic_init(0, 0x080000, 0, 108);
 
 	joystick_type = 2;	/* analog */
 	trackball_type = 0;	/* none */
@@ -2190,7 +2190,7 @@ static DRIVER_INIT( roadb109 )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 109);
+	atarigen_slapstic_init(0, 0x080000, 0, 109);
 
 	joystick_type = 3;	/* pedal */
 	trackball_type = 2;	/* steering wheel */
@@ -2202,7 +2202,7 @@ static DRIVER_INIT( roadb110 )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 110);
+	atarigen_slapstic_init(0, 0x080000, 0, 110);
 
 	joystick_type = 3;	/* pedal */
 	trackball_type = 2;	/* steering wheel */

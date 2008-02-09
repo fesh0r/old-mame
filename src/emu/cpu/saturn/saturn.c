@@ -4,7 +4,7 @@
  *   portable saturn emulator interface
  *   (hp calculators)
  *
- *   Copyright (c) 2000 Peter Trauner, all rights reserved.
+ *   Copyright Peter Trauner, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -19,8 +19,8 @@
  *   - This entire notice must remain in the source code.
  *
  *****************************************************************************/
-#include "cpuintrf.h"
 #include "debugger.h"
+#include "deprecat.h"
 
 #include "saturn.h"
 #include "sat.h"
@@ -49,11 +49,7 @@ typedef union {
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 
 /****************************************************************************
@@ -163,7 +159,7 @@ static int saturn_execute(int cycles)
 	{
 		saturn.oldpc = saturn.pc;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(saturn.pc);
 
 		/* if an irq is pending, take it now */
 		if( saturn.pending_irq )
@@ -320,6 +316,7 @@ void saturn_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:						info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 20; /* 20 nibbles max */		break;
@@ -380,9 +377,9 @@ void saturn_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = saturn_reset;					break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = saturn_execute;				break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;							break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = saturn_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &saturn_ICount;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -390,7 +387,7 @@ void saturn_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY: 					strcpy(info->s = cpuintrf_temp_str(), "Saturn");	break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s = cpuintrf_temp_str(), "1.0alpha");	break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s = cpuintrf_temp_str(), __FILE__);	break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s = cpuintrf_temp_str(), "Copyright (c) 2000 Peter Trauner, all rights reserved.");	break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s = cpuintrf_temp_str(), "Copyright Peter Trauner, all rights reserved.");	break;
 
 		case CPUINFO_STR_REGISTER + SATURN_PC:		sprintf(info->s = cpuintrf_temp_str(), "PC:   %.5x", saturn.pc);break;
 		case CPUINFO_STR_REGISTER + SATURN_D0:		sprintf(info->s = cpuintrf_temp_str(), "D0:   %.5x", saturn.d[0]);break;

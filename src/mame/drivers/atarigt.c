@@ -19,6 +19,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "video/atarirle.h"
 #include "cpu/m68000/m68000.h"
@@ -54,7 +55,7 @@ static void cage_irq_callback(int reason);
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -66,9 +67,9 @@ static void update_interrupts(void)
 		newstate = 6;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -90,7 +91,7 @@ static MACHINE_RESET( atarigt )
 static void cage_irq_callback(int reason)
 {
 	if (reason)
-		atarigen_sound_int_gen();
+		atarigen_sound_int_gen(Machine, 0);
 	else
 		atarigen_sound_int_ack_w(0,0,0);
 }

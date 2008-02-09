@@ -6,6 +6,7 @@
 
 #include "driver.h"
 #include "streams.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "machine/z80ctc.h"
 #include "cchasm.h"
@@ -71,7 +72,7 @@ WRITE8_HANDLER( cchasm_snd_io_w )
     case 0x41:
         sound_flags |= 0x40;
         soundlatch4_w (offset, data);
-        cpunum_set_input_line(0, 1, HOLD_LINE);
+        cpunum_set_input_line(Machine, 0, 1, HOLD_LINE);
         break;
 
     case 0x61:
@@ -99,7 +100,7 @@ WRITE16_HANDLER( cchasm_io_w )
 			sound_flags |= 0x80;
 			soundlatch2_w (offset, data);
 			z80ctc_0_trg2_w (0, 1);
-			cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 			break;
 		case 2:
 			led = data;
@@ -133,7 +134,7 @@ static int output[2];
 
 static void ctc_interrupt (int state)
 {
-	cpunum_set_input_line(1, 0, state);
+	cpunum_set_input_line(Machine, 1, 0, state);
 }
 
 static WRITE8_HANDLER( ctc_timer_1_w )
@@ -179,7 +180,7 @@ SOUND_START( cchasm )
     sound_flags = 0;
     output[0] = 0; output[1] = 0;
 
-	ctc_intf.baseclock = machine->drv->cpu[1].clock;
+	ctc_intf.baseclock = cpunum_get_clock(1);
 	z80ctc_init (0, &ctc_intf);
 
 	timer_pulse(attotime_make(0, machine->screen[0].refresh), NULL, 0, cchasm_sh_update);

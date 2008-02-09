@@ -36,7 +36,7 @@ static INTERRUPT_GEN( exerion_interrupt )
 {
 	/* Exerion triggers NMIs on coin insertion */
 	if (readinputport(4) & 1)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -89,7 +89,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
 	AM_RANGE(0x6008, 0x600b) AM_READ(exerion_protection_r)
 	AM_RANGE(0x6000, 0x67ff) AM_RAM AM_BASE(&exerion_ram)
-	AM_RANGE(0x8000, 0x87ff) AM_READWRITE(MRA8_RAM, videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x8800, 0x887f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x8800, 0x8bff) AM_RAM
 	AM_RANGE(0xa000, 0xa000) AM_READ(exerion_port01_r)
@@ -473,7 +473,7 @@ static DRIVER_INIT( exerionb )
 		ram[addr] = (ram[addr] & 0xf9) | ((ram[addr] & 2) << 1) | ((ram[addr] & 4) >> 1);
 
 	/* also convert the gfx as in Exerion */
-	driver_init_exerion(machine);
+	DRIVER_INIT_CALL(exerion);
 }
 
 

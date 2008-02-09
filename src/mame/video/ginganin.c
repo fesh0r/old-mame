@@ -58,6 +58,7 @@ Note:   if MAME_DEBUG is defined, pressing Z with:
 **************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
 /* Variables only used here */
 static tilemap *bg_tilemap, *fg_tilemap, *tx_tilemap;
@@ -181,7 +182,7 @@ WRITE16_HANDLER( ginganin_vregs16_w )
 		break;
 	case 7:
 		soundlatch_w(0,data);
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 		break;
 	default:
 		logerror("CPU #0 PC %06X : Warning, videoreg %04X <- %04X\n",activecpu_get_pc(),offset,data);

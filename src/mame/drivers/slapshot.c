@@ -132,6 +132,7 @@ Region byte at offset 0x031:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
@@ -181,14 +182,14 @@ static WRITE16_HANDLER( color_ram_word_w )
 
 static TIMER_CALLBACK( slapshot_interrupt6 )
 {
-	cpunum_set_input_line(0,6,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,6,HOLD_LINE);
 }
 
 
 static INTERRUPT_GEN( slapshot_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL, 0, slapshot_interrupt6);
-	cpunum_set_input_line(0,5,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,5,HOLD_LINE);
 }
 
 
@@ -217,7 +218,7 @@ static READ16_HANDLER( opwolf3_adc_r )
 static WRITE16_HANDLER( opwolf3_adc_req_w )
 {
 	/* 4 writes a frame - one for each analogue port */
-	cpunum_set_input_line(0,3,HOLD_LINE);
+	cpunum_set_input_line(Machine, 0,3,HOLD_LINE);
 }
 
 /*****************************************************
@@ -529,7 +530,7 @@ GFXDECODE_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =

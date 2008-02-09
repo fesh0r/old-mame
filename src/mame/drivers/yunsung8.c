@@ -30,6 +30,7 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/3812intf.h"
 #include "sound/msm5205.h"
@@ -513,7 +514,7 @@ static void yunsung8_adpcm_int(int irq)
 
 	toggle ^= 1;
 	if (toggle)
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static const struct MSM5205interface yunsung8_msm5205_interface =

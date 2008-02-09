@@ -13,10 +13,10 @@
  *
  */
 
-#include "ui.h"
 #include "debugger.h"
-#include "psx.h"
+#include "deprecat.h"
 #include "osd_cpu.h"
+#include "psx.h"
 
 #define LOG_BIOSCALL ( 0 )
 
@@ -129,7 +129,7 @@ static const UINT32 mips_mtc0_writemask[]=
 };
 
 #if 0
-void GTELOG(const char *a,...)
+void ATTR_PRINTF(1,2) GTELOG(const char *a,...)
 {
 	va_list va;
 	char s_text[ 1024 ];
@@ -139,7 +139,7 @@ void GTELOG(const char *a,...)
 	logerror( "%08x: GTE: %08x %s\n", mipscpu.pc, INS_COFUN( mipscpu.op ), s_text );
 }
 #else
-INLINE void GTELOG(const char *a, ...) {}
+INLINE void ATTR_PRINTF(1,2) GTELOG(const char *a, ...) {}
 #endif
 
 static UINT32 getcp2dr( int n_reg );
@@ -152,7 +152,7 @@ static void mips_exception( int exception );
 static void mips_stop( void )
 {
 	DEBUGGER_BREAK;
-	CALL_MAME_DEBUG;
+	CALL_DEBUGGER(mipscpu.pc);
 }
 
 #if LOG_BIOSCALL
@@ -987,7 +987,7 @@ static int mips_execute( int cycles )
 		log_bioscall();
 #endif
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(mipscpu.pc);
 
 		mipscpu.op = cpu_readop32( mipscpu.pc );
 		switch( INS_OP( mipscpu.op ) )
@@ -2261,12 +2261,12 @@ static void set_irq_line( int irqline, int state )
  * Return a formatted string for a register
  ****************************************************************************/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t mips_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	return DasmMIPS( buffer, pc, opram );
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 /* preliminary gte code */
 
@@ -3126,7 +3126,7 @@ static void docop2( int gteop )
 		}
 		break;
 	}
-	ui_popup_time( 1, "unknown GTE op %08x", gteop );
+	popmessage( "unknown GTE op %08x", gteop );
 	logerror( "%08x: unknown GTE op %08x\n", mipscpu.pc, gteop );
 	mips_stop();
 }
@@ -3300,7 +3300,8 @@ static void mips_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 6;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
-		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
+		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 2 * 2;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1;							break;
@@ -3474,9 +3475,9 @@ static void mips_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = mips_exit;					break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = mips_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = mips_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &mips_ICount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -3484,7 +3485,7 @@ static void mips_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "mipscpu");				break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.5");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright 2005 smf");	break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright smf");		break;
 
 		case CPUINFO_STR_FLAGS:							strcpy(info->s, " ");					break;
 

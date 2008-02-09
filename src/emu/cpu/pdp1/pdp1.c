@@ -335,8 +335,8 @@
 */
 
 
-#include "cpuintrf.h"
 #include "debugger.h"
+#include "deprecat.h"
 #include "pdp1.h"
 
 #define LOG 0
@@ -627,7 +627,7 @@ static int pdp1_execute(int cycles)
 
 	do
 	{
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PC);
 
 
 		/* ioh should be cleared at the end of the instruction cycle, and ios at the
@@ -918,19 +918,15 @@ static void pdp1_set_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_INT_REGISTER + PDP1_SNGL_INST:	pdp1.sngl_inst = info->i ? 1 : 0;			break;
 	case CPUINFO_INT_REGISTER + PDP1_EXTEND_SW:	pdp1.extend_sw = info->i ? 1 : 0;			break;
 	case CPUINFO_INT_REGISTER + PDP1_RUN:		pdp1.run = info->i ? 1 : 0;					break;
-#if LOG
-	case CPUINFO_INT_REGISTER + PDP1_CYC:		logerror("pdp1_set_reg to cycle flip-flop ignored\n");/* no way!*/ break;
-	case CPUINFO_INT_REGISTER + PDP1_DEFER:		logerror("pdp1_set_reg to defer flip-flop ignored\n");/* no way!*/ break;
-	case CPUINFO_INT_REGISTER + PDP1_BRK_CTR:	logerror("pdp1_set_reg to break counter ignored\n");/* no way!*/ break;
-#endif
+	case CPUINFO_INT_REGISTER + PDP1_CYC:		if (LOG) logerror("pdp1_set_reg to cycle flip-flop ignored\n");/* no way!*/ break;
+	case CPUINFO_INT_REGISTER + PDP1_DEFER:		if (LOG) logerror("pdp1_set_reg to defer flip-flop ignored\n");/* no way!*/ break;
+	case CPUINFO_INT_REGISTER + PDP1_BRK_CTR:	if (LOG) logerror("pdp1_set_reg to break counter ignored\n");/* no way!*/ break;
 	case CPUINFO_INT_REGISTER + PDP1_RIM:		pdp1.rim = info->i ? 1 : 0;					break;
 	case CPUINFO_INT_REGISTER + PDP1_SBM:		pdp1.sbm = info->i ? 1 : 0;					break;
 	case CPUINFO_INT_REGISTER + PDP1_EXD:		EXD = (pdp1.extend_support && info->i) ? 1 : 0; break;
-#if LOG
-	case CPUINFO_INT_REGISTER + PDP1_IOC:		logerror("pdp1_set_reg to ioc flip-flop ignored\n");/* no way!*/ break;
-	case CPUINFO_INT_REGISTER + PDP1_IOH:		logerror("pdp1_set_reg to ioh flip-flop ignored\n");/* no way!*/ break;
-	case CPUINFO_INT_REGISTER + PDP1_IOS:		logerror("pdp1_set_reg to ios flip-flop ignored\n");/* no way!*/ break;
-#endif
+	case CPUINFO_INT_REGISTER + PDP1_IOC:		if (LOG) logerror("pdp1_set_reg to ioc flip-flop ignored\n");/* no way!*/ break;
+	case CPUINFO_INT_REGISTER + PDP1_IOH:		if (LOG) logerror("pdp1_set_reg to ioh flip-flop ignored\n");/* no way!*/ break;
+	case CPUINFO_INT_REGISTER + PDP1_IOS:		if (LOG) logerror("pdp1_set_reg to ios flip-flop ignored\n");/* no way!*/ break;
 	case CPUINFO_INT_REGISTER + PDP1_START_CLEAR:	pulse_start_clear();					break;
 	case CPUINFO_INT_REGISTER + PDP1_IO_COMPLETE:	pdp1.ios = 1;							break;
 	}
@@ -946,6 +942,7 @@ void pdp1_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_INT_INPUT_LINES:						info->i = 16;							break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 	case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;	/*don't care*/	break;
+	case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 	case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 	case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -1029,9 +1026,9 @@ void pdp1_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_PTR_EXECUTE:						info->execute = pdp1_execute;			break;
 	case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = pdp1_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &pdp1_ICount;			break;
 
 	/* --- the following bits of info are returned as NULL-terminated strings --- */

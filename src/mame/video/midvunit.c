@@ -5,6 +5,7 @@
 **************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/adsp2100/adsp2100.h"
 #include "audio/williams.h"
@@ -57,8 +58,14 @@ static TIMER_CALLBACK( scanline_timer_cb )
 {
 	int scanline = param;
 
-	cpunum_set_input_line(0, 0, ASSERT_LINE);
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline + 1, 0), scanline, attotime_zero);
+	if (scanline != -1)
+	{
+		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+		timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline + 1, 0), scanline, attotime_zero);
+		timer_set(ATTOTIME_IN_HZ(25000000), NULL, -1, scanline_timer_cb);
+	}
+	else
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 
@@ -73,6 +80,12 @@ VIDEO_START( midvunit )
 	scanline_timer = timer_alloc(scanline_timer_cb, NULL);
 	poly = poly_alloc(4000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
 	add_exit_callback(machine, midvunit_exit);
+
+	state_save_register_global_array(video_regs);
+	state_save_register_global_array(dma_data);
+	state_save_register_global(dma_data_index);
+	state_save_register_global(page_control);
+	state_save_register_global(video_changed);
 }
 
 

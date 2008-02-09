@@ -30,7 +30,7 @@
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -40,9 +40,9 @@ static void update_interrupts(void)
 		newstate |= 6;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -540,7 +540,7 @@ ROM_END
 static DRIVER_INIT( vindictr )
 {
 	atarigen_eeprom_default = NULL;
-	atarijsa_init(1, 3, 1, 0x0002);
+	atarijsa_init(machine, 1, 0x0002);
 }
 
 

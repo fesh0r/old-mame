@@ -112,7 +112,7 @@ static READ16_HANDLER( nvram_r )
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -122,9 +122,9 @@ static void update_interrupts(void)
 		newstate |= 2;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -138,7 +138,7 @@ static TIMER_CALLBACK( scanline_update )
        mystery yet */
 
 	/* INT 1 is on 32V */
-	atarigen_scanline_int_gen();
+	atarigen_scanline_int_gen(machine, 0);
 
 	/* advance to the next interrupt */
 	scanline += 64;

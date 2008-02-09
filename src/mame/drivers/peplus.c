@@ -83,8 +83,11 @@ Additional notes
 
           gamename  method
           --------  ------
+          pepp0065     1
           pepp0158     2
           pepp0188     1
+          pepp0250     1
+          pepp0447     2
           pepp0516     1
           pebe0014     1
           peke1012     1
@@ -92,6 +95,7 @@ Additional notes
           peps0716     2
           pexp0019     2
           pexs0006     2
+          pexmp006     2
 
 
 2) Configuration
@@ -147,6 +151,7 @@ Stephh's log (2007.11.28) :
 ***********************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "cpu/i8051/i8051.h"
 #include "machine/i2cmem.h"
@@ -166,7 +171,6 @@ static tilemap *bg_tilemap;
 /* Pointers to External RAM */
 static UINT8 *program_ram;
 static UINT8 *cmos_ram;
-static UINT8 *s1000_ram;
 static UINT8 *s3000_ram;
 static UINT8 *s5000_ram;
 static UINT8 *s7000_ram;
@@ -186,16 +190,16 @@ static UINT8 *palette_ram;
 static UINT8 *io_port;
 
 /* Coin, Door, Hopper and EEPROM States */
-static UINT32 last_cycles;
+static UINT64 last_cycles;
 static UINT8 coin_state = 0;
-static UINT32 last_door;
+static UINT64 last_door;
 static UINT8 door_open = 0;
-static UINT32 last_coin_out;
+static UINT64 last_coin_out;
 static UINT8 coin_out_state = 0;
 static int sda_dir = 0;
 
 /* Static Variables */
-#define CMOS_NVRAM_SIZE     0x1000
+#define CMOS_NVRAM_SIZE     0x2000
 #define EEPROM_NVRAM_SIZE   0x200 // 4k Bit
 
 
@@ -221,7 +225,7 @@ static NVRAM_HANDLER( peplus )
 		}
 	}
 
-	nvram_handler_i2cmem_0( machine, file, read_or_write );
+	NVRAM_HANDLER_CALL(i2cmem_0);
 }
 
 /*****************
@@ -314,11 +318,6 @@ static WRITE8_HANDLER( peplus_duart_w )
 static WRITE8_HANDLER( peplus_cmos_w )
 {
 	cmos_ram[offset] = data;
-}
-
-static WRITE8_HANDLER( peplus_s1000_w )
-{
-	s1000_ram[offset] = data;
 }
 
 static WRITE8_HANDLER( peplus_s3000_w )
@@ -449,26 +448,7 @@ static READ8_HANDLER( peplus_duart_r )
 
 static READ8_HANDLER( peplus_cmos_r )
 {
-	switch (offset)
-	{
-		case 0x00db:
-			if ((readinputportbytag_safe("DOOR",0xff) & 0x01) == 0) {
-				cmos_ram[offset] = 0x00;
-			}
-			break;
-		case 0x0b8d:
-			if ((readinputportbytag_safe("DOOR",0xff) & 0x02) == 1) {
-				cmos_ram[offset] = 0x01;
-			}
-			break;
-	}
-
 	return cmos_ram[offset];
-}
-
-static READ8_HANDLER( peplus_s1000_r )
-{
-	return s1000_ram[offset];
 }
 
 static READ8_HANDLER( peplus_s3000_r )
@@ -542,7 +522,7 @@ static READ8_HANDLER( peplus_input_bank_a_r )
 	UINT8 bank_a = 0x50; // Turn Off Low Battery and Hopper Full Statuses
 	UINT8 coin_optics = 0x00;
     UINT8 coin_out = 0x00;
-	UINT32 curr_cycles = activecpu_gettotalcycles();
+	UINT64 curr_cycles = activecpu_gettotalcycles();
 
 	UINT8 sda = 0;
 	if(!sda_dir)
@@ -726,11 +706,8 @@ static ADDRESS_MAP_START( peplus_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( peplus_datamap, ADDRESS_SPACE_DATA, 8 )
-	// Battery-backed RAM
-	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_READWRITE(peplus_cmos_r, peplus_cmos_w) AM_BASE(&cmos_ram)
-
-	// Superboard Data
-	AM_RANGE(0x1000, 0x1fff) AM_RAM AM_READWRITE(peplus_s1000_r, peplus_s1000_w) AM_BASE(&s1000_ram)
+	// Battery-backed RAM (0x1000-0x01fff Extended RAM for Superboards Only)
+	AM_RANGE(0x0000, 0x1fff) AM_RAM AM_READWRITE(peplus_cmos_r, peplus_cmos_w) AM_BASE(&cmos_ram)
 
 	// CRT Controller
 	AM_RANGE(0x2008, 0x2008) AM_WRITE(peplus_crtc_mode_w)
@@ -776,7 +753,7 @@ static ADDRESS_MAP_START( peplus_datamap, ADDRESS_SPACE_DATA, 8 )
 	AM_RANGE(0xd000, 0xdfff) AM_RAM AM_READWRITE(peplus_sd000_r, peplus_sd000_w) AM_BASE(&sd000_ram)
 
 	// DUART
-	AM_RANGE(0xe000, 0xe005) AM_READWRITE(peplus_duart_r, peplus_duart_w)
+	AM_RANGE(0xe000, 0xe00a) AM_READWRITE(peplus_duart_r, peplus_duart_w)
 
     // Superboard Data
 	AM_RANGE(0xf000, 0xffff) AM_RAM AM_READWRITE(peplus_sf000_r, peplus_sf000_w) AM_BASE(&sf000_ram)
@@ -967,8 +944,27 @@ INPUT_PORTS_END
 
 static MACHINE_RESET( peplus )
 {
-	if (autohold_addr)
-		program_ram[autohold_addr] = readinputportbytag_safe("AUTOHOLD",0x00) & 0x01;
+/*
+    AutoHold Feature Currently Disabled
+
+    // pepp0158
+    program_ram[0xa19f] = 0x22; // RET - Disable Memory Test
+    program_ram[0xddea] = 0x22; // RET - Disable Program Checksum
+    autohold_addr = 0x5ffe; // AutoHold Address
+
+    // pepp0188
+    program_ram[0x9a8d] = 0x22; // RET - Disable Memory Test
+    program_ram[0xf429] = 0x22; // RET - Disable Program Checksum
+    autohold_addr = 0x742f; // AutoHold Address
+
+    // pepp0516
+    program_ram[0x9a24] = 0x22; // RET - Disable Memory Test
+    program_ram[0xd61d] = 0x22; // RET - Disable Program Checksum
+    autohold_addr = 0x5e7e; // AutoHold Address
+
+    if (autohold_addr)
+        program_ram[autohold_addr] = readinputportbytag_safe("AUTOHOLD",0x00) & 0x01;
+*/
 }
 
 
@@ -1027,13 +1023,23 @@ static void peplus_init(void)
 	autohold_addr = 0;
 }
 
+
+/*************************
+*      Driver Init       *
+*************************/
+
+/* Normal board */
+static DRIVER_INIT( peplus )
+{
+	peplus_init();
+}
+
 /* Superboard */
-static void peplussb_init(void)
+static DRIVER_INIT( peplussb )
 {
     UINT8 *super_data = memory_region(REGION_USER1);
 
     /* Distribute Superboard Data */
-    memcpy(s1000_ram, &super_data[0], 0x1000);
     memcpy(s3000_ram, &super_data[0x3000], 0x1000);
     memcpy(s5000_ram, &super_data[0x5000], 0x1000);
     memcpy(s7000_ram, &super_data[0x7000], 0x1000);
@@ -1044,114 +1050,11 @@ static void peplussb_init(void)
 	peplus_init();
 }
 
-
-/*************************
-*      Driver Init       *
-*************************/
-
-static DRIVER_INIT( peset038 )
-{
-	peplus_init();
-
-	// For testing only, cannot stay in final driver
-	program_ram[0x302] = 0x22;  // RET - Disable Memory Test
-	program_ram[0x289f] = 0x22; // RET - Disable Program Checksum
-}
-
-static DRIVER_INIT( pepp0158 )
-{
-	peplus_init();
-
-	// For testing only, cannot stay in final driver
-	program_ram[0xa19f] = 0x22; // RET - Disable Memory Test
-	program_ram[0xddea] = 0x22; // RET - Disable Program Checksum
-
-	autohold_addr = 0x5ffe;
-}
-
-static DRIVER_INIT( pepp0188 )
-{
-	peplus_init();
-
-	// For testing only, cannot stay in final driver
-	program_ram[0x9a8d] = 0x22; // RET - Disable Memory Test
-	program_ram[0xf429] = 0x22; // RET - Disable Program Checksum
-
-	autohold_addr = 0x742f;
-}
-
-static DRIVER_INIT( pepp0516 )
-{
-	peplus_init();
-
-	// For testing only, cannot stay in final driver
-	program_ram[0x9a24] = 0x22; // RET - Disable Memory Test
-	program_ram[0xd61d] = 0x22; // RET - Disable Program Checksum
-
-	autohold_addr = 0x5e7e;
-}
-
-static DRIVER_INIT( pebe0014 )
-{
-	peplus_init();
-
-	// For testing only, cannot stay in final driver
-	program_ram[0x75e7] = 0x22; // RET - Disable Memory Test
-	program_ram[0xc3ab] = 0x22; // RET - Disable Program Checksum
-}
-
-static DRIVER_INIT( peke1012 )
-{
-	peplus_init();
-
-	// For testing only, cannot stay in final driver
-	program_ram[0x59e7] = 0x22; // RET - Disable Memory Test
-	program_ram[0xbe01] = 0x22; // RET - Disable Program Checksum
-}
-
-static DRIVER_INIT( peps0615 )
-{
-	peplus_init();
-
-	// For testing only, cannot stay in final driver
-	program_ram[0x84be] = 0x22; // RET - Disable Memory Test
-	program_ram[0xbfd8] = 0x22; // RET - Disable Program Checksum
-}
-
-static DRIVER_INIT( peps0716 )
-{
-	peplus_init();
-
-	// For testing only, cannot stay in final driver
-	program_ram[0x7f99] = 0x22; // RET - Disable Memory Test
-	program_ram[0xbaa9] = 0x22; // RET - Disable Program Checksum
-}
-
-static DRIVER_INIT( pexp0019 )
-{
-	peplussb_init();
-
-	// For testing only, cannot stay in final driver
-	program_ram[0xc1e4] = 0x22; // RET - Disable Memory Test
-	program_ram[0xc15f] = 0x22; // RET - Disable Program Checksum
-    program_ram[0xc421] = 0x22; // RET - Disable 2nd Memory Test
-}
-
-static DRIVER_INIT( pexs0006 )
-{
-	peplussb_init();
-
-	// For testing only, cannot stay in final driver
-	program_ram[0x9bd4] = 0x22; // RET - Disable Memory Test
-    program_ram[0x9e9c] = 0x22; // RET - Disable 2nd Memory Test
-}
-
-
 /*************************
 *        Rom Load        *
 *************************/
 
-ROM_START( peset038 )
+ROM_START( peset038 ) /* Normal board : Set Chip (Set038) */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "set038.u68",   0x00000, 0x10000, CRC(9c4b1d1a) SHA1(8a65cd1d8e2d74c7b66f4dfc73e7afca8458e979) )
 
@@ -1165,7 +1068,21 @@ ROM_START( peset038 )
 	ROM_LOAD( "cap740.u50", 0x0000, 0x0100, CRC(6fe619c4) SHA1(49e43dafd010ce0fe9b2a63b96a4ddedcb933c6d) )
 ROM_END
 
-ROM_START( pepp0158 )
+ROM_START( pepp0065 ) /* Normal board : Jokers Wild Poker (PP0065) */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_LOAD( "pp0065.u68",   0x00000, 0x10000, CRC(76c1a367) SHA1(ea8be9241e9925b5a4206db6875e1572f85fa5fe) )
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "mro-cg740.u72",	 0x00000, 0x8000, CRC(72667f6c) SHA1(89843f472cc0329317cfc643c63bdfd11234b194) )
+	ROM_LOAD( "mgo-cg740.u73",	 0x08000, 0x8000, CRC(7437254a) SHA1(bba166dece8af58da217796f81117d0b05752b87) )
+	ROM_LOAD( "mbo-cg740.u74",	 0x10000, 0x8000, CRC(92e8c33e) SHA1(05344664d6fdd3f4205c50fa4ca76fc46c18cf8f) )
+	ROM_LOAD( "mxo-cg740.u75",	 0x18000, 0x8000, CRC(ce4cbe0b) SHA1(4bafcd68be94a5deaae9661584fa0fc940b834bb) )
+
+	ROM_REGION( 0x100, REGION_PROMS, 0 )
+	ROM_LOAD( "cap740.u50", 0x0000, 0x0100, CRC(6fe619c4) SHA1(49e43dafd010ce0fe9b2a63b96a4ddedcb933c6d) )
+ROM_END
+
+ROM_START( pepp0158 ) /* Normal board : 4 of a Kind Bonus Poker (PP0158) */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "pp0158.u68",   0x00000, 0x10000, CRC(5976cd19) SHA1(6a461ea9ddf78dffa3cf8b65903ebf3127f23d45) )
 
@@ -1179,7 +1096,7 @@ ROM_START( pepp0158 )
 	ROM_LOAD( "cap740.u50", 0x0000, 0x0100, CRC(6fe619c4) SHA1(49e43dafd010ce0fe9b2a63b96a4ddedcb933c6d) )
 ROM_END
 
-ROM_START( pepp0188 )
+ROM_START( pepp0188 ) /* Normal board : Standard Draw Poker (PP0188) */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "pp0188.u68",   0x00000, 0x10000, CRC(cf36a53c) SHA1(99b578538ab24d9ff91971b1f77599272d1dbfc6) )
 
@@ -1193,7 +1110,35 @@ ROM_START( pepp0188 )
 	ROM_LOAD( "cap740.u50", 0x0000, 0x0100, CRC(6fe619c4) SHA1(49e43dafd010ce0fe9b2a63b96a4ddedcb933c6d) )
 ROM_END
 
-ROM_START( pepp0516 )
+ROM_START( pepp0250 ) /* Normal board : Double Down Stud Poker (PP0250) */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_LOAD( "pp0250.u68",   0x00000, 0x10000, CRC(4c919598) SHA1(fe73503c6ccb3c5746fb96be58cd5b740c819713) )
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "mro-cg740.u72",	 0x00000, 0x8000, CRC(72667f6c) SHA1(89843f472cc0329317cfc643c63bdfd11234b194) )
+	ROM_LOAD( "mgo-cg740.u73",	 0x08000, 0x8000, CRC(7437254a) SHA1(bba166dece8af58da217796f81117d0b05752b87) )
+	ROM_LOAD( "mbo-cg740.u74",	 0x10000, 0x8000, CRC(92e8c33e) SHA1(05344664d6fdd3f4205c50fa4ca76fc46c18cf8f) )
+	ROM_LOAD( "mxo-cg740.u75",	 0x18000, 0x8000, CRC(ce4cbe0b) SHA1(4bafcd68be94a5deaae9661584fa0fc940b834bb) )
+
+	ROM_REGION( 0x100, REGION_PROMS, 0 )
+	ROM_LOAD( "cap740.u50", 0x0000, 0x0100, CRC(6fe619c4) SHA1(49e43dafd010ce0fe9b2a63b96a4ddedcb933c6d) )
+ROM_END
+
+ROM_START( pepp0447 ) /* Normal board : Standard Draw Poker (PP0447) */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_LOAD( "pp0447.u68",   0x00000, 0x10000, CRC(0ef0bb6c) SHA1(d0ef7a83417054f05d32d0a93ed0d5d618f4dfb9) )
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "mro-cg740.u72",	 0x00000, 0x8000, CRC(72667f6c) SHA1(89843f472cc0329317cfc643c63bdfd11234b194) )
+	ROM_LOAD( "mgo-cg740.u73",	 0x08000, 0x8000, CRC(7437254a) SHA1(bba166dece8af58da217796f81117d0b05752b87) )
+	ROM_LOAD( "mbo-cg740.u74",	 0x10000, 0x8000, CRC(92e8c33e) SHA1(05344664d6fdd3f4205c50fa4ca76fc46c18cf8f) )
+	ROM_LOAD( "mxo-cg740.u75",	 0x18000, 0x8000, CRC(ce4cbe0b) SHA1(4bafcd68be94a5deaae9661584fa0fc940b834bb) )
+
+	ROM_REGION( 0x100, REGION_PROMS, 0 )
+	ROM_LOAD( "cap740.u50", 0x0000, 0x0100, CRC(6fe619c4) SHA1(49e43dafd010ce0fe9b2a63b96a4ddedcb933c6d) )
+ROM_END
+
+ROM_START( pepp0516 ) /* Normal board : Double Bonus Poker (PP0516) */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "pp0516.u68",   0x00000, 0x10000, CRC(d9da6e13) SHA1(421678d9cb42daaf5b21074cc3900db914dd26cf) )
 
@@ -1207,7 +1152,7 @@ ROM_START( pepp0516 )
 	ROM_LOAD( "cap740.u50", 0x0000, 0x0100, CRC(6fe619c4) SHA1(49e43dafd010ce0fe9b2a63b96a4ddedcb933c6d) )
 ROM_END
 
-ROM_START( pebe0014 )
+ROM_START( pebe0014 ) /* Normal board : Blackjack (BE0014) */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "be0014.u68",   0x00000, 0x10000, CRC(232b32b7) SHA1(a3af9414577642fedc23b4c1911901cd31e9d6e0) )
 
@@ -1221,7 +1166,7 @@ ROM_START( pebe0014 )
 	ROM_LOAD( "cap707.u50", 0x0000, 0x0100, CRC(9851ba36) SHA1(5a0a43c1e212ae8c173102ede9c57a3d95752f99) )
 ROM_END
 
-ROM_START( peke1012 )
+ROM_START( peke1012 ) /* Normal board : Keno (KE1012) */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "ke1012.u68",   0x00000, 0x10000, CRC(470e8c10) SHA1(f8a65a3a73477e9e9d2f582eeefa93b470497dfa) )
 
@@ -1235,7 +1180,7 @@ ROM_START( peke1012 )
 	ROM_LOAD( "cap1267.u50", 0x0000, 0x0100, CRC(7051db57) SHA1(76751a3cc47d506983205decb07e99ca0c178a42) )
 ROM_END
 
-ROM_START( peps0615 )
+ROM_START( peps0615 ) /* Normal board : Chaos Slots (PS0615) */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "ps0615.u68",   0x00000, 0x10000, CRC(d27dd6ab) SHA1(b3f065f507191682edbd93b07b72ed87bf6ae9b1) )
 
@@ -1249,7 +1194,7 @@ ROM_START( peps0615 )
 	ROM_LOAD( "cap2234.u50", 0x0000, 0x0100, CRC(a930e283) SHA1(61bce50fa13b3e980ece3e72d068835e19bd5049) )
 ROM_END
 
-ROM_START( peps0716 )
+ROM_START( peps0716 ) /* Normal board : Quarter Mania Slots (PS0716) */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "ps0716.u68",   0x00000, 0x10000, CRC(7615d7b6) SHA1(91fe62eec720a0dc2ebf48835065148f19499d16) )
 
@@ -1263,12 +1208,12 @@ ROM_START( peps0716 )
 	ROM_LOAD( "cap2265.u50", 0x0000, 0x0100, CRC(dfb82a2f) SHA1(c96947bb475bf4497ff2e44053941625a3a7bf62) )
 ROM_END
 
-ROM_START( pexp0019 )
+ROM_START( pexp0019 ) /* Superboard : Deuces Wild Poker (XP000019) */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-    ROM_LOAD( "xp000019.u67",   0x00000, 0x10000, CRC(8ac876eb) SHA1(105b4aee2692ccb20795586ccbdf722c59db66cf) )
+	ROM_LOAD( "xp000019.u67",   0x00000, 0x10000, CRC(8ac876eb) SHA1(105b4aee2692ccb20795586ccbdf722c59db66cf) )
 
-    ROM_REGION( 0x10000, REGION_USER1, 0 )
-    ROM_LOAD( "x002025p.u66",   0x00000, 0x10000, CRC(f3dac423) SHA1(e9394d330deb3b8a1001e57e72a506cd9098f161) )
+	ROM_REGION( 0x10000, REGION_USER1, 0 )
+	ROM_LOAD( "x002025p.u66",   0x00000, 0x10000, CRC(f3dac423) SHA1(e9394d330deb3b8a1001e57e72a506cd9098f161) )
 
 	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "mro-cg2185.u77",	 0x00000, 0x8000, CRC(7e64bd1a) SHA1(e988a380ee58078bf5bdc7747e83aed1393cfad8) )
@@ -1280,12 +1225,12 @@ ROM_START( pexp0019 )
 	ROM_LOAD( "cap2234.u43", 0x0000, 0x0100, CRC(a930e283) SHA1(61bce50fa13b3e980ece3e72d068835e19bd5049) )
 ROM_END
 
-ROM_START( pexs0006 )
+ROM_START( pexs0006 ) /* Superboard : Triple Triple Diamond Slots (XS000006) */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-    ROM_LOAD( "xs000006.u67",   0x00000, 0x10000, CRC(4b11ca18) SHA1(f64a1fbd089c01bc35a5484e60b8834a2db4a79f) )
+	ROM_LOAD( "xs000006.u67",   0x00000, 0x10000, CRC(4b11ca18) SHA1(f64a1fbd089c01bc35a5484e60b8834a2db4a79f) )
 
-    ROM_REGION( 0x10000, REGION_USER1, 0 )
-    ROM_LOAD( "x000998s.u66",   0x00000, 0x10000, CRC(e29d4346) SHA1(93901ff65c8973e34ac1f0dd68bb4c4973da5621) )
+	ROM_REGION( 0x10000, REGION_USER1, 0 )
+	ROM_LOAD( "x000998s.u66",   0x00000, 0x10000, CRC(e29d4346) SHA1(93901ff65c8973e34ac1f0dd68bb4c4973da5621) )
 
 	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "mro-cg2361.u77",	 0x00000, 0x8000, CRC(c0eba866) SHA1(8f217aeb3e8028a5633d95e5612f1b55e601650f) )
@@ -1297,6 +1242,22 @@ ROM_START( pexs0006 )
 	ROM_LOAD( "cap2361.u43", 0x0000, 0x0100, CRC(051aea66) SHA1(2abf32caaeb821ca50a6398581de69bbfe5930e9) )
 ROM_END
 
+ROM_START( pexmp006 ) /* Superboard : Multi-Poker (XMP00006) */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_LOAD( "xmp00006.u67",   0x00000, 0x10000, CRC(d61f1677) SHA1(2eca1315d6aa310a54de2dfa369e443a07495b76) )
+
+	ROM_REGION( 0x10000, REGION_USER1, 0 )
+	ROM_LOAD( "xm00002p.u66",   0x00000, 0x10000, CRC(96cf471c) SHA1(9597bf6a80c392ee22dc4606db610fdaf032377f) )
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "mro-cg2174.u77",	 0x00000, 0x8000, CRC(bb666733) SHA1(dcaa1980b051a554cb0f443b1183a680edc9ad3f) )
+	ROM_LOAD( "mgo-cg2174.u78",	 0x08000, 0x8000, CRC(cc46adb0) SHA1(6065aa5dcb9091ad80e499c7ee6dc629e79c865a) )
+	ROM_LOAD( "mbo-cg2174.u79",	 0x10000, 0x8000, CRC(7291a0c8) SHA1(1068f35e6ef5fd88c584922860231840a90fb623) )
+	ROM_LOAD( "mxo-cg2174.u80",	 0x18000, 0x8000, CRC(14f9480c) SHA1(59323f9fc5995277aea86d088893b6eb95b4e89b) )
+
+	ROM_REGION( 0x100, REGION_PROMS, 0 )
+	ROM_LOAD( "cap2174.u43", 0x0000, 0x0100, CRC(cbff3f26) SHA1(9e145676f2871c2369042a13cbeabb7efe2728e1) )
+ROM_END
 
 /*************************
 *      Game Drivers      *
@@ -1305,25 +1266,31 @@ ROM_END
 /*    YEAR  NAME      PARENT  MACHINE   INPUT         INIT      ROT    COMPANY                                  FULLNAME                                                  FLAGS   LAYOUT */
 
 /* Set chips */
-GAMEL(1987, peset038, 0,      peplus,  peplus_schip, peset038, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (Set038) Set Chip",                      0,   layout_pe_schip )
+GAMEL(1987, peset038, 0,      peplus,  peplus_schip, peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (Set038) Set Chip",                      0,   layout_pe_schip )
 
 /* Normal board : poker */
-GAMEL(1987, pepp0158, 0,      peplus,  peplus_pokah, pepp0158, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PP0158) 4 of a Kind Bonus Poker",       0,   layout_pe_poker )
-GAMEL(1987, pepp0188, 0,      peplus,  peplus_pokah, pepp0188, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PP0188) Standard Draw Poker",           0,   layout_pe_poker )
-GAMEL(1987, pepp0516, 0,      peplus,  peplus_pokah, pepp0516, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PP0516) Double Bonus Poker",            0,   layout_pe_poker )
+GAMEL(1987, pepp0065, 0,      peplus,  peplus_poker, peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PP0065) Jokers Wild Poker",             0,   layout_pe_poker )
+GAMEL(1987, pepp0158, 0,      peplus,  peplus_pokah, peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PP0158) 4 of a Kind Bonus Poker",       0,   layout_pe_poker )
+GAMEL(1987, pepp0188, 0,      peplus,  peplus_pokah, peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PP0188) Standard Draw Poker",           0,   layout_pe_poker )
+GAMEL(1987, pepp0250, 0,      peplus,  peplus_poker, peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PP0250) Double Down Stud Poker",        0,   layout_pe_poker )
+GAMEL(1987, pepp0447, 0,      peplus,  peplus_poker, peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PP0447) Standard Draw Poker",           0,   layout_pe_poker )
+GAMEL(1987, pepp0516, 0,      peplus,  peplus_pokah, peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PP0516) Double Bonus Poker",            0,   layout_pe_poker )
 
 /* Normal board : blackjack */
-GAMEL(1994, pebe0014, 0,      peplus,  peplus_bjack, pebe0014, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (BE0014) Blackjack",                     0,   layout_pe_bjack )
+GAMEL(1994, pebe0014, 0,      peplus,  peplus_bjack, peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (BE0014) Blackjack",                     0,   layout_pe_bjack )
 
 /* Normal board : keno */
-GAMEL(1994, peke1012, 0,      peplus,  peplus_keno,  peke1012, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (KE1012) Keno",                          0,   layout_pe_keno )
+GAMEL(1994, peke1012, 0,      peplus,  peplus_keno,  peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (KE1012) Keno",                          0,   layout_pe_keno )
 
 /* Normal board : slots machine */
-GAMEL(1996, peps0615, 0,      peplus,  peplus_slots, peps0615, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PS0615) Chaos Slots",                   0,   layout_pe_slots )
-GAMEL(1996, peps0716, 0,      peplus,  peplus_slots, peps0716, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PS0716) Quarter Mania Slots",           0,   layout_pe_slots )
+GAMEL(1996, peps0615, 0,      peplus,  peplus_slots, peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PS0615) Chaos Slots",                   0,   layout_pe_slots )
+GAMEL(1996, peps0716, 0,      peplus,  peplus_slots, peplus,   ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (PS0716) Quarter Mania Slots",           0,   layout_pe_slots )
 
 /* Superboard : poker */
-GAMEL(1995, pexp0019, 0,      peplus,  peplus_poker, pexp0019, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (XP000019) Deuces Wild Poker",           0,   layout_pe_poker )
+GAMEL(1995, pexp0019, 0,      peplus,  peplus_poker, peplussb, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (XP000019) Deuces Wild Poker",           0,   layout_pe_poker )
+
+/* Superboard : multi-poker */
+GAMEL(1995, pexmp006, 0,      peplus,  peplus_poker, peplussb, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (XMP00006) Multi-Poker",                 0,   layout_pe_poker )
 
 /* Superboard : slots machine */
-GAMEL(1997, pexs0006, 0,      peplus,  peplus_slots, pexs0006, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (XS000006) Triple Triple Diamond Slots", 0,   layout_pe_slots )
+GAMEL(1997, pexs0006, 0,      peplus,  peplus_slots, peplussb, ROT0,  "IGT - International Gaming Technology", "Player's Edge Plus (XS000006) Triple Triple Diamond Slots", 0,   layout_pe_slots )

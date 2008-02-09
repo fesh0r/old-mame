@@ -59,6 +59,7 @@ Dip sw.2
 */
 
 #include "driver.h"
+#include "deprecat.h"
 
 static UINT16 littlerb_vdp_address_low;
 static UINT16 littlerb_vdp_address_high;
@@ -374,7 +375,6 @@ static MACHINE_DRIVER_START( littlerb )
 	MDRV_PALETTE_LENGTH(256)
 
 //  MDRV_PALETTE_INIT(littlerb)
-	MDRV_VIDEO_START(generic_bitmapped)
 	MDRV_VIDEO_UPDATE(littlerb)
 MACHINE_DRIVER_END
 

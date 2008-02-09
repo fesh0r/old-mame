@@ -19,6 +19,9 @@ Notes:
 
 - While Atlantis has a cabinet switch, it doesn't use the 2nd player controls
   in cocktail mode.
+- DIP locations have been verified from manuals for:
+  800fath
+  scramble
 
 ***************************************************************************/
 
@@ -27,99 +30,8 @@ Notes:
 #include "machine/8255ppi.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
-#include "sound/5110intf.h"
-#include "sound/tms5110.h"
 #include "galaxian.h"
 
-
-/***************************************************************************
-    AD2083 TMS5110 implementation (still wrong!)
-***************************************************************************/
-
-static INT32 speech_rom_address = 0;
-static INT32 speech_rom_address_hi = 0;
-static INT32 speech_rom_bit = 0;
-
-static void start_talking (void)
-{
-	tms5110_CTL_w(0,TMS5110_CMD_SPEAK);
-	tms5110_PDC_w(0,0);
-	tms5110_PDC_w(0,1);
-	tms5110_PDC_w(0,0);
-}
-
-static void reset_talking (void)
-{
-	tms5110_CTL_w(0,TMS5110_CMD_RESET);
-	tms5110_PDC_w(0,0);
-	tms5110_PDC_w(0,1);
-	tms5110_PDC_w(0,0);
-
-	tms5110_PDC_w(0,0);
-	tms5110_PDC_w(0,1);
-	tms5110_PDC_w(0,0);
-
-	tms5110_PDC_w(0,0);
-	tms5110_PDC_w(0,1);
-	tms5110_PDC_w(0,0);
-
-	speech_rom_address    = 0;
-	speech_rom_address_hi = 0;
-    speech_rom_bit        = 0;
-}
-
-static int ad2083_speech_rom_read_bit(void)
-{
-	UINT8 *ROM = memory_region(REGION_SOUND1);
-	int bit;
-
-	speech_rom_address %= memory_region_length(REGION_SOUND1);
-
-	bit = (ROM[speech_rom_address] >> speech_rom_bit) & 1;
-//  bit = (ROM[speech_rom_address] >> (speech_rom_bit ^ 7)) & 1;
-
-	speech_rom_bit++;
-	if(speech_rom_bit == 8)
-	{
-		speech_rom_address++;
-		speech_rom_bit = 0;
-	}
-
-	return bit;
-}
-
-
-static WRITE8_HANDLER( ad2083_soundlatch_w )
-{
-	soundlatch_w(0,data);
-
-	if(data & 0x80)
-	{
-		reset_talking();
-	}
-	else if(data & 0x30)
-	{
-		start_talking();
-
-		if((data & 0x30) == 0x30)
-			speech_rom_address_hi = 0x1000;
-		else
-			speech_rom_address_hi = 0;
-
-	}
-}
-
-static WRITE8_HANDLER( ad2083_tms5110_ctrl_w )
-{
-	speech_rom_address = speech_rom_address_hi | (data * 0x40);
-}
-
-static MACHINE_START( ad2083 )
-{
-	state_save_register_global(speech_rom_address);
-	state_save_register_global(speech_rom_address_hi);
-	state_save_register_global(speech_rom_bit);
-}
 
 //cpu #0 (PC=00003F6C): warning - op-code execute on mapped I/O
 extern int monsterz_count;
@@ -643,7 +555,7 @@ static ADDRESS_MAP_START( ad2083_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6805, 0x6805) AM_WRITE(galaxian_coin_counter_1_w)
 	AM_RANGE(0x6806, 0x6806) AM_WRITE(scramble_background_red_w)
 	AM_RANGE(0x6807, 0x6807) AM_WRITE(scramble_background_green_w)
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(ad2083_soundlatch_w)
+	AM_RANGE(0x8000, 0x8000) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(hotshock_sh_irqtrigger_w)
 	AM_RANGE(0x7000, 0x7000) AM_READ(watchdog_reset_r)
 	AM_RANGE(0x8000, 0x8000) AM_READ(input_port_0_r)
@@ -652,20 +564,6 @@ static ADDRESS_MAP_START( ad2083_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8003, 0x8003) AM_READ(input_port_3_r)
 	AM_RANGE(0xa000, 0xdfff) AM_ROM
 	AM_RANGE(0xe800, 0xebff) AM_RAM
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( ad2083_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x2fff) AM_ROM
-	AM_RANGE(0x8000, 0x83ff) AM_RAM
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( ad2083_sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x01, 0x01) AM_WRITE(ad2083_tms5110_ctrl_w)
-	AM_RANGE(0x10, 0x10) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x20, 0x20) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
-	AM_RANGE(0x40, 0x40) AM_READWRITE(AY8910_read_port_1_r, AY8910_write_port_1_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(AY8910_control_port_1_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( triplep_readport, ADDRESS_SPACE_IO, 8 )
@@ -746,11 +644,11 @@ static INPUT_PORTS_START( scramble )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
 	PORT_START_TAG("IN1")
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW1:2,1")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
 	PORT_DIPSETTING(    0x02, "5" )
-	PORT_DIPSETTING(    0x03, "255 (Cheat)")
+	PORT_DIPSETTING(    0x03, DEF_STR( Free_Play ) )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
@@ -760,12 +658,52 @@ static INPUT_PORTS_START( scramble )
 
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_DIPNAME( 0x06, 0x00, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(    0x00, "A 1/1  B 2/1  C 1/1" )
-	PORT_DIPSETTING(    0x02, "A 1/2  B 1/1  C 1/2" )
-	PORT_DIPSETTING(    0x04, "A 1/3  B 3/1  C 1/3" )
-	PORT_DIPSETTING(    0x06, "A 1/4  B 4/1  C 1/4" )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x06, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:5,4")
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x06, DEF_STR( 1C_4C ) )
+	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW1:3")
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Cocktail ) )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SPECIAL )	/* protection bit */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL )	/* protection bit */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( 800fath )
+	PORT_START_TAG("IN0")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+
+	PORT_START_TAG("IN1")
+	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW1:5,6")
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPSETTING(    0x01, "4" )
+	PORT_DIPSETTING(    0x02, "5" )
+	PORT_DIPSETTING(    0x03, DEF_STR( Free_Play ) )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
+
+	PORT_START_TAG("IN2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
+	PORT_DIPNAME( 0x06, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:2,3")
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x06, DEF_STR( 1C_4C ) )
+	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW1:4")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -1036,7 +974,7 @@ static INPUT_PORTS_START( amidars )
 	PORT_DIPSETTING(    0x03, "2" )
 	PORT_DIPSETTING(    0x02, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
-	PORT_DIPSETTING(    0x00, "256 (Cheat)")
+	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ))
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
@@ -1690,12 +1628,12 @@ static INPUT_PORTS_START( scorpion )
 
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Cocktail ) )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x08, "A 1/1  B 1/1" )
 	PORT_DIPSETTING(    0x00, "A 1/1  B 1/3" )
@@ -1709,6 +1647,11 @@ static INPUT_PORTS_START( scorpion )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( ad2083 )
+	/* There are no Player 2 controls for this game:
+     * Dipswitch is read upon startup. If Cabinet = Cocktail, a 1 is stored @400F.
+     * 400F in turn is only read just before Player 2 turn. If 400F=1 then flip line
+     * is set. That is all. If there is a dedicated player 2 input,
+     * it must be multiplexed by flip line. */
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -1776,9 +1719,9 @@ static INPUT_PORTS_START( ad2083 )
 	PORT_DIPSETTING(    0x04, "150000" )
 	PORT_DIPSETTING(    0x08, "100000" )
 	PORT_DIPSETTING(    0x00, "200000" )
-	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Allow_Continue ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
@@ -1973,11 +1916,6 @@ static const struct AY8910interface triplep_ay8910_interface =
 	0
 };
 
-static const struct TMS5110interface tms5110_interface =
-{
-	0,							/* irq callback function */
-	ad2083_speech_rom_read_bit	/* M0 callback function. Called whenever chip requests a single bit of data */
-};
 
 static const gfx_layout scramble_charlayout =
 {
@@ -2131,7 +2069,8 @@ static MACHINE_DRIVER_START( explorer )
 	MDRV_SOUND_MODIFY("8910.2")
 	MDRV_SOUND_CONFIG(explorer_ay8910_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
-MACHINE_DRIVER_END
+
+	MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( theend )
 
@@ -2513,11 +2452,6 @@ static MACHINE_DRIVER_START( ad2083 )
 	MDRV_CPU_ADD(Z80, 18432000/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(ad2083_map,0)
 
-	MDRV_CPU_ADD(Z80, 14318000/8)	/* 1.78975 MHz */
-	MDRV_CPU_PROGRAM_MAP(ad2083_sound_map,0)
-	MDRV_CPU_IO_MAP(ad2083_sound_io_map,0)
-
-	MDRV_MACHINE_START(ad2083)
 	MDRV_MACHINE_RESET(galaxian)
 
 	MDRV_SCREEN_REFRESH_RATE(16000.0/132/2)
@@ -2536,18 +2470,9 @@ static MACHINE_DRIVER_START( ad2083 )
 	MDRV_VIDEO_UPDATE(galaxian)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, 14318000/8)
-	MDRV_SOUND_CONFIG(explorer_ay8910_interface_1)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
 
-	MDRV_SOUND_ADD(AY8910, 14318000/8)
-	MDRV_SOUND_CONFIG(explorer_ay8910_interface_2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
+	MDRV_IMPORT_FROM(ad2083_audio)
 
-	MDRV_SOUND_ADD(TMS5110, 640000)
-	MDRV_SOUND_CONFIG(tms5110_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( turpins )
@@ -3369,14 +3294,14 @@ ROM_START( ad2083 )
 	ROM_LOAD( "ad5.3k",       0x2000, 0x2000, CRC(f53f3449) SHA1(0711f2e47504f256d46eea1e225e35f9bde8b9fb) )
 
 	ROM_REGION( 0x2000, REGION_SOUND1, 0 ) /* data for the TMS5110 speech chip */
-	ROM_LOAD( "ad1v.9a",      0x0000, 0x1000, CRC(4cb93fff) SHA1(2cc686a9a58a85f2bb04fb6ced4626e9952635bb) )
-	ROM_LOAD( "ad2v.10a",     0x1000, 0x1000, CRC(4b530ea7) SHA1(8793b3497b598f33b34bf9524e360c6c62e8001d) )
+	ROM_LOAD( "ad1v.9a",      0x0000, 0x1000, BAD_DUMP CRC(4cb93fff) SHA1(2cc686a9a58a85f2bb04fb6ced4626e9952635bb) )
+	ROM_LOAD( "ad2v.10a",     0x1000, 0x1000, BAD_DUMP CRC(4b530ea7) SHA1(8793b3497b598f33b34bf9524e360c6c62e8001d) )
 
 	ROM_REGION( 0x0020, REGION_PROMS, 0 )
 	ROM_LOAD( "prom-am27s19dc.1m", 0x0000, 0x0020, CRC(2759aebd) SHA1(644fd2c95ca49cbbc0ee1b88ca2563451ddd4fe0) )
 
 	ROM_REGION( 0x0020, REGION_USER1, 0 ) /* sample related? near TMS5110 and sample roms */
-	ROM_LOAD( "prom-sn74s188.8a",  0x0000, 0x0020, CRC(5e395112) SHA1(427d6a5b5d0837db4bf804f392d77ba5a86ffd72) )
+	ROM_LOAD( "prom-sn74s188.8a",  0x0000, 0x0020, BAD_DUMP CRC(5e395112) SHA1(427d6a5b5d0837db4bf804f392d77ba5a86ffd72) )
 ROM_END
 
 
@@ -3441,15 +3366,15 @@ GAME( 1982, amidars,  amidar,   scramble, amidars,  atlantis,     ROT90, "Konami
 GAME( 1982, triplep,  0,        triplep,  triplep,  scramble_ppi, ROT90, "KKI", "Triple Punch", GAME_SUPPORTS_SAVE )
 GAME( 1982, knockout, triplep,  triplep,  triplep,  scramble_ppi, ROT90, "KKK", "Knock Out!!", GAME_SUPPORTS_SAVE )
 GAME( 1981, mariner,  0,        mariner,  scramble, mariner,      ROT90, "Amenip", "Mariner", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE)
-GAME( 1981, 800fath,  mariner,  mariner,  scramble, mariner,      ROT90, "Amenip (US Billiards Inc. license)", "800 Fathoms", GAME_SUPPORTS_SAVE )
+GAME( 1981, 800fath,  mariner,  mariner,  800fath,  mariner,      ROT90, "Amenip (US Billiards Inc. license)", "800 Fathoms", GAME_SUPPORTS_SAVE )
 GAME( 1981, ckongs,   ckong,    ckongs,   ckongs,   ckongs,       ROT90, "bootleg", "Crazy Kong (Scramble hardware)", GAME_SUPPORTS_SAVE )
 GAME( 1981, mars,     0,        mars,     mars,     mars,         ROT90, "Artic", "Mars", GAME_SUPPORTS_SAVE )
 GAME( 1982, devilfsh, 0,        devilfsh, devilfsh, devilfsh,     ROT90, "Artic", "Devil Fish", GAME_SUPPORTS_SAVE )
 GAME( 1983, newsin7,  0,        newsin7,  newsin7,  mars,         ROT90, "ATW USA, Inc.", "New Sinbad 7", GAME_SUPPORTS_SAVE )
 GAME( 1984, mrkougar, 0,        mrkougar, mrkougar, mrkougar,     ROT90, "ATW", "Mr. Kougar", GAME_SUPPORTS_SAVE )
 GAME( 1983, mrkougr2, mrkougar, mrkougar, mrkougar, mrkougar,     ROT90, "ATW", "Mr. Kougar (earlier)", GAME_SUPPORTS_SAVE )
-GAME( 1983, mrkougb,  mrkougar, mrkougb,  mrkougar, mrkougb,      ROT90, "bootleg", "Mr. Kougar (bootleg)", GAME_SUPPORTS_SAVE )
-GAME( 1983, mrkougb2, mrkougar, mrkougb,  mrkougar, mrkougb,      ROT90, "bootleg", "Mr. Kougar (bootleg Set 2)", GAME_SUPPORTS_SAVE )
+GAME( 1983, mrkougb,  mrkougar, mrkougb,  mrkougar, mrkougb,      ROT90, "bootleg", "Mr. Kougar (bootleg set 1)", GAME_SUPPORTS_SAVE )
+GAME( 1983, mrkougb2, mrkougar, mrkougb,  mrkougar, mrkougb,      ROT90, "bootleg", "Mr. Kougar (bootleg set 2)", GAME_SUPPORTS_SAVE )
 GAME( 1982, hotshock, 0,        hotshock, hotshock, hotshock,     ROT90, "E.G. Felaco", "Hot Shocker", GAME_SUPPORTS_SAVE )
 GAME( 1982, conquer,  0,        hotshock, hotshock, 0,            ROT90, "<unknown>", "Conquer", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE)
 GAME( 1983, hunchbks, hunchbak, hunchbks, hunchbks, scramble_ppi, ROT90, "Century Electronics", "Hunchback (Scramble hardware)", GAME_SUPPORTS_SAVE )

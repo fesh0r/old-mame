@@ -95,6 +95,7 @@
 *********************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/okim6295.h"
 
 static UINT32 *gstream_vram;
@@ -457,7 +458,7 @@ static READ32_HANDLER( gstream_speedup_r )
 {
 	if (activecpu_get_pc()==0xc0001592)
 	{
-		cpu_spinuntil_int();
+		activecpu_eat_cycles(50);
 	}
 
 	return gstream_workram[0xd1ee0/4];

@@ -118,6 +118,7 @@ need to reproduce the $18141a calculations.
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
@@ -166,7 +167,7 @@ static WRITE32_HANDLER( color_ram_w )
 
 static TIMER_CALLBACK( undrfire_interrupt5 )
 {
-	cpunum_set_input_line(0,5,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,5,HOLD_LINE);
 }
 
 
@@ -542,7 +543,7 @@ static MACHINE_RESET( undrfire )
 static INTERRUPT_GEN( undrfire_interrupt )
 {
 	frame_counter^=1;
-	cpunum_set_input_line(0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( undrfire )

@@ -19,6 +19,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "machine/asic65.h"
 #include "audio/atarijsa.h"
@@ -49,7 +50,7 @@ static UINT16 *sloop_base;
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -59,9 +60,9 @@ static void update_interrupts(void)
 		newstate = 5;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -119,7 +120,7 @@ static WRITE16_HANDLER( io_latch_w )
 	if (ACCESSING_LSB)
 	{
 		/* bit 4 resets the sound CPU */
-		cpunum_set_input_line(2, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 		if (!(data & 0x10)) atarijsa_reset();
 
 		/* bit 5 is /XRESET, probably related to the ASIC */
@@ -143,14 +144,14 @@ static WRITE16_HANDLER( mo_command_w )
  *
  *************************************/
 
-static offs_t sloop_opbase_handler(offs_t pc)
+static OPBASE_HANDLER( sloop_opbase_handler )
 {
-	if  (pc < 0x80000)
+	if  (address < 0x80000)
 	{
 		opcode_base = opcode_arg_base = (void *)sloop_base;
 		return (offs_t)-1;
 	}
-	return pc;
+	return address;
 }
 
 
@@ -687,7 +688,7 @@ static DRIVER_INIT( roadriot )
 		0x0118,0x0100,0x01C8,0x01D0,0x0000
 	};
 	atarigen_eeprom_default = default_eeprom;
-	atarijsa_init(2, 3, 2, 0x0040);
+	atarijsa_init(machine, 2, 0x0040);
 	atarijsa3_init_adpcm(REGION_SOUND1);
 
 	atarig42_playfield_base = 0x400;
@@ -738,7 +739,7 @@ static DRIVER_INIT( guardian )
 		0x0109,0x0100,0x0108,0x0134,0x0105,0x0148,0x1400,0x0000
 	};
 	atarigen_eeprom_default = default_eeprom;
-	atarijsa_init(2, 3, 2, 0x0040);
+	atarijsa_init(machine, 2, 0x0040);
 	atarijsa3_init_adpcm(REGION_SOUND1);
 
 	atarig42_playfield_base = 0x000;

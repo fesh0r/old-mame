@@ -98,6 +98,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/asap/asap.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
@@ -133,7 +134,7 @@ static UINT8		eeprom_enabled;
  *
  *************************************/
 
-static void update_interrupts(void);
+static void update_interrupts(running_machine *machine);
 
 static TIMER_CALLBACK( scanline_callback )
 {
@@ -144,7 +145,7 @@ static TIMER_CALLBACK( scanline_callback )
 
 	/* on scanline zero, clear any halt condition */
 	if (scanline == 0)
-		cpunum_set_input_line(0, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, CLEAR_LINE);
 
 	/* wrap around at 262 */
 	scanline++;
@@ -153,7 +154,7 @@ static TIMER_CALLBACK( scanline_callback )
 
 	/* set the scanline IRQ */
 	irq_state[2] = 1;
-	update_interrupts();
+	update_interrupts(machine);
 
 	/* set the timer for the next one */
 	timer_set(double_to_attotime(attotime_to_double(video_screen_get_time_until_pos(0, scanline, 0)) - hblank_offset), NULL, scanline, scanline_callback);
@@ -189,7 +190,7 @@ static MACHINE_RESET( beathead )
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int gen_int;
 
@@ -204,7 +205,7 @@ static void update_interrupts(void)
 	{
 		irq_line_state = gen_int;
 //      if (irq_line_state != CLEAR_LINE)
-			cpunum_set_input_line(0, ASAP_IRQ0, irq_line_state);
+			cpunum_set_input_line(machine, 0, ASAP_IRQ0, irq_line_state);
 //      else
 //          asap_set_irq_line(ASAP_IRQ0, irq_line_state);
 	}
@@ -225,7 +226,7 @@ static WRITE32_HANDLER( interrupt_control_w )
 		irq_state[0] = irq_state[1] = irq_state[2] = 0;
 
 	/* update the current state */
-	update_interrupts();
+	update_interrupts(Machine);
 }
 
 
@@ -317,7 +318,7 @@ static WRITE32_HANDLER( sound_data_w )
 static WRITE32_HANDLER( sound_reset_w )
 {
 	logerror("Sound reset = %d\n", !offset);
-	cpunum_set_input_line(1, INPUT_LINE_RESET, offset ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, offset ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -530,7 +531,7 @@ static DRIVER_INIT( beathead )
 {
 	/* initialize the common systems */
 	atarigen_eeprom_default = NULL;
-	atarijsa_init(1, 4, 2, 0x0040);
+	atarijsa_init(machine, 2, 0x0040);
 	atarijsa3_init_adpcm(REGION_SOUND1);
 
 	/* prepare the speedups */

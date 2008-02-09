@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
 UINT8 *tp84_videoram2, *tp84_colorram2;
 
@@ -285,5 +286,5 @@ INTERRUPT_GEN( tp84_6809_interrupt )
 	memcpy(sprite_mux_buffer + scanline * spriteram_size,spriteram,spriteram_size);
 
 	if (scanline == 255)
-		irq0_line_hold();
+		irq0_line_hold(machine, cpunum);
 }

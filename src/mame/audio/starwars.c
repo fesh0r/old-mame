@@ -2,12 +2,13 @@
 
     Atari Star Wars hardware
 
-    This file is Copyright 1997, Steve Baines.
+    This file is Copyright Steve Baines.
     Modified by Frank Palazzolo for sound support
 
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/5220intf.h"
 #include "includes/starwars.h"
@@ -53,7 +54,7 @@ static int main_data;   /* data for the main  cpu */
 static TIMER_CALLBACK( snd_interrupt )
 {
 	irq_flag |= 0x80; /* set timer interrupt flag */
-	cpunum_set_input_line(1, M6809_IRQ_LINE, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, ASSERT_LINE);
 }
 
 
@@ -87,7 +88,7 @@ READ8_HANDLER( starwars_m6532_r )
 
 		case 5: /* 0x85 - Read Interrupt Flag Register */
 			if (irq_flag)
-				cpunum_set_input_line(1, M6809_IRQ_LINE, CLEAR_LINE);
+				cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, CLEAR_LINE);
 			temp = irq_flag;
 			irq_flag = 0;   /* Clear int flags */
 			return temp;
@@ -188,7 +189,7 @@ READ8_HANDLER( starwars_sin_r )
 {
 	port_A &= 0x7f; /* ready to receive new commands from main */
 	if (PA7_irq)
-		cpunum_set_input_line(1, M6809_IRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, CLEAR_LINE);
 	return sound_data;
 }
 
@@ -228,7 +229,7 @@ static TIMER_CALLBACK( main_callback )
 	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
 
 	if (PA7_irq)
-		cpunum_set_input_line(1, M6809_IRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, ASSERT_LINE);
 }
 
 WRITE8_HANDLER( starwars_main_wr_w )
@@ -242,6 +243,6 @@ WRITE8_HANDLER( starwars_soundrst_w )
 	port_A &= 0x3f;
 
 	/* reset sound CPU here  */
-	cpunum_set_input_line(1, INPUT_LINE_RESET, PULSE_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 }
 

@@ -27,6 +27,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/2203intf.h"
@@ -55,7 +56,7 @@ static int sound_nmi_enable,pending_nmi;
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	if (sound_nmi_enable) cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+	if (sound_nmi_enable) cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 	else pending_nmi = 1;
 }
 
@@ -75,7 +76,7 @@ static WRITE8_HANDLER( lkage_sh_nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{ /* probably wrong but commands may go lost otherwise */
-		cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+		cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -83,7 +84,7 @@ static WRITE8_HANDLER( lkage_sh_nmi_enable_w )
 static ADDRESS_MAP_START( lkage, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xdfff) AM_READ(MRA8_ROM) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0xe000, 0xe7ff) AM_READ(MRA8_RAM) AM_WRITE(MWA8_RAM) /* work ram */
-	AM_RANGE(0xe800, 0xefff) AM_READ(paletteram_r) AM_WRITE(paletteram_xxxxRRRRGGGGBBBB_le_w) AM_BASE(&paletteram)
+	AM_RANGE(0xe800, 0xefff) AM_READWRITE(MRA8_RAM, paletteram_xxxxRRRRGGGGBBBB_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0xf000, 0xf003) AM_READ(MRA8_RAM) AM_WRITE(MWA8_RAM) AM_BASE(&lkage_vreg) /* video registers */
 	AM_RANGE(0xf060, 0xf060) AM_WRITE(lkage_sound_command_w)
 	AM_RANGE(0xf061, 0xf061) AM_WRITE(MWA8_NOP)
@@ -310,7 +311,7 @@ GFXDECODE_END
 
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface ym2203_interface =
@@ -332,7 +333,7 @@ static MACHINE_DRIVER_START( lkage )
 	MDRV_CPU_ADD(Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 								/* IRQs are triggered by the YM2203 */
-	MDRV_CPU_ADD(M68705,4000000/M68705_CLOCK_DIVIDER)	/* ??? */
+	MDRV_CPU_ADD(M68705,4000000)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)

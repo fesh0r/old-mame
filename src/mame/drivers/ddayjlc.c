@@ -52,6 +52,7 @@ $842f = lives
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 static INT32 char_bank = 0;
@@ -171,7 +172,7 @@ static WRITE8_HANDLER(bg2_w)
 static WRITE8_HANDLER( sound_w )
 {
 	soundlatch_w(offset,data);
-	cpunum_set_input_line_and_vector(1,0,HOLD_LINE,0xff);
+	cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
 }
 
 static WRITE8_HANDLER( i8257_CH0_w )
@@ -207,7 +208,7 @@ static ADDRESS_MAP_START( main_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x8fff) AM_RAM AM_BASE(&mainram)
 	AM_RANGE(0x9000, 0x93ff) AM_RAM AM_BASE(&spriteram)
-	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(videoram_r, ddayjlc_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(MRA8_RAM, ddayjlc_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x9800, 0x9fff) AM_READWRITE(MRA8_RAM, ddayjlc_bgram_w) AM_BASE(&bgram) /* 9800-981f - videoregs */
 	AM_RANGE(0xa000, 0xdfff) AM_ROMBANK(1) AM_WRITENOP
 	AM_RANGE(0xe000, 0xe003) AM_WRITE(i8257_CH0_w)
@@ -386,13 +387,13 @@ static const struct AY8910interface ay8910_interface =
 static INTERRUPT_GEN( ddayjlc_interrupt )
 {
 	if(main_nmi_enable)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static INTERRUPT_GEN( ddayjlc_snd_interrupt )
 {
 	if(sound_nmi_enable)
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_DRIVER_START( ddayjlc )
@@ -574,5 +575,5 @@ static DRIVER_INIT( ddayjlc )
 
 }
 
-GAME( 1984, ddayjlc,  0,       ddayjlc, ddayjlc, ddayjlc, ROT90, "Jaleco", "D-Day (Jaleco - set 1)", GAME_IMPERFECT_GRAPHICS | GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
-GAME( 1984, ddayjlca, ddayjlc, ddayjlc, ddayjlc, ddayjlc, ROT90, "Jaleco", "D-Day (Jaleco - set 2)", GAME_IMPERFECT_GRAPHICS | GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
+GAME( 1984, ddayjlc,  0,       ddayjlc, ddayjlc, ddayjlc, ROT90, "Jaleco", "D-Day (Jaleco set 1)", GAME_IMPERFECT_GRAPHICS | GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )
+GAME( 1984, ddayjlca, ddayjlc, ddayjlc, ddayjlc, ddayjlc, ROT90, "Jaleco", "D-Day (Jaleco set 2)", GAME_IMPERFECT_GRAPHICS | GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )

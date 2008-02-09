@@ -9,6 +9,7 @@
 
 #include "sndintrf.h"
 #include "streams.h"
+#include "deprecat.h"
 #include "speaker.h"
 
 static const INT16 default_levels[2] = {0,32767};
@@ -99,6 +100,6 @@ void speaker_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "Speaker";					break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2005, The MESS Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright The MESS Team"; break;
 	}
 }

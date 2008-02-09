@@ -217,6 +217,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/vector.h"
 #include "video/avgdvg.h"
 #include "sound/ay8910.h"
@@ -322,7 +323,7 @@ static WRITE8_HANDLER( omegrace_leds_w )
 static WRITE8_HANDLER( omegrace_soundlatch_w )
 {
 	soundlatch_w (offset, data);
-	cpunum_set_input_line(1, 0, HOLD_LINE);
+	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 }
 
 

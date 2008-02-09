@@ -25,6 +25,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
@@ -46,7 +47,7 @@ extern VIDEO_UPDATE( tagteam );
 static WRITE8_HANDLER( sound_command_w )
 {
 	soundlatch_w(offset,data);
-	cpunum_set_input_line(1,M6502_IRQ_LINE,HOLD_LINE);
+	cpunum_set_input_line(Machine, 1,M6502_IRQ_LINE,HOLD_LINE);
 }
 
 
@@ -106,7 +107,7 @@ static INTERRUPT_GEN( tagteam_interrupt )
 		if (coin == 0)
 		{
 			coin = 1;
-			cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 	else coin = 0;

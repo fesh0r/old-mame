@@ -17,6 +17,7 @@ TODO:
 **************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2203intf.h"
 #include "sound/okim6295.h"
 
@@ -231,7 +232,7 @@ GFXDECODE_END
 /* handler called by the 2203 emulator when the internal timers cause an IRQ */
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface ym2203_interface =
@@ -241,14 +242,18 @@ static const struct YM2203interface ym2203_interface =
 
 static INTERRUPT_GEN( lastduel_interrupt )
 {
-	if (cpu_getiloops() == 0) cpunum_set_input_line(0, 2, HOLD_LINE); /* VBL */
-	else cpunum_set_input_line(0, 4, HOLD_LINE); /* Controls */
+	if (cpu_getiloops() == 0)
+		cpunum_set_input_line(machine, 0, 2, HOLD_LINE); /* VBL */
+	else
+		cpunum_set_input_line(machine, 0, 4, HOLD_LINE); /* Controls */
 }
 
 static INTERRUPT_GEN( madgear_interrupt )
 {
-	if (cpu_getiloops() == 0) cpunum_set_input_line(0, 5, HOLD_LINE); /* VBL */
-	else cpunum_set_input_line(0, 6, HOLD_LINE); /* Controls */
+	if (cpu_getiloops() == 0)
+		cpunum_set_input_line(machine, 0, 5, HOLD_LINE); /* VBL */
+	else
+		cpunum_set_input_line(machine, 0, 6, HOLD_LINE); /* Controls */
 }
 
 static MACHINE_DRIVER_START( lastduel )
@@ -296,8 +301,8 @@ static MACHINE_DRIVER_START( madgear )
 	MDRV_CPU_PROGRAM_MAP(madgear_readmem,madgear_writemem)
 	MDRV_CPU_VBLANK_INT(madgear_interrupt,3)	/* 1 for vbl, 2 for control reads?? */
 
-	MDRV_CPU_ADD(Z80, 3579545)
-	/* audio CPU */ /* Accurate */
+	MDRV_CPU_ADD(Z80, XTAL_3_579545MHz) /* verified on pcb */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(mg_sound_readmem,mg_sound_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -318,15 +323,15 @@ static MACHINE_DRIVER_START( madgear )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 3579545)
+	MDRV_SOUND_ADD(YM2203, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2203_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
-	MDRV_SOUND_ADD(YM2203, 3579545)
+	MDRV_SOUND_ADD(YM2203, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
-	MDRV_SOUND_ADD(OKIM6295, 1024188)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD(OKIM6295, XTAL_10MHz/10)
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.98)
 MACHINE_DRIVER_END
 

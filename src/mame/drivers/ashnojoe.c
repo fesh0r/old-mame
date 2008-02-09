@@ -77,6 +77,7 @@ Coin B is not used
 *************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2203intf.h"
 #include "sound/msm5205.h"
 
@@ -110,7 +111,7 @@ static WRITE16_HANDLER( ashnojoe_soundlatch_w )
 	{
 		soundlatch_w(0,data & 0xff);
 		//needed?
-		cpunum_set_input_line(1,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 	}
 }
 
@@ -310,7 +311,7 @@ GFXDECODE_END
 
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE8_HANDLER(writeA)
@@ -327,7 +328,7 @@ static WRITE8_HANDLER(writeB)
 
 static void ashnojoe_adpcm_int (int data)
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static const struct MSM5205interface msm5205_interface =
@@ -353,11 +354,11 @@ static DRIVER_INIT( ashnojoe )
 static MACHINE_DRIVER_START( ashnojoe )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8000000)	/* 8 MHz? */
+	MDRV_CPU_ADD(M68000, 8000000) /* 8 MHz (verified on pcb) */
 	MDRV_CPU_PROGRAM_MAP(ashnojoe_readmem,ashnojoe_writemem)
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz ??? */
+	MDRV_CPU_ADD(Z80, 4000000) /* 4 MHz (verified on pcb) */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
@@ -380,7 +381,7 @@ static MACHINE_DRIVER_START( ashnojoe )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 3000000)
+	MDRV_SOUND_ADD(YM2203, 4000000)  /* 4 MHz (verified on pcb) */
 	MDRV_SOUND_CONFIG(ym2203_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 

@@ -28,6 +28,7 @@ TODO:
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "taitoipt.h"
 #include "audio/taitosnd.h"
 #include "sound/2151intf.h"
@@ -131,7 +132,7 @@ static WRITE8_HANDLER( exzisus_sharedram_ac_w )
 
 static WRITE8_HANDLER( exzisus_cpub_reset_w )
 {
-	cpunum_set_input_line(3, INPUT_LINE_RESET, PULSE_LINE);
+	cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, PULSE_LINE);
 }
 
 #if 0
@@ -312,7 +313,7 @@ GFXDECODE_END
 
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2151interface ym2151_interface =

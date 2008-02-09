@@ -38,6 +38,7 @@ A1                   2101            2101
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
 
 static UINT8 *ace_scoreram;
@@ -63,13 +64,13 @@ static VIDEO_UPDATE( ace )
 {
 	int offs;
 
-	decodechar(machine->gfx[1], 0, ace_characterram, machine->drv->gfxdecodeinfo[1].gfxlayout);
-	decodechar(machine->gfx[2], 0, ace_characterram, machine->drv->gfxdecodeinfo[2].gfxlayout);
-	decodechar(machine->gfx[3], 0, ace_characterram, machine->drv->gfxdecodeinfo[3].gfxlayout);
+	decodechar(machine->gfx[1], 0, ace_characterram);
+	decodechar(machine->gfx[2], 0, ace_characterram);
+	decodechar(machine->gfx[3], 0, ace_characterram);
 
 	for (offs = 0; offs < 8; offs++)
 	{
-		decodechar(machine->gfx[4], offs, ace_scoreram, machine->drv->gfxdecodeinfo[4].gfxlayout);
+		decodechar(machine->gfx[4], offs, ace_scoreram);
 	}
 
 	/* first of all, fill the screen with the background color */
@@ -330,7 +331,6 @@ static MACHINE_DRIVER_START( ace )
 	MDRV_SCREEN_VISIBLE_AREA(4*8, 32*8-1, 2*8, 32*8-1)
 	MDRV_GFXDECODE(ace)
 	MDRV_PALETTE_LENGTH(2)
-	MDRV_COLORTABLE_LENGTH(2*2)
 
 	MDRV_PALETTE_INIT(ace)
 	MDRV_VIDEO_UPDATE(ace)

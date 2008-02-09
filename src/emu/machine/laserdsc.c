@@ -4,7 +4,7 @@
 
     Generic laserdisc support.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *************************************************************************/
@@ -14,6 +14,7 @@
 #include "avcomp.h"
 #include "profiler.h"
 #include "streams.h"
+#include "deprecat.h"
 #include "sound/custom.h"
 
 
@@ -24,11 +25,7 @@
 
 #define PRINTF_COMMANDS				1
 
-#if PRINTF_COMMANDS
-#define CMDPRINTF(x)				mame_printf_debug x
-#else
-#define CMDPRINTF(x)
-#endif
+#define CMDPRINTF(x)				do { if (PRINTF_COMMANDS) mame_printf_debug x; } while (0)
 
 
 

@@ -37,10 +37,9 @@
 #include "sndintrf.h"
 #include "streams.h"
 #include "inptport.h"
+#include "deprecat.h"
 #include "wavwrite.h"
 #include "discrete.h"
-#include <stdarg.h>
-#include <math.h>
 
 
 /*************************************
@@ -74,7 +73,7 @@ struct _discrete_info
 
 	/* the input streams */
 	int discrete_input_streams;
-	stream_sample_t **input_stream_data[DISCRETE_MAX_OUTPUTS];
+	stream_sample_t *input_stream_data[DISCRETE_MAX_OUTPUTS];
 
 	/* output node tracking */
 	int discrete_outputs;
@@ -123,7 +122,7 @@ static void discrete_reset(void *chip);
  *
  *************************************/
 
-static void CLIB_DECL discrete_log(const char *text, ...)
+static void CLIB_DECL ATTR_PRINTF(1,2) discrete_log(const char *text, ...)
 {
 	if (DISCRETE_DEBUGLOG)
 	{
@@ -175,7 +174,7 @@ static const discrete_module module_list[] =
 	{ DSS_INPUT_LOGIC ,"DSS_INPUT_LOGIC" ,sizeof(UINT8)                          ,dss_input_reset       ,dss_input_step       },
 	{ DSS_INPUT_NOT   ,"DSS_INPUT_NOT"   ,sizeof(UINT8)                          ,dss_input_reset       ,dss_input_step       },
 	{ DSS_INPUT_PULSE ,"DSS_INPUT_PULSE" ,sizeof(UINT8)                          ,dss_input_reset       ,dss_input_pulse_step },
-	{ DSS_INPUT_STREAM,"DSS_INPUT_STREAM",0                                      ,NULL                  ,dss_input_stream_step},
+	{ DSS_INPUT_STREAM,"DSS_INPUT_STREAM",0                                      ,dss_input_stream_reset,dss_input_stream_step},
 
 	/* from disc_wav.c */
 	/* Generic modules */
@@ -259,7 +258,7 @@ static const discrete_module module_list[] =
 	{ DSD_555_CC      ,"DSD_555_CC"      ,sizeof(struct dsd_555_cc_context)      ,dsd_555_cc_reset      ,dsd_555_cc_step      },
 	{ DSD_555_VCO1    ,"DSD_555_VCO1"    ,sizeof(struct dsd_555_vco1_context)    ,dsd_555_vco1_reset    ,dsd_555_vco1_step    },
 	{ DSD_566         ,"DSD_566"         ,sizeof(struct dsd_566_context)         ,dsd_566_reset         ,dsd_566_step         },
-
+	{ DSD_LS624       ,"DSD_LS624"       ,sizeof(struct dsd_ls624_context)       ,dsd_ls624_reset       ,dsd_ls624_step       },
 	/* must be the last one */
 	{ DSS_NULL        ,"DSS_NULL"        ,0                                      ,NULL                  ,NULL                 }
 };
@@ -443,7 +442,7 @@ static void discrete_stream_update(void *param, stream_sample_t **inputs, stream
 	/* Setup any input streams */
 	for (nodenum = 0; nodenum < info->discrete_input_streams; nodenum++)
 	{
-		*info->input_stream_data[nodenum] = inputs[nodenum];
+		info->input_stream_data[nodenum] = inputs[nodenum];
 	}
 
 	/* Now we must do length iterations of the node list, one output for each step */
@@ -499,6 +498,12 @@ static void discrete_stream_update(void *param, stream_sample_t **inputs, stream
 
 				wav_add_data_16lr(info->disc_wav_file[outputnum], &wave_data_l, &wave_data_r, 1);
 			}
+		}
+
+		/* advance input streams */
+		for (nodenum = 0; nodenum < info->discrete_input_streams; nodenum++)
+		{
+			info->input_stream_data[nodenum]++;
 		}
 	}
 
@@ -616,7 +621,9 @@ static void init_nodes(discrete_info *info, discrete_sound_block *block_list)
 			if (info->discrete_input_streams == DISCRETE_MAX_OUTPUTS)
 				fatalerror("init_nodes() - There can not be more then %d input stream nodes", DISCRETE_MAX_OUTPUTS);
 			/* we will use the node's context pointer to point to the input stream data */
-			*info->input_stream_data[info->discrete_input_streams++] = (stream_sample_t *)&node->context;
+			//node->context = &info->input_stream_data[info->discrete_input_streams++];
+			node->context = NULL;
+			info->discrete_input_streams++;
 		}
 	}
 
@@ -745,7 +752,7 @@ void discrete_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "Analog";						break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
 	}
 }
 

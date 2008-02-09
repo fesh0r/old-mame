@@ -29,6 +29,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/sn76496.h"
 
@@ -65,19 +66,19 @@ static UINT8 cpu2_m6000=0;
 
 static WRITE8_HANDLER( cpu1_reset_w )
 {
-	cpunum_set_input_line(1, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( cpu2_reset_w )
 {
-	cpunum_set_input_line(2, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( mcu_reset_w )
 {
 	/* the bootlegs don't have a MCU, so make sure it's there before trying to reset it */
 	if (cpu_gettotalcpu() >= 4)
-		cpunum_set_input_line(3, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( cpu2_m6000_w )
@@ -93,7 +94,7 @@ static READ8_HANDLER( cpu0_mf800_r )
 static WRITE8_HANDLER( soundcommand_w )
 {
       soundlatch_w(0, data);
-      cpunum_set_input_line(2, 0, HOLD_LINE);
+      cpunum_set_input_line(Machine, 2, 0, HOLD_LINE);
 }
 
 static WRITE8_HANDLER( irq0_ack_w )
@@ -102,7 +103,7 @@ static WRITE8_HANDLER( irq0_ack_w )
 
 	cpu_interrupt_enable(0,bit);
 	if (!bit)
-		cpunum_set_input_line(0, 0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( irq1_ack_w )
@@ -111,7 +112,7 @@ static WRITE8_HANDLER( irq1_ack_w )
 
 	cpu_interrupt_enable(1,bit);
 	if (!bit)
-		cpunum_set_input_line(1, 0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( coincounter_w )
@@ -376,7 +377,7 @@ static MACHINE_DRIVER_START( retofinv )
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,2)
 
-	MDRV_CPU_ADD_TAG("68705", M68705,18432000/6/M68705_CLOCK_DIVIDER)	/* 3.072 MHz? */
+	MDRV_CPU_ADD_TAG("68705", M68705,18432000/6)	/* 3.072 MHz? */
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)

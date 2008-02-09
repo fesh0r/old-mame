@@ -1,7 +1,7 @@
 /*****************************************************************************
  *
  *  POKEY chip emulator 4.51
- *  Copyright (c) 2000-2007 by The MAME Team
+ *  Copyright Nicola Salmoria and the MAME Team
  *
  *  Based on original info found in Ron Fries' Pokey emulator,
  *  with additions by Brad Oliver, Eric Smith and Juergen Buchmueller,
@@ -86,35 +86,15 @@
 #define VERBOSE_POLY	0
 #define VERBOSE_RAND	0
 
-#if VERBOSE
-#define LOG(x) logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
-#if VERBOSE_SOUND
-#define LOG_SOUND(x) logerror x
-#else
-#define LOG_SOUND(x)
-#endif
+#define LOG_SOUND(x) do { if (VERBOSE_SOUND) logerror x; } while (0)
 
-#if VERBOSE_TIMER
-#define LOG_TIMER(x) logerror x
-#else
-#define LOG_TIMER(x)
-#endif
+#define LOG_TIMER(x) do { if (VERBOSE_TIMER) logerror x; } while (0)
 
-#if VERBOSE_POLY
-#define LOG_POLY(x) logerror x
-#else
-#define LOG_POLY(x)
-#endif
+#define LOG_POLY(x) do { if (VERBOSE_POLY) logerror x; } while (0)
 
-#if VERBOSE_RAND
-#define LOG_RAND(x) logerror x
-#else
-#define LOG_RAND(x)
-#endif
+#define LOG_RAND(x) do { if (VERBOSE_RAND) logerror x; } while (0)
 
 #define CHAN1	0
 #define CHAN2	1
@@ -721,7 +701,6 @@ static TIMER_CALLBACK( pokey_timer_expire )
     }
 }
 
-#if VERBOSE_SOUND
 static char *audc2str(int val)
 {
 	static char buff[80];
@@ -771,7 +750,6 @@ static char *audctl2str(int val)
 		strcat(buff,"+clk15");
     return buff;
 }
-#endif
 
 static TIMER_CALLBACK( pokey_serin_ready )
 {
@@ -1564,7 +1542,7 @@ void pokey_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "Atari custom";				break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "4.51";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2000-2007, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
 	}
 }
 

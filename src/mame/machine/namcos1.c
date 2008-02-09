@@ -1,8 +1,12 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ym2151.h"
 #include "sound/namco.h"
 
 #define NAMCOS1_MAX_BANK 0x400
+
+/* from drivers */
+void namcos1_init_DACs(void);
 
 /* from video */
 READ8_HANDLER( namcos1_videoram_r );
@@ -570,6 +574,8 @@ WRITE8_HANDLER( namcos1_sound_bankswitch_w )
 
 static int mcu_patch_data;
 static int namcos1_reset = 0;
+static int wdog;
+static int chip[16];
 
 WRITE8_HANDLER( namcos1_cpu_control_w )
 {
@@ -580,17 +586,15 @@ WRITE8_HANDLER( namcos1_cpu_control_w )
 		namcos1_reset = data & 1;
 	}
 
-	cpunum_set_input_line(1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
-	cpunum_set_input_line(2, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
-	cpunum_set_input_line(3, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
 
 WRITE8_HANDLER( namcos1_watchdog_w )
 {
-	static int wdog;
-
 	wdog |= 1 << (cpu_getactivecpu());
 	if (wdog == 7 || !namcos1_reset)
 	{
@@ -702,7 +706,6 @@ static void set_bank(int banknum, const bankhandler *handler)
 
 static void namcos1_bankswitch(int cpu, offs_t offset, UINT8 data)
 {
-	static int chip[16];
 	int bank = (cpu*8) + (( offset >> 9) & 0x07);
 
 	if (offset & 1)
@@ -858,13 +861,18 @@ MACHINE_RESET( namcos1 )
 	namcos1_bankswitch(1, 0x0e01, 0xff);
 
 	/* stop all CPUs */
-	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
-	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
-	cpunum_set_input_line(3, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, ASSERT_LINE);
 
 	/* mcu patch data clear */
 	mcu_patch_data = 0;
 	namcos1_reset = 0;
+
+	namcos1_init_DACs();
+	memset(key, 0, sizeof(key));
+	memset(chip, 0, sizeof(chip));
+	wdog = 0;
 }
 
 
@@ -949,7 +957,7 @@ struct namcos1_specific
 
 static void namcos1_driver_init(const struct namcos1_specific *specific )
 {
-	const struct namcos1_specific no_key =
+	static const struct namcos1_specific no_key =
 	{
 		no_key_r,no_key_w
 	};
@@ -998,7 +1006,7 @@ DRIVER_INIT( shadowld )
 *******************************************************************************/
 DRIVER_INIT( dspirit )
 {
-	const struct namcos1_specific dspirit_specific=
+	static const struct namcos1_specific dspirit_specific=
 	{
 		key_type1_r,key_type1_w, 0x36
 	};
@@ -1010,7 +1018,7 @@ DRIVER_INIT( dspirit )
 *******************************************************************************/
 DRIVER_INIT( wldcourt )
 {
-	const struct namcos1_specific worldcourt_specific=
+	static const struct namcos1_specific worldcourt_specific=
 	{
 		key_type1_r,key_type1_w, 0x35
 	};
@@ -1022,7 +1030,7 @@ DRIVER_INIT( wldcourt )
 *******************************************************************************/
 DRIVER_INIT( blazer )
 {
-	const struct namcos1_specific blazer_specific=
+	static const struct namcos1_specific blazer_specific=
 	{
 		key_type1_r,key_type1_w, 0x13
 	};
@@ -1034,7 +1042,7 @@ DRIVER_INIT( blazer )
 *******************************************************************************/
 DRIVER_INIT( puzlclub )
 {
-	const struct namcos1_specific puzlclub_specific=
+	static const struct namcos1_specific puzlclub_specific=
 	{
 		key_type1_r,key_type1_w, 0x35
 	};
@@ -1046,7 +1054,7 @@ DRIVER_INIT( puzlclub )
 *******************************************************************************/
 DRIVER_INIT( pacmania )
 {
-	const struct namcos1_specific pacmania_specific=
+	static const struct namcos1_specific pacmania_specific=
 	{
 		key_type2_r,key_type2_w, 0x12
 	};
@@ -1058,7 +1066,7 @@ DRIVER_INIT( pacmania )
 *******************************************************************************/
 DRIVER_INIT( alice )
 {
-	const struct namcos1_specific alice_specific=
+	static const struct namcos1_specific alice_specific=
 	{
 		key_type2_r,key_type2_w, 0x25
 	};
@@ -1070,7 +1078,7 @@ DRIVER_INIT( alice )
 *******************************************************************************/
 DRIVER_INIT( galaga88 )
 {
-	const struct namcos1_specific galaga88_specific=
+	static const struct namcos1_specific galaga88_specific=
 	{
 		key_type2_r,key_type2_w, 0x31
 	};
@@ -1082,7 +1090,7 @@ DRIVER_INIT( galaga88 )
 *******************************************************************************/
 DRIVER_INIT( ws )
 {
-	const struct namcos1_specific ws_specific=
+	static const struct namcos1_specific ws_specific=
 	{
 		key_type2_r,key_type2_w, 0x07
 	};
@@ -1094,7 +1102,7 @@ DRIVER_INIT( ws )
 *******************************************************************************/
 DRIVER_INIT( bakutotu )
 {
-	const struct namcos1_specific bakutotu_specific=
+	static const struct namcos1_specific bakutotu_specific=
 	{
 		key_type2_r,key_type2_w, 0x22
 	};
@@ -1103,7 +1111,7 @@ DRIVER_INIT( bakutotu )
 #if 0
 	// resolves CPU deadlocks caused by sloppy coding(see driver\namcos1.c)
 	{
-		UINT8 target[8] = {0x34,0x37,0x35,0x37,0x96,0x00,0x2e,0xed};
+		static const UINT8 target[8] = {0x34,0x37,0x35,0x37,0x96,0x00,0x2e,0xed};
 		UINT8 *rombase, *srcptr, *endptr, *scanptr;
 
 		rombase = memory_region(REGION_USER1);
@@ -1131,7 +1139,7 @@ DRIVER_INIT( bakutotu )
 *******************************************************************************/
 DRIVER_INIT( splatter )
 {
-	const struct namcos1_specific splatter_specific=
+	static const struct namcos1_specific splatter_specific=
 	{
 		key_type3_r,key_type3_w, 181, 3, 4,-1,-1,-1,-1
 	};
@@ -1144,7 +1152,7 @@ DRIVER_INIT( splatter )
 *******************************************************************************/
 DRIVER_INIT( rompers )
 {
-	const struct namcos1_specific rompers_specific=
+	static const struct namcos1_specific rompers_specific=
 	{
 		key_type3_r,key_type3_w, 182, 7,-1,-1,-1,-1,-1
 	};
@@ -1156,7 +1164,7 @@ DRIVER_INIT( rompers )
 *******************************************************************************/
 DRIVER_INIT( blastoff )
 {
-	const struct namcos1_specific blastoff_specific=
+	static const struct namcos1_specific blastoff_specific=
 	{
 		key_type3_r,key_type3_w, 183, 0, 7, 3, 5,-1,-1
 	};
@@ -1168,7 +1176,7 @@ DRIVER_INIT( blastoff )
 *******************************************************************************/
 DRIVER_INIT( ws89 )
 {
-	const struct namcos1_specific ws89_specific=
+	static const struct namcos1_specific ws89_specific=
 	{
 		key_type3_r,key_type3_w, 184, 2,-1,-1,-1,-1,-1
 	};
@@ -1180,7 +1188,7 @@ DRIVER_INIT( ws89 )
 *******************************************************************************/
 DRIVER_INIT( tankfrce )
 {
-	const struct namcos1_specific tankfrce_specific=
+	static const struct namcos1_specific tankfrce_specific=
 	{
 		key_type3_r,key_type3_w, 185, 5,-1, 1,-1, 2,-1
 	};
@@ -1192,7 +1200,7 @@ DRIVER_INIT( tankfrce )
 *******************************************************************************/
 DRIVER_INIT( dangseed )
 {
-	const struct namcos1_specific dangseed_specific=
+	static const struct namcos1_specific dangseed_specific=
 	{
 		key_type3_r,key_type3_w, 308, 6,-1, 5,-1, 0, 4
 	};
@@ -1204,7 +1212,7 @@ DRIVER_INIT( dangseed )
 *******************************************************************************/
 DRIVER_INIT( pistoldm )
 {
-	const struct namcos1_specific pistoldm_specific=
+	static const struct namcos1_specific pistoldm_specific=
 	{
 		key_type3_r,key_type3_w, 309, 1, 2, 0,-1, 4,-1
 	};
@@ -1216,7 +1224,7 @@ DRIVER_INIT( pistoldm )
 *******************************************************************************/
 DRIVER_INIT( ws90 )
 {
-	const struct namcos1_specific ws90_specific=
+	static const struct namcos1_specific ws90_specific=
 	{
 		key_type3_r,key_type3_w, 310, 4,-1, 7,-1, 3,-1
 	};
@@ -1228,7 +1236,7 @@ DRIVER_INIT( ws90 )
 *******************************************************************************/
 DRIVER_INIT( soukobdx )
 {
-	const struct namcos1_specific soukobdx_specific=
+	static const struct namcos1_specific soukobdx_specific=
 	{
 		key_type3_r,key_type3_w, 311, 2, 3/*?*/, 0,-1, 4,-1
 	};

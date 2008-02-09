@@ -59,6 +59,7 @@ SOFT  PSG & VOICE  BY M.C & S.H
 
 */
 #include "driver.h"
+#include "deprecat.h"
 #include "video/resnet.h"
 #include "sound/ay8910.h"
 
@@ -283,9 +284,9 @@ static VIDEO_UPDATE(meijinsn)
 static INTERRUPT_GEN( meijinsn_interrupt )
 {
 	if (cpu_getiloops() == 0)
-		cpunum_set_input_line(0, 1, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 1, HOLD_LINE);
 	else
-		cpunum_set_input_line(0, 2, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
 }
 
 static const struct AY8910interface ay8910_interface =

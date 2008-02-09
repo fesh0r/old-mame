@@ -4,6 +4,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "audio/taitosnd.h"
 #include "sound/2151intf.h"
 #include "sound/msm5205.h"
@@ -37,7 +38,7 @@ static void updateChars(running_machine *machine)
 		if(dirtychar[i])
 		{
 			dirtychar[i]=0;
-			decodechar(machine->gfx[0], i,(UINT8 *) ml_tileram, machine->drv->gfxdecodeinfo[0].gfxlayout);
+			decodechar(machine->gfx[0], i,(UINT8 *) ml_tileram);
 		}
 	}
 }
@@ -77,9 +78,7 @@ static WRITE16_HANDLER(ml_subreset_w)
 {
 	//wrong
 	if(activecpu_get_pc()==0x822)
-	{
-		cpunum_set_input_line(2, INPUT_LINE_RESET, PULSE_LINE);
-	}
+		cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -271,7 +270,7 @@ static VIDEO_UPDATE(mlanding)
 		int i;
 		for(i=0;i<7;i++)
 		{
-			copybitmap(bitmap,ml_bitmap[i], 0, 0, 0, 0, cliprect, TRANSPARENCY_PEN, 0);
+			copybitmap_trans(bitmap,ml_bitmap[i], 0, 0, 0, 0, cliprect, 0);
 		}
 	}
 	status_bit=0;
@@ -339,7 +338,7 @@ INPUT_PORTS_END
 
 static void irq_handler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static GFXDECODE_START( mlanding )

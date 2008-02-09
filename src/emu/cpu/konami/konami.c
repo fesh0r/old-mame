@@ -1,8 +1,8 @@
 /*** konami: Portable Konami cpu emulator ******************************************
 
-    Copyright (C) The MAME Team 1999
+    Copyright Nicola Salmoria and the MAME Team
 
-    Based on M6809 cpu core copyright (C) John Butler 1997
+    Based on M6809 cpu core copyright John Butler
 
     References:
 
@@ -35,16 +35,12 @@
 *****************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "konami.h"
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
-
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 /* Konami Registers */
 typedef struct
@@ -506,7 +502,7 @@ static int konami_execute(int cycles)
 		{
 			pPPC = pPC;
 
-			CALL_MAME_DEBUG;
+			CALL_DEBUGGER(PCD);
 
 			konami.ireg = ROP(PCD);
 			PC++;
@@ -570,6 +566,7 @@ void konami_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 2;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -613,9 +610,9 @@ void konami_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = konami_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = konami_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = konami_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &konami_ICount;			break;
 		case CPUINFO_PTR_KONAMI_SETLINES_CALLBACK:		info->f = (genf *)konami.setlines_callback;	break;
 
@@ -624,7 +621,7 @@ void konami_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "KONAMI 5000x");		break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) The MAME Team 1999"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",

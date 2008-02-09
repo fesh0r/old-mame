@@ -7,6 +7,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6821pia.h"
 #include "machine/7474.h"
@@ -89,7 +90,7 @@ static UINT8 last_wheel_value[4];
 
 static void TTL74148_3S_cb(void)
 {
-	cpunum_set_input_line(0, M6502_IRQ_LINE, TTL74148_output_valid_r(TTL74148_3S) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, TTL74148_output_valid_r(TTL74148_3S) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 

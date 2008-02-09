@@ -34,6 +34,7 @@
 
 #include "driver.h"
 #include "render.h"
+#include "deprecat.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/laserdsc.h"
 #include "machine/z80ctc.h"
@@ -90,7 +91,7 @@ static const UINT8 led_map[16] =
 
 static void dleuro_interrupt(int state)
 {
-	cpunum_set_input_line(0, 0, state);
+	cpunum_set_input_line(Machine, 0, 0, state);
 }
 
 
@@ -189,7 +190,7 @@ static PALETTE_INIT( dleuro )
 
 static VIDEO_START( dleuro )
 {
-	video_start_dlair(machine);
+	VIDEO_START_CALL(dlair);
 
 	overlay_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
 	fillbitmap(overlay_bitmap, 8, NULL);
@@ -279,8 +280,8 @@ static MACHINE_START( dlair )
 static MACHINE_START( dleuro )
 {
 	/* initialize the CTC and SIO peripherals */
-	ctc_intf.baseclock = machine->drv->cpu[0].clock;
-	sio_intf.baseclock = machine->drv->cpu[0].clock;
+	ctc_intf.baseclock = cpunum_get_clock(0);
+	sio_intf.baseclock = cpunum_get_clock(0);
 	z80ctc_init(0, &ctc_intf);
 	z80sio_init(0, &sio_intf);
 
@@ -307,7 +308,7 @@ static MACHINE_RESET( dlair )
  *
  *************************************/
 
-static void vblank_callback(void)
+static INTERRUPT_GEN( vblank_callback )
 {
 	/* update the laserdisc */
 	laserdisc_vsync(discinfo);
@@ -397,7 +398,7 @@ static WRITE8_HANDLER( led_den2_w )
  *
  *************************************/
 
-static UINT32 laserdisc_status_r(void *param)
+static CUSTOM_INPUT( laserdisc_status_r )
 {
 	if (discinfo == NULL)
 		return 0;
@@ -417,7 +418,7 @@ static UINT32 laserdisc_status_r(void *param)
 }
 
 
-static UINT32 laserdisc_command_r(void *param)
+static CUSTOM_INPUT( laserdisc_command_r )
 {
 	if (discinfo == NULL)
 		return 0;

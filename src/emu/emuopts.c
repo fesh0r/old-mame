@@ -4,7 +4,7 @@
 
     Options file and command line management.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -144,7 +144,7 @@ const options_entry mame_core_options[] =
 	{ "log",                         "0",         OPTION_BOOLEAN,    "generate an error.log file" },
 	{ "verbose;v",                   "0",         OPTION_BOOLEAN,    "display additional diagnostic information" },
 	{ "update_in_pause",             "0",         OPTION_BOOLEAN,    "keep calling video updates while in pause" },
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	{ "debug;d",                     "1",         OPTION_BOOLEAN,    "enable/disable debugger" },
 	{ "debugscript",                 NULL,        0,                 "script for debugger" },
 #else

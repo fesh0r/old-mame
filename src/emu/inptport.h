@@ -4,7 +4,7 @@
 
     Handle input ports and mappings.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -35,13 +35,18 @@
 #define IP_ACTIVE_LOW		0xffffffff
 
 
+/* macro for a custom callback functions (PORT_CUSTOM) */
+#define CUSTOM_INPUT(name)	UINT32 name(void *param)
+
+
 /* sequence types for input_port_seq() call */
-enum
+enum _input_seq_type
 {
 	SEQ_TYPE_STANDARD = 0,
 	SEQ_TYPE_INCREMENT = 1,
 	SEQ_TYPE_DECREMENT = 2
 };
+typedef enum _input_seq_type input_seq_type;
 
 
 /* conditions for DIP switches */
@@ -592,7 +597,7 @@ struct _input_port_entry
 #ifdef MESS
 	struct
 	{
-		unicode_char chars[3];/* (MESS-specific) unicode key data */
+		unicode_char chars[3];	/* (MESS-specific) unicode key data */
 	} keyboard;
 #endif /* MESS */
 };
@@ -601,9 +606,20 @@ struct _input_port_entry
 typedef struct _inp_header inp_header;
 struct _inp_header
 {
-	char name[9];      /* 8 bytes for game->name + NUL */
-	char version[3];   /* byte[0] = 0, byte[1] = version byte[2] = beta_version */
-	char reserved[20]; /* for future use, possible store game options? */
+	char 	name[9];      		/* 8 bytes for game->name + NUL */
+	char 	version[3];   		/* byte[0] = 0, byte[1] = version byte[2] = beta_version */
+	char 	reserved[20]; 		/* for future use, possible store game options? */
+};
+
+
+typedef struct _ext_inp_header ext_inp_header;
+struct _ext_inp_header
+{
+	char 	header[7];			/* must be "XINP" followed by NULLs */
+	char 	shortname[9];		/* game shortname */
+	char 	version[32];		/* MAME version string */
+	UINT32 starttime;			/* approximate INP start time */
+	char 	dummy[32];			/* for possible future expansion */
 };
 
 
@@ -876,8 +892,8 @@ read16_handler port_tag_to_handler16(const char *tag);
 read32_handler port_tag_to_handler32(const char *tag);
 read64_handler port_tag_to_handler64(const char *tag);
 const char *input_port_name(const input_port_entry *in);
-const input_seq *input_port_seq(input_port_entry *in, int seqtype);
-const input_seq *input_port_default_seq(int type, int player, int seqtype);
+const input_seq *input_port_seq(input_port_entry *in, input_seq_type seqtype);
+const input_seq *input_port_default_seq(int type, int player, input_seq_type seqtype);
 int input_port_condition(const input_port_entry *in);
 void input_port_set_changed_callback(int port, UINT32 mask, void (*callback)(void *, UINT32, UINT32), void *param);
 

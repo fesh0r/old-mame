@@ -20,6 +20,7 @@ blocken:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/okim6295.h"
@@ -105,7 +106,7 @@ static WRITE16_HANDLER( heberpop_sound_command_w )
 	if (ACCESSING_LSB)
 	{
 		soundlatch_w(0,data & 0xff);
-		cpunum_set_input_line_and_vector(1,0,HOLD_LINE,0xff);	/* RST 38h */
+		cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);	/* RST 38h */
 	}
 }
 
@@ -484,7 +485,7 @@ static const struct AY8910interface ay8910_interface =
 
 static void irqhandler(int linestate)
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, linestate);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, linestate);
 }
 
 static const struct YM3438interface ym3438_interface =

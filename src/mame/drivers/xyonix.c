@@ -20,6 +20,7 @@ TODO:
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/sn76496.h"
 
@@ -34,7 +35,7 @@ VIDEO_UPDATE(xyonix);
 
 static WRITE8_HANDLER( xyonix_irqack_w )
 {
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 }
 
 

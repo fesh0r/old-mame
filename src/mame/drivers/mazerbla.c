@@ -36,6 +36,7 @@ TO DO:
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 static UINT8 *cfb_ram;
@@ -139,21 +140,21 @@ VIDEO_UPDATE( test_vcu )
 
 
 	if (planes_enabled[3])
-		copybitmap(bitmap,tmpbitmaps[3],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_NONE, 0 );
+		copybitmap(bitmap,tmpbitmaps[3],0,0,0,0,cliprect);
 
 
 	if (planes_enabled[2])
-		copybitmap(bitmap,tmpbitmaps[2],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_PEN, machine->pens[color_base] );
+		copybitmap_trans(bitmap,tmpbitmaps[2],0,0,0,0,cliprect,machine->pens[color_base] );
 	fillbitmap(tmpbitmaps[2],machine->pens[color_base],NULL);
 
 
 	if (planes_enabled[1])
-		copybitmap(bitmap,tmpbitmaps[1],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_PEN, machine->pens[color_base] );
+		copybitmap_trans(bitmap,tmpbitmaps[1],0,0,0,0,cliprect,machine->pens[color_base] );
 	fillbitmap(tmpbitmaps[1],machine->pens[color_base],NULL);
 
 
 	if (planes_enabled[0])
-		copybitmap(bitmap,tmpbitmaps[0],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_PEN, machine->pens[color_base] );
+		copybitmap_trans(bitmap,tmpbitmaps[0],0,0,0,0,cliprect,machine->pens[color_base] );
 	fillbitmap(tmpbitmaps[0],machine->pens[color_base],NULL);
 
 	if (input_code_pressed_once(KEYCODE_1))	/* plane 1 */
@@ -249,10 +250,10 @@ static VIDEO_UPDATE( greatgun )
 
 //fillbitmap(bitmap,0,NULL);
 
-	copybitmap(bitmap,tmpbitmaps[3],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_NONE, 0 );
-	copybitmap(bitmap,tmpbitmaps[2],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_PEN, machine->pens[color_base] );
-	copybitmap(bitmap,tmpbitmaps[1],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_PEN, machine->pens[color_base] );
-	copybitmap(bitmap,tmpbitmaps[0],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_PEN, machine->pens[color_base] );
+	copybitmap      (bitmap,tmpbitmaps[3],0,0,0,0,cliprect);
+	copybitmap_trans(bitmap,tmpbitmaps[2],0,0,0,0,cliprect,machine->pens[color_base] );
+	copybitmap_trans(bitmap,tmpbitmaps[1],0,0,0,0,cliprect,machine->pens[color_base] );
+	copybitmap_trans(bitmap,tmpbitmaps[0],0,0,0,0,cliprect,machine->pens[color_base] );
 	return 0;
 }
 
@@ -269,10 +270,10 @@ static VIDEO_UPDATE( mazerbla )
 
 //fillbitmap(bitmap,0,NULL);
 
-	copybitmap(bitmap,tmpbitmaps[3],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_NONE, 0 ); //text
-	copybitmap(bitmap,tmpbitmaps[2],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_PEN, machine->pens[0] );
-	copybitmap(bitmap,tmpbitmaps[1],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_PEN, machine->pens[0] ); //haircross
-	copybitmap(bitmap,tmpbitmaps[0],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_PEN, machine->pens[0] ); //sprites
+	copybitmap      (bitmap,tmpbitmaps[3],0,0,0,0,cliprect); //text
+	copybitmap_trans(bitmap,tmpbitmaps[2],0,0,0,0,cliprect,machine->pens[0] );
+	copybitmap_trans(bitmap,tmpbitmaps[1],0,0,0,0,cliprect,machine->pens[0] ); //haircross
+	copybitmap_trans(bitmap,tmpbitmaps[0],0,0,0,0,cliprect,machine->pens[0] ); //sprites
 	return 0;
 }
 
@@ -283,7 +284,7 @@ static WRITE8_HANDLER( cfb_zpu_int_req_set_w )
 {
 	zpu_int_vector &= ~2;	/* clear D1 on INTA (interrupt acknowledge) */
 
-	cpunum_set_input_line(0, 0, ASSERT_LINE);	/* main cpu interrupt (comes from CFB (generated at the start of INT routine on CFB) - vblank?) */
+	cpunum_set_input_line(Machine, 0, 0, ASSERT_LINE);	/* main cpu interrupt (comes from CFB (generated at the start of INT routine on CFB) - vblank?) */
 }
 
 static READ8_HANDLER( cfb_zpu_int_req_clr )
@@ -292,7 +293,7 @@ static READ8_HANDLER( cfb_zpu_int_req_clr )
 
 	/* clear the INT line when there are no more interrupt requests */
 	if (zpu_int_vector==0xff)
-		cpunum_set_input_line(0, 0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 
 	return 0;
 }
@@ -1078,7 +1079,7 @@ static TIMER_CALLBACK( delayed_sound_w )
 	soundlatch = param;
 
 	/* cause NMI on sound CPU */
-	cpunum_set_input_line(1, INPUT_LINE_NMI, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 
@@ -1108,16 +1109,16 @@ ADDRESS_MAP_END
 /* frequency is 14.318 MHz/16/16/16/16 */
 static INTERRUPT_GEN( sound_interrupt )
 {
-	cpunum_set_input_line(1, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, 0, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( sound_int_clear_w )
 {
-	cpunum_set_input_line(1, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
 }
 static WRITE8_HANDLER( sound_nmi_clear_w )
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( gg_led_ctrl_w )

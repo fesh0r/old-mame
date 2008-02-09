@@ -4,7 +4,7 @@
 
     Generic graphic functions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -51,15 +51,11 @@
 enum
 {
 	TRANSPARENCY_NONE,			/* opaque with remapping */
-	TRANSPARENCY_NONE_RAW,		/* opaque with no remapping */
 	TRANSPARENCY_PEN,			/* single pen transparency with remapping */
 	TRANSPARENCY_PEN_RAW,		/* single pen transparency with no remapping */
 	TRANSPARENCY_PENS,			/* multiple pen transparency with remapping */
-	TRANSPARENCY_PENS_RAW,		/* multiple pen transparency with no remapping */
 	TRANSPARENCY_COLOR,			/* single remapped pen transparency with remapping */
 	TRANSPARENCY_PEN_TABLE,		/* special pen remapping modes (see DRAWMODE_xxx below) with remapping */
-	TRANSPARENCY_PEN_TABLE_RAW,	/* special pen remapping modes (see DRAWMODE_xxx below) with no remapping */
-	TRANSPARENCY_BLEND,			/* blend two bitmaps, shifting the source and ORing to the dest with remapping */
 	TRANSPARENCY_BLEND_RAW,		/* blend two bitmaps, shifting the source and ORing to the dest with no remapping */
 	TRANSPARENCY_ALPHA,			/* single pen transparency, other pens alpha */
 	TRANSPARENCY_ALPHARANGE,	/* single pen transparency, multiple pens alpha depending on array, see psikyosh.c */
@@ -104,6 +100,10 @@ enum
 #define GFXDECODE_ENTRY(region,offset,layout,start,colors) { region, offset, &layout, start, colors, 0, 0 },
 #define GFXDECODE_SCALE(region,offset,layout,start,colors,xscale,yscale) { region, offset, &layout, start, colors, xscale, yscale },
 #define GFXDECODE_END { -1 } };
+
+/* these macros are used for declaring gfx_layout structures. */
+#define GFXLAYOUT_RAW( name, planes, width, height, linemod, charmod ) \
+const gfx_layout name = { width, height, RGN_FRAC(1,1), planes, { GFX_RAW }, { 0 }, { linemod }, charmod };
 
 
 /***************************************************************************
@@ -193,7 +193,7 @@ extern int pdrawgfx_shadow_lowpri;
 void drawgfx_init(running_machine *machine);
 
 
-void decodechar(gfx_element *gfx,int num,const unsigned char *src,const gfx_layout *gl);
+void decodechar(gfx_element *gfx,int num,const unsigned char *src);
 gfx_element *allocgfx(const gfx_layout *gl);
 void decodegfx(gfx_element *gfx, const UINT8 *src, UINT32 first, UINT32 count);
 void freegfx(gfx_element *gfx);
@@ -227,22 +227,29 @@ void mdrawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 
 void draw_scanline8(mame_bitmap *bitmap,int x,int y,int length,const UINT8 *src,const pen_t *pens,int transparent_pen);
 void draw_scanline16(mame_bitmap *bitmap,int x,int y,int length,const UINT16 *src,const pen_t *pens,int transparent_pen);
+void draw_scanline32(mame_bitmap *bitmap,int x,int y,int length,const UINT32 *src,const pen_t *pens,int transparent_pen);
 void pdraw_scanline8(mame_bitmap *bitmap,int x,int y,int length,const UINT8 *src,const pen_t *pens,int transparent_pen,int pri);
 void pdraw_scanline16(mame_bitmap *bitmap,int x,int y,int length,const UINT16 *src,const pen_t *pens,int transparent_pen,int pri);
+void pdraw_scanline32(mame_bitmap *bitmap,int x,int y,int length,const UINT32 *src,const pen_t *pens,int transparent_pen,int pri);
 void extract_scanline8(mame_bitmap *bitmap,int x,int y,int length,UINT8 *dst);
 void extract_scanline16(mame_bitmap *bitmap,int x,int y,int length,UINT16 *dst);
+void extract_scanline32(mame_bitmap *bitmap,int x,int y,int length,UINT32 *dst);
 
 
-void copybitmap(mame_bitmap *dest,mame_bitmap *src,int flipx,int flipy,int sx,int sy,
-		const rectangle *clip,int transparency,int transparent_color);
-void copybitmap_remap(mame_bitmap *dest,mame_bitmap *src,int flipx,int flipy,int sx,int sy,
-		const rectangle *clip,int transparency,int transparent_color);
+void copybitmap(mame_bitmap *dest,mame_bitmap *src,int flipx,int flipy,
+				int sx,int sy,const rectangle *clip);
+
+void copybitmap_trans(mame_bitmap *dest,mame_bitmap *src,int flipx,int flipy,
+					  int sx,int sy,const rectangle *clip,pen_t transparent_pen);
+
 void copyscrollbitmap(mame_bitmap *dest,mame_bitmap *src,
-		int rows,const int *rowscroll,int cols,const int *colscroll,
-		const rectangle *clip,int transparency,int transparent_color);
-void copyscrollbitmap_remap(mame_bitmap *dest,mame_bitmap *src,
-		int rows,const int *rowscroll,int cols,const int *colscroll,
-		const rectangle *clip,int transparency,int transparent_color);
+					  int rows,const int *rowscroll,int cols,const int *colscroll,
+					  const rectangle *clip);
+
+void copyscrollbitmap_trans(mame_bitmap *dest,mame_bitmap *src,
+					 		int rows,const int *rowscroll,int cols,const int *colscroll,
+					 		const rectangle *clip,pen_t transparent_pen);
+
 
 /*
   Copy a bitmap applying rotation, zooming, and arbitrary distortion.

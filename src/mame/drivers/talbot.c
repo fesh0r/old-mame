@@ -8,6 +8,7 @@ ALPHA 8201 MCU handling by Tatsuyuki satoh
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 static tilemap *bg_tilemap;
@@ -27,7 +28,7 @@ static WRITE8_HANDLER( talbot_colorram_w )
 static WRITE8_HANDLER( talbot_mcu_halt_w )
 {
 	data &= 1;
-	cpunum_set_input_line(1, INPUT_LINE_HALT, data ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, data ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( talbot_mcu_switch_w )

@@ -197,7 +197,7 @@ static VIDEO_UPDATE(murogem)
 
 static MACHINE_DRIVER_START( murogem )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6802,2000000)		 /* ? MHz */
+	MDRV_CPU_ADD(M6802,8000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(murogem_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
@@ -257,6 +257,6 @@ ROM_START( lasvegas )
 
 ROM_END
 
-GAME( 198?,	murogem, 0, murogem, murogem, 0, ROT0, "unknown", "Muroge Monaco (set 1)",GAME_NO_SOUND|GAME_WRONG_COLORS )
-GAME( 198?, murogema, murogem, murogem, murogem, 0, ROT0, "unknown", "Muroge Monaco (set 2)",GAME_NO_SOUND|GAME_WRONG_COLORS )
-GAME( 198?, lasvegas, murogem, murogem, murogem, 0, ROT0, "hack", "Las Vegas, Nevada",GAME_NO_SOUND|GAME_WRONG_COLORS )
+GAME( 198?,	murogem,  0,       murogem, murogem, 0, ROT0, "unknown", "Muroge Monaco (set 1)", GAME_NO_SOUND|GAME_WRONG_COLORS )
+GAME( 198?, murogema, murogem, murogem, murogem, 0, ROT0, "unknown", "Muroge Monaco (set 2)", GAME_NO_SOUND|GAME_WRONG_COLORS )
+GAME( 198?, lasvegas, murogem, murogem, murogem, 0, ROT0, "hack", "Las Vegas, Nevada", GAME_NO_SOUND|GAME_WRONG_COLORS )

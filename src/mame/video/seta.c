@@ -136,6 +136,7 @@ Note:   if MAME_DEBUG is defined, pressing Z with:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/x1_010.h"
 #include "seta.h"
 
@@ -150,7 +151,7 @@ static int tilemaps_flip;
 int seta_tiles_offset;
 
 UINT16 *seta_vram_0, *seta_vctrl_0;
-UINT16 *seta_vram_2, *seta_vram_3, *seta_vctrl_2;
+UINT16 *seta_vram_2, *seta_vctrl_2;
 UINT16 *seta_vregs;
 
 UINT16 *seta_workram; // Used for zombraid crosshair hack
@@ -537,7 +538,7 @@ VIDEO_START( seta_no_layers )
 
 VIDEO_START( oisipuzl_2_layers )
 {
-	video_start_seta_2_layers(machine);
+	VIDEO_START_CALL(seta_2_layers);
 	tilemaps_flip = 1;
 }
 
@@ -608,8 +609,16 @@ PALETTE_INIT( zingzip )
 			colortable[color * 64 + pen + 32*16*2] = ((color * 16 + pen)%(32*16)) + 32*16*2;
 }
 
-
-
+// color prom
+PALETTE_INIT( inttoote )
+{
+	int x;
+	for (x = 0; x < 0x200 ; x++)
+	{
+		int data = (color_prom[x*2] <<8) | color_prom[x*2+1];
+		palette_set_color_rgb(machine, x, pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
+	}
+}
 
 PALETTE_INIT( usclssic )
 {

@@ -52,6 +52,7 @@ Notes:
 *******************************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "audio/seibu.h"
 #include "sound/3812intf.h"
 
@@ -263,14 +264,12 @@ static GFXDECODE_START( goodejan )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0x100, 0x10 ) /* Text */
 GFXDECODE_END
 
-SEIBU_SOUND_SYSTEM_YM3812_HARDWARE
-
 static INTERRUPT_GEN( goodejan_interrupt )
 {
 	if (cpu_getiloops())
-		cpunum_set_input_line_and_vector(0,0,HOLD_LINE,0x208/4);
+		cpunum_set_input_line_and_vector(machine, 0,0,HOLD_LINE,0x208/4);
 	else
-		cpunum_set_input_line_and_vector(0,0,HOLD_LINE,0x00c/4);
+		cpunum_set_input_line_and_vector(machine, 0,0,HOLD_LINE,0x00c/4);
 }
 
 static MACHINE_DRIVER_START( goodejan )

@@ -10,6 +10,7 @@
 *******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 
 static int background_color,background_disable;
@@ -99,11 +100,11 @@ WRITE8_HANDLER( deco16_io_w )
 			/* Todo */
 			break;
 		case 8: /* Irq ack */
-			cpunum_set_input_line(0,DECO16_IRQ_LINE,CLEAR_LINE);
+			cpunum_set_input_line(Machine, 0,DECO16_IRQ_LINE,CLEAR_LINE);
 			break;
 		case 9: /* Sound */
 			soundlatch_w(0,data);
-			cpunum_set_input_line(1,M6502_IRQ_LINE,HOLD_LINE);
+			cpunum_set_input_line(Machine, 1,M6502_IRQ_LINE,HOLD_LINE);
 			break;
 	}
 }
@@ -190,45 +191,60 @@ static void liberate_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 	{
 		int multi,fx,fy,sx,sy,sy2,code,color;
 
-		code = spriteram[offs+1] + ( ( spriteram[offs+0] & 0x60 ) << 3 );
-		sx = (240 - spriteram[offs+3]);
-	//if (sx < -7) sx += 256;
+		/*
+            Byte 0: 0x01 - ?
+                    0x02 - Y flip
+                    0x04 - X flip
+                    0x08 - Colour?
+                    0x10 - Multi sprite set
+                    0x60 - Tile (high bits)
+                    0x80 - ?
+            Byte 1: 0xff - Tile (low bits)
+            Byte 2: 0xff - Y position
+            Byte 3: 0xff - X position
+        */
 
-		sy = 240-spriteram[offs+2];
-		color = 0;//(spriteram[offs+1] & 0x03);// + ((spriteram[offs+1] & 0x08) >> 1);
-
-//      if (pri==0 && color!=0) continue;
-//      if (pri==1 && color==0) continue;
+		code = spriteram[offs+1] + ((spriteram[offs+0] & 0x60) << 3);
+		sx = 240 - spriteram[offs+3];
+		sy = 240 - spriteram[offs+2];
+		color = ((spriteram[offs+1] & 0x08) >> 3); // ?
 
 		fx = spriteram[offs+0] & 0x04;
-		fy = spriteram[offs+0] & 0x08; // or 0x02 ?
+		fy = spriteram[offs+0] & 0x02;
 		multi = spriteram[offs+0] & 0x10;
 
-
-		if (multi) sy-=16;
+		if (multi && fy==0) sy-=16;
 
 		if (flip_screen) {
 			sy=240-sy;
 			sx=240-sx;
+			if (fy)
+				sy2=sy+16;
+			else
+				sy2=sy-16;
 			if (fx) fx=0; else fx=1;
 			if (fy) fy=0; else fy=1;
-			sy2=sy-16;
 		}
-		else sy2=sy+16;
+		else {
+			if (fy)
+				sy2=sy-16;
+			else
+				sy2=sy+16;
+		}
 
-    	drawgfx(bitmap,machine->gfx[1],
-        		code,
-				color,
-				fx,fy,
-				sx,sy,
-				cliprect,TRANSPARENCY_PEN,0);
-        if (multi)
-    		drawgfx(bitmap,machine->gfx[1],
-				code+1,
-				color,
-				fx,fy,
-				sx,sy2,
-				cliprect,TRANSPARENCY_PEN,0);
+	    	drawgfx(bitmap,machine->gfx[1],
+	        		code,
+					color,
+					fx,fy,
+					sx,sy,
+					cliprect,TRANSPARENCY_PEN,0);
+	        if (multi)
+	    		drawgfx(bitmap,machine->gfx[1],
+					code+1,
+					color,
+					fx,fy,
+					sx,sy2,
+					cliprect,TRANSPARENCY_PEN,0);
 	}
 }
 

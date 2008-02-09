@@ -13,6 +13,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
@@ -46,7 +47,7 @@ static WRITE8_HANDLER( pcktgal_sound_bank_w )
 static WRITE8_HANDLER( pcktgal_sound_w )
 {
 	soundlatch_w(0,data);
-	cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 static int msm5205next;
@@ -60,7 +61,7 @@ static void pcktgal_adpcm_int(int data)
 
 	toggle = 1 - toggle;
 	if (toggle)
-		cpunum_set_input_line(1,M6502_IRQ_LINE,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,M6502_IRQ_LINE,HOLD_LINE);
 }
 
 static WRITE8_HANDLER( pcktgal_adpcm_data_w )
@@ -461,8 +462,8 @@ static DRIVER_INIT( graphics )
 
 static DRIVER_INIT( pcktgal )
 {
-	driver_init_deco222(machine);
-	driver_init_graphics(machine);
+	DRIVER_INIT_CALL(deco222);
+	DRIVER_INIT_CALL(graphics);
 }
 
 /***************************************************************************/

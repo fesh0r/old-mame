@@ -3,7 +3,7 @@
  *   m65ce02.c
  *   Portable 65ce02 emulator V1.0beta
  *
- *   Copyright (c) 2000 Peter Trauner, all rights reserved.
+ *   Copyright Peter Trauner, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -48,7 +48,7 @@ extern void m65ce02_state_load(void *file);
 extern const char *m65ce02_info(void *context, int regnum);
 extern unsigned m65ce02_dasm(char *buffer, unsigned pc);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern unsigned int Dasm65ce02( char *dst, unsigned pc );
 #endif
 

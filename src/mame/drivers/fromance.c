@@ -40,6 +40,7 @@ Memo:
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "fromance.h"
 #include "sound/ay8910.h"
@@ -180,7 +181,7 @@ static void fromance_adpcm_int(int irq)
 
 	/* generate an NMI if we're out of data */
 	if (!fromance_vclk_left)
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 

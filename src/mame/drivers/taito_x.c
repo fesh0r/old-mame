@@ -311,6 +311,7 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "taitoipt.h"
 #include "audio/taitosnd.h"
 #include "seta.h"
@@ -422,7 +423,7 @@ static ADDRESS_MAP_START( superman_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800002, 0x800003) AM_READ(taitosound_comm16_lsb_r)
 	AM_RANGE(0x900000, 0x9007ff) AM_READ(cchip1_ram_r)
 	AM_RANGE(0x900802, 0x900803) AM_READ(cchip1_ctrl_r)
-	AM_RANGE(0xb00000, 0xb00fff) AM_READ(paletteram16_word_r)
+	AM_RANGE(0xb00000, 0xb00fff) AM_READ(MRA16_RAM)
 	AM_RANGE(0xd00000, 0xd007ff) AM_READ(MRA16_RAM)	/* video attribute ram */
 	AM_RANGE(0xe00000, 0xe03fff) AM_READ(MRA16_RAM)	/* object ram */
 	AM_RANGE(0xf00000, 0xf03fff) AM_READ(MRA16_RAM)	/* Main RAM */
@@ -450,7 +451,7 @@ static ADDRESS_MAP_START( daisenpu_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x800001) AM_READ(MRA16_NOP)
 	AM_RANGE(0x800002, 0x800003) AM_READ(taitosound_comm16_lsb_r)
 	AM_RANGE(0x900000, 0x90000f) AM_READ(daisenpu_input_r)
-	AM_RANGE(0xb00000, 0xb00fff) AM_READ(paletteram16_word_r)
+	AM_RANGE(0xb00000, 0xb00fff) AM_READ(MRA16_RAM)
 	AM_RANGE(0xd00000, 0xd00fff) AM_READ(MRA16_RAM)	/* video attribute ram */
 	AM_RANGE(0xe00000, 0xe03fff) AM_READ(MRA16_RAM)	/* object ram */
 	AM_RANGE(0xf00000, 0xf03fff) AM_READ(MRA16_RAM)	/* Main RAM */
@@ -475,7 +476,7 @@ static ADDRESS_MAP_START( gigandes_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x800001) AM_READ(MRA16_NOP)
 	AM_RANGE(0x800002, 0x800003) AM_READ(taitosound_comm16_lsb_r)
 	AM_RANGE(0x900000, 0x90000f) AM_READ(daisenpu_input_r)
-	AM_RANGE(0xb00000, 0xb00fff) AM_READ(paletteram16_word_r)
+	AM_RANGE(0xb00000, 0xb00fff) AM_READ(MRA16_RAM)
 	AM_RANGE(0xd00000, 0xd007ff) AM_READ(MRA16_RAM)	/* video attribute ram */
 	AM_RANGE(0xe00000, 0xe03fff) AM_READ(MRA16_RAM)	/* object ram */
 	AM_RANGE(0xf00000, 0xf03fff) AM_READ(MRA16_RAM)	/* Main RAM */
@@ -500,7 +501,7 @@ static ADDRESS_MAP_START( ballbros_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x800001) AM_READ(MRA16_NOP)
 	AM_RANGE(0x800002, 0x800003) AM_READ(taitosound_comm16_lsb_r)
 	AM_RANGE(0x900000, 0x90000f) AM_READ(daisenpu_input_r)
-	AM_RANGE(0xb00000, 0xb00fff) AM_READ(paletteram16_word_r)
+	AM_RANGE(0xb00000, 0xb00fff) AM_READ(MRA16_RAM)
 	AM_RANGE(0xd00000, 0xd007ff) AM_READ(MRA16_RAM)	/* video attribute ram */
 	AM_RANGE(0xe00000, 0xe03fff) AM_READ(MRA16_RAM)	/* object ram */
 	AM_RANGE(0xf00000, 0xf03fff) AM_READ(MRA16_RAM)	/* Main RAM */
@@ -972,7 +973,7 @@ GFXDECODE_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =
@@ -1006,11 +1007,11 @@ static MACHINE_START( taitox )
 static MACHINE_DRIVER_START( superman )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8000000)	/* 8 MHz? */
+	MDRV_CPU_ADD(M68000, XTAL_16MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(superman_readmem,superman_writemem)
 	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz ??? */
+	MDRV_CPU_ADD(Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(57.43)
@@ -1034,7 +1035,7 @@ static MACHINE_DRIVER_START( superman )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2610, 8000000)
+	MDRV_SOUND_ADD(YM2610, XTAL_16MHz/2)	/* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2610_interface)
 	MDRV_SOUND_ROUTE(0, "left",  0.25)
 	MDRV_SOUND_ROUTE(0, "right", 0.25)
@@ -1045,11 +1046,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( daisenpu )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8000000)	/* 8 MHz? */
+	MDRV_CPU_ADD(M68000, XTAL_16MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(daisenpu_readmem,daisenpu_writemem)
 	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz ??? */
+	MDRV_CPU_ADD(Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(daisenpu_sound_readmem,daisenpu_sound_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -1072,7 +1073,7 @@ static MACHINE_DRIVER_START( daisenpu )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 4000000)
+	MDRV_SOUND_ADD(YM2151, XTAL_16MHz/4)	/* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2151_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.45)
 	MDRV_SOUND_ROUTE(1, "right", 0.45)

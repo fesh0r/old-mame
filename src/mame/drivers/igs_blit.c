@@ -35,6 +35,7 @@ To do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/okim6295.h"
 #include "sound/2413intf.h"
 #include "sound/3812intf.h"
@@ -2387,9 +2388,9 @@ static INTERRUPT_GEN( chmplst2_interrupt )
 {
 	switch (cpu_getiloops())
 	{
-		case 0:	cpunum_set_input_line(0, 6, HOLD_LINE);	break;
+		case 0:	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);	break;
 		default:
-		case 1:	cpunum_set_input_line(0, 5, HOLD_LINE);	break;
+		case 1:	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);	break;
 	}
 }
 
@@ -2421,8 +2422,8 @@ static INTERRUPT_GEN( grtwall_interrupt )
 {
 	switch (cpu_getiloops())
 	{
-		case 0:	cpunum_set_input_line(0, 3, HOLD_LINE);	break;
-		case 1:	cpunum_set_input_line(0, 6, HOLD_LINE);	break;
+		case 0:	cpunum_set_input_line(machine, 0, 3, HOLD_LINE);	break;
+		case 1:	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);	break;
 	}
 }
 
@@ -2439,9 +2440,9 @@ static INTERRUPT_GEN( lhb_interrupt )
 {
 	switch (cpu_getiloops())
 	{
-		case 0:	cpunum_set_input_line(0, 3, HOLD_LINE);	break;
-		case 1:	cpunum_set_input_line(0, 5, HOLD_LINE);	break;
-		case 2:	cpunum_set_input_line(0, 6, HOLD_LINE);	break;
+		case 0:	cpunum_set_input_line(machine, 0, 3, HOLD_LINE);	break;
+		case 1:	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);	break;
+		case 2:	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);	break;
 	}
 }
 
@@ -2456,7 +2457,7 @@ MACHINE_DRIVER_END
 
 static void sound_irq(int state)
 {
-//  cpunum_set_input_line(0, 3, state);
+//  cpunum_set_input_line(Machine, 0, 3, state);
 }
 
 static const struct ics2115_interface pgm_ics2115_interface = {
@@ -2468,11 +2469,11 @@ static INTERRUPT_GEN( vbowl_interrupt )
 {
 	switch (cpu_getiloops())
 	{
-		case 0:	cpunum_set_input_line(0, 4, HOLD_LINE);	break;
-		case 1:	cpunum_set_input_line(0, 5, HOLD_LINE);	break;
-		case 2:	cpunum_set_input_line(0, 6, HOLD_LINE);	break;
+		case 0:	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);	break;
+		case 1:	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);	break;
+		case 2:	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);	break;
 		default:
-		case 3:	cpunum_set_input_line(0, 3, HOLD_LINE);	break;	// sound
+		case 3:	cpunum_set_input_line(machine, 0, 3, HOLD_LINE);	break;	// sound
 	}
 }
 
@@ -3007,7 +3008,7 @@ ROM_END
 
 ***************************************************************************/
 
-GAME( 1995, lhb,      0,        lhb,      lhb,      lhb,      ROT0, "IGS",        "Long Hu Bang",                    0 )
+GAME( 1995, lhb,      0,        lhb,      lhb,      lhb,      ROT0, "IGS",        "Long Hu Bang (set 1)",            0 )
 // the screenshot in the zip shows a 1995 copyright, but only 199 is displayed in MAME?  todo: verify protection patch is correct for this set
 GAME( 1995, lhba,     lhb,      lhb,      lhb,      lhb,      ROT0, "IGS",        "Long Hu Bang (set 2)",            0 )
 GAME( 199?, dbc,      0,        lhb,      lhb,      0,        ROT0, "IGS",        "Da Ban Cheng",                    GAME_NOT_WORKING ) // needs decrypting / prot patches

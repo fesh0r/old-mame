@@ -8,6 +8,7 @@ Preliminary driver by:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "video/konamiic.h"
 #include "sound/2151intf.h"
@@ -29,13 +30,13 @@ static UINT8 *ram;
 static INTERRUPT_GEN( gbusters_interrupt )
 {
 	if (K052109_is_IRQ_enabled())
-		cpunum_set_input_line(0, KONAMI_IRQ_LINE, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, KONAMI_IRQ_LINE, HOLD_LINE);
 }
 
 static READ8_HANDLER( bankedram_r )
 {
 	if (palette_selected)
-		return paletteram_r(offset);
+		return paletteram[offset];
 	else
 		return ram[offset];
 }
@@ -100,7 +101,7 @@ char baf[40];
 
 static WRITE8_HANDLER( gbusters_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(1,0,HOLD_LINE,0xff);
+	cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
 }
 
 static WRITE8_HANDLER( gbusters_snd_bankswitch_w )

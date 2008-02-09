@@ -149,7 +149,7 @@ VIDEO_START( bnj )
     /* the background area is twice as wide as the screen */
     background_bitmap = auto_bitmap_alloc(2*machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
 
-    video_start_btime(machine);
+    VIDEO_START_CALL(btime);
 }
 
 
@@ -316,7 +316,7 @@ WRITE8_HANDLER( disco_video_control_w )
 INTERRUPT_GEN( lnc_sound_interrupt )
 {
     if (lnc_sound_interrupt_enabled)
-    	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+    	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -453,7 +453,7 @@ static void decode_modified(running_machine *machine, UINT8 *sprite_ram, int int
 
         if (char_dirty[code])
         {
-            decodechar(machine->gfx[0],code,deco_charram,machine->drv->gfxdecodeinfo[0].gfxlayout);
+            decodechar(machine->gfx[0],code,deco_charram);
 
             char_dirty[code] = 0;
         }
@@ -468,7 +468,7 @@ static void decode_modified(running_machine *machine, UINT8 *sprite_ram, int int
 
         if (sprite_dirty[code])
         {
-            decodechar(machine->gfx[1],code,deco_charram,machine->drv->gfxdecodeinfo[1].gfxlayout);
+            decodechar(machine->gfx[1],code,deco_charram);
 
             sprite_dirty[code] = 0;
         }
@@ -584,7 +584,7 @@ VIDEO_UPDATE( bnj )
         scroll = (bnj_scroll1 & 0x02) * 128 + 511 - bnj_scroll2;
         if (!flip_screen)
             scroll = 767-scroll;
-        copyscrollbitmap (bitmap, background_bitmap, 1, &scroll, 0, 0, cliprect,TRANSPARENCY_NONE, 0);
+        copyscrollbitmap (bitmap, background_bitmap, 1, &scroll, 0, 0, cliprect);
 
         /* copy the low priority characters followed by the sprites
            then the high priority characters */

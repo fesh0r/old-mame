@@ -13,6 +13,7 @@
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/m6805/m6805.h"
 #include "includes/atari.h"
@@ -20,7 +21,6 @@
 #include "sound/pokey.h"
 #include "machine/6821pia.h"
 #include "video/gtia.h"
-#include "ui.h"
 
 #include "maxaflex.lh"
 
@@ -79,14 +79,14 @@ static WRITE8_HANDLER( mcu_portB_w )
 
 	/* clear coin interrupt */
 	if (data & 0x04)
-		cpunum_set_input_line( 1, M6805_IRQ_LINE, CLEAR_LINE );
+		cpunum_set_input_line(Machine, 1, M6805_IRQ_LINE, CLEAR_LINE );
 
 	/* AUDMUTE */
 	sound_global_enable((data >> 5) & 1);
 
 	/* RES600 */
 	if (diff & 0x10)
-		cpunum_set_input_line(0, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 
 	/* latch for lamps */
 	if ((diff & 0x40) && !(data & 0x40))
@@ -154,7 +154,7 @@ static TIMER_CALLBACK( mcu_timer_proc )
 		if ( (tcr & 0x40) == 0 )
 		{
 			//timer interrupt!
-			cpunum_set_input_line(1, M68705_INT_TIMER, PULSE_LINE );
+			cpunum_set_input_line(machine, 1, M68705_INT_TIMER, PULSE_LINE );
 		}
 	}
 }
@@ -223,11 +223,11 @@ static MACHINE_RESET(supervisor_board)
 	output_set_digit_value(2, 0x00);
 }
 
-static void supervisor_board_check_coin_input(void)
+static INTERRUPT_GEN( supervisor_board_check_coin_input )
 {
 	if ( !readinputport(4) )
 	{
-		cpunum_set_input_line(1, M6805_IRQ_LINE, HOLD_LINE );
+		cpunum_set_input_line(machine, 1, M6805_IRQ_LINE, HOLD_LINE );
 	}
 }
 
@@ -436,7 +436,7 @@ static MACHINE_DRIVER_START( a600xl )
 	MDRV_CPU_VBLANK_INT(a800xl_interrupt, TOTAL_LINES_60HZ)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
-	MDRV_CPU_ADD(M68705, 3579545/M68705_CLOCK_DIVIDER)
+	MDRV_CPU_ADD(M68705, 3579545)
 	MDRV_CPU_PROGRAM_MAP(mcu_mem,0)
 	MDRV_CPU_PERIODIC_INT( supervisor_board_check_coin_input, 10 )
 

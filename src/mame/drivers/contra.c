@@ -14,6 +14,7 @@ Credits:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2151intf.h"
 
@@ -49,7 +50,7 @@ static WRITE8_HANDLER( contra_bankswitch_w )
 
 static WRITE8_HANDLER( contra_sh_irqtrigger_w )
 {
-	cpunum_set_input_line(1,M6809_IRQ_LINE,HOLD_LINE);
+	cpunum_set_input_line(Machine, 1,M6809_IRQ_LINE,HOLD_LINE);
 }
 
 static WRITE8_HANDLER( contra_coin_counter_w )
@@ -87,7 +88,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x001c, 0x001c) AM_WRITE(cpu_sound_command_w)
 	AM_RANGE(0x001e, 0x001e) AM_WRITE(MWA8_NOP)	/* ? */
 	AM_RANGE(0x0060, 0x0067) AM_WRITE(contra_K007121_ctrl_1_w)
-	AM_RANGE(0x0c00, 0x0cff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_le_w) AM_BASE(&paletteram)
+	AM_RANGE(0x0c00, 0x0cff) AM_WRITE(MWA8_RAM) AM_BASE(&paletteram)
 	AM_RANGE(0x1000, 0x1fff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x2000, 0x23ff) AM_WRITE(contra_fg_cram_w) AM_BASE(&contra_fg_cram)
 	AM_RANGE(0x2400, 0x27ff) AM_WRITE(contra_fg_vram_w) AM_BASE(&contra_fg_vram)
@@ -264,8 +265,7 @@ static MACHINE_DRIVER_START( contra )
 	MDRV_SCREEN_SIZE(37*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 35*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(contra)
-	MDRV_PALETTE_LENGTH(128)
-	MDRV_COLORTABLE_LENGTH(2*8*16*16)
+	MDRV_PALETTE_LENGTH(2*8*16*16)
 
 	MDRV_PALETTE_INIT(contra)
 	MDRV_VIDEO_START(contra)

@@ -205,6 +205,7 @@ the prog rom. Doesn't seem to cause problems though.
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "taitoipt.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
@@ -236,13 +237,13 @@ WRITE16_HANDLER( bonzeadv_cchip_ram_w );
 
 static TIMER_CALLBACK( cadash_interrupt5 )
 {
-	cpunum_set_input_line(0, 5, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( cadash_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(500,0), NULL, 0, cadash_interrupt5);
-	cpunum_set_input_line(0, 4, HOLD_LINE);  /* interrupt vector 4 */
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);  /* interrupt vector 4 */
 }
 
 
@@ -812,7 +813,7 @@ GFXDECODE_END
 
 static void irq_handler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =
@@ -885,11 +886,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( asuka )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8000000)	/* 8 MHz ??? */
+	MDRV_CPU_ADD(M68000, XTAL_16MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(asuka_readmem,asuka_writemem)
 	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz ??? */
+	MDRV_CPU_ADD(Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(z80_readmem,z80_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -911,12 +912,12 @@ static MACHINE_DRIVER_START( asuka )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, 4000000)
+	MDRV_SOUND_ADD(YM2151, XTAL_16MHz/4) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2151_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 0.50)
 	MDRV_SOUND_ROUTE(1, "mono", 0.50)
 
-	MDRV_SOUND_ADD(MSM5205, 384000)
+	MDRV_SOUND_ADD(MSM5205, XTAL_384kHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(msm5205_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -924,11 +925,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( cadash )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz ??? */
+	MDRV_CPU_ADD(M68000, XTAL_32MHz/2)	/* 68000p12 running at 16Mhz, verified on pcb  */
 	MDRV_CPU_PROGRAM_MAP(cadash_readmem,cadash_writemem)
 	MDRV_CPU_VBLANK_INT(cadash_interrupt,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz ??? */
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(z80_readmem,cadash_z80_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -950,7 +951,7 @@ static MACHINE_DRIVER_START( cadash )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, 4000000)
+	MDRV_SOUND_ADD(YM2151, XTAL_8MHz/2)	/* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2151_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 0.50)
 	MDRV_SOUND_ROUTE(1, "mono", 0.50)

@@ -4,7 +4,7 @@
 
     Allocated string manipulation functions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -70,7 +70,7 @@ astring *astring_inssubstr(astring *dst, int insbefore, const astring *src, int 
 astring *astring_substr(astring *str, int start, int count);
 
 /* formatted printf to an astring */
-int astring_printf(astring *dst, const char *format, ...);
+int astring_printf(astring *dst, const char *format, ...) ATTR_PRINTF(2,3);
 
 
 

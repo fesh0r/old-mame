@@ -55,8 +55,11 @@ To do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
+
+#define DARKHORS_DEBUG	0
 
 /***************************************************************************
 
@@ -151,7 +154,7 @@ static VIDEO_UPDATE( darkhors )
 {
 	int layers_ctrl = -1;
 
-#ifdef MAME_DEBUG
+#if DARKHORS_DEBUG
 	if (input_code_pressed(KEYCODE_Z))
 	{
 		int mask = 0;
@@ -174,7 +177,7 @@ static VIDEO_UPDATE( darkhors )
 
 	if (layers_ctrl & 4)	draw_sprites(machine,bitmap,cliprect);
 
-#ifdef MAME_DEBUG
+#if DARKHORS_DEBUG
 #if 0
 	popmessage("%04X-%04X %04X-%04X %04X-%04X %04X-%04X %04X-%04X %04X-%04X",
 		darkhors_tmapscroll[0] >> 16, darkhors_tmapscroll[0] & 0xffff,
@@ -588,9 +591,9 @@ static INTERRUPT_GEN( darkhors )
 {
 	switch (cpu_getiloops())
 	{
-		case 0:	cpunum_set_input_line(0, 3, HOLD_LINE);	break;
-		case 1:	cpunum_set_input_line(0, 4, HOLD_LINE);	break;
-		case 2:	cpunum_set_input_line(0, 5, HOLD_LINE);	break;
+		case 0:	cpunum_set_input_line(machine, 0, 3, HOLD_LINE);	break;
+		case 1:	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);	break;
+		case 2:	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);	break;
 	}
 }
 

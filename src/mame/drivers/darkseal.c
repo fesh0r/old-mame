@@ -11,6 +11,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/h6280/h6280.h"
 #include "sound/2203intf.h"
 #include "sound/2151intf.h"
@@ -41,7 +42,7 @@ static WRITE16_HANDLER( darkseal_control_w )
 		return;
     case 8: /* Sound CPU write */
 		soundlatch_w(0,data & 0xff);
-		cpunum_set_input_line(1,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
     	return;
   	case 0xa: /* IRQ Ack (VBL) */
 		return;
@@ -275,7 +276,7 @@ GFXDECODE_END
 
 static void sound_irq(int state)
 {
-	cpunum_set_input_line(1,1,state); /* IRQ 2 */
+	cpunum_set_input_line(Machine, 1,1,state); /* IRQ 2 */
 }
 
 static const struct YM2151interface ym2151_interface =

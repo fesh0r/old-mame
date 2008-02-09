@@ -4,7 +4,7 @@
 
     Generic tilemap management system.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -517,6 +517,10 @@ int tilemap_get_scrolldy(tilemap *tmap);
 /* specify the scroll value for a row/column unit */
 void tilemap_set_scrollx(tilemap *tmap, int row, int value);
 void tilemap_set_scrolly(tilemap *tmap, int col, int value);
+
+/* return the scroll value for a row/column unit */
+int tilemap_get_scrollx(tilemap *tmap, int row);
+int tilemap_get_scrolly(tilemap *tmap, int col);
 
 
 

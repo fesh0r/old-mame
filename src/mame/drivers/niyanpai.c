@@ -33,6 +33,7 @@ Memo:
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/m68kfmly.h"
 #include "machine/z80ctc.h"
 #include "nb1413m3.h"
@@ -186,7 +187,7 @@ static WRITE8_HANDLER( tmpz84c011_0_dir_pe_w )	{ pio_dir[4] = data; }
 
 static void ctc0_interrupt(int state)
 {
-	cpunum_set_input_line(1, 0, state);
+	cpunum_set_input_line(Machine, 1, 0, state);
 }
 
 static z80ctc_interface ctc_intf =
@@ -202,7 +203,7 @@ static z80ctc_interface ctc_intf =
 static void tmpz84c011_init(running_machine *machine)
 {
 	// initialize the CTC
-	ctc_intf.baseclock = machine->drv->cpu[1].clock;
+	ctc_intf.baseclock = cpunum_get_clock(1);
 	z80ctc_init(0, &ctc_intf);
 }
 
@@ -768,9 +769,9 @@ static INPUT_PORTS_START( mhhonban )
 	PORT_DIPNAME( 0x04, 0x04, "DIPSW 1-3" )
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, "DIPSW 1-4" )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( 1C_1C ) )
 	PORT_DIPNAME( 0x10, 0x00, "DIPSW 1-5" )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -836,7 +837,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( niyanpai_interrupt )
 {
-	cpunum_set_input_line(0, 1, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 1, HOLD_LINE);
 }
 
 static const struct z80_irq_daisy_chain daisy_chain_sound[] =

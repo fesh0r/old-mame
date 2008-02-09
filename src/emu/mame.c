@@ -4,20 +4,20 @@
 
     Controls execution of the core MAME system.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
 
     Since there has been confusion in the past over the order of
     initialization and other such things, here it is, all spelled out
-    as of February, 2006:
+    as of January, 2008:
 
     main()
         - does platform-specific init
-        - calls run_game() [mame.c]
+        - calls mame_execute() [mame.c]
 
-        run_game() [mame.c]
+        mame_execute() [mame.c]
             - calls mame_validitychecks() [validity.c] to perform validity checks on all compiled drivers
             - calls setjmp to prepare for deep error handling
             - begins resource tracking (level 1)
@@ -29,6 +29,7 @@
                 - calls sndintrf_init() [sndintrf.c] to determine which sound chips are available
                 - calls fileio_init() [fileio.c] to initialize file I/O info
                 - calls config_init() [config.c] to initialize configuration system
+                - calls input_init() [input.c] to initialize the input system
                 - calls output_init() [output.c] to initialize the output system
                 - calls state_init() [state.c] to initialize save state system
                 - calls state_save_allow_registration() [state.c] to allow registrations
@@ -41,12 +42,12 @@
                 - calls generic_sound_init() [audio/generic.c] to initialize generic sound structures
                 - calls timer_init() [timer.c] to reset the timer system
                 - calls osd_init() [osdepend.h] to do platform-specific initialization
-                - calls code_init() [input.c] to initialize the input system
                 - calls input_port_init() [inptport.c] to set up the input ports
                 - calls rom_init() [romload.c] to load the game's ROMs
                 - calls memory_init() [memory.c] to process the game's memory maps
                 - calls cpuexec_init() [cpuexec.c] to initialize the CPUs
                 - calls cpuint_init() [cpuint.c] to initialize the CPU interrupts
+                - calls mame_debug_init() [debugcpu.c] to set up the debugger
                 - calls the driver's DRIVER_INIT callback
                 - calls video_init() [video.c] to start the video system
                 - calls sound_init() [sound.c] to start the audio system
@@ -54,11 +55,10 @@
                 - disposes of regions marked as disposable
                 - calls saveload_init() [mame.c] to set up for save/load
                 - calls cheat_init() [cheat.c] to initialize the cheat system
-                - calls mame_debug_init() [debugcpu.c] to set up the debugger
 
             - calls config_load_settings() [config.c] to load the configuration file
             - calls nvram_load [machine/generic.c] to load NVRAM
-            - calls ui_init() [ui.c] to initialize the user interface
+            - calls ui_display_startup_screens() [ui.c] to display the the startup screens
             - begins resource tracking (level 2)
             - calls soft_reset() [mame.c] to reset all systems
 
@@ -84,8 +84,9 @@
 #include "render.h"
 #include "ui.h"
 #include "uimenu.h"
+#include "deprecat.h"
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 #include "debug/debugcon.h"
 #endif
 
@@ -142,7 +143,7 @@ struct _mame_private
 	UINT8			exit_pending;
 	const game_driver *new_driver_pending;
 	astring *		saveload_pending_file;
-	emu_timer *	soft_reset_timer;
+	emu_timer *		soft_reset_timer;
 	mame_file *		logfile;
 
 	/* callbacks */
@@ -365,11 +366,11 @@ int mame_execute(core_options *options)
 			init_machine(machine);
 
 			/* load the configuration settings and NVRAM */
-			settingsloaded = config_load_settings();
+			settingsloaded = config_load_settings(machine);
 			nvram_load();
 
 			/* display the startup screens */
-			ui_display_startup_screens(firstrun, !settingsloaded);
+			ui_display_startup_screens(machine, firstrun, !settingsloaded);
 			firstrun = FALSE;
 
 			/* start resource tracking; note that soft_reset assumes it can */
@@ -388,11 +389,11 @@ int mame_execute(core_options *options)
 
 				/* execute CPUs if not paused */
 				if (!mame->paused)
-					cpuexec_timeslice();
+					cpuexec_timeslice(machine);
 
 				/* otherwise, just pump video updates through */
 				else
-					video_frame_update(FALSE);
+					video_frame_update(machine, FALSE);
 
 				/* handle save/load */
 				if (mame->saveload_schedule_callback)
@@ -409,7 +410,7 @@ int mame_execute(core_options *options)
 
 			/* save the NVRAM and configuration */
 			nvram_save();
-			config_save_settings();
+			config_save_settings(machine);
 		}
 		mame->fatal_error_jmpbuf_valid = FALSE;
 
@@ -1153,18 +1154,25 @@ void CLIB_DECL fatalerror_exitcode(int exitcode, const char *text, ...)
     popmessage - pop up a user-visible message
 -------------------------------------------------*/
 
-void CLIB_DECL popmessage(const char *text, ...)
+void CLIB_DECL popmessage(const char *format, ...)
 {
-	extern void CLIB_DECL ui_popup(const char *text, ...) ATTR_PRINTF(1,2);
-	va_list arg;
+	/* if the format is NULL, it is a signal to clear the popmessage */
+	if (format == NULL)
+		ui_popup_time(0, " ");
 
-	/* dump to the buffer */
-	va_start(arg, text);
-	vsnprintf(giant_string_buffer, GIANT_STRING_BUFFER_SIZE, text, arg);
-	va_end(arg);
+	/* otherwise, generate the buffer and call the UI to display the message */
+	else
+	{
+		va_list arg;
 
-	/* pop it in the UI */
-	ui_popup("%s", giant_string_buffer);
+		/* dump to the buffer */
+		va_start(arg, format);
+		vsnprintf(giant_string_buffer, GIANT_STRING_BUFFER_SIZE, format, arg);
+		va_end(arg);
+
+		/* pop it in the UI */
+		ui_popup_time((int)strlen(giant_string_buffer) / 40 + 2, "%s", giant_string_buffer);
+	}
 }
 
 
@@ -1173,7 +1181,7 @@ void CLIB_DECL popmessage(const char *text, ...)
     OSD-defined output streams
 -------------------------------------------------*/
 
-void CLIB_DECL logerror(const char *text, ...)
+void CLIB_DECL logerror(const char *format, ...)
 {
 	running_machine *machine = Machine;
 
@@ -1191,8 +1199,8 @@ void CLIB_DECL logerror(const char *text, ...)
 			profiler_mark(PROFILER_LOGERROR);
 
 			/* dump to the buffer */
-			va_start(arg, text);
-			vsnprintf(giant_string_buffer, GIANT_STRING_BUFFER_SIZE, text, arg);
+			va_start(arg, format);
+			vsnprintf(giant_string_buffer, GIANT_STRING_BUFFER_SIZE, format, arg);
 			va_end(arg);
 
 			/* log to all callbacks */
@@ -1289,7 +1297,7 @@ void mame_parse_ini_files(core_options *options, const game_driver *driver)
 	parse_ini_file(options, CONFIGNAME);
 
 	/* debug builds: parse "debug.ini" as well */
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	parse_ini_file(options, "debug");
 #endif
 
@@ -1439,7 +1447,7 @@ static void reset_machine(running_machine *machine)
 	machine->playback_file = NULL;
 
 	/* debugger-related information */
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	machine->debug_mode = options_get_bool(mame_options(), OPTION_DEBUG);
 #else
 	machine->debug_mode = 0;
@@ -1536,7 +1544,7 @@ static void init_machine(running_machine *machine)
 	devices_init(machine);
 #endif
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	/* initialize the debugger */
 	if (machine->debug_mode)
 		mame_debug_init(machine);
@@ -1545,7 +1553,7 @@ static void init_machine(running_machine *machine)
 	/* call the game driver's init function */
 	/* this is where decryption is done and memory maps are altered */
 	/* so this location in the init order is important */
-	ui_set_startup_text("Initializing...", TRUE);
+	ui_set_startup_text(machine, "Initializing...", TRUE);
 	if (machine->gamedrv->driver_init != NULL)
 		(*machine->gamedrv->driver_init)(machine);
 

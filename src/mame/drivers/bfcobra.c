@@ -67,10 +67,11 @@
     * escounts: Colours are completely wrong. Is there a palette register
     somewhere that affects blitter/video output?
     * qos: Game clock and score dividers aren't drawn (needs line draw mode)
-    * all games bar qos: NVRAM not saved.
+    * All games bar qos: NVRAM not saved.
+
 ******************************************************************************/
 #include "driver.h"
-#include "debugger.h"
+#include "deprecat.h"
 #include "machine/6850acia.h"
 #include "machine/meters.h"
 #include "cpu/z80/z80.h"
@@ -121,14 +122,14 @@ static UINT32 mux_outputlatch;
 INLINE void z80_bank(int num, int data);
 
 
-static void update_irqs(void)
+static void update_irqs(running_machine *machine)
 {
 	int newstate = blitter_irq || vblank_irq || acia_irq;
 
 	if (newstate != irq_state)
 	{
 		irq_state = newstate;
-		cpunum_set_input_line(0, 0, irq_state ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, irq_state ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -253,8 +254,8 @@ static VIDEO_UPDATE( bfcobra )
 			UINT8 x_offset = x + h_scroll;
 			UINT8 pen = *(src + x_offset);
 
-			//*dest++ = Machine->pens[pen & ramdac.mask];
-			*dest++ = Machine->pens[pen];
+			//*dest++ = machine->pens[pen & ramdac.mask];
+			*dest++ = machine->pens[pen];
 		}
 	}
 
@@ -646,7 +647,7 @@ static READ8_HANDLER( chipset_r )
 			val = 0x1;
 
 			/* TODO */
-			update_irqs();
+			update_irqs(Machine);
 			break;
 		}
 		case 0x1C:
@@ -1154,7 +1155,7 @@ static WRITE8_HANDLER( meter_w )
 		if ( changed & (1 << i) )
 		{
 			Mechmtr_update(i, cycles, data & (1 << i) );
-			cpunum_set_input_line(1, M6809_FIRQ_LINE, PULSE_LINE );
+			cpunum_set_input_line(Machine, 1, M6809_FIRQ_LINE, PULSE_LINE );
 		}
  	}
 }
@@ -1356,12 +1357,12 @@ static void init_ram(void)
 static void z80_acia_irq(int state)
 {
 	acia_irq = state ? CLEAR_LINE : ASSERT_LINE;
-	update_irqs();
+	update_irqs(Machine);
 }
 
 static void m6809_data_irq(int state)
 {
-	cpunum_set_input_line(1, M6809_IRQ_LINE, state ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, state ? CLEAR_LINE : ASSERT_LINE);
 }
 
 /*
@@ -1482,14 +1483,14 @@ static const struct upd7759_interface upd7759_interface =
 /* TODO */
 static INTERRUPT_GEN( timer_irq )
 {
-	cpunum_set_input_line(1, M6809_IRQ_LINE, PULSE_LINE);
+	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, PULSE_LINE);
 }
 
 /* TODO */
 static INTERRUPT_GEN( vblank_gen )
 {
 	vblank_irq = 1;
-	update_irqs();
+	update_irqs(machine);
 }
 
 static MACHINE_DRIVER_START( bfcobra )
@@ -1523,7 +1524,6 @@ static MACHINE_DRIVER_START( bfcobra )
 	MDRV_SOUND_CONFIG(upd7759_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
-	MDRV_VIDEO_START(generic_bitmapped)
 	MDRV_VIDEO_UPDATE(bfcobra)
 MACHINE_DRIVER_END
 
@@ -1537,24 +1537,24 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( inquiztr )
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_LOAD( "inq6809", 0x08000, 0x08000, CRC(ae996600) SHA1(f360399e77b81399d910770fa8106c196f04363c) )
+
 	ROM_REGION( 0x20000, REGION_USER1, 0 )
 	ROM_LOAD( "9576028.bin", 0x00000, 0x10000, CRC(2d85682c) SHA1(baec47bff4b8beef5afbb737dc57b22bf93ebcf8) )
 	ROM_LOAD( "9576002.bin", 0x10000, 0x10000, CRC(5b8c8a04) SHA1(af5328fee79c370f45bff36f534aaf50964b6900) )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "inq6809", 0x08000, 0x08000, CRC(ae996600) SHA1(f360399e77b81399d910770fa8106c196f04363c) )
 
 	ROM_REGION( 0x1c2000, REGION_USER2, 0 )
 	ROM_LOAD( "inqdisk.img", 0x000000, 0x1c2000, NO_DUMP )
 ROM_END
 
 ROM_START( escounts )
-	ROM_REGION( 0x10000, REGION_USER1, 0 )
-	ROM_LOAD( "esccobpa", 0x00000, 0x10000, CRC(d8eadeb7) SHA1(9b94f1454e6a17bf8321b0ef4ddd0ed1a56150f7) )
-
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 //  ROM_LOAD( "escint1b", 0x08000, 0x08000, CRC(96918aae) SHA1(849ce7b8eccc89c45aacc840a73935f95788a141) )
 	ROM_LOAD( "esc12int", 0x08000, 0x08000, CRC(741a1fe6) SHA1(e741d0ae0d2f11036a358120381e4b0df4a560a1) )
+
+	ROM_REGION( 0x10000, REGION_USER1, 0 )
+	ROM_LOAD( "esccobpa", 0x00000, 0x10000, CRC(d8eadeb7) SHA1(9b94f1454e6a17bf8321b0ef4ddd0ed1a56150f7) )
 
 	/* 95-100-207 */
 	ROM_REGION( 0x190000, REGION_USER2, 0 )
@@ -1562,30 +1562,30 @@ ROM_START( escounts )
 ROM_END
 
 ROM_START( trebltop )
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_LOAD( "95740078.bin", 0x08000, 0x08000, CRC(aca1980b) SHA1(3d4ed1dc545cc80f56d7daa13028fb10a12a718b) )
+
 	ROM_REGION( 0x20000, REGION_USER1, 0 )
 	ROM_LOAD( "95760031.bin", 0x00000, 0x10000, CRC(8e75edb8) SHA1(0aaa3834d5ac20f92bdf1f2b8f1eb71854469cbe) )
 	ROM_LOAD( "95760021.bin", 0x10000, 0x10000, CRC(f42016c0) SHA1(7067d018cb4bdcfba777267fb01cddf44e4216c3) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "95740078.bin", 0x08000, 0x08000, CRC(aca1980b) SHA1(3d4ed1dc545cc80f56d7daa13028fb10a12a718b) )
+	ROM_REGION( 0x1c2000, REGION_USER2, 0 )
+	ROM_LOAD( "ttdisk1.img", 0x000000, 0x190000, CRC(b2003228) SHA1(5eb49f05137cdd404f22948d39aa79c1518c06eb) )
 
 	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
 	ROM_LOAD( "95000172.bin", 0x00000, 0x10000, CRC(e85367a5) SHA1(695fd95ddeecdb16602f7b0f075cf5128a2fb808) )
 	ROM_LOAD( "95000173.bin", 0x10000, 0x10000, CRC(8bda2c5e) SHA1(79aab5a2af7a5add5fe9132dc13bcc3705c6faf3) )
-
-	ROM_REGION( 0x1c2000, REGION_USER2, 0 )
-	ROM_LOAD( "ttdisk1.img", 0x000000, 0x190000, CRC(b2003228) SHA1(5eb49f05137cdd404f22948d39aa79c1518c06eb) )
 ROM_END
 
 ROM_START( quizvadr )
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_LOAD( "q6809.bin", 0x08000, 0x8000, CRC(a74dff10) SHA1(87578694a022dc3d7ade9cc76d387c1ae5fc74d9) )
+
 	ROM_REGION( 0x200000, REGION_USER1, 0 )
 	ROM_LOAD( "5947011r.0", 0x000000, 0x80000, CRC(cac43c97) SHA1(3af529cd0f8ec57dd3596f5bca7b9c74cff171e4) )
 	ROM_LOAD( "5947011r.1", 0x080000, 0x80000, CRC(120018dc) SHA1(cd153d2b7ed535b04dbcaf189d2fc96fe3c5b466) )
 	ROM_LOAD( "5947011r.2", 0x100000, 0x80000, CRC(689b3b5a) SHA1(ea32d18acfd380de822efff4f2c95ce9873a33a2) )
 	ROM_LOAD( "5947011r.3", 0x180000, 0x80000, CRC(c38dafeb) SHA1(d693387a5c3cde34c9d581f81a08a5fbc6f753f2) )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "q6809.bin", 0x08000, 0x8000, CRC(a74dff10) SHA1(87578694a022dc3d7ade9cc76d387c1ae5fc74d9) )
 
 	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
 	ROM_LOAD( "185snd2.bin", 0x00000, 0x10000, CRC(e36eccc2) SHA1(cfd8ca4c71528ea4e229074016240681b6de37cd) )
@@ -1593,14 +1593,14 @@ ROM_START( quizvadr )
 ROM_END
 
 ROM_START( qos )
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_LOAD( "39360107.bin", 0x08000, 0x8000, CRC(20844655) SHA1(b67c7f7bbabf6d5139b8ad8cbb5f8cc3f28e9cc7) )
+
 	ROM_REGION( 0x200000, REGION_USER1, 0 )
 	ROM_LOAD( "95000338.rm0", 0x000000, 0x80000, CRC(96918aae) SHA1(849ce7b8eccc89c45aacc840a73935f95788a141) )
 	ROM_LOAD( "95000339.rm1", 0x080000, 0x80000, CRC(b4c6dcc0) SHA1(56d8761766dfbd5b0e71f8c3ca575e88f1bc9929) )
 	ROM_LOAD( "95000340.rm2", 0x100000, 0x80000, CRC(66d121fd) SHA1(ac65cc0ac6b0a41e78a3159c21ee44f765bdb5c8) )
 	ROM_LOAD( "95000341.rm3", 0x180000, 0x80000, CRC(ef13658d) SHA1(240bc589900214eac79c91a531f254a9ac2f4ef6) )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "qos_nondata_68f4.bin", 0x08000, 0x8000, CRC(5f40005a) SHA1(180017acf6b432bc135d1090099fdf99f1e3583a) )
 
 	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
 	ROM_LOAD( "snd1_218.ic7", 0x00000, 0x10000, CRC(061f496d) SHA1(653d16454d909c034191813b37d14010da7258c6) )
@@ -1608,14 +1608,29 @@ ROM_START( qos )
 ROM_END
 
 ROM_START( qosa )
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_LOAD( "qos_nondata_68f4.bin", 0x08000, 0x8000, CRC(5f40005a) SHA1(180017acf6b432bc135d1090099fdf99f1e3583a) )
+
+	ROM_REGION( 0x200000, REGION_USER1, 0 )
+	ROM_LOAD( "95000338.rm0", 0x000000, 0x80000, CRC(96918aae) SHA1(849ce7b8eccc89c45aacc840a73935f95788a141) )
+	ROM_LOAD( "95000339.rm1", 0x080000, 0x80000, CRC(b4c6dcc0) SHA1(56d8761766dfbd5b0e71f8c3ca575e88f1bc9929) )
+	ROM_LOAD( "95000340.rm2", 0x100000, 0x80000, CRC(66d121fd) SHA1(ac65cc0ac6b0a41e78a3159c21ee44f765bdb5c8) )
+	ROM_LOAD( "95000341.rm3", 0x180000, 0x80000, CRC(ef13658d) SHA1(240bc589900214eac79c91a531f254a9ac2f4ef6) )
+
+	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
+	ROM_LOAD( "snd1_218.ic7", 0x00000, 0x10000, CRC(061f496d) SHA1(653d16454d909c034191813b37d14010da7258c6) )
+	ROM_LOAD( "snd2_219.ic8", 0x10000, 0x10000, CRC(d7874a47) SHA1(5bbd4040c7c0299e8cc135e6c6cd05370b260e9b) )
+ROM_END
+
+ROM_START( qosb )
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_LOAD( "95740599.bin", 0x08000, 0x8000, CRC(bf1e321f) SHA1(51f18620f22ba2a1b110954284ddf00614d51a0e) )
+
 	ROM_REGION( 0x200000, REGION_USER1, 0 )
 	ROM_LOAD( "0306.bin", 0x000000, 0x80000, CRC(c26c8f83) SHA1(6949027e1fe241cbb2e1cbbce18e47bcb0d84550) )
 	ROM_LOAD( "1307.bin", 0x080000, 0x80000, CRC(94611c03) SHA1(81f545ff96ff3d44285315400da94d870c89f896) )
 	ROM_LOAD( "2308.bin", 0x100000, 0x80000, CRC(f5572726) SHA1(e109265c5571d21213a6f405a13459e7bc6699bc) )
 	ROM_LOAD( "3309.bin", 0x180000, 0x80000, CRC(1b5edfa8) SHA1(348488debd4aa52f064e351ed0c082274da1db2b) )
-
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
-	ROM_LOAD( "95740599.bin", 0x08000, 0x8000, CRC(bf1e321f) SHA1(51f18620f22ba2a1b110954284ddf00614d51a0e) )
 
 	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
 	ROM_LOAD( "snd1_218.ic7", 0x00000, 0x10000, CRC(061f496d) SHA1(653d16454d909c034191813b37d14010da7258c6) )
@@ -1626,5 +1641,6 @@ GAME( 1989, inquiztr, 0,   bfcobra, bfcobra, bfcobra, ROT0, "BFM", "Inquizitor",
 GAME( 1990, escounts, 0,   bfcobra, bfcobra, bfcobra, ROT0, "BFM", "Every Second Counts (39-360-053)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_COLORS )
 GAME( 1991, trebltop, 0,   bfcobra, bfcobra, bfcobra, ROT0, "BFM", "Treble Top (39-360-070)",          GAME_IMPERFECT_GRAPHICS )
 GAME( 1991, quizvadr, 0,   bfcobra, bfcobra, bfcobra, ROT0, "BFM", "Quizvaders (39-360-078)",          GAME_IMPERFECT_GRAPHICS )
-GAME( 1992, qos,      0,   bfcobra, bfcobra, bfcobra, ROT0, "BFM", "A Question of Sport (39-960-099)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1992, qosa,     qos, bfcobra, bfcobra, bfcobra, ROT0, "BFM", "A Question of Sport (39-960-089)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, qos,      0,   bfcobra, bfcobra, bfcobra, ROT0, "BFM", "A Question of Sport (39-960-107)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, qosa,     qos, bfcobra, bfcobra, bfcobra, ROT0, "BFM", "A Question of Sport (39-960-099)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, qosb,     qos, bfcobra, bfcobra, bfcobra, ROT0, "BFM", "A Question of Sport (39-960-089)", GAME_IMPERFECT_GRAPHICS )

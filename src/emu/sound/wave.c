@@ -10,11 +10,13 @@
 
 #include "driver.h"
 #include "streams.h"
+#include "deprecat.h"
 #ifdef MESS
 #include "messdrv.h"
 #include "utils.h"
 #include "devices/cassette.h"
 #endif
+#include "wave.h"
 
 #define ALWAYS_PLAY_SOUND	0
 #define WAVE_TOKEN_MASK		0xFFFF0000
@@ -95,6 +97,6 @@ void wave_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "Cassette";					break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2005, The MESS Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright The MESS Team"; break;
 	}
 }

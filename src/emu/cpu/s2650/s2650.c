@@ -13,17 +13,14 @@
  *************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "s2650.h"
 #include "s2650cpu.h"
 
 /* define this to have some interrupt information logged */
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x) logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 /* define this to expand all EA calculations inline */
 #define INLINE_EA	1
@@ -868,7 +865,7 @@ static int s2650_execute(int cycles)
 	{
 		S.ppc = S.page + S.iar;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(S.page + S.iar);
 
 		S.ir = ROP();
 		S.r = S.ir & 3; 		/* register / value */
@@ -1523,6 +1520,7 @@ void s2650_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 2;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 3;							break;
@@ -1571,9 +1569,9 @@ void s2650_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = s2650_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = s2650_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = s2650_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &s2650_ICount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1609,9 +1607,9 @@ void s2650_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_REGISTER + S2650_R1:			sprintf(info->s, "R1:%02X", S.reg[1]);	break;
 		case CPUINFO_STR_REGISTER + S2650_R2:			sprintf(info->s, "R2:%02X", S.reg[2]);	break;
 		case CPUINFO_STR_REGISTER + S2650_R3:			sprintf(info->s, "R3:%02X", S.reg[3]);	break;
-		case CPUINFO_STR_REGISTER + S2650_R1A:			sprintf(info->s, "R1'%02X", S.reg[4]);	break;
-		case CPUINFO_STR_REGISTER + S2650_R2A:			sprintf(info->s, "R2'%02X", S.reg[5]);	break;
-		case CPUINFO_STR_REGISTER + S2650_R3A:			sprintf(info->s, "R3'%02X", S.reg[6]);	break;
+		case CPUINFO_STR_REGISTER + S2650_R1A:			sprintf(info->s, "R1':%02X", S.reg[4]);	break;
+		case CPUINFO_STR_REGISTER + S2650_R2A:			sprintf(info->s, "R2':%02X", S.reg[5]);	break;
+		case CPUINFO_STR_REGISTER + S2650_R3A:			sprintf(info->s, "R3':%02X", S.reg[6]);	break;
 		case CPUINFO_STR_REGISTER + S2650_HALT:			sprintf(info->s, "HALT:%X", S.halt);	break;
 		case CPUINFO_STR_REGISTER + S2650_SI:			sprintf(info->s, "SI:%X", (S.psu & SI) ? 1 : 0); break;
 		case CPUINFO_STR_REGISTER + S2650_FO:			sprintf(info->s, "FO:%X", (S.psu & FO) ? 1 : 0); break;

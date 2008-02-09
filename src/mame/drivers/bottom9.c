@@ -9,6 +9,7 @@ driver by Nicola Salmoria
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "video/konamiic.h"
 #include "sound/k007232.h"
@@ -24,7 +25,7 @@ VIDEO_UPDATE( bottom9 );
 static INTERRUPT_GEN( bottom9_interrupt )
 {
 	if (K052109_is_IRQ_enabled())
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 
@@ -52,7 +53,7 @@ static WRITE8_HANDLER( bottom9_bankedram1_w )
 static READ8_HANDLER( bottom9_bankedram2_r )
 {
 	if (K052109_selected) return K052109_051960_r(offset + 0x2000);
-	else return paletteram_r(offset);
+	else return paletteram[offset];
 }
 
 static WRITE8_HANDLER( bottom9_bankedram2_w )
@@ -96,7 +97,7 @@ static WRITE8_HANDLER( bottom9_1f90_w )
 
 static WRITE8_HANDLER( bottom9_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(1,0,HOLD_LINE,0xff);
+	cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
 }
 
 static int nmienable;
@@ -104,7 +105,7 @@ static int nmienable;
 static INTERRUPT_GEN( bottom9_sound_interrupt )
 {
 	if (nmienable)
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( nmi_enable_w )

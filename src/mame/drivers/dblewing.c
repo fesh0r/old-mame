@@ -10,6 +10,7 @@ the most protected of the DE102 games?
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "decocrpt.h"
 #include "deco16ic.h"
@@ -282,7 +283,7 @@ static WRITE16_HANDLER( dblewing_prot_w )
 	if ((offset*2)==0x104) { dblwings_104_data = data; return; } // p1 inputs select screen  OK
 	if ((offset*2)==0x200) { dblwings_200_data = data; return; }
 	if ((offset*2)==0x28c) { dblwings_28c_data = data; return; }
-	if ((offset*2)==0x380) { soundlatch_w(0,data&0xff);	/*cpunum_set_input_line(1,0,HOLD_LINE);*/ return; } // sound write
+	if ((offset*2)==0x380) { soundlatch_w(0,data&0xff);	/*cpunum_set_input_line(Machine, 1,0,HOLD_LINE);*/ return; } // sound write
 	if ((offset*2)==0x38e) { dblwings_38e_data = data; return; }
 	if ((offset*2)==0x406) { dblwings_406_data = data; return; } // p2 inputs select screen  OK
 	if ((offset*2)==0x408) { dblwings_408_data = data; return; } // 3rd player 1st level?
@@ -528,7 +529,7 @@ INPUT_PORTS_END
 
 static void sound_irq(int irq)
 {
-//  cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 //  mame_printf_debug("sound irq\n");
 }
 

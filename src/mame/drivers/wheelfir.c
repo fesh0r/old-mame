@@ -49,6 +49,8 @@ something is missing, currently needs a hack to boot
 
 
 #include "driver.h"
+#include "deprecat.h"
+
 static int toggle_bit;
 
 static READ16_HANDLER( wheelfir_rand1 )
@@ -299,9 +301,9 @@ static VIDEO_UPDATE(wheelfir)
     if (base<0x000000) base = 0x000000;
     if (base>0x3c0000) base = 0x3c0000;
 
-    copybitmap(bitmap, wheelfir_tmp_bitmap[2], 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
-    //copybitmap(bitmap, wheelfir_tmp_bitmap[1], 0, 0, 0, 0, cliprect, TRANSPARENCY_PEN, 0);
-    copybitmap(bitmap, wheelfir_tmp_bitmap[0], 0, 0, 0, 0, cliprect, TRANSPARENCY_PEN, 0);
+    copybitmap(bitmap, wheelfir_tmp_bitmap[2], 0, 0, 0, 0, cliprect);
+    //copybitmap_trans(bitmap, wheelfir_tmp_bitmap[1], 0, 0, 0, 0, cliprect, 0);
+    copybitmap_trans(bitmap, wheelfir_tmp_bitmap[0], 0, 0, 0, 0, cliprect, 0);
     fillbitmap(wheelfir_tmp_bitmap[0], 0,&machine->screen[0].visarea);
 
     if ( input_code_pressed(KEYCODE_R) )
@@ -323,8 +325,8 @@ static VIDEO_UPDATE(wheelfir)
     }
     */
 
-	copybitmap(bitmap, render_bitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
-	copybitmap(bitmap, wheelfir_tmp_bitmap[0], 0, 0, 0, 0, cliprect, TRANSPARENCY_PEN, 0);
+	copybitmap(bitmap, render_bitmap, 0, 0, 0, 0, cliprect);
+	copybitmap_trans(bitmap, wheelfir_tmp_bitmap[0], 0, 0, 0, 0, cliprect, 0);
 
 	{
 		int x;
@@ -574,7 +576,7 @@ static TIMER_CALLBACK( scanline_timer_callback )
 	if (scanline_counter!=(total_scanlines-1))
 	{
 		scanline_counter++;
-		cpunum_set_input_line(0, 5, HOLD_LINE); // raster IRQ, changes scroll values for road
+		cpunum_set_input_line(machine, 0, 5, HOLD_LINE); // raster IRQ, changes scroll values for road
 		timer_adjust(scanline_timer, attotime_div(ATTOTIME_IN_HZ(60), total_scanlines), 0, attotime_zero);
 
 		if (scanline_counter<256)
@@ -584,7 +586,7 @@ static TIMER_CALLBACK( scanline_timer_callback )
 
 		if (scanline_counter==256)
 		{
-			cpunum_set_input_line(0, 3, HOLD_LINE); // vblank IRQ?
+			cpunum_set_input_line(machine, 0, 3, HOLD_LINE); // vblank IRQ?
 			toggle_bit = 0x8000; // must toggle..
 		}
 
@@ -622,7 +624,7 @@ static MACHINE_RESET(wheelfir)
 static INTERRUPT_GEN( wheelfir_irq )
 {
 	// we seem to need this interrupt at least once for every object drawn on the screen, otherwise things flicker + slowdown
-	cpunum_set_input_line(0, 1, HOLD_LINE); // blitter IRQ?
+	cpunum_set_input_line(machine, 0, 1, HOLD_LINE); // blitter IRQ?
 }
 
 

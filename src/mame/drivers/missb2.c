@@ -14,6 +14,7 @@ OKI M6295 sound ROM dump is bad.
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
@@ -346,7 +347,7 @@ GFXDECODE_END
 static void irqhandler(int irq)
 {
 	logerror("YM3526 firing an IRQ\n");
-//  cpunum_set_input_line(2,0,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpunum_set_input_line(Machine, 2,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM3526interface ym3526_interface =
@@ -358,7 +359,7 @@ static const struct YM3526interface ym3526_interface =
 
 static INTERRUPT_GEN( missb2_interrupt )
 {
-	cpunum_set_input_line(2, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
 }
 
 /* Machine Driver */

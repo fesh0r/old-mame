@@ -9,6 +9,7 @@ Additional tweaking by Jarek Burczynski
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "sound/ay8910.h"
 
@@ -33,13 +34,13 @@ static WRITE16_HANDLER( magmax_sound_w )
 	if (ACCESSING_LSB)
 	{
 		sound_latch = (data & 0xff) << 1;
-		cpunum_set_input_line(1, 0, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, 0, ASSERT_LINE);
 	}
 }
 
 static READ8_HANDLER( magmax_sound_irq_ack )
 {
-	cpunum_set_input_line(1, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
 	return 0;
 }
 

@@ -3,7 +3,7 @@
  *   i8x41.h
  *   Portable UPI-41/8041/8741/8042/8742 emulator interface
  *
- *   Copyright (c) 1999 Juergen Buchmueller, all rights reserved.
+ *   Copyright Juergen Buchmueller, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -29,7 +29,7 @@
 #include "cpuintrf.h"
 
 
-/* The i8x41/i8x42 input clock is divided by 15. Use it with your CPU speed */
+/* The i8x41/i8x42 input clock is divided by 15 */
 #define I8X41_CLOCK_DIVIDER		15
 
 /* Note:
@@ -81,7 +81,7 @@ enum {
 
 extern void i8x41_get_info(UINT32 state, cpuinfo *info);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern offs_t i8x41_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 

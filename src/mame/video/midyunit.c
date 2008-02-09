@@ -5,6 +5,7 @@
 **************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "profiler.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/tms34010/34010ops.h"
@@ -100,7 +101,7 @@ VIDEO_START( midyunit_4bit )
 {
 	int i;
 
-	video_start_common(machine);
+	VIDEO_START_CALL(common);
 
 	/* init for 4-bit */
 	for (i = 0; i < 65536; i++)
@@ -113,7 +114,7 @@ VIDEO_START( midyunit_6bit )
 {
 	int i;
 
-	video_start_common(machine);
+	VIDEO_START_CALL(common);
 
 	/* init for 6-bit */
 	for (i = 0; i < 65536; i++)
@@ -124,7 +125,7 @@ VIDEO_START( midyunit_6bit )
 
 VIDEO_START( mkyawdim )
 {
-	video_start_midyunit_6bit(machine);
+	VIDEO_START_CALL(midyunit_6bit);
 	yawdim_dma = 1;
 }
 
@@ -133,7 +134,7 @@ VIDEO_START( midzunit )
 {
 	int i;
 
-	video_start_common(machine);
+	VIDEO_START_CALL(common);
 
 	/* init for 8-bit */
 	for (i = 0; i < 65536; i++)
@@ -277,139 +278,107 @@ WRITE16_HANDLER( midyunit_paletteram_w )
  *
  *************************************/
 
-/*** constant definitions ***/
-#define	PIXEL_SKIP		0
-#define PIXEL_COLOR		1
-#define PIXEL_COPY		2
-
-#define XFLIP_NO		0
-#define XFLIP_YES		1
-
-
-typedef void (*dma_draw_func)(void);
-
-
-/*** core blitter routine macro ***/
-#define DMA_DRAW_FUNC_BODY(name, xflip, zero, nonzero)				 			\
-{																				\
-	int height = dma_state.height;												\
-	int width = dma_state.width;												\
-	UINT8 *base = midyunit_gfx_rom;												\
-	UINT32 offset = dma_state.offset >> 3;										\
-	UINT16 pal = dma_state.palette;												\
-	UINT16 color = pal | dma_state.color;										\
-	int x, y;																	\
-																				\
-	/* loop over the height */													\
-	for (y = 0; y < height; y++)												\
-	{																			\
-		int tx = dma_state.xpos;												\
-		int ty = dma_state.ypos;												\
-		UINT32 o = offset;														\
-		UINT16 *dest;															\
-																				\
-		/* determine Y position */												\
-		ty = (ty + y) & 0x1ff;													\
-		offset += dma_state.rowbytes;											\
-																				\
-		/* check for over/underrun */											\
-		if (o >= 0x06000000)													\
-			continue;															\
-																				\
-		/* determine destination pointer */										\
-		dest = &local_videoram[ty * 512];										\
-																				\
-		/* loop until we draw the entire width */								\
-		for (x = 0; x < width; x++, o++)										\
-		{																		\
-			/* special case similar handling of zero/non-zero */				\
-			if (zero == nonzero)												\
-			{																	\
-				if (zero == PIXEL_COLOR)										\
-					dest[tx] = color;											\
-				else if (zero == PIXEL_COPY)									\
-					dest[tx] = base[o] | pal;									\
-			}																	\
-																				\
-			/* otherwise, read the pixel and look */							\
-			else																\
-			{																	\
-				int pixel = base[o];											\
-																				\
-				/* non-zero pixel case */										\
-				if (pixel)														\
-				{																\
-					if (nonzero == PIXEL_COLOR)									\
-						dest[tx] = color;										\
-					else if (nonzero == PIXEL_COPY)								\
-						dest[tx] = pixel | pal;									\
-				}																\
-																				\
-				/* zero pixel case */											\
-				else															\
-				{																\
-					if (zero == PIXEL_COLOR)									\
-						dest[tx] = color;										\
-					else if (zero == PIXEL_COPY)								\
-						dest[tx] = pal;											\
-				}																\
-			}																	\
-																				\
-			/* update pointers */												\
-			if (xflip) tx--;													\
-			else tx++;															\
-		}																		\
-	}																			\
-}
-
-/*** slightly simplified one for most blitters ***/
-#define DMA_DRAW_FUNC(name, xflip, zero, nonzero)						\
-static void name(void)													\
-{																		\
-	DMA_DRAW_FUNC_BODY(name, xflip, zero, nonzero)						\
-}
-
-/*** empty blitter ***/
-static void dma_draw_none(void)
+static void dma_draw(UINT16 command)
 {
+	int dx = (command & 0x10) ? -1 : 1;
+	int height = dma_state.height;
+	int width = dma_state.width;
+	UINT8 *base = midyunit_gfx_rom;
+	UINT32 offset = dma_state.offset >> 3;
+	UINT16 pal = dma_state.palette;
+	UINT16 color = pal | dma_state.color;
+	int x, y;
+
+	/* we only need the low 4 bits of the command */
+	command &= 0x0f;
+
+	/* loop over the height */
+	for (y = 0; y < height; y++)
+	{
+		int tx = dma_state.xpos;
+		int ty = dma_state.ypos;
+		UINT32 o = offset;
+		UINT16 *dest;
+
+		/* determine Y position */
+		ty = (ty + y) & 0x1ff;
+		offset += dma_state.rowbytes;
+
+		/* determine destination pointer */
+		dest = &local_videoram[ty * 512];
+
+		/* check for overruns if they are relevant */
+		if (o >= 0x06000000 && command < 0x0c)
+			continue;
+
+		/* switch off the zero/non-zero options */
+		switch (command)
+		{
+			case 0x00:	/* draw nothing */
+				break;
+
+			case 0x01:	/* draw only 0 pixels */
+				for (x = 0; x < width; x++, tx += dx)
+					if (base[o++] == 0)
+						dest[tx] = pal;
+				break;
+
+			case 0x02:	/* draw only non-0 pixels */
+				for (x = 0; x < width; x++, tx += dx)
+				{
+					int pixel = base[o++];
+					if (pixel != 0)
+						dest[tx] = pal | pixel;
+				}
+				break;
+
+			case 0x03:	/* draw all pixels */
+				for (x = 0; x < width; x++, tx += dx)
+					dest[tx] = pal | base[o++];
+				break;
+
+			case 0x04:	/* color only 0 pixels */
+			case 0x05:	/* color only 0 pixels */
+				for (x = 0; x < width; x++, tx += dx)
+					if (base[o++] == 0)
+						dest[tx] = color;
+				break;
+
+			case 0x06:	/* color only 0 pixels, copy the rest */
+			case 0x07:	/* color only 0 pixels, copy the rest */
+				for (x = 0; x < width; x++, tx += dx)
+				{
+					int pixel = base[o++];
+					dest[tx] = (pixel == 0) ? color : (pal | pixel);
+				}
+				break;
+
+			case 0x08:	/* color only non-0 pixels */
+			case 0x0a:	/* color only non-0 pixels */
+				for (x = 0; x < width; x++, tx += dx)
+					if (base[o++] != 0)
+						dest[tx] = color;
+				break;
+
+			case 0x09:	/* color only non-0 pixels, copy the rest */
+			case 0x0b:	/* color only non-0 pixels, copy the rest */
+				for (x = 0; x < width; x++, tx += dx)
+				{
+					int pixel = base[o++];
+					dest[tx] = (pixel != 0) ? color : (pal | pixel);
+				}
+				break;
+
+			case 0x0c:	/* color all pixels */
+			case 0x0d:	/* color all pixels */
+			case 0x0e:	/* color all pixels */
+			case 0x0f:	/* color all pixels */
+				for (x = 0; x < width; x++, tx += dx)
+					dest[tx] = color;
+				break;
+		}
+	}
 }
-
-/*** super macro for declaring an entire blitter family ***/
-#define DECLARE_BLITTER_SET(prefix)										\
-DMA_DRAW_FUNC(prefix##_p0,      XFLIP_NO,  PIXEL_COPY,  PIXEL_SKIP)		\
-DMA_DRAW_FUNC(prefix##_p1,      XFLIP_NO,  PIXEL_SKIP,  PIXEL_COPY)		\
-DMA_DRAW_FUNC(prefix##_c0,      XFLIP_NO,  PIXEL_COLOR, PIXEL_SKIP)		\
-DMA_DRAW_FUNC(prefix##_c1,      XFLIP_NO,  PIXEL_SKIP,  PIXEL_COLOR)	\
-DMA_DRAW_FUNC(prefix##_p0p1,    XFLIP_NO,  PIXEL_COPY,  PIXEL_COPY)		\
-DMA_DRAW_FUNC(prefix##_c0c1,    XFLIP_NO,  PIXEL_COLOR, PIXEL_COLOR)	\
-DMA_DRAW_FUNC(prefix##_c0p1,    XFLIP_NO,  PIXEL_COLOR, PIXEL_COPY)		\
-DMA_DRAW_FUNC(prefix##_p0c1,    XFLIP_NO,  PIXEL_COPY,  PIXEL_COLOR)	\
-																		\
-DMA_DRAW_FUNC(prefix##_p0_xf,   XFLIP_YES, PIXEL_COPY,  PIXEL_SKIP)		\
-DMA_DRAW_FUNC(prefix##_p1_xf,   XFLIP_YES, PIXEL_SKIP,  PIXEL_COPY)		\
-DMA_DRAW_FUNC(prefix##_c0_xf,   XFLIP_YES, PIXEL_COLOR, PIXEL_SKIP)		\
-DMA_DRAW_FUNC(prefix##_c1_xf,   XFLIP_YES, PIXEL_SKIP,  PIXEL_COLOR)	\
-DMA_DRAW_FUNC(prefix##_p0p1_xf, XFLIP_YES, PIXEL_COPY,  PIXEL_COPY)		\
-DMA_DRAW_FUNC(prefix##_c0c1_xf, XFLIP_YES, PIXEL_COLOR, PIXEL_COLOR)	\
-DMA_DRAW_FUNC(prefix##_c0p1_xf, XFLIP_YES, PIXEL_COLOR, PIXEL_COPY)		\
-DMA_DRAW_FUNC(prefix##_p0c1_xf, XFLIP_YES, PIXEL_COPY,  PIXEL_COLOR)	\
-																												\
-static const dma_draw_func prefix[32] =																				\
-{																												\
-/*  B0:N / B1:N         B0:Y / B1:N         B0:N / B1:Y         B0:Y / B1:Y */									\
-	dma_draw_none,		prefix##_p0,		prefix##_p1,		prefix##_p0p1,		/* no color */ 				\
-	prefix##_c0,		prefix##_c0,		prefix##_c0p1,		prefix##_c0p1,		/* color 0 pixels */		\
-	prefix##_c1,		prefix##_p0c1,		prefix##_c1,		prefix##_p0c1,		/* color non-0 pixels */	\
-	prefix##_c0c1,		prefix##_c0c1,		prefix##_c0c1,		prefix##_c0c1,		/* fill */ 					\
-																												\
-	dma_draw_none,		prefix##_p0_xf,		prefix##_p1_xf,		prefix##_p0p1_xf,	/* no color */ 				\
-	prefix##_c0_xf,		prefix##_c0_xf,		prefix##_c0p1_xf,	prefix##_c0p1_xf,	/* color 0 pixels */ 		\
-	prefix##_c1_xf,		prefix##_p0c1_xf,	prefix##_c1_xf,		prefix##_p0c1_xf,	/* color non-0 pixels */	\
-	prefix##_c0c1_xf,	prefix##_c0c1_xf,	prefix##_c0c1_xf,	prefix##_c0c1_xf	/* fill */ 					\
-};
-
-/*** blitter family declarations ***/
-DECLARE_BLITTER_SET(dma_draw)
 
 
 
@@ -422,7 +391,7 @@ DECLARE_BLITTER_SET(dma_draw)
 static TIMER_CALLBACK( dma_callback )
 {
 	dma_register[DMA_COMMAND] &= ~0x8000; /* tell the cpu we're done */
-	cpunum_set_input_line(0, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 }
 
 
@@ -485,7 +454,7 @@ WRITE16_HANDLER( midyunit_dma_w )
 
 	/* high bit triggers action */
 	command = dma_register[DMA_COMMAND];
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 	if (!(command & 0x8000))
 		return;
 
@@ -565,18 +534,12 @@ WRITE16_HANDLER( midyunit_dma_w )
 			dma_state.width = dma_state.xpos;
 	}
 
-	/* special case: drawing mode C doesn't need to know about any pixel data */
-	/* shimpact relies on this behavior */
-	if ((command & 0x0f) == 0x0c)
-		gfxoffset = 0;
-
 	/* determine the location and draw */
 	if (gfxoffset < 0x02000000)
 		gfxoffset += 0x02000000;
-	if (gfxoffset < 0x06000000)
 	{
 		dma_state.offset = gfxoffset - 0x02000000;
-		(*dma_draw[command & 0x1f])();
+		dma_draw(command);
 	}
 
 	/* signal we're done */

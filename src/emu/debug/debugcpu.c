@@ -4,7 +4,7 @@
 
     Debugger CPU/memory interface engine.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -17,6 +17,7 @@
 #include "debugcon.h"
 #include "express.h"
 #include "debugvw.h"
+#include "deprecat.h"
 #include <ctype.h>
 
 
@@ -41,8 +42,6 @@
 
 FILE *debug_source_file;
 symbol_table *global_symtable;
-
-static const char *const address_space_name[] = { "program", "data", "I/O" };
 
 static UINT64 wpdata;
 static UINT64 wpaddr;
@@ -530,7 +529,7 @@ void debug_halt_on_next_instruction(void)
 
 void debug_refresh_display(void)
 {
-	video_frame_update(TRUE);
+	video_frame_update(Machine, TRUE);
 }
 
 
@@ -707,10 +706,9 @@ static void set_cpu_reg(UINT32 ref, UINT64 value)
     before executing each instruction
 -------------------------------------------------*/
 
-void mame_debug_hook(void)
+void mame_debug_hook(offs_t curpc)
 {
 	int cpunum = cpu_getactivecpu();
-	offs_t curpc = activecpu_get_pc();
 	debug_cpu_info *info = &debug_cpuinfo[cpunum];
 
 	/* update the history */
@@ -1551,7 +1549,7 @@ static void check_hotspots(int cpunum, int spacenum, offs_t address)
 		/* if the bottom of the list is over the threshhold, print it */
 		debug_hotspot_entry *spot = &info->hotspots[info->hotspot_count - 1];
 		if (spot->count > info->hotspot_threshhold)
-			debug_console_printf("Hotspot @ %s %08X (PC=%08X) hit %d times (fell off bottom)\n", address_space_name[spot->spacenum], spot->access, spot->pc, spot->count);
+			debug_console_printf("Hotspot @ %s %08X (PC=%08X) hit %d times (fell off bottom)\n", address_space_names[spot->spacenum], spot->access, spot->pc, spot->count);
 
 		/* move everything else down and insert this one at the top */
 		memmove(&info->hotspots[1], &info->hotspots[0], sizeof(info->hotspots[0]) * (info->hotspot_count - 1));

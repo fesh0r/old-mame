@@ -3,7 +3,7 @@
  *   sh2.c
  *   Portable Hitachi SH-2 (SH7600 family) emulator
  *
- *   Copyright (c) 2000 Juergen Buchmueller <pullmoll@t-online.de>,
+ *   Copyright Juergen Buchmueller <pullmoll@t-online.de>,
  *   all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
@@ -101,6 +101,7 @@
  *****************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "sh2.h"
 
 /* speed up delay loops, bail out of tight loops */
@@ -108,11 +109,7 @@
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 typedef struct
 {
@@ -144,7 +141,7 @@ typedef struct
 
 	UINT16 	frc;
 	UINT16 	ocra, ocrb, icr;
-	UINT32 	frc_base;
+	UINT64 	frc_base;
 
 	int		frt_input;
 	int 	internal_irq_level;
@@ -2345,7 +2342,7 @@ static int sh2_execute(int cycles)
 		else
 			opcode = cpu_readop16(WORD_XOR_BE((UINT32)(sh2.pc & AM)));
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(sh2.pc);
 
 		sh2.delay = 0;
 		sh2.pc += 2;
@@ -2399,7 +2396,7 @@ static void sh2_set_context(void *src)
 static void sh2_timer_resync(void)
 {
 	int divider = div_tab[(sh2.m[5] >> 8) & 3];
-	UINT32 cur_time = cpunum_gettotalcycles(sh2.cpu_number);
+	UINT64 cur_time = cpunum_gettotalcycles(sh2.cpu_number);
 
 	if(divider)
 		sh2.frc += (cur_time - sh2.frc_base) >> divider;
@@ -2886,18 +2883,20 @@ static void sh2_set_frt_input(int cpunum, int state)
 static void set_irq_line(int irqline, int state)
 {
 	if (irqline == INPUT_LINE_NMI)
-    {
+	{
 		if (sh2.nmi_line_state == state)
 			return;
 		sh2.nmi_line_state = state;
 
 		if( state == CLEAR_LINE )
+		{
 			LOG(("SH-2 #%d cleared nmi\n", cpu_getactivecpu()));
+		}
 		else
-        {
+		{
 			LOG(("SH-2 #%d assert nmi\n", cpu_getactivecpu()));
 			sh2_exception("sh2_set_irq_line/nmi", 16);
-        }
+		}
 	}
 	else
 	{
@@ -2922,12 +2921,12 @@ static void set_irq_line(int irqline, int state)
 	}
 }
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t sh2_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	return DasmSH2( buffer, pc, (oprom[0] << 8) | oprom[1] );
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 static void sh2_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
@@ -3057,6 +3056,7 @@ void sh2_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 16;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 2;							break;
@@ -3129,9 +3129,9 @@ void sh2_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = sh2_reset;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = sh2_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = sh2_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &sh2_icount;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -3139,7 +3139,7 @@ void sh2_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Hitachi SH7600");		break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.01");				break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) 2000 Juergen Buchmueller, all rights reserved."); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Juergen Buchmueller, all rights reserved."); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%d%c%c",

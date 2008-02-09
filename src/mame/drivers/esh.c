@@ -23,7 +23,7 @@ Todo:
 */
 
 #include "driver.h"
-#include "render.h"
+#include "deprecat.h"
 #include "machine/laserdsc.h"
 
 /* From daphne */
@@ -134,9 +134,9 @@ static WRITE8_HANDLER(led_writes)
 static WRITE8_HANDLER(nmi_line_w)
 {
 	if (data == 0x00)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
 	if (data == 0x01)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 
 	if (data != 0x00 && data != 0x01)
 		logerror("NMI line got a weird value!\n");
@@ -267,13 +267,13 @@ static MACHINE_START( esh )
 
 static TIMER_CALLBACK( irq_stop )
 {
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( vblank_callback_esh )
 {
 	// IRQ
-	cpunum_set_input_line(0, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, irq_stop);
 
 	laserdisc_vsync(discinfo);
@@ -373,6 +373,6 @@ static DRIVER_INIT( esh )
 }
 
 /*    YEAR  NAME  PARENT   MACHINE  INPUT  INIT  MONITOR  COMPANY          FULLNAME                     FLAGS) */
-GAME( 1983, esh,  0,       esh,     esh,   esh,  ROT0,    "Funai/Gakken",  "Esh's Aurunmilla",          GAME_NOT_WORKING|GAME_NO_SOUND)
+GAME( 1983, esh,  0,       esh,     esh,   esh,  ROT0,    "Funai/Gakken",  "Esh's Aurunmilla (set 1)",  GAME_NOT_WORKING|GAME_NO_SOUND)
 GAME( 1983, esha, 0,       esh,     esh,   esh,  ROT0,    "Funai/Gakken",  "Esh's Aurunmilla (Set 2)",  GAME_NOT_WORKING|GAME_NO_SOUND)
 GAME( 1983, eshb, 0,       esh,     esh,   esh,  ROT0,    "Funai/Gakken",  "Esh's Aurunmilla (Set 3)",  GAME_NOT_WORKING|GAME_NO_SOUND)

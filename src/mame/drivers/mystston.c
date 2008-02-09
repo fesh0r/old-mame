@@ -14,6 +14,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 
@@ -73,7 +74,7 @@ static READ8_HANDLER( port3_r )
 
 static WRITE8_HANDLER( mystston_irq_reset_w )
 {
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 }
 
 
@@ -219,7 +220,7 @@ static INTERRUPT_GEN( mystston_interrupt )
 		if (coin == 0)
 		{
 			coin = 1;
-			nmi_line_pulse();
+			nmi_line_pulse(machine, cpunum);
 			return;
 		}
 	}
@@ -236,7 +237,7 @@ static INTERRUPT_GEN( mystston_interrupt )
 	/* IMS is triggered every time VLOC line 3 is raised,
        as VLOC counter starts at 16, effectively every 16 scanlines */
 	if ((scanline % 16) == 0)
-		cpunum_set_input_line(0, 0, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 }
 
 

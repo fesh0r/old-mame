@@ -2,7 +2,7 @@
 //
 //  winmain.c - Win32 main program
 //
-//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+//  Copyright Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -217,7 +217,7 @@ static void winui_output_error(void *param, const char *format, va_list argptr)
 //  utf8_main
 //============================================================
 
-int utf8_main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	char *ext;
 
@@ -408,7 +408,7 @@ static LONG CALLBACK exception_filter(struct _EXCEPTION_POINTERS *info)
 		ExitProcess(100);
 	already_hit = 1;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 {
 extern void debug_flush_traces(void);
 debug_flush_traces();

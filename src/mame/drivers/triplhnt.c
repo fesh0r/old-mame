@@ -11,6 +11,7 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "triplhnt.h"
 
 static UINT8 triplhnt_cmos[16];
@@ -31,7 +32,7 @@ void triplhnt_set_collision(int code)
 {
 	triplhnt_hit_code = code;
 
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
 }
 
 

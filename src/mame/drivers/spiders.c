@@ -189,6 +189,7 @@
 
 #include "driver.h"
 #include "rescap.h"
+#include "deprecat.h"
 #include "cpu/m6800/m6800.h"
 #include "cpu/m6809/m6809.h"
 #include "video/crtc6845.h"
@@ -231,19 +232,23 @@ static READ8_HANDLER( gfx_rom_r );
 
 static void main_cpu_irq(int state)
 {
-	cpunum_set_input_line(0, M6809_IRQ_LINE,  state ? ASSERT_LINE : CLEAR_LINE);
+	int combined_state = pia_get_irq_a(1) | pia_get_irq_b(1) |
+						 					pia_get_irq_b(2) |
+						 pia_get_irq_a(3) | pia_get_irq_b(3);
+
+	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static void main_cpu_firq(int state)
 {
-	cpunum_set_input_line(0, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static void audio_cpu_irq(int state)
 {
-	cpunum_set_input_line(1, M6802_IRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, M6802_IRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 

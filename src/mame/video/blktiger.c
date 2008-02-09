@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 
 UINT8 *blktiger_txvideoram;
 
@@ -35,10 +36,10 @@ static TILE_GET_INFO( get_bg_tile_info )
 {
 	/* the tile priority table is a guess compiled by looking at the game. It
        was not derived from a PROM so it could be wrong. */
-	static const int split_table[16] =
+	static const UINT8 split_table[16] =
 	{
-		3,0,2,2,	/* the fourth could be 1 instead of 2 */
-		0,1,0,0,
+		3,3,0,0,
+		0,0,0,0,
 		0,0,0,0,
 		0,0,0,0
 	};
@@ -160,7 +161,7 @@ WRITE8_HANDLER( blktiger_video_control_w )
 	coin_counter_w(1,data & 2);
 
 	/* bit 5 resets the sound CPU */
-	cpunum_set_input_line(1, INPUT_LINE_RESET, (data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 
 	/* bit 6 flips screen */
 	flip_screen_set(data & 0x40);

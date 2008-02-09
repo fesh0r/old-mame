@@ -355,6 +355,7 @@ TO DO :
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/s2650/s2650.h"
 #include "galaxian.h"
@@ -390,7 +391,7 @@ TO DO :
 static WRITE8_HANDLER( checkman_sound_command_w )
 {
 	soundlatch_w (0,data);
-	cpunum_set_input_line (1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line (Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static READ8_HANDLER( drivfrcg_port0_r )

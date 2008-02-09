@@ -8,6 +8,7 @@ Espial: The Orca logo is displayed, but looks to be "blacked out" via the
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "espial.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
@@ -44,23 +45,23 @@ WRITE8_HANDLER( espial_sound_nmi_enable_w )
 INTERRUPT_GEN( espial_sound_nmi_gen )
 {
 	if (sound_nmi_enabled)
-		nmi_line_pulse();
+		nmi_line_pulse(machine, cpunum);
 }
 
 
 INTERRUPT_GEN( zodiac_master_interrupt )
 {
 	if (cpu_getiloops() == 0)
-		nmi_line_pulse();
+		nmi_line_pulse(machine, cpunum);
 	else
-		irq0_line_hold();
+		irq0_line_hold(machine, cpunum);
 }
 
 
 WRITE8_HANDLER( zodiac_master_soundlatch_w )
 {
 	soundlatch_w(offset, data);
-	cpunum_set_input_line(1, 0, HOLD_LINE);
+	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 }
 
 

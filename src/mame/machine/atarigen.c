@@ -1,31 +1,32 @@
-/*##########################################################################
+/***************************************************************************
 
     atarigen.c
 
     General functions for Atari raster games.
 
-##########################################################################*/
+***************************************************************************/
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "atarigen.h"
 #include "slapstic.h"
 #include "cpu/m6502/m6502.h"
 
 
 
-/*##########################################################################
+/***************************************************************************
     CONSTANTS
-##########################################################################*/
+***************************************************************************/
 
 #define SOUND_TIMER_RATE			ATTOTIME_IN_USEC(5)
 #define SOUND_TIMER_BOOST			ATTOTIME_IN_USEC(100)
 
 
 
-/*##########################################################################
+/***************************************************************************
     GLOBAL VARIABLES
-##########################################################################*/
+***************************************************************************/
 
 UINT8 				atarigen_scanline_int_state;
 UINT8 				atarigen_sound_int_state;
@@ -60,9 +61,9 @@ struct atarivc_state_desc atarivc_state;
 
 
 
-/*##########################################################################
+/***************************************************************************
     STATIC VARIABLES
-##########################################################################*/
+***************************************************************************/
 
 static atarigen_int_callback update_int_callback;
 static emu_timer * scanline_interrupt_timer;
@@ -71,7 +72,7 @@ static UINT8 			eeprom_unlocked;
 
 static UINT8			atarigen_slapstic_num;
 static UINT16 *			atarigen_slapstic;
-static UINT32			atarigen_slapstic_bank;
+static UINT8			atarigen_slapstic_bank;
 static void *			atarigen_slapstic_bank0;
 
 static UINT8 			sound_cpu_num;
@@ -95,9 +96,9 @@ static emu_timer *		atarivc_eof_update_timer[ATARIMO_MAX];
 
 
 
-/*##########################################################################
+/***************************************************************************
     STATIC FUNCTION DECLARATIONS
-##########################################################################*/
+***************************************************************************/
 
 static TIMER_CALLBACK( scanline_interrupt_callback );
 
@@ -121,9 +122,9 @@ static TIMER_CALLBACK( atarivc_eof_update );
 
 
 
-/*##########################################################################
+/***************************************************************************
     INTERRUPT HANDLING
-##########################################################################*/
+***************************************************************************/
 
 /*---------------------------------------------------------------
     atarigen_interrupt_reset: Initializes the state of all
@@ -158,7 +159,7 @@ void atarigen_interrupt_reset(atarigen_int_callback update_int)
 
 void atarigen_update_interrupts(void)
 {
-	(*update_int_callback)();
+	(*update_int_callback)(Machine);
 }
 
 
@@ -182,7 +183,7 @@ void atarigen_scanline_int_set(int scrnum, int scanline)
 INTERRUPT_GEN( atarigen_scanline_int_gen )
 {
 	atarigen_scanline_int_state = 1;
-	(*update_int_callback)();
+	(*update_int_callback)(machine);
 }
 
 
@@ -194,13 +195,13 @@ INTERRUPT_GEN( atarigen_scanline_int_gen )
 WRITE16_HANDLER( atarigen_scanline_int_ack_w )
 {
 	atarigen_scanline_int_state = 0;
-	(*update_int_callback)();
+	(*update_int_callback)(Machine);
 }
 
 WRITE32_HANDLER( atarigen_scanline_int_ack32_w )
 {
 	atarigen_scanline_int_state = 0;
-	(*update_int_callback)();
+	(*update_int_callback)(Machine);
 }
 
 
@@ -212,7 +213,7 @@ WRITE32_HANDLER( atarigen_scanline_int_ack32_w )
 INTERRUPT_GEN( atarigen_sound_int_gen )
 {
 	atarigen_sound_int_state = 1;
-	(*update_int_callback)();
+	(*update_int_callback)(machine);
 }
 
 
@@ -224,13 +225,13 @@ INTERRUPT_GEN( atarigen_sound_int_gen )
 WRITE16_HANDLER( atarigen_sound_int_ack_w )
 {
 	atarigen_sound_int_state = 0;
-	(*update_int_callback)();
+	(*update_int_callback)(Machine);
 }
 
 WRITE32_HANDLER( atarigen_sound_int_ack32_w )
 {
 	atarigen_sound_int_state = 0;
-	(*update_int_callback)();
+	(*update_int_callback)(Machine);
 }
 
 
@@ -242,7 +243,7 @@ WRITE32_HANDLER( atarigen_sound_int_ack32_w )
 INTERRUPT_GEN( atarigen_video_int_gen )
 {
 	atarigen_video_int_state = 1;
-	(*update_int_callback)();
+	(*update_int_callback)(machine);
 }
 
 
@@ -254,13 +255,13 @@ INTERRUPT_GEN( atarigen_video_int_gen )
 WRITE16_HANDLER( atarigen_video_int_ack_w )
 {
 	atarigen_video_int_state = 0;
-	(*update_int_callback)();
+	(*update_int_callback)(Machine);
 }
 
 WRITE32_HANDLER( atarigen_video_int_ack32_w )
 {
 	atarigen_video_int_state = 0;
-	(*update_int_callback)();
+	(*update_int_callback)(Machine);
 }
 
 
@@ -271,7 +272,7 @@ WRITE32_HANDLER( atarigen_video_int_ack32_w )
 static TIMER_CALLBACK( scanline_interrupt_callback )
 {
 	/* generate the interrupt */
-	atarigen_scanline_int_gen();
+	atarigen_scanline_int_gen(machine, 0);
 
 	/* set a new timer to go off at the same scan line next frame */
 	timer_adjust(scanline_interrupt_timer, video_screen_get_frame_period(param), param, attotime_zero);
@@ -279,9 +280,9 @@ static TIMER_CALLBACK( scanline_interrupt_callback )
 
 
 
-/*##########################################################################
+/***************************************************************************
     EEPROM HANDLING
-##########################################################################*/
+***************************************************************************/
 
 /*---------------------------------------------------------------
     atarigen_eeprom_reset: Makes sure that the unlocked state
@@ -362,7 +363,7 @@ READ32_HANDLER( atarigen_eeprom_upper32_r )
 
 
 /*---------------------------------------------------------------
-    nvram_handler_atarigen: Loads the EEPROM data.
+    NVRAM_HANDLER( atarigen ): Loads the EEPROM data.
 ---------------------------------------------------------------*/
 
 NVRAM_HANDLER( atarigen )
@@ -431,9 +432,9 @@ void decompress_eeprom_byte(const UINT16 *data)
 
 
 
-/*##########################################################################
+/***************************************************************************
     SLAPSTIC HANDLING
-##########################################################################*/
+***************************************************************************/
 
 INLINE void update_bank(int bank)
 {
@@ -452,29 +453,38 @@ INLINE void update_bank(int bank)
 }
 
 
+static void slapstic_postload(void)
+{
+	update_bank(slapstic_bank());
+}
+
+
 /*---------------------------------------------------------------
     atarigen_slapstic_init: Installs memory handlers for the
     slapstic and sets the chip number.
 ---------------------------------------------------------------*/
 
-void atarigen_slapstic_init(int cpunum, int base, int chipnum)
+void atarigen_slapstic_init(int cpunum, offs_t base, offs_t mirror, int chipnum)
 {
+	/* reset in case we have no state */
 	atarigen_slapstic_num = chipnum;
 	atarigen_slapstic = NULL;
 
 	/* if we have a chip, install it */
-	if (chipnum)
+	if (chipnum != 0)
 	{
 		/* initialize the slapstic */
 		slapstic_init(chipnum);
 
 		/* install the memory handlers */
-		atarigen_slapstic = memory_install_read16_handler(cpunum, ADDRESS_SPACE_PROGRAM, base, base + 0x7fff, 0, 0, atarigen_slapstic_r);
-		atarigen_slapstic = memory_install_write16_handler(cpunum, ADDRESS_SPACE_PROGRAM, base, base + 0x7fff, 0, 0, atarigen_slapstic_w);
+		atarigen_slapstic = memory_install_readwrite16_handler(cpunum, ADDRESS_SPACE_PROGRAM, base, base + 0x7fff, 0, mirror, atarigen_slapstic_r, atarigen_slapstic_w);
 
 		/* allocate memory for a copy of bank 0 */
 		atarigen_slapstic_bank0 = auto_malloc(0x2000);
 		memcpy(atarigen_slapstic_bank0, atarigen_slapstic, 0x2000);
+
+		/* ensure we recopy memory for the bank */
+		atarigen_slapstic_bank = 0xff;
 	}
 }
 
@@ -486,7 +496,7 @@ void atarigen_slapstic_init(int cpunum, int base, int chipnum)
 
 void atarigen_slapstic_reset(void)
 {
-	if (atarigen_slapstic_num)
+	if (atarigen_slapstic_num != 0)
 	{
 		slapstic_reset();
 		update_bank(slapstic_bank());
@@ -523,9 +533,9 @@ READ16_HANDLER( atarigen_slapstic_r )
 
 
 
-/*##########################################################################
+/***************************************************************************
     SOUND I/O
-##########################################################################*/
+***************************************************************************/
 
 /*---------------------------------------------------------------
     atarigen_sound_io_reset: Resets the state of the sound I/O.
@@ -684,7 +694,7 @@ WRITE8_HANDLER( atarigen_6502_sound_w )
 READ8_HANDLER( atarigen_6502_sound_r )
 {
 	atarigen_cpu_to_sound_ready = 0;
-	cpunum_set_input_line(sound_cpu_num, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, sound_cpu_num, INPUT_LINE_NMI, CLEAR_LINE);
 	return atarigen_cpu_to_sound;
 }
 
@@ -699,9 +709,9 @@ READ8_HANDLER( atarigen_6502_sound_r )
 void update_6502_irq(void)
 {
 	if (timed_int || ym2151_int)
-		cpunum_set_input_line(sound_cpu_num, M6502_IRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(Machine, sound_cpu_num, M6502_IRQ_LINE, ASSERT_LINE);
 	else
-		cpunum_set_input_line(sound_cpu_num, M6502_IRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(Machine, sound_cpu_num, M6502_IRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -715,13 +725,17 @@ static TIMER_CALLBACK( delayed_sound_reset )
 	/* unhalt and reset the sound CPU */
 	if (param == 0)
 	{
-		cpunum_set_input_line(sound_cpu_num, INPUT_LINE_HALT, CLEAR_LINE);
-		cpunum_set_input_line(sound_cpu_num, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(machine, sound_cpu_num, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line(machine, sound_cpu_num, INPUT_LINE_RESET, PULSE_LINE);
 	}
 
 	/* reset the sound write state */
 	atarigen_sound_to_cpu_ready = 0;
 	atarigen_sound_int_ack_w(0, 0, 0);
+
+	/* allocate a high frequency timer until a response is generated */
+	/* the main CPU is *very* sensistive to the timing of the response */
+	cpu_boost_interleave(SOUND_TIMER_RATE, SOUND_TIMER_BOOST);
 }
 
 
@@ -739,7 +753,7 @@ static TIMER_CALLBACK( delayed_sound_w )
 	/* set up the states and signal an NMI to the sound CPU */
 	atarigen_cpu_to_sound = param;
 	atarigen_cpu_to_sound_ready = 1;
-	cpunum_set_input_line(sound_cpu_num, INPUT_LINE_NMI, ASSERT_LINE);
+	cpunum_set_input_line(machine, sound_cpu_num, INPUT_LINE_NMI, ASSERT_LINE);
 
 	/* allocate a high frequency timer until a response is generated */
 	/* the main CPU is *very* sensistive to the timing of the response */
@@ -761,14 +775,14 @@ static TIMER_CALLBACK( delayed_6502_sound_w )
 	/* set up the states and signal the sound interrupt to the main CPU */
 	atarigen_sound_to_cpu = param;
 	atarigen_sound_to_cpu_ready = 1;
-	atarigen_sound_int_gen();
+	atarigen_sound_int_gen(machine, 0);
 }
 
 
 
-/*##########################################################################
+/***************************************************************************
     SOUND HELPERS
-##########################################################################*/
+***************************************************************************/
 
 /*---------------------------------------------------------------
     atarigen_set_vol: Scans for a particular sound chip and
@@ -823,9 +837,9 @@ void atarigen_set_oki6295_vol(running_machine *machine, int volume)
 
 
 
-/*##########################################################################
+/***************************************************************************
     SCANLINE TIMING
-##########################################################################*/
+***************************************************************************/
 
 /*---------------------------------------------------------------
     atarigen_scanline_timer_reset: Sets up the scanline timer.
@@ -868,9 +882,9 @@ static TIMER_CALLBACK( scanline_timer_callback )
 
 
 
-/*##########################################################################
+/***************************************************************************
     VIDEO CONTROLLER
-##########################################################################*/
+***************************************************************************/
 
 /*---------------------------------------------------------------
     atarivc_eof_update: Callback that slurps up data and feeds
@@ -1096,9 +1110,9 @@ READ16_HANDLER( atarivc_r )
 
 
 
-/*##########################################################################
+/***************************************************************************
     PLAYFIELD/ALPHA MAP HELPERS
-##########################################################################*/
+***************************************************************************/
 
 /*---------------------------------------------------------------
     atarigen_alpha_w: Generic write handler for alpha RAM.
@@ -1263,9 +1277,9 @@ WRITE16_HANDLER( atarigen_playfield2_latched_msb_w )
 
 
 
-/*##########################################################################
+/***************************************************************************
     VIDEO HELPERS
-##########################################################################*/
+***************************************************************************/
 
 /*---------------------------------------------------------------
     atarigen_get_hblank: Returns a guesstimate about the current
@@ -1298,7 +1312,7 @@ WRITE16_HANDLER( atarigen_halt_until_hblank_0_w )
 	/* halt and set a timer to wake up */
 	fraction = (double)(hblank - hpos) / (double)Machine->screen[0].width;
 	timer_set(double_to_attotime(attotime_to_double(video_screen_get_scan_period(0)) * fraction), NULL, 0, unhalt_cpu);
-	cpunum_set_input_line(0, INPUT_LINE_HALT, ASSERT_LINE);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, ASSERT_LINE);
 }
 
 
@@ -1386,14 +1400,14 @@ WRITE32_HANDLER( atarigen_666_paletteram32_w )
 
 static TIMER_CALLBACK( unhalt_cpu )
 {
-	cpunum_set_input_line(param, INPUT_LINE_HALT, CLEAR_LINE);
+	cpunum_set_input_line(machine, param, INPUT_LINE_HALT, CLEAR_LINE);
 }
 
 
 
-/*##########################################################################
+/***************************************************************************
     MISC HELPERS
-##########################################################################*/
+***************************************************************************/
 
 /*---------------------------------------------------------------
     atarigen_swap_mem: Inverts the bits in a region.
@@ -1453,9 +1467,9 @@ void atarigen_blend_gfx(running_machine *machine, int gfx0, int gfx1, int mask0,
 }
 
 
-/*##########################################################################
+/***************************************************************************
     SAVE STATE
-##########################################################################*/
+***************************************************************************/
 
 void atarigen_init_save_state(void)
 {
@@ -1497,4 +1511,7 @@ void atarigen_init_save_state(void)
 
 	state_save_register_global(playfield_latch);
 	state_save_register_global(playfield2_latch);
+
+	/* need a postload to reset the state */
+	state_save_register_func_postload(slapstic_postload);
 }

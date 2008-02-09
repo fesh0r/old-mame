@@ -26,6 +26,7 @@ Note:   if MAME_DEBUG is defined, pressing Z with:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "paradise.h"
 
 /* Variables that driver has access to: */
@@ -166,11 +167,6 @@ VIDEO_START( paradise )
 	/* pixmap */
 	tmpbitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
 
-	/* paletteram and videoram (pixmap) are accessed through CPU ports, that don't
-       get memory automatically allocated for them */
-	paletteram	=	auto_malloc(0x1800);
-	videoram	=	auto_malloc(0x8000);
-
 	tilemap_set_transparent_pen(tilemap_0,0x0f);
 	tilemap_set_transparent_pen(tilemap_1,0xff);
 	tilemap_set_transparent_pen(tilemap_2,0xff);
@@ -263,7 +259,7 @@ if (input_code_pressed(KEYCODE_Z))
 
 	if (layers_ctrl&1)	tilemap_draw(bitmap,cliprect, tilemap_0, 0,0);
 	if (layers_ctrl&2)	tilemap_draw(bitmap,cliprect, tilemap_1, 0,0);
-	if (layers_ctrl&4)	copybitmap(bitmap,tmpbitmap,flip_screen,flip_screen,0,0,cliprect,TRANSPARENCY_PEN, 0x80f);
+	if (layers_ctrl&4)	copybitmap_trans(bitmap,tmpbitmap,flip_screen,flip_screen,0,0,cliprect, 0x80f);
 
 	if (paradise_priority & 2)
 	{

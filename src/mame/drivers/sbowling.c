@@ -38,6 +38,7 @@ PROMs : NEC B406 (1kx4) x2
 ***********************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/i8039/i8039.h"
 #include "video/resnet.h"
 #include "sound/ay8910.h"
@@ -95,7 +96,7 @@ static VIDEO_UPDATE(sbowling)
 {
 	fillbitmap(bitmap,machine->pens[0x18],cliprect);
 	tilemap_draw(bitmap,cliprect,sb_tilemap,0,0);
-	copybitmap(bitmap,tmpbitmap,0,0,0,0,cliprect, TRANSPARENCY_PEN, color_prom_address);
+	copybitmap_trans(bitmap,tmpbitmap,0,0,0,0,cliprect, color_prom_address);
 	return 0;
 }
 
@@ -134,7 +135,7 @@ static INTERRUPT_GEN( sbw_interrupt )
 {
 	int vector = video_screen_get_vblank(0) ? 0xcf : 0xd7;	/* RST 08h/10h */
 
-	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, vector);
+	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, vector);
 }
 
 static WRITE8_HANDLER (system_w)

@@ -12,6 +12,7 @@ The timer seems to follow these rules:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/6532riot.h"
 
 struct riot6532
@@ -313,7 +314,7 @@ void r6532_config(int which, const struct riot6532_interface* intf)
 	r6532[which].intf = intf;
 
 	/* Default clock is CPU #0 clock */
-	r6532_set_clock( which, Machine->drv->cpu[0].clock );
+	r6532_set_clock( which, cpunum_get_clock(0) );
 }
 
 

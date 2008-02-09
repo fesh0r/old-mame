@@ -20,13 +20,13 @@ static int da_latch;
 
 
 
-static UINT32 get_collision(void *param)
+static CUSTOM_INPUT( get_collision )
 {
 	return ultratnk_collision[(FPTR) param];
 }
 
 
-static UINT32 get_joystick(void* param)
+static CUSTOM_INPUT( get_joystick )
 {
 	UINT8 joy = readinputportbytag(param) & 3;
 
@@ -54,11 +54,11 @@ static TIMER_CALLBACK( nmi_callback	)
 
 	/* NMI and watchdog are disabled during service mode */
 
-	watchdog_enable(readinputport(0) & 0x40);
+	watchdog_enable(machine, readinputport(0) & 0x40);
 
 	if (readinputport(0) & 0x40)
 	{
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 
 	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, nmi_callback);

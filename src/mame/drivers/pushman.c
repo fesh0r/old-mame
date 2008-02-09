@@ -22,6 +22,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/2203intf.h"
@@ -62,7 +63,7 @@ static WRITE16_HANDLER( pushman_68705_w )
 
 	if (offset==1)
 	{
-        cpunum_set_input_line(2,M68705_IRQ_LINE,HOLD_LINE);
+        cpunum_set_input_line(Machine, 2,M68705_IRQ_LINE,HOLD_LINE);
 		cpu_spin();
 		new_latch=0;
 	}
@@ -420,7 +421,7 @@ GFXDECODE_END
 
 static void irqhandler(int irq)
 {
-    cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+    cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface ym2203_interface =
@@ -442,7 +443,7 @@ static MACHINE_DRIVER_START( pushman )
 	MDRV_CPU_IO_MAP(0,sound_writeport)
 
 	/* ElSemi. Reversed the CPU order so the sound callback works with bballs */
-	MDRV_CPU_ADD(M68705, 4000000/M68705_CLOCK_DIVIDER)	/* No idea */
+	MDRV_CPU_ADD(M68705, 4000000)	/* No idea */
 	MDRV_CPU_PROGRAM_MAP(mcu_readmem,mcu_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)

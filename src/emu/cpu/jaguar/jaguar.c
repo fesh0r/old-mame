@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "jaguar.h"
 
 #define LOG_GPU_IO		0
@@ -496,7 +497,7 @@ static int jaguargpu_execute(int cycles)
 	/* if we're halted, we shouldn't be here */
 	if (!(jaguar.ctrl[G_CTRL] & 1))
 	{
-		cpunum_set_input_line(cpu_getactivecpu(), INPUT_LINE_HALT, ASSERT_LINE);
+		cpunum_set_input_line(Machine, cpu_getactivecpu(), INPUT_LINE_HALT, ASSERT_LINE);
 		return cycles;
 	}
 
@@ -516,7 +517,7 @@ static int jaguargpu_execute(int cycles)
 		/* debugging */
 		//if (jaguar.PC < 0xf03000 || jaguar.PC > 0xf04000) { fatalerror("GPU: jaguar.PC = %06X (ppc = %06X)", jaguar.PC, jaguar.ppc); }
 		jaguar.ppc = jaguar.PC;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(jaguar.PC);
 
 		/* instruction fetch */
 		jaguar.op = ROPCODE(jaguar.PC);
@@ -542,7 +543,7 @@ static int jaguardsp_execute(int cycles)
 	/* if we're halted, we shouldn't be here */
 	if (!(jaguar.ctrl[G_CTRL] & 1))
 	{
-		cpunum_set_input_line(cpu_getactivecpu(), INPUT_LINE_HALT, ASSERT_LINE);
+		cpunum_set_input_line(Machine, cpu_getactivecpu(), INPUT_LINE_HALT, ASSERT_LINE);
 		return cycles;
 	}
 
@@ -562,7 +563,7 @@ static int jaguardsp_execute(int cycles)
 		/* debugging */
 		//if (jaguar.PC < 0xf1b000 || jaguar.PC > 0xf1d000) { fatalerror(stderr, "DSP: jaguar.PC = %06X", jaguar.PC); }
 		jaguar.ppc = jaguar.PC;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(jaguar.PC);
 
 		/* instruction fetch */
 		jaguar.op = ROPCODE(jaguar.PC);
@@ -589,7 +590,7 @@ static int jaguardsp_execute(int cycles)
     DISASSEMBLY HOOK
 ***************************************************************************/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t jaguargpu_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	extern unsigned dasmjag(int, char *, unsigned, const UINT8 *);
@@ -601,7 +602,7 @@ static offs_t jaguardsp_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const 
 	extern unsigned dasmjag(int, char *, unsigned, const UINT8 *);
     return dasmjag(JAGUAR_VARIANT_DSP, buffer, pc, oprom);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -800,7 +801,7 @@ void jr_cc_n(void)
 	{
 		INT32 r1 = (INT8)((jaguar.op >> 2) & 0xf8) >> 2;
 		UINT32 newpc = jaguar.PC + r1;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(jaguar.PC);
 		jaguar.op = ROPCODE(jaguar.PC);
 		jaguar.PC = newpc;
 		(*jaguar.table[jaguar.op >> 10])();
@@ -817,7 +818,7 @@ void jump_cc_rn(void)
 
 		/* special kludge for risky code in the cojag DSP interrupt handlers */
 		UINT32 newpc = (jaguar_icount == bankswitch_icount) ? jaguar.a[reg] : jaguar.r[reg];
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(jaguar.PC);
 		jaguar.op = ROPCODE(jaguar.PC);
 		jaguar.PC = newpc;
 		(*jaguar.table[jaguar.op >> 10])();
@@ -1362,7 +1363,7 @@ void jaguargpu_ctrl_w(int cpunum, offs_t offset, UINT32 data, UINT32 mem_mask)
 			jaguar.ctrl[offset] = newval;
 			if ((oldval ^ newval) & 0x01)
 			{
-				cpunum_set_input_line(cpunum, INPUT_LINE_HALT, (newval & 1) ? CLEAR_LINE : ASSERT_LINE);
+				cpunum_set_input_line(Machine, cpunum, INPUT_LINE_HALT, (newval & 1) ? CLEAR_LINE : ASSERT_LINE);
 				if (cpu_getexecutingcpu() >= 0)
 					cpu_yield();
 			}
@@ -1477,7 +1478,7 @@ void jaguardsp_ctrl_w(int cpunum, offs_t offset, UINT32 data, UINT32 mem_mask)
 			jaguar.ctrl[offset] = newval;
 			if ((oldval ^ newval) & 0x01)
 			{
-				cpunum_set_input_line(cpunum, INPUT_LINE_HALT, (newval & 1) ? CLEAR_LINE : ASSERT_LINE);
+				cpunum_set_input_line(Machine, cpunum, INPUT_LINE_HALT, (newval & 1) ? CLEAR_LINE : ASSERT_LINE);
 				if (cpu_getexecutingcpu() >= 0)
 					cpu_yield();
 			}
@@ -1581,6 +1582,7 @@ void jaguargpu_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 5;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 6;							break;
@@ -1652,9 +1654,9 @@ void jaguargpu_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = jaguar_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = jaguargpu_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = jaguargpu_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &jaguar_icount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1662,7 +1664,7 @@ void jaguargpu_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Atari Jaguar");		break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) Aaron Giles 2000-2004"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Aaron Giles"); break;
 
 		case CPUINFO_STR_FLAGS:							sprintf(info->s, "%c%c%c%c%c%c%c%c%c%c%c",
 															jaguar.FLAGS & 0x8000 ? 'D':'.',
@@ -1747,9 +1749,9 @@ void jaguardsp_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_INIT:							info->init = jaguardsp_init;			break;
 		case CPUINFO_PTR_RESET:							info->reset = jaguardsp_reset;			break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = jaguardsp_execute;		break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = jaguardsp_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "Jaguar DSP");			break;

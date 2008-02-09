@@ -182,10 +182,12 @@ TODO: - Confirm that MC6850 emulation is sufficient.
 #include "video/crtc6845.h"
 
 #ifdef MAME_DEBUG
-#define LOGSTUFF(x)logerror x
+#define MPU4VIDVERBOSE 1
 #else
-#define LOGSTUFF(x)
+#define MPU4VIDVERBOSE 0
 #endif
+
+#define LOGSTUFF(x) do { if (MPU4VIDVERBOSE) logerror x; } while (0)
 
 #define VIDEO_MASTER_CLOCK (10000000)
 
@@ -221,7 +223,7 @@ static MACHINE_RESET( mpu4_vid )
 {
 	ROC10937_reset(0);	// reset display1
 
-//  cpunum_set_input_line(1, INPUT_LINE_HALT, ASSERT_LINE);
+//  cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 	mpu4_stepper_reset();
 
 	lamp_strobe    = 0;
@@ -273,12 +275,12 @@ static void update_mpu68_interrupts(void)
 	if (newstate)
 	{
 		LOGSTUFF(("68k IRQ, %x\n", newstate));
-		cpunum_set_input_line(1, newstate, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, newstate, ASSERT_LINE);
 	}
 	else
 	{
 		LOGSTUFF(("68k IRQ Clear, %x\n", newstate));
-		cpunum_set_input_line(1, 7, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, 7, CLEAR_LINE);
 	}
 }
 
@@ -290,7 +292,7 @@ For now, it's fixed to the frequency set by the PTM on initialisation.*/
 static void m6809_acia_irq(int state)
 {
 	m68k_acia_cts = state;
-	cpunum_set_input_line(0, M6809_IRQ_LINE, state?ASSERT_LINE:CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, state?ASSERT_LINE:CLEAR_LINE);
 }
 
 static void m68k_acia_irq(int state)
@@ -444,10 +446,10 @@ VIDEO_UPDATE( mpu4_vid )
 	{
 		if (mpu4_vid_vidram_is_dirty[i]==1)
 		{
-			decodechar(machine->gfx[mpu4_gfx_index+0], i, (UINT8 *)mpu4_vid_vidram, &mpu4_vid_char_8x8_layout);
-			decodechar(machine->gfx[mpu4_gfx_index+1], i, (UINT8 *)mpu4_vid_vidram, &mpu4_vid_char_8x16_layout);
-			decodechar(machine->gfx[mpu4_gfx_index+2], i, (UINT8 *)mpu4_vid_vidram, &mpu4_vid_char_16x8_layout);
-			decodechar(machine->gfx[mpu4_gfx_index+3], i, (UINT8 *)mpu4_vid_vidram, &mpu4_vid_char_16x16_layout);
+			decodechar(machine->gfx[mpu4_gfx_index+0], i, (UINT8 *)mpu4_vid_vidram);
+			decodechar(machine->gfx[mpu4_gfx_index+1], i, (UINT8 *)mpu4_vid_vidram);
+			decodechar(machine->gfx[mpu4_gfx_index+2], i, (UINT8 *)mpu4_vid_vidram);
+			decodechar(machine->gfx[mpu4_gfx_index+3], i, (UINT8 *)mpu4_vid_vidram);
 			mpu4_vid_vidram_is_dirty[i]=0;
 		}
 	}
@@ -1463,7 +1465,7 @@ static GFXDECODE_START( dealem )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, dealemcharlayout, 0, 32 )
 GFXDECODE_END
 
-UINT8 *dealem_videoram,*dealem_charram;
+UINT8 *dealem_videoram;
 
 /***************************************************************************
 

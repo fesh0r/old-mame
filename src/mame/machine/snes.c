@@ -12,8 +12,8 @@
 ***************************************************************************/
 #define __MACHINE_SNES_C
 
-#include <math.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/snes.h"
 #include "cpu/g65816/g65816.h"
 #ifdef MESS
@@ -43,6 +43,7 @@ static emu_timer *snes_nmi_timer;
 static emu_timer *snes_hirq_timer;
 static UINT16 hblank_offset;
 static UINT16 snes_htmult;	/* in 512 wide, we run HTOTAL double and halve it on latching */
+static UINT8 has_dsp1;
 
 // full graphic variables
 static UINT16 vram_fgr_high, vram_fgr_increment, vram_fgr_count, vram_fgr_mask, vram_fgr_shift, vram_read_buffer;
@@ -78,7 +79,7 @@ static void snes_latch_counters(void)
 static TIMER_CALLBACK( snes_nmi_tick )
 {
 	// pull NMI
-	cpunum_set_input_line( 0, G65816_LINE_NMI, HOLD_LINE );
+	cpunum_set_input_line(machine, 0, G65816_LINE_NMI, HOLD_LINE );
 
 	// don't happen again
 	timer_adjust(snes_nmi_timer, attotime_never, 0, attotime_never);
@@ -90,7 +91,7 @@ static void snes_hirq_tick(void)
 	// (don't need to switch to the 65816 context, we don't do anything dependant on it)
 	snes_latch_counters();
 	snes_ram[TIMEUP] = 0x80;	/* Indicate that irq occured */
-	cpunum_set_input_line( 0, G65816_LINE_IRQ, HOLD_LINE );
+	cpunum_set_input_line(Machine, 0, G65816_LINE_IRQ, HOLD_LINE );
 
 	// don't happen again
 	timer_adjust(snes_hirq_timer, attotime_never, 0, attotime_never);
@@ -120,7 +121,7 @@ static TIMER_CALLBACK( snes_scanline_tick )
 			snes_ram[TIMEUP] = 0x80;	/* Indicate that irq occured */
 			// IRQ latches the counters, do it now
 			snes_latch_counters();
-			cpunum_set_input_line( 0, G65816_LINE_IRQ, HOLD_LINE );
+			cpunum_set_input_line(machine, 0, G65816_LINE_IRQ, HOLD_LINE );
 		}
 	}
 	/* Horizontal IRQ timer */
@@ -223,7 +224,7 @@ static TIMER_CALLBACK( snes_scanline_tick )
 		snes_ram[STAT77] &= 0x3f;		/* Clear Time Over and Range Over bits */
 		snes_ram[STAT78] ^= 0x80;		/* Toggle field flag */
 
-		cpunum_set_input_line( 0, G65816_LINE_NMI, CLEAR_LINE );
+		cpunum_set_input_line(machine, 0, G65816_LINE_NMI, CLEAR_LINE );
 	}
 
 	cpuintrf_pop_context();
@@ -279,8 +280,8 @@ static void snes_init_ram(void)
 {
 	int i;
 
-	/* Init DSP1 interface */
-	InitDSP1();
+	/* Init DSP1 */
+	DSP1_reset();
 
 	/* Init VRAM */
 	memset( snes_vram, 0, SNES_VRAM_SIZE );
@@ -436,27 +437,45 @@ READ8_HANDLER( snes_r_bank1 )
 	{
 		if ((address >= 0x8000) && (offset >= 0x200000))
 		{
-			return dsp1_read(address);
+			if (address >= 0xc000)
+				return DSP1_getSr();
+			else
+				return DSP1_getDr();
 		}
 	}
 
 	if( address <= 0x1fff )								/* Mirror of Low RAM */
+	{
 		return program_read_byte(0x7e0000 + address );
+	}
 	else if( address >= 0x2000 && address <= 0x5fff )	/* I/O */
+	{
 		return snes_r_io( address );
+	}
 	else if( address >= 0x6000 && address <= 0x7fff )	/* Reserved */
 	{
 		if( snes_cart.mode == SNES_MODE_20 )
-		return 0xff;
-	else
-			return dsp1_read(address);
+		{
+			return 0xff;
+		}
+		else
+		{
+			if (address >= 0x7000)
+				return DSP1_getSr();
+			else
+				return DSP1_getDr();
+		}
 	}
 	else
 	{
 		if( snes_cart.mode == SNES_MODE_20 )
+		{
 			return snes_ram[offset];
+		}
 		else	/* MODE_21 */
+		{
 			return snes_ram[0xc00000 + offset];
+		}
 	}
 
 	return 0xff;
@@ -471,7 +490,10 @@ READ8_HANDLER( snes_r_bank2 )
 	{
 		if (address >= 0x8000)
 		{
-			return dsp1_read(address);
+			if (address >= 0xc000)
+				return DSP1_getSr();
+			else
+				return DSP1_getDr();
 		}
 	}
 
@@ -482,7 +504,9 @@ READ8_HANDLER( snes_r_bank2 )
 	else if( address >= 0x6000 && address <= 0x7fff )
 	{
 		if( snes_cart.mode == SNES_MODE_20 )
+		{
 			return 0xff;						/* Reserved */
+		}
 		else	/* MODE_21 */
 		{
 			int mask;
@@ -533,7 +557,10 @@ READ8_HANDLER( snes_r_bank6 )
 
 	if (address < 0x8000)
 	{
-		return dsp1_read(address);
+		if (address >= 0x4000)
+			return DSP1_getSr();
+		else
+			return DSP1_getDr();
 	}
 
 	return 0xff;
@@ -567,7 +594,7 @@ WRITE8_HANDLER( snes_w_bank1 )
 
 	if ((address >= 0x8000) && (offset >= 0x200000))
 	{
-		dsp1_write(address, data);
+		DSP1_setDr(data);
 		return;
 	}
 
@@ -580,7 +607,7 @@ WRITE8_HANDLER( snes_w_bank1 )
 		logerror( "Attempt to write to reserved address: %X\n", offset );
 	else
 		{
-			dsp1_write(address, data);
+			DSP1_setDr(data);
 			return;
 		}
 	else
@@ -594,7 +621,7 @@ WRITE8_HANDLER( snes_w_bank2 )
 
 	if (address >= 0x8000)
 	{
-		dsp1_write(address, data);
+		DSP1_setDr(data);
 		return;
 	}
 
@@ -629,7 +656,7 @@ WRITE8_HANDLER( snes_w_bank6 )
 
 	if (address < 0x8000)
 	{
-		dsp1_write(address, data);
+		DSP1_setDr(data);
 		return;
 	}
 }
@@ -1425,7 +1452,7 @@ WRITE8_HANDLER( snes_w_io )
 		case MEMSEL:	/* Access cycle designation in memory (2) area */
 			/* FIXME: Need to adjust the speed only during access of banks 0x80+
              * Currently we are just increasing it no matter what */
-//          cpunum_set_clockscale( 0, (data & 0x1) ? 1.335820896 : 1.0 );
+//          cpunum_set_clockscale(Machine, 0, (data & 0x1) ? 1.335820896 : 1.0 );
 #ifdef SNES_DBG_REG_W
 			if( (data & 0x1) != (snes_ram[MEMSEL] & 0x1) )
 				mame_printf_debug( "CPU speed: %f Mhz\n", (data & 0x1) ? 3.58 : 2.68 );

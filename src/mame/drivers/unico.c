@@ -23,6 +23,7 @@ Year + Game         PCB             Notes
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "unico.h"
 #include "sound/2151intf.h"
@@ -715,7 +716,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_RESET( zeropt )
 {
-	machine_reset_unico(machine);
+	MACHINE_RESET_CALL(unico);
 }
 
 static MACHINE_DRIVER_START( zeropnt )

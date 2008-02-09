@@ -48,6 +48,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
 
@@ -67,7 +68,7 @@ static WRITE8_HANDLER( sonson_sh_irqtrigger_w )
 	if (last == 0 && data == 1)
 	{
 		/* setting bit 0 low then high triggers IRQ on the sound CPU */
-		cpunum_set_input_line(1,M6809_FIRQ_LINE,HOLD_LINE);
+		cpunum_set_input_line(Machine, 1,M6809_FIRQ_LINE,HOLD_LINE);
 	}
 
 	last = data;

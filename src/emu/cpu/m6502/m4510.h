@@ -3,7 +3,7 @@
  *   m4510.c
  *   Portable 4510 emulator V1.0beta
  *
- *   Copyright (c) 2000 Peter Trauner, all rights reserved.
+ *   Copyright Peter Trauner, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -39,9 +39,9 @@ enum {
 void m4510_get_info(UINT32 state, cpuinfo *info);
 
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern unsigned m4510_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 #endif
 

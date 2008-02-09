@@ -1,7 +1,7 @@
  /**************************************************************************\
  *                 Texas Instruments TMS32010 DSP Emulator                  *
  *                                                                          *
- *                  Copyright (C) 1999-2002+ Tony La Porta                  *
+ *                  Copyright Tony La Porta                                 *
  *      You are not allowed to distribute this software commercially.       *
  *                      Written for the MAME project.                       *
  *                                                                          *
@@ -17,16 +17,6 @@
 
 #include "cpuintrf.h"
 
-
-
-/**************************************************************************
- *  Internal Clock divisor
- *
- *  External Clock is divided internally by 4, to produce the states
- *  used in carrying out an instruction (machine) cycle.
- */
-
-#define TMS32010_CLOCK_DIVIDER		4
 
 
 /****************************************************************************
@@ -133,7 +123,7 @@ void tms32010_get_info(UINT32 state, cpuinfo *info);
 
 
 
-#ifdef	MAME_DEBUG
+#ifdef	ENABLE_DEBUGGER
 offs_t tms32010_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 

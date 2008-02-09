@@ -5,6 +5,7 @@
 **************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
@@ -170,8 +171,9 @@ static READ16_HANDLER( term2_input_r )
 static WRITE16_HANDLER( term2_sound_w )
 {
 	if (offset == 0)
-		term2_analog_select = (data >> 0x0c) & 0x03;
+		term2_analog_select = (data >> 12) & 3;
 
+	williams_adpcm_reset_w((~data & 0x100) >> 1);
 	williams_adpcm_data_w(data);
 }
 
@@ -294,17 +296,20 @@ static void init_generic(int bpp, int sound, int prot_start, int prot_end)
 
 		case SOUND_CVSD:
 			williams_cvsd_init(0);
-			memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, prot_start, prot_end, 0, 0, MWA8_RAM);
+			memory_install_readwrite8_handler(1, ADDRESS_SPACE_PROGRAM, prot_start, prot_end, 0, 0, MRA8_BANK9, MWA8_BANK9);
+			memory_set_bankptr(9, auto_malloc(0x80));
 			break;
 
 		case SOUND_ADPCM:
 			williams_adpcm_init();
-			memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, prot_start, prot_end, 0, 0, MWA8_RAM);
+			memory_install_readwrite8_handler(1, ADDRESS_SPACE_PROGRAM, prot_start, prot_end, 0, 0, MRA8_BANK9, MWA8_BANK9);
+			memory_set_bankptr(9, auto_malloc(0x80));
 			break;
 
 		case SOUND_NARC:
 			williams_narc_init();
-			memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, prot_start, prot_end, 0, 0, MWA8_RAM);
+			memory_install_readwrite8_handler(1, ADDRESS_SPACE_PROGRAM, prot_start, prot_end, 0, 0, MRA8_BANK9, MWA8_BANK9);
+			memory_set_bankptr(9, auto_malloc(0x80));
 			break;
 
 		case SOUND_YAWDIM:
@@ -328,6 +333,7 @@ DRIVER_INIT( narc )
 	/* common init */
 	init_generic(8, SOUND_NARC, 0xcdff, 0xce29);
 }
+
 
 
 /*************************************
@@ -563,16 +569,18 @@ WRITE16_HANDLER( midyunit_sound_w )
 
 			case SOUND_CVSD_SMALL:
 			case SOUND_CVSD:
+				williams_cvsd_reset_w((~data & 0x100) >> 8);
 				williams_cvsd_data_w((data & 0xff) | ((data & 0x200) >> 1));
 				break;
 
 			case SOUND_ADPCM:
+				williams_adpcm_reset_w((~data & 0x100) >> 8);
 				williams_adpcm_data_w(data);
 				break;
 
 			case SOUND_YAWDIM:
 				soundlatch_w(0, data);
-				cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+				cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 				break;
 		}
 }

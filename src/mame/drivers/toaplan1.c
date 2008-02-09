@@ -59,6 +59,7 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/tms32010/tms32010.h"
 #include "toaplan1.h"
 #include "sound/3812intf.h"
@@ -1569,7 +1570,7 @@ GFXDECODE_END
 
 static void irqhandler(int linestate)
 {
-	cpunum_set_input_line(1,0,linestate);
+	cpunum_set_input_line(Machine, 1,0,linestate);
 }
 
 static const struct YM3812interface ym3812_interface =
@@ -1738,7 +1739,7 @@ static MACHINE_DRIVER_START( demonwld )
 	MDRV_CPU_PROGRAM_MAP(toaplan1_sound_map, 0)
 	MDRV_CPU_IO_MAP(demonwld_sound_io_map, 0)
 
-	MDRV_CPU_ADD(TMS32010,(28000000/2)/TMS32010_CLOCK_DIVIDER)	/* 14MHz CLKin */
+	MDRV_CPU_ADD(TMS32010,28000000/2)	/* 14MHz CLKin */
 	MDRV_CPU_PROGRAM_MAP(DSP_program_map,0)
 	MDRV_CPU_IO_MAP(DSP_io_map,0)
 
@@ -1840,7 +1841,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( vimana )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 10000000)
+	MDRV_CPU_ADD(M68000, XTAL_10MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(vimana_main_map, 0)
 	MDRV_CPU_VBLANK_INT(toaplan1_interrupt,1)
 
@@ -1863,7 +1864,7 @@ static MACHINE_DRIVER_START( vimana )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 28000000/8)
+	MDRV_SOUND_ADD(YM3812, XTAL_28MHz/8) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym3812_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END

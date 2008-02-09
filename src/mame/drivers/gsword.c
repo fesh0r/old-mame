@@ -142,6 +142,7 @@ reg: 0->1 (main->2nd) /     : (1->0) 2nd->main :
 ******************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "machine/tait8741.h"
 #include "sound/ay8910.h"
@@ -274,7 +275,7 @@ static INTERRUPT_GEN( josvolly_snd_interrupt )
 {
 	if(josvolly_nmi_enable)
 	{
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 		josvolly_nmi_enable = 0;
 	}
 }
@@ -284,7 +285,7 @@ static INTERRUPT_GEN( gsword_snd_interrupt )
 {
 	if(gsword_nmi_enable)
 	{
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -358,7 +359,7 @@ static WRITE8_HANDLER( gsword_adpcm_data_w )
 static WRITE8_HANDLER( adpcm_soundcommand_w )
 {
 	soundlatch_w(0,data);
-	cpunum_set_input_line(2, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( cpu1_map, 0 , 8 )
@@ -687,17 +688,17 @@ static const struct MSM5205interface msm5205_interface =
 static MACHINE_DRIVER_START( gsword )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 3000000)
+	MDRV_CPU_ADD(Z80, XTAL_18MHz/6) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu1_map,0)
 	MDRV_CPU_IO_MAP(cpu1_io_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 3000000)
+	MDRV_CPU_ADD(Z80, XTAL_18MHz/6) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
 	MDRV_CPU_IO_MAP(cpu2_io_map,0)
 	MDRV_CPU_VBLANK_INT(gsword_snd_interrupt,4)
 
-	MDRV_CPU_ADD(Z80, 3000000)
+	MDRV_CPU_ADD(Z80, XTAL_18MHz/6) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(cpu3_map,0)
 
@@ -728,14 +729,14 @@ static MACHINE_DRIVER_START( gsword )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD(AY8910, XTAL_18MHz/12) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
 	MDRV_SOUND_ADD(AY8910, 1500000)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(MSM5205, 384000)
+	MDRV_SOUND_ADD(MSM5205, XTAL_400kHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(msm5205_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 MACHINE_DRIVER_END

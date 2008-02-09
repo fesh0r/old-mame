@@ -182,7 +182,7 @@ static int tx0_execute_64kw(int cycles)
 
 	do
 	{
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PC);
 
 
 		if (tx0.ioh && tx0.ios)
@@ -290,7 +290,7 @@ static int tx0_execute_8kw(int cycles)
 
 	do
 	{
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PC);
 
 
 		if (tx0.ioh && tx0.ios)
@@ -432,11 +432,9 @@ static void tx0_set_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_INT_REGISTER + TX0_STOP_CYC1:	tx0.stop_cyc1 = info->i ? 1 : 0;			break;
 	case CPUINFO_INT_REGISTER + TX0_RUN:		tx0.run = info->i ? 1 : 0;					break;
 	case CPUINFO_INT_REGISTER + TX0_RIM:		tx0.rim = info->i ? 1 : 0;					break;
-#if LOG
-	case CPUINFO_INT_REGISTER + TX0_CYCLE:		logerror("tx0_set_reg to cycle counter ignored\n");/* no way!*/ break;
-	case CPUINFO_INT_REGISTER + TX0_IOH:		logerror("tx0_set_reg to ioh flip-flop ignored\n");/* no way!*/ break;
-	case CPUINFO_INT_REGISTER + TX0_IOS:		logerror("tx0_set_reg to ios flip-flop ignored\n");/* no way!*/ break;
-#endif
+	case CPUINFO_INT_REGISTER + TX0_CYCLE:		if (LOG) logerror("tx0_set_reg to cycle counter ignored\n");/* no way!*/ break;
+	case CPUINFO_INT_REGISTER + TX0_IOH:		if (LOG) logerror("tx0_set_reg to ioh flip-flop ignored\n");/* no way!*/ break;
+	case CPUINFO_INT_REGISTER + TX0_IOS:		if (LOG) logerror("tx0_set_reg to ios flip-flop ignored\n");/* no way!*/ break;
 	case CPUINFO_INT_REGISTER + TX0_RESET:		pulse_reset();							break;
 	case CPUINFO_INT_REGISTER + TX0_IO_COMPLETE:tx0.ios = 1;							break;
 	}
@@ -452,6 +450,7 @@ void tx0_64kw_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_INT_INPUT_LINES:					info->i = 0;							break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 	case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;	/*don't care*/	break;
+	case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 	case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 	case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -518,9 +517,9 @@ void tx0_64kw_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_PTR_EXECUTE:						info->execute = tx0_execute_64kw;		break;
 	case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = tx0_dasm_64kw;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &tx0_ICount;				break;
 
 	/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -580,6 +579,7 @@ void tx0_8kw_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_INT_INPUT_LINES:					info->i = 0;							break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 	case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;	/*don't care*/	break;
+	case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 	case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 	case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -646,9 +646,9 @@ void tx0_8kw_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_PTR_EXECUTE:						info->execute = tx0_execute_8kw;		break;
 	case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = tx0_dasm_8kw;	break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &tx0_ICount;				break;
 
 	/* --- the following bits of info are returned as NULL-terminated strings --- */

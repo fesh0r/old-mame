@@ -5,6 +5,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "atarisy1.h"
 
@@ -64,8 +65,29 @@ static emu_timer *int3off_timer;
 static UINT8 bank_gfx[3][8];
 static UINT8 bank_color_shift[MAX_GFX_ELEMENTS];
 
-/* basic form of a graphics bank */
-static gfx_layout objlayout =
+static const gfx_layout objlayout_4bpp =
+{
+	8,8,	/* 8*8 sprites */
+	4096,	/* 4096 of them */
+	4,		/* 4 bits per pixel */
+	{ 3*8*0x10000, 2*8*0x10000, 1*8*0x10000, 0*8*0x10000 },
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8		/* every sprite takes 8 consecutive bytes */
+};
+
+static const gfx_layout objlayout_5bpp =
+{
+	8,8,	/* 8*8 sprites */
+	4096,	/* 4096 of them */
+	5,		/* 5 bits per pixel */
+	{ 4*8*0x10000, 3*8*0x10000, 2*8*0x10000, 1*8*0x10000, 0*8*0x10000 },
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8		/* every sprite takes 8 consecutive bytes */
+};
+
+static const gfx_layout objlayout_6bpp =
 {
 	8,8,	/* 8*8 sprites */
 	4096,	/* 4096 of them */
@@ -227,7 +249,7 @@ WRITE16_HANDLER( atarisy1_bankselect_w )
 	/* sound CPU reset */
 	if (diff & 0x0080)
 	{
-		cpunum_set_input_line(1, INPUT_LINE_RESET, (newselect & 0x0080) ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (newselect & 0x0080) ? CLEAR_LINE : ASSERT_LINE);
 		if (!(newselect & 0x0080)) atarigen_sound_reset();
 	}
 
@@ -394,7 +416,7 @@ static TIMER_CALLBACK( int3_callback )
 	int scanline = param;
 
 	/* update the state */
-	atarigen_scanline_int_gen();
+	atarigen_scanline_int_gen(machine, 0);
 
 	/* set a timer to turn it off */
 	timer_adjust(int3off_timer, video_screen_get_scan_period(0), 0, attotime_zero);
@@ -607,7 +629,7 @@ static void decode_gfx(running_machine *machine, UINT16 *pflookup, UINT16 *moloo
 
 static int get_bank(running_machine *machine, UINT8 prom1, UINT8 prom2, int bpp)
 {
-	int bank_index, i, gfx_index;
+	int bank_index, gfx_index;
 
 	/* determine the bank index */
 	if ((prom1 & PROM1_BANK_1) == 0)
@@ -644,13 +666,24 @@ static int get_bank(running_machine *machine, UINT8 prom1, UINT8 prom2, int bpp)
 			break;
 	assert(gfx_index != MAX_GFX_ELEMENTS);
 
-	/* tweak the structure for the number of bitplanes we have */
-	objlayout.planes = bpp;
-	for (i = 0; i < bpp; i++)
-		objlayout.planeoffset[i] = (bpp - i - 1) * 0x10000 * 8;
-
 	/* decode the graphics */
-	machine->gfx[gfx_index] = allocgfx(&objlayout);
+	switch (bpp)
+	{
+	case 4:
+		machine->gfx[gfx_index] = allocgfx(&objlayout_4bpp);
+		break;
+
+	case 5:
+		machine->gfx[gfx_index] = allocgfx(&objlayout_5bpp);
+		break;
+
+	case 6:
+		machine->gfx[gfx_index] = allocgfx(&objlayout_6bpp);
+		break;
+
+	default:
+		fatalerror("Unsupported bpp");
+	}
 	decodegfx(machine->gfx[gfx_index], &memory_region(REGION_GFX2)[0x80000 * (bank_index - 1)], 0, machine->gfx[gfx_index]->total_elements);
 
 	/* set the color information */

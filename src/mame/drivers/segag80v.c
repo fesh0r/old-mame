@@ -133,6 +133,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/samples.h"
 #include "audio/segasnd.h"
@@ -182,7 +183,7 @@ static void service_switch(void *param, UINT32 oldval, UINT32 newval)
 {
 	/* pressing the service switch sends an NMI */
 	if (newval)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -314,7 +315,7 @@ static READ8_HANDLER( spinner_input_r )
  *
  *************************************/
 
-static UINT32 elim4_joint_coin_r(void *param)
+static CUSTOM_INPUT( elim4_joint_coin_r )
 {
 	return (readinputportbytag("COINS") & 0xf) != 0xf;
 }

@@ -4,7 +4,7 @@
 #
 #   Rules for building CPU cores
 #
-#   Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+#   Copyright Nicola Salmoria and the MAME Team.
 #   Visit http://mamedev.org for licensing and usage restrictions.
 #
 ###########################################################################
@@ -531,6 +531,8 @@ CPUDEFS += -DHAS_I8035=$(if $(filter I8035,$(CPUS)),1,0)
 CPUDEFS += -DHAS_I8039=$(if $(filter I8039,$(CPUS)),1,0)
 CPUDEFS += -DHAS_I8048=$(if $(filter I8048,$(CPUS)),1,0)
 CPUDEFS += -DHAS_N7751=$(if $(filter N7751,$(CPUS)),1,0)
+CPUDEFS += -DHAS_MB8884=$(if $(filter MB8884,$(CPUS)),1,0)
+CPUDEFS += -DHAS_M58715=$(if $(filter M58715,$(CPUS)),1,0)
 
 ifneq ($(filter I8035 I8039 I8048 N7751,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/i8039
@@ -764,8 +766,9 @@ $(CPUOBJ)/pic16c5x/pic16c5x.o:	$(CPUSRC)/pic16c5x/pic16c5x.c \
 #-------------------------------------------------
 
 CPUDEFS += -DHAS_R3000=$(if $(filter R3000,$(CPUS)),1,0)
+CPUDEFS += -DHAS_R3041=$(if $(filter R3041,$(CPUS)),1,0)
 
-ifneq ($(filter R3000,$(CPUS)),)
+ifneq ($(filter R3000 R3041,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/mips
 CPUOBJS += $(CPUOBJ)/mips/r3000.o
 DBGOBJS += $(CPUOBJ)/mips/r3kdasm.o
@@ -1016,6 +1019,7 @@ OBJDIRS += $(CPUOBJ)/m68000
 CPUOBJS += $(CPUOBJ)/m68000/m68kcpu.o $(CPUOBJ)/m68000/m68kmame.o $(CPUOBJ)/m68000/m68kops.o
 DBGOBJS += $(CPUOBJ)/m68000/m68kdasm.o
 endif
+M68KMAKE = $(CPUOBJ)/m68000/m68kmake$(EXE)
 
 # when we compile source files we need to include generated files from the OBJ directory
 $(CPUOBJ)/m68000/%.o: $(CPUSRC)/m68000/%.c
@@ -1028,14 +1032,16 @@ $(CPUOBJ)/m68000/%.o: $(CPUOBJ)/m68000/%.c
 	$(CC) $(CDEFS) $(CFLAGS) -I$(CPUSRC)/m68000 -c $< -o $@
 
 # rule to generate the C files
-$(CPUOBJ)/m68000/m68kops.c: $(CPUOBJ)/m68000/m68kmake$(EXE) $(CPUSRC)/m68000/m68k_in.c
+$(CPUOBJ)/m68000/m68kops.c: $(M68KMAKE) $(CPUSRC)/m68000/m68k_in.c
 	@echo Generating M68K source files...
-	$(CPUOBJ)/m68000/m68kmake$(EXE) $(CPUOBJ)/m68000 $(CPUSRC)/m68000/m68k_in.c
+	$(M68KMAKE) $(CPUOBJ)/m68000 $(CPUSRC)/m68000/m68k_in.c
 
 # rule to build the generator
-$(CPUOBJ)/m68000/m68kmake$(EXE): $(CPUOBJ)/m68000/m68kmake.o $(LIBOCORE)
+ifneq ($(CROSS_BUILD),1)
+$(M68KMAKE): $(CPUOBJ)/m68000/m68kmake.o $(LIBOCORE)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+endif
 
 # rule to ensure we build the header before building the core CPU file
 $(CPUOBJ)/m68000/m68kcpu.o: $(CPUOBJ)/m68000/m68kops.c
@@ -1226,6 +1232,28 @@ $(CPUOBJ)/upd7810/upd7810.o:	$(CPUSRC)/upd7810/upd7810.c \
 								$(CPUSRC)/upd7810/7810tbl.c \
 								$(CPUSRC)/upd7810/7810ops.c \
 								$(CPUSRC)/upd7810/upd7810.h
+
+
+
+#-------------------------------------------------
+# Nintendo Minx
+#-------------------------------------------------
+
+CPUDEFS += -DHAS_MINX=$(if $(filter MINX,$(CPUS)),1,0)
+
+ifneq ($(filter MINX,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/minx
+CPUOBJS += $(CPUOBJ)/minx/minx.o
+DBGOBJS += $(CPUOBJ)/minx/minxd.o
+endif
+
+$(CPUOBJ)/minx/minx.o:		$(CPUSRC)/minx/minx.c \
+							$(CPUSRC)/minx/minx.h \
+							$(CPUSRC)/minx/minxd.c \
+							$(CPUSRC)/minx/minxopce.h \
+							$(CPUSRC)/minx/minxopcf.h \
+							$(CPUSRC)/minx/minxops.h \
+							$(CPUSRC)/minx/minxfunc.h
 
 
 
@@ -1605,6 +1633,25 @@ $(CPUOBJ)/z80/z80.o:	$(CPUSRC)/z80/z80.c \
 
 
 #-------------------------------------------------
+# Game Boy Z-80
+#-------------------------------------------------
+
+CPUDEFS += -DHAS_Z80GB=$(if $(filter Z80GB,$(CPUS)),1,0)
+
+ifneq ($(filter Z80GB,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/z80gb
+CPUOBJS += $(CPUOBJ)/z80gb/z80gb.o
+DBGOBJS += $(CPUOBJ)/z80gb/z80gbd.o
+endif
+
+$(CPUOBJ)/z80gb/z80gb.o:	$(CPUSRC)/z80gb/z80gb.c \
+							$(CPUSRC)/z80gb/z80gb.h \
+							$(CPUSRC)/z80gb/opc_cb.h \
+							$(CPUSRC)/z80gb/opc_main.h
+
+
+
+#-------------------------------------------------
 # Zilog Z180
 #-------------------------------------------------
 
@@ -1648,44 +1695,3 @@ $(CPUOBJ)/z8000/z8000.o:	$(CPUSRC)/z8000/z8000.c \
 							$(CPUSRC)/z8000/z8000dab.h \
 							$(CPUSRC)/z8000/z8000ops.c \
 							$(CPUSRC)/z8000/z8000tbl.c
-
-
-
-#-------------------------------------------------
-# Game Boy Z-80
-#-------------------------------------------------
-
-CPUDEFS += -DHAS_Z80GB=$(if $(filter Z80GB,$(CPUS)),1,0)
-
-ifneq ($(filter Z80GB,$(CPUS)),)
-OBJDIRS += $(CPUOBJ)/z80gb
-CPUOBJS += $(CPUOBJ)/z80gb/z80gb.o
-DBGOBJS += $(CPUOBJ)/z80gb/z80gbd.o
-endif
-
-$(CPUOBJ)/z80gb/z80gb.o:	$(CPUSRC)/z80gb/z80gb.c \
-							$(CPUSRC)/z80gb/z80gb.h \
-							$(CPUSRC)/z80gb/opc_cb.h \
-							$(CPUSRC)/z80gb/opc_main.h
-
-#-------------------------------------------------
-# Nintendo Minx
-#-------------------------------------------------
-
-CPUDEFS += -DHAS_MINX=$(if $(filter MINX,$(CPUS)),1,0)
-
-ifneq ($(filter MINX,$(CPUS)),)
-OBJDIRS += $(CPUOBJ)/minx
-CPUOBJS += $(CPUOBJ)/minx/minx.o
-DBGOBJS += $(CPUOBJ)/minx/minxd.o
-endif
-
-$(CPUOBJ)/minx/minx.o:		$(CPUSRC)/minx/minx.c \
-							$(CPUSRC)/minx/minx.h \
-							$(CPUSRC)/minx/minxd.c \
-							$(CPUSRC)/minx/minxopce.h \
-							$(CPUSRC)/minx/minxopcf.h \
-							$(CPUSRC)/minx/minxops.h \
-							$(CPUSRC)/minx/minxfunc.h
-
-

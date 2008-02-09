@@ -3,7 +3,7 @@
     By R. Belmont.
     Based in part on YMF278B emulator by R. Belmont and O. Galibert.
     12June04 update by Toshiaki Nijiura
-    Copyright (c) 2003 R. Belmont.
+    Copyright R. Belmont.
 
     This software is dual-licensed: it may be used in MAME and properly licensed
     MAME derivatives under the terms of the MAME license.  For use outside of
@@ -158,6 +158,14 @@ static const double DCTime[] =
 	11.41,		9.12,		7.60,		6.51,		5.69,		5.69,		5.69,		5.69
 };
 
+/* Notes about the LFO Frequency Table below;
+
+    There appears to be at least 2 errors in the table from the original manual.
+
+    Both 201 & 202 where listed as 3.74490.  202 has be changed to 3.92000 which is "about right"
+    232 was listed as 13.35547.  We use 14.35547 as it apears to be the correct value
+*/
+
 static const double LFO_frequency_table[256] =
 {
 	0.00066,	0.00068,	0.00070,	0.00073,	0.00075,	0.00078,	0.00081,	0.00084,
@@ -189,7 +197,7 @@ static const double LFO_frequency_table[256] =
 	5.38330,	5.55696,	5.74219,	5.94019,	6.15234,	6.38021,	6.62560,	6.89062,
 	7.17773,	7.48981,	7.83026,	8.20312,	8.61328,	9.06661,	9.57031,	10.13327,
 	10.76660,	11.11391,	11.48438,	11.88039,	12.30469,	12.76042,	13.25120,	13.78125,
-	13.35547,	14.97962,	15.66051,	16.40625,	17.22656,	18.13322,	19.14062,	20.26654,
+	14.35547,	14.97962,	15.66051,	16.40625,	17.22656,	18.13322,	19.14062,	20.26654,
 	21.53320,	22.96875,	24.60938,	26.50240,	28.71094,	31.32102,	34.45312,	38.28125,
 	43.06641,	49.21875,	57.42188,	68.90625,	86.13281,	114.84375,	172.26562,	344.53125
 };
@@ -1828,6 +1836,6 @@ void ymf271_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "Yamaha FM";					break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
 	}
 }

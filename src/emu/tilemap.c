@@ -4,7 +4,7 @@
 
     Generic tilemap management system.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -12,6 +12,7 @@
 #include "driver.h"
 #include "tilemap.h"
 #include "profiler.h"
+#include "deprecat.h"
 
 
 /***************************************************************************
@@ -264,15 +265,18 @@ INLINE tilemap *indexed_tilemap(int index)
 
 void tilemap_init(running_machine *machine)
 {
-	screen_width	= Machine->screen[0].width;
-	screen_height	= Machine->screen[0].height;
+	screen_width	= machine->screen[0].width;
+	screen_height	= machine->screen[0].height;
 
-	tilemap_list	 = NULL;
-	tilemap_tailptr  = &tilemap_list;
-	tilemap_instance = 0;
+	if (screen_width != 0 && screen_height != 0)
+	{
+		tilemap_list	 = NULL;
+		tilemap_tailptr  = &tilemap_list;
+		tilemap_instance = 0;
 
-	priority_bitmap = auto_bitmap_alloc(screen_width, screen_height, BITMAP_FORMAT_INDEXED8);
-	add_exit_callback(machine, tilemap_exit);
+		priority_bitmap = auto_bitmap_alloc(screen_width, screen_height, BITMAP_FORMAT_INDEXED8);
+		add_exit_callback(machine, tilemap_exit);
+	}
 }
 
 
@@ -652,6 +656,34 @@ void tilemap_set_scrolly(tilemap *tmap, int which, int value)
 {
 	if (which < tmap->scrollcols)
 		tmap->colscroll[which] = value;
+}
+
+
+/*-------------------------------------------------
+    tilemap_get_scrollx - return the scroll value
+    for a row unit
+-------------------------------------------------*/
+
+int tilemap_get_scrollx(tilemap *tmap, int which)
+{
+	if (which < tmap->scrollrows)
+		return tmap->rowscroll[which];
+	else
+		return 0;
+}
+
+
+/*-------------------------------------------------
+    tilemap_get_scrolly - return the scroll value
+    for a column unit
+-------------------------------------------------*/
+
+int tilemap_get_scrolly(tilemap *tmap, int which)
+{
+	if (which < tmap->scrollcols)
+		return tmap->colscroll[which];
+	else
+		return 0;
 }
 
 

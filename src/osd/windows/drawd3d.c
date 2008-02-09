@@ -2,7 +2,7 @@
 //
 //  drawd3d.c - Win32 Direct3D implementation
 //
-//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+//  Copyright Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -29,6 +29,7 @@
 #include "render.h"
 #include "rendutil.h"
 #include "options.h"
+#include "deprecat.h"
 
 // MAMEOS headers
 #include "d3dintf.h"
@@ -129,6 +130,7 @@ struct _d3d_info
 	int						adapter;					// ordinal adapter number
 	int						width, height;				// current width, height
 	int						refresh;					// current refresh rate
+	int						create_error_count;			// number of consecutive create errors
 
 	d3d_device *			device;						// pointer to the Direct3DDevice object
 	int						gamma_supported;			// is full screen gamma supported?
@@ -745,9 +747,20 @@ try_again:
 					D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_FPU_PRESERVE, &d3d->presentation, &d3d->device);
 	if (result != D3D_OK)
 	{
+		// if we got a "DEVICELOST" error, it may be transitory; count it and only fail if
+		// we exceed a threshold
+		if (result == D3DERR_DEVICELOST)
+		{
+			d3d->create_error_count++;
+			if (d3d->create_error_count < 10)
+				return 0;
+		}
+
+		//  fatal error if we just can't do it
 		mame_printf_error("Unable to create the Direct3D device (%08X)\n", (UINT32)result);
 		return 1;
 	}
+	d3d->create_error_count = 0;
 	mame_printf_verbose("Direct3D: Device created at %dx%d\n", d3d->width, d3d->height);
 
 	// set the max texture size
@@ -1229,7 +1242,7 @@ static void pick_best_mode(win_window_info *window)
 	INT32 target_width, target_height;
 	d3d_info *d3d = window->drawdata;
 	INT32 minwidth, minheight;
-	float best_score = 0.0;
+	float best_score = 0.0f;
 	int maxmodes;
 	int modenum;
 
@@ -1283,7 +1296,7 @@ static void pick_best_mode(win_window_info *window)
 
 		// if refresh is smaller than we'd like, it only scores up to 0.1
 		if ((double)mode.RefreshRate < target_refresh)
-			refresh_score *= 0.1;
+			refresh_score *= 0.1f;
 
 		// if we're looking for a particular refresh, make sure it matches
 		if (mode.RefreshRate == window->refresh)

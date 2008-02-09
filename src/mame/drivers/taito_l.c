@@ -1,7 +1,7 @@
 /*
   Taito L-System
 
-  Monoprocessor games (1 main z80, no sound z80)
+  Monoprocessor games (1 main TC0090LVC (z80 core), no sound z80)
   - Plotting
   - Puzznic
   - Palamedes
@@ -11,11 +11,11 @@
   - Play Girls 2
   - Cuby Bop
 
-  Dual processor games
+  Dual processor games (1 main TC0090LVC (z80 core), 1 sound z80)
   - Kuri Kinton
   - Evil Stone
 
-  Triple processor games (2 main z80, 1 sound z80)
+  Triple processor games (1 main TC0090LVC (z80 core), 1 slave z80, 1 sound z80)
   - Fighting hawk
   - Raimais
   - Champion Wrestler
@@ -27,8 +27,6 @@ Notes:
   be a prototype. It also doesn't have service mode (or has it disabled).
 
 TODO:
-- slowdowns in fhawk, probably the interrupts have to be generated at a
-  different time.
 - plgirls doesn't work without a kludge because of an interrupt issue. This
   happens because the program enables interrupts before setting IM2, so the
   interrupt vector is interpreted as IM0, which is obviously bogus.
@@ -46,6 +44,7 @@ TODO:
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "audio/taitosnd.h"
 #include "sound/2203intf.h"
@@ -157,10 +156,8 @@ static void machine_init(running_machine *machine)
 
 	for(i=0;i<512;i++)
 	{
-		decodechar(machine->gfx[2], i, taitol_rambanks,
-				   machine->drv->gfxdecodeinfo[2].gfxlayout);
-		decodechar(machine->gfx[2], i+512, taitol_rambanks + 0x4000,
-				   machine->drv->gfxdecodeinfo[2].gfxlayout);
+		decodechar(machine->gfx[2], i, taitol_rambanks);
+		decodechar(machine->gfx[2], i+512, taitol_rambanks + 0x4000);
 	}
 }
 
@@ -276,17 +273,17 @@ static INTERRUPT_GEN( vbl_interrupt )
 	if (cpu_getiloops() == 1 && (irq_enable & 1))
 	{
 		last_irq_level = 0;
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 	else if (cpu_getiloops() == 2 && (irq_enable & 2))
 	{
 		last_irq_level = 1;
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 	else if (cpu_getiloops() == 0 && (irq_enable & 4))
 	{
 		last_irq_level = 2;
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 }
 
@@ -308,7 +305,7 @@ static WRITE8_HANDLER( irq_enable_w )
 
 	// fix Plotting test mode
 	if ((irq_enable & (1 << last_irq_level)) == 0)
-		cpunum_set_input_line(0, 0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 }
 
 static READ8_HANDLER( irq_enable_r )
@@ -1027,7 +1024,7 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER (evilston_snd_w)
 {
 	shared_ram[0x7fe]=data&0x7f;
-	cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 
@@ -2225,7 +2222,7 @@ GFXDECODE_END
 
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( portA_w )
@@ -2286,17 +2283,17 @@ static const struct YM2203interface ym2203_interface_single =
 static MACHINE_DRIVER_START( fhawk )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("cpu1", Z80, 6000000)	/* ? xtal is 13.33056 */
+	MDRV_CPU_ADD_TAG("cpu1", Z80, 13330560/2) 	/* verified freq on pin122 of TC0090LVC cpu */
 	MDRV_CPU_PROGRAM_MAP(fhawk_readmem,fhawk_writemem)
 	MDRV_CPU_VBLANK_INT(vbl_interrupt,3)
 
-	MDRV_CPU_ADD_TAG("sound", Z80, 4000000)	/* ? xtal is 13.33056 */
+	MDRV_CPU_ADD_TAG("sound", Z80, 4000000)	/* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(fhawk_3_readmem,fhawk_3_writemem)
 
-	MDRV_CPU_ADD_TAG("cpu2", Z80, 6000000)	/* ? xtal is 13.33056 */
+	MDRV_CPU_ADD_TAG("cpu2", Z80, 12000000/3) 	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(fhawk_2_readmem,fhawk_2_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT(irq0_line_hold,3) /* fixes slow down problems */
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
@@ -2319,7 +2316,7 @@ static MACHINE_DRIVER_START( fhawk )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("2203", YM2203, 3000000)
+	MDRV_SOUND_ADD_TAG("2203", YM2203, 3000000) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2203_interface_triple)
 	MDRV_SOUND_ROUTE(0, "mono", 0.20)
 	MDRV_SOUND_ROUTE(1, "mono", 0.20)
@@ -2374,7 +2371,7 @@ static MACHINE_DRIVER_START( raimais )
 	MDRV_MACHINE_RESET(raimais)
 
 	/* sound hardware */
-	MDRV_SOUND_REPLACE("2203", YM2610, 8000000)
+	MDRV_SOUND_REPLACE("2203", YM2610, 8000000) /* verified on pcb (8Mhz OSC is also for the 2nd z80) */
 	MDRV_SOUND_CONFIG(ym2610_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 0.25)
 	MDRV_SOUND_ROUTE(1, "mono", 1.0)
@@ -2385,11 +2382,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( kurikint )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 6000000)	/* ? xtal is 13.33056 */
+	MDRV_CPU_ADD(Z80, 13330560/2) 	/* verified freq on pin122 of TC0090LVC cpu */
 	MDRV_CPU_PROGRAM_MAP(kurikint_readmem,kurikint_writemem)
 	MDRV_CPU_VBLANK_INT(vbl_interrupt,3)
 
-	MDRV_CPU_ADD(Z80, 6000000)	/* ? xtal is 13.33056 */
+	MDRV_CPU_ADD( Z80, 12000000/3) 	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(kurikint_2_readmem,kurikint_2_writemem)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
@@ -2414,7 +2411,7 @@ static MACHINE_DRIVER_START( kurikint )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("2203", YM2203, 3000000)
+	MDRV_SOUND_ADD_TAG("2203", YM2203, 3000000) /* verified on pcb */
 	MDRV_SOUND_ROUTE(0, "mono", 0.20)
 	MDRV_SOUND_ROUTE(1, "mono", 0.20)
 	MDRV_SOUND_ROUTE(2, "mono", 0.20)
@@ -2435,7 +2432,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( plotting )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", Z80, 6000000)	/* ? xtal is 13.33056 */
+	MDRV_CPU_ADD_TAG("main", Z80, 13330560/2) 	/* verified freq on pin122 of TC0090LVC cpu */
 	MDRV_CPU_PROGRAM_MAP(plotting_readmem,plotting_writemem)
 	MDRV_CPU_VBLANK_INT(vbl_interrupt,3)
 
@@ -2459,7 +2456,7 @@ static MACHINE_DRIVER_START( plotting )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("2203", YM2203, 3000000)
+	MDRV_SOUND_ADD_TAG("2203", YM2203, 3330000) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2203_interface_single)
 	MDRV_SOUND_ROUTE(0, "mono", 0.20)
 	MDRV_SOUND_ROUTE(1, "mono", 0.20)
@@ -2514,11 +2511,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( evilston )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 6000000)
+	MDRV_CPU_ADD(Z80, 13330560/2) 	/* not verfied */
 	MDRV_CPU_PROGRAM_MAP(evilston_readmem,evilston_writemem)
 	MDRV_CPU_VBLANK_INT(vbl_interrupt,3)
 
-	MDRV_CPU_ADD(Z80, 6000000)
+	MDRV_CPU_ADD(Z80, 12000000/3) 	/* not verified */
 	MDRV_CPU_PROGRAM_MAP(evilston_2_readmem,evilston_2_writemem)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
@@ -2543,7 +2540,7 @@ static MACHINE_DRIVER_START( evilston )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("2203", YM2203, 3000000)
+	MDRV_SOUND_ADD_TAG("2203", YM2203, 12000000/4) /* not verified */
 	MDRV_SOUND_ROUTE(0, "mono", 0.00)
 	MDRV_SOUND_ROUTE(1, "mono", 0.00)
 	MDRV_SOUND_ROUTE(2, "mono", 0.00)

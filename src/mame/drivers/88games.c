@@ -5,6 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/konami/konami.h"
 #include "cpu/z80/z80.h"
 #include "video/konamiic.h"
@@ -28,7 +29,7 @@ VIDEO_UPDATE( 88games );
 static INTERRUPT_GEN( k88games_interrupt )
 {
 	if (K052109_is_IRQ_enabled())
-		irq0_line_hold();
+		irq0_line_hold(machine, cpunum);
 }
 
 static int zoomreadroms;
@@ -67,7 +68,7 @@ static WRITE8_HANDLER( k88games_5f84_w )
 
 static WRITE8_HANDLER( k88games_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(1, 0, HOLD_LINE, 0xff);
+	cpunum_set_input_line_and_vector(Machine, 1, 0, HOLD_LINE, 0xff);
 }
 
 /* handle fake button for speed cheat for players 1 and 2 */

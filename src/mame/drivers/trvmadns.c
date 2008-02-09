@@ -61,6 +61,7 @@ Technology = NMOS
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 static tilemap *bg_tilemap;
@@ -141,7 +142,7 @@ static WRITE8_HANDLER( trvmadns_banking_w )
 static WRITE8_HANDLER( trvmadns_gfxram_w )
 {
 	trvmadns_gfxram[offset] = data;
-	decodechar(Machine->gfx[0], offset/16, trvmadns_gfxram, Machine->drv->gfxdecodeinfo[0].gfxlayout);
+	decodechar(Machine->gfx[0], offset/16, trvmadns_gfxram);
 
 	tilemap_mark_all_tiles_dirty(bg_tilemap);
 }
@@ -184,7 +185,7 @@ static WRITE8_HANDLER( trvmadns_tileram_w )
 	{
 		if(activecpu_get_previouspc()==0x29e9)// || activecpu_get_previouspc()==0x1b3f) //29f5
 		{
-			cpunum_set_input_line(0, 0, HOLD_LINE);
+			cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
 		}
 //      else
 //          printf("%x \n", activecpu_get_previouspc());

@@ -15,6 +15,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/ccpu/ccpu.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/z80ctc.h"
@@ -96,7 +97,7 @@ WRITE8_HANDLER( cinemat_sound_control_w )
 static void generic_init(running_machine *machine, void (*callback)(UINT8, UINT8))
 {
 	/* call the standard init */
-	machine_reset_cinemat(machine);
+	MACHINE_RESET_CALL(cinemat);
 
 	/* set the sound handler */
 	sound_handler = callback;
@@ -976,9 +977,9 @@ static void solarq_sound_w(UINT8 sound_val, UINT8 bits_changed)
         if (sample_playing(2) && cpu_getcurrentframe() > last_frame)
         {
             if (current_volume > target_volume)
-                current_volume -= 0.078;
+                current_volume -= 0.078f;
             if (current_volume < target_volume)
-                current_volume += 0.078;
+                current_volume += 0.078f;
             if (current_volume > 0)
                 sample_set_volume(2, current_volume);
             else
@@ -1487,7 +1488,7 @@ static const struct AY8910interface demon_ay8910_interface_3 =
 
 static void ctc_interrupt(int state)
 {
-	cpunum_set_input_line(1, 0, state);
+	cpunum_set_input_line(Machine, 1, 0, state);
 }
 
 
@@ -1508,7 +1509,7 @@ static MACHINE_RESET( demon_sound )
 	generic_init(machine, demon_sound_w);
 
 	/* initialize the CTC interface */
-	demon_z80ctc_interface.baseclock = machine->drv->cpu[1].clock;
+	demon_z80ctc_interface.baseclock = cpunum_get_clock(1);
 	z80ctc_init(0, &demon_z80ctc_interface);
 
 	/* reset the FIFO */
@@ -1593,7 +1594,7 @@ static WRITE8_HANDLER( qb3_sound_w )
 
 static MACHINE_RESET( qb3_sound )
 {
-	machine_reset_demon_sound(machine);
+	MACHINE_RESET_CALL(demon_sound);
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x04, 0x04, 0, 0, qb3_sound_w);
 
 	/* this patch prevents the sound ROM from eating itself when command $0A is sent */

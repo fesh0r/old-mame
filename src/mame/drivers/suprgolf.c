@@ -15,6 +15,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2203intf.h"
 
 static tilemap *suprgolf_tilemap;
@@ -258,7 +259,7 @@ static WRITE8_HANDLER( suprgolf_writeB )
 
 static void irqhandler(int irq)
 {
-//  cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface ym2203_interface =

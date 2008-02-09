@@ -124,6 +124,7 @@ out:
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/crtc6845.h"
 #include "cpu/tms32010/tms32010.h"
 #include "twincobr.h"
@@ -142,9 +143,11 @@ static WRITE8_HANDLER( wardner_ramrom_bank_sw )
 
 		wardner_membank = data;
 
-		if (data) {
+		if (data)
+		{
 			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, MRA8_BANK1);
-			switch (data) {
+			switch (data)
+			{
 				case 2:  bankaddress = 0x10000; break;
 				case 3:  bankaddress = 0x18000; break;
 				case 4:  bankaddress = 0x20000; break;
@@ -156,14 +159,16 @@ static WRITE8_HANDLER( wardner_ramrom_bank_sw )
 			}
 			memory_set_bankptr(1,&RAM[bankaddress]);
 		}
-		else {
-			memory_set_bankptr(1,&RAM[0x0000]);
+		else
+		{
 			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, wardner_sprite_r);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xadff, 0, 0, paletteram_r);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xadff, 0, 0, MRA8_BANK4);
 			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xae00, 0xafff, 0, 0, MRA8_BANK2);
 			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0, MRA8_BANK3);
+			memory_set_bankptr(1, &RAM[0x0000]);
 			memory_set_bankptr(2, rambase_ae00);
 			memory_set_bankptr(3, rambase_c000);
+			memory_set_bankptr(4, paletteram);
 		}
 	}
 }
@@ -441,7 +446,7 @@ static const gfx_layout spritelayout =
 /* handler called by the 3812 emulator when the internal timers cause an IRQ */
 static void irqhandler(int linestate)
 {
-	cpunum_set_input_line(1,0,linestate);
+	cpunum_set_input_line(Machine, 1,0,linestate);
 }
 
 static const struct YM3812interface ym3812_interface =
@@ -470,7 +475,7 @@ static MACHINE_DRIVER_START( wardner )
 	MDRV_CPU_PROGRAM_MAP(sound_program_map, 0)
 	MDRV_CPU_IO_MAP(sound_io_map, 0)
 
-	MDRV_CPU_ADD(TMS32010,14000000/TMS32010_CLOCK_DIVIDER)	/* 14MHz Crystal CLKin */
+	MDRV_CPU_ADD(TMS32010,14000000)	/* 14MHz Crystal CLKin */
 	MDRV_CPU_PROGRAM_MAP(DSP_program_map, 0)
 	/* Data Map is internal to the CPU */
 	MDRV_CPU_IO_MAP(DSP_io_map, 0)

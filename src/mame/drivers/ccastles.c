@@ -120,6 +120,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/pokey.h"
 #include "ccastles.h"
 
@@ -173,7 +174,7 @@ static TIMER_CALLBACK( clock_irq )
 	/* assert the IRQ if not already asserted */
 	if (!irq_state)
 	{
-		cpunum_set_input_line(0, 0, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 		irq_state = 1;
 	}
 
@@ -185,7 +186,7 @@ static TIMER_CALLBACK( clock_irq )
 }
 
 
-static UINT32 get_vblank(void *param)
+static CUSTOM_INPUT( get_vblank )
 {
 	int scanline = video_screen_get_vpos(0);
 	return syncprom[scanline & 0xff] & 1;
@@ -248,7 +249,7 @@ static MACHINE_START( ccastles )
 
 static MACHINE_RESET( ccastles )
 {
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	irq_state = 0;
 }
 
@@ -264,7 +265,7 @@ static WRITE8_HANDLER( irq_ack_w )
 {
 	if (irq_state)
 	{
-		cpunum_set_input_line(0, 0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 		irq_state = 0;
 	}
 }

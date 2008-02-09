@@ -104,6 +104,7 @@ Main board:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/6522via.h"
 #include "sound/ay8910.h"
@@ -486,9 +487,9 @@ static MACHINE_RESET( bmcbowl )
 static INTERRUPT_GEN( bmc_interrupt )
 {
 	if (cpu_getiloops())
-		cpunum_set_input_line(0, 4, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 	else
-		cpunum_set_input_line(0, 2, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( bmcbowl )

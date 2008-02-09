@@ -5,6 +5,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/tms32010/tms32010.h"
 #include "sound/dac.h"
 #include "machine/atarigen.h"
@@ -39,7 +40,7 @@ static UINT8 *rombase;
 static UINT32 romsize;
 static UINT16 *comram;
 
-static UINT32 last_bio_cycles;
+static UINT64 last_bio_cycles;
 
 
 
@@ -65,7 +66,7 @@ void hdsnd_init(void)
  *
  *************************************/
 
-static void update_68k_interrupts(void)
+static void update_68k_interrupts(running_machine *machine)
 {
 	int irqline = 0;
 
@@ -73,9 +74,9 @@ static void update_68k_interrupts(void)
 	if (irq68k) irqline = 3;
 
 	if (irqline)
-		cpunum_set_input_line(hdcpu_sound, irqline, ASSERT_LINE);
+		cpunum_set_input_line(machine, hdcpu_sound, irqline, ASSERT_LINE);
 	else
-		cpunum_set_input_line(hdcpu_sound, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, hdcpu_sound, 7, CLEAR_LINE);
 }
 
 
@@ -104,7 +105,7 @@ static TIMER_CALLBACK( delayed_68k_w )
 {
 	maindata = param;
 	mainflag = 1;
-	update_68k_interrupts();
+	update_68k_interrupts(machine);
 }
 
 
@@ -117,10 +118,10 @@ WRITE16_HANDLER( hd68k_snd_data_w )
 
 WRITE16_HANDLER( hd68k_snd_reset_w )
 {
-	cpunum_set_input_line(hdcpu_sound, INPUT_LINE_RESET, ASSERT_LINE);
-	cpunum_set_input_line(hdcpu_sound, INPUT_LINE_RESET, CLEAR_LINE);
+	cpunum_set_input_line(Machine, hdcpu_sound, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(Machine, hdcpu_sound, INPUT_LINE_RESET, CLEAR_LINE);
 	mainflag = soundflag = 0;
-	update_68k_interrupts();
+	update_68k_interrupts(Machine);
 	logerror("%06X:Reset sound\n", activecpu_get_previouspc());
 }
 
@@ -135,7 +136,7 @@ WRITE16_HANDLER( hd68k_snd_reset_w )
 READ16_HANDLER( hdsnd68k_data_r )
 {
 	mainflag = 0;
-	update_68k_interrupts();
+	update_68k_interrupts(Machine);
 	logerror("%06X:sound read from main=%04X\n", activecpu_get_previouspc(), maindata);
 	return maindata;
 }
@@ -221,7 +222,7 @@ WRITE16_HANDLER( hdsnd68k_latches_w )
 		case 4:	/* RES320 */
 			logerror("%06X:RES320=%d\n", activecpu_get_previouspc(), data);
 			if (hdcpu_sounddsp != -1)
-				cpunum_set_input_line(hdcpu_sounddsp, INPUT_LINE_HALT, data ? CLEAR_LINE : ASSERT_LINE);
+				cpunum_set_input_line(Machine, hdcpu_sounddsp, INPUT_LINE_HALT, data ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 7:	/* LED */
@@ -239,7 +240,7 @@ WRITE16_HANDLER( hdsnd68k_speech_w )
 WRITE16_HANDLER( hdsnd68k_irqclr_w )
 {
 	irq68k = 0;
-	update_68k_interrupts();
+	update_68k_interrupts(Machine);
 }
 
 
@@ -308,7 +309,7 @@ WRITE16_HANDLER( hdsnd68k_320com_w )
 
 READ16_HANDLER( hdsnddsp_get_bio )
 {
-	UINT32 cycles_since_last_bio = activecpu_gettotalcycles() - last_bio_cycles;
+	UINT64 cycles_since_last_bio = activecpu_gettotalcycles() - last_bio_cycles;
 	INT32 cycles_until_bio = CYCLES_PER_BIO - cycles_since_last_bio;
 
 	/* if we're not at the next BIO yet, advance us there */
@@ -357,7 +358,7 @@ WRITE16_HANDLER( hdsnddsp_gen68kirq_w )
 {
 	/* generate 68k IRQ */
 	irq68k = 1;
-	update_68k_interrupts();
+	update_68k_interrupts(Machine);
 }
 
 

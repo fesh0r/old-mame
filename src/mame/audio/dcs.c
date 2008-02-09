@@ -150,19 +150,18 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/adsp2100/adsp2100.h"
 #include "dcs.h"
 #include "sound/dmadac.h"
 #include "machine/midwayic.h"
-
-#include <math.h>
 
 
 #define LOG_DCS_TRANSFERS			(0)
 #define LOG_DCS_IO					(0)
 #define LOG_BUFFER_FILLING			(0)
 
-#define HLE_TRANSFERS				(1)
+#define ENABLE_HLE_TRANSFERS		(1)
 
 
 
@@ -292,9 +291,9 @@ struct _dcs_state
 	UINT8		channels;
 	UINT16		size;
 	UINT16		incs;
-	emu_timer *reg_timer;
-	emu_timer *sport_timer;
-	emu_timer *internal_timer;
+	emu_timer *	reg_timer;
+	emu_timer *	sport_timer;
+	emu_timer *	internal_timer;
 	INT32		ireg;
 	UINT16		ireg_base;
 	UINT16		control_regs[32];
@@ -312,7 +311,7 @@ struct _dcs_state
 	UINT16		input_data;
 	UINT16		output_data;
 	UINT16		output_control;
-	UINT32		output_control_cycles;
+	UINT64		output_control_cycles;
 	UINT8		last_output_full;
 	UINT8		last_input_empty;
 	void		(*output_full_cb)(int);
@@ -334,6 +333,7 @@ struct _dcs_state
 typedef struct _hle_transfer_state hle_transfer_state;
 struct _hle_transfer_state
 {
+	UINT8		hle_enabled;
 	INT32		dcs_state;
 	INT32		state;
 	INT32		start;
@@ -343,7 +343,7 @@ struct _hle_transfer_state
 	INT32		writes_left;
 	UINT16		sum;
 	INT32		fifo_entries;
-	emu_timer *watchdog;
+	emu_timer *	watchdog;
 };
 
 
@@ -477,13 +477,18 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static ADDRESS_MAP_START( dcs2_program_map, ADDRESS_SPACE_PROGRAM, 32 )
+static ADDRESS_MAP_START( dcs2_2115_program_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM	AM_BASE(&dcs_internal_program_ram)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( dcs2_2104_program_map, ADDRESS_SPACE_PROGRAM, 32 )
+	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	AM_RANGE(0x0000, 0x01ff) AM_RAM	AM_BASE(&dcs_internal_program_ram)
+ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( dcs2_data_map, ADDRESS_SPACE_DATA, 16 )
+
+static ADDRESS_MAP_START( dcs2_2115_data_map, ADDRESS_SPACE_DATA, 16 )
 	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
 	AM_RANGE(0x0400, 0x0400) AM_READWRITE(input_latch_r, input_latch_ack_w)
 	AM_RANGE(0x0401, 0x0401) AM_WRITE(output_latch_w)
@@ -492,6 +497,18 @@ static ADDRESS_MAP_START( dcs2_data_map, ADDRESS_SPACE_DATA, 16 )
 	AM_RANGE(0x0404, 0x0407) AM_READ(fifo_input_r)
 	AM_RANGE(0x0480, 0x0483) AM_READWRITE(sdrc_r, sdrc_w)
 	AM_RANGE(0x3800, 0x39ff) AM_RAM
+	AM_RANGE(0x3fe0, 0x3fff) AM_READWRITE(adsp_control_r, adsp_control_w)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( dcs2_2104_data_map, ADDRESS_SPACE_DATA, 16 )
+	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	AM_RANGE(0x0400, 0x0400) AM_READWRITE(input_latch_r, input_latch_ack_w)
+	AM_RANGE(0x0401, 0x0401) AM_WRITE(output_latch_w)
+	AM_RANGE(0x0402, 0x0402) AM_READWRITE(output_control_r, output_control_w)
+	AM_RANGE(0x0403, 0x0403) AM_READ(latch_status_r)
+	AM_RANGE(0x0404, 0x0407) AM_READ(fifo_input_r)
+	AM_RANGE(0x0480, 0x0483) AM_READWRITE(sdrc_r, sdrc_w)
+	AM_RANGE(0x3800, 0x38ff) AM_RAM
 	AM_RANGE(0x3fe0, 0x3fff) AM_READWRITE(adsp_control_r, adsp_control_w)
 ADDRESS_MAP_END
 
@@ -569,7 +586,7 @@ ADDRESS_MAP_END
 
 /* Basic DCS system with ADSP-2105 and 2k of SRAM (T-unit, V-unit, Killer Instinct) */
 MACHINE_DRIVER_START( dcs_audio_2k )
-	MDRV_CPU_ADD_TAG("dcs", ADSP2105, 10000000)
+	MDRV_CPU_ADD_TAG("dcs", ADSP2105, XTAL_10MHz)
 	MDRV_CPU_PROGRAM_MAP(dcs_2k_program_map,0)
 	MDRV_CPU_DATA_MAP(dcs_2k_data_map,0)
 
@@ -607,9 +624,9 @@ MACHINE_DRIVER_END
  *************************************/
 
 MACHINE_DRIVER_START( dcs2_audio_2115 )
-	MDRV_CPU_ADD_TAG("dcs2", ADSP2115, 16000000)
-	MDRV_CPU_PROGRAM_MAP(dcs2_program_map,0)
-	MDRV_CPU_DATA_MAP(dcs2_data_map,0)
+	MDRV_CPU_ADD_TAG("dcs2", ADSP2115, XTAL_16MHz)
+	MDRV_CPU_PROGRAM_MAP(dcs2_2115_program_map,0)
+	MDRV_CPU_DATA_MAP(dcs2_2115_data_map,0)
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
@@ -623,7 +640,9 @@ MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( dcs2_audio_2104 )
 	MDRV_IMPORT_FROM(dcs2_audio_2115)
-	MDRV_CPU_REPLACE("dcs2", ADSP2104, 16000000)
+	MDRV_CPU_REPLACE("dcs2", ADSP2104, XTAL_16MHz)
+	MDRV_CPU_PROGRAM_MAP(dcs2_2104_program_map,0)
+	MDRV_CPU_DATA_MAP(dcs2_2104_data_map,0)
 MACHINE_DRIVER_END
 
 
@@ -635,7 +654,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 MACHINE_DRIVER_START( dcs2_audio_dsio )
-	MDRV_CPU_ADD_TAG("dsio", ADSP2181, 32000000)
+	MDRV_CPU_ADD_TAG("dsio", ADSP2181, XTAL_32MHz)
 	MDRV_CPU_PROGRAM_MAP(dsio_program_map,0)
 	MDRV_CPU_DATA_MAP(dsio_data_map,0)
 	MDRV_CPU_IO_MAP(dsio_io_map,0)
@@ -658,7 +677,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 MACHINE_DRIVER_START( dcs2_audio_denver )
-	MDRV_CPU_ADD_TAG("denver", ADSP2181, 33333333)
+	MDRV_CPU_ADD_TAG("denver", ADSP2181, XTAL_33_333MHz)
 	MDRV_CPU_PROGRAM_MAP(denver_program_map,0)
 	MDRV_CPU_DATA_MAP(denver_data_map,0)
 	MDRV_CPU_IO_MAP(denver_io_map,0)
@@ -738,7 +757,7 @@ static void dcs_boot(void)
 		/* rev 3/4: HALT the ADSP-2181 until program is downloaded via IDMA */
 		case 3:
 		case 4:
-			cpunum_set_input_line(dcs.cpunum, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(Machine, dcs.cpunum, INPUT_LINE_HALT, ASSERT_LINE);
 			dsio.start_on_next_write = 0;
 			break;
 	}
@@ -754,6 +773,9 @@ static void dcs_boot(void)
 
 static TIMER_CALLBACK( dcs_reset )
 {
+	if (LOG_DCS_IO)
+		logerror("dcs_reset\n");
+
 	/* reset the memory banking */
 	switch (dcs.rev)
 	{
@@ -792,9 +814,9 @@ static TIMER_CALLBACK( dcs_reset )
 	memset(dcs.control_regs, 0, sizeof(dcs.control_regs));
 
 	/* clear all interrupts */
-	cpunum_set_input_line(dcs.cpunum, ADSP2105_IRQ0, CLEAR_LINE);
-	cpunum_set_input_line(dcs.cpunum, ADSP2105_IRQ1, CLEAR_LINE);
-	cpunum_set_input_line(dcs.cpunum, ADSP2105_IRQ2, CLEAR_LINE);
+	cpunum_set_input_line(machine, dcs.cpunum, ADSP2105_IRQ0, CLEAR_LINE);
+	cpunum_set_input_line(machine, dcs.cpunum, ADSP2105_IRQ1, CLEAR_LINE);
+	cpunum_set_input_line(machine, dcs.cpunum, ADSP2105_IRQ2, CLEAR_LINE);
 
 	/* initialize the comm bits */
 	SET_INPUT_EMPTY();
@@ -871,13 +893,16 @@ static void dcs_register_state(void)
 	state_save_register_global(transfer.writes_left);
 	state_save_register_global(transfer.sum);
 	state_save_register_global(transfer.fifo_entries);
+
+	if (dcs_sram != NULL)
+		state_save_register_global_pointer(dcs_sram, 0x8000*4 / sizeof(dcs_sram[0]));
 }
 
 
 void dcs_init(void)
 {
-	dcs_register_state();
 	memset(&dcs, 0, sizeof(dcs));
+	dcs_sram = NULL;
 
 	/* find the DCS CPU and the sound ROMs */
 	dcs.cpunum = mame_find_cpu_index(Machine, "dcs");
@@ -897,6 +922,9 @@ void dcs_init(void)
 	/* non-RAM based automatically acks */
 	dcs.auto_ack = TRUE;
 
+	/* register for save states */
+	dcs_register_state();
+
 	/* reset the system */
 	dcs_reset(Machine, NULL, 0);
 }
@@ -904,7 +932,6 @@ void dcs_init(void)
 
 void dcs2_init(int dram_in_mb, offs_t polling_offset)
 {
-	dcs_register_state();
 	memset(&dcs, 0, sizeof(dcs));
 
 	/* find the DCS CPU and the sound ROMs */
@@ -954,8 +981,12 @@ void dcs2_init(int dram_in_mb, offs_t polling_offset)
 		dcs_polling_base = memory_install_read16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, polling_offset, polling_offset, 0, 0, dcs_polling_r);
 
 	/* allocate a watchdog timer for HLE transfers */
-	if (HLE_TRANSFERS)
+	transfer.hle_enabled = (ENABLE_HLE_TRANSFERS && dram_in_mb != 0);
+	if (transfer.hle_enabled)
 		transfer.watchdog = timer_alloc(transfer_watchdog_callback, NULL);
+
+	/* register for save states */
+	dcs_register_state();
 
 	/* reset the system */
 	dcs_reset(Machine, NULL, 0);
@@ -1396,7 +1427,7 @@ WRITE32_HANDLER( dsio_idma_data_w )
 	if (dsio.start_on_next_write && --dsio.start_on_next_write == 0)
 	{
 		logerror("Starting DSIO CPU\n");
-		cpunum_set_input_line(dcs.cpunum, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line(Machine, dcs.cpunum, INPUT_LINE_HALT, CLEAR_LINE);
 	}
 }
 
@@ -1435,7 +1466,7 @@ void dcs_set_fifo_callbacks(UINT16 (*fifo_data_r)(void), UINT16 (*fifo_status_r)
 int dcs_control_r(void)
 {
 	/* only boost for DCS2 boards */
-	if (!dcs.auto_ack && !HLE_TRANSFERS)
+	if (!dcs.auto_ack && !transfer.hle_enabled)
 		cpu_boost_interleave(ATTOTIME_IN_NSEC(500), ATTOTIME_IN_USEC(5));
 	return dcs.latch_control;
 }
@@ -1450,12 +1481,12 @@ void dcs_reset_w(int state)
 
 		/* just run through the init code again */
 		timer_call_after_resynch(NULL, 0, dcs_reset);
-		cpunum_set_input_line(dcs.cpunum, INPUT_LINE_RESET, ASSERT_LINE);
+		cpunum_set_input_line(Machine, dcs.cpunum, INPUT_LINE_RESET, ASSERT_LINE);
 	}
 
 	/* going low resets and reactivates the CPU */
 	else
-		cpunum_set_input_line(dcs.cpunum, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(Machine, dcs.cpunum, INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 
@@ -1466,9 +1497,9 @@ static READ16_HANDLER( latch_status_r )
 		result |= 0x80;
 	if (IS_OUTPUT_EMPTY())
 		result |= 0x40;
-	if (dcs.fifo_status_r && (!HLE_TRANSFERS || transfer.state == 0))
+	if (dcs.fifo_status_r != NULL && (!transfer.hle_enabled || transfer.state == 0))
 		result |= (*dcs.fifo_status_r)() & 0x38;
-	if (HLE_TRANSFERS && transfer.state != 0)
+	if (transfer.hle_enabled && transfer.state != 0)
 		result |= 0x08;
 	return result;
 }
@@ -1488,7 +1519,7 @@ static READ16_HANDLER( fifo_input_r )
     INPUT LATCH (data from host to DCS)
 ****************************************************************************/
 
-static void dcs_delayed_data_w(int data)
+static void dcs_delayed_data_w(running_machine *machine, int data)
 {
 	if (LOG_DCS_IO)
 		logerror("%08X:dcs_data_w(%04X)\n", activecpu_get_pc(), data);
@@ -1497,7 +1528,7 @@ static void dcs_delayed_data_w(int data)
 	cpu_boost_interleave(ATTOTIME_IN_NSEC(500), ATTOTIME_IN_USEC(5));
 
 	/* set the IRQ line on the ADSP */
-	cpunum_set_input_line(dcs.cpunum, ADSP2105_IRQ2, ASSERT_LINE);
+	cpunum_set_input_line(machine, dcs.cpunum, ADSP2105_IRQ2, ASSERT_LINE);
 
 	/* indicate we are no longer empty */
 	if (dcs.last_input_empty && dcs.input_empty_cb)
@@ -1511,7 +1542,7 @@ static void dcs_delayed_data_w(int data)
 
 static TIMER_CALLBACK( dcs_delayed_data_w_callback )
 {
-	dcs_delayed_data_w(param);
+	dcs_delayed_data_w(machine, param);
 }
 
 
@@ -1525,7 +1556,7 @@ void dcs_data_w(int data)
 	if (!dcs.sport_timer)
 		timer_call_after_resynch(NULL, data, dcs_delayed_data_w_callback);
 	else
-	 	dcs_delayed_data_w(data);
+	 	dcs_delayed_data_w(Machine, data);
 }
 
 
@@ -1534,7 +1565,7 @@ static WRITE16_HANDLER( input_latch_ack_w )
 	if (!dcs.last_input_empty && dcs.input_empty_cb)
 		(*dcs.input_empty_cb)(dcs.last_input_empty = 1);
 	SET_INPUT_EMPTY();
-	cpunum_set_input_line(dcs.cpunum, ADSP2105_IRQ2, CLEAR_LINE);
+	cpunum_set_input_line(Machine, dcs.cpunum, ADSP2105_IRQ2, CLEAR_LINE);
 }
 
 
@@ -1655,7 +1686,7 @@ static void update_timer_count(void)
 		return;
 
 	/* count cycles */
-	elapsed_cycles = cpunum_gettotalcycles64(dcs.cpunum) - dcs.timer_start_cycles;
+	elapsed_cycles = cpunum_gettotalcycles(dcs.cpunum) - dcs.timer_start_cycles;
 	elapsed_clocks = elapsed_cycles / dcs.timer_scale;
 
 	/* if we haven't counted past the initial count yet, just do that */
@@ -1681,12 +1712,12 @@ static TIMER_CALLBACK( internal_timer_callback )
 	/* we do this to avoid drifting */
 	dcs.timers_fired++;
 	target_cycles = dcs.timer_start_cycles + dcs.timer_scale * (dcs.timer_start_count + 1 + dcs.timers_fired * (dcs.timer_period + 1));
-	target_cycles -= cpunum_gettotalcycles64(dcs.cpunum);
+	target_cycles -= cpunum_gettotalcycles(dcs.cpunum);
 
 	/* set the next timer, but only if it's for a reasonable number */
 	if (!dcs.timer_ignore && (dcs.timer_period > 10 || dcs.timer_scale > 1))
 		timer_adjust(dcs.internal_timer, ATTOTIME_IN_CYCLES(target_cycles, dcs.cpunum), 0, attotime_zero);
-	cpunum_set_input_line(dcs.cpunum, ADSP2105_TIMER, PULSE_LINE);
+	cpunum_set_input_line(machine, dcs.cpunum, ADSP2105_TIMER, PULSE_LINE);
 }
 
 
@@ -1697,7 +1728,7 @@ static void reset_timer(void)
 		return;
 
 	/* compute the time until the first firing */
-	dcs.timer_start_cycles = cpunum_gettotalcycles64(dcs.cpunum);
+	dcs.timer_start_cycles = cpunum_gettotalcycles(dcs.cpunum);
 	dcs.timers_fired = 0;
 
 	/* if this is the first timer, check the IRQ routine for the DRAM refresh stub */
@@ -1805,7 +1836,8 @@ static WRITE16_HANDLER( adsp_control_w )
 			/* bit 9 forces a reset */
 			if (data & 0x0200)
 			{
-				cpunum_set_input_line(dcs.cpunum, INPUT_LINE_RESET, PULSE_LINE);
+				logerror("%04X:Rebooting DCS due to SYSCONTROL write\n", activecpu_get_pc());
+				cpunum_set_input_line(Machine, dcs.cpunum, INPUT_LINE_RESET, PULSE_LINE);
 				dcs_boot();
 				dcs.control_regs[SYSCONTROL_REG] = 0;
 			}
@@ -1899,7 +1931,7 @@ static TIMER_CALLBACK( dcs_irq )
 		reg = dcs.ireg_base;
 
 		/* generate the (internal, thats why the pulse) irq */
-		cpunum_set_input_line(dcs.cpunum, ADSP2105_IRQ1, PULSE_LINE);
+		cpunum_set_input_line(machine, dcs.cpunum, ADSP2105_IRQ1, PULSE_LINE);
 	}
 
 	/* store it */
@@ -1914,7 +1946,7 @@ static TIMER_CALLBACK( sport0_irq )
 	/* register; if we don't interlock it, we will eventually lose sound (see CarnEvil) */
 	/* so we skip the SPORT interrupt if we read with output_control within the last 5 cycles */
 	if ((cpunum_gettotalcycles(dcs.cpunum) - dcs.output_control_cycles) > 5)
-		cpunum_set_input_line(dcs.cpunum, ADSP2115_SPORT0_RX, PULSE_LINE);
+		cpunum_set_input_line(machine, dcs.cpunum, ADSP2115_SPORT0_RX, PULSE_LINE);
 }
 
 
@@ -1923,7 +1955,7 @@ static void recompute_sample_rate(void)
 	/* calculate how long until we generate an interrupt */
 
 	/* frequency the time per each bit sent */
-	attotime sample_period = attotime_mul(ATTOTIME_IN_HZ(Machine->drv->cpu[dcs.cpunum].clock), 2 * (dcs.control_regs[S1_SCLKDIV_REG] + 1));
+	attotime sample_period = attotime_mul(ATTOTIME_IN_HZ(cpunum_get_clock(dcs.cpunum)), 2 * (dcs.control_regs[S1_SCLKDIV_REG] + 1));
 
 	/* now put it down to samples, so we know what the channel frequency has to be */
 	sample_period = attotime_mul(sample_period, 16 * dcs.channels);
@@ -2011,7 +2043,7 @@ static READ16_HANDLER( dcs_polling_r )
 void dcs_fifo_notify(int count, int max)
 {
 	/* skip if not in mid-transfer */
-	if (!HLE_TRANSFERS || transfer.state == 0 || !dcs.fifo_data_r)
+	if (!transfer.hle_enabled || transfer.state == 0 || !dcs.fifo_data_r)
 	{
 		transfer.fifo_entries = 0;
 		return;
@@ -2075,22 +2107,26 @@ static int preprocess_stage_1(UINT16 data)
 			/* look for command 0x001a to transfer chunks of data */
 			if (data == 0x001a)
 			{
-				if (LOG_DCS_TRANSFERS) logerror("%08X:DCS Transfer command %04X\n", activecpu_get_pc(), data);
+				if (LOG_DCS_TRANSFERS)
+					logerror("%08X:DCS Transfer command %04X\n", activecpu_get_pc(), data);
 				transfer.state++;
-				if (HLE_TRANSFERS) return 1;
+				if (transfer.hle_enabled)
+					return 1;
 			}
 
 			/* look for command 0x002a to start booting the uploaded program */
 			else if (data == 0x002a)
 			{
-				if (LOG_DCS_TRANSFERS) logerror("%08X:DCS State change %04X\n", activecpu_get_pc(), data);
+				if (LOG_DCS_TRANSFERS)
+					logerror("%08X:DCS State change %04X\n", activecpu_get_pc(), data);
 				transfer.dcs_state = 1;
 			}
 
 			/* anything else is ignored */
 			else
 			{
-				if (LOG_DCS_TRANSFERS) logerror("Command: %04X\n", data);
+				if (LOG_DCS_TRANSFERS)
+					logerror("Command: %04X\n", data);
 			}
 			break;
 
@@ -2098,16 +2134,20 @@ static int preprocess_stage_1(UINT16 data)
 			/* first word is the start address */
 			transfer.start = data;
 			transfer.state++;
-			if (LOG_DCS_TRANSFERS) logerror("Start address = %04X\n", transfer.start);
-			if (HLE_TRANSFERS) return 1;
+			if (LOG_DCS_TRANSFERS)
+				logerror("Start address = %04X\n", transfer.start);
+			if (transfer.hle_enabled)
+				return 1;
 			break;
 
 		case 2:
 			/* second word is the stop address */
 			transfer.stop = data;
 			transfer.state++;
-			if (LOG_DCS_TRANSFERS) logerror("Stop address = %04X\n", transfer.stop);
-			if (HLE_TRANSFERS) return 1;
+			if (LOG_DCS_TRANSFERS)
+				logerror("Stop address = %04X\n", transfer.stop);
+			if (transfer.hle_enabled)
+				return 1;
 			break;
 
 		case 3:
@@ -2128,7 +2168,7 @@ static int preprocess_stage_1(UINT16 data)
 			transfer.sum = 0;
 
 			/* handle the HLE case */
-			if (HLE_TRANSFERS)
+			if (transfer.hle_enabled)
 			{
 				if (transfer.type == 1 && SDRC_SM_BK == 1)
 				{
@@ -2156,7 +2196,7 @@ static int preprocess_stage_1(UINT16 data)
 			}
 
 			/* handle the HLE case */
-			if (HLE_TRANSFERS)
+			if (transfer.hle_enabled)
 			{
 				/* write the new data to memory */
 				cpuintrf_push_context(dcs.cpunum);
@@ -2203,15 +2243,18 @@ static int preprocess_stage_2(UINT16 data)
 			/* look for command 0x55d0 or 0x55d1 to transfer chunks of data */
 			if (data == 0x55d0 || data == 0x55d1)
 			{
-				if (LOG_DCS_TRANSFERS) logerror("%08X:DCS Transfer command %04X\n", activecpu_get_pc(), data);
+				if (LOG_DCS_TRANSFERS)
+					logerror("%08X:DCS Transfer command %04X\n", activecpu_get_pc(), data);
 				transfer.state++;
-				if (HLE_TRANSFERS) return 1;
+				if (transfer.hle_enabled)
+					return 1;
 			}
 
 			/* anything else is ignored */
 			else
 			{
-				if (LOG_DCS_TRANSFERS) logerror("%08X:Command: %04X\n", activecpu_get_pc(), data);
+				if (LOG_DCS_TRANSFERS)
+					logerror("%08X:Command: %04X\n", activecpu_get_pc(), data);
 			}
 			break;
 
@@ -2219,36 +2262,41 @@ static int preprocess_stage_2(UINT16 data)
 			/* first word is the upper bits of the start address */
 			transfer.start = data << 16;
 			transfer.state++;
-			if (HLE_TRANSFERS) return 1;
+			if (transfer.hle_enabled)
+				return 1;
 			break;
 
 		case 2:
 			/* second word is the lower bits of the start address */
 			transfer.start |= data;
 			transfer.state++;
-			if (LOG_DCS_TRANSFERS) logerror("Start address = %08X\n", transfer.start);
-			if (HLE_TRANSFERS) return 1;
+			if (LOG_DCS_TRANSFERS)
+				logerror("Start address = %08X\n", transfer.start);
+			if (transfer.hle_enabled)
+				return 1;
 			break;
 
 		case 3:
 			/* third word is the upper bits of the stop address */
 			transfer.stop = data << 16;
 			transfer.state++;
-			if (HLE_TRANSFERS) return 1;
+			if (transfer.hle_enabled)
+				return 1;
 			break;
 
 		case 4:
 			/* fourth word is the lower bits of the stop address */
 			transfer.stop |= data;
 			transfer.state++;
-			if (LOG_DCS_TRANSFERS) logerror("Stop address = %08X\n", transfer.stop);
+			if (LOG_DCS_TRANSFERS)
+				logerror("Stop address = %08X\n", transfer.stop);
 
 			/* at this point, we can compute how many words to expect for the transfer */
 			transfer.writes_left = transfer.stop - transfer.start + 1;
 
 			/* reset the checksum */
 			transfer.sum = 0;
-			if (HLE_TRANSFERS)
+			if (transfer.hle_enabled)
 			{
 				timer_adjust(transfer.watchdog, ATTOTIME_IN_MSEC(1), transfer.writes_left, attotime_zero);
 				return 1;
@@ -2262,12 +2310,13 @@ static int preprocess_stage_2(UINT16 data)
 			/* if we're out, stop the transfer */
 			if (--transfer.writes_left == 0)
 			{
-				if (LOG_DCS_TRANSFERS) logerror("Transfer done, sum = %04X\n", transfer.sum);
+				if (LOG_DCS_TRANSFERS)
+					logerror("Transfer done, sum = %04X\n", transfer.sum);
 				transfer.state = 0;
 			}
 
 			/* handle the HLE case */
-			if (HLE_TRANSFERS)
+			if (transfer.hle_enabled)
 			{
 				/* write the new data to memory */
 				dcs.sounddata[transfer.start++] = data;

@@ -14,6 +14,7 @@
 ***************************************************************************/
 
 #include "mb86233.h"
+#include "deprecat.h"
 #include "debugger.h"
 
 /***************************************************************************
@@ -906,7 +907,7 @@ static int mb86233_execute(int cycles)
 		UINT32		val;
 		UINT32		opcode;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(GETPC());
 
 		opcode = ROPCODE(GETPC());
 
@@ -1522,7 +1523,7 @@ static int mb86233_execute(int cycles)
     DISASSEMBLY HOOK
 ***************************************************************************/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t mb86233_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	extern UINT32 dasm_mb86233(char *, UINT32);
@@ -1531,7 +1532,7 @@ static offs_t mb86233_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UI
 	op = LITTLE_ENDIANIZE_INT32(op);
 	return dasm_mb86233(buffer, op);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 /***************************************************************************
     Information Setters
@@ -1585,6 +1586,7 @@ void mb86233_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 0;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -1641,9 +1643,9 @@ void mb86233_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = NULL;						break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = mb86233_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = mb86233_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &mb86233_icount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1651,7 +1653,7 @@ void mb86233_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Fujitsu MB86233");		break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright 2007 ElSemi and Ernesto Corvi"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Miguel Angel Horna and Ernesto Corvi"); break;
 
 		case CPUINFO_STR_FLAGS:
     		sprintf(info->s, "%c%c", (GETSR()&SIGN_FLAG) ? 'N' : 'n', (GETSR()&ZERO_FLAG) ? 'Z' : 'z' );

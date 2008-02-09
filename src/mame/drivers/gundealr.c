@@ -47,6 +47,7 @@ Runs in interrupt mode 0, the interrupt vectors are 0xcf (RST 08h) and
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2203intf.h"
 
 
@@ -76,10 +77,10 @@ static INTERRUPT_GEN( yamyam_interrupt )
 			rambase[0x005] = readinputport(3);	/* IN1 */
 			rambase[0x006] = readinputport(2);	/* IN0 */
 		}
-		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0xd7);	/* RST 10h vblank */
+		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xd7);	/* RST 10h vblank */
 	}
 	else if ((cpu_getiloops() & 1) == 1)
-		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0xcf);	/* RST 08h sound (hand tuned) */
+		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xcf);	/* RST 08h sound (hand tuned) */
 }
 
 static WRITE8_HANDLER( yamyam_bankswitch_w )

@@ -182,6 +182,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/tait8741.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
@@ -290,7 +291,7 @@ static WRITE8_HANDLER( gladiator_int_control_w )
 static void gladiator_ym_irq(int irq)
 {
 	/* NMI IRQ is not used by gladiator sound program */
-	cpunum_set_input_line(1, INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*Sound Functions*/
@@ -309,12 +310,12 @@ static WRITE8_HANDLER( glad_adpcm_w )
 static WRITE8_HANDLER( glad_cpu_sound_command_w )
 {
 	soundlatch_w(0,data);
-	cpunum_set_input_line(2, INPUT_LINE_NMI, ASSERT_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 static READ8_HANDLER( glad_cpu_sound_command_r )
 {
-	cpunum_set_input_line(2, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, CLEAR_LINE);
 	return soundlatch_r(0);
 }
 
@@ -328,7 +329,7 @@ static WRITE8_HANDLER( gladiatr_flipscreen_w )
 /* !!!!! patch to IRQ timming for 2nd CPU !!!!! */
 static WRITE8_HANDLER( gladiatr_irq_patch_w )
 {
-	cpunum_set_input_line(1,0,HOLD_LINE);
+	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 }
 #endif
 
@@ -679,17 +680,17 @@ static const struct MSM5205interface msm5205_interface =
 static MACHINE_DRIVER_START( ppking )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 12000000/2) /* 6 MHz */
+	MDRV_CPU_ADD(Z80, XTAL_12MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(ppking_cpu1_map,0)
 	MDRV_CPU_IO_MAP(ppking_cpu1_io,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 12000000/4) /* 3 MHz */
+	MDRV_CPU_ADD(Z80, XTAL_12MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
 	MDRV_CPU_IO_MAP(ppking_cpu2_io,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(M6809, 12000000/16) /* 750 kHz */
+	MDRV_CPU_ADD(M6809, XTAL_12MHz/16) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(ppking_cpu3_map,0)
 
@@ -713,14 +714,14 @@ static MACHINE_DRIVER_START( ppking )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 12000000/8)
+	MDRV_SOUND_ADD(YM2203, XTAL_12MHz/8) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ppking_ym2203_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 0.60)
 	MDRV_SOUND_ROUTE(1, "mono", 0.60)
 	MDRV_SOUND_ROUTE(2, "mono", 0.60)
 	MDRV_SOUND_ROUTE(3, "mono", 0.50)
 
-	MDRV_SOUND_ADD(MSM5205, 12000000/32)
+	MDRV_SOUND_ADD(MSM5205, XTAL_455kHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(msm5205_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 MACHINE_DRIVER_END
@@ -728,16 +729,16 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( gladiatr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 12000000/2) /* 6 MHz */
+	MDRV_CPU_ADD(Z80, XTAL_12MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(gladiatr_cpu1_map,0)
 	MDRV_CPU_IO_MAP(gladiatr_cpu1_io,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 12000000/4) /* 3 MHz */
+	MDRV_CPU_ADD(Z80, XTAL_12MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
 	MDRV_CPU_IO_MAP(gladiatr_cpu2_io,0)
 
-	MDRV_CPU_ADD(M6809, 12000000/16) /* 750 kHz */
+	MDRV_CPU_ADD(M6809, XTAL_12MHz/16) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(gladiatr_cpu3_map,0)
 
@@ -762,14 +763,14 @@ static MACHINE_DRIVER_START( gladiatr )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 12000000/8)
+	MDRV_SOUND_ADD(YM2203, XTAL_12MHz/8) /* verified on pcb */
 	MDRV_SOUND_CONFIG(gladiatr_ym2203_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 0.60)
 	MDRV_SOUND_ROUTE(1, "mono", 0.60)
 	MDRV_SOUND_ROUTE(2, "mono", 0.60)
 	MDRV_SOUND_ROUTE(3, "mono", 0.50)
 
-	MDRV_SOUND_ADD(MSM5205, 12000000/32)
+	MDRV_SOUND_ADD(MSM5205, XTAL_455kHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(msm5205_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 MACHINE_DRIVER_END

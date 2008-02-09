@@ -15,6 +15,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
@@ -35,8 +36,6 @@ READ8_HANDLER( mnchmobl_sprite_attr_r );
 WRITE8_HANDLER( mnchmobl_sprite_attr_w );
 READ8_HANDLER( mnchmobl_sprite_tile_r );
 WRITE8_HANDLER( mnchmobl_sprite_tile_w );
-READ8_HANDLER( mnchmobl_videoram_r );
-WRITE8_HANDLER( mnchmobl_videoram_w );
 VIDEO_UPDATE( mnchmobl );
 
 
@@ -53,19 +52,19 @@ static INTERRUPT_GEN( mnchmobl_interrupt )
 {
 	static int which;
 	which = !which;
-	if( which ) cpunum_set_input_line(0, 0, HOLD_LINE);
-	else if( mnchmobl_nmi_enable ) cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+	if( which ) cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+	else if( mnchmobl_nmi_enable ) cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( mnchmobl_soundlatch_w )
 {
 	soundlatch_w( offset, data );
-	cpunum_set_input_line( 1, 0, HOLD_LINE );
+	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE );
 }
 
 static WRITE8_HANDLER( sound_nmi_ack_w )
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -77,8 +76,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xac00, 0xafff) AM_READ(mnchmobl_sprite_tile_r) /* mirrored */
 	AM_RANGE(0xb000, 0xb3ff) AM_READ(MRA8_RAM)
 	AM_RANGE(0xb400, 0xb7ff) AM_READ(mnchmobl_sprite_attr_r) /* mirrored */
-	AM_RANGE(0xb800, 0xb8ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xb900, 0xb9ff) AM_READ(mnchmobl_videoram_r)	/* mirrored */
+	AM_RANGE(0xb800, 0xb8ff) AM_MIRROR(0x0100) AM_READ(MRA8_RAM)
 	AM_RANGE(0xbe02, 0xbe02) AM_READ(input_port_3_r) /* DSW1 */
 	AM_RANGE(0xbe03, 0xbe03) AM_READ(input_port_4_r) /* DSW2 */
 	AM_RANGE(0xbf01, 0xbf01) AM_READ(input_port_0_r) /* coin, start */
@@ -95,7 +93,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xac00, 0xafff) AM_WRITE(mnchmobl_sprite_tile_w)
 	AM_RANGE(0xb000, 0xb3ff) AM_WRITE(MWA8_RAM) AM_BASE(&mnchmobl_sprite_attr)
 	AM_RANGE(0xb400, 0xb7ff) AM_WRITE(mnchmobl_sprite_attr_w)
-	AM_RANGE(0xb800, 0xb9ff) AM_WRITE(mnchmobl_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xb800, 0xb8ff) AM_MIRROR(0x0100) AM_WRITE(MWA8_RAM) AM_BASE(&videoram)
 	AM_RANGE(0xba00, 0xbbff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xbc00, 0xbc7f) AM_WRITE(MWA8_RAM) AM_BASE(&mnchmobl_status_vram)
 	AM_RANGE(0xbe00, 0xbe00) AM_WRITE(mnchmobl_soundlatch_w)

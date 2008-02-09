@@ -50,6 +50,7 @@ Flying Tiger
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2203intf.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
@@ -899,7 +900,7 @@ GFXDECODE_END
 
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static READ8_HANDLER( unk_r )
@@ -1164,9 +1165,9 @@ MACHINE_DRIVER_END
 static INTERRUPT_GEN( rshark_interrupt )
 {
 	if (cpu_getiloops() == 0)
-		cpunum_set_input_line(0, 5, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
 	else
-		cpunum_set_input_line(0, 6, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( rshark )

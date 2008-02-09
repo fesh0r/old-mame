@@ -37,6 +37,7 @@ Known Issues
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
@@ -159,7 +160,7 @@ static void gijoe_objdma(void)
 static TIMER_CALLBACK( dmaend_callback )
 {
 	if (cur_control2 & 0x0020)
-		cpunum_set_input_line(0, 6, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( gijoe_interrupt )
@@ -177,7 +178,7 @@ static INTERRUPT_GEN( gijoe_interrupt )
 
 	// trigger V-blank interrupt
 	if (cur_control2 & 0x0080)
-		cpunum_set_input_line(0, 5, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
 }
 
 static WRITE16_HANDLER( sound_cmd_w )
@@ -190,7 +191,7 @@ static WRITE16_HANDLER( sound_cmd_w )
 
 static WRITE16_HANDLER( sound_irq_w )
 {
-	cpunum_set_input_line(1, 0, HOLD_LINE);
+	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 }
 
 static READ16_HANDLER( sound_status_r )
@@ -200,7 +201,7 @@ static READ16_HANDLER( sound_status_r )
 
 static void sound_nmi(void)
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_START( gijoe )

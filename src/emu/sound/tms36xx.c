@@ -4,11 +4,7 @@
 
 #define VERBOSE 1
 
-#if VERBOSE
-#define LOG(x) logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 #define VMIN	0x0000
 #define VMAX	0x7fff
@@ -465,7 +461,7 @@ static void tms3617_enable(struct TMS36XX *tms, int enable)
 		if (enable & (1 << i))
 		{
 			bits += 2;	/* each voice has two instances */
-#if VERBOSE
+
 			switch (i)
 			{
 			case 0: LOG((" 16'")); break;
@@ -475,7 +471,6 @@ static void tms3617_enable(struct TMS36XX *tms, int enable)
 			case 4: LOG((" 2 2/3'")); break;
 			case 5: LOG((" 2'")); break;
 			}
-#endif
         }
     }
 	/* set the enable mask and number of active voices */
@@ -559,7 +554,7 @@ void tms36xx_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "TI PSG";						break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
 	}
 }
 

@@ -8,6 +8,7 @@
 *******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/h6280/h6280.h"
 
 static int HuC6270_registers[20];
@@ -313,12 +314,12 @@ static void screenrefresh(running_machine *machine, mame_bitmap *bitmap,const re
 	/* Dynamically decode chars if dirty */
 	for (code = 0x0000;code < 0x1000;code++)
 		if (tile_dirty[code])
-			decodechar(machine->gfx[0],code,HuC6270_vram,machine->drv->gfxdecodeinfo[0].gfxlayout);
+			decodechar(machine->gfx[0],code,HuC6270_vram);
 
 	/* Dynamically decode sprites if dirty */
 	for (code = 0x0000;code < 0x400;code++)
 		if (sprite_dirty[code])
-			decodechar(machine->gfx[1],code,HuC6270_vram,machine->drv->gfxdecodeinfo[1].gfxlayout);
+			decodechar(machine->gfx[1],code,HuC6270_vram);
 
 	/* NB: If first 0x1000 byte is always tilemap, no need to decode the first batch of tiles/sprites */
 
@@ -364,7 +365,7 @@ static void screenrefresh(running_machine *machine, mame_bitmap *bitmap,const re
 	scrollx=-HuC6270_registers[7];
 	scrolly=-HuC6270_registers[8]+clip->min_y-1;
 
-	copyscrollbitmap(bitmap,tile_bitmap,1,&scrollx,1,&scrolly,clip,TRANSPARENCY_NONE,0);
+	copyscrollbitmap(bitmap,tile_bitmap,1,&scrollx,1,&scrolly,clip);
 
 	/* Todo:  Background enable (not used anyway) */
 
@@ -372,7 +373,7 @@ static void screenrefresh(running_machine *machine, mame_bitmap *bitmap,const re
 	if (sb_enable) draw_sprites(machine,bitmap,clip,0);
 
 	/* Render background over sprites */
-	copyscrollbitmap(bitmap,front_bitmap,1,&scrollx,1,&scrolly,clip,TRANSPARENCY_COLOR,256);
+	copyscrollbitmap_trans(bitmap,front_bitmap,1,&scrollx,1,&scrolly,clip,machine->pens[256]);
 
 	/* Render high priority sprites, if enabled */
 	if (sb_enable) draw_sprites(machine,bitmap,clip,1);
@@ -395,7 +396,7 @@ INTERRUPT_GEN( battlera_interrupt )
 	/* If raster interrupt occurs, refresh screen _up_ to this point */
 	if (rcr_enable && (current_scanline+56)==HuC6270_registers[6]) {
 		video_screen_update_partial(0, current_scanline);
-		cpunum_set_input_line(0, 0, HOLD_LINE); /* RCR interrupt */
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE); /* RCR interrupt */
 	}
 
 	/* Start of vblank */
@@ -403,7 +404,7 @@ INTERRUPT_GEN( battlera_interrupt )
 		bldwolf_vblank=1;
 		video_screen_update_partial(0, 240);
 		if (irq_enable)
-			cpunum_set_input_line(0, 0, HOLD_LINE); /* VBL */
+			cpunum_set_input_line(machine, 0, 0, HOLD_LINE); /* VBL */
 	}
 
 	/* End of vblank */

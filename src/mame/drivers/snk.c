@@ -216,6 +216,7 @@ Credits (in alphabetical order)
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "snk.h"
 #include "sound/3812intf.h"
@@ -231,26 +232,26 @@ static int use_input_cp_hack = 0;
 static const UINT32 dial_8_gray[8]   = { 0x0a,0x08,0x0c,0x04,0x05,0x01,0x03,0x0f };
 
 // see IRQ notes in drivers\marvins.c
-static TIMER_CALLBACK( irq_trigger_callback ) { cpunum_set_input_line(param, 0, HOLD_LINE); }
+static TIMER_CALLBACK( irq_trigger_callback ) { cpunum_set_input_line(machine, param, 0, HOLD_LINE); }
 
 INTERRUPT_GEN( snk_irq_AB )
 {
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	timer_set(ATTOTIME_IN_USEC(snk_irq_delay), NULL, 1, irq_trigger_callback);
 }
 
 INTERRUPT_GEN( snk_irq_BA )
 {
-	cpunum_set_input_line(1, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
 	timer_set(ATTOTIME_IN_USEC(snk_irq_delay), NULL, 0, irq_trigger_callback);
 }
 
 // NMI handshakes between CPUs are determined to be much simpler
-READ8_HANDLER ( snk_cpuA_nmi_trigger_r ) { cpunum_set_input_line(0, INPUT_LINE_NMI, ASSERT_LINE); return 0; }
-WRITE8_HANDLER( snk_cpuA_nmi_ack_w ) { cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE); }
+READ8_HANDLER ( snk_cpuA_nmi_trigger_r ) { cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, ASSERT_LINE); return 0; }
+WRITE8_HANDLER( snk_cpuA_nmi_ack_w ) { cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE); }
 
-READ8_HANDLER ( snk_cpuB_nmi_trigger_r ) { cpunum_set_input_line(1, INPUT_LINE_NMI, ASSERT_LINE); return 0; }
-WRITE8_HANDLER( snk_cpuB_nmi_ack_w ) { cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE); }
+READ8_HANDLER ( snk_cpuB_nmi_trigger_r ) { cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, ASSERT_LINE); return 0; }
+WRITE8_HANDLER( snk_cpuB_nmi_ack_w ) { cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE); }
 
 /*********************************************************************/
 
@@ -814,15 +815,15 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( tnk3 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(tnk3_cpuA_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(tnk3_cpuB_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_sound_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
@@ -846,7 +847,7 @@ static MACHINE_DRIVER_START( tnk3 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3526, 4000000)
+	MDRV_SOUND_ADD(YM3526, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym3526_interface_0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -900,15 +901,15 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ikari )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_YM3526_sound_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
@@ -932,11 +933,11 @@ static MACHINE_DRIVER_START( ikari )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3526, 4000000)
+	MDRV_SOUND_ADD(YM3526, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym3526_interface_0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(YM3526, 4000000)
+	MDRV_SOUND_ADD(YM3526, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym3526_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -945,15 +946,15 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( victroad )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
@@ -977,11 +978,11 @@ static MACHINE_DRIVER_START( victroad )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3526, 4000000)
+	MDRV_SOUND_ADD(YM3526, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym3526_interface_0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(Y8950, 4000000)
+	MDRV_SOUND_ADD(Y8950, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_SOUND_CONFIG(y8950_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -990,15 +991,15 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( gwar )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
@@ -1022,11 +1023,11 @@ static MACHINE_DRIVER_START( gwar )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3526, 4000000)
+	MDRV_SOUND_ADD(YM3526, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym3526_interface_0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(Y8950, 4000000)
+	MDRV_SOUND_ADD(Y8950, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_SOUND_CONFIG(y8950_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -1261,15 +1262,15 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( fsoccer )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(Y8950_sound_map, 0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
@@ -1293,7 +1294,7 @@ static MACHINE_DRIVER_START( fsoccer )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(Y8950, 4000000)
+	MDRV_SOUND_ADD(Y8950, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_SOUND_CONFIG(y8950_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END

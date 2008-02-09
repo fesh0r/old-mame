@@ -4,7 +4,7 @@
 
     Generic simple machine functions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -12,8 +12,7 @@
 #include "driver.h"
 #include "config.h"
 #include "generic.h"
-#include <stdarg.h>
-#include <ctype.h>
+#include "deprecat.h"
 
 
 
@@ -73,6 +72,12 @@ void generic_machine_init(running_machine *machine)
 		coinlockedout[counternum] = 0;
 		servicecoinlockedout[counternum] = 0;
 	}
+
+	/* register coin save state */
+	state_save_register_item_array("coin", 0, coin_count);
+	state_save_register_item_array("coin", 0, coinlockedout);
+	state_save_register_item_array("coin", 0, servicecoinlockedout);
+	state_save_register_item_array("coin", 0, lastcoin);
 
 	/* reset NVRAM size and pointers */
 	generic_nvram_size = 0;
@@ -310,7 +315,7 @@ void nvram_save(void)
 
 
 /*-------------------------------------------------
-    nvram_handler_generic_0fill - generic NVRAM
+    NVRAM_HANDLER( generic_0fill ) - generic NVRAM
     with a 0 fill
 -------------------------------------------------*/
 
@@ -326,7 +331,7 @@ NVRAM_HANDLER( generic_0fill )
 
 
 /*-------------------------------------------------
-    nvram_handler_generic_1fill - generic NVRAM
+    NVRAM_HANDLER( generic_1fill ) - generic NVRAM
     with a 1 fill
 -------------------------------------------------*/
 
@@ -342,7 +347,7 @@ NVRAM_HANDLER( generic_1fill )
 
 
 /*-------------------------------------------------
-    nvram_handler_generic_randfill - generic NVRAM
+    NVRAM_HANDLER( generic_randfill ) - generic NVRAM
     with a random fill
 -------------------------------------------------*/
 
@@ -558,9 +563,9 @@ static TIMER_CALLBACK( clear_all_lines )
 	int line;
 
 	/* clear NMI and all inputs */
-	cpunum_set_input_line(cpunum, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(machine, cpunum, INPUT_LINE_NMI, CLEAR_LINE);
 	for (line = 0; line < inputcount; line++)
-		cpunum_set_input_line(cpunum, line, CLEAR_LINE);
+		cpunum_set_input_line(machine, cpunum, line, CLEAR_LINE);
 }
 
 
@@ -618,11 +623,10 @@ READ8_HANDLER( interrupt_enable_r )
     specified state on the active CPU
 -------------------------------------------------*/
 
-INLINE void irqn_line_set(int line, int state)
+INLINE void irqn_line_set(running_machine *machine, int cpunum, int line, int state)
 {
-	int cpunum = cpu_getactivecpu();
 	if (interrupt_enable[cpunum])
-		cpunum_set_input_line(cpunum, line, state);
+		cpunum_set_input_line(machine, cpunum, line, state);
 }
 
 
@@ -630,45 +634,45 @@ INLINE void irqn_line_set(int line, int state)
     NMI callbacks
 -------------------------------------------------*/
 
-INTERRUPT_GEN( nmi_line_pulse )		{ irqn_line_set(INPUT_LINE_NMI, PULSE_LINE); }
-INTERRUPT_GEN( nmi_line_assert )	{ irqn_line_set(INPUT_LINE_NMI, ASSERT_LINE); }
+INTERRUPT_GEN( nmi_line_pulse )		{ irqn_line_set(machine, cpunum, INPUT_LINE_NMI, PULSE_LINE); }
+INTERRUPT_GEN( nmi_line_assert )	{ irqn_line_set(machine, cpunum, INPUT_LINE_NMI, ASSERT_LINE); }
 
 
 /*-------------------------------------------------
     IRQn callbacks
 -------------------------------------------------*/
 
-INTERRUPT_GEN( irq0_line_hold )		{ irqn_line_set(0, HOLD_LINE); }
-INTERRUPT_GEN( irq0_line_pulse )	{ irqn_line_set(0, PULSE_LINE); }
-INTERRUPT_GEN( irq0_line_assert )	{ irqn_line_set(0, ASSERT_LINE); }
+INTERRUPT_GEN( irq0_line_hold )		{ irqn_line_set(machine, cpunum, 0, HOLD_LINE); }
+INTERRUPT_GEN( irq0_line_pulse )	{ irqn_line_set(machine, cpunum, 0, PULSE_LINE); }
+INTERRUPT_GEN( irq0_line_assert )	{ irqn_line_set(machine, cpunum, 0, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq1_line_hold )		{ irqn_line_set(1, HOLD_LINE); }
-INTERRUPT_GEN( irq1_line_pulse )	{ irqn_line_set(1, PULSE_LINE); }
-INTERRUPT_GEN( irq1_line_assert )	{ irqn_line_set(1, ASSERT_LINE); }
+INTERRUPT_GEN( irq1_line_hold )		{ irqn_line_set(machine, cpunum, 1, HOLD_LINE); }
+INTERRUPT_GEN( irq1_line_pulse )	{ irqn_line_set(machine, cpunum, 1, PULSE_LINE); }
+INTERRUPT_GEN( irq1_line_assert )	{ irqn_line_set(machine, cpunum, 1, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq2_line_hold )		{ irqn_line_set(2, HOLD_LINE); }
-INTERRUPT_GEN( irq2_line_pulse )	{ irqn_line_set(2, PULSE_LINE); }
-INTERRUPT_GEN( irq2_line_assert )	{ irqn_line_set(2, ASSERT_LINE); }
+INTERRUPT_GEN( irq2_line_hold )		{ irqn_line_set(machine, cpunum, 2, HOLD_LINE); }
+INTERRUPT_GEN( irq2_line_pulse )	{ irqn_line_set(machine, cpunum, 2, PULSE_LINE); }
+INTERRUPT_GEN( irq2_line_assert )	{ irqn_line_set(machine, cpunum, 2, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq3_line_hold )		{ irqn_line_set(3, HOLD_LINE); }
-INTERRUPT_GEN( irq3_line_pulse )	{ irqn_line_set(3, PULSE_LINE); }
-INTERRUPT_GEN( irq3_line_assert )	{ irqn_line_set(3, ASSERT_LINE); }
+INTERRUPT_GEN( irq3_line_hold )		{ irqn_line_set(machine, cpunum, 3, HOLD_LINE); }
+INTERRUPT_GEN( irq3_line_pulse )	{ irqn_line_set(machine, cpunum, 3, PULSE_LINE); }
+INTERRUPT_GEN( irq3_line_assert )	{ irqn_line_set(machine, cpunum, 3, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq4_line_hold )		{ irqn_line_set(4, HOLD_LINE); }
-INTERRUPT_GEN( irq4_line_pulse )	{ irqn_line_set(4, PULSE_LINE); }
-INTERRUPT_GEN( irq4_line_assert )	{ irqn_line_set(4, ASSERT_LINE); }
+INTERRUPT_GEN( irq4_line_hold )		{ irqn_line_set(machine, cpunum, 4, HOLD_LINE); }
+INTERRUPT_GEN( irq4_line_pulse )	{ irqn_line_set(machine, cpunum, 4, PULSE_LINE); }
+INTERRUPT_GEN( irq4_line_assert )	{ irqn_line_set(machine, cpunum, 4, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq5_line_hold )		{ irqn_line_set(5, HOLD_LINE); }
-INTERRUPT_GEN( irq5_line_pulse )	{ irqn_line_set(5, PULSE_LINE); }
-INTERRUPT_GEN( irq5_line_assert )	{ irqn_line_set(5, ASSERT_LINE); }
+INTERRUPT_GEN( irq5_line_hold )		{ irqn_line_set(machine, cpunum, 5, HOLD_LINE); }
+INTERRUPT_GEN( irq5_line_pulse )	{ irqn_line_set(machine, cpunum, 5, PULSE_LINE); }
+INTERRUPT_GEN( irq5_line_assert )	{ irqn_line_set(machine, cpunum, 5, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq6_line_hold )		{ irqn_line_set(6, HOLD_LINE); }
-INTERRUPT_GEN( irq6_line_pulse )	{ irqn_line_set(6, PULSE_LINE); }
-INTERRUPT_GEN( irq6_line_assert )	{ irqn_line_set(6, ASSERT_LINE); }
+INTERRUPT_GEN( irq6_line_hold )		{ irqn_line_set(machine, cpunum, 6, HOLD_LINE); }
+INTERRUPT_GEN( irq6_line_pulse )	{ irqn_line_set(machine, cpunum, 6, PULSE_LINE); }
+INTERRUPT_GEN( irq6_line_assert )	{ irqn_line_set(machine, cpunum, 6, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq7_line_hold )		{ irqn_line_set(7, HOLD_LINE); }
-INTERRUPT_GEN( irq7_line_pulse )	{ irqn_line_set(7, PULSE_LINE); }
-INTERRUPT_GEN( irq7_line_assert )	{ irqn_line_set(7, ASSERT_LINE); }
+INTERRUPT_GEN( irq7_line_hold )		{ irqn_line_set(machine, cpunum, 7, HOLD_LINE); }
+INTERRUPT_GEN( irq7_line_pulse )	{ irqn_line_set(machine, cpunum, 7, PULSE_LINE); }
+INTERRUPT_GEN( irq7_line_assert )	{ irqn_line_set(machine, cpunum, 7, ASSERT_LINE); }
 
 
 
@@ -680,24 +684,24 @@ INTERRUPT_GEN( irq7_line_assert )	{ irqn_line_set(7, ASSERT_LINE); }
     8-bit reset read/write handlers
 -------------------------------------------------*/
 
-WRITE8_HANDLER( watchdog_reset_w ) { watchdog_reset(); }
-READ8_HANDLER( watchdog_reset_r ) { watchdog_reset(); return 0xff; }
+WRITE8_HANDLER( watchdog_reset_w ) { watchdog_reset(Machine); }
+READ8_HANDLER( watchdog_reset_r ) { watchdog_reset(Machine); return 0xff; }
 
 
 /*-------------------------------------------------
     16-bit reset read/write handlers
 -------------------------------------------------*/
 
-WRITE16_HANDLER( watchdog_reset16_w ) {	watchdog_reset(); }
-READ16_HANDLER( watchdog_reset16_r ) { watchdog_reset(); return 0xffff; }
+WRITE16_HANDLER( watchdog_reset16_w ) {	watchdog_reset(Machine); }
+READ16_HANDLER( watchdog_reset16_r ) { watchdog_reset(Machine); return 0xffff; }
 
 
 /*-------------------------------------------------
     32-bit reset read/write handlers
 -------------------------------------------------*/
 
-WRITE32_HANDLER( watchdog_reset32_w ) {	watchdog_reset(); }
-READ32_HANDLER( watchdog_reset32_r ) { watchdog_reset(); return 0xffffffff; }
+WRITE32_HANDLER( watchdog_reset32_w ) {	watchdog_reset(Machine); }
+READ32_HANDLER( watchdog_reset32_r ) { watchdog_reset(Machine); return 0xffffffff; }
 
 
 

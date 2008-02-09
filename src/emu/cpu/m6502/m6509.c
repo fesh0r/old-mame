@@ -3,7 +3,7 @@
  *   m6509.c
  *   Portable 6509 emulator V1.0beta1
  *
- *   Copyright (c) 2000 Peter Trauner, all rights reserved.
+ *   Copyright Peter Trauner, all rights reserved.
  *   documentation by vice emulator team
  *
  *   - This source code is released as freeware for non-commercial purposes.
@@ -38,6 +38,7 @@ addresses take place.
 */
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "m6509.h"
 
 #include "ops02.h"
@@ -53,11 +54,7 @@ addresses take place.
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 
 typedef struct {
@@ -204,7 +201,7 @@ static int m6509_execute(int cycles)
 		UINT8 op;
 		PPC = PCD;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PCD);
 
 		/* if an irq is pending, take it now */
 		if( m6509.pending_irq )
@@ -327,6 +324,7 @@ void m6509_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 2;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 3;							break;
@@ -371,7 +369,7 @@ void m6509_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = m6509_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = m6509_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m6502_dasm;			break;
 #endif
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &m6502_ICount;			break;
@@ -384,7 +382,7 @@ void m6509_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "MOS Technology 6509"); break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0beta");				break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) 1998 Juergen Buchmueller\nCopyright (c) 2000 Peter Trauner\nall rights reserved."); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Juergen Buchmueller\nCopyright Peter Trauner\nall rights reserved."); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",

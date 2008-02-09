@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/crtc6845.h"
 #include "sound/ay8910.h"
 
@@ -248,8 +249,7 @@ static VIDEO_UPDATE( madalien )
 
 	for (i = 0; i < 256; i++)
 	{
-		decodechar(machine->gfx[0], i, madalien_charram,
-			machine->drv->gfxdecodeinfo[0].gfxlayout);
+		decodechar(machine->gfx[0], i, madalien_charram);
 	}
 
 	tilemap_mark_all_tiles_dirty(tilemap_fg);
@@ -321,8 +321,7 @@ static VIDEO_UPDATE( madalien )
 		}
 	}
 
-	copybitmap(bitmap, tmp_bitmap, flip_screen, flip_screen,
-		0, 0, cliprect, TRANSPARENCY_NONE, 0);
+	copybitmap(bitmap, tmp_bitmap, flip_screen, flip_screen, 0, 0, cliprect);
 
 	return 0;
 }
@@ -330,7 +329,7 @@ static VIDEO_UPDATE( madalien )
 
 static INTERRUPT_GEN( madalien_interrupt )
 {
-	cpunum_set_input_line(0, INPUT_LINE_NMI,
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI,
 		(readinputportbytag("PLAYER2") & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 }
 
@@ -467,7 +466,7 @@ static WRITE8_HANDLER( madalien_output_w )
 
 static WRITE8_HANDLER( madalien_sound_command_w )
 {
-	cpunum_set_input_line(1, 0, ASSERT_LINE);
+	cpunum_set_input_line(Machine, 1, 0, ASSERT_LINE);
 
 	soundlatch_w(offset, data);
 }
@@ -475,7 +474,7 @@ static WRITE8_HANDLER( madalien_sound_command_w )
 
 static READ8_HANDLER(madalien_sound_command_r )
 {
-	cpunum_set_input_line(1, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
 
 	return soundlatch_r(offset);
 }

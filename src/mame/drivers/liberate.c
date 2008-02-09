@@ -88,7 +88,7 @@ static READ8_HANDLER( deco16_io_r )
  *************************************/
 
 static ADDRESS_MAP_START( prosport_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0200, 0x021f) AM_READ(paletteram_r)
+	AM_RANGE(0x0200, 0x021f) AM_READ(MRA8_RAM)
 	AM_RANGE(0x0000, 0x0fff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x1000, 0x2fff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x8000, 0x800f) AM_READ(deco16_io_r)
@@ -433,7 +433,7 @@ static const gfx_layout pro_tiles =
 	16,16,
 	16,
 	2,
-	{ 0, 4, 1024*8, 1024*8+4 },
+	{ 0, 4 },
 	{
  		24,25,26,27, 16,17,18,19, 8,9,10,11, 0,1,2,3
 	},
@@ -499,7 +499,7 @@ static INTERRUPT_GEN( deco16_interrupt )
 	static int latch=0;
 	int p=~readinputport(3);
 	if (p&0x43 && !latch) {
-		cpunum_set_input_line(0,DECO16_IRQ_LINE,ASSERT_LINE);
+		cpunum_set_input_line(machine, 0,DECO16_IRQ_LINE,ASSERT_LINE);
 		latch=1;
 	} else {
 		if (!(p&0x43))
@@ -923,7 +923,7 @@ static DRIVER_INIT( prosport )
 
 static DRIVER_INIT( yellowcb )
 {
-	driver_init_prosport(machine);
+	DRIVER_INIT_CALL(prosport);
 
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, input_port_0_r);
 }

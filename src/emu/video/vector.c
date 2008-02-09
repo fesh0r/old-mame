@@ -3,7 +3,7 @@
  * vector.c
  *
  *
- * Copyright 1997,1998 by the M.A.M.E. Project
+ * Copyright Nicola Salmoria and the MAME Team
  *
  *        anti-alias code by Andrew Caldwell
  *        (still more to add)
@@ -30,8 +30,8 @@
  *
  **************************************************************************** */
 
-#include <math.h>
 #include "rendutil.h"
+#include "deprecat.h"
 #include "vector.h"
 
 

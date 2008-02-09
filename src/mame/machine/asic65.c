@@ -5,10 +5,10 @@
  *************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/atarig42.h"
 #include "cpu/tms32010/tms32010.h"
 #include "asic65.h"
-#include <math.h>
 
 
 #define LOG_ASIC		0
@@ -143,7 +143,7 @@ void asic65_reset(int state)
 {
 	/* rom-based means reset and clear states */
 	if (asic65_type == ASIC65_ROMBASED)
-		cpunum_set_input_line(asic65_cpunum, INPUT_LINE_RESET, state ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(Machine, asic65_cpunum, INPUT_LINE_RESET, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* otherwise, do it manually */
 	else
@@ -179,7 +179,7 @@ static TIMER_CALLBACK( m68k_asic65_deferred_w )
 	asic65_tfull = 1;
 	asic65_cmd = param >> 16;
 	asic65_tdata = param;
-	cpunum_set_input_line(asic65_cpunum, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, asic65_cpunum, 0, ASSERT_LINE);
 }
 
 
@@ -480,7 +480,7 @@ static WRITE16_HANDLER( asic65_68k_w )
 static READ16_HANDLER( asic65_68k_r )
 {
 	asic65_tfull = 0;
-	cpunum_set_input_line(asic65_cpunum, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, asic65_cpunum, 0, CLEAR_LINE);
 	return asic65_tdata;
 }
 
@@ -538,7 +538,7 @@ ADDRESS_MAP_END
 MACHINE_DRIVER_START( asic65 )
 
 	/* ASIC65 */
-	MDRV_CPU_ADD_TAG("asic65", TMS32010, 20000000/TMS32010_CLOCK_DIVIDER)
+	MDRV_CPU_ADD_TAG("asic65", TMS32010, 20000000)
 	MDRV_CPU_PROGRAM_MAP(asic65_program_map,0)
 	MDRV_CPU_IO_MAP(asic65_io_map,0)
 MACHINE_DRIVER_END

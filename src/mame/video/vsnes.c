@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "video/ppu2c0x.h"
 
 /* from machine */
@@ -18,7 +19,7 @@ PALETTE_INIT( vsdual )
 
 static void ppu_irq( int num, int *ppu_regs )
 {
-	cpunum_set_input_line(num, INPUT_LINE_NMI, PULSE_LINE );
+	cpunum_set_input_line(Machine, num, INPUT_LINE_NMI, PULSE_LINE );
 }
 
 /* our ppu interface                                            */

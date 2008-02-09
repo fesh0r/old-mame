@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6522via.h"
 
@@ -9,9 +10,9 @@ INTERRUPT_GEN( beezer_interrupt )
 	scanline = (scanline + 1) % 0x80;
 	via_0_ca2_w (0, scanline & 0x10);
 	if ((scanline & 0x78) == 0x78)
-		cpunum_set_input_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, M6809_FIRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
 VIDEO_UPDATE( beezer )

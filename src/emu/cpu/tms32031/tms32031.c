@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "tms32031.h"
 #include "eminline.h"
 
@@ -95,11 +96,12 @@ typedef struct
 	UINT32			bkmask;
 
 	/* internal stuff */
-	UINT32			ppc;
 	UINT32			op;
+	UINT16			irq_state;
 	UINT8			delayed;
 	UINT8			irq_pending;
 	UINT8			mcu_mode;
+	UINT8			is_32032;
 	UINT8			is_idling;
 	int				interrupt_cycles;
 
@@ -167,7 +169,6 @@ typedef union int_double
 } int_double;
 
 
-#if 0
 static float dsp_to_float(union genreg *fp)
 {
 	int_double id;
@@ -187,7 +188,6 @@ static float dsp_to_float(union genreg *fp)
 	}
 	return id.f[0];
 }
-#endif
 
 
 static double dsp_to_double(union genreg *fp)
@@ -252,6 +252,46 @@ static void double_to_dsp(double val, union genreg *result)
 }
 
 
+float convert_tms3203x_fp_to_float(UINT32 floatdata)
+{
+	union genreg gen;
+
+	SET_MANTISSA(&gen, floatdata << 8);
+	SET_EXPONENT(&gen, (INT32)floatdata >> 24);
+
+	return dsp_to_float(&gen);
+}
+
+
+double convert_tms3203x_fp_to_double(UINT32 floatdata)
+{
+	union genreg gen;
+
+	SET_MANTISSA(&gen, floatdata << 8);
+	SET_EXPONENT(&gen, (INT32)floatdata >> 24);
+
+	return dsp_to_double(&gen);
+}
+
+
+UINT32 convert_float_to_tms3203x_fp(float fval)
+{
+	union genreg gen;
+
+	double_to_dsp(fval, &gen);
+	return (EXPONENT(&gen) << 24) | ((UINT32)MANTISSA(&gen) >> 8);
+}
+
+
+UINT32 convert_double_to_tms3203x_fp(double dval)
+{
+	union genreg gen;
+
+	double_to_dsp(dval, &gen);
+	return (EXPONENT(&gen) << 24) | ((UINT32)MANTISSA(&gen) >> 8);
+}
+
+
 
 /***************************************************************************
     EXECEPTION HANDLING
@@ -274,51 +314,68 @@ INLINE void invalid_instruction(UINT32 op)
 
 static void check_irqs(void)
 {
-	int validints = IREG(TMR_IF) & IREG(TMR_IE) & 0x07ff;
-	if (validints && (IREG(TMR_ST) & GIEFLAG))
-	{
-		int whichtrap = 0;
-		int i;
+	int whichtrap = 0;
+	UINT16 validints;
+	int i;
 
-		for (i = 0; i < 11; i++)
-			if (validints & (1 << i))
-			{
-				whichtrap = i + 1;
-				break;
-			}
+	/* external interrupts are level-sensitive on the '31 and can be
+       configured as such on the '32; in that case, if the external
+       signal is high, we need to update the value in IF accordingly */
+	if (!tms32031.is_32032 || (IREG(TMR_ST) & 0x4000) == 0)
+		IREG(TMR_IF) |= tms32031.irq_state & 0x0f;
 
-		if (whichtrap)
+	/* determine if we have any live interrupts */
+	validints = IREG(TMR_IF) & IREG(TMR_IE) & 0x0fff;
+	if (validints == 0 || (IREG(TMR_ST) & GIEFLAG) == 0)
+		return;
+
+	/* find the lowest signalled value */
+	for (i = 0; i < 12; i++)
+		if (validints & (1 << i))
 		{
-			tms32031.is_idling = 0;
-			if (!tms32031.delayed)
-			{
-				trap(whichtrap);
-
-				/* for internal sources, clear the interrupt when taken */
-				if (whichtrap > 4)
-					IREG(TMR_IF) &= ~(1 << (whichtrap - 1));
-			}
-			else
-				tms32031.irq_pending = 1;
+			whichtrap = i + 1;
+			break;
 		}
+
+	/* no longer idling if we get here */
+	tms32031.is_idling = FALSE;
+	if (!tms32031.delayed)
+	{
+		UINT16 intmask = 1 << (whichtrap - 1);
+
+		/* bit in IF is cleared when interrupt is taken */
+		IREG(TMR_IF) &= ~intmask;
+		trap(whichtrap);
+
+		/* after auto-clearing the interrupt bit, we need to re-trigger
+           level-sensitive interrupts */
+		if (!tms32031.is_32032 || (IREG(TMR_ST) & 0x4000) == 0)
+			IREG(TMR_IF) |= tms32031.irq_state & 0x0f;
 	}
+	else
+		tms32031.irq_pending = TRUE;
 }
 
 
 static void set_irq_line(int irqline, int state)
 {
-	if (irqline < 11)
-	{
-	    /* update the state */
-	    if (state == ASSERT_LINE)
-			IREG(TMR_IF) |= 1 << irqline;
-		else
-			IREG(TMR_IF) &= ~(1 << irqline);
+	UINT16 intmask = 1 << irqline;
 
-		/* check for IRQs */
-	    if (state != CLEAR_LINE)
-	    	check_irqs();
+	/* ignore anything out of range */
+	if (irqline >= 12)
+		return;
+
+	/* update the external state */
+    if (state == ASSERT_LINE)
+    {
+		tms32031.irq_state |= intmask;
+	    IREG(TMR_IF) |= intmask;
 	}
+	else
+		tms32031.irq_state &= ~intmask;
+
+	/* check for IRQs */
+	check_irqs();
 }
 
 
@@ -376,8 +433,8 @@ static void tms32031_init(int index, int clock, const void *_config, int (*irqca
 		state_save_register_generic("tms32031", index, namebuf, tms32031.r[i].i8, UINT8, 8);
 	}
 	state_save_register_item("tms32031", index, tms32031.bkmask);
-	state_save_register_item("tms32031", index, tms32031.ppc);
 	state_save_register_item("tms32031", index, tms32031.op);
+	state_save_register_item("tms32031", index, tms32031.irq_state);
 	state_save_register_item("tms32031", index, tms32031.delayed);
 	state_save_register_item("tms32031", index, tms32031.irq_pending);
 	state_save_register_item("tms32031", index, tms32031.mcu_mode);
@@ -391,14 +448,15 @@ static void tms32031_reset(void)
 	/* if we have a config struct, get the boot ROM address */
 	if (tms32031.bootoffset)
 	{
-		tms32031.mcu_mode = 1;
+		tms32031.mcu_mode = TRUE;
 		tms32031.pc = boot_loader(tms32031.bootoffset);
 	}
 	else
 	{
-		tms32031.mcu_mode = 0;
+		tms32031.mcu_mode = FALSE;
 		tms32031.pc = RMEM(0);
 	}
+	tms32031.is_32032 = FALSE;
 
 	/* reset some registers */
 	IREG(TMR_IE) = 0;
@@ -407,8 +465,14 @@ static void tms32031_reset(void)
 	IREG(TMR_IOF) = 0;
 
 	/* reset internal stuff */
-	tms32031.delayed = tms32031.irq_pending = 0;
-	tms32031.is_idling = 0;
+	tms32031.delayed = tms32031.irq_pending = FALSE;
+	tms32031.is_idling = FALSE;
+}
+
+static void tms32032_reset(void)
+{
+	tms32031_reset();
+	tms32031.is_32032 = TRUE;
 }
 
 
@@ -456,6 +520,10 @@ static int tms32031_execute(int cycles)
 
 	while (tms32031_icount > 0)
 	{
+#ifdef ENABLE_DEBUGGER
+	if (IREG(TMR_SP) & 0xff000000)
+		DEBUGGER_BREAK;
+#endif
 		if ((IREG(TMR_ST) & RMFLAG) && tms32031.pc == IREG(TMR_RE) + 1)
 		{
 			if ((INT32)--IREG(TMR_RC) >= 0)
@@ -465,10 +533,10 @@ static int tms32031_execute(int cycles)
 				IREG(TMR_ST) &= ~RMFLAG;
 				if (tms32031.delayed)
 				{
-					tms32031.delayed = 0;
+					tms32031.delayed = FALSE;
 					if (tms32031.irq_pending)
 					{
-						tms32031.irq_pending = 0;
+						tms32031.irq_pending = FALSE;
 						check_irqs();
 					}
 				}
@@ -491,14 +559,14 @@ static int tms32031_execute(int cycles)
     DISASSEMBLY HOOK
 ***************************************************************************/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t tms32031_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	UINT32 op = oprom[0] | (oprom[1] << 8) | (oprom[2] << 16) | (oprom[3] << 24);
 	extern unsigned dasm_tms32031(char *, unsigned, UINT32);
     return dasm_tms32031(buffer, pc, op);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -593,6 +661,7 @@ static void tms32031_set_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + TMS32031_TINT0:	set_irq_line(TMS32031_TINT0, info->i);	break;
 		case CPUINFO_INT_INPUT_STATE + TMS32031_TINT1:	set_irq_line(TMS32031_TINT1, info->i);	break;
 		case CPUINFO_INT_INPUT_STATE + TMS32031_DINT:	set_irq_line(TMS32031_DINT, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + TMS32031_DINT1:	set_irq_line(TMS32031_DINT1, info->i);	break;
 
 		case CPUINFO_INT_PC:
 		case CPUINFO_INT_REGISTER + TMS32031_PC:		tms32031.pc = info->i; 					break;
@@ -665,6 +734,7 @@ void tms32031_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 11;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -692,8 +762,9 @@ void tms32031_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_STATE + TMS32031_TINT0:	info->i = (IREG(TMR_IF) & (1 << TMS32031_TINT0)) ? ASSERT_LINE : CLEAR_LINE; break;
 		case CPUINFO_INT_INPUT_STATE + TMS32031_TINT1:	info->i = (IREG(TMR_IF) & (1 << TMS32031_TINT1)) ? ASSERT_LINE : CLEAR_LINE; break;
 		case CPUINFO_INT_INPUT_STATE + TMS32031_DINT:	info->i = (IREG(TMR_IF) & (1 << TMS32031_DINT)) ? ASSERT_LINE : CLEAR_LINE; break;
+		case CPUINFO_INT_INPUT_STATE + TMS32031_DINT1:	info->i = (IREG(TMR_IF) & (1 << TMS32031_DINT1)) ? ASSERT_LINE : CLEAR_LINE; break;
 
-		case CPUINFO_INT_PREVIOUSPC:					info->i = tms32031.ppc;					break;
+		case CPUINFO_INT_PREVIOUSPC:					/* not implemented */					break;
 
 		case CPUINFO_INT_PC:
 		case CPUINFO_INT_REGISTER + TMS32031_PC:		info->i = tms32031.pc;					break;
@@ -745,9 +816,9 @@ void tms32031_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = tms32031_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = tms32031_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = tms32031_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &tms32031_icount;		break;
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_internal_32031; break;
 
@@ -756,7 +827,7 @@ void tms32031_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Texas Instruments TMS32031"); break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) Aaron Giles 2002"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Aaron Giles"); break;
 
 		case CPUINFO_STR_FLAGS:
 		{
@@ -819,6 +890,7 @@ void tms32032_get_info(UINT32 state, cpuinfo *info)
 	switch (state)
 	{
 		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case CPUINFO_PTR_RESET:							info->reset = tms32032_reset;			break;
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_internal_32032; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */

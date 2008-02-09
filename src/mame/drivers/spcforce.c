@@ -32,6 +32,7 @@ a000-a3ff   R/W X/Y scroll position of each character (can be scrolled up
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/i8085/i8085.h"
 #include "cpu/i8039/i8039.h"
 #include "sound/sn76496.h"
@@ -74,7 +75,7 @@ static READ8_HANDLER( spcforce_t0_r )
 
 static WRITE8_HANDLER( spcforce_soundtrigger_w )
 {
-	cpunum_set_input_line(1, 0, (~data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 0, (~data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -251,11 +252,12 @@ static PALETTE_INIT( spcforce )
 static MACHINE_DRIVER_START( spcforce )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(8085A, 4000000)        /* 4.00 MHz??? */
+	/* FIXME: The 8085A had a max clock of 6MHz, internally divided by 2! */
+	MDRV_CPU_ADD(8085A, 8000000 * 2)        /* 4.00 MHz??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT(irq3_line_hold,1)
 
-	MDRV_CPU_ADD(I8035,6144000/8)
+	MDRV_CPU_ADD(I8035,6144000)
 	/* audio CPU */		/* divisor ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
@@ -273,7 +275,6 @@ static MACHINE_DRIVER_START( spcforce )
 	MDRV_COLORTABLE_LENGTH(sizeof(colortable_source) / sizeof(colortable_source[0]))
 
 	MDRV_PALETTE_INIT(spcforce)
-	MDRV_VIDEO_START(generic_bitmapped)
 	MDRV_VIDEO_UPDATE(spcforce)
 
 	/* sound hardware */
@@ -365,6 +366,6 @@ ROM_START( meteor )
 ROM_END
 
 
-GAME( 1980, spcforce, 0,        spcforce, spcforce, 0, ROT270, "Venture Line", "Space Force", GAME_IMPERFECT_COLORS )
+GAME( 1980, spcforce, 0,        spcforce, spcforce, 0, ROT270, "Venture Line", "Space Force (set 1)", GAME_IMPERFECT_COLORS )
 GAME( 19??, spcforc2, spcforce, spcforce, spcforc2, 0, ROT270, "Elcon (bootleg?)", "Space Force (set 2)", GAME_IMPERFECT_COLORS )
 GAME( 1981, meteor,   spcforce, spcforce, spcforc2, 0, ROT270, "Venture Line", "Meteoroids", GAME_IMPERFECT_COLORS )

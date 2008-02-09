@@ -80,6 +80,7 @@ Custom: Imagetek 15000 (2ch video & 2ch sound)
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
 
 #define VERBOSE_AUDIO_LOG (0)	// enable to show audio writes (very noisy when music is playing)
@@ -609,7 +610,7 @@ static WRITE32_HANDLER( rabbit_audio_w )
 
 static TIMER_CALLBACK( rabbit_blit_done )
 {
-	cpunum_set_input_line(0, rabbit_bltirqlevel, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, rabbit_bltirqlevel, HOLD_LINE);
 }
 
 static void rabbit_do_blit(void)
@@ -1061,7 +1062,7 @@ static INTERRUPT_GEN( rabbit_interrupts )
 		return;
 	}
 
-	cpunum_set_input_line(0, intlevel, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, intlevel, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( rabbit )
@@ -1189,7 +1190,7 @@ static INTERRUPT_GEN( tmmjprd_interrupt )
 	else
 		intlevel = 3;
 
-	cpunum_set_input_line(0, intlevel, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, intlevel, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( tmmjprd )

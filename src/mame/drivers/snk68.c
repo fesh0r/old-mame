@@ -34,6 +34,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/3812intf.h"
 #include "sound/upd7759.h"
@@ -127,7 +128,7 @@ static WRITE16_HANDLER( protection_w )
 static WRITE16_HANDLER( sound_w )
 {
 	soundlatch_w(0,(data>>8)&0xff);
-	cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 /*******************************************************************************/
@@ -679,7 +680,7 @@ GFXDECODE_END
 
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM3812interface ym3812_interface =
@@ -775,11 +776,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( searchar )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)
+	MDRV_CPU_ADD(M68000, XTAL_18MHz/2) /* verified on pcb  */
 	MDRV_CPU_PROGRAM_MAP(searchar_readmem,searchar_writemem)
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb  */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
@@ -801,7 +802,7 @@ static MACHINE_DRIVER_START( searchar )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 4000000)
+	MDRV_SOUND_ADD(YM3812, XTAL_8MHz/2) /* verified on pcb  */
 	MDRV_SOUND_CONFIG(ym3812_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 

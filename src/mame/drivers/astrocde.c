@@ -101,6 +101,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80daisy.h"
 #include "includes/astrocde.h"
 #include "machine/z80ctc.h"
@@ -244,7 +245,7 @@ static WRITE8_HANDLER( seawolf2_sound_2_w )  // Port 41
  *
  *************************************/
 
-static UINT32 ebases_trackball_r(void *param)
+static CUSTOM_INPUT( ebases_trackball_r )
 {
 	static const char *const names[] = { "TRACKX2", "TRACKY2", "TRACKX1", "TRACKY1" };
 	return readinputportbytag(names[input_select]);
@@ -460,7 +461,7 @@ static READ8_HANDLER( demndrgn_io_r )
 }
 
 
-static UINT32 demndragn_joystick_r(void *param)
+static CUSTOM_INPUT( demndragn_joystick_r )
 {
 	static const char *const names[] = { "MOVEX", "MOVEY" };
 	return readinputportbytag(names[input_select]);
@@ -482,7 +483,7 @@ static WRITE8_HANDLER( demndrgn_sound_w )
 
 static void ctc_interrupt(int state)
 {
-	cpunum_set_input_line(1, 0, state);
+	cpunum_set_input_line(Machine, 1, 0, state);
 }
 
 
@@ -506,16 +507,16 @@ static const struct AY8910interface ay8912_interface =
 static MACHINE_START( tenpindx )
 {
 	/* initialize the CTC */
-	ctc_intf.baseclock = machine->drv->cpu[0].clock;
+	ctc_intf.baseclock = cpunum_get_clock(0);
 	z80ctc_init(0, &ctc_intf);
-	machine_start_astrocde(machine);
+	MACHINE_START_CALL(astrocde);
 }
 
 
 static WRITE8_HANDLER( tenpindx_sound_w )
 {
 	soundlatch_w(offset, data);
-	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 

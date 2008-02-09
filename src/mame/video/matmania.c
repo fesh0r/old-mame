@@ -13,6 +13,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
 
 
@@ -22,7 +23,6 @@ UINT8 *matmania_videoram3,*matmania_colorram3;
 size_t matmania_videoram3_size;
 UINT8 *matmania_scroll;
 static mame_bitmap *tmpbitmap2;
-static UINT8 *dirtybuffer2;
 
 UINT8 *matmania_pageselect;
 
@@ -125,12 +125,6 @@ WRITE8_HANDLER( matmania_paletteram_w )
 ***************************************************************************/
 VIDEO_START( matmania )
 {
-	dirtybuffer = auto_malloc(videoram_size);
-	memset(dirtybuffer,1,videoram_size);
-
-	dirtybuffer2 = auto_malloc(matmania_videoram3_size);
-	memset(dirtybuffer2,1,matmania_videoram3_size);
-
 	/* Mat Mania has a virtual screen twice as large as the visible screen */
 	tmpbitmap = auto_bitmap_alloc(machine->screen[0].width,2* machine->screen[0].height,machine->screen[0].format);
 
@@ -138,29 +132,6 @@ VIDEO_START( matmania )
 	tmpbitmap2 = auto_bitmap_alloc(machine->screen[0].width,2 * machine->screen[0].height,machine->screen[0].format);
 }
 
-
-
-WRITE8_HANDLER( matmania_videoram3_w )
-{
-	if (matmania_videoram3[offset] != data)
-	{
-		dirtybuffer2[offset] = 1;
-
-		matmania_videoram3[offset] = data;
-	}
-}
-
-
-
-WRITE8_HANDLER( matmania_colorram3_w )
-{
-	if (matmania_colorram3[offset] != data)
-	{
-		dirtybuffer2[offset] = 1;
-
-		matmania_colorram3[offset] = data;
-	}
-}
 
 
 VIDEO_UPDATE( matmania )
@@ -171,45 +142,35 @@ VIDEO_UPDATE( matmania )
 	/* Update the tiles in the left tile ram bank */
 	for (offs = videoram_size - 1;offs >= 0;offs--)
 	{
-		if (dirtybuffer[offs])
-		{
-			int sx,sy;
+		int sx,sy;
 
 
-			dirtybuffer[offs] = 0;
+		sx = 15 - offs / 32;
+		sy = offs % 32;
 
-			sx = 15 - offs / 32;
-			sy = offs % 32;
-
-			drawgfx(tmpbitmap,machine->gfx[1],
-					videoram[offs] + ((colorram[offs] & 0x08) << 5),
-					(colorram[offs] & 0x30) >> 4,
-					0,sy >= 16,	/* flip horizontally tiles on the right half of the bitmap */
-					16*sx,16*sy,
-					0,TRANSPARENCY_NONE,0);
-		}
+		drawgfx(tmpbitmap,machine->gfx[1],
+				videoram[offs] + ((colorram[offs] & 0x08) << 5),
+				(colorram[offs] & 0x30) >> 4,
+				0,sy >= 16,	/* flip horizontally tiles on the right half of the bitmap */
+				16*sx,16*sy,
+				0,TRANSPARENCY_NONE,0);
 	}
 
 	/* Update the tiles in the right tile ram bank */
 	for (offs = matmania_videoram3_size - 1;offs >= 0;offs--)
 	{
-		if (dirtybuffer2[offs])
-		{
 			int sx,sy;
 
 
-			dirtybuffer2[offs] = 0;
+		sx = 15 - offs / 32;
+		sy = offs % 32;
 
-			sx = 15 - offs / 32;
-			sy = offs % 32;
-
-			drawgfx(tmpbitmap2,machine->gfx[1],
-					matmania_videoram3[offs] + ((matmania_colorram3[offs] & 0x08) << 5),
-					(matmania_colorram3[offs] & 0x30) >> 4,
-					0,sy >= 16,	/* flip horizontally tiles on the right half of the bitmap */
-					16*sx,16*sy,
-					0,TRANSPARENCY_NONE,0);
-		}
+		drawgfx(tmpbitmap2,machine->gfx[1],
+				matmania_videoram3[offs] + ((matmania_colorram3[offs] & 0x08) << 5),
+				(matmania_colorram3[offs] & 0x30) >> 4,
+				0,sy >= 16,	/* flip horizontally tiles on the right half of the bitmap */
+				16*sx,16*sy,
+				0,TRANSPARENCY_NONE,0);
 	}
 
 
@@ -219,10 +180,10 @@ VIDEO_UPDATE( matmania )
 
 
 		scrolly = -*matmania_scroll;
-		if (*matmania_pageselect)
-			copyscrollbitmap(bitmap,tmpbitmap2,0,0,1,&scrolly,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+		if (matmania_pageselect[0]&0x01) // maniach sets 0x20 sometimes, which must have a different meaning
+			copyscrollbitmap(bitmap,tmpbitmap2,0,0,1,&scrolly,cliprect);
 		else
-			copyscrollbitmap(bitmap,tmpbitmap,0,0,1,&scrolly,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+			copyscrollbitmap(bitmap,tmpbitmap,0,0,1,&scrolly,cliprect);
 	}
 
 
@@ -236,7 +197,7 @@ VIDEO_UPDATE( matmania )
 					(spriteram[offs] & 0x08) >> 3,
 					spriteram[offs] & 0x04,spriteram[offs] & 0x02,
 					239 - spriteram[offs+3],(240 - spriteram[offs+2]) & 0xff,
-					&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+					cliprect,TRANSPARENCY_PEN,0);
 		}
 	}
 
@@ -255,7 +216,7 @@ VIDEO_UPDATE( matmania )
 				(matmania_colorram2[offs] & 0x30) >> 4,
 				0,0,
 				8*sx,8*sy,
-				&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+				cliprect,TRANSPARENCY_PEN,0);
 	}
 	return 0;
 }
@@ -268,45 +229,35 @@ VIDEO_UPDATE( maniach )
 	/* Update the tiles in the left tile ram bank */
 	for (offs = videoram_size - 1;offs >= 0;offs--)
 	{
-		if (dirtybuffer[offs])
-		{
-			int sx,sy;
+		int sx,sy;
 
 
-			dirtybuffer[offs] = 0;
+		sx = 15 - offs / 32;
+		sy = offs % 32;
 
-			sx = 15 - offs / 32;
-			sy = offs % 32;
-
-			drawgfx(tmpbitmap,machine->gfx[1],
-					videoram[offs] + ((colorram[offs] & 0x03) << 8),
-					(colorram[offs] & 0x30) >> 4,
-					0,sy >= 16,	/* flip horizontally tiles on the right half of the bitmap */
-					16*sx,16*sy,
-					0,TRANSPARENCY_NONE,0);
-		}
+		drawgfx(tmpbitmap,machine->gfx[1],
+				videoram[offs] + ((colorram[offs] & 0x03) << 8),
+				(colorram[offs] & 0x30) >> 4,
+				0,sy >= 16,	/* flip horizontally tiles on the right half of the bitmap */
+				16*sx,16*sy,
+				0,TRANSPARENCY_NONE,0);
 	}
 
 	/* Update the tiles in the right tile ram bank */
 	for (offs = matmania_videoram3_size - 1;offs >= 0;offs--)
 	{
-		if (dirtybuffer2[offs])
-		{
-			int sx,sy;
+		int sx,sy;
 
 
-			dirtybuffer2[offs] = 0;
+		sx = 15 - offs / 32;
+		sy = offs % 32;
 
-			sx = 15 - offs / 32;
-			sy = offs % 32;
-
-			drawgfx(tmpbitmap2,machine->gfx[1],
-					matmania_videoram3[offs] + ((matmania_colorram3[offs] & 0x03) << 8),
-					(matmania_colorram3[offs] & 0x30) >> 4,
-					0,sy >= 16,	/* flip horizontally tiles on the right half of the bitmap */
-					16*sx,16*sy,
-					0,TRANSPARENCY_NONE,0);
-		}
+		drawgfx(tmpbitmap2,machine->gfx[1],
+				matmania_videoram3[offs] + ((matmania_colorram3[offs] & 0x03) << 8),
+				(matmania_colorram3[offs] & 0x30) >> 4,
+				0,sy >= 16,	/* flip horizontally tiles on the right half of the bitmap */
+				16*sx,16*sy,
+				0,TRANSPARENCY_NONE,0);
 	}
 
 
@@ -316,10 +267,11 @@ VIDEO_UPDATE( maniach )
 
 
 		scrolly = -*matmania_scroll;
-		if (*matmania_pageselect)
-			copyscrollbitmap(bitmap,tmpbitmap2,0,0,1,&scrolly,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+
+		if (matmania_pageselect[0]&0x01) // this sets 0x20 sometimes, which must have a different meaning
+			copyscrollbitmap(bitmap,tmpbitmap2,0,0,1,&scrolly,cliprect);
 		else
-			copyscrollbitmap(bitmap,tmpbitmap,0,0,1,&scrolly,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+			copyscrollbitmap(bitmap,tmpbitmap,0,0,1,&scrolly,cliprect);
 	}
 
 
@@ -333,7 +285,7 @@ VIDEO_UPDATE( maniach )
 					(spriteram[offs] & 0x08) >> 3,
 					spriteram[offs] & 0x04,spriteram[offs] & 0x02,
 					239 - spriteram[offs+3],(240 - spriteram[offs+2]) & 0xff,
-					&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+					cliprect,TRANSPARENCY_PEN,0);
 		}
 	}
 
@@ -352,7 +304,7 @@ VIDEO_UPDATE( maniach )
 				(matmania_colorram2[offs] & 0x30) >> 4,
 				0,0,
 				8*sx,8*sy,
-				&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+				cliprect,TRANSPARENCY_PEN,0);
 	}
 	return 0;
 }

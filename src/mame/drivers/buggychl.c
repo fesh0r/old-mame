@@ -78,6 +78,7 @@ dcxx = /SPOSI (S36)
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
@@ -85,6 +86,7 @@ dcxx = /SPOSI (S36)
 
 
 /* in machine */
+MACHINE_RESET( buggychl );
 READ8_HANDLER( buggychl_68705_portA_r );
 WRITE8_HANDLER( buggychl_68705_portA_w );
 WRITE8_HANDLER( buggychl_68705_ddrA_w );
@@ -125,7 +127,7 @@ static int sound_nmi_enable,pending_nmi;
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	if (sound_nmi_enable) cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+	if (sound_nmi_enable) cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 	else pending_nmi = 1;
 }
 
@@ -145,7 +147,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{
-		cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+		cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -163,7 +165,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM) /* 6116 SRAM (36) */
 	AM_RANGE(0x8800, 0x8fff) AM_READ(MRA8_RAM) /* 6116 SRAM (35) */
 	AM_RANGE(0xa000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xc800, 0xcfff) AM_READ(videoram_r)
+	AM_RANGE(0xc800, 0xcfff) AM_READ(MRA8_RAM)
 	AM_RANGE(0xd400, 0xd400) AM_READ(buggychl_mcu_r)
 	AM_RANGE(0xd401, 0xd401) AM_READ(buggychl_mcu_status_r)
 	AM_RANGE(0xd600, 0xd600) AM_READ(input_port_0_r)	/* dsw */
@@ -183,7 +185,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8800, 0x8fff) AM_WRITE(MWA8_RAM) /* 6116 SRAM (35) */
 	AM_RANGE(0x9000, 0x9fff) AM_WRITE(buggychl_sprite_lookup_w)
 	AM_RANGE(0xa000, 0xbfff) AM_WRITE(buggychl_chargen_w) AM_BASE(&buggychl_character_ram)
-	AM_RANGE(0xc800, 0xcfff) AM_WRITE(videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xc800, 0xcfff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 //  { 0xd000, 0xd000, horizon
 	AM_RANGE(0xd100, 0xd100) AM_WRITE(buggychl_ctrl_w)
 	AM_RANGE(0xd200, 0xd200) AM_WRITE(bankswitch_w)
@@ -438,7 +440,7 @@ static MACHINE_DRIVER_START( buggychl )
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,60)	/* irq is timed, tied to the cpu clock and not to vblank */
 							/* nmi is caused by the main cpu */
 
-	MDRV_CPU_ADD(M68705,8000000/2/M68705_CLOCK_DIVIDER)  /* 4 MHz */
+	MDRV_CPU_ADD(M68705,8000000/2)  /* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(mcu_readmem,mcu_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -451,6 +453,8 @@ static MACHINE_DRIVER_START( buggychl )
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 	MDRV_GFXDECODE(buggychl)
 	MDRV_PALETTE_LENGTH(128+128)
+
+	MDRV_MACHINE_RESET(buggychl)
 
 	MDRV_PALETTE_INIT(buggychl)
 	MDRV_VIDEO_START(buggychl)

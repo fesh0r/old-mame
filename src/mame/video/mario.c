@@ -7,10 +7,41 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
+#include "video/resnet.h"
 
-static UINT8 gfx_bank, palette_bank;
+#include "includes/mario.h"
 
-static tilemap *bg_tilemap;
+static const res_net_decode_info mario_decode_info =
+{
+	1,		// there may be two proms needed to construct color
+	0,		// start at 0
+	255,	// end at 255
+	//  R,   G,   B
+	{   0,   0,   0},		// offsets
+	{   5,   2,   0},		// shifts
+	{0x07,0x07,0x03}	    // masks
+};
+
+static const res_net_info mario_net_info =
+{
+	RES_NET_VCC_5V | RES_NET_VBIAS_5V | RES_NET_VIN_MB7052 | RES_NET_MONITOR_SANYO_EZV20,
+	{
+		{ RES_NET_AMP_DARLINGTON, 470, 0, 3, { 1000, 470, 220 } },
+		{ RES_NET_AMP_DARLINGTON, 470, 0, 3, { 1000, 470, 220 } },
+		{ RES_NET_AMP_EMITTER,    680, 0, 2, {  470, 220,   0 } }  // dkong
+	}
+};
+
+static const res_net_info mario_net_info_std =
+{
+	RES_NET_VCC_5V | RES_NET_VBIAS_5V | RES_NET_VIN_MB7052,
+	{
+		{ RES_NET_AMP_DARLINGTON, 470, 0, 3, { 1000, 470, 220 } },
+		{ RES_NET_AMP_DARLINGTON, 470, 0, 3, { 1000, 470, 220 } },
+		{ RES_NET_AMP_EMITTER,    680, 0, 2, {  470, 220,   0 } }  // dkong
+	}
+};
 
 /***************************************************************************
 
@@ -34,124 +65,166 @@ static tilemap *bg_tilemap;
 ***************************************************************************/
 PALETTE_INIT( mario )
 {
-	int i;
-	#define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
-	#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
+	rgb_t	*rgb;
 
+	rgb = compute_res_net_all(color_prom, &mario_decode_info, &mario_net_info);
+	palette_set_colors(machine, 0, rgb, 256);
+	free(rgb);
+	rgb = compute_res_net_all(color_prom+256, &mario_decode_info, &mario_net_info_std);
+	palette_set_colors(machine, 256, rgb, 256);
+	free(rgb);
 
-	for (i = 0;i < machine->drv->total_colors;i++)
-	{
-		int bit0,bit1,bit2,r,g,b;
-
-
-		/* red component */
-		bit0 = (*color_prom >> 5) & 1;
-		bit1 = (*color_prom >> 6) & 1;
-		bit2 = (*color_prom >> 7) & 1;
-		r = 255 - (0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2);
-		/* green component */
-		bit0 = (*color_prom >> 2) & 1;
-		bit1 = (*color_prom >> 3) & 1;
-		bit2 = (*color_prom >> 4) & 1;
-		g = 255 - (0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2);
-		/* blue component */
-		bit0 = (*color_prom >> 0) & 1;
-		bit1 = (*color_prom >> 1) & 1;
-		b = 255 - (0x55 * bit0 + 0xaa * bit1);
-
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
-		color_prom++;
-	}
-
-	/* characters use the same palette as sprites, however characters */
-	/* use only colors 64-127 and 192-255. */
-	for (i = 0;i < 8;i++)
-	{
-		COLOR(0,4*i) = 8*i + 64;
-		COLOR(0,4*i+1) = 8*i+1 + 64;
-		COLOR(0,4*i+2) = 8*i+2 + 64;
-		COLOR(0,4*i+3) = 8*i+3 + 64;
-	}
-	for (i = 0;i < 8;i++)
-	{
-		COLOR(0,4*i+8*4) = 8*i + 192;
-		COLOR(0,4*i+8*4+1) = 8*i+1 + 192;
-		COLOR(0,4*i+8*4+2) = 8*i+2 + 192;
-		COLOR(0,4*i+8*4+3) = 8*i+3 + 192;
-	}
-
-	/* sprites */
-	for (i = 0;i < TOTAL_COLORS(1);i++)
-		COLOR(1,i) = i;
+	palette_normalize_range(machine->palette, 0, 255, 0, 255);
+	palette_normalize_range(machine->palette, 256, 511, 0, 255);
 }
 
 WRITE8_HANDLER( mario_videoram_w )
 {
-	videoram[offset] = data;
-	tilemap_mark_tile_dirty(bg_tilemap, offset);
+	mario_state	*state = Machine->driver_data;
+
+	state->videoram[offset] = data;
+	tilemap_mark_tile_dirty(state->bg_tilemap, offset);
 }
 
 WRITE8_HANDLER( mario_gfxbank_w )
 {
-	if (gfx_bank != (data & 0x01))
+	mario_state	*state = Machine->driver_data;
+
+	if (state->gfx_bank != (data & 0x01))
 	{
-		gfx_bank = data & 0x01;
+		state->gfx_bank = data & 0x01;
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
 
 WRITE8_HANDLER( mario_palettebank_w )
 {
-	if (palette_bank != (data & 0x01))
+	mario_state	*state = Machine->driver_data;
+
+	if (state->palette_bank != (data & 0x01))
 	{
-		palette_bank = data & 0x01;
+		state->palette_bank = data & 0x01;
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
 
 WRITE8_HANDLER( mario_scroll_w )
 {
-	tilemap_set_scrolly(bg_tilemap, 0, data + 17);
+	mario_state	*state = Machine->driver_data;
+
+	state->gfx_scroll = data + 17;
+}
+
+WRITE8_HANDLER( mario_flip_w )
+{
+	mario_state	*state = Machine->driver_data;
+
+	if (state->flip != (data & 0x01))
+	{
+		state->flip = data & 0x01;
+		if (state->flip)
+			tilemap_set_flip(ALL_TILEMAPS, TILEMAP_FLIPX | TILEMAP_FLIPY);
+		else
+			tilemap_set_flip(ALL_TILEMAPS, 0);
+		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+	}
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
 {
-	int code = videoram[tile_index] + 256 * gfx_bank;
-	int color = (videoram[tile_index] >> 5) + 8 * palette_bank;
+	mario_state	*state = Machine->driver_data;
+	int code = state->videoram[tile_index] + 256 * state->gfx_bank;
+	int color;
 
+	color =  ((state->videoram[tile_index] >> 2) & 0x38) | 0x40 | (state->palette_bank<<7) | (state->monitor<<8);
+	color = color >> 2;
 	SET_TILE_INFO(0, code, color, 0);
 }
 
 VIDEO_START( mario )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	mario_state	*state = machine->driver_data;
+
+	state->bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
 		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
 
-	state_save_register_global(gfx_bank);
-	state_save_register_global(palette_bank);
+	state->gfx_bank = 0;
+	state->palette_bank = 0;
+	state->gfx_scroll = 0;
+	state_save_register_global(state->gfx_bank);
+	state_save_register_global(state->palette_bank);
+	state_save_register_global(state->gfx_scroll);
+	state_save_register_global(state->flip);
 }
+
+/*
+ * Erratic line at top when scrolling down "Marios Bros" Title
+ * confirmed on mametests.org as being present on real PCB as well.
+ */
 
 static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
 {
+	mario_state	*state = Machine->driver_data;
 	int offs;
 
-	for (offs = 0;offs < spriteram_size;offs += 4)
+	for (offs = 0;offs < state->spriteram_size;offs += 4)
 	{
-		if (spriteram[offs])
+		if (state->spriteram[offs])
 		{
-			drawgfx(bitmap,machine->gfx[1],
-					spriteram[offs + 2],
-					(spriteram[offs + 1] & 0x0f) + 16 * palette_bank,
-					spriteram[offs + 1] & 0x80,spriteram[offs + 1] & 0x40,
-					spriteram[offs + 3] - 8,240 - spriteram[offs] + 8,
-					cliprect,TRANSPARENCY_PEN,0);
+			int x, y;
+
+			// from schematics ....
+			y = (state->spriteram[offs] + (state->flip ? 0xF7 : 0xF9) + 1) & 0xFF;
+			x = state->spriteram[offs+3];
+			// sprite will be drawn if (y + scanline) & 0xF0 = 0xF0
+			y = 240 - y; /* logical screen position */
+
+			y = y ^ (state->flip ? 0xFF : 0x00); /* physical screen location */
+			x = x ^ (state->flip ? 0xFF : 0x00); /* physical screen location */
+
+			if (state->flip)
+			{
+				y -= 14;
+				x -= 7;
+				drawgfx(bitmap,machine->gfx[1],
+						state->spriteram[offs + 2],
+						(state->spriteram[offs + 1] & 0x0f) + 16 * state->palette_bank + 32 * state->monitor,
+						!(state->spriteram[offs + 1] & 0x80),!(state->spriteram[offs + 1] & 0x40),
+						x, y,
+						cliprect,TRANSPARENCY_PEN,0);
+			}
+			else
+			{
+				y += 1;
+				x -= 8;
+				drawgfx(bitmap,machine->gfx[1],
+						state->spriteram[offs + 2],
+						(state->spriteram[offs + 1] & 0x0f) + 16 * state->palette_bank + 32 * state->monitor,
+						(state->spriteram[offs + 1] & 0x80),(state->spriteram[offs + 1] & 0x40),
+						x, y,
+						cliprect,TRANSPARENCY_PEN,0);
+			}
 		}
 	}
 }
 
 VIDEO_UPDATE( mario )
 {
-	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
+	mario_state	*state = machine->driver_data;
+	int t;
+
+	t = readinputportbytag("MONITOR");
+	if (t != state->monitor)
+	{
+		state->monitor = t;
+		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+	}
+
+	tilemap_set_scrollx(state->bg_tilemap, 0, state->flip ? (HTOTAL-HBSTART) : 0);
+	tilemap_set_scrolly(state->bg_tilemap, 0, state->gfx_scroll - (state->flip ? 8 : 0));
+
+	tilemap_draw(bitmap, cliprect, state->bg_tilemap, 0, 0);
 	draw_sprites(machine, bitmap, cliprect);
+
 	return 0;
 }

@@ -3,9 +3,9 @@
  *   m6502.c
  *   Portable 6502/65c02/65sc02/6510/n2a03 emulator V1.2
  *
- *   Copyright (c) 1998,1999,2000 Juergen Buchmueller, all rights reserved.
- *   65sc02 core Copyright (c) 2000 Peter Trauner.
- *   Deco16 portions Copyright (c) 2001-2003 Bryan McPhail.
+ *   Copyright Juergen Buchmueller, all rights reserved.
+ *   65sc02 core Copyright Peter Trauner.
+ *   Deco16 portions Copyright Bryan McPhail.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -30,6 +30,7 @@
 #endif
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "m6502.h"
 #include "ops02.h"
 #include "ill02.h"
@@ -45,11 +46,7 @@
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 
 
@@ -230,7 +227,7 @@ static int m6502_execute(int cycles)
 		UINT8 op;
 		PPC = PCD;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PCD);
 
 		/* if an irq is pending, take it now */
 		if( m6502.pending_irq )
@@ -449,7 +446,7 @@ static int m65c02_execute(int cycles)
 		UINT8 op;
 		PPC = PCD;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PCD);
 
 		op = RDOP();
 		(*m6502.insn[op])();
@@ -620,7 +617,7 @@ static int deco16_execute(int cycles)
 		UINT8 op;
 		PPC = PCD;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PCD);
 
 		op = RDOP();
 		(*m6502.insn[op])();
@@ -703,6 +700,7 @@ void m6502_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 2;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -746,7 +744,7 @@ void m6502_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = m6502_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = m6502_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m6502_dasm;			break;
 #endif
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &m6502_ICount;			break;
@@ -758,7 +756,7 @@ void m6502_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Mostek 6502");			break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.2");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) 1998 Juergen Buchmueller, all rights reserved."); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Juergen Buchmueller, all rights reserved."); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",
@@ -830,7 +828,7 @@ void m6510_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_SET_INFO:						info->setinfo = m6510_set_info;			break;
 		case CPUINFO_PTR_INIT:							info->init = m6510_init;				break;
 		case CPUINFO_PTR_RESET:							info->reset = m6510_reset;				break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m6510_dasm;			break;
 #endif
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP:			info->internal_map = construct_map_m6510_mem; break;
@@ -928,7 +926,7 @@ void m65c02_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_INIT:							info->init = m65c02_init;				break;
 		case CPUINFO_PTR_RESET:							info->reset = m65c02_reset;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = m65c02_execute;			break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m65c02_dasm;		break;
 #endif
 
@@ -952,7 +950,7 @@ void m65sc02_get_info(UINT32 state, cpuinfo *info)
 	{
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = m65sc02_init;				break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m65sc02_dasm;		break;
 #endif
 
@@ -961,7 +959,7 @@ void m65sc02_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Metal Oxid Semiconductor MOS 6502"); break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0beta");				break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) 1998 Juergen Buchmueller\nCopyright (c) 2000 Peter Trauner\nall rights reserved."); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Juergen Buchmueller\nCopyright Peter Trauner\nall rights reserved."); break;
 
 		default:										m65c02_get_info(state, info);			break;
 	}
@@ -1000,7 +998,7 @@ void deco16_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_INIT:							info->init = deco16_init;				break;
 		case CPUINFO_PTR_RESET:							info->reset = deco16_reset;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = deco16_execute;			break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = deco16_dasm;		break;
 #endif
 
@@ -1009,7 +1007,7 @@ void deco16_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "DECO");				break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "0.1");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) 1998 Juergen Buchmueller\nCopyright (c) 2001-2003 Bryan McPhail\nall rights reserved."); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Juergen Buchmueller\nCopyright Bryan McPhail\nall rights reserved."); break;
 
 		default:										m6502_get_info(state, info);			break;
 	}

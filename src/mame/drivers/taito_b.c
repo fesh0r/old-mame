@@ -85,7 +85,7 @@ List of known B-System games:
     Ryujin                          (YM2610 sound)
 
     Violence Fight                  (YM2203 sound, 1xMSM6295 )
-    Hit The Ice                     (YM2203 sound, 2xMSM6295 )
+    Hit The Ice                     (YM2203 sound, 1xMSM6295 )
     Master of Weapons               (YM2203 sound)
 
     Quiz Sekai wa SHOW by shobai    (YM2610-B sound, MB87078 - electronic volume control)
@@ -168,6 +168,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
 #include "machine/eeprom.h"
@@ -211,116 +212,116 @@ static WRITE8_HANDLER( bankswitch_w )
 
 static TIMER_CALLBACK( rsaga2_interrupt2  )
 {
-	cpunum_set_input_line(0,2,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,2,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( rastansaga2_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, rsaga2_interrupt2);
-	cpunum_set_input_line(0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 }
 
 
 static TIMER_CALLBACK( crimec_interrupt3 )
 {
-	cpunum_set_input_line(0,3,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,3,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( crimec_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, crimec_interrupt3);
-	cpunum_set_input_line(0, 5, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
 }
 
 
 static TIMER_CALLBACK( hitice_interrupt6 )
 {
-	cpunum_set_input_line(0,6,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,6,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( hitice_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, hitice_interrupt6);
-	cpunum_set_input_line(0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 }
 
 
 static TIMER_CALLBACK( rambo3_interrupt1 )
 {
-	cpunum_set_input_line(0,1,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,1,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( rambo3_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, rambo3_interrupt1);
-	cpunum_set_input_line(0, 6, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
 }
 
 
 static TIMER_CALLBACK( pbobble_interrupt5 )
 {
-	cpunum_set_input_line(0,5,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,5,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( pbobble_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, pbobble_interrupt5);
-	cpunum_set_input_line(0, 3, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 3, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( viofight_interrupt1 )
 {
-	cpunum_set_input_line(0,1,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,1,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( viofight_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, viofight_interrupt1);
-	cpunum_set_input_line(0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( masterw_interrupt4 )
 {
-	cpunum_set_input_line(0,4,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,4,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( masterw_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, masterw_interrupt4);
-	cpunum_set_input_line(0, 5, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( silentd_interrupt4 )
 {
-	cpunum_set_input_line(0,4,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,4,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( silentd_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, silentd_interrupt4);
-	cpunum_set_input_line(0, 6, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( selfeena_interrupt4 )
 {
-	cpunum_set_input_line(0,4,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,4,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( selfeena_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, selfeena_interrupt4);
-	cpunum_set_input_line(0, 6, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( sbm_interrupt5 )//4
 {
-	cpunum_set_input_line(0,5,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,5,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( sbm_interrupt )//5
 {
 	timer_set(ATTOTIME_IN_CYCLES(10000,0), NULL, 0, sbm_interrupt5);
-	cpunum_set_input_line(0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 }
 
 
@@ -1033,24 +1034,13 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf200, 0xf200) AM_WRITE(bankswitch_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( hitice_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( viofight_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
 	AM_RANGE(0x4000, 0x7fff) AM_READ(MRA8_BANK1)
 	AM_RANGE(0x8000, 0x8fff) AM_READ(MRA8_RAM)
 	AM_RANGE(0x9000, 0x9000) AM_READ(YM2203_status_port_0_r)
 	AM_RANGE(0xb000, 0xb000) AM_READ(OKIM6295_status_0_r)
 	AM_RANGE(0xa001, 0xa001) AM_READ(taitosound_slave_comm_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( hitice_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x8fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(YM2203_control_port_0_w)
-	AM_RANGE(0x9001, 0x9001) AM_WRITE(YM2203_write_port_0_w)
-	AM_RANGE(0xb000, 0xb000) AM_WRITE(OKIM6295_data_0_w)
-	AM_RANGE(0xb001, 0xb001) AM_WRITE(OKIM6295_data_1_w)
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(taitosound_slave_port_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(taitosound_slave_comm_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( viofight_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -2578,7 +2568,7 @@ GFXDECODE_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface_rsaga2 =
@@ -2834,11 +2824,11 @@ static MACHINE_DRIVER_START( hitice )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
-	MDRV_CPU_PROGRAM_MAP(hitice_readmem,hitice_writemem)
+	MDRV_CPU_PROGRAM_MAP(hitice_readmem, hitice_writemem)
 	MDRV_CPU_VBLANK_INT(hitice_interrupt,1)
 
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(hitice_sound_readmem,hitice_sound_writemem)
+	MDRV_CPU_PROGRAM_MAP(viofight_sound_readmem, viofight_sound_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
@@ -2870,10 +2860,6 @@ static MACHINE_DRIVER_START( hitice )
 	MDRV_SOUND_ADD(OKIM6295, 1056000)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.65)
 MACHINE_DRIVER_END
 
 
@@ -3116,7 +3102,7 @@ static MACHINE_DRIVER_START( viofight )
 	MDRV_CPU_VBLANK_INT(viofight_interrupt,1)
 
 	MDRV_CPU_ADD(Z80, 6000000)	/* 6 MHz verified */
-	MDRV_CPU_PROGRAM_MAP(hitice_sound_readmem, viofight_sound_writemem)
+	MDRV_CPU_PROGRAM_MAP(viofight_sound_readmem, viofight_sound_writemem)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)

@@ -18,6 +18,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
 #include "skullxbo.h"
@@ -30,7 +31,7 @@
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -42,15 +43,15 @@ static void update_interrupts(void)
 		newstate = 4;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
 static TIMER_CALLBACK( irq_gen )
 {
-	atarigen_scanline_int_gen();
+	atarigen_scanline_int_gen(machine, 0);
 }
 
 
@@ -611,7 +612,7 @@ ROM_END
 static DRIVER_INIT( skullxbo )
 {
 	atarigen_eeprom_default = NULL;
-	atarijsa_init(1, 2, 1, 0x0080);
+	atarijsa_init(machine, 1, 0x0080);
 	memset(memory_region(REGION_GFX1) + 0x170000, 0, 0x20000);
 }
 

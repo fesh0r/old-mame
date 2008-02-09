@@ -58,6 +58,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
@@ -261,7 +262,7 @@ GFXDECODE_END
 
 static void irqhandler(int linestate)
 {
-	cpunum_set_input_line(1,0,linestate);
+	cpunum_set_input_line(Machine, 1,0,linestate);
 }
 
 static const struct YM2151interface ym2151_interface =

@@ -25,6 +25,7 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/okim6295.h"
 
 /***************************************************************************
@@ -141,7 +142,7 @@ static VIDEO_START( tmaster )
 static VIDEO_UPDATE( tmaster )
 {
 	// double buffering
-	copybitmap(bitmap,tmaster_bitmap[(tmaster_regs[0x02/2]>>8)&1],0,0,0,0,&machine->screen[0].visarea,TRANSPARENCY_NONE,0);
+	copybitmap(bitmap,tmaster_bitmap[(tmaster_regs[0x02/2]>>8)&1],0,0,0,0,cliprect);
 
 	show_touchscreen();
 	return 0;
@@ -242,7 +243,7 @@ static WRITE16_HANDLER( tmaster_blitter_w )
 	{
 		case 0x0e:
 			tmaster_draw();
-			cpunum_set_input_line(0, 2, HOLD_LINE);
+			cpunum_set_input_line(Machine, 0, 2, HOLD_LINE);
 			break;
 	}
 }
@@ -344,16 +345,16 @@ static INTERRUPT_GEN( tm3k_interrupt )
 {
 	switch (cpu_getiloops())
 	{
-		case 0:		cpunum_set_input_line(0, 2, HOLD_LINE);	break;
-		case 1:		cpunum_set_input_line(0, 3, HOLD_LINE);	break;
+		case 0:		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);	break;
+		case 1:		cpunum_set_input_line(machine, 0, 3, HOLD_LINE);	break;
 
 		case 2:
 		case 3:
 		case 4:
 		case 5:
-		case 6:		cpunum_set_input_line_and_vector(0, 4, HOLD_LINE, 0x100/4);	break;	// touch screen controller
+		case 6:		cpunum_set_input_line_and_vector(machine, 0, 4, HOLD_LINE, 0x100/4);	break;	// touch screen controller
 
-		default:	cpunum_set_input_line(0, 1, HOLD_LINE);	break;
+		default:	cpunum_set_input_line(machine, 0, 1, HOLD_LINE);	break;
 	}
 }
 
@@ -389,10 +390,10 @@ static INTERRUPT_GEN( tm_interrupt )
 {
 	switch (cpu_getiloops())
 	{
-		case 0:		cpunum_set_input_line(0, 2, HOLD_LINE);	break;
-		case 1:		cpunum_set_input_line(0, 3, HOLD_LINE);	break;
-		case 2:		cpunum_set_input_line_and_vector(0, 4, HOLD_LINE, 0x100/4);	break;	// touch screen controller
-		default:	cpunum_set_input_line(0, 1, HOLD_LINE);	break;
+		case 0:		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);	break;
+		case 1:		cpunum_set_input_line(machine, 0, 3, HOLD_LINE);	break;
+		case 2:		cpunum_set_input_line_and_vector(machine, 0, 4, HOLD_LINE, 0x100/4);	break;	// touch screen controller
+		default:	cpunum_set_input_line(machine, 0, 1, HOLD_LINE);	break;
 	}
 }
 

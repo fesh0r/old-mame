@@ -1,7 +1,7 @@
 #include "sndintrf.h"
 #include "streams.h"
+#include "deprecat.h"
 #include "flt_rc.h"
-#include <math.h>
 
 struct filter_rc_info
 {
@@ -141,7 +141,7 @@ void filter_rc_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "Filters";					break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
 	}
 }
 

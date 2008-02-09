@@ -55,7 +55,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd406, 0xd406) AM_READ(input_port_2_r)
 	AM_RANGE(0xd407, 0xd407) AM_READ(input_port_3_r)
 
-	AM_RANGE(0xd800, 0xdbff) AM_READ(paletteram_r)
+	AM_RANGE(0xd800, 0xdbff) AM_READ(MRA8_RAM)
 	AM_RANGE(0xe000, 0xe3ff) AM_READ(MRA8_RAM) /* text */
 
 	AM_RANGE(0xf000, 0xffff) AM_READ(MRA8_BANK1)
@@ -78,7 +78,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xdc01, 0xdc01) AM_WRITE(momoko_fg_scrollx_w)
 	AM_RANGE(0xdc02, 0xdc02) AM_WRITE(momoko_fg_select_w)
 
-	AM_RANGE(0xe000, 0xe3ff) AM_WRITE(videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xe000, 0xe3ff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 
 	AM_RANGE(0xe800, 0xe800) AM_WRITE(momoko_text_scrolly_w)
 	AM_RANGE(0xe801, 0xe801) AM_WRITE(momoko_text_mode_w)
@@ -270,7 +270,6 @@ static MACHINE_DRIVER_START( momoko )
 	MDRV_GFXDECODE(momoko)
 	MDRV_PALETTE_LENGTH(512)
 
-	MDRV_VIDEO_START(generic)
 	MDRV_VIDEO_UPDATE(momoko)
 
 	/* sound hardware */

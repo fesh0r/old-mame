@@ -4,7 +4,7 @@
 
     Controls execution of the core MAME system.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -65,7 +65,7 @@
 #define GAMENOUN				"game"
 #define GAMESNOUN				"games"
 #define HISTORYNAME				"History"
-#define COPYRIGHT				"Copyright 2007, Nicola Salmoria\nand the MAME team\nhttp://mamedev.org"
+#define COPYRIGHT				"Copyright Nicola Salmoria\nand the MAME team\nhttp://mamedev.org"
 #else
 #define APPNAME					"MESS"
 #define APPNAME_LOWER			"mess"
@@ -76,7 +76,7 @@
 #define GAMENOUN				"system"
 #define GAMESNOUN				"systems"
 #define HISTORYNAME				"System Info"
-#define COPYRIGHT				"Copyright 2007, the MESS team\nhttp://mess.org"
+#define COPYRIGHT				"Copyright the MESS team\nhttp://mess.org"
 #endif
 
 
@@ -188,7 +188,7 @@ struct _running_machine
 	const pen_t *			pens;				/* remapped palette pen numbers */
 	struct _colortable_t *	colortable;			/* global colortable for remapping */
 	const UINT16 *			game_colortable;	/* lookup table used to map gfx pen numbers to color numbers */
-	const pen_t *			remapped_colortable;/* the above, already remapped through Machine->pens */
+	const pen_t *			remapped_colortable;/* the above, already remapped through machine->pens */
 	pen_t *					shadow_table;		/* table for looking up a shadowed pen */
 
 	/* audio-related information */
@@ -248,11 +248,10 @@ struct _mame_system_time
     GLOBAL VARAIBLES
 ***************************************************************************/
 
-extern running_machine *Machine;
 extern const char mame_disclaimer[];
 extern char giant_string_buffer[];
 
-extern char build_version[];
+extern const char build_version[];
 
 
 
@@ -369,10 +368,10 @@ void mame_printf_debug(const char *format, ...) ATTR_PRINTF(1,2);
 /* ----- miscellaneous bits & pieces ----- */
 
 /* pop-up a user visible message */
-void CLIB_DECL popmessage(const char *text,...) ATTR_PRINTF(1,2);
+void CLIB_DECL popmessage(const char *format,...) ATTR_PRINTF(1,2);
 
 /* log to the standard error.log file */
-void CLIB_DECL logerror(const char *text,...) ATTR_PRINTF(1,2);
+void CLIB_DECL logerror(const char *format,...) ATTR_PRINTF(1,2);
 
 /* adds a callback to be called on logerror() */
 void add_logerror_callback(running_machine *machine, void (*callback)(running_machine *, const char *));

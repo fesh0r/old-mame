@@ -10,6 +10,7 @@ colour, including the word "Konami"
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
@@ -110,7 +111,7 @@ static INTERRUPT_GEN( asterix_interrupt )
 	// global interrupt masking
 	if (!K056832_is_IRQ_enabled(0)) return;
 
-	cpunum_set_input_line(0, 5, HOLD_LINE); /* ??? All irqs have the same vector, and the
+	cpunum_set_input_line(machine, 0, 5, HOLD_LINE); /* ??? All irqs have the same vector, and the
                                               mask used is 0 or 7 */
 }
 
@@ -121,18 +122,18 @@ static READ16_HANDLER( asterix_sound_r )
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( sound_arm_nmi_w )
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 	timer_set(ATTOTIME_IN_USEC(5), NULL,0,nmi_callback);
 }
 
 static WRITE16_HANDLER( sound_irq_w )
 {
-	cpunum_set_input_line(1, 0, HOLD_LINE);
+	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 }
 
 // Check the routine at 7f30 in the ead version.

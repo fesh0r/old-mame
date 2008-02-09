@@ -117,6 +117,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/se3208/se3208.h"
 #include "video/vrender0.h"
 #include "machine/ds1302.h"
@@ -147,7 +148,7 @@ static void IntReq(int num)
 	{
 		IntPend|=(1<<num);
 		program_write_dword_32le(0x01800c0c,IntPend);
-		cpunum_set_input_line(0,SE3208_INT,ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0,SE3208_INT,ASSERT_LINE);
 	}
 #ifdef IDLE_LOOP_SPEEDUP
 	FlipCntRead=0;
@@ -205,7 +206,7 @@ static WRITE32_HANDLER(IntAck_w)
 		IntPend&=~(1<<(data&0x1f));
 		program_write_dword_32le(0x01800c0c,IntPend);
 		if(!IntPend)
-			cpunum_set_input_line(0,SE3208_INT,CLEAR_LINE);
+			cpunum_set_input_line(Machine, 0,SE3208_INT,CLEAR_LINE);
 	}
 	if((~mem_mask)&0xff00)
 		IntHigh=(data>>8)&7;
@@ -687,7 +688,7 @@ static VIDEO_UPDATE(crystal)
 	tail=GetVidReg(0x80);
 	while((head&0x7ff)!=(tail&0x7ff))
 	{
-		DoFlip=ProcessPacket(0x03800000+head*64,DrawDest,(UINT8*)textureram);
+		DoFlip=vrender0_ProcessPacket(0x03800000+head*64,DrawDest,(UINT8*)textureram);
 		head++;
 		head&=0x7ff;
 		if(DoFlip)

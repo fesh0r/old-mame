@@ -8,6 +8,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/resnet.h"
 #include "includes/dkong.h"
 
@@ -200,7 +201,7 @@ static const res_net_info radarscp_grid_net_info =
 
 PALETTE_INIT( dkong2b)
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 	rgb_t	*rgb;
 	int i;
 
@@ -229,7 +230,7 @@ PALETTE_INIT( dkong2b)
 
 PALETTE_INIT( dkong4b )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 	int i;
 	int r,g,b;
 
@@ -267,7 +268,7 @@ PALETTE_INIT( dkong4b )
 
 PALETTE_INIT( radarscp )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 	int i;
 	int r,g,b;
 
@@ -331,7 +332,7 @@ PALETTE_INIT( radarscp )
 
 PALETTE_INIT( radarsc1 )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 	int i;
 	int r,g,b;
 
@@ -431,7 +432,7 @@ PALETTE_INIT( radarsc1 )
 
 PALETTE_INIT( dkong3 )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 	rgb_t	*rgb;
 
 	rgb = compute_res_net_all(color_prom, &dkong3_decode_info, &dkong3_net_info);
@@ -668,7 +669,7 @@ INLINE double CD4049(running_machine *machine, double x)
 #define RC32	((18e3 + 68e3) * 33e-6)
 #define RC4		(90e3 * 0.47e-6)
 #define dt		(1./60./(double) VTOTAL)
-#define period2 (((long long)(PIXEL_CLOCK) * ( 33L * 68L )) / (long)10000000L / 3)  // period/2 in pixel ...
+#define period2 (((INT64)(PIXEL_CLOCK) * ( 33L * 68L )) / (INT32)10000000L / 3)  // period/2 in pixel ...
 
 static void radarscp_step(running_machine *machine, int line_cnt)
 {
@@ -886,7 +887,7 @@ VIDEO_START( dkong )
 {
 	dkong_state *state = machine->driver_data;
 
-	video_start_dkong_base(machine);
+	VIDEO_START_CALL(dkong_base);
 
 	switch (state->hardware_type)
 	{

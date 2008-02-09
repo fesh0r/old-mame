@@ -41,7 +41,7 @@ COLORRAM (Colors)
 ******************************************************************/
 
 #include "driver.h"
-#include "streams.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "audio/seibu.h"
 #include "sound/2151intf.h"
@@ -113,7 +113,7 @@ static WRITE16_HANDLER( cabal_sound_irq_trigger_word_w )
 
 static WRITE16_HANDLER( cabalbl_sound_irq_trigger_word_w )
 {
-	cpunum_set_input_line( 1, INPUT_LINE_NMI, PULSE_LINE );
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE );
 }
 
 
@@ -513,22 +513,15 @@ static GFXDECODE_START( cabal )
 GFXDECODE_END
 
 
-static const struct YM2151interface ym2151_interface =
-{
-	seibu_ym3812_irqhandler
-};
-
 static void irqhandler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2151interface cabalbl_ym2151_interface =
 {
 	irqhandler
 };
-
-SEIBU_SOUND_SYSTEM_ADPCM_HARDWARE
 
 static const struct MSM5205interface msm5205_interface_1 =
 {
@@ -545,12 +538,12 @@ static const struct MSM5205interface msm5205_interface_2 =
 static MACHINE_DRIVER_START( cabal )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000) /* 12 MHz */
+	MDRV_CPU_ADD(M68000, 20000000/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu,writemem_cpu)
 	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
 
-	MDRV_CPU_ADD(Z80, 4000000)
-	/* audio CPU */	/* 4 MHz */
+	MDRV_CPU_ADD(Z80, 3579580) /* verified on pcb */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -572,17 +565,16 @@ static MACHINE_DRIVER_START( cabal )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, 3579580)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD(YM2151, 3579580) /* verified on pcb */
+	MDRV_SOUND_CONFIG(seibu_ym2151_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS,"mono", 0.80)
 
 	MDRV_SOUND_ADD(CUSTOM, 8000)
-	MDRV_SOUND_CONFIG(adpcm_interface)
+	MDRV_SOUND_CONFIG(seibu_adpcm_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS,"mono", 0.40)
 
-
 	MDRV_SOUND_ADD(CUSTOM, 8000)
-	MDRV_SOUND_CONFIG(adpcm_interface)
+	MDRV_SOUND_CONFIG(seibu_adpcm_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS,"mono", 0.40)
 MACHINE_DRIVER_END
 

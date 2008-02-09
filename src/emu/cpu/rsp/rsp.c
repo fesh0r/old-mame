@@ -5,9 +5,9 @@
 */
 
 #include "cpuintrf.h"
-#include "rsp.h"
 #include "debugger.h"
-#include <math.h>	// sqrt
+#include "deprecat.h"
+#include "rsp.h"
 
 #define LOG_INSTRUCTION_EXECUTION		0
 #define SAVE_DISASM						0
@@ -49,6 +49,7 @@ typedef struct
 	VECTOR_REG v[32];
 	UINT16 flag[4];
 	UINT32 sr;
+    UINT32 step_count;
 
 	INT64 accum[8];
 	INT32 square_root_res;
@@ -119,9 +120,9 @@ typedef struct
 #define S_ACCUM_M				(2 << 4)
 #define S_ACCUM_L				(1 << 4)
 
-#define M_ACCUM_H				((INT64)0x0000FFFFll << S_ACCUM_H)
-#define M_ACCUM_M				((INT64)0x0000FFFFll << S_ACCUM_M)
-#define M_ACCUM_L				((INT64)0x0000FFFFll << S_ACCUM_L)
+#define M_ACCUM_H				(((INT64)0x0000FFFF) << S_ACCUM_H)
+#define M_ACCUM_M				(((INT64)0x0000FFFF) << S_ACCUM_M)
+#define M_ACCUM_L				(((INT64)0x0000FFFF) << S_ACCUM_L)
 
 #define R_ACCUM_H(x)			((INT16)((ACCUM(x) >> S_ACCUM_H) & 0x00FFFF))
 #define R_ACCUM_M(x)			((INT16)((ACCUM(x) >> S_ACCUM_M) & 0x00FFFF))
@@ -261,7 +262,7 @@ static void set_cop0_reg(int reg, UINT32 data)
 
 static void unimplemented_opcode(UINT32 op)
 {
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	char string[200];
 	rsp_dasm_one(string, rsp.ppc, op);
 	mame_printf_debug("%08X: %s\n", rsp.ppc, string);
@@ -344,7 +345,8 @@ static const int vector_elements_2[16][8] =
 
 static void rsp_init(int index, int clock, const void *_config, int (*irqcallback)(int))
 {
-	//int regIdx, accumIdx;
+    int regIdx;
+    int accumIdx;
 	config = (rsp_config *)_config;
 
 #if LOG_INSTRUCTION_EXECUTION
@@ -352,16 +354,14 @@ static void rsp_init(int index, int clock, const void *_config, int (*irqcallbac
 #endif
 
 	rsp.irq_callback = irqcallback;
-#if 0
+
+#if 1
+    // Inaccurate.  RSP registers power on to a random state...
 	for(regIdx = 0; regIdx < 32; regIdx++ )
 	{
 		rsp.r[regIdx] = 0;
 		rsp.v[regIdx].d[0] = 0;
 		rsp.v[regIdx].d[1] = 0;
-	}
-	for(accumIdx = 0; accumIdx < 8; accumIdx++ )
-	{
-		rsp.accum[accumIdx] = 0;
 	}
 	rsp.flag[0] = 0;
 	rsp.flag[1] = 0;
@@ -372,7 +372,17 @@ static void rsp_init(int index, int clock, const void *_config, int (*irqcallbac
 	rsp.reciprocal_res = 0;
 	rsp.reciprocal_high = 0;
 #endif
+
+    // ...except for the accumulators.
+    // We're not calling mame_rand() because initializing something with mame_rand()
+    //   makes me retch uncontrollably.
+    for(accumIdx = 0; accumIdx < 8; accumIdx++ )
+    {
+        rsp.accum[accumIdx] = 0;
+    }
+
 	rsp.sr = RSP_STATUS_HALT;
+    rsp.step_count = 0;
 }
 
 static void rsp_exit(void)
@@ -2279,7 +2289,7 @@ static void handle_vector_ops(UINT32 op)
 			// Calculates reciprocal
 
 			int del = (VS1REG & 7);
-			int sel = VEC_EL_2(EL, del);
+			int sel = EL & 7;
 			INT32 rec;
 
 			rec = (INT16)(R_VREG_S(VS2REG, sel));
@@ -2291,32 +2301,59 @@ static void handle_vector_ops(UINT32 op)
 			}
 			else
 			{
-				int negative = 0;
+				int sign = 0;
+				int exp = 0;
+				int mantissa = 0;
+
 				if (rec < 0)
 				{
-					rec = ~rec+1;
-					negative = 1;
+					rec = -rec;	// rec = MINUS rec
+					sign = 1;
 				}
-				for (i = 15; i > 0; i--)
+
+				// restrict to 10-bit mantissa
+				for (i = 15; i >= 0; i--)
 				{
 					if (rec & (1 << i))
 					{
-						rec &= ((0xffc0) >> (15 - i));
-						i = 0;
+						exp = i;
+						mantissa = (rec << (15 - i)) >> 6;
+						break;
 					}
 				}
-				rec = (INT32)(0x7fffffff / (double)rec);
-				for (i = 31; i > 0; i--)
+
+				if (mantissa == 0x200)
 				{
-					if (rec & (1 << i))
-					{
-						rec &= ((0xffff8000) >> (31 - i));
-						i = 0;
-					}
+					rec = 0x7fffffff;
 				}
-				if (negative)
+				else
 				{
-					rec = ~rec;
+					rec = 0xffffffffU / mantissa;
+
+					//
+					// simulate rounding error
+					//
+					// This has been verified on the real hardware.
+					//
+					// I was able to replicate this exact behaviour by using a five-round
+					// Newton reciprocal method using floorf() on intermediate results
+					// to force the use of IEEE 754 32bit floats.
+					// However, for the sake of portability, we'll use integer arithmetic.
+					//
+					if (rec & 0x800)
+						rec += 1;
+
+					rec <<= 8;
+				}
+
+				// restrict result to 17 significant bits
+				rec &= 0x7fffc000;
+
+				rec >>= exp;
+
+				if (sign)
+				{
+					rec = ~rec;	// rec = BITWISE NOT rec
 				}
 			}
 
@@ -2553,13 +2590,13 @@ static int rsp_execute(int cycles)
 
 	if( rsp.sr & ( RSP_STATUS_HALT | RSP_STATUS_BROKE ) )
 	{
-		rsp_icount = 0;
+		rsp_icount = MIN(rsp_icount, 0);
 	}
 
 	while (rsp_icount > 0)
 	{
 		rsp.ppc = rsp.pc;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(rsp.pc);
 
 		op = ROPCODE(rsp.pc);
 		if (rsp.nextpc != ~0)
@@ -2589,7 +2626,7 @@ static int rsp_execute(int cycles)
 					case 0x0d:	/* BREAK */
 					{
 						(config->sp_set_status)(0x3);
-						rsp_icount = 1;
+						rsp_icount = MIN(rsp_icount, 1);
 
 #if LOG_INSTRUCTION_EXECUTION
 						fprintf(exec_output, "\n---------- break ----------\n\n");
@@ -2675,7 +2712,19 @@ static int rsp_execute(int cycles)
 						// ------------------------------------------------
 						//
 
-						if (RTREG) RTVAL = rsp.flag[RDREG];
+                        if (RTREG)
+                        {
+                            if (RDREG == 2)
+                            {
+                                // Anciliary clipping flags
+                                RTVAL = rsp.flag[RDREG] & 0x00ff;
+                            }
+                            else
+                            {
+                                // All other flags are 16 bits but sign-extended at retrieval
+                                RTVAL = (UINT32)rsp.flag[RDREG] | ( ( rsp.flag[RDREG] & 0x8000 ) ? 0xffff0000 : 0 );
+                            }
+                        }
 						break;
 					}
 					case 0x04:	/* MTC2 */
@@ -2783,12 +2832,19 @@ static int rsp_execute(int cycles)
 
 		if( rsp.sr & RSP_STATUS_SSTEP )
 		{
-			rsp.sr |= RSP_STATUS_BROKE;
+            if( rsp.step_count )
+            {
+                rsp.step_count--;
+            }
+            else
+            {
+                rsp.sr |= RSP_STATUS_BROKE;
+            }
 		}
 
 		if( rsp.sr & ( RSP_STATUS_HALT | RSP_STATUS_BROKE ) )
 		{
-			rsp_icount = 0;
+			rsp_icount = MIN(rsp_icount, 0);
 		}
 
 	}
@@ -2819,13 +2875,13 @@ static void rsp_set_context(void *src)
 
 /*****************************************************************************/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t rsp_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	UINT32 op = LITTLE_ENDIANIZE_INT32(*(UINT32 *)opram);
 	return rsp_dasm_one(buffer, pc, op);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 /*****************************************************************************/
 
@@ -2869,8 +2925,9 @@ static void rsp_set_info(UINT32 state, cpuinfo *info)
         case CPUINFO_INT_REGISTER + RSP_R30:            rsp.r[30] = info->i;        break;
         case CPUINFO_INT_SP:
         case CPUINFO_INT_REGISTER + RSP_R31:            rsp.r[31] = info->i;        break;
-        case CPUINFO_INT_REGISTER + RSP_SR:             rsp.sr = info->i;        break;
-        case CPUINFO_INT_REGISTER + RSP_NEXTPC:         rsp.nextpc = info->i;        break;
+        case CPUINFO_INT_REGISTER + RSP_SR:             rsp.sr = info->i;           break;
+        case CPUINFO_INT_REGISTER + RSP_NEXTPC:         rsp.nextpc = info->i;       break;
+        case CPUINFO_INT_REGISTER + RSP_STEPCNT:        rsp.step_count = info->i;   break;
 	}
 }
 
@@ -2883,6 +2940,7 @@ void rsp_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -2941,6 +2999,7 @@ void rsp_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_REGISTER + RSP_R31:			info->i = rsp.r[31];					break;
 		case CPUINFO_INT_REGISTER + RSP_SR:             info->i = rsp.sr;                       break;
 		case CPUINFO_INT_REGISTER + RSP_NEXTPC:         info->i = rsp.nextpc;                   break;
+        case CPUINFO_INT_REGISTER + RSP_STEPCNT:        info->i = rsp.step_count;               break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_GET_CONTEXT:					info->getcontext = rsp_get_context;		break;
@@ -2951,9 +3010,9 @@ void rsp_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = rsp_exit;					break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = rsp_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = rsp_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &rsp_icount;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -2961,7 +3020,7 @@ void rsp_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "RSP");					break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) 2005");	break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team");	break;
 
 		case CPUINFO_STR_FLAGS:							strcpy(info->s, " ");					break;
 
@@ -3001,5 +3060,6 @@ void rsp_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_REGISTER + RSP_R31:			sprintf(info->s, "R31: %08X", rsp.r[31]); break;
 		case CPUINFO_STR_REGISTER + RSP_SR:             sprintf(info->s, "SR: %08X",  rsp.sr);    break;
 		case CPUINFO_STR_REGISTER + RSP_NEXTPC:         sprintf(info->s, "NPC: %08X", rsp.nextpc);break;
+        case CPUINFO_STR_REGISTER + RSP_STEPCNT:        sprintf(info->s, "STEP: %d",  rsp.step_count);  break;
 	}
 }

@@ -4,7 +4,7 @@
 
     Resource pool code
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -88,7 +88,7 @@ struct _object_pool_iterator
 ***************************************************************************/
 
 static void memory_destruct(void *object, size_t size);
-static void report_failure(object_pool *pool, const char *format, ...);
+static void report_failure(object_pool *pool, const char *format, ...) ATTR_PRINTF(2,3);
 
 
 
@@ -142,6 +142,9 @@ object_pool *pool_alloc(void (*fail)(const char *message))
 	if (pool == NULL)
 		return NULL;
 	memset(pool, 0, sizeof(*pool));
+
+	/* set the failure handler */
+	pool->fail = fail;
 
 	/* register the built-in types */
 	pool_type_register(pool, OBJTYPE_MEMORY, "Memory", memory_destruct);
@@ -268,7 +271,7 @@ void *pool_object_add_file_line(object_pool *pool, object_type _type, void *obje
 	/* if we have an invalid type, fail */
 	if (type == NULL)
 	{
-		report_failure(pool, "pool_object_add (via %s:%d): Attempted to add object of unknown type", file, line, (int)size);
+		report_failure(pool, "pool_object_add (via %s:%d): Attempted to add object of unknown type with size %d", file, line, (int)size);
 		return object;
 	}
 

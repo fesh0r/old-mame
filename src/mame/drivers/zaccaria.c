@@ -34,6 +34,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/6821pia.h"
 #include "machine/8255ppi.h"
 #include "sound/ay8910.h"
@@ -99,8 +100,8 @@ static WRITE8_HANDLER( ay8910_port0a_w )
 }
 
 
-static void zaccaria_irq0a(int state) { cpunum_set_input_line(1, INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE); }
-static void zaccaria_irq0b(int state) { cpunum_set_input_line(1,0,state ? ASSERT_LINE : CLEAR_LINE); }
+static void zaccaria_irq0a(int state) { cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE); }
+static void zaccaria_irq0b(int state) { cpunum_set_input_line(Machine, 1,0,state ? ASSERT_LINE : CLEAR_LINE); }
 
 static int active_8910,port0a,acs;
 
@@ -257,7 +258,7 @@ static MACHINE_RESET( zaccaria )
 static WRITE8_HANDLER( sound_command_w )
 {
 	soundlatch_w(0,data);
-	cpunum_set_input_line(2,0,(data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 2,0,(data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( sound1_command_w )
@@ -659,17 +660,15 @@ static const struct TMS5220interface tms5220_interface =
 static MACHINE_DRIVER_START( zaccaria )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD(Z80,XTAL_18_432MHz/6)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
 
-	MDRV_CPU_ADD(M6802,3580000/4)
-	/* audio CPU */	/* 895 kHz */
+	MDRV_CPU_ADD(M6802,XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem1,sound_writemem1)
 	MDRV_CPU_PERIODIC_INT(zaccaria_cb1_toggle,(double)3580000/4096)
 
-	MDRV_CPU_ADD(M6802,3580000/4)
-	/* audio CPU */	/* 895 kHz */
+	MDRV_CPU_ADD(M6802,XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem2,sound_writemem2)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -694,11 +693,11 @@ static MACHINE_DRIVER_START( zaccaria )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 3580000/2)
+	MDRV_SOUND_ADD(AY8910, XTAL_3_579545MHz/2) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(AY8910, 3580000/2)
+	MDRV_SOUND_ADD(AY8910, XTAL_3_579545MHz/2) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
 	MDRV_SOUND_ADD(DAC, 0)
@@ -707,7 +706,8 @@ static MACHINE_DRIVER_START( zaccaria )
 	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MDRV_SOUND_ADD(TMS5220, 640000)
+	MDRV_SOUND_ADD(TMS5220, XTAL_640kHz)
+/* not right, frequency measured is 560khz. There is no resonator, the clock is obtained from discrete components. We wait for schematics */
 	MDRV_SOUND_CONFIG(tms5220_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END

@@ -4,7 +4,7 @@
  *   portable saturn emulator interface
  *   (hp calculators)
  *
- *   Copyright (c) 2000 Peter Trauner, all rights reserved.
+ *   Copyright Peter Trauner, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -58,9 +58,9 @@ typedef struct
 	void (*crc)(int addr, int data);
 } SATURN_CONFIG;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 unsigned saturn_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 void saturn_get_info(UINT32 state, cpuinfo *info);
 

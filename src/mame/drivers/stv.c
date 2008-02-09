@@ -166,6 +166,7 @@ cpu #0 (PC=0601023A): unmapped program memory dword write to 02000000 = 00000000
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "cpu/sh2/sh2.h"
 #include "machine/stvcd.h"
@@ -242,6 +243,7 @@ DRIVER_INIT(elandore);
 DRIVER_INIT(rsgun);
 DRIVER_INIT(ffreveng);
 DRIVER_INIT(decathlt);
+DRIVER_INIT(nameclv3);
 
 /**************************************************************************************/
 /*to be added into a stv Header file,remember to remove all the static...*/
@@ -299,7 +301,7 @@ static int scanline;
 
 /*A-Bus IRQ checks,where they could be located these?*/
 #define ABUSIRQ(_irq_,_vector_,_mask_) \
-	if(!(stv_scu[40] & _mask_)) { cpunum_set_input_line_and_vector(0, _irq_, HOLD_LINE , _vector_); }
+	if(!(stv_scu[40] & _mask_)) { cpunum_set_input_line_and_vector(machine, 0, _irq_, HOLD_LINE , _vector_); }
 #if 0
 if(stv_scu[42] & 1)//IRQ ACK
 {
@@ -532,7 +534,7 @@ static UINT8 stv_SMPC_r8 (int offset)
 	return return_data;
 }
 
-static void stv_SMPC_w8 (int offset, UINT8 data)
+static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 {
 	mame_system_time systime;
 
@@ -568,13 +570,13 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 		if(!(smpc_ram[0x77] & 0x10))
 		{
 			if(LOG_SMPC) logerror("SMPC: M68k on\n");
-			cpunum_set_input_line(2, INPUT_LINE_RESET, CLEAR_LINE);
+			cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, CLEAR_LINE);
 			en_68k = 1;
 		}
 		else
 		{
 			if(LOG_SMPC) logerror("SMPC: M68k off\n");
-			cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
+			cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
 			en_68k = 0;
 		}
 		//if(LOG_SMPC) logerror("SMPC: ram [0x77] = %02x\n",smpc_ram[0x77]);
@@ -603,7 +605,7 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 			if(!(stv_scu[40] & 0x0100)) /*Pad irq*/
 			{
 				if(LOG_SMPC) logerror ("Interrupt: PAD irq at scanline %04x, Vector 0x48 Level 0x08\n",scanline);
-				cpunum_set_input_line_and_vector(0, 8, HOLD_LINE , 0x48);
+				cpunum_set_input_line_and_vector(machine, 0, 8, HOLD_LINE , 0x48);
 			}
 	}
 
@@ -621,21 +623,21 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 				smpc_ram[0x5f]=0x02;
 				#if USE_SLAVE
 				stv_enable_slave_sh2 = 1;
-				cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 				#endif
 				break;
 			case 0x03:
 				if(LOG_SMPC) logerror ("SMPC: Slave OFF\n");
 				smpc_ram[0x5f]=0x03;
 				stv_enable_slave_sh2 = 0;
-				cpu_trigger(1000);
-				cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+				cpu_trigger(Machine, 1000);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 				break;
 			case 0x06:
 				if(LOG_SMPC) logerror ("SMPC: Sound ON\n");
 				/* wrong? */
 				smpc_ram[0x5f]=0x06;
-				cpunum_set_input_line(2, INPUT_LINE_RESET, CLEAR_LINE);
+				cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, CLEAR_LINE);
 				break;
 			case 0x07:
 				if(LOG_SMPC) logerror ("SMPC: Sound OFF\n");
@@ -647,24 +649,24 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 			case 0x0d:
 				if(LOG_SMPC) logerror ("SMPC: System Reset\n");
 				smpc_ram[0x5f]=0x0d;
-				cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 				system_reset();
 				break;
 			case 0x0e:
 				if(LOG_SMPC) logerror ("SMPC: Change Clock to 352\n");
 				smpc_ram[0x5f]=0x0e;
-				cpunum_set_clock(0, MASTER_CLOCK_352/2);
-				cpunum_set_clock(1, MASTER_CLOCK_352/2);
-				cpunum_set_clock(2, MASTER_CLOCK_352/5);
-				cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE); // ff said this causes nmi, should we set a timer then nmi?
+				cpunum_set_clock(machine, 0, MASTER_CLOCK_352/2);
+				cpunum_set_clock(machine, 1, MASTER_CLOCK_352/2);
+				cpunum_set_clock(machine, 2, MASTER_CLOCK_352/5);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE); // ff said this causes nmi, should we set a timer then nmi?
 				break;
 			case 0x0f:
 				if(LOG_SMPC) logerror ("SMPC: Change Clock to 320\n");
 				smpc_ram[0x5f]=0x0f;
-				cpunum_set_clock(0, MASTER_CLOCK_320/2);
-				cpunum_set_clock(1, MASTER_CLOCK_320/2);
-				cpunum_set_clock(2, MASTER_CLOCK_320/5);
-				cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE); // ff said this causes nmi, should we set a timer then nmi?
+				cpunum_set_clock(machine, 0, MASTER_CLOCK_320/2);
+				cpunum_set_clock(machine, 1, MASTER_CLOCK_320/2);
+				cpunum_set_clock(machine, 2, MASTER_CLOCK_320/5);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE); // ff said this causes nmi, should we set a timer then nmi?
 				break;
 			/*"Interrupt Back"*/
 			case 0x10:
@@ -710,7 +712,7 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 			//  if(!(stv_scu[40] & 0x0080)) /*System Manager(SMPC) irq*/ /* we can't check this .. breaks controls .. probably issues elsewhere? */
 				{
 					if(LOG_SMPC) logerror ("Interrupt: System Manager (SMPC) at scanline %04x, Vector 0x47 Level 0x08\n",scanline);
-					cpunum_set_input_line_and_vector(0, 8, HOLD_LINE , 0x47);
+					cpunum_set_input_line_and_vector(machine, 0, 8, HOLD_LINE , 0x47);
 				}
 			break;
 			/* RTC write*/
@@ -734,7 +736,7 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 				if(LOG_SMPC) logerror ("SMPC: NMI request\n");
 				smpc_ram[0x5f]=0x18;
 				/*NMI is unconditionally requested?*/
-				cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 				break;
 			case 0x19:
 				if(LOG_SMPC) logerror ("SMPC: NMI Enable\n");
@@ -792,7 +794,7 @@ static WRITE32_HANDLER ( stv_SMPC_w32 )
 
 	offset += byte;
 
-	stv_SMPC_w8(offset,writedata);
+	stv_SMPC_w8(Machine, offset,writedata);
 }
 
 
@@ -829,7 +831,7 @@ static INTERRUPT_GEN( stv_interrupt )
 		if(!(stv_scu[40] & 2))/*VBLANK-OUT*/
 		{
 			if(LOG_IRQ) logerror ("Interrupt: VBlank-OUT at scanline %04x, Vector 0x41 Level 0x0e\n",scanline);
-			cpunum_set_input_line_and_vector(0, 0xe, HOLD_LINE , 0x41);
+			cpunum_set_input_line_and_vector(machine, 0, 0xe, HOLD_LINE , 0x41);
 		}
 		stv_vblank = 0;
 		#if UGLY_SOUND_HACK
@@ -851,14 +853,14 @@ static INTERRUPT_GEN( stv_interrupt )
 			if((!(stv_scu[40] & 0x10)) && (!(stv_scu[38] & 0x80)))
 			{
 				if(LOG_IRQ) logerror ("Interrupt: Timer 1 at scanline %04x, Vector 0x44 Level 0x0b\n",scanline);
-				cpunum_set_input_line_and_vector(0, 0xb, HOLD_LINE, 0x44 );
+				cpunum_set_input_line_and_vector(machine, 0, 0xb, HOLD_LINE, 0x44 );
 			}
 			else if((!(stv_scu[40] & 0x10)) && (stv_scu[38] & 0x80))
 			{
 				if(timer_1 == (stv_scu[36] & 0x1ff))
 				{
 					if(LOG_IRQ) logerror ("Interrupt: Timer 1 at scanline %04x, Vector 0x44 Level 0x0b\n",scanline);
-					cpunum_set_input_line_and_vector(0, 0xb, HOLD_LINE, 0x44 );
+					cpunum_set_input_line_and_vector(machine, 0, 0xb, HOLD_LINE, 0x44 );
 				}
 			}
 		}
@@ -867,7 +869,7 @@ static INTERRUPT_GEN( stv_interrupt )
 			if(!(stv_scu[40] & 8))/*Timer 0*/
 			{
 				if(LOG_IRQ) logerror ("Interrupt: Timer 0 at scanline %04x, Vector 0x43 Level 0x0c\n",scanline);
-				cpunum_set_input_line_and_vector(0, 0xc, HOLD_LINE, 0x43 );
+				cpunum_set_input_line_and_vector(machine, 0, 0xc, HOLD_LINE, 0x43 );
 			}
 		}
 
@@ -875,7 +877,7 @@ static INTERRUPT_GEN( stv_interrupt )
 		if(!(stv_scu[40] & 4))/*HBLANK-IN*/
 		{
 			if(LOG_IRQ) logerror ("Interrupt: HBlank-In at scanline %04x, Vector 0x42 Level 0x0d\n",scanline);
-			cpunum_set_input_line_and_vector(0, 0xd, HOLD_LINE , 0x42);
+			cpunum_set_input_line_and_vector(machine, 0, 0xd, HOLD_LINE , 0x42);
 		}
 	}
 	else if(scanline == 224)
@@ -886,7 +888,7 @@ static INTERRUPT_GEN( stv_interrupt )
 		if(!(stv_scu[40] & 1))/*VBLANK-IN*/
 		{
 			if(LOG_IRQ) logerror ("Interrupt: VBlank IN at scanline %04x, Vector 0x40 Level 0x0f\n",scanline);
-			cpunum_set_input_line_and_vector(0, 0xf, HOLD_LINE , 0x40);
+			cpunum_set_input_line_and_vector(machine, 0, 0xf, HOLD_LINE , 0x40);
 		}
 		stv_vblank = 1;
 
@@ -895,11 +897,11 @@ static INTERRUPT_GEN( stv_interrupt )
 			if(!(stv_scu[40] & 8))/*Timer 0*/
 			{
 				if(LOG_IRQ) logerror ("Interrupt: Timer 0 at scanline %04x, Vector 0x43 Level 0x0c\n",scanline);
-				cpunum_set_input_line_and_vector(0, 0xc, HOLD_LINE, 0x43 );
+				cpunum_set_input_line_and_vector(machine, 0, 0xc, HOLD_LINE, 0x43 );
 			}
 		}
 		if(!(stv_scu[40] & 0x2000)) /*Sprite draw end irq*/
-			cpunum_set_input_line_and_vector(0, 2, HOLD_LINE , 0x4d);
+			cpunum_set_input_line_and_vector(machine, 0, 2, HOLD_LINE , 0x4d);
 	}
 }
 
@@ -1293,14 +1295,14 @@ static WRITE32_HANDLER( stv_scu_w32 )
 			/*Sound IRQ*/
 			if(/*(!(stv_scu[40] & 0x40)) &&*/ scsp_to_main_irq == 1)
 			{
-				//cpunum_set_input_line_and_vector(0, 9, HOLD_LINE , 0x46);
+				//cpunum_set_input_line_and_vector(Machine, 0, 9, HOLD_LINE , 0x46);
 				logerror("SCSP: Main CPU interrupt\n");
 				#if 0
 				if((scu_dst_0 & 0x7ffffff) != 0x05a00000)
 				{
 					if(!(stv_scu[40] & 0x1000))
 					{
-						cpunum_set_input_line_and_vector(0, 3, HOLD_LINE, 0x4c);
+						cpunum_set_input_line_and_vector(Machine, 0, 3, HOLD_LINE, 0x4c);
 						logerror("SCU: Illegal DMA interrupt\n");
 					}
 				}
@@ -1354,7 +1356,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 			/*Sound IRQ*/
 			if(/*(!(stv_scu[40] & 0x40)) &&*/ scsp_to_main_irq == 1)
 			{
-				//cpunum_set_input_line_and_vector(0, 9, HOLD_LINE , 0x46);
+				//cpunum_set_input_line_and_vector(Machine, 0, 9, HOLD_LINE , 0x46);
 				logerror("SCSP: Main CPU interrupt\n");
 			}
 		}
@@ -1404,7 +1406,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 			/*Sound IRQ*/
 			if(/*(!(stv_scu[40] & 0x40)) &&*/ scsp_to_main_irq == 1)
 			{
-				//cpunum_set_input_line_and_vector(0, 9, HOLD_LINE , 0x46);
+				//cpunum_set_input_line_and_vector(Machine, 0, 9, HOLD_LINE , 0x46);
 				logerror("SCSP: Main CPU interrupt\n");
 			}
 		}
@@ -1583,7 +1585,7 @@ static void dma_direct_lv0()
 
 	if(LOG_SCU) logerror("DMA transfer END\n");
 	if(!(stv_scu[40] & 0x800))/*Lv 0 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 5, HOLD_LINE , 0x4b);
+		cpunum_set_input_line_and_vector(Machine, 0, 5, HOLD_LINE , 0x4b);
 
 	if(scu_add_tmp & 0x80000000)
 	{
@@ -1686,7 +1688,7 @@ static void dma_direct_lv1()
 
 	if(LOG_SCU) logerror("DMA transfer END\n");
 	if(!(stv_scu[40] & 0x400))/*Lv 1 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 6, HOLD_LINE , 0x4a);
+		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x4a);
 
 	if(scu_add_tmp & 0x80000000)
 	{
@@ -1789,7 +1791,7 @@ static void dma_direct_lv2()
 
 	if(LOG_SCU) logerror("DMA transfer END\n");
 	if(!(stv_scu[40] & 0x200))/*Lv 2 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 6, HOLD_LINE , 0x49);
+		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x49);
 
 	if(scu_add_tmp & 0x80000000)
 	{
@@ -1867,7 +1869,7 @@ static void dma_indirect_lv0()
 	}while(job_done == 0);
 
 	if(!(stv_scu[40] & 0x800))/*Lv 0 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 5, HOLD_LINE , 0x4b);
+		cpunum_set_input_line_and_vector(Machine, 0, 5, HOLD_LINE , 0x4b);
 
 	D0MV_0;
 }
@@ -1939,7 +1941,7 @@ static void dma_indirect_lv1()
 	}while(job_done == 0);
 
 	if(!(stv_scu[40] & 0x400))/*Lv 1 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 6, HOLD_LINE , 0x4a);
+		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x4a);
 
 	D1MV_0;
 }
@@ -2010,7 +2012,7 @@ static void dma_indirect_lv2()
 	}while(job_done == 0);
 
 	if(!(stv_scu[40] & 0x200))/*Lv 2 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 6, HOLD_LINE , 0x49);
+		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x49);
 
 	D2MV_0;
 }
@@ -2050,7 +2052,7 @@ static WRITE32_HANDLER( minit_w )
 {
 	logerror("cpu #%d (PC=%08X) MINIT write = %08x\n",cpu_getactivecpu(), activecpu_get_pc(),data);
 	cpu_boost_interleave(minit_boost_timeslice, ATTOTIME_IN_USEC(minit_boost));
-	cpu_trigger(1000);
+	cpu_trigger(Machine, 1000);
 	cpunum_set_info_int(1, CPUINFO_INT_SH2_FRT_INPUT, PULSE_LINE);
 }
 
@@ -2658,15 +2660,15 @@ static void scsp_irq(int irq)
 	if (irq > 0)
 	{
 		scsp_last_line = irq;
-		cpunum_set_input_line(2, irq, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 2, irq, ASSERT_LINE);
 	}
 	else if (irq < 0)
 	{
-		cpunum_set_input_line(2, -irq, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 2, -irq, CLEAR_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(2, scsp_last_line, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 2, scsp_last_line, CLEAR_LINE);
 	}
 }
 
@@ -2711,9 +2713,9 @@ static MACHINE_START( stv )
 static MACHINE_RESET( stv )
 {
 	// don't let the slave cpu and the 68k go anywhere
-	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 	stv_enable_slave_sh2 = 0;
-	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
 
 	timer_0 = 0;
 	timer_1 = 0;
@@ -2721,9 +2723,9 @@ static MACHINE_RESET( stv )
 	NMI_reset = 1;
 	smpc_ram[0x21] = (0x80) | ((NMI_reset & 1) << 6);
 
-	cpunum_set_clock(0, MASTER_CLOCK_320/2);
-	cpunum_set_clock(1, MASTER_CLOCK_320/2);
-	cpunum_set_clock(2, MASTER_CLOCK_320/5);
+	cpunum_set_clock(machine, 0, MASTER_CLOCK_320/2);
+	cpunum_set_clock(machine, 1, MASTER_CLOCK_320/2);
+	cpunum_set_clock(machine, 2, MASTER_CLOCK_320/5);
 
 	stvcd_reset();
 }
@@ -2836,7 +2838,7 @@ ROM_START( astrass )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr20825.13",                0x0000000, 0x0100000, CRC(94a9ad8f) SHA1(861311c14cfa9f560752aa5b023c147a539cf135) ) // ic13 bad?! (was .24)
+	ROM_LOAD( "epr20825.13",                0x0000000, 0x0100000, CRC(94a9ad8f) SHA1(861311c14cfa9f560752aa5b023c147a539cf135) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -2859,7 +2861,7 @@ ROM_START( bakubaku )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "fpr17969.13",               0x0000000, 0x0100000, CRC(bee327e5) SHA1(1d226db72d6ef68fd294f60659df7f882b25def6) ) // ic13 bad?!
+	ROM_LOAD( "fpr17969.13",               0x0000000, 0x0100000, CRC(bee327e5) SHA1(1d226db72d6ef68fd294f60659df7f882b25def6) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -2874,7 +2876,7 @@ ROM_START( colmns97 )
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
 	/* it tests .13 at 0x000000 - 0x1fffff but reports as bad even if we put the rom there */
-	ROM_LOAD( "fpr19553.13",    0x000000, 0x100000, CRC(d4fb6a5e) SHA1(bd3cfb4f451b6c9612e42af5ddcbffa14f057329) ) // ic13 bad?!
+	ROM_LOAD( "fpr19553.13",    0x000000, 0x100000, CRC(d4fb6a5e) SHA1(bd3cfb4f451b6c9612e42af5ddcbffa14f057329) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -2915,7 +2917,7 @@ ROM_START( decathlt )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr18967.13",               0x0000000, 0x0100000, CRC(c0446674) SHA1(4917089d95613c9d2a936ed9fe3ebd22f461aa4f) ) // ic13 bad?!
+	ROM_LOAD( "epr18967.13",               0x0000000, 0x0100000, CRC(c0446674) SHA1(4917089d95613c9d2a936ed9fe3ebd22f461aa4f) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -2929,7 +2931,7 @@ ROM_END
 ROM_START( diehard )
  	STV_BIOS // must use USA
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "fpr19119.13",               0x0000000, 0x0100000, CRC(de5c4f7c) SHA1(35f670a15e9c86edbe2fe718470f5a75b5b096ac) ) // ic13 bad?!
+	ROM_LOAD( "fpr19119.13",               0x0000000, 0x0100000, CRC(de5c4f7c) SHA1(35f670a15e9c86edbe2fe718470f5a75b5b096ac) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -2943,7 +2945,7 @@ ROM_START( dnmtdeka )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "fpr19114.13",               0x0000000, 0x0100000, CRC(1fd22a5f) SHA1(c3d9653b12354a73a3e15f23a2ab7992ffb83e46) ) // ic13 bad?!
+	ROM_LOAD( "fpr19114.13",               0x0000000, 0x0100000, CRC(1fd22a5f) SHA1(c3d9653b12354a73a3e15f23a2ab7992ffb83e46) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -2957,7 +2959,7 @@ ROM_START( ejihon )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr18137.13",               0x0000000, 0x0080000, CRC(151aa9bc) SHA1(0959c60f31634816825acb57413838dcddb17d31) ) // ic13 bad?!
+	ROM_LOAD( "epr18137.13",               0x0000000, 0x0080000, CRC(151aa9bc) SHA1(0959c60f31634816825acb57413838dcddb17d31) )
 	ROM_RELOAD ( 0x0080000, 0x0080000 )
 	ROM_RELOAD ( 0x0100000, 0x0080000 )
 	ROM_RELOAD ( 0x0180000, 0x0080000 )
@@ -3006,7 +3008,7 @@ ROM_START( fhboxers )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "fr18541a.13",               0x0000000, 0x0100000, CRC(8c61a17c) SHA1(a8aef27b53482923a506f7daa4b7a38653b4d8a4) ) // ic13 bad?! (header is read from here, not ic7 even if both are populated on this board)
+	ROM_LOAD( "fr18541a.13",               0x0000000, 0x0100000, CRC(8c61a17c) SHA1(a8aef27b53482923a506f7daa4b7a38653b4d8a4) ) //(header is read from here, not ic7 even if both are populated on this board)
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3027,11 +3029,9 @@ ROM_START( findlove )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr20424.13",               0x0000000, 0x0100000, CRC(4e61fa46) SHA1(e34624d98cbdf2dd04d997167d3c4decd2f208f7) ) // ic13 bad?! (header is read from here, not ic7 even if both are populated on this board)
+	ROM_LOAD( "epr20424.13",               0x0000000, 0x0100000, CRC(4e61fa46) SHA1(e34624d98cbdf2dd04d997167d3c4decd2f208f7) ) //(header is read from here, not ic7 even if both are populated on this board)
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
-	//ROM_LOAD16_WORD_SWAP( "mpr20431.7",    0x0200000, 0x0200000, CRC(ea656ced) SHA1(b2d6286081bd46a89d1284a2757b87d0bca1bbde) ) // good
-	//ROM_COPY(REGION_USER1,0x080000,0x100000,(0x80000))//WRONG,will be worked out...
-	//ROM_FILL(                              0x0180000, 0x0080000, 0x00 )
+
 	ROM_LOAD16_WORD_SWAP( "mpr20431.7",    0x0200000, 0x0200000, CRC(ea656ced) SHA1(b2d6286081bd46a89d1284a2757b87d0bca1bbde) ) // good
 	ROM_LOAD16_WORD_SWAP( "mpr20426.2",    0x0400000, 0x0400000, CRC(897d1747) SHA1(f3fb2c4ef8bc2c1658907e822f2ee2b88582afdd) ) // good
 	ROM_LOAD16_WORD_SWAP( "mpr20427.3",    0x0800000, 0x0400000, CRC(a488a694) SHA1(80ec81f32e4b5712a607208b2a45cfdf6d5e1849) ) // good
@@ -3050,7 +3050,7 @@ ROM_START( finlarch )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "finlarch.13",               0x0000000, 0x0100000, CRC(4505fa9e) SHA1(96c6399146cf9c8f1d27a8fb6a265f937258004a) ) // ic13 bad?!
+	ROM_LOAD( "finlarch.13",               0x0000000, 0x0100000, CRC(4505fa9e) SHA1(96c6399146cf9c8f1d27a8fb6a265f937258004a) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3069,7 +3069,7 @@ ROM_START( gaxeduel )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr17766.13",               0x0000000, 0x0080000, CRC(a83fcd62) SHA1(4ce77ebaa0e93c6553ad8f7fb87cbdc32433402b) ) // ic13 bad?!
+	ROM_LOAD( "epr17766.13",               0x0000000, 0x0080000, CRC(a83fcd62) SHA1(4ce77ebaa0e93c6553ad8f7fb87cbdc32433402b) )
 	ROM_RELOAD ( 0x0080000, 0x0080000 )
 	ROM_RELOAD ( 0x0100000, 0x0080000 )
 	ROM_RELOAD ( 0x0180000, 0x0080000 )
@@ -3137,7 +3137,7 @@ ROM_START( introdon )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr18937.13",               0x0000000, 0x0080000, CRC(1f40d766) SHA1(35d9751c1b23cfbf448f2a9e9cf3b121929368ae) ) // ic13 bad
+	ROM_LOAD( "epr18937.13",               0x0000000, 0x0080000, CRC(1f40d766) SHA1(35d9751c1b23cfbf448f2a9e9cf3b121929368ae) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3280,7 +3280,7 @@ ROM_START( sandor )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "sando-r.13",               0x0000000, 0x0100000, CRC(fe63a239) SHA1(01502d4494f968443581cd2c74f25967d41f775e) ) // ic13 bad
+	ROM_LOAD( "sando-r.13",               0x0000000, 0x0100000, CRC(fe63a239) SHA1(01502d4494f968443581cd2c74f25967d41f775e) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3331,7 +3331,7 @@ ROM_START( sanjeon )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "ic11",               0x0000000, 0x0200000, CRC(9abae8d4) SHA1(ddbe4c8fff8fa59d63e278e95f245145d2da8aeb) ) // ic13 bad
+	ROM_LOAD( "ic11",               0x0000000, 0x0200000, CRC(9abae8d4) SHA1(ddbe4c8fff8fa59d63e278e95f245145d2da8aeb) )
 	ROM_RELOAD ( 0x0100000, 0x0200000 )
 	ROM_RELOAD ( 0x0200000, 0x0200000 )
 	ROM_RELOAD ( 0x0300000, 0x0200000 )
@@ -3354,7 +3354,7 @@ ROM_START( sasissu )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr20542.13",               0x0000000, 0x0100000, CRC(0e632db5) SHA1(9bc52794892eec22d381387d13a0388042e30714) ) // ic13 bad
+	ROM_LOAD( "epr20542.13",               0x0000000, 0x0100000, CRC(0e632db5) SHA1(9bc52794892eec22d381387d13a0388042e30714) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3371,7 +3371,7 @@ ROM_START( seabass )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "seabassf.13",               0x0000000, 0x0100000, CRC(6d7c39cc) SHA1(d9d1663134420b75c65ee07d7d547254785f2f83) ) // ic13 bad
+	ROM_LOAD( "seabassf.13",               0x0000000, 0x0100000, CRC(6d7c39cc) SHA1(d9d1663134420b75c65ee07d7d547254785f2f83) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3407,7 +3407,7 @@ ROM_END
 ROM_START( smleague )
 	STV_BIOS // must use USA
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr18777.13",               0x0000000, 0x0080000, CRC(8d180866) SHA1(d47ebabab6e06400312d39f68cd818852e496b96) ) // ic13 bad
+	ROM_LOAD( "epr18777.13",               0x0000000, 0x0080000, CRC(8d180866) SHA1(d47ebabab6e06400312d39f68cd818852e496b96) )
 	ROM_RELOAD ( 0x0080000, 0x0080000 )
 	ROM_RELOAD ( 0x0100000, 0x0080000 )
 	ROM_RELOAD ( 0x0180000, 0x0080000 )
@@ -3426,7 +3426,7 @@ ROM_START( sokyugrt )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "fpr19188.13",               0x0000000, 0x0100000, CRC(45a27e32) SHA1(96e1bab8bdadf7071afac2a0a6dd8fd8989f12a6) ) // ic13 bad
+	ROM_LOAD( "fpr19188.13",               0x0000000, 0x0100000, CRC(45a27e32) SHA1(96e1bab8bdadf7071afac2a0a6dd8fd8989f12a6) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3441,7 +3441,7 @@ ROM_START( sss )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr21488.13",               0x0000000, 0x0080000, CRC(71c9def1) SHA1(a544a0b4046307172d2c1bf426ed24845f87d894) ) // ic13 bad (was .24)
+	ROM_LOAD( "epr21488.13",               0x0000000, 0x0080000, CRC(71c9def1) SHA1(a544a0b4046307172d2c1bf426ed24845f87d894) )
 	ROM_RELOAD ( 0x0080000, 0x0080000 )
 	ROM_RELOAD ( 0x0100000, 0x0080000 )
 	ROM_RELOAD ( 0x0180000, 0x0080000 )
@@ -3460,7 +3460,7 @@ ROM_START( suikoenb )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "fpr17834.13",               0x0000000, 0x0100000, CRC(746ef686) SHA1(e31c317991a687662a8a2a45aed411001e5f1941) ) // ic13 bad
+	ROM_LOAD( "fpr17834.13",               0x0000000, 0x0100000, CRC(746ef686) SHA1(e31c317991a687662a8a2a45aed411001e5f1941) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3478,7 +3478,7 @@ ROM_START( twcup98 )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr20819.13",    0x0000000, 0x0100000, CRC(d930dfc8) SHA1(f66cc955181720661a0334fe67fa5750ddf9758b) ) // ic13 bad (was .24)
+	ROM_LOAD( "epr20819.13",    0x0000000, 0x0100000, CRC(d930dfc8) SHA1(f66cc955181720661a0334fe67fa5750ddf9758b) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3492,7 +3492,7 @@ ROM_START( vfkids )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "fpr18914.13",               0x0000000, 0x0100000, CRC(cd35730a) SHA1(645b52b449766beb740ab8f99957f8f431351ceb) ) // ic13 bad
+	ROM_LOAD( "fpr18914.13",               0x0000000, 0x0100000, CRC(cd35730a) SHA1(645b52b449766beb740ab8f99957f8f431351ceb) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3511,7 +3511,7 @@ ROM_START( vfremix )
 	STV_BIOS
 
 	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
-	ROM_LOAD( "epr17944.13",               0x0000000, 0x0100000, CRC(a5bdc560) SHA1(d3830480a611b7d88760c672ce46a2ea74076487) ) // ic13 bad
+	ROM_LOAD( "epr17944.13",               0x0000000, 0x0100000, CRC(a5bdc560) SHA1(d3830480a611b7d88760c672ce46a2ea74076487) )
 	ROM_RELOAD ( 0x0100000, 0x0100000 )
 	ROM_RELOAD ( 0x0200000, 0x0100000 )
 	ROM_RELOAD ( 0x0300000, 0x0100000 )
@@ -3750,6 +3750,24 @@ ROM_START( stress )
 	ROM_LOAD16_WORD_SWAP( "mpr-21299.ic11",   0x2800000, 0x0400000, CRC(ecc521c6) SHA1(f7ed4dd1cbe179652fdfdde34929b41a1fdcf9e2) ) // good
 ROM_END
 
+/* the rom test for this is in 'each game test'  */
+ROM_START( nclubv3 )
+	STV_BIOS
+
+	ROM_REGION32_BE( 0x3000000, REGION_USER1, 0 ) /* SH2 code */
+
+	ROM_LOAD16_WORD_SWAP( "ic22",    0x0200000, 0x0200000, CRC(b4008ed0) SHA1(acb3784acad971eb5f4920760dc23a16330e7bad) ) // OK
+	ROM_LOAD16_WORD_SWAP( "ic24",    0x0400000, 0x0200000, CRC(4e894850) SHA1(eb7c3399505a45816701197a45062b9f34e5a3e1) ) // OK
+	ROM_LOAD16_WORD_SWAP( "ic26",    0x0600000, 0x0200000, CRC(5b6b023f) SHA1(cf17c5857d85d4326dfe2ce40cf96989f9f78ecd) ) // OK
+	ROM_LOAD16_WORD_SWAP( "ic28",    0x0800000, 0x0200000, CRC(b7beab03) SHA1(de703e461a2bdd87b0695bd2f16e4c97d11bcf92) ) // OK
+	ROM_LOAD16_WORD_SWAP( "ic30",    0x0a00000, 0x0200000, CRC(a9f81069) SHA1(60d88c7c20178a00d6927c37069ab0c374ebf51e) ) // OK
+	ROM_LOAD16_WORD_SWAP( "ic32",    0x0c00000, 0x0200000, CRC(02708d66) SHA1(6881b0b05e55989953a16f6ba503ba891b849c07) ) // OK
+	ROM_LOAD16_WORD_SWAP( "ic34",    0x0e00000, 0x0200000, CRC(c79d0537) SHA1(9d595f718ff8f8ff7ca88100f35c589d5f9b4216) ) // OK
+	ROM_LOAD16_WORD_SWAP( "ic36",    0x1000000, 0x0200000, CRC(0c9df896) SHA1(4d8c18205e7aa90bfaa677ecff2b65128f2ad47c) ) // OK
+	ROM_LOAD16_WORD_SWAP( "ic23",    0x1200000, 0x0200000, CRC(bd922829) SHA1(4c6f988173e439a05a77da043d856e142b0da831) ) // OK
+	ROM_LOAD16_WORD_SWAP( "ic25",    0x1400000, 0x0200000, CRC(f77f9e24) SHA1(9a9636114e74c1fd7bd67db8005af02ef6a75ab1) ) // OK
+ROM_END
+
 /*
 country codes:
 J = Japan
@@ -3771,7 +3789,7 @@ by introdon in ST-V ("SG0000000"),and according to the manual it's even wrong! (
 by Sega titles,and this is a Sunsoft game)It's likely to be a left-over...
 */
 
-DRIVER_INIT( sanjeon )
+static DRIVER_INIT( sanjeon )
 {
 	UINT8 *src    = memory_region       ( REGION_USER1 );
 	int x;
@@ -3789,7 +3807,7 @@ DRIVER_INIT( sanjeon )
 	}
 
 
-	driver_init_sasissu(Machine);
+	DRIVER_INIT_CALL(sasissu);
 }
 
 GAME( 1996, stvbios,   0, stv, stv,  stv,       ROT0,   "Sega",                      "ST-V Bios", GAME_IS_BIOS_ROOT )
@@ -3837,6 +3855,7 @@ GAME( 1995, suikoenb,  stvbios, stv, stv,  suikoenb,  ROT0,   "Data East",      
 GAME( 1996, vfkids,    stvbios, stv, stv,  ic13,      ROT0,   "Sega", 	 				  "Virtua Fighter Kids (JUET 960319 V0.000)", GAME_IMPERFECT_SOUND )
 GAME( 1997, winterht,  stvbios, stv, stv,  winterht,  ROT0,   "Sega", 	 				  "Winter Heat (JUET 971012 V1.000)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 GAME( 1997, znpwfv,    stvbios, stv, stv,  znpwfv,    ROT0,   "Sega", 	     			  "Zen Nippon Pro-Wrestling Featuring Virtua (J 971123 V1.000)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, nclubv3,   stvbios, stv, stv,  nameclv3,  ROT0,   "Sega", 	     			  "Name Club Ver.3 (J 970723 V1.000)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS ) // seems to work, although it could do with speedups, and the printer isn't emulated..
 
 /* Almost */
 GAME( 1997, vmahjong,  stvbios, stv, stvmp,stv,       ROT0,   "Micronet",                 "Virtual Mahjong (J 961214 V1.000)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )

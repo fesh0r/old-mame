@@ -9,6 +9,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/eolithsp.h"
 
 static int eolith_speedup_address;
@@ -86,7 +87,7 @@ INTERRUPT_GEN( eolith_speedup )
 
 	if (eolith_scanline==eolith_speedup_resume_scanline)
 	{
-		cpu_trigger(1000);
+		cpu_trigger(machine, 1000);
 	}
 
 	if (eolith_scanline==240)
@@ -95,7 +96,7 @@ INTERRUPT_GEN( eolith_speedup )
 	}
 }
 
-UINT32 eolith_speedup_getvblank(void *param)
+CUSTOM_INPUT( eolith_speedup_getvblank )
 {
 	return eolith_vblank&1;
 }

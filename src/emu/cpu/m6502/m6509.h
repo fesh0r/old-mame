@@ -3,7 +3,7 @@
  *   m6509.h
  *   Portable 6509 emulator V1.0beta
  *
- *   Copyright (c) 2000 Peter Trauner, all rights reserved.
+ *   Copyright Peter Trauner, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -31,7 +31,7 @@ enum {
 };
 
 #define M6509_IRQ_LINE					M6502_IRQ_LINE
-/* use cpunum_set_input_line(cpu, M6509_SET_OVERFLOW, level)
+/* use cpunum_set_input_line(machine, cpu, M6509_SET_OVERFLOW, level)
    to change level of the so input line
    positiv edge sets overflow flag */
 #define M6509_SET_OVERFLOW 3

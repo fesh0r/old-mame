@@ -17,6 +17,7 @@ Could be bad dump ('final' romset is made of two sets marked as 'bad' )
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "snk.h"
 #include "sound/ay8910.h"
@@ -55,7 +56,7 @@ static WRITE8_HANDLER( sound_command_w )
 {
 	sound_cpu_busy = 0x20;
 	soundlatch_w(0, data);
-	cpunum_set_input_line(2, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static READ8_HANDLER( sound_command_r )
@@ -66,7 +67,7 @@ static READ8_HANDLER( sound_command_r )
 
 static READ8_HANDLER( sound_nmi_ack_r )
 {
-	cpunum_set_input_line(2, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, CLEAR_LINE);
 	return 0;
 }
 

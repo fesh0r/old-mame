@@ -50,6 +50,7 @@ Changelog:
 
 ******************************************************************************************/
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/scudsp.h"
 #include "osd_cpu.h"
 
@@ -319,7 +320,7 @@ void dsp_prg_ctrl(UINT32 data)
 	if(LEF) dsp_reg.pc = (data & 0xff);
 	if(EXF) dsp_execute_program();
 	if(EF && (!(stv_scu[40] & 0x0020)))
-		cpunum_set_input_line_and_vector(0, 0xa, HOLD_LINE , 0x45);
+		cpunum_set_input_line_and_vector(Machine, 0, 0xa, HOLD_LINE , 0x45);
 }
 
 void dsp_prg_data(UINT32 data)

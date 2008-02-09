@@ -7,6 +7,7 @@
 **************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/tms34010/tms34010.h"
 #include "video/tlc34076.h"
 #include "btoads.h"
@@ -29,9 +30,9 @@ UINT16 *btoads_sprite_control;
 
 static UINT8 *vram_fg_draw, *vram_fg_display;
 
-static int xscroll0, yscroll0;
-static int xscroll1, yscroll1;
-static int screen_control;
+static INT32 xscroll0, yscroll0;
+static INT32 xscroll1, yscroll1;
+static UINT8 screen_control;
 
 static UINT16 sprite_source_offs;
 static UINT8 *sprite_dest_base;
@@ -52,6 +53,16 @@ VIDEO_START( btoads )
 	/* initialize the swapped pointers */
 	vram_fg_draw = (UINT8 *)btoads_vram_fg0;
 	vram_fg_display = (UINT8 *)btoads_vram_fg1;
+
+	state_save_register_global(xscroll0);
+	state_save_register_global(xscroll1);
+	state_save_register_global(yscroll0);
+	state_save_register_global(yscroll1);
+	state_save_register_global(screen_control);
+
+	state_save_register_global(sprite_source_offs);
+	state_save_register_global(sprite_dest_offs);
+	state_save_register_global(misc_control);
 }
 
 
@@ -67,7 +78,7 @@ WRITE16_HANDLER( btoads_misc_control_w )
 	COMBINE_DATA(&misc_control);
 
 	/* bit 3 controls sound reset line */
-	cpunum_set_input_line(1, INPUT_LINE_RESET, (misc_control & 8) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (misc_control & 8) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -284,7 +295,7 @@ void btoads_to_shiftreg(UINT32 address, UINT16 *shiftreg)
 	else if (address >= 0xa4000000 && address <= 0xa7ffffff)
 	{
 		sprite_dest_base = &vram_fg_draw[TOWORD(address & 0x3fc000)];
-		sprite_dest_offs = (INT16)((address & 0x3ff) << 2) >> 2;
+		sprite_dest_offs = (address & 0x003fff) >> 5;
 	}
 
 	/* reads from this region set the sprite source address */
@@ -337,7 +348,8 @@ void btoads_scanline_update(running_machine *machine, int screen, mame_bitmap *b
 	UINT16 *bg0_base = &btoads_vram_bg0[(fulladdr + (yscroll0 << 10)) & 0x3fc00];
 	UINT16 *bg1_base = &btoads_vram_bg1[(fulladdr + (yscroll1 << 10)) & 0x3fc00];
 	UINT8 *spr_base = &vram_fg_display[fulladdr & 0x3fc00];
-	UINT16 *dst = BITMAP_ADDR16(bitmap, scanline, 0);
+	UINT32 *dst = BITMAP_ADDR32(bitmap, scanline, 0);
+	const rgb_t *pens = tlc34076_get_pens();
 	int coladdr = fulladdr & 0x3ff;
 	int x;
 
@@ -345,38 +357,58 @@ void btoads_scanline_update(running_machine *machine, int screen, mame_bitmap *b
 	switch (screen_control & 3)
 	{
 		/* mode 0: used in ship level, snake boss, title screen (free play) */
+		/* priority is:
+            1. Sprite pixels with high bit clear
+            2. BG1 pixels with the high bit set
+            3. Sprites
+            4. BG1
+            5. BG0
+        */
 		case 0:
-
-		/* mode 2: used in EOA screen, jetpack level, first level, high score screen */
-		case 2:
 			for (x = params->heblnk; x < params->hsblnk; x += 2, coladdr++)
 			{
 				UINT8 sprpix = spr_base[coladdr & 0xff];
 
-				if (sprpix)
+				if (sprpix && !(sprpix & 0x80))
 				{
-					dst[x + 0] = sprpix;
-					dst[x + 1] = sprpix;
+					dst[x + 0] = pens[sprpix];
+					dst[x + 1] = pens[sprpix];
 				}
 				else
 				{
 					UINT16 bg0pix = bg0_base[(coladdr + xscroll0) & 0xff];
 					UINT16 bg1pix = bg1_base[(coladdr + xscroll1) & 0xff];
+					UINT8 sprpix = spr_base[coladdr & 0xff];
 
-					if (bg1pix & 0xff)
-						dst[x + 0] = bg1pix & 0xff;
+					if (bg1pix & 0x80)
+						dst[x + 0] = pens[bg1pix & 0xff];
+					else if (sprpix)
+						dst[x + 0] = pens[sprpix];
+					else if (bg1pix & 0xff)
+						dst[x + 0] = pens[bg1pix & 0xff];
 					else
-						dst[x + 0] = bg0pix & 0xff;
+						dst[x + 0] = pens[bg0pix & 0xff];
 
-					if (bg1pix >> 8)
-						dst[x + 1] = bg1pix >> 8;
+					if (bg1pix & 0x8000)
+						dst[x + 1] = pens[bg1pix >> 8];
+					else if (sprpix)
+						dst[x + 1] = pens[sprpix];
+					else if (bg1pix >> 8)
+						dst[x + 1] = pens[bg1pix >> 8];
 					else
-						dst[x + 1] = bg0pix >> 8;
+						dst[x + 1] = pens[bg0pix >> 8];
 				}
 			}
 			break;
 
 		/* mode 1: used in snow level, title screen (free play), top part of rolling ball level */
+		/* priority is:
+            1. Sprite pixels with high bit clear
+            2. BG0
+            3. BG1 pixels with high bit set
+            4. Sprites
+            5. BG1
+        */
 		case 1:
 			for (x = params->heblnk; x < params->hsblnk; x += 2, coladdr++)
 			{
@@ -384,8 +416,8 @@ void btoads_scanline_update(running_machine *machine, int screen, mame_bitmap *b
 
 				if (sprpix && !(sprpix & 0x80))
 				{
-					dst[x + 0] = sprpix;
-					dst[x + 1] = sprpix;
+					dst[x + 0] = pens[sprpix];
+					dst[x + 1] = pens[sprpix];
 				}
 				else
 				{
@@ -393,27 +425,68 @@ void btoads_scanline_update(running_machine *machine, int screen, mame_bitmap *b
 					UINT16 bg1pix = bg1_base[(coladdr + xscroll1) & 0xff];
 
 					if (bg0pix & 0xff)
-						dst[x + 0] = bg0pix & 0xff;
+						dst[x + 0] = pens[bg0pix & 0xff];
 					else if (bg1pix & 0x80)
-						dst[x + 0] = bg1pix & 0xff;
+						dst[x + 0] = pens[bg1pix & 0xff];
 					else if (sprpix)
-						dst[x + 0] = sprpix;
+						dst[x + 0] = pens[sprpix];
 					else
-						dst[x + 0] = bg1pix & 0xff;
+						dst[x + 0] = pens[bg1pix & 0xff];
 
 					if (bg0pix >> 8)
-						dst[x + 1] = bg0pix >> 8;
+						dst[x + 1] = pens[bg0pix >> 8];
 					else if (bg1pix & 0x8000)
-						dst[x + 1] = bg1pix >> 8;
+						dst[x + 1] = pens[bg1pix >> 8];
 					else if (sprpix)
-						dst[x + 1] = sprpix;
+						dst[x + 1] = pens[sprpix];
 					else
-						dst[x + 1] = bg1pix >> 8;
+						dst[x + 1] = pens[bg1pix >> 8];
+				}
+			}
+			break;
+
+		/* mode 2: used in EOA screen, jetpack level, first level, high score screen */
+		/* priority is:
+            1. Sprites
+            2. BG1
+            3. BG0
+        */
+		case 2:
+			for (x = params->heblnk; x < params->hsblnk; x += 2, coladdr++)
+			{
+				UINT8 sprpix = spr_base[coladdr & 0xff];
+
+				if (sprpix)
+				{
+					dst[x + 0] = pens[sprpix];
+					dst[x + 1] = pens[sprpix];
+				}
+				else
+				{
+					UINT16 bg0pix = bg0_base[(coladdr + xscroll0) & 0xff];
+					UINT16 bg1pix = bg1_base[(coladdr + xscroll1) & 0xff];
+
+					if (bg1pix & 0xff)
+						dst[x + 0] = pens[bg1pix & 0xff];
+					else
+						dst[x + 0] = pens[bg0pix & 0xff];
+
+					if (bg1pix >> 8)
+						dst[x + 1] = pens[bg1pix >> 8];
+					else
+						dst[x + 1] = pens[bg0pix >> 8];
 				}
 			}
 			break;
 
 		/* mode 3: used in toilet level, toad intros, bottom of rolling ball level */
+		/* priority is:
+            1. BG1 pixels with the high bit set
+            2. Sprite pixels with the high bit set
+            3. BG1
+            4. Sprites
+            5. BG0
+        */
 		case 3:
 			for (x = params->heblnk; x < params->hsblnk; x += 2, coladdr++)
 			{
@@ -422,38 +495,42 @@ void btoads_scanline_update(running_machine *machine, int screen, mame_bitmap *b
 				UINT8 sprpix = spr_base[coladdr & 0xff];
 
 				if (bg1pix & 0x80)
-					dst[x + 0] = bg1pix & 0xff;
+					dst[x + 0] = pens[bg1pix & 0xff];
 				else if (sprpix & 0x80)
-					dst[x + 0] = sprpix;
+					dst[x + 0] = pens[sprpix];
 				else if (bg1pix & 0xff)
-					dst[x + 0] = bg1pix & 0xff;
+					dst[x + 0] = pens[bg1pix & 0xff];
 				else if (sprpix)
-					dst[x + 0] = sprpix;
+					dst[x + 0] = pens[sprpix];
 				else
-					dst[x + 0] = bg0pix & 0xff;
+					dst[x + 0] = pens[bg0pix & 0xff];
 
 				if (bg1pix & 0x8000)
-					dst[x + 1] = bg1pix >> 8;
+					dst[x + 1] = pens[bg1pix >> 8];
 				else if (sprpix & 0x80)
-					dst[x + 1] = sprpix;
+					dst[x + 1] = pens[sprpix];
 				else if (bg1pix >> 8)
-					dst[x + 1] = bg1pix >> 8;
+					dst[x + 1] = pens[bg1pix >> 8];
 				else if (sprpix)
-					dst[x + 1] = sprpix;
+					dst[x + 1] = pens[sprpix];
 				else
-					dst[x + 1] = bg0pix >> 8;
+					dst[x + 1] = pens[bg0pix >> 8];
 			}
 			break;
 	}
 
 	/* debugging - dump the screen contents to a file */
 #if BT_DEBUG
+	popmessage("screen_control = %02X", screen_control & 0x7f);
+
 	if (input_code_pressed(KEYCODE_X))
 	{
 		static int count = 0;
 		char name[10];
 		FILE *f;
 		int i;
+
+		while (input_code_pressed(KEYCODE_X)) ;
 
 		sprintf(name, "disp%d.log", count++);
 		f = fopen(name, "w");

@@ -4,7 +4,7 @@
 
     Debugger code-comment management functions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ****************************************************************************
@@ -26,6 +26,7 @@
 #include "debugcpu.h"
 #include "debugvw.h"
 #include "info.h"
+#include "deprecat.h"
 #include <zlib.h>
 
 
@@ -34,13 +35,8 @@
     DEBUGGING
 ***************************************************************************/
 
-//#define VERBOSE
-
-#ifdef VERBOSE
-#define TRACE(x) do {x;} while (0)
-#else
-#define TRACE(x)
-#endif
+#define VERBOSE 0
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 
 
@@ -107,14 +103,17 @@ static void debug_comment_free(void);
 
 int debug_comment_init(running_machine *machine)
 {
-	/* allocate enough comment groups for the total # of cpu's */
-	debug_comments = (comment_group*) auto_malloc(cpu_gettotalcpu() * sizeof(comment_group));
-	memset(debug_comments, 0, cpu_gettotalcpu() * sizeof(comment_group));
+	if (cpu_gettotalcpu() > 0)
+	{
+		/* allocate enough comment groups for the total # of cpu's */
+		debug_comments = (comment_group*) auto_malloc(cpu_gettotalcpu() * sizeof(comment_group));
+		memset(debug_comments, 0, cpu_gettotalcpu() * sizeof(comment_group));
 
-	/* automatically load em up */
-	debug_comment_load();
+		/* automatically load em up */
+		debug_comment_load();
 
-	add_exit_callback(machine, debug_comment_exit);
+		add_exit_callback(machine, debug_comment_exit);
+	}
 
 	return 1;
 }

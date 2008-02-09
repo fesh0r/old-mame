@@ -25,6 +25,7 @@ based on wich Coin input was connected.
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 
@@ -116,7 +117,7 @@ static WRITE8_HANDLER( cexctsccr_mcu_halt_w )
 	const int *p;
 
 	data &= 1;
-	cpunum_set_input_line(2, INPUT_LINE_HALT, data ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT, data ? ASSERT_LINE : CLEAR_LINE);
 	if( (p=mcu_patch_data) != NULL)
 	{
 		/* patch MCU program */

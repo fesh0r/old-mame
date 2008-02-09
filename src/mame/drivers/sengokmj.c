@@ -278,11 +278,9 @@ static GFXDECODE_START( sengokmj )
 	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout, 0x700, 0x10 ) /* Text */
 GFXDECODE_END
 
-SEIBU_SOUND_SYSTEM_YM3812_HARDWARE
-
 static INTERRUPT_GEN( sengokmj_interrupt )
 {
-	cpunum_set_input_line_and_vector(0,0,HOLD_LINE,0xcb/4);
+	cpunum_set_input_line_and_vector(machine, 0,0,HOLD_LINE,0xcb/4);
 }
 
 static MACHINE_DRIVER_START( sengokmj )

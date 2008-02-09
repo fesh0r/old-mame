@@ -9,7 +9,7 @@
  *   8054 Product Line (8054)
  *   8058 Product Line (8058)
  *
- *   Copyright (c) 2003 Steve Ellenoff, all rights reserved.
+ *   Copyright Steve Ellenoff, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -106,7 +106,6 @@ extern void i8051_set_irq_line(int irqline, int state);
 extern void i8051_set_irq_callback(int (*callback)(int irqline));
 extern void i8051_state_save(void *file);
 extern void i8051_state_load(void *file);
-extern const char *i8051_info(void *context, int regnum);
 
 WRITE8_HANDLER( i8051_internal_w );
 READ8_HANDLER( i8051_internal_r );
@@ -115,9 +114,9 @@ extern void i8051_set_serial_tx_callback(void (*callback)(int data));
 extern void i8051_set_serial_rx_callback(int (*callback)(void));
 extern void i8051_set_eram_iaddr_callback(READ32_HANDLER((*callback)));
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern offs_t i8051_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 /****************************************************************************
  * 8752 Section
@@ -135,7 +134,6 @@ extern void i8752_set_irq_line(int irqline, int state);
 extern void i8752_set_irq_callback(int (*callback)(int irqline));
 extern void i8752_state_save(void *file);
 extern void i8752_state_load(void *file);
-extern const char *i8752_info(void *context, int regnum);
 extern void i8752_set_serial_tx_callback(void (*callback)(int data));
 extern void i8752_set_serial_rx_callback(int (*callback)(void));
 WRITE8_HANDLER( i8752_internal_w );

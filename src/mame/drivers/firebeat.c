@@ -109,6 +109,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/powerpc/ppc.h"
 #include "machine/intelfsh.h"
 #include "machine/scsicd.h"
@@ -847,7 +848,7 @@ static int atapi_drivesel;
 
 static void atapi_cause_irq(void)
 {
-	cpunum_set_input_line(0, INPUT_LINE_IRQ4, ASSERT_LINE);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ4, ASSERT_LINE);
 }
 
 static void atapi_exit(running_machine* machine)
@@ -1260,7 +1261,7 @@ static WRITE32_HANDLER( comm_uart_w )
 static void comm_uart_irq_callback(int channel, int value)
 {
 	// TODO
-	//cpunum_set_input_line(0, INPUT_LINE_IRQ2, ASSERT_LINE);
+	//cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ2, ASSERT_LINE);
 }
 
 /*****************************************************************************/
@@ -1416,7 +1417,7 @@ static void midi_uart_irq_callback(int channel, int value)
 		if ((extend_board_irq_enable & 0x02) == 0)
 		{
 			extend_board_irq_active |= 0x02;
-			cpunum_set_input_line(0, INPUT_LINE_IRQ1, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
 		}
 	}
 	else
@@ -1424,7 +1425,7 @@ static void midi_uart_irq_callback(int channel, int value)
 		if ((extend_board_irq_enable & 0x01) == 0)
 		{
 			extend_board_irq_active |= 0x01;
-			cpunum_set_input_line(0, INPUT_LINE_IRQ1, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
 		}
 	}
 }
@@ -1461,7 +1462,7 @@ static const int keyboard_notes[24] =
 
 static TIMER_CALLBACK( keyboard_timer_callback )
 {
-	const int kb_uart_channel[2] = { 1, 0 };
+	static const int kb_uart_channel[2] = { 1, 0 };
 	int keyboard;
 	int i;
 
@@ -1962,7 +1963,7 @@ static INTERRUPT_GEN(firebeat_interrupt)
 	// IRQ 2: Main board UART
 	// IRQ 4: ATAPI
 
-	cpunum_set_input_line(0, INPUT_LINE_IRQ0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
 static MACHINE_RESET( firebeat )

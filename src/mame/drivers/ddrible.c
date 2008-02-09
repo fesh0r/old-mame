@@ -7,6 +7,7 @@ Driver by Manuel Abadia <manu@teleline.es>
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2203intf.h"
 #include "sound/vlm5030.h"
@@ -38,13 +39,13 @@ WRITE8_HANDLER( K005885_1_w );
 static INTERRUPT_GEN( ddrible_interrupt_0 )
 {
 	if (ddrible_int_enable_0)
-		cpunum_set_input_line(0, M6809_FIRQ_LINE, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( ddrible_interrupt_1 )
 {
 	if (ddrible_int_enable_1)
-		cpunum_set_input_line(1, M6809_FIRQ_LINE, HOLD_LINE);
+		cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, HOLD_LINE);
 }
 
 
@@ -135,7 +136,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writemem_cpu0, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0004) AM_WRITE(K005885_0_w)								/* video registers (005885 #1) */
 	AM_RANGE(0x0800, 0x0804) AM_WRITE(K005885_1_w)								/* video registers (005885 #2) */
-	AM_RANGE(0x1800, 0x187f) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_be_w) AM_BASE(&paletteram)/* seems wrong, MSB is used as well */
+	AM_RANGE(0x1800, 0x187f) AM_WRITE(MWA8_RAM) AM_BASE(&paletteram)
 	AM_RANGE(0x2000, 0x2fff) AM_WRITE(ddrible_fg_videoram_w) AM_BASE(&ddrible_fg_videoram)/* Video RAM 1 */
 	AM_RANGE(0x3000, 0x3fff) AM_WRITE(MWA8_RAM) AM_BASE(&ddrible_spriteram_1)				/* Object RAM 1 */
 	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_RAM) AM_BASE(&ddrible_sharedram)				/* shared RAM with CPU #1 */
@@ -339,15 +340,15 @@ static const struct VLM5030interface vlm5030_interface =
 static MACHINE_DRIVER_START( ddribble )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809,	1536000)	/* 18432000/12 MHz? */
+	MDRV_CPU_ADD(M6809,	XTAL_18_432MHz/12)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu0,writemem_cpu0)
 	MDRV_CPU_VBLANK_INT(ddrible_interrupt_0,1)
 
-	MDRV_CPU_ADD(M6809,	1536000)	/* 18432000/12 MHz? */
+	MDRV_CPU_ADD(M6809,	XTAL_18_432MHz/12)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu1,writemem_cpu1)
 	MDRV_CPU_VBLANK_INT(ddrible_interrupt_1,1)
 
-	MDRV_CPU_ADD(M6809,	1536000)	/* 18432000/12 MHz? */
+	MDRV_CPU_ADD(M6809,	XTAL_18_432MHz/12)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu2,writemem_cpu2)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -362,8 +363,7 @@ static MACHINE_DRIVER_START( ddribble )
 /*  MDRV_SCREEN_SIZE(64*8, 32*8)
     MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 2*8, 30*8-1) */
 	MDRV_GFXDECODE(ddrible)
-	MDRV_PALETTE_LENGTH(64)
-	MDRV_COLORTABLE_LENGTH(64 + 256)
+	MDRV_PALETTE_LENGTH(64 + 256)
 
 	MDRV_PALETTE_INIT(ddrible)
 	MDRV_VIDEO_START(ddrible)
@@ -372,14 +372,14 @@ static MACHINE_DRIVER_START( ddribble )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 3580000)
+	MDRV_SOUND_ADD(YM2203, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2203_interface)
 	MDRV_SOUND_ROUTE(0, "filter1", 0.25)
 	MDRV_SOUND_ROUTE(1, "filter2", 0.25)
 	MDRV_SOUND_ROUTE(2, "filter3", 0.25)
 	MDRV_SOUND_ROUTE(3, "mono", 0.25)
 
-	MDRV_SOUND_ADD(VLM5030, 3580000)
+	MDRV_SOUND_ADD(VLM5030, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(vlm5030_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 

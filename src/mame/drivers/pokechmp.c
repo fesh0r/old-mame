@@ -45,10 +45,10 @@ ClawGrip, Jul 2006
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
-//#include "sound/msm5205.h"
 #include "sound/okim6295.h"
 
 extern WRITE8_HANDLER( pokechmp_videoram_w );
@@ -95,7 +95,7 @@ static WRITE8_HANDLER( pokechmp_sound_bank_w )
 static WRITE8_HANDLER( pokechmp_sound_w )
 {
 	soundlatch_w(0,data);
-	cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 

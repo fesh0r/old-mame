@@ -5,11 +5,11 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/i8039/i8039.h"
 #include "sound/sn76477.h"
 #include "sound/dac.h"
 #include "includes/n8080.h"
-#include <math.h>
 
 static int n8080_hardware;
 
@@ -201,7 +201,7 @@ static void spacefev_sound_pins_changed(void)
 	}
 	if (changes & ((1 << 0x2) | (1 << 0x3) | (1 << 0x5)))
 	{
-		cpunum_set_input_line(1, 0, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, 0, PULSE_LINE);
 	}
 }
 
@@ -224,7 +224,7 @@ static void sheriff_sound_pins_changed(void)
 	}
 	if (changes & ((1 << 0x2) | (1 << 0x3) | (1 << 0x5)))
 	{
-		cpunum_set_input_line(1, 0, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, 0, PULSE_LINE);
 	}
 }
 
@@ -239,7 +239,7 @@ static void helifire_sound_pins_changed(void)
 
 	if (changes & (1 << 6))
 	{
-		cpunum_set_input_line(1, 0, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, 0, PULSE_LINE);
 	}
 }
 
@@ -546,7 +546,7 @@ ADDRESS_MAP_END
 MACHINE_DRIVER_START( spacefev_sound )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(I8035, 6000000 / I8039_CLOCK_DIVIDER)
+	MDRV_CPU_ADD(I8035, 6000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
 	MDRV_CPU_IO_MAP(n8080_sound_io_map, 0)
@@ -568,7 +568,7 @@ MACHINE_DRIVER_END
 MACHINE_DRIVER_START( sheriff_sound )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(I8035, 6000000 / I8039_CLOCK_DIVIDER)
+	MDRV_CPU_ADD(I8035, 6000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
 	MDRV_CPU_IO_MAP(n8080_sound_io_map, 0)
@@ -590,7 +590,7 @@ MACHINE_DRIVER_END
 MACHINE_DRIVER_START( helifire_sound )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(I8035, 6000000 / I8039_CLOCK_DIVIDER)
+	MDRV_CPU_ADD(I8035, 6000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
 	MDRV_CPU_IO_MAP(helifire_sound_io_map, 0)

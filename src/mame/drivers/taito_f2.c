@@ -289,6 +289,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
@@ -795,13 +796,13 @@ driftout  8000 0000/8  0000 0000    The first control changes from 8000 to 0000 
 
 static TIMER_CALLBACK( taitof2_interrupt6 )
 {
-	cpunum_set_input_line(0,6,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,6,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( taitof2_interrupt )
 {
 	timer_set(ATTOTIME_IN_CYCLES(500,0), NULL, 0, taitof2_interrupt6);
-	cpunum_set_input_line(0, 5, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
 }
 
 
@@ -845,7 +846,7 @@ static INT32 driveout_sound_latch = 0;
 
 static READ8_HANDLER( driveout_sound_command_r)
 {
-	cpunum_set_input_line(1,0,CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,CLEAR_LINE);
 //  logerror("sound IRQ OFF (sound command=%02x)\n",driveout_sound_latch);
 	return driveout_sound_latch;
 }
@@ -886,7 +887,7 @@ static WRITE16_HANDLER ( driveout_sound_command_w )
 			else
 			{
 				driveout_sound_latch = ((data<<4) & 0xf0) | (driveout_sound_latch & 0x0f);
-				cpunum_set_input_line (1, 0, ASSERT_LINE);
+				cpunum_set_input_line (Machine, 1, 0, ASSERT_LINE);
 			}
 		}
 	}
@@ -3820,7 +3821,7 @@ GFXDECODE_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irq_handler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =
@@ -4319,11 +4320,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( camltrya )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,24000000/2)	/* 12 MHz */
+	MDRV_CPU_ADD(M68000,24000000/2)	/* verified on pcb  */
 	MDRV_CPU_PROGRAM_MAP(cameltry_readmem,cameltry_writemem)
 	MDRV_CPU_VBLANK_INT(taitof2_interrupt,1)
 
-	MDRV_CPU_ADD(Z80,24000000/6)	/* 4 MHz */
+	MDRV_CPU_ADD(Z80,24000000/4)	/* verifed on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(camltrya_sound_readmem,camltrya_sound_writemem)
 
@@ -4345,15 +4346,15 @@ static MACHINE_DRIVER_START( camltrya )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 24000000/8) // ?? freqnecy?
+	MDRV_SOUND_ADD(YM2203, 24000000/8) /* verified on pcb  */
 	MDRV_SOUND_CONFIG(ym2203_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 0.20)
 	MDRV_SOUND_ROUTE(1, "mono", 0.20)
 	MDRV_SOUND_ROUTE(2, "mono", 0.20)
 	MDRV_SOUND_ROUTE(3, "mono", 0.60)
 
-	MDRV_SOUND_ADD(OKIM6295, 24000000/16) // ?? frequency?
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD(OKIM6295, 4224000/4) /* verified on pcb */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 MACHINE_DRIVER_END
 

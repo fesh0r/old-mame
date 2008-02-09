@@ -15,6 +15,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "v9938.h"
 
 typedef struct {
@@ -135,7 +136,7 @@ PALETTE_INIT( v9958 )
 	UINT8 pal[19268*3];
 
 	/* init v9938 512-color palette */
-	palette_init_v9938(machine, colortable, color_prom);
+	PALETTE_INIT_CALL(v9938);
 
 	/* set up YJK table */
 		pal_indYJK = auto_malloc(0x20000 * sizeof(UINT16));
@@ -430,7 +431,7 @@ void v9938_init (running_machine *machine, int model, int vram_size, void (*call
 	else
 		vdp.vram_exp = NULL;
 
-	video_start_generic_bitmapped(machine);
+	VIDEO_START_CALL(generic_bitmapped);
 }
 
 void v9938_reset (void)
@@ -600,7 +601,7 @@ static void v9938_register_write (int reg, int data)
 
  READ8_HANDLER (v9938_status_r)
 	{
-	int reg, n;
+	int reg;
 	UINT8 ret;
 
 	vdp.cmd_write_first = 0;
@@ -624,8 +625,14 @@ static void v9938_register_write (int reg, int data)
 			break;
 		case 2:
 			/*v9938_update_command ();*/
-			n = cycles_currently_ran ();
-			if ( (n < 28) || (n > 199) ) vdp.statReg[2] |= 0x20;
+/*
+    WTF is this? Whatever this was intended to do, it is nonsensical.
+    Might as well pick a random number....
+            n = cycles_currently_ran ();
+            if ( (n < 28) || (n > 199) ) vdp.statReg[2] |= 0x20;
+            else vdp.statReg[2] &= ~0x20;
+*/
+			if (mame_rand(Machine) & 1) vdp.statReg[2] |= 0x20;
 			else vdp.statReg[2] &= ~0x20;
 			ret = vdp.statReg[2];
 			break;

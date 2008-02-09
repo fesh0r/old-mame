@@ -16,6 +16,7 @@
 #include "debugger.h"
 #include "mips3com.h"
 #include "mips3fe.h"
+#include "deprecat.h"
 #include "cpu/x86log.h"
 #include "cpu/drcfe.h"
 
@@ -30,7 +31,7 @@ extern unsigned dasmmips3(char *buffer, unsigned pc, UINT32 op);
 #define LOG_CODE				(0)
 #define SINGLE_INSTRUCTION_MODE	(0)
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 #define COMPARE_AGAINST_C		(0)
 #else
 #define COMPARE_AGAINST_C		(0)
@@ -161,6 +162,7 @@ static void mips3c_reset(void);
 ***************************************************************************/
 
 static mips3_regs mips3;
+static size_t allocatedsize;
 
 
 
@@ -181,15 +183,17 @@ static void mips3_init(mips3_flavor flavor, int bigendian, int index, int clock,
 		COMPILE_MAX_SEQUENCE,		/* maximum instructions to include in a sequence */
 		mips3fe_describe			/* callback to describe a single instruction */
 	};
+	size_t memsize = mips3com_init(NULL, flavor, bigendian, index, clock, config, irqcallback, NULL);
 
 	/* allocate a cache and memory for the core data in a single block */
-	mips3.core = osd_alloc_executable(CACHE_SIZE + sizeof(*mips3.core));
+	allocatedsize = CACHE_SIZE + sizeof(*mips3.core) + memsize;
+	mips3.core = osd_alloc_executable(allocatedsize);
 	if (mips3.core == NULL)
-		fatalerror("Unable to allocate cache of size %d\n", CACHE_SIZE);
-	mips3.cache = (UINT8 *)(mips3.core + 1);
+		fatalerror("Unable to allocate cache of size %d\n", (UINT32)allocatedsize);
+	mips3.cache = (UINT8 *)(mips3.core + 1) + memsize;
 
 	/* initialize the core */
-	mips3com_init(mips3.core, flavor, bigendian, index, clock, config, irqcallback);
+	mips3com_init(mips3.core, flavor, bigendian, index, clock, config, irqcallback, mips3.core + 1);
 #if COMPARE_AGAINST_C
 	mips3c_init(flavor, bigendian, index, clock, config, irqcallback);
 #endif
@@ -252,9 +256,8 @@ static void mips3_exit(void)
 		x86log_free_context(mips3.log);
 
 	/* clean up the DRC */
-	mips3drc_exit();
 	drcfe_exit(mips3.drcfe);
-	drc_exit(mips3.drc);
+	mips3drc_exit();
 
 	/* free the cache */
 	osd_free_executable(mips3.core, CACHE_SIZE + sizeof(*mips3.core));
@@ -300,12 +303,12 @@ static int mips3_translate(int space, offs_t *address)
     mips3_dasm - disassemble an instruction
 -------------------------------------------------*/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t mips3_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	return mips3com_dasm(mips3.core, buffer, pc, oprom, opram);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -566,9 +569,9 @@ static void mips3_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = mips3_reset;				break;
 		case CPUINFO_PTR_EXIT:							info->exit = mips3_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = mips3_execute;			break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = mips3_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_TRANSLATE:						info->translate = mips3_translate;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -910,7 +913,7 @@ void rm7000le_get_info(UINT32 state, cpuinfo *info)
     DISASSEMBLERS
 ***************************************************************************/
 
-#if !defined(MAME_DEBUG) && (LOG_CODE)
+#if !defined(ENABLE_DEBUGGER) && (LOG_CODE)
 #include "mips3dsm.c"
 #endif
 
@@ -1247,7 +1250,9 @@ static const memory_handlers override_memory =
 
 static void mips3c_init(mips3_flavor flavor, int bigendian, int index, int clock, const struct mips3_config *config, int (*irqcallback)(int))
 {
-	mips3com_init(&c_mips3.core, flavor, bigendian, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&c_mips3.core, flavor, bigendian, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&c_mips3.core, flavor, bigendian, index, clock, config, irqcallback, memory);
 	mips3.orighandler = mips3.core->memory;
 	mips3.core->memory = override_memory;
 	c_mips3.core.memory = override_memory;

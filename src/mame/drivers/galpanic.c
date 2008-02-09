@@ -118,6 +118,7 @@ The current set of Super Model is an example of type C
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/kaneko16.h"
 #include "sound/okim6295.h"
 #include "video/kan_pand.h"
@@ -142,18 +143,18 @@ static INTERRUPT_GEN( galpanic_interrupt )
 {
 	/* IRQ 3 drives the game, IRQ 5 updates the palette */
 	if (cpu_getiloops() != 0)
-		cpunum_set_input_line(0, 5, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
 	else
-		cpunum_set_input_line(0, 3, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 3, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( galhustl_interrupt )
 {
 	switch ( cpu_getiloops() )
 	{
-		case 2:  cpunum_set_input_line(0, 5, HOLD_LINE); break;
-		case 1:  cpunum_set_input_line(0, 4, HOLD_LINE); break;
-		case 0:  cpunum_set_input_line(0, 3, HOLD_LINE); break;
+		case 2:  cpunum_set_input_line(machine, 0, 5, HOLD_LINE); break;
+		case 1:  cpunum_set_input_line(machine, 0, 4, HOLD_LINE); break;
+		case 0:  cpunum_set_input_line(machine, 0, 3, HOLD_LINE); break;
 	}
 }
 

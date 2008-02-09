@@ -32,6 +32,7 @@
 
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "m6805.h"
 
 #define IRQ_LEVEL_DETECT 0
@@ -520,7 +521,7 @@ static int m6805_execute(int cycles)
 			}
 		}
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PC);
 
 		ireg=M_RDOP(PC++);
 
@@ -899,7 +900,8 @@ void m6805_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
-		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = M6805_CLOCK_DIVIDER;			break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
+		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 4;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 3;							break;
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 2;							break;
@@ -936,9 +938,9 @@ void m6805_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = m6805_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = m6805_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m6805_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &m6805_ICount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */

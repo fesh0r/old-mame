@@ -34,6 +34,7 @@ dip: 6.7 7.7
 
 ***************************************************************************/
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/custom.h"
 
@@ -86,9 +87,9 @@ static READ8_HANDLER( ports_r )
 static WRITE8_HANDLER( subcpu_reset_w )
 {
 	if (data & 1)
-		cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 	else
-		cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 
@@ -104,8 +105,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x83ff) AM_WRITE(videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x8400, 0x87ff) AM_WRITE(colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x8000, 0x83ff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x8400, 0x87ff) AM_WRITE(MWA8_RAM) AM_BASE(&colorram)
 	AM_RANGE(0x8800, 0x88ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x8900, 0x8bff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x9000, 0x93ff) AM_WRITE(shared1_w) AM_BASE(&sharedram1)
@@ -329,7 +330,6 @@ static MACHINE_DRIVER_START( wiping )
 	MDRV_COLORTABLE_LENGTH(64*4+64*4)
 
 	MDRV_PALETTE_INIT(wiping)
-	MDRV_VIDEO_START(generic)
 	MDRV_VIDEO_UPDATE(wiping)
 
 	/* sound hardware */

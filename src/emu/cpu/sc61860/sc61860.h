@@ -4,7 +4,7 @@
  *   portable sharp 61860 emulator interface
  *   (sharp pocket computers)
  *
- *   Copyright (c) 2000 Peter Trauner, all rights reserved.
+ *   Copyright Peter Trauner, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -46,9 +46,9 @@ typedef struct {
     void (*outc)(int);
 } SC61860_CONFIG;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 unsigned sc61860_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 /* this is though for power on/off of the sharps */
 UINT8 *sc61860_internal_ram(void);

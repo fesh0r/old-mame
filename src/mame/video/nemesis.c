@@ -5,7 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include <math.h>
+#include "deprecat.h"
 
 UINT16 *nemesis_videoram1b;
 UINT16 *nemesis_videoram2b;
@@ -94,9 +94,7 @@ WRITE16_HANDLER( nemesis_gfx_flipx_w )
 	else
 	{
 		if (data & 0x100)
-		{
-			cpunum_set_input_line_and_vector(1, 0, HOLD_LINE, 0xff);
-		}
+			cpunum_set_input_line_and_vector(Machine, 1, 0, HOLD_LINE, 0xff);
 	}
 }
 
@@ -237,8 +235,7 @@ VIDEO_START( nemesis )
 
 	blank_characterdata = auto_malloc(32*8/8*(2048+1));
 	memset(blank_characterdata,0x00,32*8/8*(2048+1));
-	decodechar(machine->gfx[0],0x800,(UINT8 *)blank_characterdata,
-					machine->drv->gfxdecodeinfo[0].gfxlayout);
+	decodechar(machine->gfx[0],0x800,(UINT8 *)blank_characterdata);
 
 	flipscreen = 0;
 	tilemap_flip = 0;
@@ -341,8 +338,7 @@ static void update_gfx(running_machine *machine)
 	{
 		if (sprite_dirty[4][offs])
 		{
-			decodechar(machine->gfx[0],offs,(UINT8 *)nemesis_characterram,
-					machine->drv->gfxdecodeinfo[0].gfxlayout);
+			decodechar(machine->gfx[0],offs,(UINT8 *)nemesis_characterram);
 			bAnyDirty = 1;
 			sprite_dirty[4][offs] = 0;
 		}
@@ -376,8 +372,7 @@ static void update_gfx(running_machine *machine)
 			char_type = sprite_data[idx].char_type;
 			if (sprite_dirty[idx][code] == 1)
 			{
-				decodechar(machine->gfx[char_type],code,(UINT8 *)nemesis_characterram,
-					machine->drv->gfxdecodeinfo[char_type].gfxlayout);
+				decodechar(machine->gfx[char_type],code,(UINT8 *)nemesis_characterram);
 				sprite_dirty[idx][code] = 0;
 			}
 		}

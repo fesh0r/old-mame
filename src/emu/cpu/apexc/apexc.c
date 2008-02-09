@@ -324,8 +324,9 @@ field:      X address   D           Function    Y address   D (part 2)
 */
 
 #include "cpuintrf.h"
-#include "apexc.h"
 #include "debugger.h"
+#include "deprecat.h"
+#include "apexc.h"
 
 typedef struct
 {
@@ -802,7 +803,7 @@ static int apexc_execute(int cycles)
 
 	do
 	{
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(effective_address(apexc.ml));
 
 		if (apexc.running)
 			execute();
@@ -853,9 +854,10 @@ void apexc_get_info(UINT32 state, cpuinfo *info)
 	switch (state)
 	{
 	case CPUINFO_INT_CONTEXT_SIZE:					info->i = sizeof(apexc);				break;
-	case CPUINFO_INT_INPUT_LINES:						info->i = 0;							break;
+	case CPUINFO_INT_INPUT_LINES:					info->i = 0;							break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 	case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;	/*don't care*/	break;
+	case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 	case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 	case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -898,9 +900,9 @@ void apexc_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_PTR_EXECUTE:						info->execute = apexc_execute;			break;
 	case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = apexc_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &apexc_ICount;			break;
 
 	case CPUINFO_STR_NAME:							strcpy(info->s = cpuintrf_temp_str(), "APEXC"); break;

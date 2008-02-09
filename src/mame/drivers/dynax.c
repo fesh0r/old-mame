@@ -71,6 +71,7 @@ TODO:
 *********************************************************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/dynax.h"
 #include "cpu/tlcs90/tlcs90.h"
 #include "machine/msm6242.h"
@@ -103,7 +104,7 @@ void sprtmtch_update_irq(void)
 	int irq	=	((dynax_sound_irq)   ? 0x08 : 0) |
 				((dynax_vblank_irq)  ? 0x10 : 0) |
 				((dynax_blitter_irq) ? 0x20 : 0) ;
-	cpunum_set_input_line_and_vector(0, 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq); /* rst $xx */
+	cpunum_set_input_line_and_vector(Machine, 0, 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq); /* rst $xx */
 }
 
 static WRITE8_HANDLER( dynax_vblank_ack_w )
@@ -143,7 +144,7 @@ void jantouki_update_irq(void)
 	int irq	=	((dynax_blitter_irq)	? 0x08 : 0) |
 				((dynax_blitter2_irq)	? 0x10 : 0) |
 				((dynax_vblank_irq)		? 0x20 : 0) ;
-	cpunum_set_input_line_and_vector(0, 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq); /* rst $xx */
+	cpunum_set_input_line_and_vector(Machine, 0, 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq); /* rst $xx */
 }
 
 static WRITE8_HANDLER( jantouki_vblank_ack_w )
@@ -183,7 +184,7 @@ static void jantouki_sound_update_irq(void)
 	int irq	=	((dynax_sound_irq)			? 0x08 : 0) |
 				((dynax_soundlatch_irq)		? 0x10 : 0) |
 				((dynax_sound_vblank_irq)	? 0x20 : 0) ;
-	cpunum_set_input_line_and_vector(1, 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq); /* rst $xx */
+	cpunum_set_input_line_and_vector(Machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq); /* rst $xx */
 }
 
 static INTERRUPT_GEN( jantouki_sound_vblank_interrupt )
@@ -404,7 +405,7 @@ static void adpcm_int(int data)
 	if (toggle)
 	{
 		if (resetkludge)	// don't know what's wrong, but NMIs when the 5205 is reset make the game crash
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 static void adpcm_int_cpu1(int data)
@@ -418,7 +419,7 @@ static void adpcm_int_cpu1(int data)
 	if (toggle)
 	{
 		if (resetkludge)	// don't know what's wrong, but NMIs when the 5205 is reset make the game crash
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);	// cpu1
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);	// cpu1
 	}
 }
 
@@ -3945,7 +3946,7 @@ MACHINE_DRIVER_END
 void mjelctrn_update_irq(void)
 {
 	dynax_blitter_irq = 1;
-	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0xfa);
+	cpunum_set_input_line_and_vector(Machine, 0, 0, HOLD_LINE, 0xfa);
 }
 
 static INTERRUPT_GEN( mjelctrn_vblank_interrupt )
@@ -3953,7 +3954,7 @@ static INTERRUPT_GEN( mjelctrn_vblank_interrupt )
 	// This is a kludge to avoid losing blitter interrupts
 	// there should be a vblank ack mechanism
 	if (!dynax_blitter_irq)
-		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0xf8);
+		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xf8);
 }
 
 static MACHINE_DRIVER_START( mjelctrn )
@@ -3979,7 +3980,7 @@ MACHINE_DRIVER_END
 void neruton_update_irq(void)
 {
 	dynax_blitter_irq = 1;
-	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0x42);
+	cpunum_set_input_line_and_vector(Machine, 0, 0, HOLD_LINE, 0x42);
 }
 
 static INTERRUPT_GEN( neruton_vblank_interrupt )
@@ -3990,8 +3991,8 @@ static INTERRUPT_GEN( neruton_vblank_interrupt )
 
 	switch(cpu_getiloops())
 	{
-		case 0:		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0x40);	break;
-		default:	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0x46);
+		case 0:		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0x40);	break;
+		default:	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0x46);
 	}
 }
 
@@ -4017,7 +4018,7 @@ static INTERRUPT_GEN( majxtal7_vblank_interrupt )
 	// there should be a vblank ack mechanism
 	if (dynax_blitter_irq)	return;
 
-	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0x40);
+	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0x40);
 }
 
 static MACHINE_DRIVER_START( majxtal7 )
@@ -4085,9 +4086,9 @@ static INTERRUPT_GEN( tenkai_interrupt )
 {
 	switch(cpu_getiloops())
 	{
-		case 0:		cpunum_set_input_line(0, INPUT_LINE_IRQ0, HOLD_LINE);	break;
-		case 1:		cpunum_set_input_line(0, INPUT_LINE_IRQ1, HOLD_LINE);	break;
-		case 2:		cpunum_set_input_line(0, INPUT_LINE_IRQ2, HOLD_LINE);	break;
+		case 0:		cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, HOLD_LINE);	break;
+		case 1:		cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, HOLD_LINE);	break;
+		case 2:		cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ2, HOLD_LINE);	break;
 	}
 }
 
@@ -5125,7 +5126,7 @@ static DRIVER_INIT( mjelct3a )
 		}
 		free(rom1);
 
-	driver_init_mjelct3(machine);
+	DRIVER_INIT_CALL(mjelct3);
 }
 
 

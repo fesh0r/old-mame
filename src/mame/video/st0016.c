@@ -4,6 +4,7 @@
 ************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "st0016.h"
 
 UINT8 *st0016_charram,*st0016_spriteram,*st0016_paletteram;
@@ -116,7 +117,7 @@ READ8_HANDLER(st0016_character_ram_r)
 WRITE8_HANDLER(st0016_character_ram_w)
 {
 	st0016_charram[ST0016_CHAR_BANK_SIZE*st0016_char_bank+offset]=data;
-	decodechar(Machine->gfx[st0016_ramgfx], st0016_char_bank,(UINT8 *) st0016_charram,  &charlayout);
+	decodechar(Machine->gfx[st0016_ramgfx], st0016_char_bank,(UINT8 *) st0016_charram);
 }
 
 READ8_HANDLER(st0016_vregs_r)
@@ -422,7 +423,7 @@ static void st0016_postload(void)
 	int i;
 	st0016_rom_bank_w(0,st0016_rom_bank);
 	for(i=0;i<ST0016_MAX_CHAR_BANK;i++)
-		decodechar(Machine->gfx[st0016_ramgfx], i,(UINT8 *) st0016_charram,  &charlayout);
+		decodechar(Machine->gfx[st0016_ramgfx], i,(UINT8 *) st0016_charram);
 }
 
 

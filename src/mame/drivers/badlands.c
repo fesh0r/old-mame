@@ -118,7 +118,7 @@ static UINT8 *bank_source_data;
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -128,9 +128,9 @@ static void update_interrupts(void)
 		newstate = 2;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -140,7 +140,7 @@ static void scanline_update(running_machine *machine, int scrnum, int scanline)
 	if (scanline & 32)
 		atarigen_6502_irq_ack_r(0);
 	else if (!(readinputport(0) & 0x40))
-		atarigen_6502_irq_gen();
+		atarigen_6502_irq_gen(machine, 0);
 }
 
 
@@ -170,14 +170,14 @@ static INTERRUPT_GEN( vblank_int )
 	int i;
 
 	/* update the pedals once per frame */
-    for (i = 0; i < 2; i++)
+	for (i = 0; i < 2; i++)
 	{
 		pedal_value[i]--;
 		if (pedal_state & (1 << i))
 			pedal_value[i]++;
 	}
 
-	atarigen_video_int_gen();
+	atarigen_video_int_gen(machine, cpunum);
 }
 
 

@@ -13,6 +13,7 @@
 *******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 static UINT8 mouser_sound_byte;
@@ -37,7 +38,7 @@ static WRITE8_HANDLER( mouser_nmi_enable_w )
 static INTERRUPT_GEN( mouser_nmi_interrupt )
 {
 	if ((mouser_nmi_enable & 1) == 1)
-		nmi_line_pulse();
+		nmi_line_pulse(machine, cpunum);
 }
 
 /* Sound CPU interrupted on write */
@@ -45,7 +46,7 @@ static INTERRUPT_GEN( mouser_nmi_interrupt )
 static WRITE8_HANDLER( mouser_sound_interrupt_w )
 {
 	mouser_sound_byte = data;
-	cpunum_set_input_line(1, 0, HOLD_LINE);
+	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 }
 
 static READ8_HANDLER( mouser_sound_byte_r )
@@ -56,7 +57,7 @@ static READ8_HANDLER( mouser_sound_byte_r )
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_READ(MRA8_ROM)
 	AM_RANGE(0x6000, 0x6bff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x9000, 0x93ff) AM_READ(videoram_r)
+	AM_RANGE(0x9000, 0x93ff) AM_READ(MRA8_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)
 	AM_RANGE(0xa800, 0xa800) AM_READ(input_port_1_r)
 	AM_RANGE(0xb000, 0xb000) AM_READ(input_port_2_r)
@@ -68,9 +69,9 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0x6000, 0x6bff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0x8800, 0x88ff) AM_WRITE(MWA8_NOP) /* unknown */
-	AM_RANGE(0x9000, 0x93ff) AM_WRITE(videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x9800, 0x9cff) AM_WRITE(mouser_spriteram_w) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x9c00, 0x9fff) AM_WRITE(mouser_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x9000, 0x93ff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x9800, 0x9cff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x9c00, 0x9fff) AM_WRITE(MWA8_RAM) AM_BASE(&colorram)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(mouser_nmi_enable_w) /* bit 0 = NMI Enable */
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(mouser_flip_screen_x_w)
 	AM_RANGE(0xa002, 0xa002) AM_WRITE(mouser_flip_screen_y_w)
@@ -221,7 +222,6 @@ static MACHINE_DRIVER_START( mouser )
 	MDRV_PALETTE_LENGTH(64)
 
 	MDRV_PALETTE_INIT(mouser)
-	MDRV_VIDEO_START(generic)
 	MDRV_VIDEO_UPDATE(mouser)
 
 	/* sound hardware */

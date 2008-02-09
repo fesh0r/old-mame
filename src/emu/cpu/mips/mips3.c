@@ -9,9 +9,8 @@
 
 ***************************************************************************/
 
-#include <math.h>
-#include "cpuintrf.h"
 #include "debugger.h"
+#include "deprecat.h"
 #include "mips3com.h"
 
 
@@ -299,13 +298,13 @@ static int mips3_translate(int space, offs_t *address)
 }
 
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 offs_t mips3_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	/* common disassemble */
 	return mips3com_dasm(&mips3.core, buffer, pc, oprom, opram);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -480,7 +479,7 @@ INLINE UINT64 get_cop0_reg(int idx)
 			mips3.core.icount -= MIPS3_COUNT_READ_CYCLES;
 		else
 			mips3.core.icount = 0;
-		return (UINT32)((activecpu_gettotalcycles64() - mips3.core.count_zero_time) / 2);
+		return (UINT32)((activecpu_gettotalcycles() - mips3.core.count_zero_time) / 2);
 	}
 	else if (idx == COP0_Cause)
 	{
@@ -496,7 +495,7 @@ INLINE UINT64 get_cop0_reg(int idx)
 		int wired = mips3.core.cpr[0][COP0_Wired] & 0x3f;
 		int range = 48 - wired;
 		if (range > 0)
-			return ((activecpu_gettotalcycles64() - mips3.core.count_zero_time) % range + wired) & 0x3f;
+			return ((activecpu_gettotalcycles() - mips3.core.count_zero_time) % range + wired) & 0x3f;
 		else
 			return 47;
 	}
@@ -536,7 +535,7 @@ INLINE void set_cop0_reg(int idx, UINT64 val)
 
 		case COP0_Count:
 			mips3.core.cpr[0][idx] = val;
-			mips3.core.count_zero_time = activecpu_gettotalcycles64() - ((UINT64)(UINT32)val * 2);
+			mips3.core.count_zero_time = activecpu_gettotalcycles() - ((UINT64)(UINT32)val * 2);
 			mips3com_update_cycle_counting(&mips3.core);
 			break;
 
@@ -1682,7 +1681,7 @@ int mips3_execute(int cycles)
 
 		/* debugging */
 		mips3.ppc = mips3.core.pc;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(mips3.core.pc);
 
 		/* instruction fetch */
 		op = ROPCODE(mips3.pcbase | (mips3.core.pc & 0xfff));
@@ -2139,7 +2138,7 @@ void mips3_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_INIT:							/* provided per-CPU */					break;
 		case CPUINFO_PTR_RESET:							info->reset = mips3_reset;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = mips3_execute;			break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = mips3_dasm;			break;
 #endif
 		case CPUINFO_PTR_TRANSLATE:						info->translate = mips3_translate;		break;
@@ -2161,12 +2160,16 @@ void mips3_get_info(UINT32 state, cpuinfo *info)
 #if (HAS_R4600)
 static void r4600be_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_R4600, TRUE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_R4600, TRUE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_R4600, TRUE, index, clock, config, irqcallback, memory);
 }
 
 static void r4600le_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_R4600, FALSE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_R4600, FALSE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_R4600, FALSE, index, clock, config, irqcallback, memory);
 }
 
 void r4600be_get_info(UINT32 state, cpuinfo *info)
@@ -2215,12 +2218,16 @@ void r4600le_get_info(UINT32 state, cpuinfo *info)
 #if (HAS_R4650)
 static void r4650be_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_R4650, TRUE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_R4650, TRUE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_R4650, TRUE, index, clock, config, irqcallback, memory);
 }
 
 static void r4650le_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_R4650, FALSE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_R4650, FALSE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_R4650, FALSE, index, clock, config, irqcallback, memory);
 }
 
 void r4650be_get_info(UINT32 state, cpuinfo *info)
@@ -2269,12 +2276,16 @@ void r4650le_get_info(UINT32 state, cpuinfo *info)
 #if (HAS_R4700)
 static void r4700be_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_R4700, TRUE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_R4700, TRUE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_R4700, TRUE, index, clock, config, irqcallback, memory);
 }
 
 static void r4700le_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_R4700, FALSE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_R4700, FALSE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_R4700, FALSE, index, clock, config, irqcallback, memory);
 }
 
 void r4700be_get_info(UINT32 state, cpuinfo *info)
@@ -2324,12 +2335,16 @@ void r4700le_get_info(UINT32 state, cpuinfo *info)
 #if (HAS_R5000)
 static void r5000be_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_R5000, TRUE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_R5000, TRUE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_R5000, TRUE, index, clock, config, irqcallback, memory);
 }
 
 static void r5000le_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_R5000, FALSE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_R5000, FALSE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_R5000, FALSE, index, clock, config, irqcallback, memory);
 }
 
 void r5000be_get_info(UINT32 state, cpuinfo *info)
@@ -2378,12 +2393,16 @@ void r5000le_get_info(UINT32 state, cpuinfo *info)
 #if (HAS_QED5271)
 static void qed5271be_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_QED5271, TRUE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_QED5271, TRUE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_QED5271, TRUE, index, clock, config, irqcallback, memory);
 }
 
 static void qed5271le_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_QED5271, FALSE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_QED5271, FALSE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_QED5271, FALSE, index, clock, config, irqcallback, memory);
 }
 
 void qed5271be_get_info(UINT32 state, cpuinfo *info)
@@ -2432,12 +2451,16 @@ void qed5271le_get_info(UINT32 state, cpuinfo *info)
 #if (HAS_RM7000)
 static void rm7000be_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_RM7000, TRUE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_RM7000, TRUE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_RM7000, TRUE, index, clock, config, irqcallback, memory);
 }
 
 static void rm7000le_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	mips3com_init(&mips3.core, MIPS3_TYPE_RM7000, FALSE, index, clock, config, irqcallback);
+	size_t memsize = mips3com_init(&mips3.core, MIPS3_TYPE_RM7000, FALSE, index, clock, config, irqcallback, NULL);
+	void *memory = auto_malloc(memsize);
+	mips3com_init(&mips3.core, MIPS3_TYPE_RM7000, FALSE, index, clock, config, irqcallback, memory);
 }
 
 void rm7000be_get_info(UINT32 state, cpuinfo *info)

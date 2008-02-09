@@ -7,10 +7,16 @@
 **************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/tms34010/tms34010.h"
 #include "video/tlc34076.h"
 #include "btoads.h"
 #include "sound/bsmt2000.h"
+
+
+#define CPU_CLOCK			XTAL_64MHz
+#define VIDEO_CLOCK			XTAL_20MHz
+#define SOUND_CLOCK			XTAL_24MHz
 
 
 
@@ -35,6 +41,16 @@ static UINT8 sound_int_state;
  *
  *************************************/
 
+static MACHINE_START( btoads )
+{
+	state_save_register_global(main_to_sound_data);
+	state_save_register_global(main_to_sound_ready);
+	state_save_register_global(sound_to_main_data);
+	state_save_register_global(sound_to_main_ready);
+	state_save_register_global(sound_int_state);
+}
+
+
 static MACHINE_RESET( btoads )
 {
 	tlc34076_reset(6);
@@ -52,7 +68,7 @@ static TIMER_CALLBACK( delayed_sound_w )
 {
 	main_to_sound_data = param;
 	main_to_sound_ready = 1;
-	cpu_triggerint(1);
+	cpu_triggerint(machine, 1);
 
 	/* use a timer to make long transfers faster */
 	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, 0);
@@ -134,7 +150,7 @@ static WRITE8_HANDLER( sound_int_state_w )
 		sndti_reset(SOUND_BSMT2000, 0);
 
 	/* also clears interrupts */
-	cpunum_set_input_line(1, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
 	sound_int_state = data;
 }
 
@@ -306,7 +322,7 @@ static const tms34010_config tms_config =
 {
 	FALSE,							/* halt on reset */
 	0,								/* the screen operated on */
-	40000000/4,						/* pixel clock */
+	VIDEO_CLOCK/2,					/* pixel clock */
 	1,								/* pixels per clock */
 	btoads_scanline_update,			/* scanline callback */
 	NULL,							/* generate interrupt */
@@ -324,33 +340,32 @@ static const tms34010_config tms_config =
 
 static MACHINE_DRIVER_START( btoads )
 
-	MDRV_CPU_ADD(TMS34020, 40000000/TMS34020_CLOCK_DIVIDER)
+	MDRV_CPU_ADD(TMS34020, CPU_CLOCK/2)
 	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, SOUND_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_assert, 183)
 
+	MDRV_MACHINE_START(btoads)
 	MDRV_MACHINE_RESET(btoads)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_PALETTE_LENGTH(256)
-
-	MDRV_SCREEN_ADD("main", 0)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_RAW_PARAMS(40000000/4, 640, 0, 512, 257, 0, 224)
-
 	MDRV_VIDEO_START(btoads)
 	MDRV_VIDEO_UPDATE(tms340x0)
+
+	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MDRV_SCREEN_RAW_PARAMS(VIDEO_CLOCK/2, 640, 0, 512, 257, 0, 224)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(BSMT2000, 24000000)
+	MDRV_SOUND_ADD(BSMT2000, SOUND_CLOCK)
 	MDRV_SOUND_CONFIG(bsmt2000_interface_region_1)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -384,4 +399,4 @@ ROM_END
  *
  *************************************/
 
-GAME( 1994, btoads, 0, btoads, btoads, 0,  ROT0, "Rare", "Battle Toads", 0 )
+GAME( 1994, btoads, 0, btoads, btoads, 0,  ROT0, "Rare", "Battle Toads", GAME_SUPPORTS_SAVE )

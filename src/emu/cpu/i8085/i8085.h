@@ -12,6 +12,7 @@ enum {
 enum
 {
 	CPUINFO_PTR_I8085_SOD_CALLBACK = CPUINFO_PTR_CPU_SPECIFIC,
+	CPUINFO_PTR_I8085_SID_CALLBACK = CPUINFO_PTR_CPU_SPECIFIC + 1,
 	CPUINFO_INT_I8085_SID = CPUINFO_INT_CPU_SPECIFIC
 };
 
@@ -50,7 +51,7 @@ void i8085_get_info(UINT32 state, cpuinfo *info);
 void i8080_get_info(UINT32 state, cpuinfo *info);
 #endif
 
-#ifdef	MAME_DEBUG
+#ifdef	ENABLE_DEBUGGER
 offs_t i8085_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 

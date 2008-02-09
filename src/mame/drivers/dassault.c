@@ -119,6 +119,7 @@ Stephh's notes (based on the games M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/h6280/h6280.h"
 #include "deco16ic.h"
 #include "sound/2203intf.h"
@@ -170,15 +171,15 @@ static READ16_HANDLER( dassault_sub_control_r )
 static WRITE16_HANDLER( dassault_sound_w )
 {
 	soundlatch_w(0,data&0xff);
-	cpunum_set_input_line(2,0,HOLD_LINE); /* IRQ1 */
+	cpunum_set_input_line(Machine, 2,0,HOLD_LINE); /* IRQ1 */
 }
 
 /* The CPU-CPU irq controller is overlaid onto the end of the shared memory */
 static READ16_HANDLER( dassault_irq_r )
 {
 	switch (offset) {
-		case 0: cpunum_set_input_line(0, 5, CLEAR_LINE); break;
-		case 1: cpunum_set_input_line(1, 6, CLEAR_LINE); break;
+		case 0: cpunum_set_input_line(Machine, 0, 5, CLEAR_LINE); break;
+		case 1: cpunum_set_input_line(Machine, 1, 6, CLEAR_LINE); break;
 	}
 	return shared_ram[(0xffc/2)+offset]; /* The values probably don't matter */
 }
@@ -186,8 +187,8 @@ static READ16_HANDLER( dassault_irq_r )
 static WRITE16_HANDLER( dassault_irq_w )
 {
 	switch (offset) {
-		case 0: cpunum_set_input_line(0, 5, ASSERT_LINE); break;
-		case 1: cpunum_set_input_line(1, 6, ASSERT_LINE); break;
+		case 0: cpunum_set_input_line(Machine, 0, 5, ASSERT_LINE); break;
+		case 1: cpunum_set_input_line(Machine, 1, 6, ASSERT_LINE); break;
 	}
 
 	COMBINE_DATA(&shared_ram[(0xffc/2)+offset]); /* The values probably don't matter */
@@ -533,7 +534,7 @@ GFXDECODE_END
 
 static void sound_irq(int state)
 {
-	cpunum_set_input_line(2,1,state);
+	cpunum_set_input_line(Machine, 2,1,state);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )

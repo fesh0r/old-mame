@@ -1,7 +1,7 @@
  /**************************************************************************\
  *                Texas Instruments TMS32010 DSP Disassembler               *
  *                                                                          *
- *                  Copyright (C) 1999-2002+ Tony La Porta                  *
+ *                  Copyright Tony La Porta                                 *
  *               To be used with TMS32010 DSP Emulator engine.              *
  *      You are not allowed to distribute this software commercially.       *
  *                      Written for the MAME project.                       *
@@ -29,7 +29,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifdef MAME_DEBUG					/* Compile interface to MAME */
+#ifdef ENABLE_DEBUGGER					/* Compile interface to MAME */
 #include "cpuintrf.h"
 #include "tms32010.h"
 #include "debugger.h"

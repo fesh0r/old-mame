@@ -48,6 +48,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/z80ctc.h"
 #include "sound/2203intf.h"
 #include "machine/8255ppi.h"
@@ -287,7 +288,7 @@ GFXDECODE_END
 
 static void ctc0_interrupt(int state)
 {
-	cpunum_set_input_line(1, 0, state);
+	cpunum_set_input_line(Machine, 1, 0, state);
 }
 
 static z80ctc_interface ctc_intf =
@@ -346,7 +347,7 @@ static PALETTE_INIT(pipeline)
 
 static MACHINE_RESET( pipeline )
 {
-	ctc_intf.baseclock = machine->drv->cpu[0].clock;
+	ctc_intf.baseclock = cpunum_get_clock(0);
 	z80ctc_init(0, &ctc_intf);
 	ppi8255_init(&ppi8255_intf);
 }
@@ -363,7 +364,7 @@ static MACHINE_DRIVER_START( pipeline )
 	MDRV_CPU_PROGRAM_MAP(cpu1_mem, 0)
 	MDRV_CPU_IO_MAP(sound_port, 0)
 
-	MDRV_CPU_ADD(M68705, 7372800/2/M68705_CLOCK_DIVIDER)
+	MDRV_CPU_ADD(M68705, 7372800/2)
 	MDRV_CPU_PROGRAM_MAP(mcu_mem, 0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)

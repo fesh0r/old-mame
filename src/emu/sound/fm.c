@@ -4,8 +4,8 @@
 **
 ** File: fm.c -- software implementation of Yamaha FM sound generator
 **
-** Copyright (C) 2001, 2002, 2003 Jarek Burczynski (bujar at mame dot net)
-** Copyright (C) 1998 Tatsuyuki Satoh , MultiArcadeMachineEmulator development
+** Copyright Jarek Burczynski (bujar at mame dot net)
+** Copyright Tatsuyuki Satoh , MultiArcadeMachineEmulator development
 **
 ** Version 1.4 (final beta)
 **
@@ -684,7 +684,7 @@ static INT32	LFO_PM;			/* runtime LFO calculations helper */
 #define LOG_LEVEL LOG_INF
 
 #ifndef __RAINE__
-#define LOG(n,x) if( (n)>=LOG_LEVEL ) logerror x
+#define LOG(n,x) do { if( (n)>=LOG_LEVEL ) logerror x; } while (0)
 #endif
 
 /* limitter */
@@ -1394,7 +1394,8 @@ INLINE void refresh_fc_eg_slot(FM_SLOT *SLOT , int fc , int kc )
 }
 
 /* update phase increment counters */
-INLINE void refresh_fc_eg_chan(FM_CH *CH )
+/* Changed from INLINE to static to work around gcc 4.2.1 codegen bug */
+static void refresh_fc_eg_chan(FM_CH *CH )
 {
 	if( CH->SLOT[SLOT1].Incr==-1){
 		int fc = CH->fc;

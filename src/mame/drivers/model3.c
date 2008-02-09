@@ -359,6 +359,7 @@ ALL VROM ROMs are 16M MASK
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/powerpc/ppc.h"
 #include "machine/eeprom.h"
 #include "machine/53c810.h"
@@ -789,7 +790,7 @@ static UINT32 scsi_fetch(UINT32 dsp)
 static void scsi_irq_callback(void)
 {
 	model3_irq_state |= model3_irq_enable & ~0x60;	/* FIXME: enable only SCSI interrupt */
-	cpunum_set_input_line(0, INPUT_LINE_IRQ1, ASSERT_LINE);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
 }
 
 /*****************************************************************************/
@@ -951,7 +952,7 @@ static NVRAM_HANDLER( model3 )
 	{
 		eeprom_handler(file, read_or_write);
 	} else {
-		nvram_handler_93C46(machine, file, read_or_write);
+		NVRAM_HANDLER_CALL(93C46);
 	}
 
 	if (read_or_write)
@@ -983,6 +984,22 @@ static const struct LSI53C810interface scsi_intf =
 	&scsi_fetch,
 };
 
+static void model3_exit(running_machine *machine)
+{
+	lsi53c810_exit(&scsi_intf);
+}
+
+static MACHINE_START(model3_10)
+{
+	lsi53c810_init(&scsi_intf);
+	add_exit_callback(machine, model3_exit);
+}
+static MACHINE_START(model3_15)
+{
+	lsi53c810_init(&scsi_intf);
+	add_exit_callback(machine, model3_exit);
+}
+
 static void model3_init(running_machine *machine, int step)
 {
 	model3_step = step;
@@ -1006,7 +1023,6 @@ static void model3_init(running_machine *machine, int step)
 		} else {
 			mpc105_init();
 		}
-		lsi53c810_init(&scsi_intf);
 		real3d_device_id = 0x16c311db;	/* PCI Vendor ID (11db = SEGA), Device ID (16c3 = 315-5827) */
 	}
 	else {
@@ -3999,7 +4015,7 @@ static void scsp_irq(int irq)
  	if (irq > 0)
 	{
 		scsp_last_line = irq;
-		cpunum_set_input_line(1, irq, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, irq, PULSE_LINE);
 	}
 }
 
@@ -4036,7 +4052,7 @@ static INTERRUPT_GEN(model3_interrupt)
 	} else {
 		model3_irq_state = 0x0d;
 	}
-	cpunum_set_input_line(0, INPUT_LINE_IRQ1, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
 
 	model3_vblank++;
 	model3_vblank &= 1;
@@ -4074,6 +4090,7 @@ static MACHINE_DRIVER_START( model3_10 )
 
  	MDRV_INTERLEAVE(10)
 
+	MDRV_MACHINE_START(model3_10)
 	MDRV_MACHINE_RESET(model3_10)
 	MDRV_NVRAM_HANDLER(model3)
 
@@ -4108,6 +4125,7 @@ static MACHINE_DRIVER_START( model3_15 )
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(model3_snd, 0)
 
+	MDRV_MACHINE_START(model3_15)
 	MDRV_MACHINE_RESET(model3_15)
 	MDRV_NVRAM_HANDLER(model3)
 
@@ -4281,7 +4299,7 @@ static DRIVER_INIT( lostwsga )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 
-	driver_init_model3_15(machine);
+	DRIVER_INIT_CALL(model3_15);
 	/* TODO: there's an M68K device at 0xC0000000 - FF, maybe lightgun controls ? */
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_w );
@@ -4293,7 +4311,7 @@ static DRIVER_INIT( scud )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 
-	driver_init_model3_15(machine);
+	DRIVER_INIT_CALL(model3_15);
 	/* TODO: network device at 0xC0000000 - FF */
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_w );
@@ -4306,7 +4324,7 @@ static DRIVER_INIT( scudp )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 
-	driver_init_model3_15(machine);
+	DRIVER_INIT_CALL(model3_15);
 	/* TODO: network device at 0xC0000000 - FF */
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_w );
@@ -4323,7 +4341,7 @@ static DRIVER_INIT( scudp )
 static DRIVER_INIT( lemans24 )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_15(machine);
+	DRIVER_INIT_CALL(model3_15);
 
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_w );
@@ -4339,7 +4357,7 @@ static DRIVER_INIT( vf3 )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 
-	driver_init_model3_10(machine);
+	DRIVER_INIT_CALL(model3_10);
 
 	rom[(0x713c7c^4)/4] = 0x60000000;
 	rom[(0x713e54^4)/4] = 0x60000000;
@@ -4444,7 +4462,7 @@ static DRIVER_INIT( vs2 )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x705884^4)/4] = 0x60000000;
 	rom[(0x7058a4^4)/4] = 0x60000000;
@@ -4454,7 +4472,7 @@ static DRIVER_INIT( vs298 )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x603868^4)/4] = 0x60000000;
 	rom[(0x603888^4)/4] = 0x60000000;
@@ -4465,7 +4483,7 @@ static DRIVER_INIT( vs2v991 )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x603868^4)/4] = 0x60000000;
 	rom[(0x603888^4)/4] = 0x60000000;
@@ -4475,7 +4493,7 @@ static DRIVER_INIT( vs299 )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x603868^4)/4] = 0x60000000;
 	rom[(0x603888^4)/4] = 0x60000000;
@@ -4484,7 +4502,7 @@ static DRIVER_INIT( vs299 )
 static DRIVER_INIT( harley )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc0000000, 0xc00fffff, 0, 0, network_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc0000000, 0xc00fffff, 0, 0, network_w );
@@ -4499,7 +4517,7 @@ static DRIVER_INIT( harley )
 static DRIVER_INIT( srally2 )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x7c0c4^4)/4] = 0x60000000;
 	rom[(0x7c0c8^4)/4] = 0x60000000;
@@ -4509,7 +4527,7 @@ static DRIVER_INIT( srally2 )
 static DRIVER_INIT( swtrilgy )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0xf0e48^4)/4] = 0x60000000;
     rom[(0x043dc^4)/4] = 0x48000090;
@@ -4520,7 +4538,7 @@ static DRIVER_INIT( swtrilgy )
 static DRIVER_INIT( swtrilga )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0xf6dd0^4)/4] = 0x60000000;
 }
@@ -4528,7 +4546,7 @@ static DRIVER_INIT( swtrilga )
 static DRIVER_INIT( von2 )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x189168^4)/4] = 0x60000000;
 	rom[(0x1890ac^4)/4] = 0x60000000;
@@ -4540,7 +4558,7 @@ static DRIVER_INIT( von2 )
 static DRIVER_INIT( dirtdvls )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x0600a0^4)/4] = 0x60000000;
 	rom[(0x0608a4^4)/4] = 0x60000000;
@@ -4553,7 +4571,7 @@ static DRIVER_INIT( dirtdvls )
 static DRIVER_INIT( daytona2 )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc3800000, 0xc3800007, 0, 0, daytona2_rombank_w );
 
@@ -4566,7 +4584,7 @@ static DRIVER_INIT( daytona2 )
 static DRIVER_INIT( dayto2pe )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc3800000, 0xc3800007, 0, 0, daytona2_rombank_w );
 
@@ -4580,7 +4598,7 @@ static DRIVER_INIT( dayto2pe )
 static DRIVER_INIT( spikeout )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x6059cc^4)/4] = 0x60000000;
 	rom[(0x6059ec^4)/4] = 0x60000000;
@@ -4589,7 +4607,7 @@ static DRIVER_INIT( spikeout )
 static DRIVER_INIT( spikeofe )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x6059cc^4)/4] = 0x60000000;
 	rom[(0x6059ec^4)/4] = 0x60000000;
@@ -4598,7 +4616,7 @@ static DRIVER_INIT( spikeofe )
 static DRIVER_INIT( eca )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x535580^4)/4] = 0x60000000;
 	rom[(0x5023b4^4)/4] = 0x60000000;
@@ -4608,7 +4626,7 @@ static DRIVER_INIT( eca )
 static DRIVER_INIT( skichamp )
 {
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
-	driver_init_model3_20(machine);
+	DRIVER_INIT_CALL(model3_20);
 
 	rom[(0x5263c8^4)/4] = 0x60000000;
 	rom[(0x5263e8^4)/4] = 0x60000000;

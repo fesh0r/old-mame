@@ -130,7 +130,7 @@ VIDEO_START( kaneko16_sprites )
 
 VIDEO_START( kaneko16_1xVIEW2 )
 {
-	video_start_kaneko16_sprites(machine);
+	VIDEO_START_CALL(kaneko16_sprites);
 
 	kaneko16_tmap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
 										TILEMAP_TYPE_PEN, 16,16, 0x20,0x20	);
@@ -176,7 +176,7 @@ VIDEO_START( kaneko16_1xVIEW2 )
 
 VIDEO_START( kaneko16_2xVIEW2 )
 {
-	video_start_kaneko16_1xVIEW2(machine);
+	VIDEO_START_CALL(kaneko16_1xVIEW2);
 
 	kaneko16_tmap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
 										TILEMAP_TYPE_PEN, 16,16, 0x20,0x20	);
@@ -216,7 +216,7 @@ VIDEO_START( kaneko16_2xVIEW2 )
 
 VIDEO_START( sandscrp_1xVIEW2 )
 {
-	video_start_kaneko16_1xVIEW2(machine);
+	VIDEO_START_CALL(kaneko16_1xVIEW2);
 	pandora_start(0,0,0);
 
 	tilemap_set_scrolldy( kaneko16_tmap_0, 0, 256 - 1 );
@@ -281,12 +281,12 @@ VIDEO_START( berlwall )
 			*BITMAP_ADDR16(kaneko16_bg15_bitmap, y, sx * 256 + x) = machine->pens[2048 + ((g << 10) | (r << 5) | b)];
 	  }
 
-	video_start_kaneko16_1xVIEW2(machine);
+	VIDEO_START_CALL(kaneko16_1xVIEW2);
 }
 
 VIDEO_START( galsnew )
 {
-	video_start_kaneko16_1xVIEW2(machine);
+	VIDEO_START_CALL(kaneko16_1xVIEW2);
 }
 
 /***************************************************************************
@@ -391,11 +391,11 @@ else
 }
 
 // custom function to draw a single sprite. needed to keep correct sprites - sprites and sprites - tilemaps priorities
-static void kaneko16_draw_sprites_custom(mame_bitmap *dest_bmp,const gfx_element *gfx,
+static void kaneko16_draw_sprites_custom(running_machine *machine, mame_bitmap *dest_bmp,const gfx_element *gfx,
 		UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
 		const rectangle *clip,int priority)
 {
-	const pen_t *pal = &Machine->remapped_colortable[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
+	const pen_t *pal = &machine->remapped_colortable[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
 	UINT8 *source_base = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
 
 	int sprite_screen_height = ((1<<16)*gfx->height+0x8000)>>16;
@@ -594,7 +594,8 @@ void kaneko16_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const 
 
 		UINT32 primask = kaneko16_priority.sprite[curr_pri];
 
-		kaneko16_draw_sprites_custom(	bitmap,machine->gfx[0],
+		kaneko16_draw_sprites_custom(	machine,
+										bitmap,machine->gfx[0],
 										s->code,
 										s->color,
 										s->flipx, s->flipy,
@@ -904,7 +905,7 @@ static void kaneko16_render_sprites(running_machine *machine, mame_bitmap *bitma
 	{
 		/* keep sprites on screen */
 		kaneko16_draw_sprites(machine,sprites_bitmap,cliprect);
-		copybitmap(bitmap,sprites_bitmap,0,0,0,0,cliprect,TRANSPARENCY_PEN,0);
+		copybitmap_trans(bitmap,sprites_bitmap,0,0,0,0,cliprect,0);
 	}
 	else
 	{
@@ -927,11 +928,7 @@ static void kaneko16_render_15bpp_bitmap(running_machine *machine, mame_bitmap *
 		sx		=	(select & 0x1f) * 256;
 		sy		=	0;
 
-		copybitmap(
-			bitmap, kaneko16_bg15_bitmap,
-			flip, flip,
-			-sx, -sy,
-			cliprect, TRANSPARENCY_NONE,0 );
+		copybitmap(bitmap, kaneko16_bg15_bitmap, flip, flip, -sx, -sy, cliprect);
 
 //      flag = 0;
 	}
@@ -948,7 +945,7 @@ static void kaneko16_fill_bitmap(running_machine *machine, mame_bitmap *bitmap, 
 		fillbitmap(bitmap,machine->pens[0],cliprect);
 }
 
-static void kaneko16_video_update_common(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static VIDEO_UPDATE( common )
 {
 	int i;
 
@@ -962,6 +959,8 @@ static void kaneko16_video_update_common(running_machine *machine, mame_bitmap *
 		kaneko16_render_first_tilemap_chip(machine,bitmap,cliprect,i);
 		kaneko16_render_second_tilemap_chip(machine,bitmap,cliprect,i);
 	}
+
+	return 0;
 }
 
 VIDEO_UPDATE(berlwall)
@@ -972,7 +971,7 @@ VIDEO_UPDATE(berlwall)
 	// if the display is disabled, do nothing?
 	if (!kaneko16_disp_enable) return 0;
 
-	kaneko16_video_update_common(machine,bitmap,cliprect);
+	VIDEO_UPDATE_CALL(common);
 	kaneko16_render_sprites(machine,bitmap,cliprect);
 	return 0;
 }
@@ -986,7 +985,7 @@ VIDEO_UPDATE( kaneko16 )
 	// if the display is disabled, do nothing?
 	if (!kaneko16_disp_enable) return 0;
 
-	kaneko16_video_update_common(machine,bitmap,cliprect);
+	VIDEO_UPDATE_CALL(common);
 	kaneko16_render_sprites(machine,bitmap,cliprect);
 	return 0;
 }
@@ -1033,7 +1032,7 @@ VIDEO_UPDATE( galsnew )
 	// if the display is disabled, do nothing?
 	if (!kaneko16_disp_enable) return 0;
 
-	kaneko16_video_update_common(machine,bitmap,cliprect);
+	VIDEO_UPDATE_CALL(common);
 
 	kaneko16_render_sprites(machine,bitmap,cliprect);
 	return 0;
@@ -1047,7 +1046,7 @@ VIDEO_UPDATE( sandscrp )
 	// if the display is disabled, do nothing?
 	if (!kaneko16_disp_enable) return 0;
 
-	kaneko16_video_update_common(machine,bitmap,cliprect);
+	VIDEO_UPDATE_CALL(common);
 
 	// copy sprite bitmap to screen
 	pandora_update(machine,bitmap,cliprect);

@@ -65,6 +65,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/okim6295.h"
 #include "cpu/i8051/i8051.h"
 
@@ -385,7 +386,7 @@ static WRITE16_HANDLER(io_data_w)
 static WRITE16_HANDLER(sound_w)
 {
 		soundlatch_w(0,data & 0xff);
-		cpunum_set_input_line(1, I8051_INT0_LINE, HOLD_LINE);
+		cpunum_set_input_line(Machine, 1, I8051_INT0_LINE, HOLD_LINE);
 }
 
 static ADDRESS_MAP_START( sliver_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -446,8 +447,8 @@ static VIDEO_START(sliver)
 
 static VIDEO_UPDATE(sliver)
 {
-	copybitmap(bitmap, sliver_bitmap_bg, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
-	copybitmap(bitmap, sliver_bitmap_fg, 0, 0, 0, 0, cliprect, TRANSPARENCY_PEN, 0);
+	copybitmap      (bitmap, sliver_bitmap_bg, 0, 0, 0, 0, cliprect);
+	copybitmap_trans(bitmap, sliver_bitmap_fg, 0, 0, 0, 0, cliprect, 0);
 	return 0;
 }
 
@@ -526,7 +527,7 @@ INPUT_PORTS_END
 static INTERRUPT_GEN( sliver_int )
 {
 	//valid interrupts are 2,3,4
-	cpunum_set_input_line(0, 2+cpu_getiloops(), HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 2+cpu_getiloops(), HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( sliver )

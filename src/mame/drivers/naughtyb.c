@@ -186,8 +186,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0x4000, 0x7fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x8800, 0x8fff) AM_WRITE(naughtyb_videoram2_w) AM_BASE(&naughtyb_videoram2)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x8800, 0x8fff) AM_WRITE(MWA8_RAM) AM_BASE(&naughtyb_videoram2)
 	AM_RANGE(0x9000, 0x97ff) AM_WRITE(naughtyb_videoreg_w)
 	AM_RANGE(0x9800, 0x9fff) AM_WRITE(MWA8_RAM) AM_BASE(&naughtyb_scrollreg)
 	AM_RANGE(0xa000, 0xa7ff) AM_WRITE(pleiads_sound_control_a_w)
@@ -197,8 +197,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( popflame_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
 	AM_RANGE(0x4000, 0x7fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x8800, 0x8fff) AM_WRITE(naughtyb_videoram2_w) AM_BASE(&naughtyb_videoram2)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x8800, 0x8fff) AM_WRITE(MWA8_RAM) AM_BASE(&naughtyb_videoram2)
 	AM_RANGE(0x9000, 0x97ff) AM_WRITE(popflame_videoreg_w)
 	AM_RANGE(0x9800, 0x9fff) AM_WRITE(MWA8_RAM) AM_BASE(&naughtyb_scrollreg)
 	AM_RANGE(0xa000, 0xa7ff) AM_WRITE(pleiads_sound_control_a_w)
@@ -218,7 +218,7 @@ ADDRESS_MAP_END
 static INTERRUPT_GEN( naughtyb_interrupt )
 {
 	if (readinputport(3) & 1)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static INPUT_PORTS_START( naughtyb )

@@ -62,6 +62,7 @@ IO ports and memory map changes. Dip switches differ too.
 
 ***************************************************************************/
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
@@ -97,7 +98,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(kchamp_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xd400, 0xd7ff) AM_WRITE(kchamp_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xd800, 0xd8ff) AM_WRITE(spriteram_w) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xd800, 0xd8ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd900, 0xdfff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_ROM)
 ADDRESS_MAP_END
@@ -118,7 +119,7 @@ static WRITE8_HANDLER( control_w ) {
 
 static WRITE8_HANDLER( sound_reset_w ) {
 	if ( !( data & 1 ) )
-		cpunum_set_input_line(1, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( sound_control_w ) {
@@ -128,7 +129,7 @@ static WRITE8_HANDLER( sound_control_w ) {
 
 static WRITE8_HANDLER( sound_command_w ) {
 	soundlatch_w( 0, data );
-	cpunum_set_input_line_and_vector( 1, 0, HOLD_LINE, 0xff );
+	cpunum_set_input_line_and_vector(Machine, 1, 0, HOLD_LINE, 0xff );
 }
 
 static int msm_data = 0;
@@ -188,7 +189,7 @@ static ADDRESS_MAP_START( kc_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM)
 	AM_RANGE(0xe000, 0xe3ff) AM_WRITE(kchamp_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xe400, 0xe7ff) AM_WRITE(kchamp_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xea00, 0xeaff) AM_WRITE(spriteram_w) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xea00, 0xeaff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xeb00, 0xffff) AM_WRITE(MWA8_RAM)
 ADDRESS_MAP_END
 
@@ -203,7 +204,7 @@ static ADDRESS_MAP_START( kc_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static READ8_HANDLER( sound_reset_r ) {
-	cpunum_set_input_line(1, INPUT_LINE_RESET, PULSE_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 	return 0;
 }
 
@@ -399,7 +400,7 @@ GFXDECODE_END
 static INTERRUPT_GEN( kc_interrupt ) {
 
 	if ( nmi_enable )
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static void msmint( int data ) {
@@ -415,7 +416,7 @@ static void msmint( int data ) {
 
 	if ( !( counter ^= 1 ) ) {
 		if ( sound_nmi_enable ) {
-			cpunum_set_input_line( 1, INPUT_LINE_NMI, PULSE_LINE );
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE );
 		}
 	}
 }
@@ -433,7 +434,7 @@ static const struct MSM5205interface msm_interface =
 static INTERRUPT_GEN( sound_int ) {
 
 	if ( sound_nmi_enable )
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 

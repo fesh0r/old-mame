@@ -4,7 +4,7 @@
  *   portable sharp 61860 emulator interface
  *   (sharp pocket computers)
  *
- *   Copyright (c) 2000 Peter Trauner, all rights reserved.
+ *   Copyright Peter Trauner, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -27,20 +27,15 @@
  *         Extended execute procudure with HLT-mode of CPU.
  *****************************************************************************/
 
-#include "cpuintrf.h"
 #include "debugger.h"
+#include "deprecat.h"
 
 #include "sc61860.h"
 #include "sc.h"
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
-
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 /****************************************************************************
  * The 61860 registers.
@@ -122,7 +117,7 @@ static int sc61860_execute(int cycles)
 	{
 		sc61860.oldpc = sc61860.pc;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(sc61860.pc);
 
 		sc61860_instruction();
 
@@ -182,6 +177,7 @@ void sc61860_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:						info->i = 0;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -218,9 +214,9 @@ void sc61860_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = sc61860_reset;					break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = sc61860_execute;				break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = sc61860_dasm;					break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &sc61860_ICount;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -228,7 +224,7 @@ void sc61860_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s = cpuintrf_temp_str(), "SC61860"); break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s = cpuintrf_temp_str(), "1.0beta"); break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s = cpuintrf_temp_str(), __FILE__); break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s = cpuintrf_temp_str(), "Copyright (c) 2000,2001 Peter Trauner, all rights reserved."); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s = cpuintrf_temp_str(), "Copyright Peter Trauner, all rights reserved."); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s = cpuintrf_temp_str(), "%c%c", sc61860.zero?'Z':'.', sc61860.carry ? 'C':'.');

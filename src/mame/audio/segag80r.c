@@ -9,6 +9,7 @@
 
 #include "driver.h"
 #include "streams.h"
+#include "deprecat.h"
 #include "cpu/i8039/i8039.h"
 #include "segag80r.h"
 #include "machine/8255ppi.h"
@@ -821,7 +822,7 @@ ADDRESS_MAP_END
 MACHINE_DRIVER_START( monsterb_sound_board )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(N7751, 6000000/15)
+	MDRV_CPU_ADD(N7751, 6000000)
 	MDRV_CPU_PROGRAM_MAP(monsterb_7751_map,0)
 	MDRV_CPU_IO_MAP(monsterb_7751_portmap,0)
 
@@ -933,7 +934,7 @@ static WRITE8_HANDLER( n7751_command_w )
         D3    = /INT line
     */
 	n7751_command = data & 0x07;
-	cpunum_set_input_line(1, 0, ((data & 0x08) == 0) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 0, ((data & 0x08) == 0) ? ASSERT_LINE : CLEAR_LINE);
 	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
 }
 

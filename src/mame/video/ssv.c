@@ -136,6 +136,7 @@ Note: press Z to show some info on each sprite (debug builds only)
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "seta.h"
 #ifdef MAME_DEBUG
 #include "ui.h"
@@ -199,7 +200,7 @@ VIDEO_START( ssv )
 
 VIDEO_START( eaglshot )
 {
-	video_start_ssv(machine);
+	VIDEO_START_CALL(ssv);
 
 	eaglshot_gfxram		=	(UINT16*)auto_malloc(16 * 0x40000);
 	eaglshot_dirty_tile	=	(char*)auto_malloc(16 * 0x40000 / (16*8));
@@ -221,7 +222,7 @@ WRITE16_HANDLER( gdfs_tmapram_w )
 
 VIDEO_START( gdfs )
 {
-	video_start_ssv(machine);
+	VIDEO_START_CALL(ssv);
 
 	machine->gfx[2]->color_granularity = 64; /* 256 colour sprites with palette selectable on 64 colour boundaries */
 
@@ -930,13 +931,13 @@ VIDEO_UPDATE( eaglshot )
 			{
 				eaglshot_dirty_tile[tile] = 0;
 
-				decodechar(machine->gfx[0], tile, (UINT8 *)eaglshot_gfxram, machine->drv->gfxdecodeinfo[0].gfxlayout);
-				decodechar(machine->gfx[1], tile, (UINT8 *)eaglshot_gfxram, machine->drv->gfxdecodeinfo[1].gfxlayout);
+				decodechar(machine->gfx[0], tile, (UINT8 *)eaglshot_gfxram);
+				decodechar(machine->gfx[1], tile, (UINT8 *)eaglshot_gfxram);
 			}
 		}
 	}
 
-	video_update_ssv(machine, screen, bitmap, cliprect);
+	VIDEO_UPDATE_CALL(ssv);
 	return 0;
 }
 
@@ -1107,7 +1108,7 @@ VIDEO_UPDATE( gdfs )
 {
 	int tile, pri;
 
-	video_update_ssv(machine, screen, bitmap, cliprect);
+	VIDEO_UPDATE_CALL(ssv);
 
 	// Decode zooming sprites tiles from ram
 	if (eaglshot_dirty)
@@ -1120,7 +1121,7 @@ VIDEO_UPDATE( gdfs )
 			{
 				eaglshot_dirty_tile[tile] = 0;
 
-				decodechar(machine->gfx[2], tile, (UINT8 *)eaglshot_gfxram, machine->drv->gfxdecodeinfo[2].gfxlayout);
+				decodechar(machine->gfx[2], tile, (UINT8 *)eaglshot_gfxram);
 			}
 		}
 	}

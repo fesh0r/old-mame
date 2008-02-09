@@ -1,7 +1,7 @@
 /****************************************************************************
                          Alpha8201 Emulator
 
-                      Copyright (C) 2006 Tatsuyuki Satoh
+                      Copyright Tatsuyuki Satoh
                    Originally written for the MAME project.
 
     Notes :
@@ -133,6 +133,7 @@ Timming
 ****************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "alph8201.h"
 
 /* instruction cycle count */
@@ -784,7 +785,7 @@ mame_printf_debug("ALPHA8201 START ENTRY=%02X PC=%03X\n",pcptr,PC);
 
 		/* run */
 		R.PREVPC = PC;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PC);
 		opcode =M_RDOP(PC);
 #if TRACE_PC
 mame_printf_debug("ALPHA8201:  PC = %03x,  opcode = %02x\n", PC, opcode);
@@ -895,6 +896,7 @@ static void alpha8xxx_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 0;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 2;							break;
@@ -947,16 +949,16 @@ static void alpha8xxx_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = ALPHA8201_reset;			break;
 		case CPUINFO_PTR_EXIT:							info->exit = ALPHA8201_exit;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = ALPHA8201_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &ALPHA8201_ICount;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "AlphaDenshi MCU");		break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "0.1");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) 2006 by Tatsuyuki Satoh"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Tatsuyuki Satoh"); break;
 		case CPUINFO_STR_FLAGS:							sprintf(info->s, "%c%c", CF?'C':'.',ZF?'Z':'.'); break;
 		case CPUINFO_STR_REGISTER + ALPHA8201_PC:		sprintf(info->s, "PC:%03X", PC);		break;
 		case CPUINFO_STR_REGISTER + ALPHA8201_SP:		sprintf(info->s, "SP:%02X", M_RDMEM(0x001) ); break;

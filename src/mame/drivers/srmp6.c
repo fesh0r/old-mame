@@ -67,6 +67,7 @@ Dumped 06/15/2000
 
 
 #include "driver.h"
+#include "deprecat.h"
 
 static UINT16* tileram;
 static UINT8* dirty_tileram;
@@ -76,7 +77,8 @@ static UINT16 *sprram, *sprram_old;
 
 static int brightness;
 
-#define SRMP6_VERBOSE 0
+#define VERBOSE 0
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 static const gfx_layout tiles8x8_layout =
 {
@@ -151,7 +153,7 @@ static void srmp6_decode_charram(void)
 		int i;
 		for (i=0;i<(0x100000*16)/0x40;i++)
 		{
-			decodechar(Machine->gfx[0], i, (UINT8*)tileram, &tiles8x8_layout);
+			decodechar(Machine->gfx[0], i, (UINT8*)tileram);
 			dirty_tileram[i] = 0;
 		}
 	}
@@ -271,7 +273,7 @@ static VIDEO_UPDATE(srmp6)
 
 						if (dirty_tileram[tileno])
 						{
-							decodechar(machine->gfx[0], tileno, (UINT8*)tileram, &tiles8x8_layout);
+							decodechar(machine->gfx[0], tileno, (UINT8*)tileram);
 							dirty_tileram[tileno] = 0;
 						}
 
@@ -368,9 +370,7 @@ static WRITE16_HANDLER( video_regs_w )
 	{
 
 		case 0x5e/2: // bank switch, used by ROM check
-#if SRMP6_VERBOSE
-			printf("%x\n",data);
-#endif
+			LOG(("%x\n",data));
 
 			memory_set_bankptr(1,(UINT16 *)(memory_region(REGION_USER2) + (data & 0x0f)*0x200000));
 			break;
@@ -461,8 +461,7 @@ static WRITE16_HANDLER(srmp6_dma_w)
 		int tempidx=0;
 
 		/* show params */
-#if SRMP6_VERBOSE
-		printf("DMA! %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x\n",
+		LOG(("DMA! %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x\n",
 				dmaram[0x00/2],
 				dmaram[0x02/2],
 				dmaram[0x04/2],
@@ -476,8 +475,7 @@ static WRITE16_HANDLER(srmp6_dma_w)
 				dmaram[0x14/2],
 				dmaram[0x16/2],
 				dmaram[0x18/2],
-				dmaram[0x1a/2]);
-#endif
+				dmaram[0x1a/2]));
 
 		destl=dmaram[9]*0x40000;
 
@@ -513,9 +511,7 @@ static WRITE16_HANDLER(srmp6_dma_w)
 
 				if(tempidx>=len)
 				{
-#if SRMP6_VERBOSE
-					printf("%x\n",srcdata);
-#endif
+					LOG(("%x\n",srcdata));
 					return;
 				}
  			}
@@ -705,13 +701,9 @@ INPUT_PORTS_END
 static INTERRUPT_GEN(srmp6_interrupt)
 {
 	if(!cpu_getiloops())
-	{
-		cpunum_set_input_line(0,3,HOLD_LINE);
-	}
+		cpunum_set_input_line(machine, 0,3,HOLD_LINE);
 	else
-	{
-		cpunum_set_input_line(0,4,HOLD_LINE);
-	}
+		cpunum_set_input_line(machine, 0,4,HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( srmp6 )

@@ -328,6 +328,7 @@ Boards:
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "pacman.h"
 #include "cpu/s2650/s2650.h"
 #include "sound/namco.h"
@@ -387,7 +388,7 @@ static MACHINE_RESET( mschamp )
 static WRITE8_HANDLER( pacman_interrupt_vector_w )
 {
 	cpunum_set_input_line_vector(0, 0, data);
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 }
 
 
@@ -395,7 +396,7 @@ static INTERRUPT_GEN( pacman_interrupt )
 {
 	/* always signal a normal VBLANK */
 	if (cpu_getiloops() == 0)
-		irq0_line_hold();
+		irq0_line_hold(machine, cpunum);
 
 	/* on other "VBLANK" opportunities, check to make sure the cheat is enabled */
 	/* and that the speedup button is pressed */
@@ -406,7 +407,7 @@ static INTERRUPT_GEN( pacman_interrupt )
 		{
 			UINT8 value = readinputport(portnum);
 			if ((value & 7) == 5 || (value & 6) == 2)
-				irq0_line_hold();
+				irq0_line_hold(machine, cpunum);
 		}
 	}
 }
@@ -683,7 +684,7 @@ static READ8_HANDLER( bigbucks_question_r )
 
 static INTERRUPT_GEN( s2650_interrupt )
 {
-	cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, 0x03);
+	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0x03);
 }
 
 static WRITE8_HANDLER( porky_banking_w )
@@ -824,7 +825,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( mspacman_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1,MWA8_ROM)
+	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK(1)
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0xa000) AM_READWRITE(MRA8_RAM,pacman_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4400, 0x47ff) AM_MIRROR(0xa000) AM_READWRITE(MRA8_RAM,pacman_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x4800, 0x4bff) AM_MIRROR(0xa000) AM_READWRITE(pacman_read_nop,MWA8_NOP)
@@ -846,7 +847,7 @@ static ADDRESS_MAP_START( mspacman_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)	/* IN1 */
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_2_r)	/* DSW1 */
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ(input_port_3_r)	/* DSW2 */
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK1,MWA8_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)
 ADDRESS_MAP_END
 
 
@@ -936,7 +937,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( epos_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x8000) AM_READWRITE(MRA8_BANK1,MWA8_ROM)
+	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x8000) AM_ROMBANK(1)
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0xa000) AM_READWRITE(MRA8_RAM,pacman_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4400, 0x47ff) AM_MIRROR(0xa000) AM_READWRITE(MRA8_RAM,pacman_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x4800, 0x4bff) AM_MIRROR(0xa000) AM_READWRITE(pacman_read_nop,MWA8_NOP)
@@ -1069,7 +1070,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( mschamp_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1,MWA8_ROM)
+	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK(1)
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0xa000) AM_READWRITE(MRA8_RAM,pacman_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4400, 0x47ff) AM_MIRROR(0xa000) AM_READWRITE(MRA8_RAM,pacman_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x4800, 0x4bff) AM_MIRROR(0xa000) AM_READWRITE(pacman_read_nop,MWA8_NOP)
@@ -1091,7 +1092,7 @@ static ADDRESS_MAP_START( mschamp_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)	/* IN1 */
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_2_r)	/* DSW1 */
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ(input_port_3_r)	/* DSW2 */
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK2,MWA8_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(2)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( crushs_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1117,6 +1118,8 @@ static ADDRESS_MAP_START( crushs_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ(input_port_0_r)
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)
 ADDRESS_MAP_END
+
+
 
 /*************************************
  *
@@ -1203,6 +1206,8 @@ static ADDRESS_MAP_START( crushs_writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_control_port_0_w)
 ADDRESS_MAP_END
+
+
 
 /*************************************
  *
@@ -2966,6 +2971,8 @@ static INPUT_PORTS_START( cannonbp )
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
+
+
 /*************************************
  *
  *  Graphics layouts
@@ -3333,6 +3340,8 @@ static MACHINE_DRIVER_START( crushs )
 	MDRV_SOUND_CONFIG(crushs_ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 MACHINE_DRIVER_END
+
+
 
 /*************************************
  *
@@ -5369,8 +5378,8 @@ static READ8_HANDLER( cannonbp_protection_r )
 static DRIVER_INIT( cannonbp )
 {
 	/* extra memory */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x4bff, 0, 0, MRA8_RAM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x4bff, 0, 0, MWA8_RAM);
+	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x4bff, 0, 0, MRA8_BANK5, MWA8_BANK5);
+	memory_set_bankptr(5, auto_malloc(0x400));
 
 	/* protection? */
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, cannonbp_protection_r);
@@ -5392,7 +5401,7 @@ GAME( 1980, pacman,   puckman,  pacman,   pacman,   0,        ROT90,  "[Namco] (
 GAME( 1980, pacmanf,  puckman,  pacman,   pacman,   0,        ROT90,  "[Namco] (Midway license)", "Pac-Man (Midway, with speedup hack)", GAME_SUPPORTS_SAVE )
 GAME( 1981, puckmod,  puckman,  pacman,   pacman,   0,        ROT90,  "Namco", "PuckMan (Japan set 3)", GAME_SUPPORTS_SAVE )
 GAME( 1981, pacmod,   puckman,  pacman,   pacman,   0,        ROT90,  "[Namco] (Midway license)", "Pac-Man (Midway, harder)", GAME_SUPPORTS_SAVE )
-GAME( 1980, newpuc2,  puckman,  pacman,   pacman,   0,        ROT90,  "hack", "Newpuc2", GAME_SUPPORTS_SAVE )
+GAME( 1980, newpuc2,  puckman,  pacman,   pacman,   0,        ROT90,  "hack", "Newpuc2 (set 1)", GAME_SUPPORTS_SAVE )
 GAME( 1980, newpuc2b, puckman,  pacman,   pacman,   0,        ROT90,  "hack", "Newpuc2 (set 2)", GAME_SUPPORTS_SAVE )
 GAME( 1980, newpuckx, puckman,  pacman,   pacman,   0,        ROT90,  "hack", "New Puck-X", GAME_SUPPORTS_SAVE )
 GAME( 1981, pacheart, puckman,  pacman,   pacman,   0,        ROT90,  "hack", "Pac-Man (Hearts)", GAME_SUPPORTS_SAVE )

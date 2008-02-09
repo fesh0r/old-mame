@@ -45,6 +45,7 @@ and hardware.
 ***********************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 
 /* Set to 1 to display test results and skip on errors */
@@ -125,8 +126,8 @@ static WRITE8_HANDLER( G_STATUS_W )
 	bankaddress = 0x10000 + (data & 0x03) * 0x10000;
 	memory_set_bankptr(1,&ROM[bankaddress]);
 
-        cpunum_set_input_line(0, INPUT_LINE_NMI, (data&0x80) ? ASSERT_LINE : CLEAR_LINE);
-        cpunum_set_input_line(1, INPUT_LINE_NMI, (data&0x80) ? ASSERT_LINE : CLEAR_LINE);
+        cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, (data&0x80) ? ASSERT_LINE : CLEAR_LINE);
+        cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, (data&0x80) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*

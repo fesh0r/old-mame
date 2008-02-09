@@ -2,7 +2,7 @@
 
     TMS34010: Portable Texas Instruments TMS34010 emulator
 
-    Copyright (C) Alex Pasadyn/Zsolt Vasvari 1998
+    Copyright Alex Pasadyn/Zsolt Vasvari
     Parts based on code by Aaron Giles
 
 ***************************************************************************/
@@ -97,7 +97,7 @@ static void unimpl(void)
 	/* extra check to prevent bad things */
 	if (PC == 0 || opcode_table[cpu_readop16(TOBYTE(PC)) >> 4] == unimpl)
 	{
-		cpunum_set_input_line(cpu_getactivecpu(), INPUT_LINE_HALT, ASSERT_LINE);
+		cpunum_set_input_line(Machine, cpu_getactivecpu(), INPUT_LINE_HALT, ASSERT_LINE);
 		DEBUGGER_BREAK;
 	}
 }
@@ -2357,11 +2357,11 @@ static void rmo_b(void) { RMO(B); }
 	UINT32 v = R##REG(DSTREG);					\
 	switch (state.pixelshift)					\
 	{											\
-		case 1:									\
+		case 0:									\
 			v = (v & 1) ? 0xffffffff : 0x00000000;\
 		  	COUNT_CYCLES(8);					\
 		  	break;								\
-		case 2:									\
+		case 1:									\
 			v &= 3;								\
 			v |= v << 2;						\
 			v |= v << 4;						\
@@ -2369,25 +2369,25 @@ static void rmo_b(void) { RMO(B); }
 			v |= v << 16;						\
 			COUNT_CYCLES(7);					\
 			break;								\
-		case 4:									\
+		case 2:									\
 			v &= 0x0f;							\
 			v |= v << 4;						\
 			v |= v << 8;						\
 			v |= v << 16;						\
 			COUNT_CYCLES(6);					\
 			break;								\
-		case 8:									\
+		case 3:									\
 			v &= 0xff;							\
 			v |= v << 8;						\
 			v |= v << 16;						\
 			COUNT_CYCLES(5);					\
 			break;								\
-		case 16:								\
+		case 4:									\
 			v &= 0xffff;						\
 			v |= v << 16;						\
 			COUNT_CYCLES(4);					\
 			break;								\
-		case 32:								\
+		case 5:									\
 			COUNT_CYCLES(2);					\
 			break;								\
 	}											\

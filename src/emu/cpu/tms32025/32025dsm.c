@@ -1,7 +1,7 @@
  /**************************************************************************\
  *              Texas Instruments TMS320x25 DSP Disassembler                *
  *                                                                          *
- *                 Copyright (C) 2001-2002+ Tony La Porta                   *
+ *                 Copyright Tony La Porta                                  *
  *              To be used with TMS320x25 DSP Emulator engine.              *
  *                      Written for the MAME project.                       *
  *                                                                          *
@@ -33,7 +33,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifdef MAME_DEBUG					/* Compile interface to MAME */
+#ifdef ENABLE_DEBUGGER					/* Compile interface to MAME */
 #include "tms32025.h"
 #include "debugger.h"
 extern UINT16 *tms32025_pgmmap[0x200];

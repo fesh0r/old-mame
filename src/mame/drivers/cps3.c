@@ -330,6 +330,7 @@ Notes:
 
 #include "driver.h"
 #include "cdrom.h"
+#include "deprecat.h"
 #include "cpu/sh2/sh2.h"
 #include "machine/intelfsh.h"
 #include "includes/cps3.h"
@@ -612,7 +613,7 @@ INLINE void cps3_drawgfxzoom( mame_bitmap *dest_bmp,const gfx_element *gfx,
 
 
 
-static offs_t cps3_opbase_handler(offs_t address);
+static OPBASE_HANDLER( cps3_opbase_handler );
 
 /* Encryption */
 
@@ -859,7 +860,7 @@ static void decode_ssram(void)
 		{
 			if (cps3_ss_ram_dirty[i])
 			{
-				decodechar(Machine->gfx[0], i, (UINT8*)cps3_ss_ram, &cps3_tiles8x8_layout);
+				decodechar(Machine->gfx[0], i, (UINT8*)cps3_ss_ram);
 				cps3_ss_ram_dirty[i] = 0;
 			}
 		}
@@ -879,7 +880,7 @@ static void decode_charram(void)
 		{
 			if (cps3_char_ram_dirty[i])
 			{
-				decodechar(Machine->gfx[1], i, (UINT8*)cps3_char_ram, &cps3_tiles16x16_layout);
+				decodechar(Machine->gfx[1], i, (UINT8*)cps3_char_ram);
 				cps3_char_ram_dirty[i] = 0;
 			}
 		}
@@ -1019,7 +1020,7 @@ static void cps3_draw_tilemapsprite_line(int tmnum, int drawline, mame_bitmap *b
 
 			if (cps3_char_ram_dirty[tileno])
 			{
-				decodechar(Machine->gfx[1], tileno, (UINT8*)cps3_char_ram, &cps3_tiles16x16_layout);
+				decodechar(Machine->gfx[1], tileno, (UINT8*)cps3_char_ram);
 				cps3_char_ram_dirty[tileno] = 0;
 			}
 			cps3_drawgfxzoom(bitmap, Machine->gfx[1],tileno,colour,xflip,yflip,(x*16)-scrollx%16,drawline-tilesubline,&clip,CPS3_TRANSPARENCY_PEN_INDEX,0, 0x10000, 0x10000, NULL, 0);
@@ -1142,7 +1143,7 @@ static VIDEO_UPDATE(cps3)
 				int xsizedraw2 = ((value3 & 0x007f0000)>>16);
 				int xx,yy;
 
-				int tilestable[4] = { 8,1,2,4 };
+				static const int tilestable[4] = { 8,1,2,4 };
 				int ysize2 = ((value3 & 0x0000000c)>>2);
 				int xsize2 = ((value3 & 0x00000003)>>0);
 				UINT32 xinc,yinc;
@@ -1206,8 +1207,8 @@ static VIDEO_UPDATE(cps3)
 
 					ypos2+=((ysizedraw2+1)/2);
 
-					if (!flipx) xpos2-= (xsize2+1)*((16*xinc)>>16);
-					else  xpos2+= (xsize2)*((16*xinc)>>16);
+					if (!flipx) xpos2-= ((xsize2+1)*16*xinc)>>16;
+					else  xpos2+= (xsize2*16*xinc)>>16;
 
 					if (flipy) ypos2-= ysize2*((16*yinc)>>16);
 
@@ -1217,8 +1218,8 @@ static VIDEO_UPDATE(cps3)
 						{
 							int current_xpos;
 
-							if (!flipx) current_xpos = (xpos+xpos2+xx* ((16*xinc)>>16)  );
-							else current_xpos = (xpos+xpos2-xx*((16*xinc)>>16));
+							if (!flipx) current_xpos = (xpos+xpos2+((xx*16*xinc)>>16)  );
+							else current_xpos = (xpos+xpos2-((xx*16*xinc)>>16));
 							//current_xpos +=  rand()&0x3ff;
 							current_xpos += gscrollx;
 							current_xpos += 1;
@@ -1269,7 +1270,7 @@ static VIDEO_UPDATE(cps3)
 
 									if (cps3_char_ram_dirty[realtileno])
 									{
-										decodechar(machine->gfx[1], realtileno, (UINT8*)cps3_char_ram, &cps3_tiles16x16_layout);
+										decodechar(machine->gfx[1], realtileno, (UINT8*)cps3_char_ram);
 										cps3_char_ram_dirty[realtileno] = 0;
 									}
 
@@ -1348,7 +1349,7 @@ static VIDEO_UPDATE(cps3)
 
 				if (cps3_ss_ram_dirty[tile])
 				{
-					decodechar(machine->gfx[0], tile, (UINT8*)cps3_ss_ram, &cps3_tiles8x8_layout);
+					decodechar(machine->gfx[0], tile, (UINT8*)cps3_ss_ram);
 					cps3_ss_ram_dirty[tile] = 0;
 				}
 
@@ -1392,7 +1393,7 @@ static WRITE32_HANDLER( cps3_0xc0000000_ram_w )
 
 
 
-static offs_t cps3_opbase_handler(offs_t address)
+static OPBASE_HANDLER( cps3_opbase_handler )
 {
 //  if(DEBUG_PRINTF) printf("address %04x\n",address);
 
@@ -1967,11 +1968,6 @@ static WRITE32_HANDLER( cps3_ss_pal_base_w )
 	}
 }
 
-static UINT32* tilemap20_regs_base;
-static UINT32* tilemap30_regs_base;
-static UINT32* tilemap40_regs_base;
-static UINT32* tilemap50_regs_base;
-
 //<ElSemi> +0 X  +2 Y +4 unknown +6 enable (&0x8000) +8 low part tilemap base, high part linescroll base
 //<ElSemi> (a word each)
 
@@ -2023,7 +2019,7 @@ static WRITE32_HANDLER( cps3_palettedma_w )
 				}
 
 
-				cpunum_set_input_line(0,10, ASSERT_LINE);
+				cpunum_set_input_line(Machine, 0,10, ASSERT_LINE);
 
 
 			}
@@ -2244,14 +2240,14 @@ static void cps3_process_character_dma(UINT32 address)
 				/* We should probably copy this, but a pointer to it is fine for our purposes as the data doesn't change */
 				current_table_address = real_source;
 			}
-			cpunum_set_input_line(0,10, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 0,10, ASSERT_LINE);
 		}
 		else if  ( (dat1&0x00e00000) ==0x00400000 )
 		{
 			/* 6bpp DMA decompression
               - this is used for the majority of sprites and backgrounds */
 			cps3_do_char_dma( real_source, real_destination, real_length );
-			cpunum_set_input_line(0,10, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 0,10, ASSERT_LINE);
 
 		}
 		else if  ( (dat1&0x00e00000) ==0x00600000 )
@@ -2259,7 +2255,7 @@ static void cps3_process_character_dma(UINT32 address)
 			/* 8bpp DMA decompression
               - this is used on SFIII NG Sean's Stage ONLY */
 			cps3_do_alt_char_dma( real_source, real_destination, real_length);
-			cpunum_set_input_line(0,10, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 0,10, ASSERT_LINE);
 		}
 		else
 		{
@@ -2316,12 +2312,12 @@ static WRITE32_HANDLER( cps3_characterdma_w )
 
 static WRITE32_HANDLER( cps3_irq10_ack_w )
 {
-	cpunum_set_input_line(0,10, CLEAR_LINE); return;
+	cpunum_set_input_line(Machine, 0,10, CLEAR_LINE); return;
 }
 
 static WRITE32_HANDLER( cps3_irq12_ack_w )
 {
-	cpunum_set_input_line(0,12, CLEAR_LINE); return;
+	cpunum_set_input_line(Machine, 0,12, CLEAR_LINE); return;
 }
 
 static WRITE32_HANDLER( cps3_unk_vidregs_w )
@@ -2463,7 +2459,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN(cps3_vbl_interrupt)
 {
-	cpunum_set_input_line(0,12, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0,12, ASSERT_LINE);
 }
 
 static INTERRUPT_GEN(cps3_other_interrupt)
@@ -2471,7 +2467,7 @@ static INTERRUPT_GEN(cps3_other_interrupt)
 	// this seems to need to be periodic (see the life bar portraits in sfiii2
 	// but also triggered on certain dma events (or warzard locks up in attract)
 	// what is the REAL source of IRQ10??
-	cpunum_set_input_line(0,10, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0,10, ASSERT_LINE);
 }
 
 
@@ -2509,10 +2505,19 @@ static const struct WD33C93interface scsi_intf =
 	NULL			/* command completion IRQ */
 };
 
-static MACHINE_RESET( cps3 )
+static void cps3_exit(running_machine *machine)
+{
+	wd33c93_exit(&scsi_intf);
+}
+
+static MACHINE_START( cps3 )
 {
 	wd33c93_init(&scsi_intf);
+	add_exit_callback(machine, cps3_exit);
+}
 
+static MACHINE_RESET( cps3 )
+{
 	if (cps3_use_fastboot)
 	{
 		fastboot_timer = timer_alloc(fastboot_timer_callback, NULL);
@@ -2734,6 +2739,7 @@ static MACHINE_DRIVER_START( cps3 )
 	MDRV_SCREEN_SIZE(512*2, 224*2)
 	MDRV_SCREEN_VISIBLE_AREA(0, (384*1)-1, 0, 223/*511*/)
 
+	MDRV_MACHINE_START(cps3)
 	MDRV_MACHINE_RESET(cps3)
 	MDRV_NVRAM_HANDLER( cps3 )
 	MDRV_PALETTE_LENGTH(0x10000) // actually 0x20000 ...
@@ -3115,9 +3121,9 @@ static DRIVER_INIT( jojo )
 //  rom[0x1fecc/4]^=0x01000000; // nocd
 
 	cps3_use_fastboot = 0;
-	driver_init_cps3crpt(machine);
-	driver_init_cps3_speedups(machine);
-	driver_init_cps3_testhacks(machine);
+	DRIVER_INIT_CALL(cps3crpt);
+	DRIVER_INIT_CALL(cps3_speedups);
+	DRIVER_INIT_CALL(cps3_testhacks);
 
 
 }
@@ -3141,9 +3147,9 @@ static DRIVER_INIT (jojoba)
 //  rom[0x1fec8/4]^=0x00000070; // DEV mode
 //  rom[0x1fecc/4]^=0x01000000; // nocd
 
-	driver_init_cps3crpt(machine);
-	driver_init_cps3_speedups(machine);
-	driver_init_cps3_testhacks(machine);
+	DRIVER_INIT_CALL(cps3crpt);
+	DRIVER_INIT_CALL(cps3_speedups);
+	DRIVER_INIT_CALL(cps3_testhacks);
 
 	cps3_use_fastboot = 0;
 }
@@ -3167,9 +3173,9 @@ static DRIVER_INIT( warzard )
 	                            // any actual NCD dumps to compare (or it expects SCSI to report there being
 	                            // no cd drive?)
 
-	driver_init_cps3crpt(machine);
-	driver_init_cps3_speedups(machine);
-	driver_init_cps3_testhacks(machine);
+	DRIVER_INIT_CALL(cps3crpt);
+	DRIVER_INIT_CALL(cps3_speedups);
+	DRIVER_INIT_CALL(cps3_testhacks);
 
 	cps3_use_fastboot = 0; // required due to cd check, even with ASIA NO CD selected, not req. with CD emulation
 }
@@ -3195,9 +3201,9 @@ static DRIVER_INIT( sfiii )
 
 	cps3_use_fastboot = 0;
 
-	driver_init_cps3crpt(machine);
-	driver_init_cps3_speedups(machine);
-	driver_init_cps3_testhacks(machine);
+	DRIVER_INIT_CALL(cps3crpt);
+	DRIVER_INIT_CALL(cps3_speedups);
+	DRIVER_INIT_CALL(cps3_testhacks);
 
 }
 
@@ -3219,9 +3225,9 @@ static DRIVER_INIT( sfiii2 )
 
 	cps3_use_fastboot = 0; // not required
 
-	driver_init_cps3crpt(machine);
-	driver_init_cps3_speedups(machine);
-	driver_init_cps3_testhacks(machine);
+	DRIVER_INIT_CALL(cps3crpt);
+	DRIVER_INIT_CALL(cps3_speedups);
+	DRIVER_INIT_CALL(cps3_testhacks);
 }
 
 
@@ -3241,9 +3247,9 @@ static DRIVER_INIT( sfiii3 )
 //  rom[0x1fec8/4]^=0x00000001; // region
 //  rom[0x1fecc/4]^=0x01000000; // nocd
 
-	driver_init_cps3crpt(machine);
-	driver_init_cps3_speedups(machine);
-	driver_init_cps3_testhacks(machine);
+	DRIVER_INIT_CALL(cps3crpt);
+	DRIVER_INIT_CALL(cps3_speedups);
+	DRIVER_INIT_CALL(cps3_testhacks);
 
 	cps3_use_fastboot = 0;
 }

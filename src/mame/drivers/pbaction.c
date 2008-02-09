@@ -34,6 +34,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "machine/segacrpt.h"
 
@@ -54,7 +55,7 @@ extern VIDEO_UPDATE( pbaction );
 static WRITE8_HANDLER( pbaction_sh_command_w )
 {
 	soundlatch_w(offset,data);
-	cpunum_set_input_line_and_vector(1,0,HOLD_LINE,0x00);
+	cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0x00);
 }
 
 
@@ -257,7 +258,7 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( pbaction_interrupt )
 {
-	cpunum_set_input_line_and_vector(1, 0, HOLD_LINE, 0x02);	/* the CPU is in Interrupt Mode 2 */
+	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0x02);	/* the CPU is in Interrupt Mode 2 */
 }
 
 

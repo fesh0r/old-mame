@@ -246,7 +246,7 @@ TODO: - Fix lamp timing, MAME doesn't update fast enough to see everything
 #include "machine/6840ptm.h"
 
 // MPU4
-#include "ui.h"
+#include "deprecat.h"
 #include "timer.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
@@ -255,18 +255,16 @@ TODO: - Fix lamp timing, MAME doesn't update fast enough to see everything
 #include "machine/meters.h"
 
 #ifdef MAME_DEBUG
-#define LOG(x)logerror x
-#define LOG_CHR(x)logerror x
-#define LOG_CHR_FULL(x)logerror x
-#define LOG_IC3(x)logerror x
-#define LOG_IC8(x)logerror x
+#define MPU4VERBOSE 1
 #else
-#define LOG(x)
-#define LOG_CHR(x)
-#define LOG_CHR_FULL(x)
-#define LOG_IC3(x)
-#define LOG_IC8(x)
+#define MPU4VERBOSE 0
 #endif
+
+#define LOG(x)	do { if (MPU4VERBOSE) logerror x; } while (0)
+#define LOG_CHR(x)	do { if (MPU4VERBOSE) logerror x; } while (0)
+#define LOG_CHR_FULL(x)	do { if (MPU4VERBOSE) logerror x; } while (0)
+#define LOG_IC3(x)	do { if (MPU4VERBOSE) logerror x; } while (0)
+#define LOG_IC8(x)	do { if (MPU4VERBOSE) logerror x; } while (0)
 
 #ifndef AWP_VIDEO //Defined for fruit machines with mechanical reels
 #define draw_reel(x)
@@ -378,23 +376,6 @@ static void update_lamps(void)
 
 }
 
-// palette initialisation /////////////////////////////////////////////////
-
-static PALETTE_INIT( mpu4 )
-{
-	int i;
-	static const rgb_t color[16] =
-	{
-		MAKE_RGB(0x00,0x00,0x00), MAKE_RGB(0x00,0x00,0xFF), MAKE_RGB(0x00,0xFF,0x00), MAKE_RGB(0x00,0xFF,0xFF),
-		MAKE_RGB(0xFF,0x00,0x00), MAKE_RGB(0xFF,0x00,0xFF), MAKE_RGB(0xFF,0xFF,0x00), MAKE_RGB(0xFF,0xFF,0xFF),
-		MAKE_RGB(0x80,0x80,0x80), MAKE_RGB(0x00,0x00,0x80), MAKE_RGB(0x00,0x80,0x00), MAKE_RGB(0x00,0x80,0x80),
-		MAKE_RGB(0x80,0x00,0x00), MAKE_RGB(0x80,0x00,0x80), MAKE_RGB(0x80,0x80,0x00), MAKE_RGB(0x80,0x80,0x80)
-	};
-
-	for (i=0; i<16; i++)
-		palette_set_color(machine, i, color[i]);
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // called if board is reset ///////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -445,15 +426,25 @@ static MACHINE_RESET( mpu4 )
 
 static void cpu0_irq(int state)
 {
+	// The PIA and PTM IRQ lines are all connected to a common PCB track,
+	// leading directly to the 6809 IRQ line.
+	int combined_state = pia_get_irq_a(0) | pia_get_irq_b(0) |
+						 pia_get_irq_a(1) | pia_get_irq_b(1) |
+						 pia_get_irq_a(2) | pia_get_irq_b(2) |
+						 pia_get_irq_a(3) | pia_get_irq_b(3) |
+						 pia_get_irq_a(4) | pia_get_irq_b(4) |
+						 pia_get_irq_a(5) | pia_get_irq_b(5) |
+						 ptm6840_get_irq(0);
+
 	if (!serial_card_connected)
 	{
-		cpunum_set_input_line(0, M6809_IRQ_LINE, state?ASSERT_LINE:CLEAR_LINE);
-		LOG(("6809 int%d \n",state));
+		cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+		LOG(("6809 int%d \n", combined_state));
 	}
 	else
 	{
-		cpunum_set_input_line(0, M6809_FIRQ_LINE, state?ASSERT_LINE:CLEAR_LINE);
-		LOG(("6809 fint%d \n",state));
+		cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+		LOG(("6809 fint%d \n", combined_state));
 	}
 }
 
@@ -1379,18 +1370,13 @@ static MACHINE_DRIVER_START( mpu4mod2 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)					// load/save nv RAM
-	MDRV_DEFAULT_LAYOUT(layout_mpu4)
+
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-
-	MDRV_SCREEN_SIZE(288, 34)
-	MDRV_SCREEN_VISIBLE_AREA(0, 288-1, 0, 34-1)
-	MDRV_SCREEN_REFRESH_RATE(50)
-
-	MDRV_PALETTE_LENGTH(16)
-	MDRV_COLORTABLE_LENGTH(16)
-	MDRV_PALETTE_INIT(mpu4)
+	MDRV_DEFAULT_LAYOUT(layout_mpu4)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_NONE)
+	/* dummy values */
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 MACHINE_DRIVER_END
 
 	const UINT8 MPU4_chr_lut[72]= {	0x00,0x1A,0x04,0x10,0x18,0x0F,0x13,0x1B,

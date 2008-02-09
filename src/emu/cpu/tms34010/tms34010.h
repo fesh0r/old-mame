@@ -2,7 +2,7 @@
 
     TMS34010: Portable Texas Instruments TMS34010 emulator
 
-    Copyright (C) Alex Pasadyn/Zsolt Vasvari 1998
+    Copyright Alex Pasadyn/Zsolt Vasvari
     Parts based on code by Aaron Giles
 
 ***************************************************************************/
@@ -12,11 +12,6 @@
 
 #include "cpuintrf.h"
 #include "driver.h"
-
-
-/* the TMS34010 input clock is divided by 8; the 34020 by 4 */
-#define TMS34010_CLOCK_DIVIDER		8
-#define TMS34020_CLOCK_DIVIDER		4
 
 
 /* register indexes for get_reg and set_reg */
@@ -127,7 +122,7 @@ READ16_HANDLER( tms34020_io_register_r );
 #define TOWORD(bitaddr) ((offs_t)(bitaddr) >> 4)
 
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 offs_t tms34010_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 offs_t tms34020_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif

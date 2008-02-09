@@ -80,6 +80,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "suprridr.h"
 #include "sound/ay8910.h"
 
@@ -103,7 +104,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 static INTERRUPT_GEN( main_nmi_gen )
 {
 	if (nmi_enable)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -117,7 +118,7 @@ static INTERRUPT_GEN( main_nmi_gen )
 static TIMER_CALLBACK( delayed_sound_w )
 {
 	sound_data = param;
-	cpunum_set_input_line(1, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, 0, ASSERT_LINE);
 }
 
 
@@ -135,7 +136,7 @@ static READ8_HANDLER( sound_data_r )
 
 static WRITE8_HANDLER( sound_irq_ack_w )
 {
-	cpunum_set_input_line(1, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
 }
 
 
@@ -215,18 +216,30 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *  Port definitions
+ *  Port definitions and helpers
  *
  *************************************/
 
+#define SUPRRIDR_P1_CONTROL_PORT_TAG	("CONTP1")
+#define SUPRRIDR_P2_CONTROL_PORT_TAG	("CONTP2")
+
+static CUSTOM_INPUT( suprridr_control_r )
+{
+	UINT32 ret;
+
+	/* screen flip multiplexes controls */
+	if (suprridr_is_screen_flipped())
+		ret = readinputportbytag(SUPRRIDR_P2_CONTROL_PORT_TAG);
+	else
+		ret = readinputportbytag(SUPRRIDR_P1_CONTROL_PORT_TAG);
+
+	return ret;
+}
+
+
 static INPUT_PORTS_START( suprridr )
 	PORT_START		/* IN0 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY
-	PORT_BIT( 0x0c, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 )
-	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(suprridr_control_r, 0)
 
 	PORT_START		/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
@@ -259,6 +272,22 @@ static INPUT_PORTS_START( suprridr )
 	PORT_DIPNAME( 0x80, 0x00, "Invulnerability?" )
 	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( On ) )
+
+	PORT_START_TAG(SUPRRIDR_P1_CONTROL_PORT_TAG)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY
+	PORT_BIT( 0x0c, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 )
+	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+
+	PORT_START_TAG(SUPRRIDR_P2_CONTROL_PORT_TAG)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x0c, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_COCKTAIL
+	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
 
 

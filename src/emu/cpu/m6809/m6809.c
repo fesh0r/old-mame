@@ -1,6 +1,6 @@
 /*** m6809: Portable 6809 emulator ******************************************
 
-    Copyright (C) John Butler 1997
+    Copyright John Butler
 
     References:
 
@@ -71,6 +71,7 @@
 *****************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "m6809.h"
 
 /* Enable big switch statement for the main opcodes */
@@ -80,13 +81,9 @@
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern offs_t m6809_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 
@@ -521,7 +518,7 @@ static int m6809_execute(int cycles)	/* NS 970908 */
 
 	if (m6809.int_state & (M6809_CWAI | M6809_SYNC))
 	{
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PCD);
 		m6809_ICount = 0;
 	}
 	else
@@ -530,7 +527,7 @@ static int m6809_execute(int cycles)	/* NS 970908 */
 		{
 			pPPC = pPC;
 
-			CALL_MAME_DEBUG;
+			CALL_DEBUGGER(PCD);
 
 			m6809.ireg = ROP(PCD);
 			PC++;
@@ -1133,6 +1130,7 @@ void m6809_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 2;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 5;							break;
@@ -1176,9 +1174,9 @@ void m6809_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = m6809_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = m6809_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m6809_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &m6809_ICount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1186,7 +1184,7 @@ void m6809_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Motorola 6809");		break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.11");				break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) John Butler 1997"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright John Butler"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",
@@ -1222,6 +1220,7 @@ void m6809e_get_info(UINT32 state, cpuinfo *info)
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 4;							break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */

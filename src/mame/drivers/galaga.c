@@ -697,6 +697,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/atari_vg.h"
 #include "machine/namcoio.h"
 #include "machine/namco50.h"
@@ -713,7 +714,7 @@ static INTERRUPT_GEN( galaga_cpu3_nmi )
 {
 	/* see notes at the top of the driver */
 	if (cpu_getiloops() & 1)
-		nmi_line_pulse();
+		nmi_line_pulse(machine, cpunum);
 }
 
 static READ8_HANDLER( bosco_dsw_r )
@@ -746,13 +747,13 @@ static WRITE8_HANDLER( bosco_latch_w )
 		case 0x00:	/* IRQ1 */
 			cpu_interrupt_enable(0,bit);
 			if (!bit)
-				cpunum_set_input_line(0, 0, CLEAR_LINE);
+				cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 			break;
 
 		case 0x01:	/* IRQ2 */
 			cpu_interrupt_enable(1,bit);
 			if (!bit)
-				cpunum_set_input_line(1, 0, CLEAR_LINE);
+				cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
 			break;
 
 		case 0x02:	/* NMION */
@@ -760,8 +761,8 @@ static WRITE8_HANDLER( bosco_latch_w )
 			break;
 
 		case 0x03:	/* RESET */
-			cpunum_set_input_line(1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line(2, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 0x04:	/* n.c. */
@@ -3033,7 +3034,7 @@ static DRIVER_INIT (galaga)
 
 static DRIVER_INIT (gatsbee)
 {
-	driver_init_galaga(machine);
+	DRIVER_INIT_CALL(galaga);
 
 	/* Gatsbee has a larger character ROM, we need a handler for banking */
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1000, 0, 0, gatsbee_bank_w);
@@ -3071,7 +3072,7 @@ static DRIVER_INIT( xevios )
 		rom[A] = BITSWAP8(rom[A],3,7,5,1,2,6,4,0);
 	}
 
-	driver_init_xevious(machine);
+	DRIVER_INIT_CALL(xevious);
 }
 
 
@@ -3083,7 +3084,7 @@ static DRIVER_INIT( battles )
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x7000, 0x700f, 0, 0, battles_customio_data0_w );
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x7100, 0x7100, 0, 0, battles_customio0_w );
 
-	driver_init_xevious(machine);
+	DRIVER_INIT_CALL(xevious);
 }
 
 

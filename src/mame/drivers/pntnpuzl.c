@@ -121,6 +121,7 @@ CN1 standard DB15 VGA connector (15KHz)
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
 
 
@@ -412,11 +413,11 @@ ADDRESS_MAP_END
 static INTERRUPT_GEN( pntnpuzl_irq )
 {
 	if (readinputport(0) & 0x02)	/* coin */
-		cpunum_set_input_line(0, 1, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, 1, PULSE_LINE);
 	else if (readinputport(0) & 0x04)	/* service */
-		cpunum_set_input_line(0, 2, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, 2, PULSE_LINE);
 	else if (readinputport(0) & 0x08)	/* coin */
-		cpunum_set_input_line(0, 4, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, 4, PULSE_LINE);
 }
 
 static INPUT_PORTS_START( pntnpuzl )

@@ -1,8 +1,13 @@
-/**************************************************************************
- *               National Semiconductor COP420 Emulator                   *
- *                                                                        *
- *                   Copyright (C) 2006 MAME Team                         *
- **************************************************************************/
+/***************************************************************************
+
+    cop420.c
+
+    National Semiconductor COP420 Emulator.
+
+    Copyright Nicola Salmoria and the MAME Team.
+    Visit http://mamedev.org for licensing and usage restrictions.
+
+***************************************************************************/
 
 /*
 
@@ -15,6 +20,7 @@
 
 #include "cpuintrf.h"
 #include "debugger.h"
+#include "deprecat.h"
 #include "cop400.h"
 
 /* The opcode table now is a combination of cycle counts and function pointers */
@@ -217,7 +223,7 @@ static int cop420_execute(int cycles)
 	{
 		prevPC = PC;
 
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PC);
 
 		opcode = ROM(PC);
 
@@ -331,7 +337,8 @@ void cop420_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 0;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
-		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = COP400_CLOCK_DIVIDER;			break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
+		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 4;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 2;							break;
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1;							break;
@@ -373,9 +380,9 @@ void cop420_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = cop420_reset;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = cop420_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = cop420_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &cop420_ICount;			break;
  		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_DATA:
  			info->internal_map = construct_map_cop420_RAM;										break;
@@ -385,7 +392,7 @@ void cop420_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "National Semiconductor COP420"); break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C) 2006 MAME Team"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright MAME Team"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, " ");

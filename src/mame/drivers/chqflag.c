@@ -5,13 +5,11 @@ Chequered Flag / Checkered Flag (GX717) (c) Konami 1988
 Notes:
 - Position counter doesn't behave correctly because of the K051733 protection.
 - 007232 volume & panning control is almost certainly wrong.
-- I've modified the YM2151 clock with an xtal of 2,on what I recall the
-  music at the title screen should end when the words "Chequered Flag"
-  flashes.Needs a comparison with a real PCB however. -AS
 
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/konami/konami.h"
 #include "video/konamiic.h"
@@ -32,12 +30,12 @@ static INTERRUPT_GEN( chqflag_interrupt )
 	if (cpu_getiloops() == 0)
 	{
 		if (K051960_is_IRQ_enabled())
-			cpunum_set_input_line(0, KONAMI_IRQ_LINE, HOLD_LINE);
+			cpunum_set_input_line(machine, 0, KONAMI_IRQ_LINE, HOLD_LINE);
 	}
 	else if (cpu_getiloops() % 2)
 	{
 		if (K051960_is_NMI_enabled())
-			cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -51,23 +49,20 @@ static WRITE8_HANDLER( chqflag_bankswitch_w )
 	memory_set_bankptr(4,&RAM[bankaddress]);
 
 	/* bit 5 = memory bank select */
-	if (data & 0x20){
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, paletteram_r);							/* palette */
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, paletteram_xBBBBBGGGGGRRRRR_be_w);	/* palette */
-		if (K051316_readroms){
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_rom_0_r);	/* 051316 #1 (ROM test) */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_0_w);		/* 051316 #1 */
-		}
-		else{
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_0_r);		/* 051316 #1 */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_0_w);		/* 051316 #1 */
-		}
+	if (data & 0x20)
+	{
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, MRA8_BANK5, paletteram_xBBBBBGGGGGRRRRR_be_w);
+		memory_set_bankptr(5, paletteram);
+
+		if (K051316_readroms)
+			memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_rom_0_r, K051316_0_w);	/* 051316 #1 (ROM test) */
+		else
+			memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_0_r, K051316_0_w);		/* 051316 #1 */
 	}
-	else{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, MRA8_BANK1);				/* RAM */
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, MWA8_BANK1);				/* RAM */
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, MRA8_BANK2);				/* RAM */
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, MWA8_BANK2);				/* RAM */
+	else
+	{
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, MRA8_BANK1, MWA8_BANK1);				/* RAM */
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, MRA8_BANK2, MWA8_BANK2);				/* RAM */
 	}
 
 	/* other bits unknown/unused */
@@ -141,7 +136,7 @@ static READ8_HANDLER( analog_read_r )
 
 static WRITE8_HANDLER( chqflag_sh_irqtrigger_w )
 {
-	cpunum_set_input_line(1,0,HOLD_LINE);
+	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 }
 
 
@@ -326,7 +321,7 @@ INPUT_PORTS_END
 
 static void chqflag_ym2151_irq_w(int data)
 {
-	cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 
@@ -366,11 +361,11 @@ static const struct K007232_interface k007232_interface_2 =
 static MACHINE_DRIVER_START( chqflag )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(KONAMI,3000000)	/* 052001 */
+	MDRV_CPU_ADD(KONAMI,XTAL_24MHz/8)	/* 052001 (verified on pcb) */
 	MDRV_CPU_PROGRAM_MAP(chqflag_readmem,chqflag_writemem)
 	MDRV_CPU_VBLANK_INT(chqflag_interrupt,16)	/* ? */
 
-	MDRV_CPU_ADD(Z80, 3579545)
+	MDRV_CPU_ADD(Z80, XTAL_3_579545MHz) /* verified on pcb */
 	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(chqflag_readmem_sound,chqflag_writemem_sound)
 
@@ -391,25 +386,23 @@ static MACHINE_DRIVER_START( chqflag )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545/2)
+	MDRV_SOUND_ADD(YM2151, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2151_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.80)
 	MDRV_SOUND_ROUTE(1, "right", 0.80)
 
-	MDRV_SOUND_ADD(K007232, 3579545)
+	MDRV_SOUND_ADD(K007232, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(k007232_interface_1)
 	MDRV_SOUND_ROUTE(0, "left", 0.20)
 	MDRV_SOUND_ROUTE(0, "right", 0.20)
 	MDRV_SOUND_ROUTE(1, "left", 0.20)
 	MDRV_SOUND_ROUTE(1, "right", 0.20)
 
-	MDRV_SOUND_ADD(K007232, 3579545)
+	MDRV_SOUND_ADD(K007232, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(k007232_interface_2)
 	MDRV_SOUND_ROUTE(0, "left", 0.20)
 	MDRV_SOUND_ROUTE(1, "right", 0.20)
 MACHINE_DRIVER_END
-
-
 
 ROM_START( chqflag )
 	ROM_REGION( 0x58800, REGION_CPU1, 0 )	/* 052001 code */

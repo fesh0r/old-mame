@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2203intf.h"
 
 extern UINT8 *scotrsht_scroll;
@@ -31,13 +32,13 @@ static WRITE8_HANDLER( ctrl_w )
 static INTERRUPT_GEN( scotrsht_interrupt )
 {
 	if (irq_enable)
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 static WRITE8_HANDLER( scotrsht_soundlatch_w )
 {
 	soundlatch_w(0,data);
-	cpunum_set_input_line(1, 0, HOLD_LINE);
+	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 }
 
 static ADDRESS_MAP_START( scotrsht_map, ADDRESS_SPACE_PROGRAM, 8 )

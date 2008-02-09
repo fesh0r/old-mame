@@ -153,6 +153,7 @@ Stephh's log (2006.09.20) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
@@ -296,7 +297,7 @@ INTERRUPT_GEN( cps1_interrupt )
 	/* Strider also has a IRQ4 handler. It is input port related, but the game */
 	/* works without it (maybe it's used to multiplex controls). It is the */
 	/* *only* game to have that. */
-	cpunum_set_input_line(0, 2, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
 }
 
 /********************************************************************
@@ -315,7 +316,7 @@ static UINT8 *qsound_sharedram1,*qsound_sharedram2;
 
 INTERRUPT_GEN( cps1_qsound_interrupt )
 {
-	cpunum_set_input_line(cpu_getactivecpu(), 2, HOLD_LINE);
+	cpunum_set_input_line(machine, cpunum, 2, HOLD_LINE);
 }
 
 
@@ -3427,27 +3428,8 @@ static const gfx_layout cps1_layout8x8_2 =
 	64*8
 };
 
-static const gfx_layout cps1_layout16x16 =
-{
-	16,16,
-	RGN_FRAC(1,1),
-	4,
-	{ GFX_RAW },
-	{ 0 },		/* org displacement */
-	{ 8*8 },	/* line modulo */
-	128*8		/* char modulo */
-};
-
-static const gfx_layout cps1_layout32x32 =
-{
-	32,32,
-	RGN_FRAC(1,1),
-	4,
-	{ GFX_RAW },
-	{ 0 },		/* org displacement */
-	{ 16*8 },	/* line modulo */
-	512*8		/* char modulo */
-};
+static GFXLAYOUT_RAW( cps1_layout16x16, 4, 16, 16, 8*8, 128*8 )
+static GFXLAYOUT_RAW( cps1_layout32x32, 4, 32, 32, 16*8, 512*8 )
 
 GFXDECODE_START( cps1 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, cps1_layout8x8,   0, 0x100 )
@@ -3460,7 +3442,7 @@ GFXDECODE_END
 
 static void cps1_irq_handler_mus(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2151interface ym2151_interface =
@@ -7304,25 +7286,25 @@ ROM_END
 static DRIVER_INIT( wof )
 {
 	wof_decode();
-	driver_init_cps1(machine);
+	DRIVER_INIT_CALL(cps1);
 }
 
 static DRIVER_INIT( dino )
 {
 	dino_decode();
-	driver_init_cps1(machine);
+	DRIVER_INIT_CALL(cps1);
 }
 
 static DRIVER_INIT( punisher )
 {
 	punisher_decode();
-	driver_init_cps1(machine);
+	DRIVER_INIT_CALL(cps1);
 }
 
 static DRIVER_INIT( slammast )
 {
 	slammast_decode();
-	driver_init_cps1(machine);
+	DRIVER_INIT_CALL(cps1);
 }
 
 static DRIVER_INIT( pang3 )
@@ -7346,7 +7328,7 @@ static DRIVER_INIT( pang3 )
 		rom[A/2] = dst;
 	}
 
-	driver_init_cps1(machine);
+	DRIVER_INIT_CALL(cps1);
 }
 #endif
 

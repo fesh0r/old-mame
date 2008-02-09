@@ -4,7 +4,7 @@
 
     Core sound interface functions and definitions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -26,7 +26,6 @@
 #define MAX_SOUND 32
 
 /* Enum listing all the sound chips */
-typedef enum _sound_type sound_type;
 enum _sound_type
 {
 	SOUND_DUMMY,
@@ -73,7 +72,15 @@ enum _sound_type
 	SOUND_NAMCONA,
 	SOUND_TMS36XX,
 	SOUND_TMS3615,
+	SOUND_TMS5100,
 	SOUND_TMS5110,
+	SOUND_TMS5110A,
+	SOUND_CD2801,
+	SOUND_TMC0281,
+	SOUND_CD2802,
+	SOUND_M58817,
+	SOUND_TMC0285,
+	SOUND_TMS5200,
 	SOUND_TMS5220,
 	SOUND_VLM5030,
 	SOUND_OKIM6295,
@@ -81,6 +88,8 @@ enum _sound_type
 	SOUND_MSM5232,
 	SOUND_UPD7759,
 	SOUND_HC55516,
+	SOUND_MC3417,
+	SOUND_MC3418,
 	SOUND_K005289,
 	SOUND_K007232,
 	SOUND_K051649,
@@ -125,7 +134,6 @@ enum _sound_type
 	SOUND_SID8580,
 	SOUND_SP0256,
 	SOUND_S14001A,
-	SOUND_M58817,
 
 	/* filters start here */
 	SOUND_FILTER_VOLUME,
@@ -134,6 +142,7 @@ enum _sound_type
 
 	SOUND_COUNT
 };
+typedef enum _sound_type sound_type;
 
 
 /* Sound information constants */
@@ -281,6 +290,7 @@ void sndintrf_register_token(void *token);
 int sndti_exists(sound_type sndtype, int sndindex);
 int sndti_to_sndnum(sound_type type, int index);
 sound_type sndnum_to_sndti(int sndnum, int *index);
+int sndtype_count(sound_type sndtype);
 
 
 #endif	/* __SNDINTRF_H__ */

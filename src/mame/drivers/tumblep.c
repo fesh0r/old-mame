@@ -40,6 +40,7 @@ Stephh's notes (based on the games M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/h6280/h6280.h"
 #include "decocrpt.h"
 #include "sound/2151intf.h"
@@ -72,14 +73,14 @@ static READ16_HANDLER( tumblep_prot_r )
 static WRITE16_HANDLER( tumblep_sound_w )
 {
 	soundlatch_w(0,data & 0xff);
-	cpunum_set_input_line(1,0,HOLD_LINE);
+	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 }
 
 #ifdef UNUSED_FUNCTION
 static WRITE16_HANDLER( jumppop_sound_w )
 {
 	soundlatch_w(0,data & 0xff);
-	cpunum_set_input_line( 1, 0, ASSERT_LINE );
+	cpunum_set_input_line(Machine, 1, 0, ASSERT_LINE );
 }
 #endif
 
@@ -307,7 +308,7 @@ GFXDECODE_END
 
 static void sound_irq(int state)
 {
-	cpunum_set_input_line(1,1,state); /* IRQ 2 */
+	cpunum_set_input_line(Machine, 1,1,state); /* IRQ 2 */
 }
 
 static const struct YM2151interface ym2151_interface =

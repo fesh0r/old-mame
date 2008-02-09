@@ -24,7 +24,6 @@ NES-specific:
 
 ******************************************************************************/
 
-#include <math.h>
 #include "driver.h"
 #include "profiler.h"
 #include "video/ppu2c0x.h"
@@ -145,7 +144,7 @@ void ppu2c0x_init_palette(running_machine *machine, int first_entry )
 	double Ku = 2.029;
 	double Kv = 1.140;
 
-	double brightness[3][4] =
+	static const double brightness[3][4] =
 	{
 		{ 0.50, 0.75, 1.0, 1.0 },
 		{ 0.29, 0.45, 0.73, 0.9 },
@@ -237,10 +236,10 @@ void ppu2c0x_init_palette(running_machine *machine, int first_entry )
 }
 
 /* the charlayout we use for the chargen */
-static gfx_layout ppu_charlayout =
+static const gfx_layout ppu_charlayout =
 {
 	8,8,	/* 8*8 characters */
-	512,	/* 512 characters - modified at runtime */
+	0,
 	2,		/* 2 bits per pixel */
 	{ 8*8, 0 },	/* the two bitplanes are separated */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
@@ -256,6 +255,7 @@ static gfx_layout ppu_charlayout =
 void ppu2c0x_init(running_machine *machine, const ppu2c0x_interface *interface )
 {
 	int i;
+	UINT32 total;
 
 	/* keep a local copy of the interface */
 	intf = auto_malloc(sizeof(*interface));
@@ -326,20 +326,24 @@ void ppu2c0x_init(running_machine *machine, const ppu2c0x_interface *interface )
 			chips[i].videorom_banks = memory_region_length( intf->vrom_region[i] ) / 0x2000;
 
 			/* tweak the layout accordingly */
-			ppu_charlayout.total = chips[i].videorom_banks * CHARGEN_NUM_CHARS;
+			total = chips[i].videorom_banks * CHARGEN_NUM_CHARS;
 		}
 		else
 		{
 			chips[i].has_videorom = chips[i].videorom_banks = 0;
 
 			/* we need to reset this in case of mame running multisession */
-			ppu_charlayout.total = CHARGEN_NUM_CHARS;
+			total = CHARGEN_NUM_CHARS;
 		}
 
 		/* now create the gfx region */
 		{
+			gfx_layout gl;
 			UINT8 *src = chips[i].has_videorom ? memory_region( intf->vrom_region[i] ) : chips[i].videoram;
-			machine->gfx[intf->gfx_layout_number[i]] = allocgfx( &ppu_charlayout );
+
+			memcpy(&gl, &ppu_charlayout, sizeof(gl));
+			gl.total = total;
+			machine->gfx[intf->gfx_layout_number[i]] = allocgfx( &gl );
 			decodegfx( machine->gfx[intf->gfx_layout_number[i]], src, 0, machine->gfx[intf->gfx_layout_number[i]]->total_elements );
 			machine->gfx[intf->gfx_layout_number[i]]->total_colors = 8;
 		}
@@ -793,14 +797,12 @@ static void update_scanline(int num )
 				// with the palette entry at the VRAM address instead of the usual background
 				// pen. Micro Machines makes use of this feature.
 				int penNum;
+
 				if (this_ppu->videoram_addr & 0x03)
-				{
 					penNum = this_ppu->videoram[this_ppu->videoram_addr & 0x3f1f] & 0x3f;
-				}
 				else
-				{
 					penNum = this_ppu->videoram[this_ppu->videoram_addr & 0x3f00] & 0x3f;
-				}
+
 				back_pen = chips[num].machine->pens[penNum + intf->color_base[num]];
 			}
 			else
@@ -820,15 +822,13 @@ static void update_scanline(int num )
 			UINT16 tmp;
 			tmp = ( this_ppu->refresh_data & 0x03e0 ) + 0x20;
 			this_ppu->refresh_data &= 0x7c1f;
+
 			/* handle bizarro scrolling rollover at the 30th (not 32nd) vertical tile */
 			if ( tmp == 0x03c0 )
-			{
 				this_ppu->refresh_data ^= 0x0800;
-			}
 			else
-			{
 				this_ppu->refresh_data |= ( tmp & 0x03e0 );
-			}
+
 //logerror("updating refresh_data: %04x\n", this_ppu->refresh_data);
 	    }
 	}
@@ -890,7 +890,7 @@ logerror("vlbank starting\n");
 		{
 			if ( dirtyarray[i] )
 			{
-				decodechar( gfx, i, vram, &ppu_charlayout);
+				decodechar( gfx, i, vram );
 				dirtyarray[i] = 0;
 			}
 		}
@@ -1319,10 +1319,14 @@ void ppu2c0x_spriteram_dma (int num, const UINT8 page)
 	// Because the DMA is only useful during vblank, this may not be strictly necessary since
 	// the scanline timers should catch us up before drawing actually happens.
 #if 0
-	scanline_callback(Machine, num);
-	scanline_callback(Machine, num);
-	scanline_callback(Machine, num);
-	scanline_callback(Machine, num);
+{
+	ppu2c0x_chip* this_ppu = &chips[num];
+
+	scanline_callback(this_ppu->machine, num);
+	scanline_callback(this_ppu->machine, num);
+	scanline_callback(this_ppu->machine, num);
+	scanline_callback(this_ppu->machine, num);
+}
 #endif
 }
 
@@ -1340,7 +1344,7 @@ void ppu2c0x_render( int num, mame_bitmap *bitmap, int flipx, int flipy, int sx,
 		return;
 	}
 
-	copybitmap( bitmap, chips[num].bitmap, flipx, flipy, sx, sy, 0, TRANSPARENCY_NONE, 0 );
+	copybitmap( bitmap, chips[num].bitmap, flipx, flipy, sx, sy, 0 );
 }
 
 /*************************************

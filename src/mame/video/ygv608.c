@@ -29,8 +29,8 @@
  *    Everything else! :)
  */
 
-#include <ctype.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "namcond1.h"   // only while debugging
 #include "video/ygv608.h"
 
@@ -76,10 +76,10 @@ INTERRUPT_GEN( ygv608_timed_interrupt )
 
     /* once every 60Hz, set the vertical border interval start flag */
 	if( ( timer % (1000/60) ) == 0 )
-    {
+	{
 		ygv608.ports.s.p6 |= p6_fv;
 		if (ygv608.regs.s.r14 & r14_iev)
-			irq2_line_hold();
+			irq2_line_hold(machine, cpunum);
 	}
 
 	/* once every 60Hz, set the position detection flag (somewhere) */
@@ -87,7 +87,7 @@ INTERRUPT_GEN( ygv608_timed_interrupt )
 	{
 		ygv608.ports.s.p6 |= p6_fp;
 		if (ygv608.regs.s.r14 & r14_iep)
-			irq2_line_hold();
+			irq2_line_hold(machine, cpunum);
 	}
 }
 
@@ -497,6 +497,14 @@ static void ygv608_register_state_save(void)
 	state_save_register_func_postload(ygv608_postload);
 }
 
+static void ygv608_exit(running_machine *machine)
+{
+	if( work_bitmap )
+		bitmap_free( work_bitmap );
+	work_bitmap = NULL;
+}
+
+
 VIDEO_START( ygv608 )
 {
 	memset( &ygv608, 0, sizeof(ygv608) );
@@ -527,6 +535,7 @@ VIDEO_START( ygv608 )
 	tilemap_B = NULL;
 
 	ygv608_register_state_save();
+	add_exit_callback(machine, ygv608_exit);
 }
 
 static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
@@ -886,9 +895,7 @@ VIDEO_UPDATE( ygv608 )
                    TRANSPARENCY_NONE, 0, 0 );
   else
 #endif
-    copybitmap( bitmap, work_bitmap, 0, 0, 0, 0,
-                cliprect,
-                TRANSPARENCY_NONE, 0 );
+    copybitmap( bitmap, work_bitmap, 0, 0, 0, 0, cliprect);
 
   // for some reason we can't use an opaque tilemap_A
   // so use a transparent but clear the work bitmap first
@@ -913,9 +920,7 @@ VIDEO_UPDATE( ygv608 )
                    TRANSPARENCY_PEN, machine->pens[0], 0 );
   else
 #endif
-    copybitmap( bitmap, work_bitmap, 0, 0, 0, 0,
-                cliprect,
-                TRANSPARENCY_PEN, machine->pens[0] );
+    copybitmap_trans( bitmap, work_bitmap, 0, 0, 0, 0, cliprect, machine->pens[0] );
 
 	if ((ygv608.regs.s.r11 & r11_prm) == PRM_SABDEX ||
 		(ygv608.regs.s.r11 & r11_prm) == PRM_SEABDX)
@@ -1371,7 +1376,7 @@ void nvsram( offs_t offset, UINT16 data )
     if( i%16 == 0 )
       logerror( "%04X: ", offset );
     logerror( "%02X ", data );
-    ascii[i%16] = ( isprint( data ) ? data : '.' );
+    ascii[i%16] = ( data > 0x20) ? data : '.' );
     if( i%16 == 15 )
       logerror( "| %-16.16s\n", ascii );
   }
@@ -1635,7 +1640,7 @@ READ16_HANDLER( ygv608_debug_trigger )
     if( i % 16 == 0 )
       logerror( "$%04X : ", i );
     logerror( "%02X ", ygv608.pattern_name_table[i] );
-    if( isprint( ygv608.pattern_name_table[i] ) )
+    if( ygv608.pattern_name_table[i] >= 0x20)
       ascii[i%16] = ygv608.pattern_name_table[i];
     else
       ascii[i%16] = '.';
@@ -1654,7 +1659,7 @@ READ16_HANDLER( ygv608_debug_trigger )
     if( i % 16 == 0 )
       logerror( "$%04X : ", i );
     logerror( "%02X ", ygv608.scroll_data_table[0][i] );
-    if( isprint( ygv608.scroll_data_table[0][i] ) )
+    if( ygv608.scroll_data_table[0][i] >= 0x20 )
       ascii[i%16] = ygv608.scroll_data_table[0][i];
     else
       ascii[i%16] = '.';

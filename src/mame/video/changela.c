@@ -12,6 +12,7 @@ Todo: Priority between tree0 and tree1.
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
 
 extern UINT8 changela_tree0_col;
@@ -742,10 +743,10 @@ static TIMER_CALLBACK( changela_scanline_callback )
 
 VIDEO_UPDATE( changela )
 {
-	copybitmap(bitmap, river_bitmap, 0, 0, 0, 0, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
-	copybitmap(bitmap, obj0_bitmap, 0, 0, 0, 0, &machine->screen[0].visarea, TRANSPARENCY_PEN, 0);
-	copybitmap(bitmap, tree0_bitmap, 0, 0, 0, 0, &machine->screen[0].visarea, TRANSPARENCY_PEN, 0);
-	copybitmap(bitmap, tree1_bitmap, 0, 0, 0, 0, &machine->screen[0].visarea, TRANSPARENCY_PEN, 0);
+	copybitmap      (bitmap, river_bitmap, 0, 0, 0, 0, cliprect);
+	copybitmap_trans(bitmap, obj0_bitmap,  0, 0, 0, 0, cliprect, 0);
+	copybitmap_trans(bitmap, tree0_bitmap, 0, 0, 0, 0, cliprect, 0);
+	copybitmap_trans(bitmap, tree1_bitmap, 0, 0, 0, 0, cliprect, 0);
 	draw_obj1(machine, bitmap);
 
 	return 0;
@@ -768,7 +769,7 @@ WRITE8_HANDLER( changela_colors_w )
         111     |   3.819   (2.2k)
     Which were normalized to produce the following table: */
 
-	UINT8 color_table[8] = { 0, 7, 18, 31, 58, 88, 146, 255 };
+	static const UINT8 color_table[8] = { 0, 7, 18, 31, 58, 88, 146, 255 };
 
 	int r, g, b;
 	UINT32 c, color_index;

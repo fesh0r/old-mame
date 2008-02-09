@@ -62,7 +62,7 @@ static WRITE8_HANDLER(t5182shared_w)
 static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_ROM
-	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(videoram_r, mustache_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(MRA8_RAM, mustache_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(t5182_sound_irq_w)
 	AM_RANGE(0xd001, 0xd001) AM_READ(t5182_sharedram_semaphore_snd_r)
 	AM_RANGE(0xd002, 0xd002) AM_WRITE(t5182_sharedram_semaphore_main_acquire_w)
@@ -183,12 +183,12 @@ GFXDECODE_END
 
 static TIMER_CALLBACK( clear_irq_cb )
 {
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
-static void assert_irq(void)
+static INTERRUPT_GEN( assert_irq )
 {
-	cpunum_set_input_line(0, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 	timer_set(ATTOTIME_IN_CYCLES(14288, 0), NULL, 0, clear_irq_cb);
        /* Timing here is an educated GUESS, Z80 /INT must stay high so the irq
           fires no less than TWICE per frame, else game doesn't work right.

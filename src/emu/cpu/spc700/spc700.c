@@ -61,8 +61,9 @@ Address  Function Register  R/W  When Reset          Remarks
 /* ======================================================================== */
 
 #include <limits.h>
-#include "spc700.h"
 #include "debugger.h"
+#include "deprecat.h"
+#include "spc700.h"
 
 /* ======================================================================== */
 /* ==================== ARCHITECTURE-DEPENDANT DEFINES ==================== */
@@ -1397,7 +1398,7 @@ void spc700_state_load(void *file)
 }
 
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 #include "spc700ds.h"
 #endif
 
@@ -1410,7 +1411,7 @@ int spc700_execute(int clocks)
 	while(CLOCKS > 0)
 	{
 		REG_PPC = REG_PC;
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(REG_PC);
 		REG_PC++;
 
 #if 0
@@ -1751,6 +1752,7 @@ void spc700_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 3;							break;
@@ -1789,9 +1791,9 @@ void spc700_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = spc700_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = spc700_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = spc700_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &spc700_ICount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1799,7 +1801,7 @@ void spc700_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Sony SPC700");			break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) , all rights reserved."); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright , all rights reserved."); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",

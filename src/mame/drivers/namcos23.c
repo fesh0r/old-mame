@@ -324,6 +324,7 @@ Notes:
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/mips/mips3.h"
 #include "cpu/h83002/h83002.h"
 #include "sound/c352.h"
@@ -523,13 +524,11 @@ static VIDEO_UPDATE( ss23 )
 	return 0;
 }
 
-static const gfx_layout namcos23_cg_layout;
-
 static WRITE32_HANDLER( s23_txtchar_w )
 {
 	COMBINE_DATA(&namcos23_charram[offset]	);
 
-	decodechar( Machine->gfx[0],offset/32,(UINT8 *)namcos23_charram,&namcos23_cg_layout );
+	decodechar( Machine->gfx[0],offset/32,(UINT8 *)namcos23_charram );
 
 	tilemap_mark_all_tiles_dirty(bgtilemap);
 }
@@ -609,12 +608,12 @@ static WRITE32_HANDLER( s23_mcuen_w )
 		if (data)
 		{
 			logerror("S23: booting H8/3002\n");
-			cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 		}
 		else
 		{
 			logerror("S23: stopping H8/3002\n");
-			cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 		}
 	}
 }

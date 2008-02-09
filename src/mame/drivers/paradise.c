@@ -96,7 +96,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( paradise_readport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x17ff) AM_READ(paletteram_r			)	// Palette
+	AM_RANGE(0x0000, 0x17ff) AM_READ(MRA8_RAM			)	// Palette
 	AM_RANGE(0x2010, 0x2010) AM_READ(OKIM6295_status_0_r	)	// OKI 0
 	AM_RANGE(0x2030, 0x2030) AM_READ(OKIM6295_status_1_r	)	// OKI 1
 	AM_RANGE(0x2020, 0x2020) AM_READ(input_port_0_r		)	// DSW 1
@@ -104,11 +104,11 @@ static ADDRESS_MAP_START( paradise_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x2022, 0x2022) AM_READ(input_port_2_r		)	// P1
 	AM_RANGE(0x2023, 0x2023) AM_READ(input_port_3_r		)	// P2
 	AM_RANGE(0x2024, 0x2024) AM_READ(input_port_4_r		)	// Coins
-	AM_RANGE(0x8000, 0xffff) AM_READ(videoram_r			)	// Pixmap
+	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_RAM			)	// Pixmap
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( paradise_writeport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x17ff) AM_WRITE(paradise_palette_w	)	// Palette
+	AM_RANGE(0x0000, 0x17ff) AM_WRITE(paradise_palette_w	) AM_BASE(&paletteram)	// Palette
 	AM_RANGE(0x1800, 0x1800) AM_WRITE(paradise_priority_w	)	// Layers priority
 	AM_RANGE(0x2001, 0x2001) AM_WRITE(paradise_flipscreen_w	)	// Flip Screen
 	AM_RANGE(0x2004, 0x2004) AM_WRITE(paradise_palbank_w	)	// Layers palette bank
@@ -116,7 +116,7 @@ static ADDRESS_MAP_START( paradise_writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x2007, 0x2007) AM_WRITE(paradise_okibank_w	)	// OKI 1 samples bank
 	AM_RANGE(0x2010, 0x2010) AM_WRITE(OKIM6295_data_0_w		)	// OKI 0
 	AM_RANGE(0x2030, 0x2030) AM_WRITE(OKIM6295_data_1_w		)	// OKI 1
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(paradise_pixmap_w		)	// Pixmap
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(paradise_pixmap_w		) AM_BASE(&videoram) 	// Pixmap
 ADDRESS_MAP_END
 
 
@@ -536,7 +536,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( paradise )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", Z80, 12000000/2)			/* Z8400B - 6mhz Verified */
+	MDRV_CPU_ADD_TAG("main", Z80, XTAL_12MHz/2)			/* Z8400B - 6mhz Verified */
 	MDRV_CPU_PROGRAM_MAP(paradise_map,0)
 	MDRV_CPU_IO_MAP(paradise_readport,paradise_writeport)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)	/* No nmi routine */
@@ -558,12 +558,12 @@ static MACHINE_DRIVER_START( paradise )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD(OKIM6295, XTAL_12MHz/12)	/* verified on pcb */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD_TAG("oki2", OKIM6295, 1000000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high)
+	MDRV_SOUND_ADD_TAG("oki2", OKIM6295, XTAL_12MHz/12) /* verified on pcb */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 

@@ -296,7 +296,8 @@ static const UINT32 spritelayout2_xoffset[80] =
 	  3+6*64*8, 2+6*64*8, 1+6*64*8, 0+6*64*8,
 	  3+7*64*8, 2+7*64*8, 1+7*64*8, 0+7*64*8,
 	  3+8*64*8, 2+8*64*8, 1+8*64*8, 0+8*64*8,
-	  3+9*64*8, 2+9*64*8, 1+9*64*8, 0+9*64*8
+	  3+9*64*8, 2+9*64*8, 1+9*64*8, 0+9*64*8,
+	  STEP32(0,0), STEP8(0,0)
 };
 
 static const UINT32 spritelayout2_yoffset[128] =
@@ -368,7 +369,6 @@ static MACHINE_DRIVER_START( cm2v841 )
 
 	MDRV_GFXDECODE(cherrym2)
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(256)
 
 	MDRV_VIDEO_START(cm2)
 	MDRV_VIDEO_UPDATE(cm2)

@@ -16,6 +16,7 @@
 */
 
 #include "arm.h"
+#include "deprecat.h"
 #include "debugger.h"
 
 #define READ8(addr)			cpu_read8(addr)
@@ -323,7 +324,7 @@ static int arm_execute( int cycles )
 	arm_icount = cycles;
 	do
 	{
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(R15);
 
 		/* load instruction */
 		pc = R15;
@@ -502,13 +503,13 @@ static void set_irq_line(int irqline, int state)
 	arm_check_irq_state();
 }
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static offs_t arm_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	UINT32 opcode = oprom[0] | (oprom[1] << 8) | (oprom[2] << 16) | (oprom[3] << 24);
 	return 4 | arm_disasm(buffer, pc, opcode);
 }
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 static void arm_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
@@ -1468,6 +1469,7 @@ void arm_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 2;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -1530,9 +1532,9 @@ void arm_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = arm_exit;					break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = arm_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = arm_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &arm_icount;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1540,7 +1542,7 @@ void arm_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Acorn Risc Machine");	break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.3");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright 2002-2006 Bryan McPhail, bmcphail@tendril.co.uk"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Bryan McPhail, bmcphail@tendril.co.uk"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c",

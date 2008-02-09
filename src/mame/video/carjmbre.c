@@ -4,6 +4,7 @@ Omori Electric CAD (OEC) 1981
 */
 
 #include "driver.h"
+#include "deprecat.h"
 
 static tilemap *carjmbre_tilemap;
 
@@ -54,8 +55,6 @@ WRITE8_HANDLER( carjmbre_bgcolor_w )
 
 	if(oldbg!=carjmbre_bgcolor)
 	{
-		memset(dirtybuffer,1,videoram_size);
-
 		for (i=0;i<64;i+=4)
 			palette_set_color_rgb(Machine, i, (carjmbre_bgcolor&0xff)*0x50, (carjmbre_bgcolor&0xff)*0x50, (carjmbre_bgcolor&0xff)!=0?0x50:0);
 	}

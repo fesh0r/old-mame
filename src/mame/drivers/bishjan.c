@@ -46,7 +46,10 @@ Notes:
 *********************************************************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/h83002/h83002.h"
+
+#define BISHJAN_DEBUG	0
 
 /***************************************************************************
                                 Video Hardware
@@ -89,7 +92,7 @@ static VIDEO_UPDATE( bishjan )
 	int scroll2_x = ((bishjan_scroll[2] & 0x0f)<<8) | (bishjan_scroll[1] & 0xff);
 	int scroll2_y = ((bishjan_scroll[2] & 0xf0)<<4) | (bishjan_scroll[2] >> 8);
 
-#ifdef MAME_DEBUG
+#if BISHJAN_DEBUG
 if (input_code_pressed(KEYCODE_Z))
 {
 	int msk = 0;
@@ -428,7 +431,7 @@ static INTERRUPT_GEN( bishjan_interrupt )
 	switch (cpu_getiloops())
 	{
 		case 0:
-			cpunum_set_input_line(0, 0, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, 0, PULSE_LINE);
 			break;
 		default:
 			h8_3002_InterruptRequest(24);
@@ -437,7 +440,7 @@ static INTERRUPT_GEN( bishjan_interrupt )
 }
 
 static MACHINE_DRIVER_START( bishjan )
-	MDRV_CPU_ADD(H83002, 44100000/3)
+	MDRV_CPU_ADD(H83044, 44100000/3)
 	MDRV_CPU_PROGRAM_MAP( bishjan_map, 0 )
 	MDRV_CPU_VBLANK_INT(bishjan_interrupt,2)
 

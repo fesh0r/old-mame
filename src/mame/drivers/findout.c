@@ -18,13 +18,6 @@ replaced by a 6th button to start games. This is a feature of the PCB for privat
 #include "sound/dac.h"
 
 
-static VIDEO_UPDATE( findout )
-{
-	copybitmap(bitmap,tmpbitmap,0,0,0,0,cliprect,TRANSPARENCY_NONE,0);
-	return 0;
-}
-
-
 static UINT8 drawctrl[3];
 
 static WRITE8_HANDLER( findout_drawctrl_w )
@@ -69,7 +62,6 @@ static WRITE8_HANDLER( findout_bitmap_w )
 static READ8_HANDLER( portC_r )
 {
 	return 4;
-//  return (mame_rand(Machine)&2);
 }
 
 static READ8_HANDLER( port1_r )
@@ -470,7 +462,7 @@ static MACHINE_DRIVER_START( findout )
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(generic_bitmapped)
-	MDRV_VIDEO_UPDATE(findout)
+	MDRV_VIDEO_UPDATE(generic_bitmapped)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

@@ -3,8 +3,8 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "debugger.h"
-#include <math.h>
 #include "cpu/mb86233/mb86233.h"
 
 enum {FIFO_SIZE = 256};
@@ -1153,10 +1153,6 @@ static void push_and_ident(void)
 	cmat[4] = 1.0;
 	cmat[8] = 1.0;
 	next_fn();
-}
-
-void tgp_tick(void)
-{
 }
 
 static void catmull_rom(void)

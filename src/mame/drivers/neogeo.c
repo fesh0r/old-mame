@@ -80,10 +80,13 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "neogeo.h"
 #include "machine/pd4990a.h"
 #include "cpu/z80/z80.h"
 #include "sound/2610intf.h"
+
+#include "neogeo.lh"
 
 
 #define LOG_VIDEO_SYSTEM		(0)
@@ -99,7 +102,7 @@
  *
  *************************************/
 
-static UINT8 display_poisition_interrupt_control;
+static UINT8 display_position_interrupt_control;
 static UINT32 display_counter;
 static UINT32 vblank_interrupt_pending;
 static UINT32 display_position_interrupt_pending;
@@ -167,9 +170,9 @@ static void adjust_display_position_interrupt_timer(void)
 }
 
 
-void neogeo_set_display_poisition_interrupt_control(UINT16 data)
+void neogeo_set_display_position_interrupt_control(UINT16 data)
 {
-	display_poisition_interrupt_control = data;
+	display_position_interrupt_control = data;
 }
 
 
@@ -187,7 +190,7 @@ void neogeo_set_display_counter_lsb(UINT16 data)
 
 	if (LOG_VIDEO_SYSTEM) logerror("PC %06x: set_display_counter %08x\n", activecpu_get_pc(), display_counter);
 
-	if (display_poisition_interrupt_control & IRQ2CTRL_LOAD_RELATIVE)
+	if (display_position_interrupt_control & IRQ2CTRL_LOAD_RELATIVE)
 	{
 		if (LOG_VIDEO_SYSTEM) logerror("AUTOLOAD_RELATIVE ");
  		adjust_display_position_interrupt_timer();
@@ -195,7 +198,7 @@ void neogeo_set_display_counter_lsb(UINT16 data)
 }
 
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int level = 0;
 
@@ -206,9 +209,9 @@ static void update_interrupts(void)
 
 	/* either set or clear the appropriate lines */
 	if (level)
-		cpunum_set_input_line(0, level, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, level, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -218,22 +221,22 @@ void neogeo_acknowledge_interrupt(UINT16 data)
 	if (data & 0x02) display_position_interrupt_pending = 0;
 	if (data & 0x04) vblank_interrupt_pending = 0;
 
-	update_interrupts();
+	update_interrupts(Machine);
 }
 
 
 static TIMER_CALLBACK( display_position_interrupt_callback )
 {
 	if (LOG_VIDEO_SYSTEM) logerror("--- Scanline @ %d,%d\n", video_screen_get_vpos(0), video_screen_get_hpos(0));
-	if (display_poisition_interrupt_control & IRQ2CTRL_ENABLE)
+	if (display_position_interrupt_control & IRQ2CTRL_ENABLE)
 	{
 		if (LOG_VIDEO_SYSTEM) logerror("*** Scanline interrupt (IRQ2) ***  y: %02x  x: %02x\n", video_screen_get_vpos(0), video_screen_get_hpos(0));
 		display_position_interrupt_pending = 1;
 
-		update_interrupts();
+		update_interrupts(machine);
 	}
 
-	if (display_poisition_interrupt_control & IRQ2CTRL_AUTOLOAD_REPEAT)
+	if (display_position_interrupt_control & IRQ2CTRL_AUTOLOAD_REPEAT)
 	{
 		if (LOG_VIDEO_SYSTEM) logerror("AUTOLOAD_REPEAT ");
 		adjust_display_position_interrupt_timer();
@@ -243,7 +246,7 @@ static TIMER_CALLBACK( display_position_interrupt_callback )
 
 static TIMER_CALLBACK( display_position_vblank_callback )
 {
-	if (display_poisition_interrupt_control & IRQ2CTRL_AUTOLOAD_VBLANK)
+	if (display_position_interrupt_control & IRQ2CTRL_AUTOLOAD_VBLANK)
 	{
 		if (LOG_VIDEO_SYSTEM) logerror("AUTOLOAD_VBLANK ");
 		adjust_display_position_interrupt_timer();
@@ -263,7 +266,7 @@ static TIMER_CALLBACK( vblank_interrupt_callback )
 
 	vblank_interrupt_pending = 1;
 
-	update_interrupts();
+	update_interrupts(machine);
 
 	/* set timer for next screen */
 	timer_adjust(vblank_interrupt_timer, video_screen_get_time_until_pos(0, NEOGEO_VBSTART, 0), 0, attotime_zero);
@@ -294,19 +297,19 @@ static void start_interrupt_timers(void)
 
 static void audio_cpu_irq(int assert)
 {
-	cpunum_set_input_line(1, 0, assert ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, 0, assert ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static void audio_cpu_assert_nmi(void)
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, ASSERT_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 
 static WRITE8_HANDLER( audio_cpu_clear_nmi_w )
 {
-	cpunum_set_input_line(1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
@@ -323,7 +326,7 @@ static void select_controller(UINT8 data)
 }
 
 
-static UINT32 multiplexed_controller_r(void *param)
+static CUSTOM_INPUT( multiplexed_controller_r )
 {
 	char tag[6];
 
@@ -333,7 +336,7 @@ static UINT32 multiplexed_controller_r(void *param)
 }
 
 
-static UINT32 mahjong_controller_r(void *param)
+static CUSTOM_INPUT( mahjong_controller_r )
 {
 	UINT32 ret;
 
@@ -439,7 +442,7 @@ static void calendar_clock(void)
 }
 
 
-static UINT32 get_calendar_status(void)
+static CUSTOM_INPUT( get_calendar_status )
 {
 	return (pd4990a_databit_r(0) << 1) | pd4990a_testbit_r(0);
 }
@@ -498,7 +501,7 @@ static void memcard_init(void)
 }
 
 
-static UINT32 get_memcard_status(void *param)
+static CUSTOM_INPUT( get_memcard_status )
 {
 	/* D0 and D1 are memcard presence indicators, D2 indicates memcard
        write protect status (we are always write enabled) */
@@ -594,7 +597,7 @@ static WRITE8_HANDLER( audio_result_w )
 }
 
 
-static UINT32 get_audio_result(void)
+static CUSTOM_INPUT( get_audio_result )
 {
 	UINT32 ret = audio_result;
 
@@ -746,7 +749,7 @@ static void _set_audio_cpu_rom_source(void)
 	{
 		audio_cpu_rom_source_last = audio_cpu_rom_source;
 
-		cpunum_set_input_line(1, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 
 		if (LOG_AUDIO_CPU_BANKING) logerror("Audio CPU PC %03x: selectign %s ROM\n", safe_activecpu_get_pc(), audio_cpu_rom_source ? "CARTRIDGE" : "BIOS");
 	}
@@ -964,7 +967,7 @@ static MACHINE_START( neogeo )
 	irq3_pending = 1;
 
 	/* register state save */
-	state_save_register_global(display_poisition_interrupt_control);
+	state_save_register_global(display_position_interrupt_control);
 	state_save_register_global(display_counter);
 	state_save_register_global(vblank_interrupt_pending);
 	state_save_register_global(display_position_interrupt_pending);
@@ -1012,7 +1015,7 @@ static MACHINE_RESET( neogeo )
 	start_interrupt_timers();
 
 	/* trigger the IRQ3 that was set by MACHINE_START */
-	update_interrupts();
+	update_interrupts(machine);
 }
 
 
@@ -1242,6 +1245,7 @@ static MACHINE_DRIVER_START( neogeo )
 	MDRV_VIDEO_START(neogeo)
 	MDRV_VIDEO_RESET(neogeo)
 	MDRV_VIDEO_UPDATE(neogeo)
+	MDRV_DEFAULT_LAYOUT(layout_neogeo)
 
 	MDRV_SCREEN_ADD("main", 0)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -1257,29 +1261,6 @@ static MACHINE_DRIVER_START( neogeo )
 	MDRV_SOUND_ROUTE(1, "left",  1.0)
 	MDRV_SOUND_ROUTE(2, "right", 1.0)
 MACHINE_DRIVER_END
-
-
-/*
- *  A large number of the software produced for the
- *  system expects the visible display width to be 304 pixels
- *  and displays garbage in the left and right most 8 pixel
- *  columns.  This machine driver sets a smaller visible area
- *  to hide the garbage.
- *
- *  I don't like to do this, but I don't like the idea of the
- *  bug reports we'd get if we didn't
- */
-
-static MACHINE_DRIVER_START( neogeo_s )
-
-	MDRV_IMPORT_FROM(neogeo)
-
-	MDRV_SCREEN_MODIFY("main")
-	MDRV_SCREEN_DEFAULT_POSITION((float)NEOGEO_HTOTAL / (NEOGEO_HTOTAL - 20), 0.0, 1.0, 0.0)
-
-MACHINE_DRIVER_END
-
-
 
 /*************************************
  *

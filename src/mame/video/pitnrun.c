@@ -185,7 +185,6 @@ VIDEO_START(pitnrun)
 	tmp_bitmap[2] = auto_bitmap_alloc(128,128,machine->screen[0].format);
 	tmp_bitmap[3] = auto_bitmap_alloc(128,128,machine->screen[0].format);
 	pitnrun_spotlights();
-	video_start_generic(machine);
 }
 
 static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
@@ -281,7 +280,7 @@ VIDEO_UPDATE( pitnrun )
 	draw_sprites(machine,bitmap,&myclip);
 
 	if(pitnrun_ha&4)
-		copybitmap(bitmap,tmp_bitmap[pitnrun_ha&3],flip_screen_x,flip_screen_y,dx,dy,&myclip,TRANSPARENCY_PEN, 1);
+		copybitmap_trans(bitmap,tmp_bitmap[pitnrun_ha&3],flip_screen_x,flip_screen_y,dx,dy,&myclip, 1);
 	tilemap_draw(bitmap,cliprect,fg, 0,0);
 	return 0;
 }

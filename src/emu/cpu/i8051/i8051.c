@@ -9,7 +9,7 @@
  *   8054 Product Line (8054)
  *   8058 Product Line (8058)
  *
- *   Copyright (c) 2003 Steve Ellenoff, all rights reserved.
+ *   Copyright Steve Ellenoff, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -64,15 +64,12 @@
  *****************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "i8051.h"
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 
 //Prototypes
@@ -118,11 +115,11 @@ typedef struct {
 	UINT8	cur_irq;		//Holds value of any current IRQ being serviced
 	UINT8	irq_priority;	//Holds value of the current IRQ Priority Level
 	UINT8	rwm;			//Signals that the current instruction is a read/write/modify instruction
-	int prev_used_cycles;	//Track previous # of used cycles
-	int last_int0;			//Store state of int0
-	int last_int1;			//Store state of int1
-	UINT8 int_vec;			//Pending Interrupt Vector
-	int priority_request;	//Priority level of incoming new irq
+	UINT8   prev_used_cycles;	//Track previous # of used cycles
+	UINT8   last_int0;			//Store state of int0
+	UINT8   last_int1;			//Store state of int1
+	UINT8   int_vec;			//Pending Interrupt Vector
+	UINT8   priority_request;	//Priority level of incoming new irq
 	//SFR Registers         (Note: Appear in order as they do in memory)
 	UINT8	po;				//Port 0
 	UINT8	sp;				//Stack Pointer
@@ -407,7 +404,7 @@ static READ32_HANDLER((*hold_eram_iaddr_callback));
 #define SERIALPORT_IRQ    ((R_SCON & 0x03) && GET_ES)
 
 #if (HAS_I8052 || HAS_I8752)
-#define NO_PENDING_IRQ  !(R_TCON & 0xaa) && !(SERIALPORT_IRQ) && !GET_ET2 //!GET_TF2 && !GET_EXF2
+#define NO_PENDING_IRQ  !(R_TCON & 0xaa) && !(SERIALPORT_IRQ) && !(GET_ET2 && (GET_TF2 || GET_EXF2))
 #else
 #define NO_PENDING_IRQ  !(R_TCON & 0xaa) && !(SERIALPORT_IRQ)
 #endif
@@ -488,6 +485,12 @@ void i8051_init(int index, int clock, const void *config, int (*irqcallback)(int
 	state_save_register_item("i8051", index, i8051.subtype);
 	state_save_register_item("i8051", index, i8051.rwm );
 	state_save_register_item("i8051", index, i8051.cur_irq );
+	state_save_register_item("i8051", index, i8051.irq_priority );
+	state_save_register_item("i8051", index, i8051.prev_used_cycles );
+	state_save_register_item("i8051", index, i8051.last_int0 );
+	state_save_register_item("i8051", index, i8051.last_int1 );
+	state_save_register_item("i8051", index, i8051.int_vec );
+	state_save_register_item("i8051", index, i8051.priority_request );
 	//SFR Registers
 	state_save_register_item("i8051", index, i8051.po);
 	state_save_register_item("i8051", index, i8051.sp);
@@ -509,6 +512,7 @@ void i8051_init(int index, int clock, const void *config, int (*irqcallback)(int
 	state_save_register_item("i8051", index, i8051.ip);
 	//8052 Only registers
 	#if (HAS_I8052 || HAS_I8752)
+		state_save_register_item("i8051", index, i8051.t2con);
 		state_save_register_item("i8051", index, i8051.rcap2l);
 		state_save_register_item("i8051", index, i8051.rcap2h);
 		state_save_register_item("i8051", index, i8051.tl2);
@@ -517,6 +521,7 @@ void i8051_init(int index, int clock, const void *config, int (*irqcallback)(int
 	state_save_register_item("i8051", index, i8051.psw);
 	state_save_register_item("i8051", index, i8051.acc);
 	state_save_register_item("i8051", index, i8051.b);
+	state_save_register_item_array("i8051", index, i8051.IntRam);
 }
 
 /* Reset registers to the initial values */
@@ -595,13 +600,13 @@ int i8051_execute(int cycles)
 		PPC = PC;
 
 		//Call Debugger
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(PC);
 
 		//remove after testing
 		if(PC != PPC)	op = cpu_readop(PC);
 
 		//Update Timer (if any timers are running)
-		if(R_TCON & 0x50)
+		if((GET_TR0 && GET_ET0) || (GET_TR1 && GET_ET1))
 			update_timer(i8051.prev_used_cycles);
 
 		//Update Serial (if serial port sending data)
@@ -1944,7 +1949,7 @@ INLINE void do_add_flags(UINT8 a, UINT8 data, UINT8 c)
 	SET_AC(ac);
 	SET_OV(ov);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 //  mame_printf_debug("add: result=%x, c=%x, ac=%x, ov=%x\n",a+data+c,cy,ac,ov);
 #endif
 }
@@ -1962,7 +1967,7 @@ INLINE void do_sub_flags(UINT8 a, UINT8 data, UINT8 c)
 	SET_AC(ac);
 	SET_OV(ov);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 //  mame_printf_debug("sub: a=%x, d=%x, c=%x, result=%x, cy=%x, ac=%x, ov=%x\n",a,data,c,a-data-c,cy,ac,ov);
 #endif
 }
@@ -2319,16 +2324,6 @@ void i8752_set_serial_tx_callback(void (*callback)(int data))	{ i8051_set_serial
 void i8752_set_serial_rx_callback(int (*callback)(void))	{ i8051_set_serial_rx_callback(callback); }
 void i8752_state_save(void *file)				{ i8051_state_save(file); }
 void i8752_state_load(void *file)				{ i8051_state_load(file); }
-#if 0
-const char *i8752_info(void *context, int regnum)
-{
-	switch( regnum )
-	{
-		case CPU_INFO_NAME: return "I8752";
-	}
-	return i8051_info(context,regnum);
-}
-#endif
 
 /* The following two handlers are used by the MAME Debugger Memory Window...
    By keeping these functions separate from the internally used IRAM_W/IRAM_R functions,
@@ -2436,6 +2431,7 @@ void i8051_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_CONTEXT_SIZE:					info->i = sizeof(i8051);				break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 5;							break;
@@ -2484,9 +2480,9 @@ void i8051_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = i8051_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = i8051_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = i8051_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &i8051_icount;			break;
 
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = 0;	break;
@@ -2498,7 +2494,7 @@ void i8051_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "MCS-51");				break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (c) 2003-2004 Steve Ellenoff"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Steve Ellenoff"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%c%c%c%c%c%c%c%c",

@@ -88,6 +88,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/h6280/h6280.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
@@ -354,7 +355,7 @@ GFXDECODE_END
 
 static void sound_irq(int state)
 {
-	cpunum_set_input_line(1,1,state); /* IRQ 2 */
+	cpunum_set_input_line(Machine, 1,1,state); /* IRQ 2 */
 }
 
 static const struct YM2151interface ym2151_interface =
@@ -467,6 +468,6 @@ static DRIVER_INIT( funkyjet )
 
 /******************************************************************************/
 
-GAME( 1992, funkyjet, 0,        funkyjet, funkyjet, funkyjet, ROT0, "[Data East] (Mitchell license)", "Funky Jet (World)", 0 )
-GAME( 1992, funkyjej, funkyjet, funkyjet, funkyjej, funkyjet, ROT0, "Data East Corporation", "Funky Jet (Japan)", 0 )
-GAME( 1995, sotsugyo, 0,        funkyjet, sotsugyo, funkyjet, ROT0, "Mitchell (Atlus license)", "Sotsugyo Shousho", 0 )
+GAME( 1992, funkyjet, 0,        funkyjet, funkyjet, funkyjet, ROT0, "[Data East] (Mitchell license)", "Funky Jet (World)", GAME_SUPPORTS_SAVE )
+GAME( 1992, funkyjej, funkyjet, funkyjet, funkyjej, funkyjet, ROT0, "Data East Corporation", "Funky Jet (Japan)", GAME_SUPPORTS_SAVE )
+GAME( 1995, sotsugyo, 0,        funkyjet, sotsugyo, funkyjet, ROT0, "Mitchell (Atlus license)", "Sotsugyo Shousho", GAME_SUPPORTS_SAVE )

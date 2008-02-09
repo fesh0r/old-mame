@@ -7,6 +7,7 @@ driver by Mirko Buffoni
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 
@@ -22,9 +23,9 @@ extern VIDEO_UPDATE( higemaru );
 static INTERRUPT_GEN( higemaru_interrupt )
 {
 	if (cpu_getiloops() == 0)
-		cpunum_set_input_line_and_vector(0,0,HOLD_LINE,0xcf);	/* RST 08h */
+		cpunum_set_input_line_and_vector(machine, 0,0,HOLD_LINE,0xcf);	/* RST 08h */
 	else
-		cpunum_set_input_line_and_vector(0,0,HOLD_LINE,0xd7);	/* RST 10h */
+		cpunum_set_input_line_and_vector(machine, 0,0,HOLD_LINE,0xd7);	/* RST 10h */
 }
 
 

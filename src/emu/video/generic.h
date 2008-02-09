@@ -4,7 +4,7 @@
 
     Generic simple video functions.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 *********************************************************************/
@@ -95,7 +95,7 @@ extern const gfx_layout gfx_16x16x4_planar;
 /* set up all the common systems */
 void generic_video_init(running_machine *machine);
 
-/* generic video start with dirty buffers */
+/* generic video start */
 VIDEO_START( generic );
 
 /* generic video start with a temporary bitmap */
@@ -103,26 +103,6 @@ VIDEO_START( generic_bitmapped );
 
 /* generic video update to blit a temporary bitmap */
 VIDEO_UPDATE( generic_bitmapped );
-
-
-
-/* ----- core video/color/spriteram access ----- */
-
-/* video RAM read/write handlers */
-READ8_HANDLER( videoram_r );
-WRITE8_HANDLER( videoram_w );
-
-/* color RAM read/write handlers */
-READ8_HANDLER( colorram_r );
-WRITE8_HANDLER( colorram_w );
-
-/* sprite RAM read/write handlers */
-READ8_HANDLER( spriteram_r );
-WRITE8_HANDLER( spriteram_w );
-READ16_HANDLER( spriteram16_r );
-WRITE16_HANDLER( spriteram16_w );
-READ8_HANDLER( spriteram_2_r );
-WRITE8_HANDLER( spriteram_2_w );
 
 
 
@@ -159,14 +139,7 @@ PALETTE_INIT( RRRR_GGGG_BBBB );
 
 
 
-/* ----- generic palette RAM read/write handlers ----- */
-
-/* read handlers */
-READ8_HANDLER( paletteram_r );
-READ8_HANDLER( paletteram_2_r );
-READ16_HANDLER( paletteram16_word_r );
-READ16_HANDLER( paletteram16_2_word_r );
-READ32_HANDLER( paletteram32_r );
+/* ----- generic palette RAM write handlers, use MRAx_RAM to read ----- */
 
 /* 3-3-2 RGB palette write handlers */
 WRITE8_HANDLER( paletteram_BBGGGRRR_w );

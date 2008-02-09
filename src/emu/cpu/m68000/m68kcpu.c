@@ -7,7 +7,7 @@ static const char copyright_notice[] =
 "MUSASHI\n"
 "Version 3.32 (2007-12-15)\n"
 "A portable Motorola M680x0 processor emulation engine.\n"
-"Copyright 1998-2007 Karl Stenerud.  All rights reserved.\n"
+"Copyright Karl Stenerud.  All rights reserved.\n"
 "\n"
 "This code may be freely used for non-commercial purpooses as long as this\n"
 "copyright notice remains unaltered in the source code and any binary files\n"
@@ -500,7 +500,7 @@ static void default_set_fc_callback(unsigned int new_fc)
 }
 
 /* Called every instruction cycle prior to execution */
-static void default_instr_hook_callback(void)
+static void default_instr_hook_callback(unsigned int pc)
 {
 }
 
@@ -670,7 +670,7 @@ void m68k_set_fc_callback(void  (*callback)(unsigned int new_fc))
 	CALLBACK_SET_FC = callback ? callback : default_set_fc_callback;
 }
 
-void m68k_set_instr_hook_callback(void  (*callback)(void))
+void m68k_set_instr_hook_callback(void  (*callback)(unsigned int pc))
 {
 	CALLBACK_INSTR_HOOK = callback ? callback : default_instr_hook_callback;
 }
@@ -808,7 +808,7 @@ int m68k_execute(int num_cycles)
 			m68ki_use_data_space(); /* auto-disable (see m68kcpu.h) */
 
 			/* Call external hook to peek at CPU */
-			m68ki_instr_hook(); /* auto-disable (see m68kcpu.h) */
+			m68ki_instr_hook(REG_PC); /* auto-disable (see m68kcpu.h) */
 
 			/* Record previous program counter */
 			REG_PPC = REG_PC;
@@ -919,6 +919,7 @@ void m68k_pulse_reset(void)
 	m68ki_clear_trace();
 	/* Interrupt mask to level 7 */
 	FLAG_INT_MASK = 0x0700;
+	CPU_INT_LEVEL = 0;
 	/* Reset VBR */
 	REG_VBR = 0;
 	/* Go to supervisor mode */

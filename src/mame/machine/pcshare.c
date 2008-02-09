@@ -1,6 +1,6 @@
 /***************************************************************************
 
-    machine/pc.c
+    machine/pcshare.c
 
     Functions to emulate general aspects of the machine
     (RAM, ROM, interrupts, I/O ports)
@@ -21,6 +21,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "memconv.h"
 #include "machine/8255ppi.h"
 
@@ -43,7 +44,7 @@
 #include "machine/pc_fdc.h"
 
 #include "includes/pclpt.h"
-#include "includes/centroni.h"
+#include "machine/centroni.h"
 
 #include "machine/pc_hdc.h"
 #include "machine/nec765.h"
@@ -53,22 +54,12 @@
 #endif /* MESS */
 
 #define VERBOSE_DBG 0       /* general debug messages */
-#if VERBOSE_DBG
 #define DBG_LOG(N,M,A) \
 	if(VERBOSE_DBG>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
-#else
-#define DBG_LOG(n,m,a)
-#endif
 
 #define VERBOSE_JOY 0		/* JOY (joystick port) */
-
-#if VERBOSE_JOY
-#define LOG(LEVEL,N,M,A)  \
 #define JOY_LOG(N,M,A) \
 	if(VERBOSE_JOY>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
-#else
-#define JOY_LOG(n,m,a)
-#endif
 
 #define FDC_DMA 2
 
@@ -423,7 +414,7 @@ static void pc_pic_set_int_line(int which, int interrupt)
 	{
 		case 0:
 			/* Master */
-			cpunum_set_input_line(0, 0, interrupt ? HOLD_LINE : CLEAR_LINE);
+			cpunum_set_input_line(Machine, 0, 0, interrupt ? HOLD_LINE : CLEAR_LINE);
 			break;
 
 		case 1:

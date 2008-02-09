@@ -1,6 +1,3 @@
-#define CHANNEL_DEBUG 0
-#define VERBOSE 0
-
 /*********************************************************
 
     Konami 054539 PCM Sound Chip
@@ -24,6 +21,10 @@ CHANNEL_DEBUG enables the following keys:
 #include "streams.h"
 #include "k054539.h"
 #include <math.h>
+
+#define CHANNEL_DEBUG 0
+#define VERBOSE 0
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 /* Registers:
    00..ff: 20 bytes/channel, 8 channels
@@ -333,9 +334,7 @@ else
 				break;
 			}
 			default:
-#if VERBOSE
-				logerror("Unknown sample type %x for channel %d\n", base2[0] & 0xc, ch);
-#endif
+				LOG(("Unknown sample type %x for channel %d\n", base2[0] & 0xc, ch));
 				break;
 			}
 			chan->pos = cur_pos;
@@ -378,7 +377,7 @@ else
 		if (input_code_pressed_once(KEYCODE_DEL_PAD))
 		{
 			gc_active ^= 1;
-			if (!gc_active) ui_popup_time(0, " ");
+			if (!gc_active) popmessage(NULL);
 		}
 
 		if (gc_active)
@@ -573,7 +572,7 @@ static void K054539_w(int chip, offs_t offset, UINT8 data) //*
 		break;
 
 		default:
-#if VERBOSE
+#if 0
 			if(regbase[offset] != data) {
 				if((offset & 0xff00) == 0) {
 					chanoff = offset & 0x1f;
@@ -619,9 +618,7 @@ static UINT8 K054539_r(int chip, offs_t offset)
 	case 0x22c:
 		break;
 	default:
-#if VERBOSE
-		logerror("K054539 read %03x\n", offset);
-#endif
+		LOG(("K054539 read %03x\n", offset));
 		break;
 	}
 	return info->regs[offset];
@@ -722,7 +719,7 @@ void k054539_get_info(void *token, UINT32 state, sndinfo *info)
 		case SNDINFO_STR_CORE_FAMILY:					info->s = "Konami custom";				break;
 		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
 		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright (c) 2004, The MAME Team"; break;
+		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
 	}
 }
 

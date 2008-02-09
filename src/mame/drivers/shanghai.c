@@ -20,6 +20,7 @@ TS 20050212:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "audio/seibu.h"
 
 /* the on-chip FIFO is 16 bytes long, but we use a larger one to simplify */
@@ -735,7 +736,7 @@ static VIDEO_UPDATE( shanghai )
 
 static INTERRUPT_GEN( shanghai_interrupt )
 {
-	cpunum_set_input_line_and_vector(0,0,HOLD_LINE,0x80);
+	cpunum_set_input_line_and_vector(machine, 0,0,HOLD_LINE,0x80);
 }
 
 static WRITE16_HANDLER( shanghai_coin_w )
@@ -1042,10 +1043,6 @@ static MACHINE_DRIVER_START( shangha2 )
 	MDRV_SOUND_ROUTE(2, "mono", 0.15)
 	MDRV_SOUND_ROUTE(3, "mono", 0.80)
 MACHINE_DRIVER_END
-
-SEIBU_SOUND_SYSTEM_YM2203_HARDWARE
-
-SEIBU_SOUND_SYSTEM_ADPCM_HARDWARE
 
 
 static MACHINE_DRIVER_START( kothello )

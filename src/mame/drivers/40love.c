@@ -216,8 +216,8 @@ Notes - Has jumper setting for 122HZ or 61HZ)
 
 */
 
-#include <math.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
@@ -260,7 +260,7 @@ static int sound_nmi_enable,pending_nmi;
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	if (sound_nmi_enable) cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+	if (sound_nmi_enable) cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	else pending_nmi = 1;
 }
 
@@ -280,7 +280,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -1105,7 +1105,7 @@ static MACHINE_DRIVER_START( 40love )
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)	/* source/number of IRQs is unknown */
 
-	MDRV_CPU_ADD(M68705,18432000/6/M68705_CLOCK_DIVIDER) /* OK */
+	MDRV_CPU_ADD(M68705,18432000/6) /* OK */
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -1152,7 +1152,7 @@ static MACHINE_DRIVER_START( undoukai )
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)	/* source/number of IRQs is unknown */
 
-//  MDRV_CPU_ADD(M68705,18432000/6/M68705_CLOCK_DIVIDER)
+//  MDRV_CPU_ADD(M68705,18432000/6)
 //  MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 
 	MDRV_SCREEN_REFRESH_RATE(60)

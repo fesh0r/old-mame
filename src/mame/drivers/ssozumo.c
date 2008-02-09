@@ -8,6 +8,7 @@ Driver by Takahiro Nogi (nogi@kt.rim.or.jp) 1999/10/04
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
@@ -38,20 +39,20 @@ static INTERRUPT_GEN( ssozumo_interrupt )
 		if (coin == 0)
 		{
 			coin = 1;
-			nmi_line_pulse();
+			nmi_line_pulse(machine, cpunum);
 			return;
 		}
 	}
 	else coin = 0;
 
-	irq0_line_hold();
+	irq0_line_hold(machine, cpunum);
 }
 
 
 static WRITE8_HANDLER( ssozumo_sh_command_w )
 {
 	soundlatch_w(offset, data);
-	cpunum_set_input_line(1, M6502_IRQ_LINE, HOLD_LINE);
+	cpunum_set_input_line(Machine, 1, M6502_IRQ_LINE, HOLD_LINE);
 }
 
 

@@ -69,6 +69,7 @@ I/O read/write
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
 #include "sound/sn76496.h"
@@ -127,7 +128,7 @@ static MACHINE_RESET( senjyo )
 
 static INTERRUPT_GEN( senjyo_interrupt )
 {
-	if (int_delay_kludge == 0) cpunum_set_input_line(0, 0, HOLD_LINE);
+	if (int_delay_kludge == 0) cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	else int_delay_kludge--;
 }
 

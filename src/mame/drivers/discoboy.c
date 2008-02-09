@@ -36,6 +36,7 @@ Notes:
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/msm5205.h"
 #include "sound/3812intf.h"
 
@@ -201,9 +202,9 @@ static WRITE8_HANDLER( discoboy_port_01_w )
 static WRITE8_HANDLER( discoboy_port_03_w ) // sfx? (to sound cpu)
 {
 //  printf("unk discoboy_port_03_w %02x\n",data);
-//  cpunum_set_input_line(1,INPUT_LINE_NMI,HOLD_LINE);
+//  cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,HOLD_LINE);
 	soundlatch_w(0,data);
-	cpunum_set_input_line(1,0,HOLD_LINE);
+	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
 }
 
 static WRITE8_HANDLER( discoboy_port_06_w )

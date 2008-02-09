@@ -33,7 +33,7 @@ static int steer_FF2[4];
 static int gear[4];
 
 
-static UINT32 get_lever(void* param)
+static CUSTOM_INPUT( get_lever )
 {
 	int n = (FPTR) param;
 
@@ -41,7 +41,7 @@ static UINT32 get_lever(void* param)
 }
 
 
-static UINT32 get_wheel(void* param)
+static CUSTOM_INPUT( get_wheel )
 {
 	int n = (FPTR) param;
 
@@ -49,7 +49,7 @@ static UINT32 get_wheel(void* param)
 }
 
 
-static UINT32 get_collision(void *param)
+static CUSTOM_INPUT( get_collision )
 {
 	int n = (FPTR) param;
 
@@ -115,12 +115,10 @@ static TIMER_CALLBACK( nmi_callback	)
 
 	/* NMI and watchdog are disabled during service mode */
 
-	watchdog_enable(readinputport(0) & 0x40);
+	watchdog_enable(machine, readinputport(0) & 0x40);
 
 	if (readinputport(0) & 0x40)
-	{
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
-	}
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 
 	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, nmi_callback);
 }

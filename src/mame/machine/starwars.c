@@ -2,12 +2,13 @@
 
     Atari Star Wars hardware
 
-    This file is Copyright 1997, Steve Baines.
+    This file is Copyright Steve Baines.
     Modified by Frank Palazzolo for sound support
 
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "starwars.h"
 #include "video/avgdvg.h"
 

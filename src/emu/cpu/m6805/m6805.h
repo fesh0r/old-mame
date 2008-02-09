@@ -9,8 +9,6 @@ enum { M6805_PC=1, M6805_S, M6805_CC, M6805_A, M6805_X, M6805_IRQ_STATE };
 
 #define M6805_IRQ_LINE		0
 
-#define M6805_CLOCK_DIVIDER	4
-
 extern void m6805_get_info(UINT32 state, cpuinfo *info);
 
 /****************************************************************************
@@ -27,8 +25,6 @@ extern void m6805_get_info(UINT32 state, cpuinfo *info);
 #define M68705_INT_MASK				0x03
 #define M68705_IRQ_LINE				M6805_IRQ_LINE
 #define M68705_INT_TIMER			0x01
-
-#define M68705_CLOCK_DIVIDER		M6805_CLOCK_DIVIDER
 
 extern void m68705_get_info(UINT32 state, cpuinfo *info);
 #endif
@@ -59,8 +55,6 @@ extern void m68705_get_info(UINT32 state, cpuinfo *info);
 #define	HD63705_INT_ADCONV			0x07
 #define HD63705_INT_NMI				0x08
 
-#define HD3705_CLOCK_DIVIDER		M6805_CLOCK_DIVIDER
-
 extern void hd63705_get_info(UINT32 state, cpuinfo *info);
 #endif
 
@@ -88,7 +82,7 @@ extern void hd63705_get_info(UINT32 state, cpuinfo *info);
 /****************************************************************************/
 #define M6805_RDOP_ARG(Addr) ((unsigned)cpu_readop_arg(Addr))
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 offs_t m6805_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 #endif
 

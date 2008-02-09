@@ -14,6 +14,7 @@
 ***************************************************************************/
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "mb88xx.h"
 
 /***************************************************************************
@@ -236,7 +237,7 @@ static int mb88_execute(int cycles)
 		UINT8 opcode, arg, oc;
 
 		/* fetch the opcode */
-		CALL_MAME_DEBUG;
+		CALL_DEBUGGER(GETPC());
 		opcode = READOP(GETPC());
 
 		/* increment the PC */
@@ -799,6 +800,7 @@ void mb88_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 2;							break;
@@ -849,9 +851,9 @@ void mb88_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = NULL;						break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = mb88_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = mb88_dasm;			break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &mb88_icount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -859,7 +861,7 @@ void mb88_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Fujitsu MB88xx");	break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");					break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright 2007 Ernesto Corvi"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Ernesto Corvi"); break;
 
 		case CPUINFO_STR_FLAGS:
     		sprintf(info->s, "%c%c%c%c%c%c",

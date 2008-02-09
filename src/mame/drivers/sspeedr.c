@@ -5,6 +5,7 @@ Taito Super Speed Race driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
 #include "sspeedr.lh"
 
@@ -55,7 +56,7 @@ static PALETTE_INIT( sspeedr )
 
 static WRITE8_HANDLER( sspeedr_int_ack_w )
 {
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 }
 
 

@@ -20,6 +20,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
 #include "video/atarirle.h"
@@ -47,7 +48,7 @@ static UINT32 *	protection_base;
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -57,9 +58,9 @@ static void update_interrupts(void)
 		newstate = 5;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -144,7 +145,7 @@ static WRITE32_HANDLER( latch_w )
 
 	/* lower byte */
 	if (!(mem_mask & 0x00ff0000))
-		cpunum_set_input_line(1, INPUT_LINE_RESET, (data & 0x100000) ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x100000) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -2036,7 +2037,7 @@ ROM_END
 static DRIVER_INIT( spclords )
 {
 	atarigen_eeprom_default = NULL;
-	atarijsa_init(1, 4, 2, 0x0040);
+	atarijsa_init(machine, 2, 0x0040);
 	atarijsa3_init_adpcm(REGION_SOUND1);
 
 	atarigx2_playfield_base = 0x000;
@@ -2048,7 +2049,7 @@ static DRIVER_INIT( spclords )
 static DRIVER_INIT( motofren )
 {
 	atarigen_eeprom_default = NULL;
-	atarijsa_init(1, 4, 2, 0x0040);
+	atarijsa_init(machine, 2, 0x0040);
 	atarijsa3_init_adpcm(REGION_SOUND1);
 
 	atarigx2_playfield_base = 0x400;
@@ -2086,7 +2087,7 @@ static READ32_HANDLER( rrreveng_prot_r )
 static DRIVER_INIT( rrreveng )
 {
 	atarigen_eeprom_default = NULL;
-	atarijsa_init(1, 4, 2, 0x0040);
+	atarijsa_init(machine, 2, 0x0040);
 	atarijsa3_init_adpcm(REGION_SOUND1);
 
 	atarigx2_playfield_base = 0x000;

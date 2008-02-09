@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/sn76496.h"
 
 extern WRITE8_HANDLER( pingpong_videoram_w );
@@ -75,11 +76,11 @@ static INTERRUPT_GEN( pingpong_interrupt )
 {
 	if (cpu_getiloops() == 0)
 	{
-		if (intenable & 0x04) cpunum_set_input_line(0, 0, HOLD_LINE);
+		if (intenable & 0x04) cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 	else if (cpu_getiloops() % 2)
 	{
-		if (intenable & 0x08) cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		if (intenable & 0x08) cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 

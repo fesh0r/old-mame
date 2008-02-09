@@ -966,7 +966,7 @@ static MACHINE_DRIVER_START( driver_nomsp )
 	MDRV_CPU_VBLANK_INT(atarigen_video_int_gen,1)
 	MDRV_CPU_PERIODIC_INT(hd68k_irq_gen, (double)32000000/16/16/16/16/2)
 
-	MDRV_CPU_ADD_TAG("gsp", TMS34010, 48000000/TMS34010_CLOCK_DIVIDER)
+	MDRV_CPU_ADD_TAG("gsp", TMS34010, 48000000)
 	MDRV_CPU_PROGRAM_MAP(driver_gsp_map,0)
 	MDRV_CPU_CONFIG(gsp_config_driver)
 
@@ -994,7 +994,7 @@ static MACHINE_DRIVER_START( driver_msp )
 	MDRV_IMPORT_FROM(driver_nomsp)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("msp", TMS34010, 50000000/TMS34010_CLOCK_DIVIDER)
+	MDRV_CPU_ADD_TAG("msp", TMS34010, 50000000)
 	MDRV_CPU_PROGRAM_MAP(driver_msp_map,0)
 	MDRV_CPU_CONFIG(msp_config)
 MACHINE_DRIVER_END
@@ -1023,7 +1023,7 @@ static MACHINE_DRIVER_START( multisync_msp )
 	MDRV_IMPORT_FROM(multisync_nomsp)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("msp", TMS34010, 50000000/TMS34010_CLOCK_DIVIDER)
+	MDRV_CPU_ADD_TAG("msp", TMS34010, 50000000)
 	MDRV_CPU_PROGRAM_MAP(driver_msp_map,0)
 	MDRV_CPU_CONFIG(msp_config)
 MACHINE_DRIVER_END
@@ -1143,7 +1143,7 @@ static MACHINE_DRIVER_START( driversnd )
 	MDRV_CPU_ADD_TAG("sound", M68000, 16000000/2)
 	MDRV_CPU_PROGRAM_MAP(driversnd_68k_map,0)
 
-	MDRV_CPU_ADD_TAG("sounddsp", TMS32010, 20000000/TMS32010_CLOCK_DIVIDER)
+	MDRV_CPU_ADD_TAG("sounddsp", TMS32010, 20000000)
 	MDRV_CPU_PROGRAM_MAP(driversnd_dsp_program_map,0)
 	/* Data Map is internal to the CPU */
 	MDRV_CPU_IO_MAP(driversnd_dsp_io_map,0)
@@ -3652,7 +3652,7 @@ static DRIVER_INIT( stunrun )
 	/* initialize the boards */
 	init_multisync(machine, 0);
 	init_adsp();
-	atarijsa_init(hdcpu_jsa, 14, 0, 0x0020);
+	atarijsa_init(machine, 0, 0x0020);
 
 	/* set up gsp speedup handler */
 	hdgsp_speedup_addr[0] = memory_install_write16_handler(hdcpu_gsp, ADDRESS_SPACE_PROGRAM, 0xfff9fc00, 0xfff9fc0f, 0, 0, hdgsp_speedup1_w);
@@ -3765,7 +3765,7 @@ static void steeltal_init_common(running_machine *machine, offs_t ds3_transfer_p
 	init_ds3(machine);
 	init_dspcom();
 	atarijsa3_init_adpcm(REGION_SOUND1);
-	atarijsa_init(hdcpu_jsa, 14, 0, 0x0020);
+	atarijsa_init(machine, 0, 0x0020);
 
 	memory_install_read16_handler(hdcpu_main, ADDRESS_SPACE_PROGRAM, 0x908000, 0x908001, 0, 0, steeltal_dummy_r);
 

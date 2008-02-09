@@ -5,6 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "audio/williams.h"
 #include "cpu/m6800/m6800.h"
 #include "cpu/m6809/m6809.h"
@@ -47,6 +48,8 @@ static READ8_HANDLER( williams_49way_port_0_r );
 
 /* newer-Williams routines */
 static WRITE8_HANDLER( williams2_snd_cmd_w );
+static void mysticm_main_irq(int state);
+static void tshoot_main_irq(int state);
 
 /* Lotto Fun-specific code */
 static READ8_HANDLER( lottofun_input_port_0_r );
@@ -209,7 +212,15 @@ const pia6821_interface mysticm_pia_0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ input_port_0_r, input_port_1_r, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ 0, 0, 0, 0,
-	/*irqs   : A/B             */ williams_main_firq, williams_main_irq
+	/*irqs   : A/B             */ williams_main_firq, mysticm_main_irq
+};
+
+/* Mystic Marathon PIA 1 */
+const pia6821_interface mysticm_pia_1_intf =
+{
+	/*inputs : A/B,CA/B1,CA/B2 */ input_port_2_r, 0, 0, 0, 0, 0,
+	/*outputs: A/B,CA/B2       */ 0, williams2_snd_cmd_w, 0, pia_2_ca1_w,
+	/*irqs   : A/B             */ mysticm_main_irq, mysticm_main_irq
 };
 
 /* Turkey Shoot PIA 0 */
@@ -217,7 +228,15 @@ const pia6821_interface tshoot_pia_0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ tshoot_input_port_0_3_r, input_port_1_r, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B2       */ 0, tshoot_lamp_w, williams_port_select_w, 0,
-	/*irqs   : A/B             */ williams_main_irq, williams_main_irq
+	/*irqs   : A/B             */ tshoot_main_irq, tshoot_main_irq
+};
+
+/* Turkey Shoot PIA 1 */
+const pia6821_interface tshoot_pia_1_intf =
+{
+	/*inputs : A/B,CA/B1,CA/B2 */ input_port_2_r, 0, 0, 0, 0, 0,
+	/*outputs: A/B,CA/B2       */ 0, williams2_snd_cmd_w, 0, pia_2_ca1_w,
+	/*irqs   : A/B             */ tshoot_main_irq, tshoot_main_irq
 };
 
 /* Turkey Shoot PIA 2 */
@@ -251,11 +270,8 @@ static TIMER_CALLBACK( williams_va11_callback )
 	/* the IRQ signal comes into CB1, and is set to VA11 */
 	pia_1_cb1_w(0, scanline & 0x20);
 
-	/* update the screen while we're here */
-	video_screen_update_partial(0, scanline - 1);
-
 	/* set a timer for the next update */
-	scanline++;
+	scanline += 0x20;
 	if (scanline >= 256) scanline = 0;
 	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
 }
@@ -283,22 +299,51 @@ static TIMER_CALLBACK( williams_count240_callback )
 
 static void williams_main_irq(int state)
 {
+	int combined_state = pia_get_irq_a(1) | pia_get_irq_b(1);
+
 	/* IRQ to the main CPU */
-	cpunum_set_input_line(0, M6809_IRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static void williams_main_firq(int state)
 {
 	/* FIRQ to the main CPU */
-	cpunum_set_input_line(0, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static void williams_snd_irq(int state)
 {
+	int combined_state = pia_get_irq_a(2) | pia_get_irq_b(2);
+
 	/* IRQ to the sound CPU */
-	cpunum_set_input_line(1, M6800_IRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, M6800_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+}
+
+
+
+/*************************************
+ *
+ *  Newer Williams interrupts
+ *
+ *************************************/
+
+static void mysticm_main_irq(int state)
+{
+	int combined_state = pia_get_irq_b(0) | pia_get_irq_a(1) | pia_get_irq_b(1);
+
+	/* IRQ to the main CPU */
+	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+}
+
+
+static void tshoot_main_irq(int state)
+{
+	int combined_state = pia_get_irq_a(0) | pia_get_irq_b(0) | pia_get_irq_a(1) | pia_get_irq_b(1);
+
+	/* IRQ to the main CPU */
+	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -354,11 +399,8 @@ static TIMER_CALLBACK( williams2_va11_callback )
 	pia_0_cb1_w(0, scanline & 0x20);
 	pia_1_ca1_w(0, scanline & 0x20);
 
-	/* update the screen while we're here */
-	video_screen_update_partial(0, scanline);
-
 	/* set a timer for the next update */
-	scanline++;
+	scanline += 0x20;
 	if (scanline >= 256) scanline = 0;
 	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
 }
@@ -466,9 +508,10 @@ WRITE8_HANDLER( williams2_bank_select_w )
 
 		/* page 3 accesses palette RAM; the remaining areas are as if page 1 ROM was selected */
 		case 3:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, williams2_paletteram_r);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, MRA8_BANK4);
 			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, williams2_paletteram_w);
 			memory_set_bank(1, 1 + ((vram_bank & 4) >> 1));
+			memory_set_bankptr(4, paletteram);
 			break;
 	}
 }
@@ -892,7 +935,7 @@ MACHINE_START( joust2 )
 MACHINE_RESET( joust2 )
 {
 	/* standard init */
-	machine_reset_williams2(machine);
+	MACHINE_RESET_CALL(williams2);
 	pia_set_input_ca1(3, 1);
 	state_save_register_global(joust2_current_sound_data);
 }

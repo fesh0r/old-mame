@@ -4,7 +4,7 @@
 
     Functions to manage profiling of MAME execution.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -12,6 +12,7 @@
 #include "osdepend.h"
 #include "driver.h"
 #include "profiler.h"
+#include "deprecat.h"
 
 
 /* in usrintf.c */

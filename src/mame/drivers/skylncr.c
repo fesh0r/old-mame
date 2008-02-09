@@ -9,6 +9,7 @@
 *************************************************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 static tilemap *tmap, *tmap2;
@@ -419,7 +420,7 @@ static const struct AY8910interface ay8910_interface =
 // It runs in IM 0, thus needs an opcode on the data bus
 static INTERRUPT_GEN( skylncr_vblank_interrupt )
 {
-	if (skylncr_nmi_enable) cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+	if (skylncr_nmi_enable) cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_DRIVER_START( skylncr )

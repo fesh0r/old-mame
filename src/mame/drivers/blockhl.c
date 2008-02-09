@@ -20,6 +20,7 @@ found it.
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "video/konamiic.h"
 #include "sound/2151intf.h"
@@ -39,13 +40,13 @@ static int rombank;
 static INTERRUPT_GEN( blockhl_interrupt )
 {
 	if (K052109_is_IRQ_enabled() && rombank == 0)	/* kludge to prevent crashes */
-		cpunum_set_input_line(0, KONAMI_IRQ_LINE, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, KONAMI_IRQ_LINE, HOLD_LINE);
 }
 
 static READ8_HANDLER( bankedram_r )
 {
 	if (palette_selected)
-		return paletteram_r(offset);
+		return paletteram[offset];
 	else
 		return ram[offset];
 }
@@ -60,7 +61,7 @@ static WRITE8_HANDLER( bankedram_w )
 
 static WRITE8_HANDLER( blockhl_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(1, 0, HOLD_LINE, 0xff);
+	cpunum_set_input_line_and_vector(Machine, 1, 0, HOLD_LINE, 0xff);
 }
 
 

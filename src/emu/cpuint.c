@@ -4,14 +4,14 @@
 
     Core multi-CPU interrupt engine.
 
-    Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+    Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
 
 #include "driver.h"
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 #include "debug/debugcpu.h"
 #endif
 
@@ -24,11 +24,7 @@
 
 #define VERBOSE 0
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 
 
@@ -125,7 +121,7 @@ void cpuint_init(running_machine *machine)
 		{
 			input_line_state[cpunum][line] = CLEAR_LINE;
 			interrupt_vector[cpunum][line] =
-			input_line_vector[cpunum][line] = cputype_default_irq_vector(Machine->drv->cpu[cpunum].type);
+			input_line_vector[cpunum][line] = cputype_default_irq_vector(machine->drv->cpu[cpunum].type);
 			input_event_index[cpunum][line] = 0;
 		}
 	}
@@ -254,7 +250,7 @@ static TIMER_CALLBACK( cpunum_empty_event_queue )
 
 			/* generate a trigger to unsuspend any CPUs waiting on the interrupt */
 			if (state != CLEAR_LINE)
-				cpu_triggerint(cpunum);
+				cpu_triggerint(machine, cpunum);
 		}
 	}
 
@@ -274,10 +270,10 @@ static TIMER_CALLBACK( cpunum_empty_event_queue )
  *
  *************************************/
 
-void cpunum_set_input_line(int cpunum, int line, int state)
+void cpunum_set_input_line(running_machine *machine, int cpunum, int line, int state)
 {
 	int vector = (line >= 0 && line < MAX_INPUT_LINES) ? interrupt_vector[cpunum][line] : 0xff;
-	cpunum_set_input_line_and_vector(cpunum, line, state, vector);
+	cpunum_set_input_line_and_vector(machine, cpunum, line, state, vector);
 }
 
 
@@ -293,7 +289,7 @@ void cpunum_set_input_line_vector(int cpunum, int line, int vector)
 }
 
 
-void cpunum_set_input_line_and_vector(int cpunum, int line, int state, int vector)
+void cpunum_set_input_line_and_vector(running_machine *machine, int cpunum, int line, int state, int vector)
 {
 	if (line >= 0 && line < MAX_INPUT_LINES)
 	{
@@ -306,7 +302,7 @@ void cpunum_set_input_line_and_vector(int cpunum, int line, int state, int vecto
 		if (event_index >= MAX_INPUT_EVENTS)
 		{
 			input_event_index[cpunum][line]--;
-			cpunum_empty_event_queue(Machine, NULL, cpunum | (line << 8));
+			cpunum_empty_event_queue(machine, NULL, cpunum | (line << 8));
 			event_index = input_event_index[cpunum][line]++;
 			logerror("Exceeded pending input line event queue on CPU %d!\n", cpunum);
 		}
@@ -368,7 +364,7 @@ INLINE int cpu_irq_callback(int cpunum, int line)
 	if (drv_irq_callbacks[cpunum])
 		vector = (*drv_irq_callbacks[cpunum])(line);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	/* notify the debugger */
 	debug_interrupt_hook(cpunum, line);
 #endif

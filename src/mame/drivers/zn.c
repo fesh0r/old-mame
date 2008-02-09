@@ -8,8 +8,8 @@
 
 ***************************************************************************/
 
-#include <stdarg.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/mips/psx.h"
 #include "cpu/z80/z80.h"
 #include "includes/psx.h"
@@ -26,7 +26,7 @@
 
 #define VERBOSE_LEVEL ( 0 )
 
-INLINE void verboselog( int n_level, const char *s_fmt, ... )
+INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
 {
 	if( VERBOSE_LEVEL >= n_level )
 	{
@@ -422,6 +422,45 @@ static void zn_machine_init( void )
 	psx_machine_init();
 }
 
+static MACHINE_DRIVER_START( zn1_1mb_vram )
+	/* basic machine hardware */
+	MDRV_CPU_ADD( PSXCPU, XTAL_67_7376MHz )
+	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
+	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+
+	MDRV_SCREEN_REFRESH_RATE( 60 )
+	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_SIZE( 1024, 512 )
+	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
+	MDRV_PALETTE_LENGTH( 65536 )
+
+	MDRV_PALETTE_INIT( psx )
+	MDRV_VIDEO_START( psx_type2 )
+	MDRV_VIDEO_UPDATE( psx )
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+
+	MDRV_SOUND_ADD( PSXSPU, 0 )
+	MDRV_SOUND_CONFIG( psxspu_interface )
+	MDRV_SOUND_ROUTE(0, "left", 0.35)
+	MDRV_SOUND_ROUTE(1, "right", 0.35)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( zn1_2mb_vram )
+	MDRV_IMPORT_FROM( zn1_1mb_vram )
+
+	MDRV_SCREEN_SIZE( 1024, 1024 )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( zn2 )
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
+MACHINE_DRIVER_END
+
 /*
 Capcom ZN1 generic PCB Layout
 ----------------------------
@@ -554,13 +593,13 @@ static WRITE8_HANDLER( qsound_bankswitch_w )
 
 static INTERRUPT_GEN( qsound_interrupt )
 {
-	cpunum_set_input_line(1, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
 }
 
 static WRITE32_HANDLER( zn_qsound_w )
 {
 	soundlatch_w(0, data);
-	cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static DRIVER_INIT( coh1000c )
@@ -620,10 +659,7 @@ static const struct QSound_interface qsound_interface =
 };
 
 static MACHINE_DRIVER_START( coh1000c )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+	MDRV_IMPORT_FROM( zn1_1mb_vram )
 
 	MDRV_CPU_ADD( Z80, 8000000 )
 	/* audio CPU */  /* 8MHz ?? */
@@ -631,30 +667,8 @@ static MACHINE_DRIVER_START( coh1000c )
 	MDRV_CPU_IO_MAP( qsound_readport, 0 )
 	MDRV_CPU_VBLANK_INT( qsound_interrupt, 4 ) /* 4 interrupts per frame ?? */
 
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET( coh1000c )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 512 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 
 	MDRV_SOUND_ADD( QSOUND, QSOUND_CLOCK )
 	MDRV_SOUND_CONFIG( qsound_interface )
@@ -663,10 +677,7 @@ static MACHINE_DRIVER_START( coh1000c )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coh1002c )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
 	MDRV_CPU_ADD( Z80, 8000000 )
 	/* audio CPU */  /* 8MHz ?? */
@@ -674,30 +685,8 @@ static MACHINE_DRIVER_START( coh1002c )
 	MDRV_CPU_IO_MAP( qsound_readport, 0 )
 	MDRV_CPU_VBLANK_INT( qsound_interrupt, 4 ) /* 4 interrupts per frame ?? */
 
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET( coh1000c )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 
 	MDRV_SOUND_ADD( QSOUND, QSOUND_CLOCK )
 	MDRV_SOUND_CONFIG( qsound_interface )
@@ -872,41 +861,16 @@ static MACHINE_RESET( coh3002c )
 }
 
 static MACHINE_DRIVER_START( coh3002c )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+	MDRV_IMPORT_FROM( zn2 )
 
-	MDRV_CPU_ADD( Z80, 8000000 )
 	/* audio CPU */  /* 8MHz ?? */
+	MDRV_CPU_ADD( Z80, 8000000 )
 	MDRV_CPU_PROGRAM_MAP( qsound_readmem, qsound_writemem )
 	MDRV_CPU_IO_MAP( qsound_readport, 0 )
 	MDRV_CPU_VBLANK_INT( qsound_interrupt, 4 ) /* 4 interrupts per frame ?? */
 
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET( coh3002c )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 
 	MDRV_SOUND_ADD( QSOUND, QSOUND_CLOCK )
 	MDRV_SOUND_CONFIG( qsound_interface )
@@ -1147,7 +1111,7 @@ static WRITE32_HANDLER( bank_coh1000t_w )
 static INTERRUPT_GEN( coh1000t_vblank )
 {
 	/* kludge: stop dropping into test mode on bootup */
-	if( strcmp( Machine->gamedrv->name, "raystorm" ) == 0 )
+	if( strcmp( machine->gamedrv->name, "raystorm" ) == 0 )
 	{
 		if( g_p_n_psxram[ 0x1b358 / 4 ] == 0x34020001 )
 		{
@@ -1155,49 +1119,49 @@ static INTERRUPT_GEN( coh1000t_vblank )
 		}
 	}
 	/* kludge: stop dropping into test mode on bootup */
-	if( strcmp( Machine->gamedrv->name, "raystorj" ) == 0 )
+	if( strcmp( machine->gamedrv->name, "raystorj" ) == 0 )
 	{
 		if( g_p_n_psxram[ 0x1b358 / 4 ] == 0x34020001 )
 		{
 			g_p_n_psxram[ 0x1b358 / 4 ] = 0x34020000;
 		}
 	}
-	if(strcmp( Machine->gamedrv->name, "gdarius" ) == 0 )
+	if(strcmp( machine->gamedrv->name, "gdarius" ) == 0 )
 	{
 		if (psxreadbyte(0x165d53) == 0)
 		{
 			psxwritebyte(0x165d53, 1);
 		}
 	}
-	if(strcmp( Machine->gamedrv->name, "gdariusb" ) == 0 )
+	if(strcmp( machine->gamedrv->name, "gdariusb" ) == 0 )
 	{
 		if (psxreadbyte(0x165dfb) == 0)
 		{
 			psxwritebyte(0x165dfb, 1);
 		}
 	}
-	if(strcmp( Machine->gamedrv->name, "gdarius2" ) == 0 )
+	if(strcmp( machine->gamedrv->name, "gdarius2" ) == 0 )
 	{
 		if (psxreadbyte(0x16be3b) == 0)
 		{
 			psxwritebyte(0x16be3b, 1);
 		}
 	}
-	if(strcmp( Machine->gamedrv->name, "ftimpcta" ) == 0 )
+	if(strcmp( machine->gamedrv->name, "ftimpcta" ) == 0 )
 	{
 		if (psxreadbyte(0x0f8997) == 0)
 		{
 			psxwritebyte(0x0f8997, 1);
 		}
 	}
-	if(strcmp( Machine->gamedrv->name, "ftimpact" ) == 0 ) /* WRONG!!!- Copied from ftimpcta */
+	if(strcmp( machine->gamedrv->name, "ftimpact" ) == 0 ) /* WRONG!!!- Copied from ftimpcta */
 	{
 		if (psxreadbyte(0x0f8997) == 0) /* WRONG!!!- Copied from ftimpcta */
 		{
 			psxwritebyte(0x0f8997, 1); /* WRONG!!!- Copied from ftimpcta */
 		}
 	}
-	psx_vblank();
+	psx_vblank(machine, cpunum);
 }
 
 static WRITE8_HANDLER( fx1a_sound_bankswitch_w )
@@ -1257,7 +1221,7 @@ static MACHINE_RESET( coh1000ta )
 
 static NVRAM_HANDLER( coh1000ta )
 {
-	nvram_handler_at28c16_0( machine, file, read_or_write );
+	NVRAM_HANDLER_CALL(at28c16_0);
 	if (read_or_write)
 	{
 		mame_fwrite(file, taitofx1_eeprom1, taitofx1_eeprom_size1);
@@ -1302,7 +1266,7 @@ ADDRESS_MAP_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irq_handler(int irq)
 {
-	cpunum_set_input_line(1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =
@@ -1313,39 +1277,15 @@ static const struct YM2610interface ym2610_interface =
 };
 
 static MACHINE_DRIVER_START( coh1000ta )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
+	MDRV_IMPORT_FROM( zn1_1mb_vram )
+
 	MDRV_CPU_VBLANK_INT( coh1000t_vblank, 1 )
 
 	MDRV_CPU_ADD( Z80, 16000000 / 4 )
 	/* audio CPU */	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP( fx1a_sound_readmem, fx1a_sound_writemem )
-
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET( coh1000ta )
 	MDRV_NVRAM_HANDLER( coh1000ta )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 512 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 
 	MDRV_SOUND_ADD(YM2610B, 16000000/2)
 	MDRV_SOUND_CONFIG(ym2610_interface)
@@ -1401,7 +1341,7 @@ static MACHINE_RESET( coh1000tb )
 
 static NVRAM_HANDLER( coh1000tb )
 {
-	nvram_handler_at28c16_0( machine, file, read_or_write );
+	NVRAM_HANDLER_CALL(at28c16_0);
 	if (read_or_write)
 	{
 		mame_fwrite(file, taitofx1_eeprom1, taitofx1_eeprom_size1);
@@ -1420,35 +1360,12 @@ static NVRAM_HANDLER( coh1000tb )
 }
 
 static MACHINE_DRIVER_START( coh1000tb )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( coh1000t_vblank, 1 )
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT( coh1000t_vblank, 1 )
 
 	MDRV_MACHINE_RESET( coh1000tb )
 	MDRV_NVRAM_HANDLER( coh1000tb )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 MACHINE_DRIVER_END
 
 /*
@@ -1610,35 +1527,10 @@ static MACHINE_RESET( coh3002t )
 }
 
 static MACHINE_DRIVER_START( coh3002t )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
-
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_IMPORT_FROM( zn2 )
 
 	MDRV_MACHINE_RESET( coh3002t )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 MACHINE_DRIVER_END
 
 /*
@@ -1824,35 +1716,10 @@ static MACHINE_RESET( coh1000w )
 }
 
 static MACHINE_DRIVER_START( coh1000w )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
-
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
 	MDRV_MACHINE_RESET( coh1000w )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 MACHINE_DRIVER_END
 
 /*
@@ -2012,13 +1879,9 @@ static WRITE32_HANDLER( coh1002e_bank_w )
 static WRITE32_HANDLER( coh1002e_latch_w )
 {
 	if (offset)
-	{
-		cpunum_set_input_line(1, 2, HOLD_LINE);	// irq 2 on the 68k
-	}
+		cpunum_set_input_line(Machine, 1, 2, HOLD_LINE);	// irq 2 on the 68k
 	else
-	{
 		soundlatch_w(0, data);
-	}
 }
 
 static DRIVER_INIT( coh1002e )
@@ -2066,39 +1929,14 @@ static const struct YMF271interface ymf271_interface =
 };
 
 static MACHINE_DRIVER_START( coh1002e )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
-	MDRV_CPU_ADD( M68000, 12000000 )
 	/* audio CPU */
+	MDRV_CPU_ADD( M68000, 12000000 )
 	MDRV_CPU_PROGRAM_MAP( psarc_snd_map, 0 )
-
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET( coh1002e )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 
 	MDRV_SOUND_ADD( YMF271, 16934400 )
 	MDRV_SOUND_CONFIG( ymf271_interface )
@@ -2411,35 +2249,10 @@ static MACHINE_RESET( coh1000a )
 }
 
 static MACHINE_DRIVER_START( coh1000a )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
-
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
 	MDRV_MACHINE_RESET( coh1000a )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 MACHINE_DRIVER_END
 
 /*
@@ -2578,39 +2391,14 @@ static MACHINE_RESET( coh1001l )
 }
 
 static MACHINE_DRIVER_START( coh1001l )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
-//  MDRV_CPU_ADD( M68000, 10000000 )
 //  /* audio CPU */
+//  MDRV_CPU_ADD( M68000, 10000000 )
 //  MDRV_CPU_PROGRAM_MAP( atlus_snd_map, 0 )
-
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET( coh1001l )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 
 //  MDRV_SOUND_ADD( YMZ280B, ymz280b_intf )
 MACHINE_DRIVER_END
@@ -2652,7 +2440,7 @@ static MACHINE_RESET( coh1002v )
 static INTERRUPT_GEN( coh1002v_vblank )
 {
 	/* kludge: to stop dropping into test mode on bootup */
-	if(strcmp( Machine->gamedrv->name, "sncwgltd" ) == 0 )
+	if(strcmp( machine->gamedrv->name, "sncwgltd" ) == 0 )
 	{
 		if (psxreadbyte(0x0db422) == 0)
 		{
@@ -2663,39 +2451,16 @@ static INTERRUPT_GEN( coh1002v_vblank )
 			psxwritebyte(0x0db423, 1);
 		}
 	}
-	psx_vblank();
+	psx_vblank(machine, cpunum);
 }
 
 static MACHINE_DRIVER_START( coh1002v )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( coh1002v_vblank, 1 )
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT( coh1002v_vblank, 1 )
 
 	MDRV_MACHINE_RESET( coh1002v )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 MACHINE_DRIVER_END
 
 /*
@@ -2936,72 +2701,22 @@ static const struct YMZ280Binterface ymz280b_intf =
 };
 
 static MACHINE_DRIVER_START( coh1002m )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
-
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
 	MDRV_MACHINE_RESET( coh1002m )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coh1002msnd )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
-	MDRV_CPU_ADD( Z80, 32000000/8 )
 	/* audio CPU */
+	MDRV_CPU_ADD( Z80, 32000000/8 )
 	MDRV_CPU_PROGRAM_MAP( cbaj_z80_map, 0 )
 	MDRV_CPU_IO_MAP( cbaj_z80_port_map, 0 )
 
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET( coh1002m )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 
 	MDRV_SOUND_ADD(YMZ280B, 16934400)
 	MDRV_SOUND_CONFIG(ymz280b_intf)
@@ -3010,38 +2725,13 @@ static MACHINE_DRIVER_START( coh1002msnd )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coh1002ml )
-	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, 33868800 / 2 ) /* 33MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
 	MDRV_CPU_ADD( Z80, 8000000 )
 	MDRV_CPU_PROGRAM_MAP( link_readmem, link_writemem )
 
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET( coh1002m )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE( 1024, 1024 )
-	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
-	MDRV_PALETTE_LENGTH( 65536 )
-
-	MDRV_PALETTE_INIT( psx )
-	MDRV_VIDEO_START( psx_type2 )
-	MDRV_VIDEO_UPDATE( psx )
-
-	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-
-	MDRV_SOUND_ADD( PSXSPU, 0 )
-	MDRV_SOUND_CONFIG( psxspu_interface )
-	MDRV_SOUND_ROUTE(0, "left", 0.35)
-	MDRV_SOUND_ROUTE(1, "right", 0.35)
 MACHINE_DRIVER_END
 
 static INPUT_PORTS_START( zn )
@@ -4679,7 +4369,7 @@ GAME( 1997, taitogn,  0,        coh3002t, zn, coh3002t, ROT0, "Sony/Taito", "Tai
 GAME( 1997, psarc95,  0,        coh1002e, zn, coh1002e, ROT0, "Sony/Eighting/Raizing", "PS Arcade 95", GAME_IS_BIOS_ROOT )
 
 GAME( 1997, beastrzr, psarc95,  coh1002e, zn, coh1002e, ROT0, "Eighting/Raizing", "Beastorizer (USA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1997, beastrzb, psarc95,  coh1002e, zn, coh1002e, ROT0, "Eighting/Raizing", "Beastorizer (USA Bootleg)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1997, beastrzb, psarc95,  coh1002e, zn, coh1002e, ROT0, "Eighting/Raizing", "Beastorizer (USA Bootleg)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1998, bldyror2, psarc95,  coh1002e, zn, coh1002e, ROT0, "Eighting/Raizing", "Bloody Roar 2 (JAPAN)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 2000, brvblade, tps,      coh1002e, zn, coh1002e, ROT270, "Eighting/Raizing", "Brave Blade (JAPAN)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 

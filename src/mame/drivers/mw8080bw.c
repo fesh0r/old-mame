@@ -14,6 +14,7 @@
         * Boot Hill
         * Checkmate
         * Desert Gun
+        * Road Runner
         * Double Play
         * Laguna Racer
         * Guided Missile
@@ -316,7 +317,7 @@ static WRITE8_HANDLER( seawolf_periscope_lamp_w )
 }
 
 
-static UINT32 seawolf_erase_input_r(void *param)
+static CUSTOM_INPUT( seawolf_erase_input_r )
 {
 	return readinputportbytag(SEAWOLF_ERASE_SW_PORT_TAG) &
 		   readinputportbytag(SEAWOLF_ERASE_DIP_PORT_TAG);
@@ -547,13 +548,13 @@ UINT8 tornbase_get_cabinet_type()
 }
 
 
-static UINT32 tornbase_hit_left_input_r(void *param)
+static CUSTOM_INPUT( tornbase_hit_left_input_r )
 {
 	return readinputportbytag(TORNBASE_L_HIT_PORT_TAG);
 }
 
 
-static UINT32 tornbase_hit_right_input_r(void *param)
+static CUSTOM_INPUT( tornbase_hit_right_input_r )
 {
 	UINT32 ret;
 
@@ -574,7 +575,7 @@ static UINT32 tornbase_hit_right_input_r(void *param)
 }
 
 
-static UINT32 tornbase_pitch_left_input_r(void *param)
+static CUSTOM_INPUT( tornbase_pitch_left_input_r )
 {
 	UINT32 ret;
 
@@ -595,13 +596,13 @@ static UINT32 tornbase_pitch_left_input_r(void *param)
 }
 
 
-static UINT32 tornbase_pitch_right_input_r(void *param)
+static CUSTOM_INPUT( tornbase_pitch_right_input_r )
 {
 	return readinputportbytag(TORNBASE_L_PITCH_PORT_TAG);
 }
 
 
-static UINT32 tornbase_score_input_r(void *param)
+static CUSTOM_INPUT( tornbase_score_input_r )
 {
 	return readinputportbytag(TORNBASE_SCORE_SW_PORT_TAG) &
 		   readinputportbytag(TORNBASE_SCORE_DIP_PORT_TAG);
@@ -881,7 +882,7 @@ static MACHINE_START( maze )
 	state_save_register_global(maze_tone_timing_state);
 	state_save_register_func_postload(maze_update_discrete);
 
-	machine_start_mw8080bw(machine);
+	MACHINE_START_CALL(mw8080bw);
 }
 
 
@@ -966,7 +967,7 @@ static MACHINE_START( boothill )
 	/* setup for save states */
 	state_save_register_global(rev_shift_res);
 
-	machine_start_mw8080bw(machine);
+	MACHINE_START_CALL(mw8080bw);
 }
 
 
@@ -1150,7 +1151,7 @@ MACHINE_DRIVER_END
 
 /*************************************
  *
- *  Desert Gun (PCB #618)
+ *  Desert Gun / Road Runner (PCB #618)
  *
  *************************************/
 
@@ -1166,7 +1167,7 @@ static MACHINE_START( desertgu )
 	/* setup for save states */
 	state_save_register_global(desertgu_controller_select);
 
-	machine_start_mw8080bw(machine);
+	MACHINE_START_CALL(mw8080bw);
 }
 
 
@@ -1176,7 +1177,7 @@ void desertgun_set_controller_select(UINT8 data)
 }
 
 
-static UINT32 desertgu_gun_input_r(void *param)
+static CUSTOM_INPUT( desertgu_gun_input_r )
 {
 	UINT32 ret;
 
@@ -1189,7 +1190,7 @@ static UINT32 desertgu_gun_input_r(void *param)
 }
 
 
-static UINT32 desertgu_dip_sw_0_1_r(void *param)
+static CUSTOM_INPUT( desertgu_dip_sw_0_1_r )
 {
 	UINT32 ret;
 
@@ -1303,7 +1304,7 @@ MACHINE_DRIVER_END
 #define DPLAY_CAB_TYPE_COCKTAIL		(1)
 
 
-static UINT32 dplay_pitch_left_input_r(void *param)
+static CUSTOM_INPUT( dplay_pitch_left_input_r )
 {
 	UINT32 ret;
 
@@ -1316,7 +1317,7 @@ static UINT32 dplay_pitch_left_input_r(void *param)
 }
 
 
-static UINT32 dplay_pitch_right_input_r(void *param)
+static CUSTOM_INPUT( dplay_pitch_right_input_r )
 {
 	return readinputportbytag(DPLAY_L_PITCH_PORT_TAG);
 }
@@ -1492,7 +1493,7 @@ static MACHINE_START( gmissile )
 	/* setup for save states */
 	state_save_register_global(rev_shift_res);
 
-	machine_start_mw8080bw(machine);
+	MACHINE_START_CALL(mw8080bw);
 }
 
 
@@ -1584,7 +1585,7 @@ static MACHINE_START( m4 )
 	/* setup for save states */
 	state_save_register_global(rev_shift_res);
 
-	machine_start_mw8080bw(machine);
+	MACHINE_START_CALL(mw8080bw);
 }
 
 
@@ -1681,7 +1682,7 @@ static MACHINE_START( clowns )
 	/* setup for save states */
 	state_save_register_global(clowns_controller_select);
 
-	machine_start_mw8080bw(machine);
+	MACHINE_START_CALL(mw8080bw);
 }
 
 
@@ -1691,7 +1692,7 @@ void clowns_set_controller_select(UINT8 data)
 }
 
 
-static UINT32 clowns_controller_r(void *param)
+static CUSTOM_INPUT( clowns_controller_r )
 {
 	UINT32 ret;
 
@@ -2058,7 +2059,7 @@ static MACHINE_START( spcenctr )
 	state_save_register_global_array(spcenctr_trench_slope);
 	state_save_register_func_postload(adjust_strobe_timers);
 
-	machine_start_mw8080bw(machine);
+	MACHINE_START_CALL(mw8080bw);
 }
 
 
@@ -2225,7 +2226,7 @@ static MACHINE_START( phantom2 )
 	/* setup for save states */
 	state_save_register_global(phantom2_cloud_counter);
 
-	machine_start_mw8080bw(machine);
+	MACHINE_START_CALL(mw8080bw);
 }
 
 
@@ -2462,7 +2463,7 @@ static MACHINE_START( invaders )
 	/* setup for save states */
 	state_save_register_global(invaders_flip_screen);
 
-	machine_start_mw8080bw(machine);
+	MACHINE_START_CALL(mw8080bw);
 }
 
 
@@ -2478,7 +2479,7 @@ void invaders_set_flip_screen(UINT8 data)
 }
 
 
-static UINT32 invaders_coin_input_r(void *param)
+static CUSTOM_INPUT( invaders_coin_input_r )
 {
 	UINT32 ret = readinputportbytag(INVADERS_COIN_INPUT_PORT_TAG);
 
@@ -2488,7 +2489,7 @@ static UINT32 invaders_coin_input_r(void *param)
 }
 
 
-static UINT32 invaders_sw6_sw7_r(void *param)
+static CUSTOM_INPUT( invaders_sw6_sw7_r )
 {
 	UINT32 ret;
 
@@ -2504,7 +2505,7 @@ static UINT32 invaders_sw6_sw7_r(void *param)
 }
 
 
-static UINT32 invaders_sw5_r(void *param)
+static CUSTOM_INPUT( invaders_sw5_r )
 {
 	UINT32 ret;
 
@@ -2520,7 +2521,7 @@ static UINT32 invaders_sw5_r(void *param)
 }
 
 
-static UINT32 invaders_in0_control_r(void *param)
+static CUSTOM_INPUT( invaders_in0_control_r )
 {
 	UINT32 ret;
 
@@ -2536,7 +2537,7 @@ static UINT32 invaders_in0_control_r(void *param)
 }
 
 
-UINT32 invaders_in2_control_r(void *param)
+CUSTOM_INPUT( invaders_in2_control_r )
 {
 	UINT32 ret;
 
@@ -2678,7 +2679,7 @@ MACHINE_DRIVER_END
 #define BLUESHRK_COIN_INPUT_PORT_TAG	("COIN")
 
 
-static UINT32 blueshrk_coin_input_r(void *param)
+static CUSTOM_INPUT( blueshrk_coin_input_r )
 {
 	UINT32 ret = readinputportbytag(BLUESHRK_COIN_INPUT_PORT_TAG);
 
@@ -2914,10 +2915,19 @@ ROM_END
 
 ROM_START( desertgu )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "desertgu.h", 0x0000, 0x0800, CRC(c0030d7c) SHA1(4d0a3a59d4f8181c6e30966a6b1d19ba5b29c398) )
-	ROM_LOAD( "desertgu.g", 0x0800, 0x0800, CRC(1ddde10b) SHA1(8fb8e85844a8ec6c0722883013ecdd4eeaeb08c1) )
-	ROM_LOAD( "desertgu.f", 0x1000, 0x0800, CRC(808e46f1) SHA1(1cc4e9b0aa7e9546c133bd40d40ede6f2fbe93ba) )
+	ROM_LOAD( "9316.1h",    0x0000, 0x0800, CRC(c0030d7c) SHA1(4d0a3a59d4f8181c6e30966a6b1d19ba5b29c398) )
+	ROM_LOAD( "9316.1g",    0x0800, 0x0800, CRC(1ddde10b) SHA1(8fb8e85844a8ec6c0722883013ecdd4eeaeb08c1) )
+	ROM_LOAD( "9316.1f",    0x1000, 0x0800, CRC(808e46f1) SHA1(1cc4e9b0aa7e9546c133bd40d40ede6f2fbe93ba) )
 	ROM_LOAD( "desertgu.e", 0x1800, 0x0800, CRC(ac64dc62) SHA1(202433dfb174901bd3b91e843d9d697a8333ef9e) )
+ROM_END
+
+
+ROM_START( roadrunm )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_LOAD( "9316.1h",    0x0000, 0x0800, CRC(c0030d7c) SHA1(4d0a3a59d4f8181c6e30966a6b1d19ba5b29c398) )
+	ROM_LOAD( "9316.1g",    0x0800, 0x0800, CRC(1ddde10b) SHA1(8fb8e85844a8ec6c0722883013ecdd4eeaeb08c1) )
+	ROM_LOAD( "9316.1f",    0x1000, 0x0800, CRC(808e46f1) SHA1(1cc4e9b0aa7e9546c133bd40d40ede6f2fbe93ba) )
+	ROM_LOAD( "9316.1e",    0x1800, 0x0800, CRC(db5996a5) SHA1(cbc784e3ff9c7ad4954f3af8bfd786d3d17d1e0c) )
 ROM_END
 
 
@@ -3077,33 +3087,34 @@ ROM_END
  *
  *************************************/
 
-/* PCB #              rom       parent  machine   inp */
+/* PCB #              rom       parent    machine   inp */
 
-/* 596 */ GAME( 1976, seawolf,  0,      seawolf,  seawolf,  0, ROT0,   "Midway", "Sea Wolf", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
-/* 597 */ GAMEL(1975, gunfight, 0,      gunfight, gunfight, 0, ROT0,   "Midway", "Gun Fight", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_hoffff20 )
+/* 596 */ GAME( 1976, seawolf,  0,        seawolf,  seawolf,  0, ROT0,   "Midway", "Sea Wolf", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+/* 597 */ GAMEL(1975, gunfight, 0,        gunfight, gunfight, 0, ROT0,   "Midway", "Gun Fight", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_hoffff20 )
 /* 604 Gun Fight (cocktail, dump does not exist) */
-/* 605 */ GAME( 1976, tornbase, 0,      tornbase, tornbase, 0, ROT0,   "Midway / Taito", "Tornado Baseball / Ball Park", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
-/* 610 */ GAME( 1976, 280zzzap, 0,      zzzap,    zzzap,    0, ROT0,   "Midway", "Datsun 280 Zzzap", GAME_NO_SOUND | GAME_SUPPORTS_SAVE  )
-/* 611 */ GAMEL(1976, maze,     0,      maze,     maze,     0, ROT0,   "Midway", "Amazing Maze", GAME_SUPPORTS_SAVE , layout_ho4f893d )
-/* 612 */ GAME( 1977, boothill, 0,      boothill, boothill, 0, ROT0,   "Midway", "Boot Hill" , GAME_SUPPORTS_SAVE  )
-/* 615 */ GAME( 1977, checkmat, 0,      checkmat, checkmat, 0, ROT0,   "Midway", "Checkmate", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
-/* 618 */ GAME( 1977, desertgu, 0,      desertgu, desertgu, 0, ROT0,   "Midway", "Desert Gun", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
-/* 619 */ GAME( 1977, dplay,    0,      dplay,    dplay,    0, ROT0,   "Midway", "Double Play", GAME_SUPPORTS_SAVE  )
-/* 622 */ GAME( 1977, lagunar,  0,      zzzap,    lagunar,  0, ROT90,  "Midway", "Laguna Racer", GAME_NO_SOUND | GAME_SUPPORTS_SAVE  )
-/* 623 */ GAME( 1977, gmissile, 0,      gmissile, gmissile, 0, ROT0,   "Taito / Midway", "Missile X / Guided Missile", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
-/* 626 */ GAME( 1977, m4,       0,      m4,       m4,       0, ROT0,   "Midway", "M-4", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
-/* 630 */ GAMEL(1978, clowns,   0,      clowns,   clowns,   0, ROT0,   "Midway", "Clowns (rev. 2)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_clowns )
-/* 630 */ GAMEL(1978, clowns1,  clowns, clowns,   clowns1,  0, ROT0,   "Midway", "Clowns (rev. 1)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_clowns )
+/* 605 */ GAME( 1976, tornbase, 0,        tornbase, tornbase, 0, ROT0,   "Midway / Taito", "Tornado Baseball / Ball Park", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
+/* 610 */ GAME( 1976, 280zzzap, 0,        zzzap,    zzzap,    0, ROT0,   "Midway", "Datsun 280 Zzzap", GAME_NO_SOUND | GAME_SUPPORTS_SAVE  )
+/* 611 */ GAMEL(1976, maze,     0,        maze,     maze,     0, ROT0,   "Midway", "Amazing Maze", GAME_SUPPORTS_SAVE , layout_ho4f893d )
+/* 612 */ GAME( 1977, boothill, 0,        boothill, boothill, 0, ROT0,   "Midway", "Boot Hill" , GAME_SUPPORTS_SAVE  )
+/* 615 */ GAME( 1977, checkmat, 0,        checkmat, checkmat, 0, ROT0,   "Midway", "Checkmate", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
+/* 618 */ GAME( 1977, desertgu, 0,        desertgu, desertgu, 0, ROT0,   "Midway", "Desert Gun", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
+/* 618 */ GAME( 1977, roadrunm, desertgu, desertgu, desertgu, 0, ROT0,   "Midway", "Road Runner (Midway)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+/* 619 */ GAME( 1977, dplay,    0,        dplay,    dplay,    0, ROT0,   "Midway", "Double Play", GAME_SUPPORTS_SAVE  )
+/* 622 */ GAME( 1977, lagunar,  0,        zzzap,    lagunar,  0, ROT90,  "Midway", "Laguna Racer", GAME_NO_SOUND | GAME_SUPPORTS_SAVE  )
+/* 623 */ GAME( 1977, gmissile, 0,        gmissile, gmissile, 0, ROT0,   "Taito / Midway", "Missile X / Guided Missile", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
+/* 626 */ GAME( 1977, m4,       0,        m4,       m4,       0, ROT0,   "Midway", "M-4", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
+/* 630 */ GAMEL(1978, clowns,   0,        clowns,   clowns,   0, ROT0,   "Midway", "Clowns (rev. 2)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_clowns )
+/* 630 */ GAMEL(1978, clowns1,  clowns,   clowns,   clowns1,  0, ROT0,   "Midway", "Clowns (rev. 1)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_clowns )
 /* 640 Space Walk (dump does not exist) */
-/* 642 */ GAME( 1978, einning,  0,      dplay,    einning,  0, ROT0,   "Midway", "Extra Inning", GAME_SUPPORTS_SAVE  )
-/* 643 */ GAME( 1978, shuffle,  0,      shuffle,  shuffle,  0, ROT90,  "Midway", "Shuffleboard", GAME_NO_SOUND | GAME_SUPPORTS_SAVE  )
-/* 644 */ GAME( 1977, dogpatch, 0,      dogpatch, dogpatch, 0, ROT0,   "Midway", "Dog Patch", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
-/* 645 */ GAME( 1980, spcenctr, 0,      spcenctr, spcenctr, 0, ROT0,   "Midway", "Space Encounters", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
-/* 652 */ GAMEL(1979, phantom2, 0,      phantom2, phantom2, 0, ROT0,   "Midway", "Phantom II", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_hoa0a0ff )
-/* 730 */ GAME( 1978, bowler,   0,      bowler,   bowler,   0, ROT90,  "Midway", "Bowling Alley", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
-/* 739 */ GAMEL(1978, invaders, 0,      invaders, invaders, 0, ROT270, "Midway / Taito", "Space Invaders / Space Invaders M", GAME_SUPPORTS_SAVE , layout_invaders )
-/* 742 */ GAME( 1978, blueshrk, 0,      blueshrk, blueshrk, 0, ROT0,   "Midway", "Blue Shark", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
+/* 642 */ GAME( 1978, einning,  0,        dplay,    einning,  0, ROT0,   "Midway", "Extra Inning", GAME_SUPPORTS_SAVE  )
+/* 643 */ GAME( 1978, shuffle,  0,        shuffle,  shuffle,  0, ROT90,  "Midway", "Shuffleboard", GAME_NO_SOUND | GAME_SUPPORTS_SAVE  )
+/* 644 */ GAME( 1977, dogpatch, 0,        dogpatch, dogpatch, 0, ROT0,   "Midway", "Dog Patch", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
+/* 645 */ GAME( 1980, spcenctr, 0,        spcenctr, spcenctr, 0, ROT0,   "Midway", "Space Encounters", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
+/* 652 */ GAMEL(1979, phantom2, 0,        phantom2, phantom2, 0, ROT0,   "Midway", "Phantom II", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_hoa0a0ff )
+/* 730 */ GAME( 1978, bowler,   0,        bowler,   bowler,   0, ROT90,  "Midway", "Bowling Alley", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
+/* 739 */ GAMEL(1978, invaders, 0,        invaders, invaders, 0, ROT270, "Midway / Taito", "Space Invaders / Space Invaders M", GAME_SUPPORTS_SAVE , layout_invaders )
+/* 742 */ GAME( 1978, blueshrk, 0,        blueshrk, blueshrk, 0, ROT0,   "Midway", "Blue Shark", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
 /* 749 4 Player Bowling Alley (cocktail, dump does not exist) */
-/* 851 */ GAMEL(1980, invad2ct, 0,      invad2ct, invad2ct, 0, ROT90,  "Midway", "Space Invaders II (Midway, cocktail)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE, layout_invad2ct )
+/* 851 */ GAMEL(1980, invad2ct, 0,        invad2ct, invad2ct, 0, ROT90,  "Midway", "Space Invaders II (Midway, cocktail)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE, layout_invad2ct )
 /* 852 Space Invaders Deluxe (color hardware, not in this driver) */
 /* 870 Space Invaders Deluxe (cocktail, dump does not exist) */

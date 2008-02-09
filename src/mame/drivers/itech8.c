@@ -453,6 +453,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
 #include "machine/6522via.h"
@@ -463,7 +464,6 @@
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
 #include "sound/okim6295.h"
-#include <math.h>
 
 
 #define FULL_LOGGING	0
@@ -538,7 +538,7 @@ static const struct via6522_interface via_interface =
  *
  *************************************/
 
-void itech8_update_interrupts(int periodic, int tms34061, int blitter)
+void itech8_update_interrupts(running_machine *machine, int periodic, int tms34061, int blitter)
 {
 	/* update the states */
 	if (periodic != -1) periodic_int = periodic;
@@ -546,12 +546,12 @@ void itech8_update_interrupts(int periodic, int tms34061, int blitter)
 	if (blitter != -1) blitter_int = blitter;
 
 	/* handle the 6809 case */
-	if (Machine->drv->cpu[0].type == CPU_M6809)
+	if (machine->drv->cpu[0].type == CPU_M6809)
 	{
 		/* just modify lines that have changed */
-		if (periodic != -1) cpunum_set_input_line(0, INPUT_LINE_NMI, periodic ? ASSERT_LINE : CLEAR_LINE);
-		if (tms34061 != -1) cpunum_set_input_line(0, M6809_IRQ_LINE, tms34061 ? ASSERT_LINE : CLEAR_LINE);
-		if (blitter != -1) cpunum_set_input_line(0, M6809_FIRQ_LINE, blitter ? ASSERT_LINE : CLEAR_LINE);
+		if (periodic != -1) cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, periodic ? ASSERT_LINE : CLEAR_LINE);
+		if (tms34061 != -1) cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, tms34061 ? ASSERT_LINE : CLEAR_LINE);
+		if (blitter != -1) cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, blitter ? ASSERT_LINE : CLEAR_LINE);
 	}
 
 	/* handle the 68000 case */
@@ -565,9 +565,9 @@ void itech8_update_interrupts(int periodic, int tms34061, int blitter)
 
 		/* update it */
 		if (level)
-			cpunum_set_input_line(0, level, ASSERT_LINE);
+			cpunum_set_input_line(machine, 0, level, ASSERT_LINE);
 		else
-			cpunum_set_input_line(0, 7, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 	}
 }
 
@@ -582,8 +582,8 @@ void itech8_update_interrupts(int periodic, int tms34061, int blitter)
 static INTERRUPT_GEN( generate_nmi )
 {
 	/* signal the NMI */
-	itech8_update_interrupts(1, -1, -1);
-	itech8_update_interrupts(0, -1, -1);
+	itech8_update_interrupts(machine, 1, -1, -1);
+	itech8_update_interrupts(machine, 0, -1, -1);
 
 	if (FULL_LOGGING) logerror("------------ VBLANK (%d) --------------\n", video_screen_get_vpos(0));
 }
@@ -592,13 +592,13 @@ static INTERRUPT_GEN( generate_nmi )
 static WRITE8_HANDLER( itech8_nmi_ack_w )
 {
 /* doesn't seem to hold for every game (e.g., hstennis) */
-/*  cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);*/
+/*  cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);*/
 }
 
 
 static void generate_sound_irq(int state)
 {
-	cpunum_set_input_line(1, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -619,7 +619,7 @@ static MACHINE_START( itech8 )
 
 static MACHINE_START( sstrike )
 {
-	machine_start_itech8(machine);
+	MACHINE_START_CALL(itech8);
 
 	/* we need to update behind the beam as well */
 	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 32, behind_the_beam_update);
@@ -780,7 +780,7 @@ static WRITE8_HANDLER( ym2203_portb_out )
 static TIMER_CALLBACK( delayed_sound_data_w )
 {
 	sound_data = param;
-	cpunum_set_input_line(1, M6809_IRQ_LINE, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, ASSERT_LINE);
 }
 
 
@@ -803,7 +803,7 @@ static WRITE8_HANDLER( gtg2_sound_data_w )
 
 static READ8_HANDLER( sound_data_r )
 {
-	cpunum_set_input_line(1, M6809_IRQ_LINE, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, CLEAR_LINE);
 	return sound_data;
 }
 
@@ -818,9 +818,9 @@ static READ8_HANDLER( sound_data_r )
 static void via_irq(int state)
 {
 	if (state)
-		cpunum_set_input_line(1, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
-		cpunum_set_input_line(1, M6809_FIRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -1391,7 +1391,7 @@ static INPUT_PORTS_START( hstennis )
 
 	PORT_START	/* 60 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("P2 Soft") PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("P1 Soft") PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -1774,11 +1774,10 @@ static MACHINE_DRIVER_START( itech8_core_lo )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(512, 263)
-	MDRV_PALETTE_LENGTH(256)
-
 	MDRV_VIDEO_START(itech8)
+
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MDRV_SCREEN_SIZE(512, 263)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

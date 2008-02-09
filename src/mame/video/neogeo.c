@@ -11,6 +11,7 @@
 
 #define NUM_PENS	(0x1000)
 
+#define VERBOSE 	(0)
 
 static UINT8 *sprite_gfx;
 static UINT32 sprite_gfx_address_mask;
@@ -798,7 +799,7 @@ static void set_video_control(UINT16 data)
 	set_auto_animation_speed(data >> 8);
 	set_auto_animation_disabled(data & 0x0008);
 
-	neogeo_set_display_poisition_interrupt_control(data & 0x00f0);
+	neogeo_set_display_position_interrupt_control(data & 0x00f0);
 }
 
 

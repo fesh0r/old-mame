@@ -20,6 +20,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
 #include "eprom.h"
@@ -42,7 +43,7 @@ static UINT16 *sync_data;
  *
  *************************************/
 
-static void update_interrupts(void)
+static void update_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 	int newstate2 = 0;
@@ -53,14 +54,14 @@ static void update_interrupts(void)
 		newstate |= 6;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 
 	if (newstate2)
-		cpunum_set_input_line(1, newstate2, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, newstate2, ASSERT_LINE);
 	else
-		cpunum_set_input_line(1, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, 7, CLEAR_LINE);
 }
 
 
@@ -76,7 +77,7 @@ static MACHINE_RESET( klaxp )
 
 static MACHINE_RESET( eprom )
 {
-	machine_reset_klaxp(machine);
+	MACHINE_RESET_CALL(klaxp);
 	state_save_register_global_pointer(sync_data, 2);
 }
 
@@ -122,9 +123,9 @@ static WRITE16_HANDLER( eprom_latch_w )
 	if (ACCESSING_LSB)
 	{
 		if (data & 1)
-			cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 		else
-			cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 	}
 }
 
@@ -730,7 +731,7 @@ ROM_END
 static DRIVER_INIT( eprom )
 {
 	atarigen_eeprom_default = NULL;
-	atarijsa_init(2, 6, 1, 0x0002);
+	atarijsa_init(machine, 1, 0x0002);
 
 	/* install CPU synchronization handlers */
 	sync_data = memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x16cc00, 0x16cc01, 0, 0, sync_r);
@@ -743,14 +744,14 @@ static DRIVER_INIT( eprom )
 static DRIVER_INIT( klaxp )
 {
 	atarigen_eeprom_default = NULL;
-	atarijsa_init(1, 2, 1, 0x0002);
+	atarijsa_init(machine, 1, 0x0002);
 }
 
 
 static DRIVER_INIT( guts )
 {
 	atarigen_eeprom_default = NULL;
-	atarijsa_init(1, 6, 1, 0x0002);
+	atarijsa_init(machine, 1, 0x0002);
 }
 
 

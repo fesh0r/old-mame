@@ -40,6 +40,7 @@
 
 #include "driver.h"
 #include "memconv.h"
+#include "deprecat.h"
 #include "machine/8237dma.h"
 #include "machine/pic8259.h"
 #include "machine/pit8253.h"
@@ -380,8 +381,6 @@ static const gfx_layout CGA_charlayout =
     { 0,1,2,3,4,5,6,7 },
     /* y offsets */
 	{ 0*8,1*8,2*8,3*8,
-	  4*8,5*8,6*8,7*8,
-	  0*8,1*8,2*8,3*8,
 	  4*8,5*8,6*8,7*8 },
     8*8                     /* every char takes 8 bytes */
 };
@@ -488,7 +487,7 @@ static const struct pci_device_info intel82371ab =
 
 static void set_gate_a20(int a20)
 {
-	cpunum_set_input_line(0, INPUT_LINE_A20, a20);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_A20, a20);
 }
 
 static void keyboard_interrupt(int state)

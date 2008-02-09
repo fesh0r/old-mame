@@ -14,6 +14,7 @@
 extern void decrypt156(void);
 
 #include "driver.h"
+#include "deprecat.h"
 #include "decocrpt.h"
 #include "deco32.h"
 #include "machine/eeprom.h"
@@ -478,7 +479,7 @@ static const struct YMZ280Binterface ymz280b_intf =
 
 static INTERRUPT_GEN( deco32_vbl_interrupt )
 {
-	cpunum_set_input_line(0, ARM_IRQ_LINE, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, HOLD_LINE);
 }
 
 
@@ -690,12 +691,10 @@ static DRIVER_INIT( backfire )
 	deco56_decrypt(REGION_GFX1); /* 141 */
 	deco56_decrypt(REGION_GFX2); /* 141 */
 	decrypt156();
-	cpunum_set_clockscale(0, 4.0f); /* core timings aren't accurate */
+	cpunum_set_clockscale(machine, 0, 4.0f); /* core timings aren't accurate */
 	descramble_sound();
 	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0170018, 0x017001b, 0, 0, backfire_speedup_r );
 }
 
-GAME( 1995, backfire, 0,        backfire,      backfire, backfire, ROT0, "Data East Corporation", "Backfire!", 0 )
+GAME( 1995, backfire, 0,        backfire,      backfire, backfire, ROT0, "Data East Corporation", "Backfire! (set 1)", 0 )
 GAME( 1995, backfira, backfire, backfire,      backfire, backfire, ROT0, "Data East Corporation", "Backfire! (set 2)", 0 ) // defaults to wheel controls, must change to joystick to play
-
-

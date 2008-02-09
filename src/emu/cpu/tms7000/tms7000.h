@@ -3,7 +3,7 @@
  *   tms7000.h (c header file)
  *   Portable TMS7000 emulator (Texas Instruments 7000)
  *
- *   Copyright (c) 2001 tim lindner, all rights reserved.
+ *   Copyright tim lindner, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -47,9 +47,9 @@ extern void tms7000_A6EC1( void ); /* External event counter */
 extern void tms7000_get_info(UINT32 state, cpuinfo *info);
 extern void tms7000_exl_get_info(UINT32 state, cpuinfo *info);
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 extern unsigned tms7000_dasm( char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram );
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 #endif /* _TMS7000_H */
 

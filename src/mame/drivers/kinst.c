@@ -9,7 +9,10 @@
         * Killer Instinct 2
 
     Known bugs:
-        * none at this time
+        * the SRAM test fails in diagnostics; this is due to the fact that
+          the test relies on executing out of the cache while it tromps
+          over (and eventually restores) the instructions it is executing;
+          this will likely never be fixed
 
 ****************************************************************************
 
@@ -126,6 +129,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/mips/mips3.h"
 #include "cpu/adsp2100/adsp2100.h"
 #include "machine/idectrl.h"
@@ -134,7 +138,7 @@ Notes:
 
 
 /* constants */
-#define MASTER_CLOCK	50000000
+#define MASTER_CLOCK	XTAL_50MHz
 
 
 /* local variables */
@@ -188,9 +192,6 @@ static MACHINE_START( kinst )
 
 static MACHINE_RESET( kinst )
 {
-	/* keep the DCS held in reset at startup */
-	dcs_reset_w(1);
-
 	/* reset the IDE controller */
 	ide_controller_reset(0);
 
@@ -242,20 +243,20 @@ static VIDEO_UPDATE( kinst )
 
 static TIMER_CALLBACK( irq0_stop )
 {
-	cpunum_set_input_line(0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 
 static INTERRUPT_GEN( irq0_start )
 {
-	cpunum_set_input_line(0, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, irq0_stop);
 }
 
 
 static void ide_interrupt(int state)
 {
-	cpunum_set_input_line(0, 1, state);
+	cpunum_set_input_line(Machine, 0, 1, state);
 }
 
 
@@ -379,7 +380,7 @@ static WRITE32_HANDLER( kinst_control_w )
 
 static TIMER_CALLBACK( end_spin )
 {
-	cpu_triggerint(0);
+	cpu_triggerint(machine, 0);
 }
 
 

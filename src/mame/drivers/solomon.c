@@ -6,6 +6,7 @@ driver by Mirko Buffoni
 
 ***************************************************************************/
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
@@ -24,7 +25,7 @@ extern VIDEO_UPDATE( solomon );
 static WRITE8_HANDLER( solomon_sh_command_w )
 {
 	soundlatch_w(offset,data);
-	cpunum_set_input_line(1,INPUT_LINE_NMI,PULSE_LINE);
+	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 /* this is checked on the title screen and when you reach certain scores in the game

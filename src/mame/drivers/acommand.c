@@ -53,6 +53,7 @@ JALCF1   BIN     1,048,576  02-07-99  1:11a JALCF1.BIN
 *******************************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/okim6295.h"
 
 static tilemap *tx_tilemap,*bg_tilemap;
@@ -508,9 +509,9 @@ GFXDECODE_END
 static INTERRUPT_GEN( acommand_irq )
 {
 	if (cpu_getiloops() == 0)
-		cpunum_set_input_line(0, 2, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
 	else if (cpu_getiloops() == 1)
-		cpunum_set_input_line(0, 3, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 3, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( acommand )

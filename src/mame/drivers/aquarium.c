@@ -50,6 +50,7 @@ Stephh's notes (based on the game M68000 code and some tests) :
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
@@ -102,7 +103,7 @@ static WRITE16_HANDLER( aquarium_sound_w )
 //  popmessage("sound write %04x",data);
 
 	soundlatch_w(1,data&0xff);
-	cpunum_set_input_line( 1, INPUT_LINE_NMI, PULSE_LINE );
+	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE );
 }
 
 static WRITE8_HANDLER( aquarium_z80_bank_w )
@@ -355,7 +356,7 @@ GFXDECODE_END
 
 static void irq_handler(int irq)
 {
-	cpunum_set_input_line( 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
+	cpunum_set_input_line(Machine, 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
 static const struct YM2151interface ym2151_interface =

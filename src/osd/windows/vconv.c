@@ -2,7 +2,7 @@
 //
 //  vconv.c - VC++ parameter conversion code
 //
-//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+//  Copyright Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -56,7 +56,7 @@ static const translation_info gcc_translate[] =
 	{ 0,		"-c",					"/c~/Fo" },
 	{ 0,		"-E",					"/c~/E >" },
 	{ 0,		"-S",					"/c~/Fa" },
-	{ VS7,		"-O0",					"/Od /GS" },
+	{ VS7,		"-O0",					"/Od /GS /Oi" },
 	{ 0,		"-O0",					"/Od" },
 	{ 0,		"-O1",					"/O2" },
 	{ 0,		"-O2",					"/O2" },
@@ -67,8 +67,7 @@ static const translation_info gcc_translate[] =
 	{ 0,		"-fno-strict-aliasing",	"/Oa" },
 	{ 0,		"-fno-omit-frame-pointer",	"" },
 	{ 0,		"-Werror",				"/WX" },
-	{ VS2005,	"-Wall",				"/Wall /W3 /wd4018 /wd4146 /wd4242 /wd4244 /wd4305 /wd4619 /wd4702 /wd4706 /wd4710 /wd4711 /wd4738 /wd4826" },
-	{ VS7,		"-Wall",				"/Wall /W3 /wd4018 /wd4146 /wd4242 /wd4244 /wd4305 /wd4550 /wd4619 /wd4702 /wd4706 /wd4710 /wd4711 /wd4826" },
+	{ VS7,		"-Wall",				"/Wall /W3 /wd4018 /wd4146 /wd4242 /wd4244 /wd4619 /wd4702 /wd4706 /wd4710 /wd4711 /wd4738 /wd4826" },
 	{ 0,		"-Wall",				"/W0" },
 	{ VS7,		"-Wno-unused",			"/wd4100 /wd4101 /wd4102" },
 	{ 0,		"-W*",					"" },

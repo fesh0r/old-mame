@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "video/poly.h"
 
 UINT8 *taitojc_texture;
@@ -61,7 +62,7 @@ static void taitojc_tile_update(running_machine *machine)
 			if (taitojc_dirty_map[i])
 			{
 				taitojc_dirty_map[i] = 0;
-				decodechar(Machine->gfx[taitojc_gfx_index], i, (UINT8 *)taitojc_char_ram, &taitojc_char_layout);
+				decodechar(Machine->gfx[taitojc_gfx_index], i, (UINT8 *)taitojc_char_ram);
 			}
 		}
 		tilemap_mark_all_tiles_dirty(taitojc_tilemap);
@@ -264,7 +265,7 @@ VIDEO_UPDATE( taitojc )
 		}
 	}
 
-	copybitmap(bitmap, framebuffer, 0, 0, 0, 0, cliprect, TRANSPARENCY_PEN, 0);
+	copybitmap_trans(bitmap, framebuffer, 0, 0, 0, 0, cliprect, 0);
 
 	for (i=(0xc00/4)-2; i >= 0; i-=2)
 	{

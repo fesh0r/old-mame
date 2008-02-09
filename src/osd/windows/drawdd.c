@@ -2,7 +2,7 @@
 //
 //  drawdd.c - Win32 DirectDraw implementation
 //
-//  Copyright (c) 1996-2007, Nicola Salmoria and the MAME Team.
+//  Copyright Nicola Salmoria and the MAME Team.
 //  Visit http://mamedev.org for licensing and usage restrictions.
 //
 //============================================================
@@ -23,6 +23,7 @@
 #include "render.h"
 #include "rendutil.h"
 #include "options.h"
+#include "deprecat.h"
 
 // MAMEOS headers
 #include "winmain.h"
@@ -1261,7 +1262,7 @@ static HRESULT WINAPI enum_modes_callback(LPDDSURFACEDESC2 desc, LPVOID context)
 
 	// if refresh is smaller than we'd like, it only scores up to 0.1
 	if ((double)desc->dwRefreshRate < einfo->target_refresh)
-		refresh_score *= 0.1;
+		refresh_score *= 0.1f;
 
 	// if we're looking for a particular refresh, make sure it matches
 	if (desc->dwRefreshRate == einfo->window->refresh)

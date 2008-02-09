@@ -1,7 +1,7 @@
  /**************************************************************************\
  *                      Microchip PIC16C5x Emulator                         *
  *                                                                          *
- *                    Copyright (C) 2003+ Tony La Porta                     *
+ *                    Copyright Tony La Porta                               *
  *                 Originally written for the MAME project.                 *
  *                                                                          *
  *                                                                          *
@@ -54,6 +54,7 @@
 
 
 #include "debugger.h"
+#include "deprecat.h"
 #include "pic16c5x.h"
 
 
@@ -840,7 +841,7 @@ static int pic16C5x_execute(int cycles)
 		if (PD == 0)						/* Sleep Mode */
 		{
 			inst_cycles = (1*CLK);
-			CALL_MAME_DEBUG;
+			CALL_DEBUGGER(R.PC);
 			if (WDTE) {
 				pic16C5x_update_watchdog(1*CLK);
 			}
@@ -849,7 +850,7 @@ static int pic16C5x_execute(int cycles)
 		{
 			R.PREVPC = R.PC;
 
-			CALL_MAME_DEBUG;
+			CALL_DEBUGGER(R.PC);
 
 			R.opcode.d = M_RDOP(R.PC);
 			R.PC++;
@@ -966,7 +967,8 @@ static void pic16C5x_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_INPUT_LINES:					info->i = 0;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
 		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
-		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = PIC16C5x_CLOCK_DIVIDER;		break;
+		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
+		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 4;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;							break;
 		case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 2;							break;
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1*CLK;						break;
@@ -1011,9 +1013,9 @@ static void pic16C5x_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = pic16C5x_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = pic16C5x_execute;		break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = pic16C5x_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &pic16C5x_icount;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -1021,7 +1023,7 @@ static void pic16C5x_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Microchip");			break;
 		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "1.12");				break;
 		case CPUINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);				break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright (C)2003+ by Tony La Porta"); break;
+		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Tony La Porta"); break;
 
 		case CPUINFO_STR_FLAGS:
 			sprintf(info->s, "%01x%c%c%c%c%c %c%c%c%03x",

@@ -33,6 +33,7 @@ Merge with other Video System games ?
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "gstriker.h"
 #include "sound/2610intf.h"
 
@@ -172,6 +173,8 @@ VSIS-20V3
    U17-20    ?                 YM2610
                    12   Z80
 
+Frequencies: 68k is XTAL_32MHZ/2
+             z80 is XTAL_20MHz/4
 
 ******************************************************************************/
 
@@ -204,7 +207,7 @@ static WRITE16_HANDLER( sound_command_w )
 	{
 		pending_command = 1;
 		soundlatch_w(offset,data & 0xff);
-		cpunum_set_input_line(1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -271,9 +274,9 @@ GFXDECODE_END
 static void gs_ym2610_irq(int irq)
 {
 	if (irq)
-		cpunum_set_input_line(1, 0, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, 0, ASSERT_LINE);
 	else
-		cpunum_set_input_line(1, 0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =
@@ -661,9 +664,7 @@ static DRIVER_INIT( twrldc94 )
 GAME( 1993, gstriker, 0,        gstriker, gstriker, 0,        ROT0, "Human", "Grand Striker", GAME_IMPERFECT_GRAPHICS )
 
 /* Similar, but not identical hardware, appear to be protected by an MCU :-( */
-GAME( 199?, vgoalsoc, 0,        gstriker, gstriker, 0,        ROT0, "Tecmo", "V Goal Soccer", GAME_NOT_WORKING )
-GAME( 199?, vgoalsca, vgoalsoc, gstriker, gstriker, 0,        ROT0, "Tecmo", "V Goal Soccer (alt)", GAME_NOT_WORKING )
-GAME( 1994, twrldc94, 0,        twrldc94, gstriker, twrldc94,        ROT0, "Tecmo", "Tecmo World Cup '94", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS )
-GAME( 1994, twrdc94a, twrldc94,        twrldc94, gstriker, twrldc94,        ROT0, "Tecmo", "Tecmo World Cup '94 (set 2)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS )
-
-
+GAME( 199?, vgoalsoc, 0,        gstriker, gstriker, 0,        ROT0, "Tecmo", "V Goal Soccer (set 1)", GAME_NOT_WORKING )
+GAME( 199?, vgoalsca, vgoalsoc, gstriker, gstriker, 0,        ROT0, "Tecmo", "V Goal Soccer (set 2)", GAME_NOT_WORKING )
+GAME( 1994, twrldc94, 0,        twrldc94, gstriker, twrldc94, ROT0, "Tecmo", "Tecmo World Cup '94 (set 1)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS )
+GAME( 1994, twrdc94a, twrldc94, twrldc94, gstriker, twrldc94, ROT0, "Tecmo", "Tecmo World Cup '94 (set 2)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS )

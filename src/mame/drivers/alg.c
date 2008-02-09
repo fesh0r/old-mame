@@ -22,6 +22,7 @@
 
 #include "driver.h"
 #include "render.h"
+#include "deprecat.h"
 #include "includes/amiga.h"
 #include "machine/laserdsc.h"
 
@@ -76,7 +77,7 @@ static VIDEO_START( alg )
 	add_exit_callback(machine, video_cleanup);
 
 	/* standard video start */
-	video_start_amiga(machine);
+	VIDEO_START_CALL(amiga);
 
 	/* configure pen 4096 as transparent in the renderer and use it for the genlock color */
 	render_container_set_palette_alpha(render_container_get_screen(0), 4096, 0x00);
@@ -152,7 +153,7 @@ static MACHINE_START( alg )
 
 static MACHINE_RESET( alg )
 {
-	machine_reset_amiga(machine);
+	MACHINE_RESET_CALL(amiga);
 	laserdisc_reset(discinfo, 0);
 }
 
@@ -226,7 +227,7 @@ static void alg_potgo_w(UINT16 data)
 }
 
 
-static UINT32 lightgun_pos_r(void *param)
+static CUSTOM_INPUT( lightgun_pos_r )
 {
 	int x = 0, y = 0;
 
@@ -236,14 +237,14 @@ static UINT32 lightgun_pos_r(void *param)
 }
 
 
-static UINT32 lightgun_trigger_r(void *param)
+static CUSTOM_INPUT( lightgun_trigger_r )
 {
 	/* read the trigger control based on the input select */
 	return (readinputportbytag("TRIGGERS") >> input_select) & 1;
 }
 
 
-static UINT32 lightgun_holster_r(void *param)
+static CUSTOM_INPUT( lightgun_holster_r )
 {
 	/* read the holster control based on the input select */
 	return (readinputportbytag("TRIGGERS") >> (2 + input_select)) & 1;
@@ -269,7 +270,7 @@ static void alg_cia_0_porta_w(UINT8 data)
 
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MWA16_ROM);
+		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MWA16_UNMAP);
 }
 
 

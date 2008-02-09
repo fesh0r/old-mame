@@ -19,6 +19,11 @@
         * DUART emulation is very simplistic, in progress.
         * Digital volume control is not emulated.
 
+        * During the attract mode of Cluedo, just after the camera flash,
+        the camera colours go screwy and proceeding text is printed behind
+        the camera. Is it a TMS34010 emulation flaw or original game code bug?
+        For now, the GAME_IMPERFECT_GRAPHICS flag remains.
+
 ****************************************************************************
 
     Memory map (preliminary)
@@ -73,6 +78,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/tms34010/34010ops.h"
 #include "sound/upd7759.h"
@@ -158,9 +164,9 @@ static void update_irqs(void)
 		newstate = 5;
 
 	if (newstate)
-		cpunum_set_input_line(0, newstate, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, newstate, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -835,7 +841,7 @@ static MACHINE_DRIVER_START( jpmimpct )
 	MDRV_CPU_ADD(M68000, 8000000)
 	MDRV_CPU_PROGRAM_MAP(m68k_program_map, 0)
 
- 	MDRV_CPU_ADD(TMS34010, 40000000/TMS34010_CLOCK_DIVIDER)
+ 	MDRV_CPU_ADD(TMS34010, 40000000)
 	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(tms_program_map, 0)
 
@@ -1024,6 +1030,6 @@ ROM_END
 GAME( 1995, cluedo,   0,      jpmimpct, cluedo,   0, ROT0, "JPM", "Cluedo (prod. 2D)",          GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
 GAME( 1995, cluedo2c, cluedo, jpmimpct, cluedo,   0, ROT0, "JPM", "Cluedo (prod. 2C)",          GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
 GAME( 1995, cluedo2,  cluedo, jpmimpct, cluedo,   0, ROT0, "JPM", "Cluedo (prod. 2)",         	GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
-GAME( 1996, trivialp, 0,      jpmimpct, trivialp, 0, ROT0, "JPM", "Trivial Pursuit (prod. 1D)", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
-GAME( 1997, scrabble, 0,      jpmimpct, scrabble, 0, ROT0, "JPM", "Scrabble (rev. F)",          GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
-GAME( 1998, hngmnjpm, 0,      jpmimpct, hngmnjpm, 0, ROT0, "JPM", "Hangman (JPM)",              GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+GAME( 1996, trivialp, 0,      jpmimpct, trivialp, 0, ROT0, "JPM", "Trivial Pursuit (prod. 1D)", GAME_SUPPORTS_SAVE )
+GAME( 1997, scrabble, 0,      jpmimpct, scrabble, 0, ROT0, "JPM", "Scrabble (rev. F)",          GAME_SUPPORTS_SAVE )
+GAME( 1998, hngmnjpm, 0,      jpmimpct, hngmnjpm, 0, ROT0, "JPM", "Hangman (JPM)",              GAME_SUPPORTS_SAVE )

@@ -3,7 +3,7 @@
  *   cp1610.c
  *   Portable CP1610 emulator (General Instrument CP1610)
  *
- *   Copyright (c) 2004 Frank Palazzolo, all rights reserved.
+ *   Copyright Frank Palazzolo, all rights reserved.
  *
  *   - This source code is released as freeware for non-commercial purposes.
  *   - You are free to use and redistribute this code in modified or
@@ -23,6 +23,7 @@
 
 #include "cpuintrf.h"
 #include "debugger.h"
+#include "deprecat.h"
 #include "cp1610.h"
 
 #define S  0x80
@@ -1548,7 +1549,7 @@ static void cp1610_xori(int d)
 static void cp1610_reset(void)
 {
 	/* This is how we set the reset vector */
-	cpunum_set_input_line(cpu_getactivecpu(), CP1610_RESET, PULSE_LINE);
+	cpunum_set_input_line(Machine, cpu_getactivecpu(), CP1610_RESET, PULSE_LINE);
 }
 
 /***************************************************
@@ -2165,7 +2166,7 @@ static int cp1610_execute(int cycles)
 
     do
     {
-        CALL_MAME_DEBUG;
+        CALL_DEBUGGER(cp1610.r[7]);
 
 		cp1610.mask_interrupts = 0;
 
@@ -3447,6 +3448,7 @@ void cp1610_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_INT_INPUT_LINES:						info->i = 2;			break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;			break;
 	case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;	break;
+	case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;			break;
 	case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;			break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;			break;
 	case CPUINFO_INT_MAX_INSTRUCTION_BYTES:			info->i = 8;			break;
@@ -3489,9 +3491,9 @@ void cp1610_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_PTR_EXECUTE:						info->execute = cp1610_execute;			break;
 	case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = cp1610_dasm;		break;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &cp1610_icount;			break;
 
 	/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -3500,7 +3502,7 @@ void cp1610_get_info(UINT32 state, cpuinfo *info)
 	case CPUINFO_STR_CORE_VERSION:	strcpy(info->s = cpuintrf_temp_str(), "1.0");			break;
 	case CPUINFO_STR_CORE_FILE:		strcpy(info->s = cpuintrf_temp_str(), __FILE__);		break;
 	case CPUINFO_STR_CORE_CREDITS:	strcpy(info->s = cpuintrf_temp_str(),
-									"Copyright (c) 2004 Frank Palazzolo, all rights reserved.");
+									"Copyright Frank Palazzolo, all rights reserved.");
 									break;
     case CPUINFO_STR_FLAGS:
 			sprintf(info->s = cpuintrf_temp_str(), "%c%c%c%c",
