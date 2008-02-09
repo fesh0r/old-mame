@@ -1,26 +1,25 @@
 /*********************************************************************
 
-	drivers/oric.c
+    drivers/oric.c
 
-	Systems supported by this driver:
+    Systems supported by this driver:
 
-	Oric 1,
-	Oric Atmos,
-	Oric Telestrat,
-	Pravetz 8D
+    Oric 1,
+    Oric Atmos,
+    Oric Telestrat,
+    Pravetz 8D
 
-	Pravetz is a Bulgarian copy of the Oric Atmos and uses
-	Apple 2 disc drives for storage.
+    Pravetz is a Bulgarian copy of the Oric Atmos and uses
+    Apple 2 disc drives for storage.
 
-	This driver originally by Paul Cook, rewritten by Kevin Thacker.
+    This driver originally by Paul Cook, rewritten by Kevin Thacker.
 
 *********************************************************************/
 
 #include "driver.h"
 #include "mslegacy.h"
-#include "video/generic.h"
 #include "includes/oric.h"
-#include "includes/centroni.h"
+#include "machine/centroni.h"
 #include "devices/printer.h"
 #include "devices/mflopimg.h"
 #include "devices/cassette.h"
@@ -28,31 +27,31 @@
 #include "formats/oric_tap.h"
 #include "sound/ay8910.h"
 #include "machine/6522via.h"
-#include "includes/6551.h"
+#include "machine/6551.h"
 
 #include "includes/apple2.h"
 
 /*
-	Explaination of memory regions:
+    Explaination of memory regions:
 
-	I have split the memory region &c000-&ffff in this way because:
+    I have split the memory region &c000-&ffff in this way because:
 
-	All roms (os, microdisc and jasmin) use the 6502 IRQ vectors at the end
-	of memory &fff8-&ffff, but they are different sizes. The os is 16k, microdisc
-	is 8k and jasmin is 2k.
+    All roms (os, microdisc and jasmin) use the 6502 IRQ vectors at the end
+    of memory &fff8-&ffff, but they are different sizes. The os is 16k, microdisc
+    is 8k and jasmin is 2k.
 
-	There is also 16k of ram at &c000-&ffff which is normally masked
-	by the os rom, but when the microdisc or jasmin interfaces are used,
-	this ram can be accessed. For the microdisc and jasmin, the ram not
-	covered by the roms for these interfaces, can be accessed
-	if it is enabled.
+    There is also 16k of ram at &c000-&ffff which is normally masked
+    by the os rom, but when the microdisc or jasmin interfaces are used,
+    this ram can be accessed. For the microdisc and jasmin, the ram not
+    covered by the roms for these interfaces, can be accessed
+    if it is enabled.
 
-	MRA8_BANK1,MRA8_BANK2 and MRA8_BANK3 are used for a 16k rom.
-	MRA8_BANK2 and MRA8_BANK3 are used for a 8k rom.
-	MRA8_BANK3 is used for a 2k rom.
+    MRA8_BANK1,MRA8_BANK2 and MRA8_BANK3 are used for a 16k rom.
+    MRA8_BANK2 and MRA8_BANK3 are used for a 8k rom.
+    MRA8_BANK3 is used for a 2k rom.
 
-	0x0300-0x03ff is I/O access. It is not defined below because the
-	memory is setup dynamically depending on hardware that has been selected (microdisc, jasmin, apple2) etc.
+    0x0300-0x03ff is I/O access. It is not defined below because the
+    memory is setup dynamically depending on hardware that has been selected (microdisc, jasmin, apple2) etc.
 
 */
 
@@ -128,8 +127,8 @@ ADDRESS_MAP_END
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("LEFT") PORT_CODE(KEYCODE_LEFT) \
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("LSHIFT") PORT_CODE(KEYCODE_LSHIFT) \
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("UP") PORT_CODE(KEYCODE_UP) \
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(", <") PORT_CODE(KEYCODE_COMMA) \
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(". >") PORT_CODE(KEYCODE_STOP) \
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(". >") PORT_CODE(KEYCODE_STOP) \
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(", <") PORT_CODE(KEYCODE_COMMA) \
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("SPACE") PORT_CODE(KEYCODE_SPACE) \
  \
 	PORT_START /* KEY ROW 5 */ \
@@ -338,12 +337,12 @@ static INPUT_PORTS_START(oric)
 	PORT_CONFSETTING(    0x00, DEF_STR( None ) )
 	PORT_CONFSETTING(    0x01, "Microdisc" )
 	PORT_CONFSETTING(    0x02, "Jasmin" )
-/*	PORT_CONFSETTING(    0x03, "Low 8D DOS" ) */
-/*	PORT_CONFSETTING(    0x04, "High 8D DOS" ) */
+/*  PORT_CONFSETTING(    0x03, "Low 8D DOS" ) */
+/*  PORT_CONFSETTING(    0x04, "High 8D DOS" ) */
 
 	/* vsync cable hardware. This is a simple cable connected to the video output
-	to the monitor/television. The sync signal is connected to the cassette input
-	allowing interrupts to be generated from the vsync signal. */
+    to the monitor/television. The sync signal is connected to the cassette input
+    allowing interrupts to be generated from the vsync signal. */
 	PORT_CONFNAME(0x08, 0x00, "Vsync cable hardware")
 	PORT_CONFSETTING(0x0, DEF_STR( Off) )
 	PORT_CONFSETTING(0x8, DEF_STR( On) )
@@ -358,12 +357,12 @@ static INPUT_PORTS_START(orica)
 	PORT_CONFSETTING(    0x00, DEF_STR( None ) )
 	PORT_CONFSETTING(    0x01, "Microdisc" )
 	PORT_CONFSETTING(    0x02, "Jasmin" )
-/*	PORT_CONFSETTING(    0x03, "Low 8D DOS" ) */
-/*	PORT_CONFSETTING(    0x04, "High 8D DOS" ) */
+/*  PORT_CONFSETTING(    0x03, "Low 8D DOS" ) */
+/*  PORT_CONFSETTING(    0x04, "High 8D DOS" ) */
 
 	/* vsync cable hardware. This is a simple cable connected to the video output
-	to the monitor/television. The sync signal is connected to the cassette input
-	allowing interrupts to be generated from the vsync signal. */
+    to the monitor/television. The sync signal is connected to the cassette input
+    allowing interrupts to be generated from the vsync signal. */
     PORT_CONFNAME(0x08, 0x00, "Vsync cable hardware")
 	PORT_CONFSETTING(0x0, DEF_STR( Off) )
 	PORT_CONFSETTING(0x8, DEF_STR( On) )
@@ -389,8 +388,8 @@ static INPUT_PORTS_START(telstrat)
 
 	PORT_START_TAG("oric_floppy_interface")
 	/* vsync cable hardware. This is a simple cable connected to the video output
-	to the monitor/television. The sync signal is connected to the cassette input
-	allowing interrupts to be generated from the vsync signal. */
+    to the monitor/television. The sync signal is connected to the cassette input
+    allowing interrupts to be generated from the vsync signal. */
 	PORT_BIT (0x07, 0x00, IPT_UNUSED)
 	PORT_CONFNAME(0x08, 0x00, "Vsync cable hardware")
 	PORT_CONFSETTING(0x0, DEF_STR( Off ) )
@@ -470,7 +469,7 @@ static MACHINE_DRIVER_START( oric )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD(AY8910, 1000000)
+	MDRV_SOUND_ADD(AY8912, 1000000)
 	MDRV_SOUND_CONFIG(oric_ay_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -610,7 +609,7 @@ SYSTEM_CONFIG_START(prav8)
 SYSTEM_CONFIG_END
 
 
-/*    YEAR   NAME       PARENT	COMPAT	MACHINE     INPUT       INIT    CONFIG    COMPANY         FULLNAME */
+/*    YEAR   NAME       PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG    COMPANY         FULLNAME */
 COMP( 1983,  oric1,     0,      0,		oric,       oric,	    0,	    oric1,    "Tangerine",    "Oric 1" , 0)
 COMP( 1984,  orica,     oric1,	0,		oric,	    orica,	    0,	    oric1,    "Tangerine",    "Oric Atmos" , 0)
 COMP( 1985,  prav8d,    oric1,  0,		oric,       prav8d,     0,      prav8,    "Pravetz",      "Pravetz 8D", 0)

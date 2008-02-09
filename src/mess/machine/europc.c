@@ -3,8 +3,8 @@
 #include "machine/pcshare.h"
 #include "machine/pit8253.h"
 #include "video/pc_aga.h"
-#include "mscommon.h"
 #include "audio/pc.h"
+#include "deprecat.h"
 
 /*
 
@@ -116,9 +116,9 @@ extern WRITE8_HANDLER ( europc_jim_w )
 		break;
 	case 4:
 		switch(data&0xc0) {
-		case 0x00: cpunum_set_clockscale(0, 1.0/2);break;
-		case 0x40: cpunum_set_clockscale(0, 3.0/4);break;
-		default: cpunum_set_clockscale(0, 1);break;
+		case 0x00: cpunum_set_clockscale(Machine, 0, 1.0/2);break;
+		case 0x40: cpunum_set_clockscale(Machine, 0, 3.0/4);break;
+		default: cpunum_set_clockscale(Machine, 0, 1);break;
 		}
 		break;
 	case 0xa:

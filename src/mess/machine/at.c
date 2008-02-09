@@ -5,6 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
 #include "cpu/i386/i386.h"
 
@@ -21,7 +22,7 @@
 #include "machine/8042kbdc.h"
 #include "includes/at.h"
 #include "machine/pckeybrd.h"
-#include "includes/sblaster.h"
+#include "audio/sblaster.h"
 #include "machine/i82439tx.h"
 
 static const SOUNDBLASTER_CONFIG soundblaster = { 1,5, {1,0} };
@@ -31,7 +32,7 @@ static const SOUNDBLASTER_CONFIG soundblaster = { 1,5, {1,0} };
 static void at_set_gate_a20(int a20)
 {
 	/* set the CPU's A20 line */
-	cpunum_set_input_line(0, INPUT_LINE_A20, a20);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_A20, a20);
 }
 
 
@@ -63,7 +64,7 @@ static void at_keyboard_interrupt(int state)
 
 DRIVER_INIT( atcga )
 {
-	struct kbdc8042_interface at8042 =
+	static const struct kbdc8042_interface at8042 =
 	{
 		KBDC8042_STANDARD, at_set_gate_a20, at_keyboard_interrupt
 	};
@@ -74,7 +75,7 @@ DRIVER_INIT( atcga )
 
 DRIVER_INIT( at386 )
 {
-	struct kbdc8042_interface at8042 =
+	static const struct kbdc8042_interface at8042 =
 	{
 		KBDC8042_AT386, at_set_gate_a20, at_keyboard_interrupt
 	};
@@ -85,7 +86,7 @@ DRIVER_INIT( at386 )
 
 DRIVER_INIT( at586 )
 {
-	driver_init_at386(machine);
+	DRIVER_INIT_CALL(at386);
 	intel82439tx_init();
 }
 
@@ -124,7 +125,7 @@ static const struct pc_vga_interface vga_interface =
 
 DRIVER_INIT( at_vga )
 {
-	struct kbdc8042_interface at8042 =
+	static const struct kbdc8042_interface at8042 =
 	{
 		KBDC8042_STANDARD, at_set_gate_a20, at_keyboard_interrupt
 	};
@@ -138,7 +139,7 @@ DRIVER_INIT( at_vga )
 
 DRIVER_INIT( ps2m30286 )
 {
-	struct kbdc8042_interface at8042 =
+	static const struct kbdc8042_interface at8042 =
 	{
 		KBDC8042_PS2, at_set_gate_a20, at_keyboard_interrupt
 	};

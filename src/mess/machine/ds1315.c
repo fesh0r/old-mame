@@ -1,12 +1,13 @@
-#include "driver.h"
-#include "ds1315.h"
-#include "mscommon.h"
-
 /* This is an emulation of Dallas Semiconductor's Phantom Time Chip.
    DS1315.
 
    by tim lindner, November 2001.
 */
+
+#include "driver.h"
+#include "ds1315.h"
+#include "deprecat.h"
+
 
 enum
 {
@@ -20,7 +21,7 @@ static void ds1315_input_raw_data( void );
 static int ds1315_count;
 static int ds1315_mode;
 static int ds1315_raw_data[8*8];
-static int ds1315_pattern[] = {  1, 0, 1, 0, 0, 0, 1, 1,
+static const int ds1315_pattern[] = {  1, 0, 1, 0, 0, 0, 1, 1,
 							     0, 1, 0, 1, 1, 1, 0, 0,
 							     1, 1, 0, 0, 0, 1, 0, 1,
 							     0, 0, 1, 1, 1, 0, 1, 0,

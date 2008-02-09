@@ -1,5 +1,12 @@
-#ifndef MBEE_H
-#define MBEE_H
+/*****************************************************************************
+ *
+ * includes/mbee.h
+ *
+ ****************************************************************************/
+
+#ifndef MBEE_H_
+#define MBEE_H_
+
 
 /*----------- defined in machine/mbee.c -----------*/
 
@@ -10,7 +17,7 @@ MACHINE_START( mbee56 );
 extern UINT8 *mbee_workram;
 READ8_HANDLER( mbee_lowram_r );
 
-void mbee_interrupt(void);
+INTERRUPT_GEN( mbee_interrupt );
 
 DEVICE_LOAD( mbee_cart );
 
@@ -49,4 +56,5 @@ WRITE8_HANDLER ( mbee_pcg_color_w );
 VIDEO_START( mbee );
 VIDEO_UPDATE( mbee );
 
-#endif /* MBEE_H */
+
+#endif /* MBEE_H_ */

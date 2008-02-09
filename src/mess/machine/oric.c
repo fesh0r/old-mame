@@ -19,18 +19,19 @@
 
 #include <stdio.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/oric.h"
 #include "machine/wd17xx.h"
 #include "machine/6522via.h"
 #include "machine/applefdc.h"
-#include "includes/6551.h"
-#include "includes/centroni.h"
+#include "machine/6551.h"
+#include "machine/centroni.h"
 #include "devices/basicdsk.h"
 #include "devices/mfmdisk.h"
 #include "devices/printer.h"
 #include "devices/cassette.h"
 #include "sound/ay8910.h"
-#include "image.h"
+
 
 UINT8 *oric_ram;
 
@@ -83,11 +84,11 @@ static void oric_refresh_ints(void)
 	/* any irq set? */
 	if ((oric_irqs & 0x0f)!=0)
 	{
-		cpunum_set_input_line(0,0, HOLD_LINE);
+		cpunum_set_input_line(Machine, 0,0, HOLD_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(0,0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0,0, CLEAR_LINE);
 	}
 }
 
@@ -202,6 +203,15 @@ static void oric_psg_connection_refresh(void)
 	{
 		switch (oric_psg_control)
 		{
+			/* PSG inactive */
+			case 0:
+			break;
+			/* read register data */
+			case 1:
+			{
+				oric_via_port_a_data = AY8910_read_port_0_r(0);
+			}
+			break;
 			/* write register data */
 			case 2:
 			{
@@ -503,15 +513,14 @@ static void oric_enable_memory(int low, int high, int rd, int wr)
 		switch(i) {
 		case 1:
 			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, rd ? MRA8_BANK1 : MRA8_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, wr ? MWA8_BANK5 : MWA8_ROM);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, wr ? MWA8_BANK5 : MWA8_UNMAP);
 			break;
 		case 2:
 			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, 0, rd ? MRA8_BANK2 : MRA8_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, 0, wr ? MWA8_BANK6 : MWA8_ROM);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, 0, wr ? MWA8_BANK6 : MWA8_UNMAP);
 			break;
 		case 3:
 			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xf800, 0xffff, 0, 0, rd ? MRA8_BANK3 : MRA8_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf800, 0xffff, 0, 0, wr ? MWA8_BANK7 : MWA8_ROM);
 			break;
 		}
 	}
@@ -740,7 +749,6 @@ static WRITE8_HANDLER(oric_jasmin_w)
 	{
 		/* microdisc floppy disc interface */
 		case 0x04:
-			logerror("cycles: %d\n",cycles_currently_ran());
 			wd17xx_command_w(0,data);
 			break;
 		case 0x05:

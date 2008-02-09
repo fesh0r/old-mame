@@ -5,6 +5,7 @@
 
 #include <math.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "tms9901.h"
 #include "mm58274c.h"
 #include "video/v9938.h"
@@ -208,12 +209,7 @@ MACHINE_START( geneve )
            how the switches are set. Later we use the configuration switches to
            determine which one to use. */
 	ti99_peb_init();
-        ti99_fdc_init();
-#if HAS_99CCFDC
-	ti99_ccfdc_init();
-#endif
-	ti99_bwg_init();
-	ti99_hfdc_init();
+        ti99_floppy_controllers_init_all();
         ti99_ide_init();
         ti99_rs232_init();
 	ti99_usbsm_init();
@@ -269,7 +265,7 @@ MACHINE_RESET( geneve )
 
 	if (has_speech)
 	{
-		spchroms_interface speech_intf = { region_speech_rom };
+		static const spchroms_interface speech_intf = { region_speech_rom };
 
 		spchroms_config(& speech_intf);
 	}
@@ -330,7 +326,7 @@ VIDEO_START(geneve)
 /*
 	scanline interrupt
 */
-void geneve_hblank_interrupt(void)
+INTERRUPT_GEN( geneve_hblank_interrupt )
 {
 	static int line_count;
 	v9938_interrupt();
@@ -348,7 +344,7 @@ void geneve_hblank_interrupt(void)
 static void inta_callback(int state)
 {
 	tms9901_set_single_int(0, 1, state);
-	cpunum_set_input_line(0, 1, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, 1, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*
@@ -615,6 +611,16 @@ READ8_HANDLER ( geneve_r )
 
 	offset &= 0x1fff;
 
+	/* Although we could have 128K boot ROM (page f0...ff), the stock 
+	   Geneve only has 16K. The address is incompletely decoded, so page
+	   f0 is mirrored on all even pages up to fe, and f1 is mirrored on
+	   f3, f5, ... ff.
+	   Currently, MESS is delivered with the 16K ROM only. So for the time
+	   being, we won't lose much if we mask the page bits.
+	   Michael Zapf, 2008-01-23
+	*/
+	if (page > 0xf1) page &= 0xf1;
+	
 	switch (page)
 	{
 	case 0xf0:
@@ -902,6 +908,10 @@ WRITE8_HANDLER ( geneve_w )
 
 	offset &= 0x1fff;
 
+	/* ROM is incompletely decoded. Pages f0, f2, f4 ... fe all map to the
+	   first 8K Boot ROM; f1, ..., ff to the second 8K. See above. */
+	if (page > 0xf1) page &= 0xf1;
+	   
 	switch (page)
 	{
 	case 0xf0:
@@ -1332,7 +1342,7 @@ static void poll_mouse(void)
 static void tms9901_interrupt_callback(int intreq, int ic)
 {
 	/* INTREQ is connected to INT1 (IC0-3 are not connected) */
-	cpunum_set_input_line(0, 0, intreq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, 0, intreq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*

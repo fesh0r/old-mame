@@ -5,22 +5,22 @@
 ***************************************************************************/
 #include <ctype.h>
 #include "driver.h"
+#include "includes/cbmb.h"
 #include "cpu/m6502/m6509.h"
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
+#include "deprecat.h"
 
 #define VERBOSE_DBG 1
 #include "includes/cbm.h"
-#include "includes/tpi6525.h"
+#include "machine/tpi6525.h"
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vc20tape.h"
 #include "includes/cbmieeeb.h"
-#include "includes/vic6567.h"
+#include "video/vic6567.h"
 #include "video/crtc6845.h"
-#include "mscommon.h"
 
-#include "includes/cbmb.h"
 
 static TIMER_CALLBACK(cbmb_frame_interrupt);
 
@@ -165,7 +165,7 @@ static void cbmb_irq (int level)
 	if (level != old_level)
 	{
 		DBG_LOG (3, "mos6509", ("irq %s\n", level ? "start" : "end"));
-		cpunum_set_input_line (0, M6502_IRQ_LINE, level);
+		cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -252,7 +252,7 @@ static void cbmb_display_enable_changed(int display_enabled) {
 }
 
 //static const struct mscrtc6845_config cbm600_crtc= { 1600000 /*?*/, cbmb_vh_cursor };
-const static crtc6845_interface cbm600_crtc = {
+static const crtc6845_interface cbm600_crtc = {
 	0,
 	1600000 /*?*/,
 	8 /*?*/,
@@ -286,7 +286,7 @@ void cbm600hu_driver_init (void)
 }
 
 //static const struct mscrtc6845_config cbm700_crtc= { 2000000 /*?*/, cbmb_vh_cursor };
-const static crtc6845_interface cbm700_crtc = {
+static const crtc6845_interface cbm700_crtc = {
 	0,
 	2000000 /*?*/,
 	9 /*?*/,
@@ -395,7 +395,7 @@ static TIMER_CALLBACK(cbmb_frame_interrupt)
 	cbmb_keyline[9] = value2;
 #endif
 
-	vic2_frame_interrupt ();
+	vic2_frame_interrupt (machine, 0);
 
 	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , (readinputport(12)&0x04) ? 1 : 0);
 #if 0

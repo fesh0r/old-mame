@@ -10,20 +10,19 @@
 
 #include "ctype.h"
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6522via.h"
 #include "machine/wd17xx.h"
 #include "includes/bbc.h"
-#include "includes/upd7002.h"
-#include "includes/i8271.h"
+#include "machine/upd7002.h"
+#include "machine/i8271.h"
 #include "machine/mc146818.h"
 #include "machine/mc6850.h"
 #include "devices/basicdsk.h"
 #include "devices/cassette.h"
 #include "sound/sn76496.h"
 #include "sound/tms5220.h"
-
-#include "image.h"
 
 
 /* BBC Memory Size */
@@ -49,7 +48,7 @@ static int ACCCON_IRR=0;
 
 static void bbc_setirq(void)
 {
-  cpunum_set_input_line(0, M6502_IRQ_LINE, via_system_irq|via_user_irq|MC6850_irq|ACCCON_IRR);
+	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, via_system_irq|via_user_irq|MC6850_irq|ACCCON_IRR);
 }
 
 /************************
@@ -1152,14 +1151,14 @@ static  READ8_HANDLER( bbcb_via_system_read_cb2 )
 
 static WRITE8_HANDLER( bbcb_via_system_write_ca2 )
 {
-  //if( errorlog ) fprintf(errorlog, "via_system_write_ca2: $%02X\n", data);
+  //logerror("via_system_write_ca2: $%02X\n", data);
 }
 
 /* this is wired as in input port so writing to this port would be bad */
 
 static WRITE8_HANDLER( bbcb_via_system_write_cb2 )
 {
-  //if( errorlog ) fprintf(errorlog, "via_system_write_cb2: $%02X\n", data);
+  //logerror("via_system_write_cb2: $%02X\n", data);
 }
 
 
@@ -1172,8 +1171,8 @@ static void bbc_via_system_irq(int level)
 }
 
 
-static const struct via6522_interface
-bbcb_system_via= {
+static const struct via6522_interface bbcb_system_via =
+{
   bbcb_via_system_read_porta,
   bbcb_via_system_read_portb,
   bbcb_via_system_read_ca1,
@@ -1309,8 +1308,8 @@ static void BBC_uPD7002_EOC(int data)
 	via_0_cb1_w(0,data);
 }
 
-static const struct uPD7002_interface
-BBC_uPD7002= {
+static const struct uPD7002_interface BBC_uPD7002 =
+{
 	BBC_get_analogue_input,
 	BBC_uPD7002_EOC
 };
@@ -1364,8 +1363,8 @@ static void Serial_interrupt(int level)
   //logerror("Set SIO irq  %01x\n",level);
 }
 
-static const struct MC6850_interface
-BBC_MC6850_calls= {
+static const struct MC6850_interface BBC_MC6850_calls =
+{
 	0,// Transmit data ouput
 	0,// Request to Send output
 	Serial_interrupt,// Interupt Request output
@@ -1515,7 +1514,7 @@ static void	bbc_i8271_interrupt(int state)
 		{
 			/* I'll pulse it because if I used hold-line I'm not sure
 			it would clear - to be checked */
-			cpunum_set_input_line(0, INPUT_LINE_NMI,PULSE_LINE);
+			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI,PULSE_LINE);
 		}
 	}
 
@@ -1680,7 +1679,7 @@ static void bbc_wd177x_callback(wd17xx_state_t event, void *param)
 		{
 			/* I'll pulse it because if I used hold-line I'm not sure
 			it would clear - to be checked */
-			cpunum_set_input_line(0, INPUT_LINE_NMI,PULSE_LINE);
+			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI,PULSE_LINE);
 		}
 	}
 

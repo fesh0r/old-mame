@@ -4,7 +4,6 @@
 #include "driver.h"
 #include "resourcems.h"
 #include "devview.h"
-#include "uitext.h"
 #include "options.h"
 
 extern char g_szSelectedItem[MAX_PATH];
@@ -17,6 +16,8 @@ void MessReadMountedSoftware(int nGame);
 BOOL CreateMessIcons(void);
 BOOL MessApproveImageList(HWND hParent, int nDriver);
 
+#ifdef UNUSED_FUNCTION
 void MessCopyDeviceOption(core_options *opts, const game_driver *gamedrv, const device_class *devclass, int device_index, int global_index);
+#endif
 
 #endif // __MESSUI_H__

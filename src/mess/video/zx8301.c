@@ -1,4 +1,13 @@
-#include "video/zx8301.h"
+/*****************************************************************************
+ *
+ * video/zx8301.c
+ *
+ ****************************************************************************/
+
+#include "driver.h"
+#include "deprecat.h"
+#include "zx8301.h"
+
 
 typedef struct
 {
@@ -127,7 +136,7 @@ VIDEO_UPDATE( zx8301 )
 	}
 	else
 	{
-		fillbitmap(bitmap, get_black_pen(Machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(machine), cliprect);
 	}
 
 	return 0;

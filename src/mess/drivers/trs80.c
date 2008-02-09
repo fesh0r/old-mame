@@ -1,31 +1,31 @@
 /***************************************************************************
 TRS80 memory map
 
-0000-2fff ROM				  R   D0-D7
-3000-37ff ROM on Model III		  R   D0-D7
-		  unused on Model I
-37de      UART status			  R/W D0-D7
-37df      UART data			  R/W D0-D7
+0000-2fff ROM                 R   D0-D7
+3000-37ff ROM on Model III        R   D0-D7
+          unused on Model I
+37de      UART status             R/W D0-D7
+37df      UART data           R/W D0-D7
 37e0      interrupt latch address (lnw80 = for the realtime clock)
-37e1      select disk drive 0		  W
-37e2      cassette drive latch address	  W
-37e3      select disk drive 1		  W
+37e1      select disk drive 0         W
+37e2      cassette drive latch address    W
+37e3      select disk drive 1         W
 37e4      select which cassette unit      W   D0-D1 (D0 selects unit 1, D1 selects unit 2)
-37e5      select disk drive 2		  W
-37e7      select disk drive 3		  W
-37e0-37e3 floppy motor			  W   D0-D3
-		  or floppy head select   W   D3
+37e5      select disk drive 2         W
+37e7      select disk drive 3         W
+37e0-37e3 floppy motor            W   D0-D3
+          or floppy head select   W   D3
 37e8      send a byte to printer          W   D0-D7
 37e8      read printer status             R   D7
-37ec-37ef FDC WD179x			  R/W D0-D7
-37ec	  command			  W   D0-D7
-37ec	  status			  R   D0-D7
-37ed	  track 			  R/W D0-D7
-37ee	  sector			  R/W D0-D7
-37ef	  data				  R/W D0-D7
-3800-38ff keyboard matrix		  R   D0-D7
+37ec-37ef FDC WD179x              R/W D0-D7
+37ec      command             W   D0-D7
+37ec      status              R   D0-D7
+37ed      track               R/W D0-D7
+37ee      sector              R/W D0-D7
+37ef      data                R/W D0-D7
+3800-38ff keyboard matrix         R   D0-D7
 3900-3bff unused - kbd mirrored
-3c00-3fff video RAM 			  R/W D0-D5,D7 (or D0-D7)
+3c00-3fff video RAM               R/W D0-D5,D7 (or D0-D7)
 4000-ffff RAM
 
 Interrupts:
@@ -77,10 +77,17 @@ Not emulated:
 
 ***************************************************************************/
 
+/* Core includes */
+#include "driver.h"
 #include "includes/trs80.h"
-#include "devices/basicdsk.h"
+
+/* Components */
+#include "machine/wd17xx.h"
 #include "sound/speaker.h"
-#include "mslegacy.h"
+
+/* Devices */
+#include "devices/basicdsk.h"
+
 
 #define FW	TRS80_FONT_W
 #define FH	TRS80_FONT_H
@@ -151,9 +158,9 @@ ADDRESS_MAP_END
 
 
 /**************************************************************************
-   w/o SHIFT							 with SHIFT
-   +-------------------------------+	 +-------------------------------+
-   | 0	 1	 2	 3	 4	 5	 6	 7 |	 | 0   1   2   3   4   5   6   7 |
+   w/o SHIFT                             with SHIFT
+   +-------------------------------+     +-------------------------------+
+   | 0   1   2   3   4   5   6   7 |     | 0   1   2   3   4   5   6   7 |
 +--+---+---+---+---+---+---+---+---+  +--+---+---+---+---+---+---+---+---+
 |0 | @ | A | B | C | D | E | F | G |  |0 | ` | a | b | c | d | e | f | g |
 |  +---+---+---+---+---+---+---+---+  |  +---+---+---+---+---+---+---+---+
@@ -161,7 +168,7 @@ ADDRESS_MAP_END
 |  +---+---+---+---+---+---+---+---+  |  +---+---+---+---+---+---+---+---+
 |2 | P | Q | R | S | T | U | V | W |  |2 | p | q | r | s | t | u | v | w |
 |  +---+---+---+---+---+---+---+---+  |  +---+---+---+---+---+---+---+---+
-|3 | X | Y | Z | [ | \ | ] | ^ | _ |  |3 | x | y | z | { | | | } | ~ |	 |
+|3 | X | Y | Z | [ | \ | ] | ^ | _ |  |3 | x | y | z | { | | | } | ~ |   |
 |  +---+---+---+---+---+---+---+---+  |  +---+---+---+---+---+---+---+---+
 |4 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |  |4 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 |  +---+---+---+---+---+---+---+---+  |  +---+---+---+---+---+---+---+---+
@@ -172,7 +179,7 @@ ADDRESS_MAP_END
 |7 |SHF|ALT|PUP|PDN|INS|DEL|CTL|END|  |7 |SHF|ALT|PUP|PDN|INS|DEL|CTL|END|
 +--+---+---+---+---+---+---+---+---+  +--+---+---+---+---+---+---+---+---+
 NB: row 7 contains some originally unused bits
-	only the shift bit was there in the TRS80
+    only the shift bit was there in the TRS80
 ***************************************************************************/
 
 static INPUT_PORTS_START( trs80 )
@@ -308,25 +315,6 @@ static GFXDECODE_START( trs80 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, trs80_charlayout_double_width, 0, 4 )
 GFXDECODE_END
 
-static const unsigned char trs80_palette[] =
-{
-   0x00,0x00,0x00,
-   0xff,0xff,0xff
-};
-
-static const unsigned short trs80_colortable[] =
-{
-	0,1 	/* white on black */
-};
-
-
-
-/* Initialise the palette */
-static PALETTE_INIT( trs80 )
-{
-	palette_set_colors_rgb(machine, 0, trs80_palette, sizeof(trs80_palette)/3);
-	memcpy(colortable,trs80_colortable,sizeof(trs80_colortable));
-}
 
 static const INT16 speaker_levels[3] = {0.0*32767,0.46*32767,0.85*32767};
 
@@ -349,6 +337,7 @@ static MACHINE_DRIVER_START( level1 )
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( trs80 )
+	MDRV_MACHINE_RESET( trs80 )
 
     /* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
@@ -356,9 +345,8 @@ static MACHINE_DRIVER_START( level1 )
 	MDRV_SCREEN_SIZE(64*FW, 16*FH)
 	MDRV_SCREEN_VISIBLE_AREA(0*FW,64*FW-1,0*FH,16*FH-1)
 	MDRV_GFXDECODE( trs80 )
-	MDRV_PALETTE_LENGTH(sizeof(trs80_palette)/sizeof(trs80_palette[0])/3)
-	MDRV_COLORTABLE_LENGTH(sizeof(trs80_colortable)/sizeof(trs80_colortable[0]))
-	MDRV_PALETTE_INIT( trs80 )
+	MDRV_PALETTE_LENGTH(2)
+	MDRV_PALETTE_INIT(black_and_white)
 
 	MDRV_VIDEO_START( trs80 )
 	MDRV_VIDEO_UPDATE( trs80 )
@@ -533,7 +521,7 @@ SYSTEM_CONFIG_START(trs8012)
 SYSTEM_CONFIG_END
 
 
-/*    YEAR  NAME      PARENT	 COMPAT	        MACHINE   INPUT	 INIT  CONFIG	COMPANY	 FULLNAME */
+/*    YEAR  NAME      PARENT     COMPAT         MACHINE   INPUT  INIT  CONFIG   COMPANY  FULLNAME */
 COMP( 1977, trs80,    0,	 0,		level1,   trs80, trs80,    trs80,	"Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" , 0)
 COMP( 1978, trs80l2,  trs80,	 0,		model1,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (Radio Shack Level II Basic)" , 0)
 COMP( 1978, trs80l2a, trs80,	 0,		model1,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (R/S L2 Basic)" , 0)

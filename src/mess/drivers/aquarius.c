@@ -1,56 +1,55 @@
 /************************************************************************
 Aquarius Memory map
 
-	CPU: z80
+    CPU: z80
 
-	Memory map
-		0000 1fff	BASIC
-		2000 2fff	expansion?
-		3000 33ff	screen ram
-		3400 37ff	colour ram
-		3800 3fff	RAM (standard)
-		4000 7fff	RAM (expansion)
-		8000 ffff	RAM (emulator only)
+    Memory map
+        0000 1fff   BASIC
+        2000 2fff   expansion?
+        3000 33ff   screen ram
+        3400 37ff   colour ram
+        3800 3fff   RAM (standard)
+        4000 7fff   RAM (expansion)
+        8000 ffff   RAM (emulator only)
 
-	Ports: Out
-		fc			Buzzer, bit 0.
-		fe			Printer.
+    Ports: Out
+        fc          Buzzer, bit 0.
+        fe          Printer.
 
-	Ports: In
-		fc			Tape in, bit 1.
-		fe			Printer.
-		ff			Keyboard, Bit set in .B selects keyboard matrix
-					line. Return bit 0 - 5 low for pressed key.
+    Ports: In
+        fc          Tape in, bit 1.
+        fe          Printer.
+        ff          Keyboard, Bit set in .B selects keyboard matrix
+                    line. Return bit 0 - 5 low for pressed key.
 
 ************************************************************************/
 
 #include "driver.h"
-#include "inputx.h"
-#include "cpu/z80/z80.h"
-#include "video/generic.h"
 #include "includes/aquarius.h"
+#include "cpu/z80/z80.h"
 
-/* structures */
-
-/* port i/o functions */
-
-static ADDRESS_MAP_START( aquarius_io , ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0xfc, 0xfc) AM_WRITE( aquarius_port_fc_w)
-	AM_RANGE(0xfe, 0xfe) AM_READWRITE( aquarius_port_fe_r, aquarius_port_fe_w)
-	AM_RANGE(0xff, 0xff) AM_READWRITE( aquarius_port_ff_r, aquarius_port_ff_w)
-ADDRESS_MAP_END
 
 /* Memory w/r functions */
 
-static ADDRESS_MAP_START( aquarius_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( aquarius_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x2fff) AM_NOP
-	AM_RANGE(0x3000, 0x37ff) AM_READWRITE(videoram_r, aquarius_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x3000, 0x37ff) AM_READWRITE(MRA8_RAM, aquarius_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x3800, 0x3fff) AM_RAM
 	AM_RANGE(0x4000, 0x7fff) AM_NOP
 	AM_RANGE(0x8000, 0xffff) AM_NOP
 ADDRESS_MAP_END
+
+
+/* port i/o functions */
+
+static ADDRESS_MAP_START( aquarius_io, ADDRESS_SPACE_IO, 8)
+	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	AM_RANGE(0xfc, 0xfc) AM_WRITE(aquarius_port_fc_w)
+	AM_RANGE(0xfe, 0xfe) AM_READWRITE(aquarius_port_fe_r, aquarius_port_fe_w)
+	AM_RANGE(0xff, 0xff) AM_READWRITE(aquarius_port_ff_r, aquarius_port_ff_w)
+ADDRESS_MAP_END
+
 
 /* graphics output */
 
@@ -191,7 +190,7 @@ static INPUT_PORTS_START(aquarius)
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Ctl")                PORT_CODE(KEYCODE_TAB)        PORT_CHAR(UCHAR_SHIFT_2)
 	PORT_BIT(0xc0, IP_ACTIVE_LOW, IPT_UNUSED)
 
-//	The reset key labelled "Rst" is not currently emulated
+//  The reset key labelled "Rst" is not currently emulated
 
 // This is a hack: it should be managed via -ramsize switch!!!
 	PORT_START_TAG("ram")	/* 8: Machine config */
@@ -208,7 +207,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( aquarius_interrupt )
 {
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 /* Machine definition */
@@ -251,5 +250,5 @@ ROM_START(aquarius)
 	ROM_LOAD("aq2.chr", 0x0000, 0x0800, BAD_DUMP CRC(0b3edeed) SHA1(d2509839386b852caddcaa89cd376be647ba1492))
 ROM_END
 
-/*		YEAR	NAME		PARENT	COMPAT	MACHINE		INPUT		INIT	CONFIG		COMPANY		FULLNAME */
+/*      YEAR    NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY     FULLNAME */
 COMP(	1983,	aquarius,	0,		0,		aquarius,	aquarius,	0,		NULL,		"Mattel",	"Aquarius" , 0)

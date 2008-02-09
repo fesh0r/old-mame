@@ -6,6 +6,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/aim65.h"
 
 /* Peripheral chips */
@@ -57,7 +58,7 @@ static const dl1416_interface dl1416_ds5 = { DL1416T, aim65_update_ds5 };
 
 static void aim65_via_irq_func(int state)
 {
-	cpunum_set_input_line(0, M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 /* STEP/RUN
@@ -171,7 +172,7 @@ static WRITE8_HANDLER(aim65_riot_a_w)
 
 static void aim65_riot_irq(int state)
 {
-	cpunum_set_input_line(0, M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 
@@ -241,14 +242,13 @@ static const struct via6522_interface user_via =
 DRIVER_INIT( aim65 )
 {
 	/* Init RAM */
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0, mess_ram_size - 1, 0, 0, MRA8_RAM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0, mess_ram_size - 1, 0, 0, MWA8_RAM);
+	memory_install_readwrite8_handler (0, ADDRESS_SPACE_PROGRAM,
+		0, mess_ram_size - 1, 0, 0, MRA8_BANK1, MWA8_BANK1);
+	memory_set_bankptr(1, mess_ram);
 
 	if (mess_ram_size < 4 * 1024)
-	{
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, mess_ram_size, 0x0fff, 0, 0, MRA8_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, mess_ram_size, 0x0fff, 0, 0, MWA8_NOP);
-	}
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 
+			mess_ram_size, 0x0fff, 0, 0, MRA8_NOP, MWA8_NOP);
 
 	/* Init display driver */
 	dl1416_config(0, &dl1416_ds1);
@@ -266,7 +266,7 @@ DRIVER_INIT( aim65 )
 	pia_config(0, &pia);
 
 	r6532_config(0, &r6532_interface);
-	r6532_set_clock(0, 1000000);
+	r6532_set_clock(0, AIM65_CLOCK);
 	r6532_reset(0);
 
 	via_config(0, &via0);

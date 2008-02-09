@@ -1,10 +1,8 @@
 #include "driver.h"
-#include "inputx.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "devices/printer.h"
 #include "devices/basicdsk.h"
 #include "devices/cassette.h"
-#include "video/generic.h"
 #include "video/cdp1864.h"
 #include "sound/beep.h"
 #include "rescap.h"
@@ -112,11 +110,11 @@ static UINT8 tmc2000e_ef_r(void)
 	UINT8 flags = 0x0f;
 
 	/*
-		EF1		CDP1864
-		EF2		tape/floppy
-		EF3		keyboard
-		EF4		I/O port
-	*/
+        EF1     CDP1864
+        EF2     tape/floppy
+        EF3     keyboard
+        EF4     I/O port
+    */
 
 	// keyboard
 	if (~readinputport(keylatch / 8) & (1 << (keylatch % 8))) flags -= EF3;
@@ -157,9 +155,9 @@ static MACHINE_START( tmc2000e )
 
 static MACHINE_RESET( tmc2000e )
 {
-	machine_reset_cdp1864(machine);
+	MACHINE_RESET_CALL(cdp1864);
 
-	cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 
 	// reset program counter to 0xc000
 }
@@ -288,5 +286,5 @@ static DRIVER_INIT( tmc2000e )
 	cdp1864_configure(&tmc2000e_CDP1864_interface);
 }
 
-//    YEAR  NAME 	  PARENT   COMPAT   MACHINE   INPUT     INIT		CONFIG    COMPANY 	     FULLNAME
+//    YEAR  NAME      PARENT   COMPAT   MACHINE   INPUT     INIT        CONFIG    COMPANY        FULLNAME
 COMP( 1980, tmc2000e, 0,       0,	    tmc2000e, tmc2000e, tmc2000e,	tmc2000e, "Telercas Oy", "Telmac 2000E", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )

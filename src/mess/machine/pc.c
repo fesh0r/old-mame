@@ -13,13 +13,15 @@
 
 #include <assert.h>
 #include "driver.h"
+#include "deprecat.h"
+#include "includes/pc.h"
+
 #include "machine/8255ppi.h"
 #include "machine/uart8250.h"
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
 #include "machine/pc_turbo.h"
 
-#include "video/generic.h"
 #include "video/pc_vga.h"
 #include "video/pc_cga.h"
 #include "video/pc_aga.h"
@@ -32,7 +34,7 @@
 #include "machine/pckeybrd.h"
 
 #include "includes/pclpt.h"
-#include "includes/centroni.h"
+#include "machine/centroni.h"
 
 #include "machine/pc_hdc.h"
 #include "machine/nec765.h"
@@ -42,10 +44,8 @@
 #include "machine/pcshare.h"
 #include "audio/pc.h"
 
-#include "includes/pc.h"
-#include "mscommon.h"
-
 #include "machine/8237dma.h"
+
 
 DRIVER_INIT( pccga )
 {
@@ -268,27 +268,27 @@ static void pc_generic_frame_interrupt(void (*pc_timer)(void))
 	pc_keyboard();
 }
 
-void pc_mda_frame_interrupt (void)
+INTERRUPT_GEN( pc_mda_frame_interrupt )
 {
 	pc_generic_frame_interrupt(pc_mda_timer);
 }
 
-void pc_cga_frame_interrupt (void)
+INTERRUPT_GEN( pc_cga_frame_interrupt )
 {
 	pc_generic_frame_interrupt(NULL);
 }
 
-void tandy1000_frame_interrupt (void)
+INTERRUPT_GEN( tandy1000_frame_interrupt )
 {
 	pc_generic_frame_interrupt(pc_t1t_timer);
 }
 
-void pc_aga_frame_interrupt (void)
+INTERRUPT_GEN( pc_aga_frame_interrupt )
 {
 	pc_generic_frame_interrupt(pc_aga_timer);
 }
 
-void pc_vga_frame_interrupt (void)
+INTERRUPT_GEN( pc_vga_frame_interrupt )
 {
 	pc_generic_frame_interrupt(NULL /* vga_timer */);
 }

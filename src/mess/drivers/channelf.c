@@ -9,22 +9,16 @@
  ******************************************************************/
 
 #include "driver.h"
-#include "image.h"
-#include "video/generic.h"
+#include "sound/custom.h"
 #include "includes/channelf.h"
 #include "devices/cartslot.h"
-#include "sound/custom.h"
+
 
 #ifndef VERBOSE
 #define VERBOSE 0
 #endif
 
-
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)	/* x */
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 /* The F8 has latches on its port pins
  * These mimic's their behavior

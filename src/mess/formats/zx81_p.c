@@ -29,9 +29,11 @@ medium transfer rate is approx. 307 bps (38 bytes/sec) for files that contain
 
 *****************************************************************************/
 
+#include "image.h"
 #include "zx81_p.h"
 #include "osdepend.h"
 #include "devices/cassette.h"
+
 
 #define WAVEENTRY_LOW	-32768
 #define WAVEENTRY_HIGH	 32767
@@ -128,7 +130,8 @@ static UINT16 zx81_cassette_calculate_number_of_1(const UINT8 *bytes, UINT16 len
 
 /* ZX-81 functions */
 
-static UINT8 zx81_chars[]={ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /*00h-07h*/
+static const UINT8 zx81_chars[]={
+		     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /*00h-07h*/
 		     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /*08h-0fh*/
 		     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /*10h-17h*/
 		     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /*18h-1fh*/

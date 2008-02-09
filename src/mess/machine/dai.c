@@ -11,6 +11,7 @@
 
 #include <stdarg.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "devices/cassette.h"
 #include "cpu/i8085/i8085.h"
 #include "includes/dai.h"
@@ -20,13 +21,8 @@
 
 #define DEBUG_DAI_PORTS	0
 
-#if DEBUG_DAI_PORTS
-	#define LOG_DAI_PORT_R(_port, _data, _comment) logerror ("DAI port read : %04x, Data: %02x (%s)\n", _port, _data, _comment)
-	#define LOG_DAI_PORT_W(_port, _data, _comment) logerror ("DAI port write: %04x, Data: %02x (%s)\n", _port, _data, _comment)
-#else
-	#define LOG_DAI_PORT_R(_port, _data, _comment)
-	#define LOG_DAI_PORT_W(_port, _data, _comment)
-#endif
+#define LOG_DAI_PORT_R(_port, _data, _comment) do { if (DEBUG_DAI_PORTS) logerror ("DAI port read : %04x, Data: %02x (%s)\n", _port, _data, _comment); } while (0)
+#define LOG_DAI_PORT_W(_port, _data, _comment) do { if (DEBUG_DAI_PORTS) logerror ("DAI port write: %04x, Data: %02x (%s)\n", _port, _data, _comment); } while (0)
 
 /* Discrete I/O devices */
 UINT8 dai_noise_volume;
@@ -83,9 +79,9 @@ static void dai_keyboard_write (UINT8 data)
 static void dai_interrupt_callback(int intreq, UINT8 vector)
 {
 	if (intreq)
-		cpunum_set_input_line_and_vector(0, 0, HOLD_LINE, vector);
+		cpunum_set_input_line_and_vector(Machine, 0, 0, HOLD_LINE, vector);
 	else
-		cpunum_set_input_line(0, 0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 }
 
 static const tms5501_init_param dai_tms5501_init_param =

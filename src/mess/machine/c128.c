@@ -8,11 +8,14 @@
            Christian Janoff  mepk@c64.org
 
 ***************************************************************************/
-#include <ctype.h>
+
 #include "driver.h"
+#include "includes/c128.h"
+#include "includes/c64.h"
+#include "deprecat.h"
+
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
-#include "mscommon.h"
 #include "machine/6526cia.h"
 
 #define VERBOSE_DBG 1
@@ -20,10 +23,8 @@
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vc20tape.h"
-#include "includes/vic6567.h"
-#include "includes/vdc8563.h"
-
-#include "includes/c128.h"
+#include "video/vic6567.h"
+#include "video/vdc8563.h"
 
 
 /*
@@ -247,7 +248,7 @@ void c128_bankswitch_64 (int reset)
 }
 
 static UINT8 c128_mmu[0x0b];
-static int c128_mmu_helper[4] =
+static const int c128_mmu_helper[4] =
 {0x400, 0x1000, 0x2000, 0x4000};
 static int mmu_cpu=0;
 static int mmu_page0, mmu_page1;
@@ -510,8 +511,8 @@ static void c128_bankswitch (int reset)
 			memory_set_context(0);
 			c128_bankswitch_z80();
 			memory_set_context(1);
-			cpunum_set_input_line(0, INPUT_LINE_HALT, CLEAR_LINE);
-			cpunum_set_input_line(1, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 		}
 		else
 		{
@@ -520,8 +521,8 @@ static void c128_bankswitch (int reset)
 			memory_set_context(1);
 			c128_bankswitch_128(reset);
 			memory_set_context(0);
-			cpunum_set_input_line(0, INPUT_LINE_HALT, ASSERT_LINE);
-			cpunum_set_input_line(1, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
 
 			/* NPW 19-Nov-2005 - In the C128, CPU #0 starts out and hands over
 			 * control to CPU #1.  CPU #1 seems to execute garbage from 0x0000
@@ -831,19 +832,19 @@ MACHINE_RESET( c128 )
 
 	c64mode = 0;
 	c128_mmu8722_reset ();
-	cpunum_set_input_line(0, INPUT_LINE_HALT, CLEAR_LINE);
-	cpunum_set_input_line(1, INPUT_LINE_HALT, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 }
 
 VIDEO_START( c128 )
 {
-	video_start_vdc8563(machine);
-	video_start_vic2(machine);
+	VIDEO_START_CALL(vdc8563);
+	VIDEO_START_CALL(vic2);
 }
 
 VIDEO_UPDATE( c128 )
 {
-	video_update_vdc8563(machine, screen, bitmap, cliprect);
-	video_update_vic2(machine, screen, bitmap, cliprect);
+	VIDEO_UPDATE_CALL(vdc8563);
+	VIDEO_UPDATE_CALL(vic2);
 	return 0;
 }

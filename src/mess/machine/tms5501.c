@@ -19,11 +19,7 @@
 
 #define DEBUG_TMS5501	0
 
-#if DEBUG_TMS5501
-	#define LOG_TMS5501(n, message, data) logerror ("TMS5501 %d: %s %02x\n", n, message, data)
-#else
-	#define LOG_TMS5501(n, message, data)
-#endif
+#define LOG_TMS5501(n, message, data) do { if (DEBUG_TMS5501) logerror ("TMS5501 %d: %s %02x\n", n, message, data); } while (0)
 
 #define MAX_TMS5501			1
 
@@ -112,7 +108,7 @@ static int find_first_bit(int value)
 
 static void tms5501_field_interrupts(int which)
 {
-	UINT8 int_vectors[] = { 0xc7, 0xcf, 0xd7, 0xdf, 0xe7, 0xef, 0xf7, 0xff };
+	static const UINT8 int_vectors[] = { 0xc7, 0xcf, 0xd7, 0xdf, 0xe7, 0xef, 0xf7, 0xff };
 	UINT8 current_ints = tms5501[which].pending_interrupts;
 
 	/* disabling masked interrupts */

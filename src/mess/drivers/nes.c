@@ -11,14 +11,12 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "video/generic.h"
 #include "video/ppu2c0x.h"
 #include "includes/nes.h"
 #include "cpu/m6502/m6502.h"
 #include "devices/cartslot.h"
 #include "sound/nes_apu.h"
-#include "inputx.h"
-#include "mslegacy.h"
+
 
 static READ8_HANDLER( psg_4015_r )
 {
@@ -246,16 +244,24 @@ static const struct NESinterface nespal_interface =
 
 ROM_START( nes )
     ROM_REGION( 0x10000, REGION_CPU1,0 )  /* Main RAM + program banks */
+	ROM_FILL( 0x0000, 0x10000, 0x00 )
     ROM_REGION( 0x2000,  REGION_GFX1,0 )  /* VROM */
+	ROM_FILL( 0x0000, 0x2000, 0x00 )
     ROM_REGION( 0x2000,  REGION_GFX2,0 )  /* VRAM */
+	ROM_FILL( 0x0000, 0x2000, 0x00 )
     ROM_REGION( 0x10000, REGION_USER1,0 ) /* WRAM */
+	ROM_FILL( 0x0000, 0x10000, 0x00 )
 ROM_END
 
 ROM_START( nespal )
     ROM_REGION( 0x10000, REGION_CPU1,0 )  /* Main RAM + program banks */
+	ROM_FILL( 0x0000, 0x10000, 0x00 )
     ROM_REGION( 0x2000,  REGION_GFX1,0 )  /* VROM */
+	ROM_FILL( 0x0000, 0x2000, 0x00 )
     ROM_REGION( 0x2000,  REGION_GFX2,0 )  /* VRAM */
+	ROM_FILL( 0x0000, 0x2000, 0x00 )
     ROM_REGION( 0x10000, REGION_USER1,0 ) /* WRAM */
+	ROM_FILL( 0x0000, 0x10000, 0x00 )
 ROM_END
 
 ROM_START( famicom )
@@ -263,8 +269,11 @@ ROM_START( famicom )
     ROM_LOAD_OPTIONAL ("disksys.rom", 0xe000, 0x2000, CRC(5e607dcf) SHA1(57fe1bdee955bb48d357e463ccbf129496930b62))
 
     ROM_REGION( 0x2000,  REGION_GFX1,0 )  /* VROM */
+	ROM_FILL( 0x0000, 0x2000, 0x00 )
     ROM_REGION( 0x2000,  REGION_GFX2,0 )  /* VRAM */
+	ROM_FILL( 0x0000, 0x2000, 0x00 )
     ROM_REGION( 0x10000, REGION_USER1,0 ) /* WRAM */
+	ROM_FILL( 0x0000, 0x10000, 0x00 )
 ROM_END
 
 ROM_START( famitwin )
@@ -272,8 +281,11 @@ ROM_START( famitwin )
     ROM_LOAD_OPTIONAL ("disksys.rom", 0xe000, 0x2000, CRC(4df24a6c) SHA1(e4e41472c454f928e53eb10e0509bf7d1146ecc1))
 
     ROM_REGION( 0x2000,  REGION_GFX1,0 )  /* VROM */
+	ROM_FILL( 0x0000, 0x2000, 0x00 )
     ROM_REGION( 0x2000,  REGION_GFX2,0 )  /* VRAM */
+	ROM_FILL( 0x0000, 0x2000, 0x00 )
     ROM_REGION( 0x10000, REGION_USER1,0 ) /* WRAM */
+	ROM_FILL( 0x0000, 0x10000, 0x00 )
 ROM_END
 
 
@@ -290,6 +302,7 @@ static MACHINE_DRIVER_START( nes )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC((113.66/(NTSC_CLOCK/1000000)) * (PPU_VBLANK_LAST_SCANLINE_NTSC-PPU_VBLANK_FIRST_SCANLINE+1+2)))
 
 	MDRV_MACHINE_START( nes )
+	MDRV_MACHINE_RESET( nes )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -381,6 +394,7 @@ static void famicom_floppy_getinfo(const device_class *devclass, UINT32 state, u
 		case DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_PTR_INIT:							info->init = device_init_nes_disk; break;
 		case DEVINFO_PTR_LOAD:							info->load = device_load_nes_disk; break;
 		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_nes_disk; break;
 
@@ -400,7 +414,7 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*     YEAR  NAME      PARENT    COMPAT	MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
+/*     YEAR  NAME      PARENT    COMPAT MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
 CONS( 1983, famicom,   0,        0,		nes,      famicom,  0,	      famicom,	"Nintendo", "Famicom" , 0)
 CONS( 1986, famitwin,  famicom,  0,		nes,      famicom,  0,	      famicom,	"Sharp", "Famicom Twin" , 0)
 CONS( 1985, nes,       0,        0,		nes,      nes,      0,        nes,		"Nintendo", "Nintendo Entertainment System (NTSC)" , 0)

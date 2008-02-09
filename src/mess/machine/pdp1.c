@@ -12,6 +12,7 @@
 #include <stdio.h>
 
 #include "driver.h"
+#include "deprecat.h"
 
 #include "cpu/pdp1/pdp1.h"
 #include "includes/pdp1.h"
@@ -155,7 +156,7 @@ static OPBASE_HANDLER(setOPbasefunc)
 }
 
 
-static void pdp1_machine_reset(running_machine *machine)
+MACHINE_RESET( pdp1 )
 {
 	int config;
 
@@ -330,7 +331,6 @@ MACHINE_START( pdp1 )
 
 	memory_set_opbase_handler(0, setOPbasefunc);
 
-	add_reset_callback(machine, pdp1_machine_reset);
 	add_exit_callback(machine, pdp1_machine_stop);
 }
 
@@ -924,7 +924,7 @@ void iot_tyi(int op2, int nac, int mb, int *io, int ac)
 	{
 		io_status &= ~io_st_tyi;
 		if (USE_SBS)
-			cpunum_set_input_line_and_vector(0, 0, CLEAR_LINE, 0);	/* interrupt it, baby */
+			cpunum_set_input_line_and_vector(Machine, 0, 0, CLEAR_LINE, 0);	/* interrupt it, baby */
 	}
 }
 
@@ -1274,7 +1274,7 @@ static void pdp1_keyboard(void)
 			typewriter.tb = (i << 4) + j;
 			io_status |= io_st_tyi;
 			#if USE_SBS
-				cpunum_set_input_line_and_vector(0, 0, ASSERT_LINE, 0);	/* interrupt it, baby */
+				cpunum_set_input_line_and_vector(Machine, 0, 0, ASSERT_LINE, 0);	/* interrupt it, baby */
 			#endif
 			cpunum_set_reg(0, PDP1_PF1, 1);
 			pdp1_typewriter_drawchar(typewriter.tb);	/* we want to echo input */

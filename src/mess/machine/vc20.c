@@ -14,10 +14,9 @@
 #include <stdio.h>
 
 #include "driver.h"
-#include "driver.h"
+#include "deprecat.h"
 #include "image.h"
 #include "cpu/m6502/m6502.h"
-#include "video/generic.h"
 
 #define VERBOSE_DBG 0
 #include "includes/cbm.h"
@@ -28,7 +27,7 @@
 #include "includes/vc20tape.h"
 #include "includes/cbmserb.h"
 #include "includes/cbmieeeb.h"
-#include "includes/vic6560.h"
+#include "video/vic6560.h"
 
 static UINT8 keyboard[8] =
 {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -37,8 +36,11 @@ static int via1_portb, via1_porta, via0_ca2;
 static int serial_atn = 1, serial_clock = 1, serial_data = 1;
 
 static int ieee=0; /* ieee cartridge (interface and rom)*/
+static UINT8 *vc20_rom_2000;
+static UINT8 *vc20_rom_4000;
+static UINT8 *vc20_rom_6000;
+static UINT8 *vc20_rom_a000;
 
-UINT8 *vc20_memory;
 UINT8 *vc20_memory_9400;
 
 /** via 0 addr 0x9110
@@ -57,7 +59,7 @@ UINT8 *vc20_memory_9400;
 */
 static void vc20_via0_irq (int level)
 {
-	cpunum_set_input_line(0, INPUT_LINE_NMI, level);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, level);
 }
 
 static  READ8_HANDLER( vc20_via0_read_ca1 )
@@ -121,7 +123,7 @@ static WRITE8_HANDLER( vc20_via0_write_porta )
  */
 static void vc20_via1_irq (int level)
 {
-	cpunum_set_input_line (0, M6502_IRQ_LINE, level);
+	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, level);
 }
 
 static  READ8_HANDLER( vc20_via1_read_porta )
@@ -284,7 +286,7 @@ static WRITE8_HANDLER( vc20_via1_write_porta )
 
 static WRITE8_HANDLER( vc20_via1_write_portb )
 {
-/*  if( errorlog ) fprintf(errorlog, "via1_write_portb: $%02X\n", data); */
+/*  logerror("via1_write_portb: $%02X\n", data); */
 	vc20_tape_write (data & 8 ? 1 : 0);
 	via1_portb = data;
 }
@@ -442,6 +444,30 @@ int vic6560_dma_read (int offset)
 	return program_read_byte(VIC6560ADDR2VC20ADDR (offset));
 }
 
+WRITE8_HANDLER( vc20_0400_w ) {
+	if ( mess_ram_size >= 8 * 1024 ) {
+		mess_ram[ 0x0400 + offset ] = data;
+	}
+}
+
+WRITE8_HANDLER( vc20_2000_w ) {
+	if ( ( mess_ram_size >= 16 * 1024 ) && vc20_rom_2000 == NULL ) {
+		mess_ram[ 0x2000 + offset ] = data;
+	}
+}
+
+WRITE8_HANDLER( vc20_4000_w ) {
+	if ( ( mess_ram_size >= 24 * 1024 ) && vc20_rom_4000 == NULL ) {
+		mess_ram[ 0x4000 + offset ] = data;
+	}
+}
+
+WRITE8_HANDLER( vc20_6000_w ) {
+	if ( ( mess_ram_size >= 32 * 1024 ) && vc20_rom_6000 == NULL ) {
+		mess_ram[ 0x6000 + offset ] = data;
+	}
+}
+
 static void vc20_memory_init(void)
 {
 	static int inited=0;
@@ -472,13 +498,6 @@ static void vc20_memory_init(void)
 	for (i=0x1000;i<0x2000;i+=0x40) memset(memory+i,i&0x40?0:0xff,0x40);
 #endif
 
-	/* i think roms look like 0xff */
-	// german cost reduced vc20 reads back highbyte of address
-	// when empty!
-	memset (memory + 0x400, 0xff, 0x1000 - 0x400);
-	memset (memory + 0x2000, 0xff, 0x6000);
-	memset (memory + 0xa000, 0xff, 0x1000);
-
 	/* clears ieee cartrige rom */
 	/* memset (memory + 0xa000, 0xff, 0x2000); */
 
@@ -499,6 +518,13 @@ static void vc20_common_driver_init (void)
 #endif
 	via_config (0, &via0);
 	via_config (1, &via1);
+
+	/* Set up memory banks */
+	memory_set_bankptr( 1, ( ( mess_ram_size >=  8 * 1024 ) ? mess_ram : memory_region(REGION_CPU1) ) + 0x0400 );
+	memory_set_bankptr( 2, vc20_rom_2000 ? vc20_rom_2000 : ( ( ( mess_ram_size >= 16 * 1024 ) ? mess_ram : memory_region(REGION_CPU1) ) + 0x2000 ) );
+	memory_set_bankptr( 3, vc20_rom_4000 ? vc20_rom_4000 : ( ( ( mess_ram_size >= 24 * 1024 ) ? mess_ram : memory_region(REGION_CPU1) ) + 0x4000 ) );
+	memory_set_bankptr( 4, vc20_rom_6000 ? vc20_rom_6000 : ( ( ( mess_ram_size >= 32 * 1024 ) ? mess_ram : memory_region(REGION_CPU1) ) + 0x6000 ) );
+	memory_set_bankptr( 5, vc20_rom_a000 ? vc20_rom_a000 : ( memory_region(REGION_CPU1) + 0xa000 ) );
 }
 
 /* currently not used, but when time comes */
@@ -521,7 +547,7 @@ DRIVER_INIT( vic20 )
 
 DRIVER_INIT( vic1001 )
 {
-	driver_init_vic20(machine);
+	DRIVER_INIT_CALL(vic20);
 }
 
 DRIVER_INIT( vic20i )
@@ -536,62 +562,6 @@ DRIVER_INIT( vic20i )
 
 MACHINE_RESET( vc20 )
 {
-	if (RAMIN0X0400)
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x400, 0xfff, 0, 0, MWA8_RAM);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x400, 0xfff, 0, 0, MRA8_RAM);
-	}
-	else
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x400, 0xfff, 0, 0, MWA8_NOP);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x400, 0xfff, 0, 0, MRA8_ROM);
-	}
-	if (RAMIN0X2000)
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MWA8_RAM);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MRA8_RAM);
-	}
-	else
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MWA8_NOP);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MRA8_ROM);
-	}
-	if (RAMIN0X4000)
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MWA8_RAM);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MRA8_RAM);
-	}
-	else
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MWA8_NOP);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MRA8_ROM);
-	}
-	if (RAMIN0X6000)
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_RAM);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_RAM);
-	}
-	else
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_NOP);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_ROM);
-	}
-	if (ieee)
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0,MWA8_ROM);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, MRA8_ROM);
-	}
-	else if	(RAMIN0XA000)
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0,MWA8_RAM);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, MRA8_RAM);
-	}
-	else
-	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0,MWA8_NOP);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, MRA8_ROM);
-	}
-
 	cbm_serial_reset_write (0);
 #ifdef VC1541
 	vc1541_reset ();
@@ -609,7 +579,7 @@ MACHINE_RESET( vc20 )
 
 static int vc20_rom_id(mess_image *image)
 {
-	unsigned char magic[] =
+	static const unsigned char magic[] =
 	{0x41, 0x30, 0x20, 0xc3, 0xc2, 0xcd};	/* A0 CBM at 0xa004 (module offset 4) */
 	unsigned char buffer[sizeof (magic)];
 	const char *cp;
@@ -649,12 +619,15 @@ static int vc20_rom_id(mess_image *image)
 DEVICE_INIT(vc20_rom)
 {
 	vc20_memory_init();
+	vc20_rom_2000 = NULL;
+	vc20_rom_4000 = NULL;
+	vc20_rom_6000 = NULL;
+	vc20_rom_a000 = NULL;
 	return INIT_PASS;
 }
 
 DEVICE_LOAD(vc20_rom)
 {
-	UINT8 *mem = memory_region (REGION_CPU1);
 	int size, read_;
 	const char *cp;
 	int addr = 0;
@@ -713,9 +686,28 @@ DEVICE_LOAD(vc20_rom)
 	}
 
 	logerror("loading rom %s at %.4x size:%.4x\n",image_filename(image), addr, size);
-	read_ = image_fread(image, mem + addr, size);
+	read_ = image_fread(image, new_memory_region( Machine, REGION_USER1, ( size & 0x1FFF ) ? ( size + 0x2000 ) : size, 0 ), size);
 	if (read_ != size)
 		return 1;
+
+	/* Perform banking for the cartridge */
+	switch( addr ) {
+	case 0x2000:
+		vc20_rom_2000 = memory_region( REGION_USER1 );
+		break;
+	case 0x4000:
+		vc20_rom_4000 = memory_region( REGION_USER1 );
+		if ( size > 0x2000 ) {
+			vc20_rom_6000 = memory_region( REGION_USER1 ) + 0x2000;
+		}
+		break;
+	case 0x6000:
+		vc20_rom_6000 = memory_region( REGION_USER1 );
+		break;
+	case 0xa000:
+		vc20_rom_a000 = memory_region( REGION_USER1 );
+		break;
+	}
 	return 0;
 }
 

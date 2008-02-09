@@ -1,29 +1,30 @@
 /******************************************************************************
 
-	drivers/sorc.c
+    drivers/sorc.c
 
-	Sord m5	system driver
+    Sord m5 system driver
 
-	Thankyou to Roman Stec and Jan P. Naidr for the documentation and much
-	help.
+    Thankyou to Roman Stec and Jan P. Naidr for the documentation and much
+    help.
 
-	http://falabella.lf2.cuni.cz/~naidr/sord/
+    http://falabella.lf2.cuni.cz/~naidr/sord/
 
-	PI-5 is the parallel interface using a 8255.
-	FD-5 is the disc operating system and disc interface.
-	FD-5 is connected to M5 via PI-5.
+    PI-5 is the parallel interface using a 8255.
+    FD-5 is the disc operating system and disc interface.
+    FD-5 is connected to M5 via PI-5.
 
 
-	Kevin Thacker [MESS driver]
+    Kevin Thacker [MESS driver]
 
  ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/tms9928a.h"
 #include "sound/sn76496.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "includes/centroni.h"
+#include "machine/centroni.h"
 #include "devices/printer.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
@@ -36,7 +37,8 @@
 #include "formats/basicdsk.h"
 
 
-#define SORD_DEBUG
+#define SORD_DEBUG 1
+#define LOG(x) do { if (SORD_DEBUG) logerror x; } while (0)
 
 /*********************************************************************************************/
 /* FD5 disk interface */
@@ -49,7 +51,7 @@
 
 #include "machine/nec765.h"
 #include "devices/cassette.h"
-#include "image.h"
+
 
 static MACHINE_RESET( sord_m5 );
 
@@ -70,9 +72,7 @@ static WRITE8_HANDLER(fd5_communication_w)
 	cpu_yield();
 
 	fd5_port_0x020_data = data;
-#ifdef SORD_DEBUG
-	logerror("fd5 0x020: %02x %04x\n",data,activecpu_get_pc());
-#endif
+	LOG(("fd5 0x020: %02x %04x\n",data,activecpu_get_pc()));
 }
 
 static  READ8_HANDLER(fd5_communication_r)
@@ -82,9 +82,7 @@ static  READ8_HANDLER(fd5_communication_r)
 	cpu_yield();
 
 	data = (obfa<<3)|(ibfa<<2)|2;
-#ifdef SORD_DEBUG
-	logerror("fd5 0x030: %02x %04x\n",data, activecpu_get_pc());
-#endif
+	LOG(("fd5 0x030: %02x %04x\n",data, activecpu_get_pc()));
 
 	return data;
 }
@@ -93,9 +91,7 @@ static  READ8_HANDLER(fd5_data_r)
 {
 	cpu_yield();
 
-#ifdef SORD_DEBUG
-	logerror("fd5 0x010 r: %02x %04x\n",fd5_databus,activecpu_get_pc());
-#endif
+	LOG(("fd5 0x010 r: %02x %04x\n",fd5_databus,activecpu_get_pc()));
 
 	ppi8255_set_portC(0, 0x50);
 	ppi8255_set_portC(0, 0x10);
@@ -106,9 +102,7 @@ static  READ8_HANDLER(fd5_data_r)
 
 static WRITE8_HANDLER(fd5_data_w)
 {
-#ifdef SORD_DEBUG
-	logerror("fd5 0x010 w: %02x %04x\n",data,activecpu_get_pc());
-#endif
+	LOG(("fd5 0x010 w: %02x %04x\n",data,activecpu_get_pc()));
 
 	fd5_databus = data;
 
@@ -129,9 +123,7 @@ static WRITE8_HANDLER(fd5_drive_control_w)
 	else
 		state = 1;
 
-#ifdef SORD_DEBUG
-	logerror("fd5 drive state w: %02x\n",state);
-#endif
+	LOG(("fd5 drive state w: %02x\n",state));
 
 	floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), state);
 	floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), state);
@@ -170,12 +162,11 @@ static void sord_fd5_fdc_interrupt(int state)
 {
 	if (state)
 	{
-		cpunum_set_input_line(1,0, HOLD_LINE);
+		cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(1,0,CLEAR_LINE);
-
+		cpunum_set_input_line(Machine, 1, 0,CLEAR_LINE);
 	}
 }
 
@@ -195,7 +186,7 @@ static MACHINE_RESET( sord_m5_fd5 )
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1), FLOPPY_DRIVE_SS_40);
 	sord_fd5_init();
-	machine_reset_sord_m5(machine);
+	MACHINE_RESET_CALL(sord_m5);
 	ppi8255_set_portC(0, 0x50);
 }
 
@@ -219,9 +210,7 @@ static  READ8_HANDLER(sord_ppi_portb_r)
 {
 	cpu_yield();
 
-#ifdef SORD_DEBUG
-	logerror("m5 read from pi5 port b %04x\n",activecpu_get_pc());
-#endif
+	LOG(("m5 read from pi5 port b %04x\n",activecpu_get_pc()));
 
 	return 0x0ff;
 }
@@ -230,9 +219,7 @@ static  READ8_HANDLER(sord_ppi_portc_r)
 {
 	cpu_yield();
 
-#ifdef SORD_DEBUG
-	logerror("m5 read from pi5 port c %04x\n",activecpu_get_pc());
-#endif
+	LOG(("m5 read from pi5 port c %04x\n",activecpu_get_pc()));
 
 /* from fd5 */
 /* 00 = 0000 = write */
@@ -276,12 +263,10 @@ static WRITE8_HANDLER(sord_ppi_portb_w)
 
 	if (data==0x0f0)
 	{
-		cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
-		cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 	}
-#ifdef SORD_DEBUG
-	logerror("m5 write to pi5 port b: %02x %04x\n",data,activecpu_get_pc());
-#endif
+	LOG(("m5 write to pi5 port b: %02x %04x\n",data,activecpu_get_pc()));
 }
 
 /* A,  B,  C,  D,  E,   F,  G,  H,  I,  J, K,  L,  M,   N, O, P, Q, R,   */
@@ -297,9 +282,7 @@ static WRITE8_HANDLER(sord_ppi_portc_w)
 	ibfa = (data & 0x20) ? 1 : 0;
 
 	cpu_yield();
-#ifdef SORD_DEBUG
-	logerror("m5 write to pi5 port c: %02x %04x\n",data,activecpu_get_pc());
-#endif
+	LOG(("m5 write to pi5 port c: %02x %04x\n",data,activecpu_get_pc()));
 }
 
 static const ppi8255_interface sord_ppi8255_interface =
@@ -319,7 +302,7 @@ static const ppi8255_interface sord_ppi8255_interface =
 static void sord_m5_ctc_interrupt(int state)
 {
 	//logerror("interrupting ctc %02x\r\n ",state);
-	cpunum_set_input_line(0, 0, state);
+	cpunum_set_input_line(Machine, 0, 0, state);
 }
 
 static z80ctc_interface	sord_m5_ctc_intf =
@@ -425,7 +408,7 @@ static WRITE8_HANDLER(sord_sys_w)
 
 static WRITE8_HANDLER(sord_printer_w)
 {
-//	logerror("centronics w: %02x\n",data);
+//  logerror("centronics w: %02x\n",data);
 	centronics_write_data(0,data);
 }
 
@@ -491,7 +474,7 @@ static MACHINE_RESET( sord_m5 )
 	/* PI-5 interface connected to Sord M5 */
 	ppi8255_init(&sord_ppi8255_interface);
 
-//	cassette_timer = timer_pulse(TIME_IN_HZ(11025), NULL, 0, cassette_timer_callback);
+//  cassette_timer = timer_pulse(TIME_IN_HZ(11025), NULL, 0, cassette_timer_callback);
 	TMS9928A_reset ();
 	z80ctc_reset(0);
 
@@ -601,7 +584,7 @@ static INPUT_PORTS_START(sord_m5)
     PORT_BIT (0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RSHIFT") PORT_CODE(KEYCODE_7_PAD)
     PORT_BIT (0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RSHIFT") PORT_CODE(KEYCODE_8_PAD)
     PORT_BIT (0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RSHIFT") PORT_CODE(KEYCODE_9_PAD)
-/*	PORT_BIT (0x0ff, 0x000, IPT_UNUSED) */
+/*  PORT_BIT (0x0ff, 0x000, IPT_UNUSED) */
 	/* line 11 */
 	PORT_START
 	PORT_BIT (0x0ff, 0x000, IPT_UNUSED)
@@ -634,7 +617,7 @@ static const struct z80_irq_daisy_chain sord_m5_daisy_chain[] =
 static INTERRUPT_GEN( sord_interrupt )
 {
 	if (TMS9928A_interrupt())
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( sord_m5 )
@@ -761,6 +744,6 @@ SYSTEM_CONFIG_START(srdm5fd5)
 	CONFIG_DEVICE(srdm5fd5_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME		PARENT	COMPAT	MACHINE			INPUT		INIT	CONFIG		COMPANY		FULLNAME */
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE         INPUT       INIT    CONFIG      COMPANY     FULLNAME */
 COMP( 1983, sordm5,		0,		0,		sord_m5,		sord_m5,	0,		sordm5,		"Sord",		"Sord M5", 0)
 COMP(1983, srdm5fd5,	0,		0,		sord_m5_fd5,	sord_m5,	0,		srdm5fd5,	"Sord",		"Sord M5 + PI5 + FD5", GAME_NOT_WORKING)

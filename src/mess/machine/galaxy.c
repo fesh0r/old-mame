@@ -9,18 +9,14 @@
 
 #include <stdarg.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "includes/galaxy.h"
 
 #define DEBUG_GALAXY_LATCH	0
 
-#if DEBUG_GALAXY_LATCH
-	#define LOG_GALAXY_LATCH_R(_port, _data) logerror ("Galaxy latch read : %04x, Data: %02x\n", _port, _data)
-	#define LOG_GALAXY_LATCH_W(_port, _data) logerror ("Galaxy latch write: %04x, Data: %02x\n", _port, _data)
-#else
-	#define LOG_GALAXY_LATCH_R(_port, _data)
-	#define LOG_GALAXY_LATCH_W(_port, _data)
-#endif
+#define LOG_GALAXY_LATCH_R(_port, _data) do { if (DEBUG_GALAXY_LATCH) logerror ("Galaxy latch read : %04x, Data: %02x\n", _port, _data); } while (0)
+#define LOG_GALAXY_LATCH_W(_port, _data) do { if (DEBUG_GALAXY_LATCH) logerror ("Galaxy latch write: %04x, Data: %02x\n", _port, _data); } while (0)
 
 int galaxy_interrupts_enabled = TRUE;
 
@@ -51,7 +47,7 @@ WRITE8_HANDLER( galaxy_latch_w )
 
 INTERRUPT_GEN( galaxy_interrupt )
 {
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 static int galaxy_irq_callback (int cpu)
@@ -123,8 +119,8 @@ static void galaxy_setup_snapshot (const UINT8 * data, UINT32 size)
 			break;
 	}
 
-	cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
-	cpunum_set_input_line(0, INPUT_LINE_IRQ0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
 }
 
 SNAPSHOT_LOAD( galaxy )
@@ -173,8 +169,10 @@ DRIVER_INIT( galaxy )
 MACHINE_RESET( galaxy )
 {
 	/* ROM 2 enable/disable */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, readinputport(7) ? MRA8_ROM : MRA8_NOP);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, readinputport(7) ? MWA8_ROM : MWA8_NOP);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, readinputport(7) ? MRA8_BANK10 : MRA8_NOP);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, MWA8_NOP);
+	if (readinputport(7))
+		memory_set_bankptr(10, memory_region(REGION_CPU1) + 0x1000);
 
 	cpunum_set_irq_callback(0, galaxy_irq_callback);
 

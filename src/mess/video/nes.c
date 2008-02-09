@@ -9,8 +9,8 @@
 #include <math.h>
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/ppu2c0x.h"
-#include "video/generic.h"
 #include "includes/nes.h"
 #include "machine/nes_mmc.h"
 
@@ -20,7 +20,7 @@ static int last_frame_flip = 0;
 
 static void ppu_nmi(int num, int *ppu_regs)
 {
-	cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static void nes_vh_reset(running_machine *machine)
@@ -66,7 +66,7 @@ static void nes_vh_start(running_machine *machine, ppu_t ppu_type, double scanli
 		}
 	}
 
-	add_reset_callback(Machine, nes_vh_reset);
+	add_reset_callback(machine, nes_vh_reset);
 
 	/* Reset the mapper variables. Will also mark the char-gen ram as dirty */
 	mapper_reset(nes.mapper);

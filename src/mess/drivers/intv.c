@@ -5,23 +5,22 @@
  *  Kyle Davis
  *
  *  TBD:
- *		    Map game controllers correctly (right controller + 16 way)
- *		    Add tape support (intvkbd)
- *		    Add runtime tape loading
- *		    Fix memory system workaround
+ *          Map game controllers correctly (right controller + 16 way)
+ *          Add tape support (intvkbd)
+ *          Add runtime tape loading
+ *          Fix memory system workaround
  *            (memory handler stuff in CP1610, debugger, and shared mem)
- *		    STIC
+ *          STIC
  *            reenable dirty support
- *		    Cleanup
- *			  Separate stic & video better, get rid of *2 for kbd comp
- *		    Add better runtime cart loading
- *		    Switch to tilemap system
+ *          Cleanup
+ *            Separate stic & video better, get rid of *2 for kbd comp
+ *          Add better runtime cart loading
+ *          Switch to tilemap system
  *
  ************************************************************************/
 
 #include "driver.h"
 #include "mslegacy.h"
-#include "video/generic.h"
 #include "video/stic.h"
 #include "includes/intv.h"
 #include "devices/cartslot.h"
@@ -333,13 +332,13 @@ static ADDRESS_MAP_START( intv2_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x3fff) AM_READWRITE( intvkbd_dualport8_lsb_r, intvkbd_dualport8_lsb_w )	/* Dual-port RAM */
 	AM_RANGE( 0x4000, 0x7fff) AM_READWRITE( intvkbd_dualport8_msb_r, intvkbd_dualport8_msb_w )	/* Dual-port RAM */
 	AM_RANGE( 0xb7f8, 0xb7ff) AM_RAM	/* ??? */
-	AM_RANGE( 0xb800, 0xbfff) AM_READWRITE( videoram_r, videoram_w ) /* Text Display */
+	AM_RANGE( 0xb800, 0xbfff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* Text Display */
 	AM_RANGE( 0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 static INTERRUPT_GEN( intv_interrupt2 )
 {
-	cpunum_set_input_line(1, 0, PULSE_LINE);
+	cpunum_set_input_line(machine, 1, 0, PULSE_LINE);
 }
 
 static MACHINE_DRIVER_START( intv )
@@ -496,7 +495,7 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME		PARENT	COMPAT	MACHINE   INPUT     INIT		CONFIG		COMPANY      FULLNAME */
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE   INPUT     INIT        CONFIG      COMPANY      FULLNAME */
 CONS( 1979, intv,		0,		0,		intv,     intv, 	0,			intv,		"Mattel",    "Intellivision", GAME_NOT_WORKING )
 CONS( 1981, intvsrs,	0,		0,		intv,     intv, 	0,			intv,		"Mattel",    "Intellivision (Sears)", GAME_NOT_WORKING )
 COMP( 1981, intvkbd,	0,		0,		intvkbd,  intvkbd, 	0,			intvkbd,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)

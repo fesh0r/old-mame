@@ -17,18 +17,18 @@ rom/ram selection
 
 ***************************************************************************/
 
-#include <stdarg.h>
+
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "video/m6845.h"
-#include "includes/amstrad.h"
-//#include "drivers/i8255.h"
 #include "machine/8255ppi.h"
 #include "machine/nec765.h"
 #include "devices/dsk.h"
 #include "devices/cassette.h"
+#include "devices/snapquik.h"
+#include "includes/amstrad.h"
 #include "sound/ay8910.h"
-#include "image.h"
+
 
 void amstrad_setup_machine(void)
 {
@@ -313,3 +313,13 @@ DEVICE_LOAD(amstrad_plus_cartridge)
 	return INIT_PASS;
 }
 
+
+/*static DEVICE_LOAD( aleste )
+{
+	if (device_load_basicdsk_floppy(image)==INIT_PASS)
+	{
+		basicdsk_set_geometry(image, 80, 2, 9, 512, 0x01, 0, FALSE);
+		return INIT_PASS;
+	}
+	return INIT_FAIL;
+}*/

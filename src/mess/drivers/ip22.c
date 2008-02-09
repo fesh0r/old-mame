@@ -42,6 +42,7 @@
 \*********************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/mips/mips3.h"
 #include "machine/sgi.h"
 #include "machine/pckeybrd.h"
@@ -62,7 +63,7 @@
 
 static UINT32 *ip22_mainram;
 
-INLINE void verboselog( int n_level, const char *s_fmt, ... )
+INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
 {
 	if( VERBOSE_LEVEL >= n_level )
 	{
@@ -156,7 +157,7 @@ static void int3_raise_local0_irq(UINT8 source_mask)
 	// if it's not masked, also assert it now at the CPU
 	if (int3_regs[1] & source_mask)
 	{
-		cpunum_set_input_line(0, MIPS3_IRQ0, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, MIPS3_IRQ0, ASSERT_LINE);
 	}
 }
 
@@ -176,7 +177,7 @@ static void int3_raise_local1_irq(UINT8 source_mask)
 	// if it's not masked, also assert it now at the CPU
 	if (int3_regs[2] & source_mask)
 	{
-		cpunum_set_input_line(0, MIPS3_IRQ1, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, MIPS3_IRQ1, ASSERT_LINE);
 	}
 }
 
@@ -198,15 +199,15 @@ static READ32_HANDLER( hpc3_pbus6_r )
 		return ret8;
 		break;
 	case 0x008/4:
-//		if( nIOC_ParReadCnt > 7 )
-//		{
-//			ret8 = 0x40;
-//		}
-//		else
-//		{
+//      if( nIOC_ParReadCnt > 7 )
+//      {
+//          ret8 = 0x40;
+//      }
+//      else
+//      {
 			ret8 = pc_parallelport0_r(1) ^ 0x80;
-//			nIOC_ParReadCnt++;
-//		}
+//          nIOC_ParReadCnt++;
+//      }
 		verboselog( 0, "Parallel Status Read: %02x\n", ret8 );
 		return ret8;
 		break;
@@ -249,7 +250,7 @@ static READ32_HANDLER( hpc3_pbus6_r )
 	case 0xa4/4:
 	case 0xa8/4:
 	case 0xac/4:
-//		mame_printf_info("INT3: r @ %x mask %08x (PC=%x)\n", offset*4, mem_mask, activecpu_get_pc());
+//      mame_printf_info("INT3: r @ %x mask %08x (PC=%x)\n", offset*4, mem_mask, activecpu_get_pc());
 		return int3_regs[offset-0x80/4];
 		break;
 	case 0xb0/4:
@@ -288,7 +289,7 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 	case 0x004/4:
 		verboselog( 0, "Parallel Control Write: %08x\n", data );
 		pc_parallelport0_w(2, data ^ 0x0d);
-//		nIOC_ParCntl = data;
+//      nIOC_ParCntl = data;
 		break;
 	case 0x030/4:
 		if( ( data & 0x000000ff ) >= 0x20 )
@@ -302,7 +303,7 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 		cChar = data & 0x000000ff;
 		if( cChar >= 0x20 || cChar == 0x0d || cChar == 0x0a )
 		{
-//			mame_printf_info( "%c", cChar );
+//          mame_printf_info( "%c", cChar );
 		}
 		break;
 	case 0x034/4:
@@ -317,7 +318,7 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 		cChar = data & 0x000000ff;
 		if( cChar >= 0x20 || cChar == 0x0d || cChar == 0x0a )
 		{
-//			mame_printf_info( "%c", cChar );
+//          mame_printf_info( "%c", cChar );
 		}
 		break;
 	case 0x40/4:
@@ -336,27 +337,27 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 	case 0x9c/4:
 	case 0xa0/4:
 	case 0xa4/4:
-//		mame_printf_info("INT3: w %x to %x (reg %d) mask %08x (PC=%x)\n", data, offset*4, offset-0x80/4, mem_mask, activecpu_get_pc());
+//      mame_printf_info("INT3: w %x to %x (reg %d) mask %08x (PC=%x)\n", data, offset*4, offset-0x80/4, mem_mask, activecpu_get_pc());
 		int3_regs[offset-0x80/4] = data;
 
 		// if no local0 interrupts now, clear the input to the CPU
 		if ((int3_regs[0] & int3_regs[1]) == 0)
 		{
-			cpunum_set_input_line(0, MIPS3_IRQ0, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 0, MIPS3_IRQ0, CLEAR_LINE);
 		}
 		else
 		{
-			cpunum_set_input_line(0, MIPS3_IRQ0, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 0, MIPS3_IRQ0, ASSERT_LINE);
 		}
 
 		// if no local1 interrupts now, clear the input to the CPU
 		if ((int3_regs[2] & int3_regs[3]) == 0)
 		{
-			cpunum_set_input_line(0, MIPS3_IRQ1, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 0, MIPS3_IRQ1, CLEAR_LINE);
 		}
 		else
 		{
-			cpunum_set_input_line(0, MIPS3_IRQ1, ASSERT_LINE);
+			cpunum_set_input_line(Machine, 0, MIPS3_IRQ1, ASSERT_LINE);
 		}
 		break;
 	case 0xb0/4:
@@ -451,7 +452,7 @@ static READ32_HANDLER( hpc3_hd0_r )
 	{
 	case 0x0000/4:
 	case 0x4000/4:
-//		verboselog( 2, "HPC3 HD0 Status Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[0x17] );
+//      verboselog( 2, "HPC3 HD0 Status Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[0x17] );
 		if (!(mem_mask & 0x000000ff))
 		{
 			return wd33c93_r( 0 );
@@ -463,7 +464,7 @@ static READ32_HANDLER( hpc3_hd0_r )
 		break;
 	case 0x0004/4:
 	case 0x4004/4:
-//		verboselog( 2, "HPC3 HD0 Register Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[nHPC3_hd0_register] );
+//      verboselog( 2, "HPC3 HD0 Register Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[nHPC3_hd0_register] );
 		if (!(mem_mask & 0x000000ff))
 		{
 			return wd33c93_r( 1 );
@@ -487,7 +488,7 @@ static WRITE32_HANDLER( hpc3_hd0_w )
 	{
 	case 0x0000/4:
 	case 0x4000/4:
-//		verboselog( 2, "HPC3 HD0 Register Select Write: %08x\n", data );
+//      verboselog( 2, "HPC3 HD0 Register Select Write: %08x\n", data );
 		if (!(mem_mask & 0x000000ff))
 		{
 			wd33c93_w( 0, data & 0x000000ff );
@@ -495,7 +496,7 @@ static WRITE32_HANDLER( hpc3_hd0_w )
 		break;
 	case 0x0004/4:
 	case 0x4004/4:
-//		verboselog( 2, "HPC3 HD0 Register %d Write: %08x\n", nHPC3_hd0_register, data );
+//      verboselog( 2, "HPC3 HD0 Register %d Write: %08x\n", nHPC3_hd0_register, data );
 		if (!(mem_mask & 0x000000ff))
 		{
 			wd33c93_w( 1,  data & 0x000000ff );
@@ -591,18 +592,18 @@ static WRITE32_HANDLER( hpc3_pbus4_w )
 
 static READ32_HANDLER( rtc_r )
 {
-//	mame_printf_info("RTC_R: offset %x = %x (PC=%x)\n", offset, nRTC_Regs[offset], activecpu_get_pc());
+//  mame_printf_info("RTC_R: offset %x = %x (PC=%x)\n", offset, nRTC_Regs[offset], activecpu_get_pc());
 
 	if( offset <= 0x0d )
 	{
 		switch( offset )
 		{
 		case 0x0000:
-//			verboselog( 2, "RTC Seconds Read: %d \n", RTC_SECONDS );
+//          verboselog( 2, "RTC Seconds Read: %d \n", RTC_SECONDS );
 			return RTC_SECONDS;
 			break;
 		case 0x0001:
-//			verboselog( 2, "RTC Seconds Alarm Read: %d \n", RTC_SECONDS_A );
+//          verboselog( 2, "RTC Seconds Alarm Read: %d \n", RTC_SECONDS_A );
 			return RTC_SECONDS_A;
 			break;
 		case 0x0002:
@@ -758,7 +759,7 @@ static WRITE32_HANDLER( rtc_w )
 {
 	RTC_WRITECNT++;
 
-//	mame_printf_info("RTC_W: offset %x => %x (PC=%x)\n", data, offset, activecpu_get_pc());
+//  mame_printf_info("RTC_W: offset %x => %x (PC=%x)\n", data, offset, activecpu_get_pc());
 
 	if( offset <= 0x0d )
 	{
@@ -899,7 +900,7 @@ static WRITE32_HANDLER( rtc_w )
 #ifdef UNUSED_FUNCTION
 static READ32_HANDLER( unk_r )
 {
-//	mame_printf_info("UNK_R: PC=%x\n", activecpu_get_pc());
+//  mame_printf_info("UNK_R: PC=%x\n", activecpu_get_pc());
 	return 0x12345678;
 }
 
@@ -953,11 +954,11 @@ static READ32_HANDLER( hal2_r )
 	switch( offset )
 	{
 	case 0x0010/4:
-		verboselog( 0, "HAL2 Status read: 0x0004\n", 0x0004 );
+		verboselog( 0, "HAL2 Status read: 0x0004\n" );
 		return 0x0004;
 		break;
 	case 0x0020/4:
-		verboselog( 0, "HAL2 Revision read: 0x4011\n", 0x4011 );
+		verboselog( 0, "HAL2 Revision read: 0x4011\n" );
 		return 0x4011;
 		break;
 	}
@@ -1108,8 +1109,8 @@ static TIMER_CALLBACK(ip22_dma)
 	if( nPBUS_DMA_Active )
 	{
 		INT16 temp16;
-//		mame_printf_info( "nPBUS_DMA_CurPtr - 0x08000000/4 = %08x\n", (nPBUS_DMA_CurPtr - 0x08000000)/4 );
-//		verboselog( 0, "nPBUS_DMA_CurPtr - 0x08000000/4 = %08x\n", (nPBUS_DMA_CurPtr - 0x08000000)/4 );
+//      mame_printf_info( "nPBUS_DMA_CurPtr - 0x08000000/4 = %08x\n", (nPBUS_DMA_CurPtr - 0x08000000)/4 );
+//      verboselog( 0, "nPBUS_DMA_CurPtr - 0x08000000/4 = %08x\n", (nPBUS_DMA_CurPtr - 0x08000000)/4 );
 		temp16 = ( ip22_mainram[(nPBUS_DMA_CurPtr - 0x08000000)/4] & 0xffff0000 ) >> 16;
 		temp16 = ( ( temp16 & 0xff00 ) >> 8 ) | ( ( temp16 & 0x00ff ) << 8 );
 		dmadac_transfer(0, 1, 1, 1, 1, &temp16);
@@ -1258,7 +1259,7 @@ static MACHINE_RESET( ip225015 )
 
 static void dump_chain(UINT32 ch_base)
 {
-//	mame_printf_info("node: %08x %08x %08x (len = %x)\n", program_read_dword(ch_base), program_read_dword(ch_base+4), program_read_dword(ch_base+8), program_read_dword(ch_base+4) & 0x3fff);
+//  mame_printf_info("node: %08x %08x %08x (len = %x)\n", program_read_dword(ch_base), program_read_dword(ch_base+4), program_read_dword(ch_base+8), program_read_dword(ch_base+4) & 0x3fff);
 
 	if ((program_read_dword(ch_base+8) != 0) && !(program_read_dword(ch_base+4) & 0x80000000))
 	{
@@ -1294,12 +1295,12 @@ static void scsi_irq(int state)
 				rptr = program_read_dword(nHPC_SCSI0Descriptor);
 				length = program_read_dword(nHPC_SCSI0Descriptor+4) & 0x3fff;
 
-/*				mame_printf_info("DMA to device: length %x\n", length);
-				mame_printf_info("first words: %08x %08x %08x %08x\n",
-					program_read_dword(rptr),
-					program_read_dword(rptr+4),
-					program_read_dword(rptr+8),
-					program_read_dword(rptr+12));*/
+/*              mame_printf_info("DMA to device: length %x\n", length);
+                mame_printf_info("first words: %08x %08x %08x %08x\n",
+                    program_read_dword(rptr),
+                    program_read_dword(rptr+4),
+                    program_read_dword(rptr+8),
+                    program_read_dword(rptr+12));*/
 
 				if (length <= 4096)
 				{
@@ -1351,7 +1352,7 @@ static void scsi_irq(int state)
 				wptr = program_read_dword(nHPC_SCSI0Descriptor);
 				sptr = 0;
 
-//				mame_printf_info("DMA from device: %d words @ %x\n", words, wptr);
+//              mame_printf_info("DMA from device: %d words @ %x\n", words, wptr);
 
 				dump_chain(nHPC_SCSI0Descriptor);
 
@@ -1436,9 +1437,14 @@ static const struct WD33C93interface scsi_intf =
 	&scsi_irq,		/* command completion IRQ */
 };
 
+static void ip225015_exit(running_machine *machine)
+{
+	wd33c93_exit(&scsi_intf);
+}
+
 static DRIVER_INIT( ip225015 )
 {
-	struct kbdc8042_interface at8042 =
+	static const struct kbdc8042_interface at8042 =
 	{
 		KBDC8042_STANDARD, NULL, NULL
 	};
@@ -1451,6 +1457,7 @@ static DRIVER_INIT( ip225015 )
 
 	// SCSI init
 	wd33c93_init(&scsi_intf);
+	add_exit_callback(machine, ip225015_exit);
 
 	nIOC_ParReadCnt = 0;
 }
@@ -1531,7 +1538,7 @@ static void rtc_update(void)
 static INTERRUPT_GEN( ip22_vbl )
 {
 	nIntCounter++;
-//	if( nIntCounter == 60 )
+//  if( nIntCounter == 60 )
 	{
 		nIntCounter = 0;
 		rtc_update();
@@ -1626,7 +1633,7 @@ ROM_END
 
 SYSTEM_CONFIG_START( ip225015 )
 	CONFIG_DEVICE(ip22_chdcd_getinfo)
-//	CONFIG_DEVICE(ip22_harddisk_getinfo)
+//  CONFIG_DEVICE(ip22_harddisk_getinfo)
 SYSTEM_CONFIG_END
 
 /*     YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */

@@ -6,7 +6,7 @@
 	interrupts, I/O ports)
 
 	Many thanks to Kees van Oss for:
-	1.	Tape input/output curcuit diagram. It describes in great detail how the 2.4khz
+	1.	Tape input/output circuit diagram. It describes in great detail how the 2.4khz
 		tone, 2.4khz tone enable, tape output and tape input are connected.
 	2.	The DOS rom for the Atom so I could complete the floppy disc emulation.
 	3.	Details of the eprom expansion board for the Atom.
@@ -14,17 +14,21 @@
 
 ***********************************************************************/
 
+
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/8255ppi.h"
 #include "video/m6847.h"
-#include "includes/atom.h"
-#include "includes/i8271.h"
+#include "machine/i8271.h"
 #include "machine/6522via.h"
 #include "devices/basicdsk.h"
 #include "devices/flopdrv.h"
 #include "devices/cassette.h"
 #include "devices/printer.h"
+#include "devices/snapquik.h"
+#include "includes/atom.h"
 #include "sound/speaker.h"
+
 
 UINT8 atom_8255_porta;
 static UINT8 atom_8255_portb;
@@ -40,14 +44,12 @@ static void atom_via_irq_func(int state)
 {
 	if (state)
 	{
-		cpunum_set_input_line(0,0, HOLD_LINE);
+		cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(0,0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 	}
-
-
 }
 
 static mess_image *cassette_device_image(void)
@@ -150,7 +152,7 @@ static void atom_8271_interrupt_callback(int state)
 		{
 			/* I'll pulse it because if I used hold-line I'm not sure
 			it would clear - to be checked */
-			cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 
@@ -495,7 +497,7 @@ READ8_HANDLER(atom_eprom_box_r)
 
 MACHINE_RESET( atomeb )
 {
-	machine_reset_atom(machine);
+	MACHINE_RESET_CALL(atom);
 	atom_eprom_box_init();
 }
 

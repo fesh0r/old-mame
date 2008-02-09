@@ -7,9 +7,11 @@
 *********************************************************************/
 
 #include "appldriv.h"
-#include "devices/flopdrv.h"
-#include "devices/mflopimg.h"
+#include "flopdrv.h"
+#include "mflopimg.h"
+#include "deprecat.h"
 #include "formats/ap2_dsk.h"
+
 
 #define APPLE525TAG	"apple525driv"
 

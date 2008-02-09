@@ -7,15 +7,15 @@
 
 ***************************************************************************/
 
-#include <math.h>
-
-#include "mame.h"
+#include "driver.h"
 #include "streams.h"
+#include "deprecat.h"
 
 #define VERBOSE_DBG 1
 #include "includes/cbm.h"
 #include "includes/c16.h"
-#include "includes/ted7360.h"
+#include "video/ted7360.h"
+
 
 /* noise channel: look into vic6560.c */
 #define NOISE_BUFFER_SIZE_SEC 5

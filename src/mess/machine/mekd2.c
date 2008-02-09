@@ -9,26 +9,18 @@
 ******************************************************************************/
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
-#include "video/generic.h"
 
 #include "includes/mekd2.h"
 
-#ifndef VERBOSE
-#define VERBOSE 1
-#endif
-
-#if VERBOSE
-#define LOG(x)	logerror(x)
-#else
-#define LOG(x)						   /* x */
-#endif
+#define VERBOSE 0
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 DRIVER_INIT( mekd2 )
 {
 	UINT8 *dst;
 	int x, y, i;
 
-	static const char *seg7 =
+	static const char seg7[] =
 		"....aaaaaaaaaaaaa." \
 		"...f.aaaaaaaaaaa.b" \
 		"...ff.aaaaaaaaa.bb" \
@@ -55,7 +47,7 @@ DRIVER_INIT( mekd2 )
 		"..................";
 
 
-	static const char *keys[24] =
+	static const char *const keys[24] =
 	{
 		"........................" \
 		"........................" \
@@ -585,7 +577,7 @@ DEVICE_LOAD( mekd2_cart )
 	image_fread(image, &size, 2);
 	size = LITTLE_ENDIANIZE_INT16(size);
 	image_fread(image, &ident, 1);
-/*			LOG(( "mekd2_rom_load: $%04X $%04X $%02X\n", addr, size, ident)); */
+	LOG(( "mekd2_rom_load: $%04X $%04X $%02X\n", addr, size, ident));
 	while (size-- > 0)
 		image_fread(image, &RAM[addr++], 1);
 

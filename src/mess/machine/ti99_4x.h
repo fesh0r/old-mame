@@ -1,6 +1,7 @@
 /*
 	header file for machine/ti99_4x.c
 */
+#include "video/tms9928a.h"
 
 /* defines */
 
@@ -167,10 +168,11 @@ DEVICE_LOAD( ti99_hd );
 DEVICE_UNLOAD( ti99_hd );
 
 VIDEO_START( ti99_4ev );
-void ti99_vblank_interrupt(void);
-void ti99_4ev_hblank_interrupt(void);
+INTERRUPT_GEN( ti99_vblank_interrupt );
+INTERRUPT_GEN( ti99_4ev_hblank_interrupt );
 
 void set_hsgpl_crdena(int data);
+void ti99_common_init(const TMS9928a_interface *gfxparm);
 
 READ16_HANDLER ( ti99_nop_8_r );
 WRITE16_HANDLER ( ti99_nop_8_w );

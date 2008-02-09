@@ -1,5 +1,14 @@
-/* should go into memory.h */
+/*****************************************************************************
+ *
+ * includes/pdp1.h
+ *
+ ****************************************************************************/
 
+#ifndef PDP1_H_
+#define PDP1_H_
+
+
+/* should go into memory.h */
 #define READ18_HANDLER(name) READ32_HANDLER(name)
 #define WRITE18_HANDLER(name) WRITE32_HANDLER(name)
 
@@ -79,8 +88,8 @@ enum
 	pdp1_config_extend_mask			= 0x3,	/* 2 bits */
 	pdp1_config_hw_mul_div_bit		= 2,
 	pdp1_config_hw_mul_div_mask		= 0x1,
-	/*pdp1_config_hw_obsolete_bit	= 3,
-	pdp1_config_hw_obsolete_mask	= 0x1,*/
+	/*pdp1_config_hw_obsolete_bit   = 3,
+    pdp1_config_hw_obsolete_mask    = 0x1,*/
 	pdp1_config_type_20_sbs_bit		= 4,
 	pdp1_config_type_20_sbs_mask	= 0x1,
 	pdp1_config_lightpen_bit		= 5,
@@ -116,6 +125,8 @@ extern pdp1_reset_param_t pdp1_reset_param;
 extern int *pdp1_memory;
 
 MACHINE_START( pdp1 );
+MACHINE_RESET( pdp1 );
+
 READ18_HANDLER ( pdp1_read_mem );
 WRITE18_HANDLER ( pdp1_write_mem );
 
@@ -161,6 +172,7 @@ typedef struct lightpen_t
 	short x, y;
 	short radius;
 } lightpen_t;
+
 
 /*----------- defined in video/pdp1.c -----------*/
 
@@ -245,3 +257,5 @@ enum
 	pen_lightpen_pressed = pen_green
 };
 
+
+#endif /* PDP1_H_ */

@@ -3,7 +3,9 @@
 
   provides a centronics printer simulation (sends output to IO_PRINTER)
 */
-#include "includes/centroni.h"
+
+#include "driver.h"
+#include "centroni.h"
 #include "devices/printer.h"
 
 typedef struct {

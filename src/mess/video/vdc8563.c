@@ -15,21 +15,16 @@
 #include <stdio.h>
 #include <assert.h>
 #include "driver.h"
-#include "mscommon.h"
+#include "deprecat.h"
 
 #include "includes/crtc6845.h" // include only several register defines
-#include "includes/vdc8563.h"
+#include "vdc8563.h"
 
 #define VERBOSE 0
 #define VERBOSE_DBG	0
 
-#if VERBOSE
 #define DBG_LOG(N,M,A)      \
-    if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",timer_get_time(),(char*)M );
- logerror A; }
-#else
-#define DBG_LOG(N,M,A)
-#endif
+    if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
 
 /* seems to be a motorola m6845 variant */
 
@@ -290,14 +285,14 @@ WRITE8_HANDLER ( vdc8563_port_w )
 				vdc.reg[vdc.index]=data;
 				if (BLOCK_COPY) {
 					DBG_LOG (2, "vdc block copy",
-							 (errorlog, "src:%.4x dst:%.4x size:%.2x\n",
+							 ("src:%.4x dst:%.4x size:%.2x\n",
 							  vdc.src, vdc.addr, data));
 					i=data;do {
 						vdc_videoram_w(vdc.addr++, vdc_videoram_r(vdc.src++));
 					} while (--i!=0);
 				} else {
 					DBG_LOG (2, "vdc block set",
-							 (errorlog, "dest:%.4x value:%.2x size:%.2x\n",
+							 ("dest:%.4x value:%.2x size:%.2x\n",
 							  vdc.addr, FILLBYTE, data));
 					i=data;do {
 						vdc_videoram_w(vdc.addr++, FILLBYTE);
@@ -306,7 +301,7 @@ WRITE8_HANDLER ( vdc8563_port_w )
 				break;
 			case 0x1f:
 				DBG_LOG (2, "vdc written",
-						 (errorlog, "dest:%.4x size:%.2x\n",
+						 ("dest:%.4x size:%.2x\n",
 						  vdc.addr, data));
 				vdc.reg[vdc.index]=data;
 				vdc_videoram_w(vdc.addr++, data);
@@ -314,12 +309,12 @@ WRITE8_HANDLER ( vdc8563_port_w )
 			default:
 				vdc.reg[vdc.index]=data;
 				DBG_LOG (2, "vdc8563_port_w",
-						 (errorlog, "%.2x:%.2x\n", vdc.index, data));
+						 ("%.2x:%.2x\n", vdc.index, data));
 				break;
 			}
 		}
 		DBG_LOG (3, "vdc8563_port_w",
-				 (errorlog, "%.2x:%.2x\n", vdc.index, data));
+				 ("%.2x:%.2x\n", vdc.index, data));
 	}
 	else
 	{
@@ -349,7 +344,7 @@ WRITE8_HANDLER ( vdc8563_port_w )
 				break;
 			case 0x1f:
 				val=vdc_videoram_r(vdc.addr);
-				DBG_LOG (2, "vdc read", (errorlog, "%.4x %.2x\n", vdc.addr, val));
+				DBG_LOG (2, "vdc read", ("%.4x %.2x\n", vdc.addr, val));
 				break;
 			case 0x20:
 				val=vdc.src>>8;
@@ -361,7 +356,7 @@ WRITE8_HANDLER ( vdc8563_port_w )
 				val=vdc.reg[vdc.index&0x3f]&reg_mask[vdc.index&0x3f].read;
 			}
 		}
-		DBG_LOG (2, "vdc8563_port_r", (errorlog, "%.2x:%.2x\n", vdc.index, val));
+		DBG_LOG (2, "vdc8563_port_r", ("%.2x:%.2x\n", vdc.index, val));
 	}
 	else
 	{
@@ -553,8 +548,7 @@ VIDEO_UPDATE( vdc8563 )
 	} else {
 		for (i=0; i<512; i++) {
 			if (full_refresh||vdc.fontdirty[i]) {
-				decodechar(machine->gfx[0],i,vdc.ram+(vdc.fontram_start&vdc.mask),
-						   machine->drv->gfxdecodeinfo[0].gfxlayout);
+				decodechar(machine->gfx[0],i,vdc.ram+(vdc.fontram_start&vdc.mask));
 				vdc.fontdirty[i]=0;
 			}
 		}

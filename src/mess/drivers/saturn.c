@@ -1,17 +1,17 @@
 /* Sega Saturn
 
-Driver by David Haywood,Angelo Salese,Olivier Galibert & Mariusz Wojcieszek
+Driver by David Haywood, Angelo Salese, Olivier Galibert & Mariusz Wojcieszek
 SCSP driver provided by R.Belmont,based on ElSemi's SCSP sound chip emulator
-CD Block driver provided by ANY,based on sthief original emulator
-Many thanks to Guru,Fabien & Runik for the help given.
+CD Block driver provided by ANY, based on sthief original emulator
+Many thanks to Guru, Fabien & Runik for the help given.
 
 MESS conversion by R. Belmont
 
 Hardware overview:
 ------------------
--two SH-2 CPUs,in a master/slave configuration.The master cpu is used to
+-two SH-2 CPUs,in a master/slave configuration. The master cpu is used to
 boot-up and to do the most of the work,the slave one does extra work that could be
-too much for a single cpu.They both shares all the existant devices;
+too much for a single cpu. They both shares all the existent devices;
 -a M68000 CPU,used to drive sound(the SCSP chip).The program is uploaded via the
 SH-2 cpus;
 -a SMPC (System Manager & Peripheral Control),used to drive all the
@@ -161,13 +161,14 @@ cpu #0 (PC=0601023A): unmapped program memory dword write to 02000000 = 00000000
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "cpu/sh2/sh2.h"
 #include "machine/stvcd.h"
 #include "machine/scudsp.h"
 #include "sound/scsp.h"
 #include "devices/chd_cd.h"
-#include "mslegacy.h"
+
 
 extern UINT32* stv_vdp2_regs;
 extern UINT32* stv_vdp2_vram;
@@ -248,7 +249,7 @@ static int scanline;
 
 /*A-Bus IRQ checks,where they could be located these?*/
 #define ABUSIRQ(_irq_,_vector_,_mask_) \
-	if(!(stv_scu[40] & _mask_)) { cpunum_set_input_line_and_vector(0, _irq_, HOLD_LINE , _vector_); }
+	if(!(stv_scu[40] & _mask_)) { cpunum_set_input_line_and_vector(Machine, 0, _irq_, HOLD_LINE , _vector_); }
 #if 0
 if(stv_scu[42] & 1)//IRQ ACK
 {
@@ -474,7 +475,7 @@ static void smpc_intbackhelper(void)
 
 	pad = readinputport(intback_stage); 	// will be 2 or 3, port 2 = player 1, port 3 = player 2
 
-//	if (LOG_SMPC) logerror("SMPC: providing PAD data for intback, pad %d\n", intback_stage-2);
+//  if (LOG_SMPC) logerror("SMPC: providing PAD data for intback, pad %d\n", intback_stage-2);
 	smpc_ram[33] = 0xf1;	// no tap, direct connect
 	smpc_ram[35] = 0x02;	// saturn pad
 	smpc_ram[37] = pad>>8;
@@ -509,7 +510,7 @@ static UINT8 stv_SMPC_r8 (int offset)
 
 	if (offset == 0x33) return_data = saturn_region;
 
-//	if (LOG_SMPC) logerror ("cpu #%d (PC=%08X) SMPC: Read from Byte Offset %02x (%d) Returns %02x\n", cpu_getactivecpu(), activecpu_get_pc(), offset, offset>>1, return_data);
+//  if (LOG_SMPC) logerror ("cpu #%d (PC=%08X) SMPC: Read from Byte Offset %02x (%d) Returns %02x\n", cpu_getactivecpu(), activecpu_get_pc(), offset, offset>>1, return_data);
 
 
 	return return_data;
@@ -523,26 +524,26 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 	/* get the current date/time from the core */
 	mame_get_current_datetime(Machine, &systime);
 
-//	if (LOG_SMPC) logerror ("8-bit SMPC Write to Offset %02x (reg %d) with Data %02x (prev %02x)\n", offset, offset>>1, data, smpc_ram[offset]);
+//  if (LOG_SMPC) logerror ("8-bit SMPC Write to Offset %02x (reg %d) with Data %02x (prev %02x)\n", offset, offset>>1, data, smpc_ram[offset]);
 
-//	if (offset == 0x7d) printf("IOSEL2 %d IOSEL1 %d\n", (data>>1)&1, data&1);
+//  if (offset == 0x7d) printf("IOSEL2 %d IOSEL1 %d\n", (data>>1)&1, data&1);
 
 	last = smpc_ram[offset];
 
 	if ((intback_stage > 0) && (offset == 1) && (((data ^ 0x80)&0x80) == (last&0x80)))
 	{
-//		if (LOG_SMPC) logerror("SMPC: CONTINUE request, stage %d\n", intback_stage);
+//      if (LOG_SMPC) logerror("SMPC: CONTINUE request, stage %d\n", intback_stage);
 		if (intback_stage != 3)
 		{
 			intback_stage = 2;
 		}
 		smpc_intbackhelper();
-		cpunum_set_input_line_and_vector(0, 8, HOLD_LINE , 0x47);
+		cpunum_set_input_line_and_vector(Machine, 0, 8, HOLD_LINE , 0x47);
 	}
 
 	if ((offset == 1) && (data & 0x40))
 	{
-//		if (LOG_SMPC) logerror("SMPC: BREAK request\n");
+//      if (LOG_SMPC) logerror("SMPC: BREAK request\n");
 		intback_stage = 0;
 	}
 
@@ -581,7 +582,7 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 			if(!(stv_scu[40] & 0x0100)) /*Pad irq*/
 			{
 				if(LOG_SMPC) logerror ("Interrupt: PAD irq at scanline %04x, Vector 0x48 Level 0x08\n",scanline);
-				cpunum_set_input_line_and_vector(0, 8, HOLD_LINE , 0x48);
+				cpunum_set_input_line_and_vector(Machine, 0, 8, HOLD_LINE , 0x48);
 			}
 	}
 
@@ -598,25 +599,25 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 				if(LOG_SMPC) logerror ("SMPC: Slave ON\n");
 				smpc_ram[0x5f]=0x02;
 				stv_enable_slave_sh2 = 1;
-				cpunum_set_input_line(1, INPUT_LINE_RESET, CLEAR_LINE);
+				cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 				break;
 			case 0x03:
 				if(LOG_SMPC) logerror ("SMPC: Slave OFF\n");
 				smpc_ram[0x5f]=0x03;
 				stv_enable_slave_sh2 = 0;
-				cpu_trigger(1000);
-				cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+				cpu_trigger(Machine, 1000);
+				cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 				break;
 			case 0x06:
 				if(LOG_SMPC) logerror ("SMPC: Sound ON\n");
 				/* wrong? */
 				smpc_ram[0x5f]=0x06;
-				cpunum_set_input_line(2, INPUT_LINE_RESET, CLEAR_LINE);
+				cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, CLEAR_LINE);
 				en_68k = 1;
 				break;
 			case 0x07:
 				if(LOG_SMPC) logerror ("SMPC: Sound OFF\n");
-				cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
+				cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
 				en_68k = 0;
 				smpc_ram[0x5f]=0x07;
 				break;
@@ -626,28 +627,28 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 			case 0x0d:
 				if(LOG_SMPC) logerror ("SMPC: System Reset\n");
 				smpc_ram[0x5f]=0x0d;
-				cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 				system_reset();
 				break;
 			case 0x0e:
 				if(LOG_SMPC) logerror ("SMPC: Change Clock to 352\n");
 				smpc_ram[0x5f]=0x0e;
-				cpunum_set_clock(0, MASTER_CLOCK_352/2);
-				cpunum_set_clock(1, MASTER_CLOCK_352/2);
-				cpunum_set_clock(2, MASTER_CLOCK_352/5);
-				cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE); // ff said this causes nmi, should we set a timer then nmi?
+				cpunum_set_clock(Machine, 0, MASTER_CLOCK_352/2);
+				cpunum_set_clock(Machine, 1, MASTER_CLOCK_352/2);
+				cpunum_set_clock(Machine, 2, MASTER_CLOCK_352/5);
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE); // ff said this causes nmi, should we set a timer then nmi?
 				break;
 			case 0x0f:
 				if(LOG_SMPC) logerror ("SMPC: Change Clock to 320\n");
 				smpc_ram[0x5f]=0x0f;
-				cpunum_set_clock(0, MASTER_CLOCK_320/2);
-				cpunum_set_clock(1, MASTER_CLOCK_320/2);
-				cpunum_set_clock(2, MASTER_CLOCK_320/5);
-				cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE); // ff said this causes nmi, should we set a timer then nmi?
+				cpunum_set_clock(Machine, 0, MASTER_CLOCK_320/2);
+				cpunum_set_clock(Machine, 1, MASTER_CLOCK_320/2);
+				cpunum_set_clock(Machine, 2, MASTER_CLOCK_320/5);
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE); // ff said this causes nmi, should we set a timer then nmi?
 				break;
 			/*"Interrupt Back"*/
 			case 0x10:
-//				if(LOG_SMPC) logerror ("SMPC: Status Acquire (IntBack)\n");
+//              if(LOG_SMPC) logerror ("SMPC: Status Acquire (IntBack)\n");
 				smpc_ram[0x5f]=0x10;
 				smpc_ram[0x21] = (0x80) | ((NMI_reset & 1) << 6);
 			  	smpc_ram[0x23] = DectoBCD(systime.local_time.year / 100);
@@ -693,9 +694,9 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 			//  /*This is for RTC,cartridge code and similar stuff...*/
 			//  if(!(stv_scu[40] & 0x0080)) /*System Manager(SMPC) irq*/ /* we can't check this .. breaks controls .. probably issues elsewhere? */
 				{
-//					if(LOG_SMPC) logerror ("Interrupt: System Manager (SMPC) at scanline %04x, Vector 0x47 Level 0x08\n",scanline);
+//                  if(LOG_SMPC) logerror ("Interrupt: System Manager (SMPC) at scanline %04x, Vector 0x47 Level 0x08\n",scanline);
 					smpc_intbackhelper();
-					cpunum_set_input_line_and_vector(0, 8, HOLD_LINE , 0x47);
+					cpunum_set_input_line_and_vector(Machine, 0, 8, HOLD_LINE , 0x47);
 				}
 			break;
 			/* RTC write*/
@@ -724,7 +725,7 @@ static void stv_SMPC_w8 (int offset, UINT8 data)
 				if(LOG_SMPC) logerror ("SMPC: NMI request\n");
 				smpc_ram[0x5f]=0x18;
 				/*NMI is unconditionally requested?*/
-				cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 				break;
 			case 0x19:
 				if(LOG_SMPC) logerror ("SMPC: NMI Enable\n");
@@ -819,7 +820,7 @@ static INTERRUPT_GEN( stv_interrupt )
 		if(!(stv_scu[40] & 2))/*VBLANK-OUT*/
 		{
 			if(LOG_IRQ) logerror ("Interrupt: VBlank-OUT at scanline %04x, Vector 0x41 Level 0x0e\n",scanline);
-			cpunum_set_input_line_and_vector(0, 0xe, HOLD_LINE , 0x41);
+			cpunum_set_input_line_and_vector(Machine, 0, 0xe, HOLD_LINE , 0x41);
 		}
 		stv_vblank = 0;
 	}
@@ -835,14 +836,14 @@ static INTERRUPT_GEN( stv_interrupt )
 			if((!(stv_scu[40] & 0x10)) && (!(stv_scu[38] & 0x80)))
 			{
 				if(LOG_IRQ) logerror ("Interrupt: Timer 1 at scanline %04x, Vector 0x44 Level 0x0b\n",scanline);
-				cpunum_set_input_line_and_vector(0, 0xb, HOLD_LINE, 0x44 );
+				cpunum_set_input_line_and_vector(Machine, 0, 0xb, HOLD_LINE, 0x44 );
 			}
 			else if((!(stv_scu[40] & 0x10)) && (stv_scu[38] & 0x80))
 			{
 				if(timer_1 == (stv_scu[36] & 0x1ff))
 				{
 					if(LOG_IRQ) logerror ("Interrupt: Timer 1 at scanline %04x, Vector 0x44 Level 0x0b\n",scanline);
-					cpunum_set_input_line_and_vector(0, 0xb, HOLD_LINE, 0x44 );
+					cpunum_set_input_line_and_vector(Machine, 0, 0xb, HOLD_LINE, 0x44 );
 				}
 			}
 		}
@@ -851,7 +852,7 @@ static INTERRUPT_GEN( stv_interrupt )
 			if(!(stv_scu[40] & 8))/*Timer 0*/
 			{
 				if(LOG_IRQ) logerror ("Interrupt: Timer 0 at scanline %04x, Vector 0x43 Level 0x0c\n",scanline);
-				cpunum_set_input_line_and_vector(0, 0xc, HOLD_LINE, 0x43 );
+				cpunum_set_input_line_and_vector(Machine, 0, 0xc, HOLD_LINE, 0x43 );
 			}
 		}
 
@@ -859,7 +860,7 @@ static INTERRUPT_GEN( stv_interrupt )
 		if(!(stv_scu[40] & 4))/*HBLANK-IN*/
 		{
 			if(LOG_IRQ) logerror ("Interrupt: HBlank-In at scanline %04x, Vector 0x42 Level 0x0d\n",scanline);
-			cpunum_set_input_line_and_vector(0, 0xd, HOLD_LINE , 0x42);
+			cpunum_set_input_line_and_vector(Machine, 0, 0xd, HOLD_LINE , 0x42);
 		}
 	}
 	else if(scanline == 224)
@@ -870,7 +871,7 @@ static INTERRUPT_GEN( stv_interrupt )
 		if(!(stv_scu[40] & 1))/*VBLANK-IN*/
 		{
 			if(LOG_IRQ) logerror ("Interrupt: VBlank IN at scanline %04x, Vector 0x40 Level 0x0f\n",scanline);
-			cpunum_set_input_line_and_vector(0, 0xf, HOLD_LINE , 0x40);
+			cpunum_set_input_line_and_vector(Machine, 0, 0xf, HOLD_LINE , 0x40);
 		}
 		stv_vblank = 1;
 
@@ -879,11 +880,11 @@ static INTERRUPT_GEN( stv_interrupt )
 			if(!(stv_scu[40] & 8))/*Timer 0*/
 			{
 				if(LOG_IRQ) logerror ("Interrupt: Timer 0 at scanline %04x, Vector 0x43 Level 0x0c\n",scanline);
-				cpunum_set_input_line_and_vector(0, 0xc, HOLD_LINE, 0x43 );
+				cpunum_set_input_line_and_vector(Machine, 0, 0xc, HOLD_LINE, 0x43 );
 			}
 		}
 		if(!(stv_scu[40] & 0x2000)) /*Sprite draw end irq*/
-			cpunum_set_input_line_and_vector(0, 2, HOLD_LINE , 0x4d);
+			cpunum_set_input_line_and_vector(Machine, 0, 2, HOLD_LINE , 0x4d);
 	}
 }
 
@@ -1106,14 +1107,14 @@ static WRITE32_HANDLER( stv_scu_w32 )
 			/*Sound IRQ*/
 			if(/*(!(stv_scu[40] & 0x40)) &&*/ scsp_to_main_irq == 1)
 			{
-				//cpunum_set_input_line_and_vector(0, 9, HOLD_LINE , 0x46);
+				//cpunum_set_input_line_and_vector(Machine, 0, 9, HOLD_LINE , 0x46);
 				logerror("SCSP: Main CPU interrupt\n");
 				#if 0
 				if((scu_dst_0 & 0x7ffffff) != 0x05a00000)
 				{
 					if(!(stv_scu[40] & 0x1000))
 					{
-						cpunum_set_input_line_and_vector(0, 3, HOLD_LINE, 0x4c);
+						cpunum_set_input_line_and_vector(Machine, 0, 3, HOLD_LINE, 0x4c);
 						logerror("SCU: Illegal DMA interrupt\n");
 					}
 				}
@@ -1167,7 +1168,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 			/*Sound IRQ*/
 			if(/*(!(stv_scu[40] & 0x40)) &&*/ scsp_to_main_irq == 1)
 			{
-				//cpunum_set_input_line_and_vector(0, 9, HOLD_LINE , 0x46);
+				//cpunum_set_input_line_and_vector(Machine, 0, 9, HOLD_LINE , 0x46);
 				logerror("SCSP: Main CPU interrupt\n");
 			}
 		}
@@ -1217,7 +1218,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 			/*Sound IRQ*/
 			if(/*(!(stv_scu[40] & 0x40)) &&*/ scsp_to_main_irq == 1)
 			{
-				//cpunum_set_input_line_and_vector(0, 9, HOLD_LINE , 0x46);
+				//cpunum_set_input_line_and_vector(Machine, 0, 9, HOLD_LINE , 0x46);
 				logerror("SCSP: Main CPU interrupt\n");
 			}
 		}
@@ -1396,7 +1397,7 @@ static void dma_direct_lv0()
 
 	if(LOG_SCU) logerror("DMA transfer END\n");
 	if(!(stv_scu[40] & 0x800))/*Lv 0 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 5, HOLD_LINE , 0x4b);
+		cpunum_set_input_line_and_vector(Machine, 0, 5, HOLD_LINE , 0x4b);
 
 	if(scu_add_tmp & 0x80000000)
 	{
@@ -1499,7 +1500,7 @@ static void dma_direct_lv1()
 
 	if(LOG_SCU) logerror("DMA transfer END\n");
 	if(!(stv_scu[40] & 0x400))/*Lv 1 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 6, HOLD_LINE , 0x4a);
+		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x4a);
 
 	if(scu_add_tmp & 0x80000000)
 	{
@@ -1602,7 +1603,7 @@ static void dma_direct_lv2()
 
 	if(LOG_SCU) logerror("DMA transfer END\n");
 	if(!(stv_scu[40] & 0x200))/*Lv 2 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 6, HOLD_LINE , 0x49);
+		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x49);
 
 	if(scu_add_tmp & 0x80000000)
 	{
@@ -1680,7 +1681,7 @@ static void dma_indirect_lv0()
 	}while(job_done == 0);
 
 	if(!(stv_scu[40] & 0x800))/*Lv 0 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 5, HOLD_LINE , 0x4b);
+		cpunum_set_input_line_and_vector(Machine, 0, 5, HOLD_LINE , 0x4b);
 
 	D0MV_0;
 }
@@ -1752,7 +1753,7 @@ static void dma_indirect_lv1()
 	}while(job_done == 0);
 
 	if(!(stv_scu[40] & 0x400))/*Lv 1 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 6, HOLD_LINE , 0x4a);
+		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x4a);
 
 	D1MV_0;
 }
@@ -1823,7 +1824,7 @@ static void dma_indirect_lv2()
 	}while(job_done == 0);
 
 	if(!(stv_scu[40] & 0x200))/*Lv 2 DMA end irq*/
-		cpunum_set_input_line_and_vector(0, 6, HOLD_LINE , 0x49);
+		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x49);
 
 	D2MV_0;
 }
@@ -1863,7 +1864,7 @@ static WRITE32_HANDLER( minit_w )
 {
 	logerror("cpu #%d (PC=%08X) MINIT write = %08x\n",cpu_getactivecpu(), activecpu_get_pc(),data);
 	cpu_boost_interleave(double_to_attotime(minit_boost_timeslice), ATTOTIME_IN_USEC(minit_boost));
-	cpu_trigger(1000);
+	cpu_trigger(Machine, 1000);
 	cpunum_set_info_int(1, CPUINFO_INT_SH2_FRT_INPUT, PULSE_LINE);
 }
 
@@ -1911,7 +1912,7 @@ static WRITE32_HANDLER(satram_w)
 
 static NVRAM_HANDLER(saturn)
 {
-	static UINT32 init[8] =
+	static const UINT32 init[8] =
 	{
 		0x420061, 0x63006b, 0x550070, 0x520061, 0x6d0020, 0x46006f, 0x72006d, 0x610074,
 	};
@@ -2148,9 +2149,9 @@ static MACHINE_START( saturn )
 static MACHINE_RESET( saturn )
 {
 	// don't let the slave cpu and the 68k go anywhere
-	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 	stv_enable_slave_sh2 = 0;
-	cpunum_set_input_line(2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
 
 	smpcSR = 0x40;	// this bit is always on according to docs
 
@@ -2165,9 +2166,9 @@ static MACHINE_RESET( saturn )
 	memset(stv_workram_l, 0, 0x100000);
 	memset(stv_workram_h, 0, 0x100000);
 
-	cpunum_set_clock(0, MASTER_CLOCK_320/2);
-	cpunum_set_clock(1, MASTER_CLOCK_320/2);
-	cpunum_set_clock(2, MASTER_CLOCK_320/5);
+	cpunum_set_clock(Machine, 0, MASTER_CLOCK_320/2);
+	cpunum_set_clock(Machine, 1, MASTER_CLOCK_320/2);
+	cpunum_set_clock(Machine, 2, MASTER_CLOCK_320/5);
 
 	stvcd_reset();
 }
@@ -2257,15 +2258,15 @@ static void scsp_irq(int irq)
 	if (irq > 0)
 	{
 		scsp_last_line = irq;
-		cpunum_set_input_line(2, irq, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 2, irq, ASSERT_LINE);
 	}
 	else if (irq < 0)
 	{
-		cpunum_set_input_line(2, -irq, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 2, -irq, CLEAR_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(2, scsp_last_line, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 2, scsp_last_line, CLEAR_LINE);
 	}
 }
 
@@ -2328,9 +2329,9 @@ ROM_START(saturnjp)
 	ROMX_LOAD("sega_100.bin", 0x00000000, 0x00080000, CRC(2aba43c2) SHA1(2b8cb4f87580683eb4d760e4ed210813d667f0a2), ROM_BIOS(2))
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
 	ROM_COPY( REGION_CPU1,0,0,0x080000)
-	ROM_REGION( 0x100000, REGION_CPU3, 0 ) /* 68000 code */
-	ROM_REGION( 0x100000, REGION_GFX1, 0 ) /* VDP2 GFX */
-	ROM_REGION( 0x100000, REGION_GFX2, 0 ) /* VDP1 GFX */
+	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_ERASE00 ) /* VDP2 GFX */
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_ERASE00 ) /* VDP1 GFX */
 ROM_END
 
 /* Overseas Saturn */
@@ -2342,9 +2343,9 @@ ROM_START(saturn)
 	ROMX_LOAD("sega_100a.bin", 0x00000000, 0x00080000, CRC(f90f0089) SHA1(3bb41feb82838ab9a35601ac666de5aacfd17a58), ROM_BIOS(2))
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
 	ROM_COPY( REGION_CPU1,0,0,0x080000)
-	ROM_REGION( 0x100000, REGION_CPU3, 0 ) /* 68000 code */
-	ROM_REGION( 0x100000, REGION_GFX1, 0 ) /* VDP2 GFX */
-	ROM_REGION( 0x100000, REGION_GFX2, 0 ) /* VDP1 GFX */
+	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_ERASE00 ) /* VDP2 GFX */
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_ERASE00 ) /* VDP1 GFX */
 ROM_END
 
 ROM_START(saturneu)
@@ -2355,9 +2356,9 @@ ROM_START(saturneu)
 	ROMX_LOAD("sega_100a.bin", 0x00000000, 0x00080000, CRC(f90f0089) SHA1(3bb41feb82838ab9a35601ac666de5aacfd17a58), ROM_BIOS(2))
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
 	ROM_COPY( REGION_CPU1,0,0,0x080000)
-	ROM_REGION( 0x100000, REGION_CPU3, 0 ) /* 68000 code */
-	ROM_REGION( 0x100000, REGION_GFX1, 0 ) /* VDP2 GFX */
-	ROM_REGION( 0x100000, REGION_GFX2, 0 ) /* VDP1 GFX */
+	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_ERASE00 ) /* VDP2 GFX */
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_ERASE00 ) /* VDP1 GFX */
 ROM_END
 
 ROM_START(vsaturn)
@@ -2365,9 +2366,9 @@ ROM_START(vsaturn)
 	ROM_LOAD("vsaturn.bin", 0x00000000, 0x00080000, CRC(e4d61811) SHA1(4154e11959f3d5639b11d7902b3a393a99fb5776))
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
 	ROM_COPY( REGION_CPU1,0,0,0x080000)
-	ROM_REGION( 0x100000, REGION_CPU3, 0 ) /* 68000 code */
-	ROM_REGION( 0x100000, REGION_GFX1, 0 ) /* VDP2 GFX */
-	ROM_REGION( 0x100000, REGION_GFX2, 0 ) /* VDP1 GFX */
+	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_ERASE00 ) /* VDP2 GFX */
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_ERASE00 ) /* VDP1 GFX */
 ROM_END
 
 ROM_START(hisaturn)
@@ -2375,9 +2376,9 @@ ROM_START(hisaturn)
 	ROM_LOAD("hisaturn.bin", 0x00000000, 0x00080000, CRC(721e1b60) SHA1(49d8493008fa715ca0c94d99817a5439d6f2c796))
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
 	ROM_COPY( REGION_CPU1,0,0,0x080000)
-	ROM_REGION( 0x100000, REGION_CPU3, 0 ) /* 68000 code */
-	ROM_REGION( 0x100000, REGION_GFX1, 0 ) /* VDP2 GFX */
-	ROM_REGION( 0x100000, REGION_GFX2, 0 ) /* VDP1 GFX */
+	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_ERASE00 ) /* VDP2 GFX */
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_ERASE00 ) /* VDP1 GFX */
 ROM_END
 
 

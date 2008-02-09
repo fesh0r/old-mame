@@ -10,7 +10,6 @@
 #include "video/tms9928a.h"
 #include "includes/adam.h"
 #include "devices/cartslot.h"
-#include "image.h"
 #include "devices/basicdsk.h"
 
 int adam_lower_memory; /* Lower 32k memory Z80 address configuration */
@@ -524,7 +523,7 @@ If you have the source listing or the Rom dump, please send us.
 	int DCB_Num, deviceNum, statusDCB;
 	int i, buffer, byteCount, sectorNmbr, sectorCount, currentSector;
 	UINT8 kbcode;
-	static UINT8 interleave[8] = {0,5,2,7,4,1,6,3};
+	static const UINT8 interleave[8] = {0,5,2,7,4,1,6,3};
 	mess_image *image;
 
 	if (offset == adam_pcb)

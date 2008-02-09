@@ -7,10 +7,20 @@
 
 ***************************************************************************/
 
+/* Core includes */
+#include "driver.h"
+#include "deprecat.h"
 #include "includes/trs80.h"
+
+/* Components */
+#include "cpu/z80/z80.h"
+#include "machine/wd17xx.h"
+#include "sound/speaker.h"
+
+/* Devices */
 #include "devices/basicdsk.h"
 #include "devices/flopdrv.h"
-#include "sound/speaker.h"
+
 
 #ifdef MAME_DEBUG
 #define VERBOSE 1
@@ -18,11 +28,7 @@
 #define VERBOSE 0
 #endif
 
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 
 UINT8 trs80_port_ff = 0;
@@ -277,7 +283,7 @@ DEVICE_LOAD( trs80_floppy )
 
 static void trs80_fdc_callback(wd17xx_state_t event, void *param);
 
-static void trs80_machine_reset(running_machine *machine)
+MACHINE_RESET( trs80 )
 {
 	if (cas_size)
 	{
@@ -320,7 +326,6 @@ DRIVER_INIT( trs80 )
 MACHINE_START( trs80 )
 {
 	wd17xx_init(WD_TYPE_179X,trs80_fdc_callback, NULL);
-	add_reset_callback(machine, trs80_machine_reset);
 	add_exit_callback(machine, tape_put_close);
 }
 
@@ -609,7 +614,7 @@ INTERRUPT_GEN( trs80_timer_interrupt )
 	if( (irq_status & IRQ_TIMER) == 0 )
 	{
 		irq_status |= IRQ_TIMER;
-		cpunum_set_input_line (0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 }
 
@@ -618,7 +623,7 @@ INTERRUPT_GEN( trs80_fdc_interrupt )
 	if ((irq_status & IRQ_FDC) == 0)
 	{
 		irq_status |= IRQ_FDC;
-		cpunum_set_input_line (0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 }
 
@@ -630,7 +635,7 @@ void trs80_fdc_callback(wd17xx_state_t event, void *param)
 			irq_status &= ~IRQ_FDC;
 			break;
 		case WD17XX_IRQ_SET:
-			trs80_fdc_interrupt();
+			trs80_fdc_interrupt(Machine, 0);
 			break;
 		case WD17XX_DRQ_CLR:
 		case WD17XX_DRQ_SET:

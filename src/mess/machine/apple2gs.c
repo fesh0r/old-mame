@@ -106,6 +106,7 @@
 
 #include <assert.h>
 #include "driver.h"
+#include "deprecat.h"
 
 #include "includes/apple2gs.h"
 #include "includes/apple2.h"
@@ -148,6 +149,8 @@ static INT8 apple2gs_mouse_dx;
 static INT8 apple2gs_mouse_dy;
 static mess_image *apple2gs_cur_slot6_image;
 static emu_timer *apple2gs_scanline_timer;
+static emu_timer *apple2gs_clock_timer;
+static emu_timer *apple2gs_qsecond_timer;
 
 
 /* -----------------------------------------------------------------------
@@ -315,7 +318,7 @@ static void apple2gs_add_irq(UINT8 irq_mask)
 			logerror("apple2gs_add_irq(): adding %s\n", apple2gs_irq_name(irq_mask));
 
 		apple2gs_pending_irqs |= irq_mask;
-		cpunum_set_input_line(0, G65816_LINE_IRQ, apple2gs_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, G65816_LINE_IRQ, apple2gs_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -329,7 +332,7 @@ static void apple2gs_remove_irq(UINT8 irq_mask)
 			logerror("apple2gs_remove_irq(): removing %s\n", apple2gs_irq_name(irq_mask));
 
 		apple2gs_pending_irqs &= ~irq_mask;
-		cpunum_set_input_line(0, G65816_LINE_IRQ, apple2gs_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, G65816_LINE_IRQ, apple2gs_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -342,6 +345,28 @@ void apple2gs_doc_irq(int state)
 	else
 	{
 		apple2gs_remove_irq(IRQ_DOC);
+	}
+}
+
+
+/* Clock interrupt */
+static TIMER_CALLBACK( apple2gs_clock_tick )
+{
+	if ((apple2gs_vgcint & 0x04) && !(apple2gs_vgcint & 0x40))
+	{
+		apple2gs_vgcint |= 0xc0;
+		apple2gs_add_irq(IRQ_VGC_SECOND);
+	}
+}
+
+
+/* Quarter-second interrupt */
+static TIMER_CALLBACK( apple2gs_qsecond_tick )
+{
+	if ((apple2gs_inten & 0x10) && !(apple2gs_intflag & 0x10))
+	{
+		apple2gs_intflag |= 0x10;
+		apple2gs_add_irq(IRQ_INTEN_QSECOND);
 	}
 }
 
@@ -766,11 +791,9 @@ static void apple2gs_set_scanint(UINT8 data)
 }
 
 
-
 static TIMER_CALLBACK(apple2gs_scanline_tick)
 {
 	int scanline;
-	int current_frame;
 
 	// make sure we're in the 65816's context
 	cpuintrf_push_context(0);
@@ -793,25 +816,7 @@ static TIMER_CALLBACK(apple2gs_scanline_tick)
 		}
 	}
 
-	if (scanline == BORDER_TOP)
-	{
-		current_frame = cpu_getcurrentframe();
-
-		/* quarter second interrupt */
-		if ((apple2gs_inten & 0x10) && !(apple2gs_intflag & 0x10) && ((current_frame % 15) == 0))
-		{
-			apple2gs_intflag |= 0x10;
-			apple2gs_add_irq(IRQ_INTEN_QSECOND);
-		}
-
-		/* one second interrupt */
-		if ((apple2gs_vgcint & 0x04) && !(apple2gs_vgcint & 0x40) && ((current_frame % 60) == 0))
-		{
-			apple2gs_vgcint |= 0xc0;
-			apple2gs_add_irq(IRQ_VGC_SECOND);
-		}
-	}
-	else if (scanline == (192+BORDER_TOP))
+	if (scanline == (192+BORDER_TOP))
 	{
 		/* VBL interrupt */
 		if ((apple2gs_inten & 0x08) && !(apple2gs_intflag & 0x08))
@@ -828,7 +833,7 @@ static TIMER_CALLBACK(apple2gs_scanline_tick)
 
 		/* call Apple II interrupt handler */
 		if ((video_screen_get_vpos(0) % 8) == 7)
-			apple2_interrupt();
+			apple2_interrupt(machine, 0);
 	}
 
 	timer_adjust(apple2gs_scanline_timer, video_screen_get_time_until_pos(0, (scanline+1)%262, 0), 0, attotime_never);
@@ -931,7 +936,7 @@ static WRITE8_HANDLER( gssnd_w )
 static int apple2gs_get_vpos(void)
 {
 	int result, scan;
-	static UINT8 top_border_vert[BORDER_TOP] =
+	static const UINT8 top_border_vert[BORDER_TOP] =
 	{
 		0xfa, 0xfa, 0xfa, 0xfa, 0xfb, 0xfb, 0xfb, 0xfb,
 		0xfc, 0xfc, 0xfc, 0xfd, 0xfd, 0xfe, 0xfe, 0xff,
@@ -1172,7 +1177,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 
 		case 0x36:	/* C036 - CYAREG */
 			apple2gs_cyareg = data & ~0x20;
-			cpunum_set_clock(0, (data & 0x80) ? APPLE2GS_14M/5 : APPLE2GS_7M/7);
+			cpunum_set_clock(Machine, 0, (data & 0x80) ? APPLE2GS_14M/5 : APPLE2GS_7M/7);
 			break;
 
 		case 0x38:	/* C038 - SCCBREG */
@@ -1718,6 +1723,12 @@ static READ8_HANDLER( apple2gs_read_vector )
 
 MACHINE_RESET( apple2gs )
 {
+	apple2gs_clock_timer = timer_alloc(apple2gs_clock_tick, NULL);
+	timer_adjust(apple2gs_clock_timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(1));
+	
+	apple2gs_qsecond_timer = timer_alloc(apple2gs_qsecond_tick, NULL);
+	timer_adjust(apple2gs_qsecond_timer, ATTOTIME_IN_USEC(266700), 0, ATTOTIME_IN_USEC(266700));
+	
 	apple2gs_scanline_timer = timer_alloc(apple2gs_scanline_tick, NULL);
 	timer_adjust(apple2gs_scanline_timer, attotime_never, 0, attotime_never);
 

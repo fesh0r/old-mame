@@ -16,6 +16,7 @@ TODO:
 #include "911_key.h"
 #include "sound/beep.h"
 #include "mslegacy.h"
+#include "deprecat.h"
 
 
 #define MAX_VDT 1
@@ -516,7 +517,7 @@ void vdt911_refresh(mame_bitmap *bitmap, int unit, int x, int y)
 		}
 }
 
-static const unsigned char (*key_translate[])[91] =
+static const unsigned char (*const key_translate[])[91] =
 {	/* array must use same order as vdt911_model_t!!! */
 	/* US */
 	US_key_translate,

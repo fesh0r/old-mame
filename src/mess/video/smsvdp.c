@@ -37,9 +37,9 @@ PAL frame timing
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/smsvdp.h"
 #include "includes/sms.h"
-#include "video/generic.h"
 
 #define IS_SMS1_VDP			( smsvdp.features & MODEL_315_5124 )
 #define IS_SMS2_VDP			( smsvdp.features & MODEL_315_5246 )
@@ -450,6 +450,7 @@ WRITE8_HANDLER(sms_vdp_ctrl_w) {
 				set_display_settings();
 			}
 			if ( ( regNum == 1 ) && ( smsvdp.reg[0x01] & 0x20 ) && ( smsvdp.status & STATUS_VINT ) ) {
+				smsvdp.irq_state = 1;
 				smsvdp.int_callback( ASSERT_LINE );
 			}
 			smsvdp.addrmode = 0;
@@ -629,7 +630,7 @@ static void sms_refresh_line_mode4(int *lineBuffer, int line) {
 				pixelPlotX = spriteX + (pixelX << 1);
 
 				/* check to prevent going outside of active display area */
-				if ( pixelPlotX > 256 ) {
+				if ( pixelPlotX < 0 || pixelPlotX > 255 ) {
 					continue;
 				}
 
@@ -660,7 +661,7 @@ static void sms_refresh_line_mode4(int *lineBuffer, int line) {
 				pixelPlotX = spriteX + pixelX;
 
 				/* check to prevent going outside of active display area */
-				if ( pixelPlotX > 256 ) {
+				if ( pixelPlotX < 0 || pixelPlotX > 255 ) {
 					continue;
 				}
 
@@ -1054,10 +1055,10 @@ VIDEO_UPDATE(sms) {
 		}
 	}
 	} else {
-		copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+		copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, cliprect);
 	}
 	if (!smsvdp.prev_bitmap_saved) {
-		copybitmap(smsvdp.prev_bitmap, tmpbitmap, 0, 0, 0, 0, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+		copybitmap(smsvdp.prev_bitmap, tmpbitmap, 0, 0, 0, 0, cliprect);
 	//smsvdp.prev_bitmap_saved = 1;
 	}
 	return 0;

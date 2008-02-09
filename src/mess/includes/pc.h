@@ -1,4 +1,12 @@
-#include "driver.h"
+/*****************************************************************************
+ *
+ * includes/pc.h
+ *
+ ****************************************************************************/
+
+#ifndef PC_H_
+#define PC_H_
+
 
 /*----------- defined in machine/pc.c -----------*/
 
@@ -18,9 +26,11 @@ MACHINE_RESET( pc_t1t );
 MACHINE_RESET( pc_aga );
 MACHINE_RESET( pc_vga );
 
-void pc_cga_frame_interrupt(void);
-void pc_mda_frame_interrupt(void);
-void tandy1000_frame_interrupt (void);
-void pc_aga_frame_interrupt(void);
-void pc_vga_frame_interrupt(void);
+INTERRUPT_GEN( pc_cga_frame_interrupt );
+INTERRUPT_GEN( pc_mda_frame_interrupt );
+INTERRUPT_GEN( tandy1000_frame_interrupt );
+INTERRUPT_GEN( pc_aga_frame_interrupt );
+INTERRUPT_GEN( pc_vga_frame_interrupt );
 
+
+#endif /* PC_H_ */

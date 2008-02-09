@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "video/generic.h"
 #include "includes/channelf.h"
 #include "mslegacy.h"
 
@@ -27,7 +26,7 @@ static const UINT8 channelf_palette[] = {
 #define LTGREEN 6
 #define LTBLUE	7
 
-static UINT16 colormap[] = {
+static const UINT16 colormap[] = {
 	BLACK,   WHITE, WHITE, WHITE,
 	LTBLUE,  BLUE,  RED,   GREEN,
 	LTGRAY,  BLUE,  RED,   GREEN,
@@ -44,7 +43,7 @@ VIDEO_START( channelf )
 {
 	videoram_size = 0x2000;
 	videoram = auto_malloc(videoram_size);
-	video_start_generic(machine);
+	VIDEO_START_CALL(generic);
 }
 
 static int recalc_palette_offset(int reg1, int reg2)

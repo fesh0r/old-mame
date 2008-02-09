@@ -1,6 +1,5 @@
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
-#include "video/generic.h"
 #include "video/ppu2c0x.h"
 #include "includes/nes.h"
 #include "machine/nes_mmc.h"
@@ -8,6 +7,7 @@
 #include "zlib.h"
 #include "image.h"
 #include "hash.h"
+#include "deprecat.h"
 
 
 
@@ -92,14 +92,16 @@ static void init_nes_core (void)
 	{
 		case 20:
 			nes.slow_banking = 0;
+			nes_fds.data = auto_malloc( 0x8000 );
 			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4030, 0x403f, 0, 0, fds_r);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xdfff, 0, 0, MRA8_RAM);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xdfff, 0, 0, MRA8_BANK2);
 			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MRA8_BANK1);
-			memory_set_bankptr(1, &nes.rom[0xe000]);
 
 			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4020, 0x402f, 0, 0, fds_w);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xdfff, 0, 0, MWA8_RAM);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MWA8_ROM);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xdfff, 0, 0, MWA8_BANK2);
+
+			memory_set_bankptr(1, &nes.rom[0xe000]);
+			memory_set_bankptr(2, nes_fds.data );
 			break;
 		case 40:
 			nes.slow_banking = 1;
@@ -169,7 +171,7 @@ int nes_ppu_vidaccess( int num, int address, int data )
 	return data;
 }
 
-static void nes_machine_reset(running_machine *machine)
+MACHINE_RESET( nes )
 {
 	/* Some carts have extra RAM and require it on at startup, e.g. Metroid */
 	nes.mid_ram_enable = 1;
@@ -185,17 +187,7 @@ static void nes_machine_reset(running_machine *machine)
 MACHINE_START( nes )
 {
 	init_nes_core();
-	add_reset_callback(machine, nes_machine_reset);
 	add_exit_callback(machine, nes_machine_stop);
-
-	if ((!image_exists(image_from_devtype_and_index(IO_CARTSLOT, 0))) && (!image_exists(image_from_devtype_and_index(IO_FLOPPY, 0))))
-	{
-		/* NPW 05-Mar-2006 - Hack to keep the Famicom from crashing */
-		static const UINT8 infinite_loop[] = { 0x4C, 0xF9, 0xFF, 0xF9, 0xFF }; /* JMP $FFF9, DC.W $FFF9 */
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xFFF9, 0xFFFD, 0, 0, MRA8_BANK11);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xFFF9, 0xFFFD, 0, 0, MWA8_BANK11);
-		memory_set_bankptr(11, (void *) infinite_loop);
-	}
 }
 
 static void nes_machine_stop(running_machine *machine)
@@ -561,24 +553,8 @@ void nes_partialhash(char *dest, const unsigned char *data,
 }
 
 
-
-DEVICE_LOAD(nes_disk)
+DEVICE_INIT(nes_disk)
 {
-	unsigned char magic[4];
-
-	/* See if it has a fucking redundant header on it */
-	image_fread(image, magic, 4);
-	if ((magic[0] == 'F') &&
-		(magic[1] == 'D') &&
-		(magic[2] == 'S'))
-	{
-		/* Skip past the fucking redundant header */
-		image_fseek (image, 0x10, SEEK_SET);
-	}
-	else
-		/* otherwise, point to the start of the image */
-		image_fseek (image, 0, SEEK_SET);
-
 	/* clear some of the cart variables we don't use */
 	nes.trainer = 0;
 	nes.battery = 0;
@@ -590,6 +566,27 @@ DEVICE_LOAD(nes_disk)
 
 	nes_fds.sides = 0;
 	nes_fds.data = NULL;
+
+	return INIT_PASS;
+}
+
+
+DEVICE_LOAD(nes_disk)
+{
+	unsigned char magic[4];
+
+	/* See if it has a  redundant header on it */
+	image_fread(image, magic, 4);
+	if ((magic[0] == 'F') &&
+		(magic[1] == 'D') &&
+		(magic[2] == 'S'))
+	{
+		/* Skip past the redundant header */
+		image_fseek (image, 0x10, SEEK_SET);
+	}
+	else
+		/* otherwise, point to the start of the image */
+		image_fseek (image, 0, SEEK_SET);
 
 	/* read in all the sides */
 	while (!image_feof (image))

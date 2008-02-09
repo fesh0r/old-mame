@@ -4,10 +4,12 @@
   started as some ttl's, is now available on several multi io chips
 */
 
-#include "mame.h"
-#include "includes/pclpt.h"
-#include "includes/centroni.h"
+
+#include "driver.h"
 #include "memconv.h"
+#include "includes/pclpt.h"
+#include "machine/centroni.h"
+
 
 #define LOG(LEVEL,N,M,A)  \
 if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A;
@@ -15,11 +17,7 @@ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M );
 
 #define VERBOSE_LPT 1
 
-#ifdef VERBOSE_LPT
 #define LPT_LOG(n,m,a) LOG(VERBOSE_LPT,n,m,a)
-#else
-#define LPT_LOG(n,m,a)
-#endif
 
 #define STATUS_NOT_BUSY 0x80
 #define STATUS_ACKNOWLEDGE 0x40

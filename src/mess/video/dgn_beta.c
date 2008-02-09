@@ -80,14 +80,10 @@ the access to the video memory is unclear to me at the moment.
 */
 
 #include "driver.h"
-#include "inputx.h"
-#include "video/generic.h"
-#include "video/m6845.h"
-#include "mscommon.h"
-
 #include "includes/dgn_beta.h"
+#include "video/m6845.h"
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 #include "debug/debugcpu.h"
 #include "debug/debugcon.h"
 #endif
@@ -124,7 +120,7 @@ static int beta_DE      = 0;
 
 //static BETA_VID_MODES VIDMODE = TEXT_40x25;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static int LogRegWrites	= 0;	// Log register writes to debug console.
 static int BoxColour		= 1;
 static int BoxMinX		= 100;
@@ -135,7 +131,7 @@ static int HSyncMin		= 0;
 static int VSyncMin		= 0;
 static int DEPos		= 0;
 
-// Debugginc commands and handlers.
+// Debugging commands and handlers.
 static void ToggleRegLog(int ref, int params, const char *param[]);
 static void RegLog(int offset, int data);
 static void FillScreen(int ref, int params, const char *param[]);
@@ -143,7 +139,7 @@ static void ScreenBox(int ref, int params, const char *param[]);
 static void VidToggle(int ref, int params, const char *param[]);
 static void ShowVidLimits(int ref, int params, const char *param[]);
 static void SetClkMax(int ref, int params, const char *param[]);
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 static mame_bitmap	*bit;
 static int MinAddr	= 0xFFFF;
@@ -155,17 +151,16 @@ static int MaxY	= 0x0000;
 
 static int VidAddr		= 0;	// Last address reg written
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static int NoScreen		= 0;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 static void beta_Set_RA(int offset, int data);
 static void beta_Set_HSync(int offset, int data);
 static void beta_Set_VSync(int offset, int data);
 static void beta_Set_DE(int offset, int data);
 
-static const struct m6845_interface
-beta_m6845_interface= {
+static const struct m6845_interface beta_m6845_interface = {
 	0,		// Memory Address register
 	beta_Set_RA,	// Row Address register
 	beta_Set_HSync,	// Horizontal status
@@ -230,7 +225,7 @@ typedef enum {
 void vid_set_gctrl(int data)
 {
 	GCtrl=data;
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	if (LogRegWrites)
 		debug_console_printf("I28-PB=$%2X, %2X-%s-%s-%s-%s-%s-%s PC=%4X\n",
 				     data,
@@ -277,7 +272,7 @@ static void beta_Set_HSync(int offset, int data)
 
 //debug_console_printf("HT=%d, HS=%d, HW=%d, (HS+HW)=%d, HT-(HS+HW)=%d\n",HT,HS,HW,(HS+HW),(HT-(HS+HW)));
 //debug_console_printf("Scanline=%d, row=%d\n",m6845_get_scanline_counter(),m6845_get_row_counter());
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		HSyncMin=beta_scr_x;
 #endif
 	}
@@ -307,7 +302,7 @@ static void beta_Set_VSync(int offset, int data)
 			Field=(Field+1) & 0x01;	/* Invert field */
 //			debug_console_printf("Invert field=%d\n",Field);
 		}
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 		VSyncMin=beta_scr_y;
 #endif
 	}
@@ -319,14 +314,14 @@ static void beta_Set_DE(int offset, int data)
 {
 	beta_DE = data;
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	if(beta_DE)
 		DEPos=beta_scr_x;
 #endif
 }
 
 /* Video init */
-void init_video(void)
+void init_video(running_machine *machine)
 {
 	/* initialise 6845 */
 	m6845_config(&beta_m6845_interface);
@@ -343,9 +338,9 @@ void init_video(void)
 	DoubleY=1;
 	DrawInterlace=INTERLACE_OFF;	/* No interlace by default */
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	/* setup debug commands */
-	if (Machine->debug_mode)
+	if (machine->debug_mode)
 	{
 		debug_console_register_command("beta_vid_log", CMDFLAG_NONE, 0, 0, 0,ToggleRegLog);
 		debug_console_register_command("beta_vid_fill", CMDFLAG_NONE, 0, 0, 0,FillScreen);
@@ -355,7 +350,7 @@ void init_video(void)
 		debug_console_register_command("beta_vid_clkmax", CMDFLAG_NONE, 0, 0, 1,SetClkMax);
 	}
 	LogRegWrites=0;
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 }
 
 /**************************/
@@ -731,7 +726,7 @@ WRITE8_HANDLER(dgnbeta_6845_w)
 		m6845_address_w(offset,data);
 		VidAddr=data;				/* Record reg being written to */
 	}
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	if (LogRegWrites)
 		RegLog(offset,data);
 #endif
@@ -749,7 +744,7 @@ WRITE8_HANDLER(colour_ram_w)
  *
  *************************************/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static void ToggleRegLog(int ref, int params, const char *param[])
 {
 	LogRegWrites=!LogRegWrites;

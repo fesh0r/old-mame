@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "eventlst.h"
 
 /* current item */
@@ -66,7 +67,7 @@ void    EventList_AddItemOffset(int ID, int Data, int Time)
 {
 
         if (!CyclesPerFrame)
-                CyclesPerFrame = (int)(Machine->drv->cpu[0].clock / Machine->screen[0].refresh);	//totalcycles();	//_(int)(Machine->drv->cpu[0].cpu_clock / Machine->drv->frames_per_second);
+                CyclesPerFrame = (int)(cpunum_get_clock(0) / Machine->screen[0].refresh);	//totalcycles();	//_(int)(cpunum_get_clock(0) / Machine->drv->frames_per_second);
 
         if (NumEvents < TotalEvents)
         {

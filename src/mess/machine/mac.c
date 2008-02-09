@@ -38,10 +38,9 @@
 #include <time.h>
 
 #include "driver.h"
-#include "state.h"
+#include "deprecat.h"
 #include "machine/6522via.h"
 #include "machine/8530scc.h"
-#include "video/generic.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/applefdc.h"
 #include "devices/sonydriv.h"
@@ -114,7 +113,7 @@ static void mac_install_memory(offs_t memory_begin, offs_t memory_end,
 	memory_mask = memory_size - 1;
 
 	rh = (read16_handler) (FPTR)bank;
-	wh = is_rom ? MWA16_ROM : (write16_handler) (FPTR)bank;
+	wh = is_rom ? MWA16_UNMAP : (write16_handler) (FPTR)bank;
 
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, memory_begin,
 		memory_end, memory_mask, 0, rh);
@@ -142,13 +141,13 @@ static void mac_field_interrupts(void)
 {
 	if (scc_interrupt)
 		/* SCC interrupt */
-		cpunum_set_input_line(0, 2, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, 2, ASSERT_LINE);
 	else if (via_interrupt)
 		/* VIA interrupt */
-		cpunum_set_input_line(0, 1, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, 1, ASSERT_LINE);
 	else
 		/* clear all interrupts */
-		cpunum_set_input_line(0, 7, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 7, CLEAR_LINE);
 }
 
 static void set_scc_interrupt(int value)
@@ -743,7 +742,7 @@ void mac_scc_mouse_irq( int x, int y)
 			scc_set_status(0x02);
 	}
 
-	//cpunum_set_input_line(0, 2, ASSERT_LINE);
+	//cpunum_set_input_line(machine, 0, 2, ASSERT_LINE);
 	set_scc_interrupt(1);
 }
 
@@ -1249,7 +1248,7 @@ static WRITE8_HANDLER(mac_via_out_b)
 static void mac_via_irq(int state)
 {
 	/* interrupt the 68k (level 1) */
-	//cpunum_set_input_line(0, 1, state);
+	//cpunum_set_input_line(machine, 0, 1, state);
 	set_via_interrupt(state);
 }
 
@@ -1300,7 +1299,7 @@ MACHINE_RESET(mac)
 
 	/* initialize floppy */
 	{
-		struct applefdc_interface intf =
+		static const struct applefdc_interface intf =
 		{
 			APPLEFDC_IWM,
 			sony_set_lines,
@@ -2348,7 +2347,7 @@ static void mac_tracetrap(const char *cpu_name_local, int addr, int trap)
 		{ 23, "ReturnDriveInfo" }
 	};
 
-	static const char *scsisels[] =
+	static const char *const scsisels[] =
 	{
 		"SCSIReset",	/* $00 */
 		"SCSIGet",		/* $01 */

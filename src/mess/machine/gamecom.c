@@ -1,5 +1,6 @@
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/gamecom.h"
 #include "cpu/sm8500/sm8500.h"
 #include "image.h"
@@ -56,8 +57,8 @@ static emu_timer *gamecom_clock_timer = NULL;
 static GAMECOM_DMA gamecom_dma;
 static GAMECOM_TIMER gamecom_timer[2];
 
-//int gamecom_timer_limit[8] = { 2/2, 1024/2, 2048/2, 4096/2, 8192/2, 16384/2, 32768/2, 65536/2 };
-static int gamecom_timer_limit[8] = { 2, 1024, 2048, 4096, 8192, 16384, 32768, 65536 };
+//static const int gamecom_timer_limit[8] = { 2/2, 1024/2, 2048/2, 4096/2, 8192/2, 16384/2, 32768/2, 65536/2 };
+static const int gamecom_timer_limit[8] = { 2, 1024, 2048, 4096, 8192, 16384, 32768, 65536 };
 
 static void gamecom_dma_init(void);
 
@@ -65,20 +66,19 @@ static TIMER_CALLBACK(gamecom_clock_timer_callback)
 {
 	UINT8 val = ( ( internal_registers[SM8521_CLKT] & 0x3F ) + 1 ) & 0x3F;
 	internal_registers[SM8521_CLKT] = ( internal_registers[SM8521_CLKT] & 0xC0 ) | val;
-	cpunum_set_input_line( 0, CK_INT, HOLD_LINE );
+	cpunum_set_input_line(machine, 0, CK_INT, HOLD_LINE );
 }
 
 MACHINE_RESET( gamecom )
 {
 	memory_set_bankptr( 1, memory_region(REGION_USER1) );
-        memory_set_bankptr( 2, memory_region(REGION_USER1) );
-        memory_set_bankptr( 3, memory_region(REGION_USER1) );
-        memory_set_bankptr( 4, memory_region(REGION_USER1) );
+	memory_set_bankptr( 2, memory_region(REGION_USER1) );
+	memory_set_bankptr( 3, memory_region(REGION_USER1) );
+	memory_set_bankptr( 4, memory_region(REGION_USER1) );
 
 	/* should possibly go in a DRIVER_INIT piece? */
-	if ( gamecom_clock_timer == NULL ) {
-		gamecom_clock_timer = timer_alloc( gamecom_clock_timer_callback , NULL);
-	}
+	gamecom_clock_timer = timer_alloc( gamecom_clock_timer_callback , NULL);
+
 	/* intialize the empty dummy bank */
 	if ( dummy_bank == NULL ) {
 		dummy_bank = auto_malloc( 8 * 1024 );
@@ -553,7 +553,7 @@ void gamecom_handle_dma( int cycles ) {
 		gamecom_dma.dest_current = gamecom_dma.dest_line;
 	}
 	gamecom_dma.enabled = 0;
-	cpunum_set_input_line( 0, DMA_INT, HOLD_LINE );
+	cpunum_set_input_line(Machine, 0, DMA_INT, HOLD_LINE );
 }
 
 void gamecom_update_timers( int cycles ) {
@@ -564,7 +564,7 @@ void gamecom_update_timers( int cycles ) {
 			gamecom_timer[0].counter++;
 			if ( gamecom_timer[0].counter == gamecom_timer[0].check_value ) {
 				gamecom_timer[0].counter = 0;
-				cpunum_set_input_line( 0, TIM0_INT, HOLD_LINE );
+				cpunum_set_input_line(Machine, 0, TIM0_INT, HOLD_LINE );
 			}
 		}
 	}
@@ -575,7 +575,7 @@ void gamecom_update_timers( int cycles ) {
 			gamecom_timer[1].counter++;
 			if ( gamecom_timer[1].counter == gamecom_timer[1].check_value ) {
 				gamecom_timer[1].counter = 0;
-				cpunum_set_input_line( 0, TIM1_INT, HOLD_LINE );
+				cpunum_set_input_line(Machine, 0, TIM1_INT, HOLD_LINE );
 			}
 		}
 	}

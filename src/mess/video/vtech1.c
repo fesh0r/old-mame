@@ -28,7 +28,7 @@ Video hardware:
 ******************************************************************************/
 
 #include "driver.h"
-#include "video/generic.h"
+#include "deprecat.h"
 #include "includes/vtech1.h"
 #include "video/m6847.h"
 
@@ -90,9 +90,9 @@ static const UINT8 *vtech1_get_video_ram(int scanline)
 static void vtech1_field_sync_callback(int data)
 {
 	if (data)
-		cpunum_set_input_line(0, 0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 	else
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
 }
 
 

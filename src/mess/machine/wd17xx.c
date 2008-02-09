@@ -36,6 +36,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/wd17xx.h"
 #include "devices/flopdrv.h"
 
@@ -191,7 +192,7 @@ struct _wd17xx_info
 /* structure describing a double density track */
 #define TRKSIZE_DD		6144
 #if 0
-static UINT8 track_DD[][2] = {
+static const UINT8 track_DD[][2] = {
 	{16, 0x4e}, 	/* 16 * 4E (track lead in)				 */
 	{ 8, 0x00}, 	/*	8 * 00 (pre DAM)					 */
 	{ 3, 0xf5}, 	/*	3 * F5 (clear CRC)					 */
@@ -213,7 +214,7 @@ static UINT8 track_DD[][2] = {
 /* structure describing a single density track */
 #define TRKSIZE_SD		3172
 #if 0
-static UINT8 track_SD[][2] = {
+static const UINT8 track_SD[][2] = {
 	{16, 0xff}, 	/* 16 * FF (track lead in)				 */
 	{ 8, 0x00}, 	/*	8 * 00 (pre DAM)					 */
 	{ 1, 0xfc}, 	/*	1 * FC (clear CRC)					 */
@@ -1074,7 +1075,7 @@ static void wd17xx_timed_write_sector_request(void)
 		w->status &= ~STA_1_NOT_READY;
 
 		/* TODO: What is this?  We need some more info on this */
-		if ((w->type == WD_TYPE_179X) || (w->type == WD_TYPE_1773))
+		if ((w->type == WD_TYPE_179X) || (w->type == WD_TYPE_1793) || (w->type == WD_TYPE_1773))
 		{
 			if (!floppy_drive_get_flag_state(wd17xx_current_image(), FLOPPY_DRIVE_READY))
 				w->status |= STA_1_NOT_READY;

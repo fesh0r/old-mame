@@ -20,10 +20,10 @@
 #include <math.h>
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/6821pia.h"
 #include "machine/6883sam.h"
 #include "video/m6847.h"
-#include "video/generic.h"
 #include "includes/coco.h"
 
 

@@ -11,16 +11,17 @@
 #include <ctype.h>
 #include "driver.h"
 #include "image.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
 
 #define VERBOSE_DBG 1
 #include "includes/cbm.h"
-#include "includes/tpi6525.h"
+#include "machine/tpi6525.h"
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vc20tape.h"
-#include "includes/ted7360.h"
+#include "video/ted7360.h"
 
 #include "includes/c16.h"
 
@@ -375,7 +376,7 @@ void c16_interrupt (int level)
 	if (level != old_level)
 	{
 		DBG_LOG (3, "mos7501", ("irq %s\n", level ? "start" : "end"));
-		cpunum_set_input_line (0, M6510_IRQ_LINE, level);
+		cpunum_set_input_line(Machine, 0, M6510_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -838,7 +839,7 @@ INTERRUPT_GEN( c16_frame_interrupt )
 			keyline[9] = value;
 	}
 
-	ted7360_frame_interrupt ();
+	ted7360_frame_interrupt (machine, cpunum);
 
 	vc20_tape_config (DATASSETTE, DATASSETTE_TONE);
 	vc20_tape_buttons (DATASSETTE_PLAY, DATASSETTE_RECORD, DATASSETTE_STOP);

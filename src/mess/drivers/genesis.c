@@ -5,7 +5,7 @@ Megadrive / Genesis Rewrite, Take 65498465432356345250432.3  August 06
 Thanks to:
 Charles Macdonald for much useful information (cgfm2.emuviews.com)
 
-Long Decription names mostly taken from the Good Gen database
+Long Description names mostly taken from the Good Gen database
 
 ToDo:
 
@@ -14,7 +14,7 @@ Fix HV Counter & Raster Implementation (One line errors in some games, others no
 Fix Horizontal timings (currently a kludge, currently doesn't change with resolution changes)
 Add Real DMA timings (using a timer)
 Add All VDP etc. Mirror addresses (not done yet as I prefer to catch odd cases for now)
-Investigate other Bugs (see list bloew)
+Investigate other Bugs (see list below)
 Rewrite (again) using cleaner, more readable and better optimized code with knowledge gained
 Add support for other peripherals (6 player pad, Teamplay Adapters, Lightguns, Sega Mouse etc.)
 Sort out set info, making sure all games have right manufacturers, dates etc.
@@ -50,13 +50,54 @@ MESS adaptation by R. Belmont
 
 #include "driver.h"
 #include "sound/2612intf.h"
-#include "video/generic.h"
 #include "includes/genesis.h"
 #include "devices/cartslot.h"
-#include "inputx.h"
 #include "../../mame/drivers/megadriv.h"
 
 static int is_ssf2 = 0;
+
+static UINT8 *genesis_sram;
+static int genesis_sram_start;
+static int genesis_sram_len = 0;
+static int genesis_sram_active;
+static int genesis_sram_readonly;
+
+static READ16_HANDLER( genesis_sram_read )
+{
+        UINT16 retval = 0;
+
+        offset <<= 1;
+
+        if (genesis_sram_active)
+        {
+                retval |= genesis_sram[offset] << 8;
+                retval |= genesis_sram[offset ^ 1] & 0xff;
+        }
+
+        return retval;
+}
+
+
+static WRITE16_HANDLER( genesis_sram_write )
+{
+        offset <<= 1;
+
+        if (!genesis_sram_readonly)
+        {
+                genesis_sram[offset] = data >> 8;
+                genesis_sram[offset ^ 1] = data & 0xff;
+        }
+}
+
+
+static WRITE16_HANDLER( genesis_sram_toggle )
+{
+        /* unsure if this is actually supposed to toggle or just switch on?
+          * Yet to encounter game that utilizes
+          */
+        genesis_sram_active = (data & 1) ? 1 : 0;
+        genesis_sram_readonly = (data & 2) ? 1 : 0;
+}
 
 /* code taken directly from GoodGEN by Cowering */
 static int genesis_isfunkySMD(unsigned char *buf,unsigned int len)
@@ -139,7 +180,8 @@ static int device_load_genesis_cart(mess_image *image)
 	int ptr, x;
 	unsigned char *ROM;
 
-	is_ssf2 = 0;
+	genesis_sram = NULL;
+	genesis_sram_start = genesis_sram_len = genesis_sram_active = genesis_sram_readonly = is_ssf2 = 0;
 
 	rawROM = memory_region(REGION_CPU1);
         ROM = rawROM /*+ 512 */;
@@ -225,6 +267,34 @@ static int device_load_genesis_cart(mess_image *image)
 		free(tmpROM);
 	}
 
+        /* check if cart has battery save */
+	if (ROM[0x1b1] == 'R' && ROM[0x1b0] == 'A')
+	{
+		genesis_sram_start = (ROM[0x1b5] << 24 | ROM[0x1b4] << 16 | ROM[0x1b7] << 8 | ROM[0x1b6]);
+		genesis_sram_len = (ROM[0x1b9] << 24 | ROM[0x1b8] << 16 | ROM[0x1bb] << 8 | ROM[0x1ba]);
+	}
+
+	if (genesis_sram_start != genesis_sram_len)
+	{
+                if (genesis_sram_start & 1)
+                        genesis_sram_start -= 1;
+                if (!(genesis_sram_len & 1))
+                        genesis_sram_len += 1;
+		genesis_sram_len -= (genesis_sram_start - 1);
+		genesis_sram = auto_malloc (genesis_sram_len);
+		memset(genesis_sram, 0, genesis_sram_len);
+		printf("Attempting to load SRM . . .\n");
+		image_battery_load(image, genesis_sram, genesis_sram_len);
+
+                if (length - 0x200 < genesis_sram_start)
+                        genesis_sram_active = 1;
+
+                memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, genesis_sram_start & 0x3fffff, (genesis_sram_start + genesis_sram_len - 1) & 0x3fffff, 0, 0, genesis_sram_read);
+
+                memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, genesis_sram_start & 0x3fffff, (genesis_sram_start + genesis_sram_len - 1) & 0x3fffff, 0, 0, genesis_sram_write);
+                memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa130f0, 0xa130f1, 0, 0, genesis_sram_toggle);
+	}
+
 	return INIT_PASS;
 
 bad:
@@ -305,8 +375,23 @@ static WRITE16_HANDLER( genesis_ssf2_bank_w )
 	}
 }
 
+static void genesis_machine_stop(running_machine *machine)
+{
+	/* Write out the battery file if necessary */
+	if ((genesis_sram != NULL) && (genesis_sram_len > 0))
+		image_battery_save(image_from_devtype_and_index(IO_CARTSLOT, 0), genesis_sram, genesis_sram_len);
+}
+
+
 static DRIVER_INIT( gencommon )
 {
+	genesis_sram_len = 0;
+
+        if (genesis_sram)
+	{
+                add_exit_callback(machine, genesis_machine_stop);
+	}
+
 	if (is_ssf2)
 	{
 		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xA130F0, 0xA130FF, 0, 0, genesis_ssf2_bank_w);
@@ -315,20 +400,20 @@ static DRIVER_INIT( gencommon )
 
 static DRIVER_INIT( genusa )
 {
-	driver_init_gencommon(machine);
-	driver_init_megadriv(machine);
+	DRIVER_INIT_CALL(gencommon);
+	DRIVER_INIT_CALL(megadriv);
 }
 
 static DRIVER_INIT( geneur )
 {
-	driver_init_gencommon(machine);
-	driver_init_megadrie(machine);
+	DRIVER_INIT_CALL(gencommon);
+	DRIVER_INIT_CALL(megadrie);
 }
 
 static DRIVER_INIT( genjpn )
 {
-	driver_init_gencommon(machine);
-	driver_init_megadrij(machine);
+	DRIVER_INIT_CALL(gencommon);
+	DRIVER_INIT_CALL(megadrij);
 }
 
 /***************************************************************************
@@ -337,7 +422,7 @@ static DRIVER_INIT( genjpn )
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE    INPUT     INIT	CONFIG	 COMPANY   FULLNAME */
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE    INPUT     INIT   CONFIG   COMPANY   FULLNAME */
 CONS( 1989, genesis,  0,		0,	megadriv,  megadri6, genusa,	genesis, "Sega",   "Genesis (USA, NTSC)", 0)
 CONS( 1990, megadriv, genesis,	0,	megadriv,  megadri6, geneur,	genesis, "Sega",   "Mega Drive (Europe, PAL)", 0)
 CONS( 1988, megadrij, genesis,	0,	megadriv,  megadri6, genjpn,	genesis, "Sega",   "Mega Drive (Japan, NTSC)", 0)

@@ -9,7 +9,6 @@
 
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
-#include "video/generic.h"
 #include "includes/kim1.h"
 #include "sound/dac.h"
 
@@ -37,7 +36,7 @@ DRIVER_INIT( kim1 )
 	UINT8 *dst;
 	int x, y, i;
 
-	static const char *seg7 =
+	static const char seg7[] =
 	"....aaaaaaaaaaaaa." \
 	"...f.aaaaaaaaaaa.b" \
 	"...ff.aaaaaaaaa.bb" \
@@ -664,7 +663,7 @@ static TIMER_CALLBACK(m6530_timer_cb)
 	logerror("m6530(%d) timer expired\n", chip);
 	m6530[chip].state |= 0x80;
 	if (m6530[chip].irqen)			   /* with IRQ? */
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 INTERRUPT_GEN( kim1_interrupt )

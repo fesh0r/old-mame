@@ -5,18 +5,21 @@
 */
 
 #include "driver.h"
-#include "video/generic.h"
+#include "deprecat.h"
 #include "includes/concept.h"
 #include "machine/6522via.h"
 #include "machine/mm58274c.h"	/* mm58274 seems to be compatible with mm58174 */
-//#include "includes/6551.h"
+//#include "machine/6551.h"
 #include "machine/wd17xx.h"
 #include "cpu/m68000/m68k.h"
 #include "devices/basicdsk.h"
 #include "includes/corvushd.h"
 
 #define VERBOSE 1
-#define VERY_VERBOSE 0
+
+#define LOG(x)  do { if (VERBOSE > 0) logerror x; } while (0)
+#define VLOG(x) do { if (VERBOSE > 1) logerror x; } while (0)
+
 
 /* interrupt priority encoder */
 static UINT8 pending_interrupts;
@@ -154,10 +157,10 @@ static void concept_set_interrupt(int level, int state)
 
 	if (final_level)
 		/* assert interrupt */
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_1+final_level-1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_1+final_level-1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else
 		/* clear all interrupts */
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 INLINE void post_in_KeyQueue(int keycode)
@@ -224,17 +227,13 @@ INTERRUPT_GEN( concept_interrupt )
 */
 static  READ8_HANDLER(via_in_a)
 {
-#if VERBOSE
-	logerror("via_in_a: VIA port A (Omninet and COMM port status) read\n");
-#endif
+	LOG(("via_in_a: VIA port A (Omninet and COMM port status) read\n"));
 	return 1;		/* omninet ready always 1 */
 }
 
 static WRITE8_HANDLER(via_out_a)
 {
-#if VERBOSE
-	logerror("via_out_a: VIA port A status written: data=0x%2.2x\n", data);
-#endif
+	LOG(("via_out_a: VIA port A status written: data=0x%2.2x\n", data));
 	/*iox = (data & 0x80) != 0;*/
 }
 
@@ -255,17 +254,13 @@ static  READ8_HANDLER(via_in_b)
 	UINT8 status;
 
 	status = ((readinputport(dipswitch_port_concept) & 0x80) >> 1) | ((readinputport(dipswitch_port_concept) & 0x40) << 1);
-#if VERBOSE
-	logerror("via_in_b: VIA port B (DIP switches, Video, Comm Rate) - status: 0x%2.2x\n", status);
-#endif
+	LOG(("via_in_b: VIA port B (DIP switches, Video, Comm Rate) - status: 0x%2.2x\n", status));
 	return status;
 }
 
 static WRITE8_HANDLER(via_out_b)
 {
-#if VERY_VERBOSE
-	logerror("via_out_b: VIA port B (Video Control and COMM rate select) written: data=0x%2.2x\n", data);
-#endif
+	VLOG(("via_out_b: VIA port B (Video Control and COMM rate select) written: data=0x%2.2x\n", data));
 }
 
 /*
@@ -273,9 +268,7 @@ static WRITE8_HANDLER(via_out_b)
 */
 static WRITE8_HANDLER(via_out_cb2)
 {
-#if VERBOSE
-	logerror("via_out_cb2: Sound control written: data=0x%2.2x\n", data);
-#endif
+	LOG(("via_out_cb2: Sound control written: data=0x%2.2x\n", data));
 }
 
 /*
@@ -329,9 +322,7 @@ READ16_HANDLER(concept_io_r)
 		/* IO4 ROM */
 		{
 			int slot = ((offset >> 8) & 7) - 1;
-#if VERBOSE
-			logerror("concept_io_r: Slot ROM memory accessed for slot %d at address 0x03%4.4x\n", slot, offset << 1);
-#endif
+			LOG(("concept_io_r: Slot ROM memory accessed for slot %d at address 0x03%4.4x\n", slot, offset << 1));
 			if (expansion_slots[slot].rom_read)
 				return expansion_slots[slot].rom_read(offset & 0xff);
 		}
@@ -339,16 +330,12 @@ READ16_HANDLER(concept_io_r)
 
 	case 5:
 		/* slot status */
-#if VERBOSE
-		logerror("concept_io_r: Slot status read at address 0x03%4.4x\n", offset << 1);
-#endif
+		LOG(("concept_io_r: Slot status read at address 0x03%4.4x\n", offset << 1));
 		break;
 
 	case 6:
 		/* calendar R/W */
-#if VERY_VERBOSE
-		logerror("concept_io_r: Calendar read at address 0x03%4.4x\n", offset << 1);
-#endif
+		VLOG(("concept_io_r: Calendar read at address 0x03%4.4x\n", offset << 1));
 		if (!clock_enable)
 			return mm58274c_r(0, clock_address);
 		break;
@@ -389,27 +376,21 @@ READ16_HANDLER(concept_io_r)
 			/* NSR0 data comm port 0 */
 		case 2:
 			/* NSR1 data comm port 1 */
-#if VERBOSE
-			logerror("concept_io_r: Data comm port read at address 0x03%4.4x\n", offset << 1);
-#endif
+			LOG(("concept_io_r: Data comm port read at address 0x03%4.4x\n", offset << 1));
 			if ((offset & 0xf) == 1)
 				return 0x10;
 			break;
 
 		case 3:
 			/* NVIA versatile system interface */
-#if VERBOSE
-			logerror("concept_io_r: VIA read at address 0x03%4.4x\n", offset << 1);
-#endif
+			LOG(("concept_io_r: VIA read at address 0x03%4.4x\n", offset << 1));
 			return via_read(0, offset & 0xf);
 			break;
 
 		case 4:
 			/* NCALM clock calendar address and strobe register */
 			/* write-only? */
-#if VERBOSE
-			logerror("concept_io_r: NCALM clock/calendar read at address 0x03%4.4x\n", offset << 1);
-#endif
+			LOG(("concept_io_r: NCALM clock/calendar read at address 0x03%4.4x\n", offset << 1));
 			break;
 
 		case 5:
@@ -456,10 +437,8 @@ WRITE16_HANDLER(concept_io_w)
 			/* IO4 registers */
 			{
 				int slot = ((offset >> 4) & 7) - 1;
-#if VERBOSE
-				logerror("concept_io_w: Slot I/O register written for slot %d at address 0x03%4.4x, data: 0x%4.4x\n",
-					slot, offset << 1, data);
-#endif
+				LOG(("concept_io_w: Slot I/O register written for slot %d at address 0x03%4.4x, data: 0x%4.4x\n",
+					slot, offset << 1, data));
 				if (expansion_slots[slot].reg_write)
 					expansion_slots[slot].reg_write(offset & 0xf, data);
 			}
@@ -482,9 +461,7 @@ WRITE16_HANDLER(concept_io_w)
 		/* IO4 ROM */
 		{
 			int slot = ((offset >> 8) & 7) - 1;
-#if VERBOSE
-			logerror("concept_io_w: Slot ROM memory written to for slot %d at address 0x03%4.4x, data: 0x%4.4x\n", slot, offset << 1, data);
-#endif
+			LOG(("concept_io_w: Slot ROM memory written to for slot %d at address 0x03%4.4x, data: 0x%4.4x\n", slot, offset << 1, data));
 			if (expansion_slots[slot].rom_write)
 				expansion_slots[slot].rom_write(offset & 0xff, data);
 		}
@@ -497,9 +474,7 @@ WRITE16_HANDLER(concept_io_w)
 
 	case 6:
 		/* calendar R/W */
-#if VERBOSE
-		logerror("concept_io_w: Calendar written to at address 0x03%4.4x, data: 0x%4.4x\n", offset << 1, data);
-#endif
+		LOG(("concept_io_w: Calendar written to at address 0x03%4.4x, data: 0x%4.4x\n", offset << 1, data));
 		if (!clock_enable)
 			mm58274c_w(0, clock_address, data & 0xf);
 		break;
@@ -705,7 +680,7 @@ static WRITE8_HANDLER(concept_fdc_reg_w)
 
 static  READ8_HANDLER(concept_fdc_rom_r)
 {
-	UINT8 data[8] = "CORVUS01";
+	static const UINT8 data[8] = "CORVUS01";
 	return (offset < 8) ? data[offset] : 0;
 }
 
@@ -769,6 +744,6 @@ static WRITE8_HANDLER(concept_hdc_reg_w)
  */
 static  READ8_HANDLER(concept_hdc_rom_r)
 {
-	UINT8 data[8] = { 0xa9, 0x20, 0xa9, 0x00, 0xa9, 0x03, 0xa9, 0x3c };			/* Same as Apple II */
+	static const UINT8 data[8] = { 0xa9, 0x20, 0xa9, 0x00, 0xa9, 0x03, 0xa9, 0x3c };			/* Same as Apple II */
 	return (offset < 8) ? data[offset] : 0;
 }

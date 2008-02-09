@@ -1,63 +1,63 @@
 /******************************************************************************
 
-	pcw.c
-	system driver
+    pcw.c
+    system driver
 
-	Kevin Thacker [MESS driver]
+    Kevin Thacker [MESS driver]
 
-	Thankyou to Jacob Nevins, Richard Fairhurst and Cliff Lawson,
-	for their documentation that I used for the development of this
-	driver.
+    Thankyou to Jacob Nevins, Richard Fairhurst and Cliff Lawson,
+    for their documentation that I used for the development of this
+    driver.
 
-	PCW came in 4 forms.
-	PCW8256, PCW8512, PCW9256, PCW9512
+    PCW came in 4 forms.
+    PCW8256, PCW8512, PCW9256, PCW9512
 
     These systems were nicknamed "Joyce", apparently after a secretary who worked at
-	Amstrad plc.
+    Amstrad plc.
 
     These machines were designed for wordprocessing and other business applications.
 
     The computer came with Locoscript (wordprocessor by Locomotive Software Ltd),
-	and CP/M+ (3.1).
+    and CP/M+ (3.1).
 
     The original PCW8256 system came with a keyboard, green-screen monitor
-	(which had 2 3" 80 track, double sided disc drives mounted vertically in it),
-	and a dedicated printer. The other systems had different design but shared the
-	same hardware.
+    (which had 2 3" 80 track, double sided disc drives mounted vertically in it),
+    and a dedicated printer. The other systems had different design but shared the
+    same hardware.
 
     Since it was primarily designed as a wordprocessor, there were not many games
-	written.
-	Some of the games available:
-	 - Head Over Heels
-	 - Infocom adventures (Hitchhikers Guide to the Galaxy etc)
+    written.
+    Some of the games available:
+     - Head Over Heels
+     - Infocom adventures (Hitchhikers Guide to the Galaxy etc)
 
     However, it can use the CP/M OS, there is a large variety of CPM software that will
-	run on it!!!!!!!!!!!!!!
+    run on it!!!!!!!!!!!!!!
 
     Later systems had:
-		- black/white monitor,
-		- dedicated printer was removed, and support for any printer was added
-		- 3" internal drive replaced by a 3.5" drive
+        - black/white monitor,
+        - dedicated printer was removed, and support for any printer was added
+        - 3" internal drive replaced by a 3.5" drive
 
     All the logic for the system, except the FDC was found in a Amstrad designed custom
-	chip.
+    chip.
 
     In the original PCW8256, there was no boot-rom. A boot-program was stored in the printer
-	chip, and this was activated when the PCW was first switched on. AFAIK there are no
-	dumps of this program, so I have written my own replacement.
+    chip, and this was activated when the PCW was first switched on. AFAIK there are no
+    dumps of this program, so I have written my own replacement.
 
     The boot-program performs a simple task: Load sector 0, track 0 to &f000 in ram, and execute
-	&f010.
+    &f010.
 
     From here CP/M is booted, and the appropiate programs can be run.
 
     The hardware:
-	   - Z80 CPU running at 3.4Mhz
+       - Z80 CPU running at 3.4Mhz
        - NEC765 FDC
-	   - mono display
-	   - beep (a fixed hz tone which can be turned on/off)
-	   - 720x256 (PAL) bitmapped display, 720x200 (NTSC) bitmapped display
-	   - Amstrad CPC6128 style keyboard
+       - mono display
+       - beep (a fixed hz tone which can be turned on/off)
+       - 720x256 (PAL) bitmapped display, 720x200 (NTSC) bitmapped display
+       - Amstrad CPC6128 style keyboard
 
   If there are special roms for any of the PCW series I would be interested in them
   so I can implement the driver properly.
@@ -93,17 +93,17 @@
   - emulation of other hardware...?
  ******************************************************************************/
 #include "driver.h"
+#include "deprecat.h"
 // nec765 interface
 #include "machine/nec765.h"
 #include "devices/dsk.h"
 // pcw video hardware
 #include "includes/pcw.h"
 // pcw/pcw16 beeper
-#include "image.h"
 #include "sound/beep.h"
 
-// uncomment for debug log output
-//#define VERBOSE
+#define VERBOSE 0
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 static void pcw_fdc_interrupt(int);
 
@@ -148,11 +148,11 @@ static void pcw_interrupt_handle(void)
 		((fdc_interrupt_code==1) && ((pcw_system_status & (1<<5))!=0))
 		)
 	{
-		cpunum_set_input_line(0,0,HOLD_LINE);
+		cpunum_set_input_line(Machine, 0, 0,HOLD_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(0,0,CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 0,CLEAR_LINE);
 	}
 }
 
@@ -182,8 +182,8 @@ static void	pcw_trigger_fdc_int(void)
 		{
 			/* I'm assuming that the nmi is edge triggered */
 			/* a interrupt from the fdc will cause a change in line state, and
-			the nmi will be triggered, but when the state changes because the int
-			is cleared this will not cause another nmi */
+            the nmi will be triggered, but when the state changes because the int
+            is cleared this will not cause another nmi */
 			/* I'll emulate it like this to be sure */
 
 			if (state!=previous_fdc_int_state)
@@ -191,8 +191,8 @@ static void	pcw_trigger_fdc_int(void)
 				if (state)
 				{
 					/* I'll pulse it because if I used hold-line I'm not sure
-					it would clear - to be checked */
-					cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+                    it would clear - to be checked */
+					cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 				}
 			}
 		}
@@ -231,11 +231,11 @@ static void pcw_fdc_interrupt(int state)
 
 /* Memory is banked in 16k blocks.
 
-	The upper 16 bytes of block 3, contains the keyboard
-	state. This is updated by the hardware.
+    The upper 16 bytes of block 3, contains the keyboard
+    state. This is updated by the hardware.
 
-	block 3 could be paged into any bank, and this explains the
-	setup of the memory below.
+    block 3 could be paged into any bank, and this explains the
+    setup of the memory below.
 */
 static ADDRESS_MAP_START(pcw_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK5)
@@ -264,7 +264,7 @@ static void pcw_update_read_memory_block(int block, int bank)
 	if (bank == 3)
 	{
 		/* when upper 16 bytes are accessed use keyboard read
-		   handler */
+           handler */
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,
 			block * 0x04000 + 0x3ff0, block * 0x04000 + 0x3fff, 0, 0,
 			pcw_keyboard_r);
@@ -294,8 +294,8 @@ writes for &C000, &0000, &8000, and &4000 respectively */
 static void pcw_update_mem(int block, int data)
 {
 	/* expansion ram select.
-		if block is 0-7, selects internal ram instead for read/write
-		*/
+        if block is 0-7, selects internal ram instead for read/write
+        */
 	if (data & 0x080)
 	{
 		int bank;
@@ -391,9 +391,7 @@ static  READ8_HANDLER(pcw_interrupt_counter_r)
 
 static WRITE8_HANDLER(pcw_bank_select_w)
 {
-#ifdef VERBOSE
-	logerror("BANK: %2x %x\n",offset, data);
-#endif
+	LOG(("BANK: %2x %x\n",offset, data));
 	pcw_banks[offset] = data;
 
 	pcw_update_mem(offset, data);
@@ -413,7 +411,7 @@ static WRITE8_HANDLER(pcw_bank_force_selection_w)
 static WRITE8_HANDLER(pcw_roller_ram_addr_w)
 {
 	/*
-	Address of roller RAM. b7-5: bank (0-7). b4-1: address / 512. */
+    Address of roller RAM. b7-5: bank (0-7). b4-1: address / 512. */
 
 	roller_ram_addr = (((data>>5) & 0x07)<<14) |
 							((data & 0x01f)<<9);
@@ -431,9 +429,7 @@ static WRITE8_HANDLER(pcw_vdu_video_control_register_w)
 
 static WRITE8_HANDLER(pcw_system_control_w)
 {
-#ifdef VERBOSE
-	logerror("SYSTEM CONTROL: %d\n",data);
-#endif
+	LOG(("SYSTEM CONTROL: %d\n",data));
 
 	switch (data)
 	{
@@ -485,7 +481,7 @@ static WRITE8_HANDLER(pcw_system_control_w)
 				/* yes */
 
 				/* clear nmi interrupt */
-				cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 			}
 
 			/* re-issue interrupt */
@@ -507,7 +503,7 @@ static WRITE8_HANDLER(pcw_system_control_w)
 				/* yes */
 
 				/* Clear NMI */
-				cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 
 			}
 
@@ -786,7 +782,7 @@ static DRIVER_INIT(pcw)
 b7:   k2     k1     [+]    .      ,      space  V      X      Z      del<   alt
 b6:   k3     k5     1/2    /      M      N      B      C      lock          k.
 b5:   k6     k4     shift  ;      K      J      F      D      A             enter
-b4:   k9     k8     k7     §      L      H      G      S      tab           f8
+b4:   k9     k8     k7     ??      L      H      G      S      tab           f8
 b3:   paste  copy   #      P      I      Y      T      W      Q             [-]
 b2:   f2     cut    return [      O      U      R      E      stop          can
 b1:   k0     ptr    ]      -      9      7      5      3      2             extra
@@ -915,7 +911,7 @@ static INPUT_PORTS_START(pcw)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ALT") PORT_CODE(KEYCODE_RALT)
 
 	/* at this point the following reflect the above key combinations but in a incomplete
-	way. No details available at this time */
+    way. No details available at this time */
 	/* 0x03ffb */
 	PORT_START
 	PORT_BIT ( 0xff, 0x00,	 IPT_UNUSED )
@@ -960,7 +956,7 @@ static INPUT_PORTS_START(pcw)
     2: 1 if W
     1: 1 if fire pressed
     0: 1 if S
-	*/
+    */
 
 	PORT_START
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN)
@@ -1063,7 +1059,7 @@ SYSTEM_CONFIG_END
 
 /* these are all variants on the pcw design */
 /* major difference is memory configuration and drive type */
-/*     YEAR	NAME	    PARENT		COMPAT	MACHINE   INPUT INIT	CONFIG		COMPANY 	   FULLNAME */
+/*     YEAR NAME        PARENT      COMPAT  MACHINE   INPUT INIT    CONFIG      COMPANY        FULLNAME */
 COMP( 1985, pcw8256,   0,			0,		pcw,	  pcw,	pcw,	pcw_256k,	"Amstrad plc", "PCW8256",		GAME_NOT_WORKING)
 COMP( 1985, pcw8512,   pcw8256,	0,		pcw,	  pcw,	pcw,	pcw_512k,	"Amstrad plc", "PCW8512",		GAME_NOT_WORKING)
 COMP( 1987, pcw9256,   pcw8256,	0,		pcw,	  pcw,	pcw,	pcw_256k,	"Amstrad plc", "PCW9256",		GAME_NOT_WORKING)

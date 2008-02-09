@@ -10,7 +10,7 @@
 */
 
 #include "driver.h"
-#include "video/generic.h"
+#include "deprecat.h"
 #include "cpu/m68000/m68k.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/68901mfp.h"
@@ -171,13 +171,13 @@ static TIMER_CALLBACK(atarist_glue_tick)
 
 	if ((y == shifter.vblank_start) && (x == 0))
 	{
-		cpunum_set_input_line(0, MC68000_IRQ_4, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, MC68000_IRQ_4, HOLD_LINE);
 		shifter.ofs = shifter.base;
 	}
 
 	if (x == shifter.hblank_start)
 	{
-		cpunum_set_input_line(0, MC68000_IRQ_2, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, MC68000_IRQ_2, HOLD_LINE);
 		shifter.ofs += (shifter.lineofs * 2); // STe
 	}
 }
@@ -760,5 +760,5 @@ VIDEO_START( atarist )
 
 	atarist_set_screen_parameters();
 
-	video_start_generic_bitmapped(machine);
+	VIDEO_START_CALL(generic_bitmapped);
 }

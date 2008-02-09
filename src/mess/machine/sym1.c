@@ -8,6 +8,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/sym1.h"
 
 /* M6502 CPU */
@@ -172,7 +173,7 @@ static const ttl74145_interface ttl74145_intf =
 
 static void sym1_irq(int level)
 {
-	cpunum_set_input_line(0, M6502_IRQ_LINE, level);
+	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, level);
 }
 
 
@@ -285,7 +286,7 @@ DRIVER_INIT( sym1 )
 	via_config(1, &via1);
 	via_config(2, &via2);
 	r6532_config(0, &r6532_interface);
-	r6532_set_clock(0, OSC_Y1);
+	r6532_set_clock(0, SYM1_CLOCK);
 	r6532_reset(0);
 
 	/* configure 74145 */
@@ -305,6 +306,6 @@ MACHINE_RESET( sym1 )
 	/* make 0xf800 to 0xffff point to the last half of the monitor ROM
 	   so that the CPU can find its reset vectors */
 	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM,
-			0xf800, 0xffff, 0, 0, MRA8_BANK1, MWA8_ROM);
+			0xf800, 0xffff, 0, 0, MRA8_BANK1, MWA8_NOP);
 	memory_set_bankptr(1, sym1_monitor + 0x800);
 }

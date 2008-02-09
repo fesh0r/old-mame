@@ -78,7 +78,6 @@ would just have taken three extra tracks on the main board and a OR gate in an A
 */
 
 #include "driver.h"
-#include "video/generic.h"
 #include "machine/tms9901.h"
 #include "cpu/tms9900/tms9900.h"
 #include "mslegacy.h"
@@ -108,10 +107,10 @@ static MACHINE_RESET( ti99_2 )
 		memory_set_bankptr(1, TI99_2_32_ROMPAGE0);
 }
 
-static void ti99_2_vblank_interrupt(void)
+static INTERRUPT_GEN( ti99_2_vblank_interrupt )
 {
 	/* We trigger a level-4 interrupt.  The PULSE_LINE is a mere guess. */
-	cpunum_set_input_line(0, 1, PULSE_LINE);
+	cpunum_set_input_line(machine, 0, 1, PULSE_LINE);
 }
 
 
@@ -123,8 +122,8 @@ static void ti99_2_vblank_interrupt(void)
   in a 128-entry table located in ROM.  Character code for each screen position are stored
   sequentially in RAM.  Colors are a fixed Black on White.
 
-	There is an EOL character that blanks the end of the current line, so that
-	the CPU can get more bus time.
+    There is an EOL character that blanks the end of the current line, so that
+    the CPU can get more bus time.
 */
 
 static const unsigned char ti99_2_palette[] =
@@ -147,14 +146,6 @@ static PALETTE_INIT(ti99_2)
 	memcpy(colortable, & ti99_2_colortable, sizeof(ti99_2_colortable));
 }
 
-static VIDEO_START(ti99_2)
-{
-	videoram_size = 768;
-
-	video_start_generic(machine);
-}
-
-#define ti99_2_video_w videoram_w
 
 static VIDEO_UPDATE(ti99_2)
 {
@@ -165,14 +156,9 @@ static VIDEO_UPDATE(ti99_2)
 
 	for (i = 0; i < 768; i++)
 	{
-		if (dirtybuffer[i])
-		{
-			dirtybuffer[i] = 0;
-
-			/* Is the char code masked or not ??? */
-			drawgfx(tmpbitmap, machine->gfx[0], videoram[i] & 0x7F, 0,
-			          0, 0, sx, sy, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
-		}
+		/* Is the char code masked or not ??? */
+		drawgfx(bitmap, machine->gfx[0], videoram[i] & 0x7F, 0,
+			0, 0, sx, sy, cliprect, TRANSPARENCY_NONE, 0);
 
 		sx += 8;
 		if (sx == 256)
@@ -182,7 +168,6 @@ static VIDEO_UPDATE(ti99_2)
 		}
 	}
 
-	copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
 	return 0;
 }
 
@@ -208,16 +193,14 @@ GFXDECODE_END
   Memory map - see description above
 */
 
-static ADDRESS_MAP_START(ti99_2_memmap, ADDRESS_SPACE_PROGRAM, 8)
-
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_ROM, MWA8_ROM)		/*system ROM*/
-	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK1)	/*system ROM, banked on 32kb ROMs protos*/
-	AM_RANGE(0x6000, 0xdfff) AM_READWRITE(MRA8_NOP, MWA8_NOP)		/*free for expansion*/
-	AM_RANGE(0xe000, 0xebff) AM_READWRITE(MRA8_RAM, MWA8_RAM)		/*system RAM*/
-	AM_RANGE(0xec00, 0xeeff) AM_READWRITE(MRA8_RAM, ti99_2_video_w) AM_BASE(& videoram)	/*system RAM: used for video*/
-	AM_RANGE(0xef00, 0xefff) AM_READWRITE(MRA8_RAM, MWA8_RAM)		/*system RAM*/
-	AM_RANGE(0xf000, 0xffff) AM_READWRITE(MRA8_NOP, MWA8_NOP)		/*free for expansion (and internal processor RAM)*/
-
+static ADDRESS_MAP_START( ti99_2_memmap, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x3fff) AM_ROM		    /* system ROM */
+	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK(1)	/* system ROM, banked on 32kb ROMs protos */
+	AM_RANGE(0x6000, 0xdfff) AM_NOP		    /* free for expansion */
+	AM_RANGE(0xe000, 0xebff) AM_RAM		    /* system RAM */
+	AM_RANGE(0xec00, 0xeeff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xef00, 0xefff) AM_RAM		    /* system RAM */
+	AM_RANGE(0xf000, 0xffff) AM_NOP		    /* free for expansion (and internal processor RAM) */
 ADDRESS_MAP_END
 
 
@@ -386,19 +369,15 @@ static const struct tms9995reset_param ti99_2_processor_config =
 };
 
 static MACHINE_DRIVER_START(ti99_2)
-
 	/* basic machine hardware */
-	/* TMS9995 CPU @ 10.7 MHz */
 	MDRV_CPU_ADD(TMS9995, 10700000)
 	MDRV_CPU_CONFIG(ti99_2_processor_config)
 	MDRV_CPU_PROGRAM_MAP(ti99_2_memmap, 0)
 	MDRV_CPU_IO_MAP(ti99_2_readcru, ti99_2_writecru)
 	MDRV_CPU_VBLANK_INT(ti99_2_vblank_interrupt, 1)
-	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
 
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
 
 	MDRV_MACHINE_RESET( ti99_2 )
 
@@ -413,11 +392,7 @@ static MACHINE_DRIVER_START(ti99_2)
 	MDRV_COLORTABLE_LENGTH(TI99_2_COLORTABLE_SIZE)
 	MDRV_PALETTE_INIT(ti99_2)
 
-	MDRV_VIDEO_START(ti99_2)
 	MDRV_VIDEO_UPDATE(ti99_2)
-
-	/* no sound! */
-
 MACHINE_DRIVER_END
 
 
@@ -445,6 +420,6 @@ SYSTEM_CONFIG_START(ti99_2)
 	/* None of these is supported (tape should be easy to emulate) */
 SYSTEM_CONFIG_END
 
-/*		YEAR	NAME		PARENT		COMPAT	MACHINE		INPUT	INIT		CONFIG		COMPANY					FULLNAME */
+/*      YEAR    NAME        PARENT      COMPAT  MACHINE     INPUT   INIT        CONFIG      COMPANY                 FULLNAME */
 COMP(	1983,	ti99_224,	0,			0,		ti99_2,		ti99_2,	ti99_2_24,	ti99_2,		"Texas Instruments",	"TI-99/2 BASIC Computer (24kb ROMs)" , 0)
 COMP(	1983,	ti99_232,	ti99_224,	0,		ti99_2,		ti99_2,	ti99_2_32,	ti99_2,		"Texas Instruments",	"TI-99/2 BASIC Computer (32kb ROMs)" , 0)

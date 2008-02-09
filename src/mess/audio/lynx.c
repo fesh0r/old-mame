@@ -2,15 +2,11 @@
  PeT mess@utanet.at 2000,2001
 ******************************************************************************/
 
-#include <assert.h>
-#include <math.h>
-
 #include "driver.h"
-#include "mame.h"
 #include "streams.h"
-#include "timer.h"
-
+#include "deprecat.h"
 #include "includes/lynx.h"
+
 
 /* accordingly to atari's reference manual
    there were no stereo lynx produced (the manual knows only production until mid 1991)

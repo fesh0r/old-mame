@@ -21,7 +21,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "video/generic.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 
 #include "includes/a7800.h"
@@ -74,7 +74,7 @@ VIDEO_START( a7800 )
 {
 	int i;
 
-	video_start_generic_bitmapped(machine);
+	VIDEO_START_CALL(generic_bitmapped);
 
 	for(i=0; i<8; i++)
 	{
@@ -336,7 +336,7 @@ static void maria_draw_scanline(void)
 }
 
 
-void a7800_interrupt(void)
+INTERRUPT_GEN( a7800_interrupt )
 {
 	int frame_scanline;
 	UINT8 *ROM = memory_region(REGION_CPU1);
@@ -353,7 +353,7 @@ void a7800_interrupt(void)
 
 	if( maria_wsync )
 	{
-		cpu_trigger( TRIGGER_HSYNC );
+		cpu_trigger( machine, TRIGGER_HSYNC );
 		maria_wsync = 0;
 	}
 
@@ -435,7 +435,7 @@ void a7800_interrupt(void)
 	if( maria_dli )
 	{
 		maria_dli = 0;
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 
 }
@@ -449,7 +449,7 @@ void a7800_interrupt(void)
 VIDEO_UPDATE( a7800 )
 {
 	maria_scanline = 0;
-	video_update_generic_bitmapped(machine, screen, bitmap, cliprect);
+	VIDEO_UPDATE_CALL(generic_bitmapped);
 	return 0;
 }
 

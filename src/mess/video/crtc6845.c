@@ -30,14 +30,10 @@
 
 ***************************************************************************/
 
-#include <stdio.h>
-#include "mame.h"
-#include "driver.h"
-#include "video/generic.h"
-#include "state.h"
 
-#include "mscommon.h"
-#include "includes/crtc6845.h"
+#include "driver.h"
+#include "crtc6845.h"
+
 
 /***************************************************************************
 
@@ -47,12 +43,8 @@
 
 #define VERBOSE 0
 
-#if VERBOSE
 #define DBG_LOG(N,M,A)      \
-    if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",timer_get_time(),(char*)M ); logerror A; }
-#else
-#define DBG_LOG(N,M,A)
-#endif
+    if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
 
 /***************************************************************************
 
@@ -111,7 +103,7 @@ static const struct reg_mask mscrtc6845_reg_mask[2][18] =
 
 /* The PC1512 has not got a full MC6845; the first 9 registers act as if they
  * had these hardwired values: */
-static UINT8 pc1512_defaults[] =
+static const UINT8 pc1512_defaults[] =
 {
 	113, 80, 90, 10, 127, 6, 100, 112, 2
 };

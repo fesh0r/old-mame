@@ -52,8 +52,8 @@ TODO:
 
 #include <math.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "tms9901.h"
-#include "video/tms9928a.h"
 #include "video/v9938.h"
 #include "audio/spchroms.h"
 #include "devices/cassette.h"
@@ -107,9 +107,6 @@ static void ti99_sAMSxram_init(void);
 static void ti99_4p_mapper_init(void);
 static void ti99_myarcxram_init(void);
 static void ti99_evpc_reset(void);
-
-static void ti99_common_init(const TMS9928a_interface *intf);
-
 
 /*
 	pointer to extended RAM area
@@ -500,7 +497,7 @@ DEVICE_LOAD( ti99_cart )
 	/* There is a circuitry in TI99/4(a) that resets the console when a
 	cartridge is inserted or removed.  We emulate this instead of resetting the
 	emulator (which is the default in MESS). */
-	/*cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+	/*cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 	tms9901_reset(0);
 	if (! has_evpc)
 		TMS9928A_reset();
@@ -597,7 +594,7 @@ DEVICE_UNLOAD( ti99_cart )
 	/* There is a circuitry in TI99/4(a) that resets the console when a
 	cartridge is inserted or removed.  We emulate this instead of resetting the
 	emulator (which is the default in MESS). */
-	/*cpunum_set_input_line(0, INPUT_LINE_RESET, PULSE_LINE);
+	/*cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 	tms9901_reset(0);
 	if (! has_evpc)
 		TMS9928A_reset();
@@ -713,36 +710,25 @@ MACHINE_START( ti99_4a_50hz )
 
 MACHINE_START( ti99_4ev_60hz)
 {
-	tms9901_init(0, & tms9901reset_param_ti99_4x);
-    	ti99_peb_init();
-        ti99_fdc_init();
-#if HAS_99CCFDC
-	ti99_ccfdc_init();
-#endif
-	ti99_bwg_init();
-	ti99_hfdc_init();
-        ti99_ide_init();
-        ti99_rs232_init();
-	ti99_hsgpl_init();
-	ti99_usbsm_init();
+    /* has an own VDP, so skip initing the VDP */
+    ti99_common_init(0);
 }
 
-static void ti99_common_init(const TMS9928a_interface *gfxparm) {
-
-	tms9901_init(0, & tms9901reset_param_ti99_4x);
-
-	TMS9928A_configure(gfxparm);
+void ti99_common_init(const TMS9928a_interface *gfxparm) 
+{
+    if (ti99_model==model_99_8) {
+        tms9901_init(0, &tms9901reset_param_ti99_8);
+    }
+    else {
+	tms9901_init(0,  &tms9901reset_param_ti99_4x);
+    }
+	if (gfxparm!=0) TMS9928A_configure(gfxparm);
 
         /* Initialize all. Actually, at this point, we don't know
            how the switches are set. Later we use the configuration switches to
            determine which one to use. */
 	ti99_peb_init();
-        ti99_fdc_init();
-#if HAS_99CCFDC
-	ti99_ccfdc_init();
-#endif
-	ti99_bwg_init();
-	ti99_hfdc_init();
+        ti99_floppy_controllers_init_all();
         ti99_ide_init();
         ti99_rs232_init();
 	ti99_hsgpl_init();
@@ -830,7 +816,7 @@ MACHINE_RESET( ti99 )
 
         if (has_speech)
 	{
-		spchroms_interface speech_intf = { region_speech_rom };
+		static const spchroms_interface speech_intf = { region_speech_rom };
 
 		spchroms_config(& speech_intf);
 
@@ -839,7 +825,7 @@ MACHINE_RESET( ti99 )
 			memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x93ff, 0, 0, ti99_rspeech_r);
 			memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9400, 0x97ff, 0, 0, ti99_wspeech_w);
 
-			sndti_set_info_int(SOUND_TMS5220, 0, SNDINFO_INT_TMS5220_VARIANT, variant_tms0285);
+			sndti_set_info_int(SOUND_TMS5220, 0, SNDINFO_INT_TMS5220_VARIANT, variant_tmc0285);
 		}
 	}
 	else
@@ -956,7 +942,7 @@ VIDEO_START( ti99_4ev )
 	VBL interrupt  (mmm...  actually, it happens when the beam enters the lower
 	border, so it is not a genuine VBI, but who cares ?)
 */
-void ti99_vblank_interrupt(void)
+INTERRUPT_GEN( ti99_vblank_interrupt )
 {
 	TMS9928A_interrupt();
 	if (has_handset)
@@ -966,7 +952,7 @@ void ti99_vblank_interrupt(void)
 		mecmouse_poll();
 }
 
-void ti99_4ev_hblank_interrupt(void)
+INTERRUPT_GEN( ti99_4ev_hblank_interrupt )
 {
 	static int line_count;
 	v9938_interrupt();
@@ -2009,16 +1995,53 @@ static void ti99_handset_task(void)
 #pragma mark MECHATRONICS MOUSE
 #endif
 
-static void mecmouse_select(int sel)
+static void mecmouse_select(int selnow, int stick1, int stick2)
 {
-	if (mecmouse_sel != (sel != 0))
-	{
-		mecmouse_sel = (sel != 0);
-		if (mecmouse_sel)
-		{
+	/* The Mechatronic mouse is connected to the joystick port and occupies
+	   both joystick select lines and the switch lines. From these five 
+	   lines, left/right/down are used for the motion (i.e. 3 motion steps 
+	   for positive and four for negative motion and one for rest), 
+	   the fire line is used for the secondary mouse button, and the up 
+	   line is used for the primary button.
+	   The mouse motion is delivered by the same lines for both directions;
+	   this requires swapping the axes. According to the source code of
+	   the accompanying mouse driver, the readout of the current axis is
+	   done by selecting joystick 1, then joystick 2. The axis swapping is
+	   achieved by selecting stick 1 again. When selecting stick 2, the
+	   second axis is seen on the input lines.
+	   Interrupting this sequence will lead to swapped axes. This is
+	   prevented by resetting the toggle when the mouse is deselected 
+	   (neither 1 nor 2 are selected).
+
+	   The joystick lines are selected as follows:
+	   TI-99/4:  Stick 1: P4=1, P3=0, P2=1 (5)
+	             Stick 2: P4=1, P3=1, P2=0 (6)
+		
+	   TI-99/4A: Stick 1: P4=1, P3=1, P2=0 (6)
+	             Stick 2: P4=1, P3=1, P2=1 (7)
+
+	   TI-99/8:  Stick 1: P3=1, P2=1, P1=1, P0=0 (14)
+	             Stick 2: P3=1, P2=1, P1=1, P0=1 (15)
+		     
+	   Geneve: n/a, has own mouse handling via v9938
+	   
+	   As we can only deliver at max 3 steps positive and 4 steps negative,
+	   we split the delta so that subsequent queries add up to the actual
+	   delta. That is, one delta of +10 yields a 3+3+3+1. 
+	   
+	   mecmouse_x holds the current delta to be counted down for x
+	   (y accordingly)
+
+	   mecmouse_x_buf is the current step count reported to CRU
+	   
+	   Michael Zapf, 2008-01-22
+	*/
+	
+	if (selnow==stick2) {
+		if (mecmouse_sel==stick1) {
 			if (! mecmouse_read_y)
 			{
-				/* sample mouse data for both axes */
+				/* Sample x motion. */
 				if (mecmouse_x < -4)
 					mecmouse_x_buf = -4;
 				else if (mecmouse_x > 3)
@@ -2027,7 +2050,10 @@ static void mecmouse_select(int sel)
 					mecmouse_x_buf = mecmouse_x;
 				mecmouse_x -= mecmouse_x_buf;
 				mecmouse_x_buf = (mecmouse_x_buf-1) & 7;
-
+			}
+			else 
+			{
+				/* Sample y motion. */
 				if (mecmouse_y < -4)
 					mecmouse_y_buf = -4;
 				else if (mecmouse_y > 3)
@@ -2038,8 +2064,21 @@ static void mecmouse_select(int sel)
 				mecmouse_y_buf = (mecmouse_y_buf-1) & 7;
 			}
 		}
-		else
+		mecmouse_sel = selnow;
+	}
+	else if (selnow==stick1) 
+	{
+		if (mecmouse_sel==stick2)
+		{
+			/* Swap the axes. */
 			mecmouse_read_y = ! mecmouse_read_y;
+		}
+		mecmouse_sel = selnow;
+	}
+	else 
+	{
+		/* Reset the axis toggle when the mouse is deselected */
+		mecmouse_read_y = 0;
 	}
 }
 
@@ -2054,12 +2093,15 @@ static void mecmouse_poll(void)
 
 	/* compute x delta */
 	delta_x = new_mx - last_mx;
-
+	
 	/* check for wrap */
 	if (delta_x > 0x80)
-		delta_x = 0x100-delta_x;
+		delta_x = -0x100+delta_x;
 	if  (delta_x < -0x80)
-		delta_x = -0x100-delta_x;
+		delta_x = 0x100+delta_x;
+
+	/* Prevent unplausible values at startup. */
+	if (delta_x > 100 || delta_x<-100) delta_x = 0;
 
 	last_mx = new_mx;
 
@@ -2068,9 +2110,11 @@ static void mecmouse_poll(void)
 
 	/* check for wrap */
 	if (delta_y > 0x80)
-		delta_y = 0x100-delta_y;
+		delta_y = -0x100+delta_y;
 	if  (delta_y < -0x80)
-		delta_y = -0x100-delta_y;
+		delta_y = 0x100+delta_y;
+
+	if (delta_y > 100 || delta_y<-100) delta_y = 0;
 
 	last_my = new_my;
 
@@ -2078,7 +2122,6 @@ static void mecmouse_poll(void)
 	mecmouse_x += delta_x;
 	mecmouse_y += delta_y;
 }
-
 
 /*===========================================================================*/
 #if 0
@@ -2157,11 +2200,11 @@ static void tms9901_interrupt_callback(int intreq, int ic)
 	{
 		/* On TI99, TMS9900 IC0-3 lines are not connected to TMS9901,
 		 * but hard-wired to force level 1 interrupts */
-		cpunum_set_input_line_and_vector(0, 0, ASSERT_LINE, 1);	/* interrupt it, baby */
+		cpunum_set_input_line_and_vector(Machine, 0, 0, ASSERT_LINE, 1);	/* interrupt it, baby */
 	}
 	else
 	{
-		cpunum_set_input_line(0, 0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 	}
 }
 
@@ -2273,9 +2316,10 @@ static void ti99_KeyC(int offset, int data)
 		KeyCol |= 1 << (offset-2);
 	else
 		KeyCol &= ~ (1 << (offset-2));
-
-	if (has_mecmouse)
-		mecmouse_select(KeyCol == ((ti99_model == model_99_4) ? 6 : 7));
+	
+        if (has_mecmouse)
+                mecmouse_select(KeyCol, (ti99_model == model_99_4) ? 5 : 6,
+					(ti99_model == model_99_4) ? 6 : 7); 
 }
 
 /*
@@ -2363,7 +2407,7 @@ static void ti99_8_KeyC(int offset, int data)
 		KeyCol &= ~ (1 << offset);
 
 	if (has_mecmouse)
-		mecmouse_select(KeyCol == 15);
+		mecmouse_select(KeyCol, 14, 15);
 }
 
 static void ti99_8_WCRUS(int offset, int data)

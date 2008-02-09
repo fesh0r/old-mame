@@ -7,8 +7,9 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "video/generic.h"
-#include "includes/saa5050.h"
+#include "saa5050.h"
+
+/* TODO: Remove dependency on this */
 #include "mslegacy.h"
 
 static INT8 frame_count;
@@ -107,7 +108,7 @@ static PALETTE_INIT( saa5050 )
 static VIDEO_START( saa5050 )
 {
 	frame_count = 0;
-	video_start_generic(machine);
+	VIDEO_START_CALL(generic);
 }
 
 #ifdef UNUSED_FUNCTION

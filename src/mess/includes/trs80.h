@@ -1,15 +1,18 @@
-#ifndef TRS80_H
-#define TRS80_H
+/*****************************************************************************
+ *
+ * includes/trs80.h
+ *
+ ****************************************************************************/
 
-#include <stdarg.h>
-#include "driver.h"
-#include "cpu/z80/z80.h"
-#include "video/generic.h"
-#include "machine/wd17xx.h"
+#ifndef TRS80_H_
+#define TRS80_H_
+
 #include "devices/snapquik.h"
+
 
 #define TRS80_FONT_W 6
 #define TRS80_FONT_H 12
+
 
 /*----------- defined in machine/trs80.c -----------*/
 
@@ -21,6 +24,7 @@ DEVICE_LOAD( trs80_floppy );
 QUICKLOAD_LOAD( trs80_cmd );
 
 MACHINE_START( trs80 );
+MACHINE_RESET( trs80 );
 DRIVER_INIT( trs80 );
 
 WRITE8_HANDLER ( trs80_port_ff_w );
@@ -41,6 +45,7 @@ WRITE8_HANDLER( trs80_motor_w );
 
 READ8_HANDLER( trs80_keyboard_r );
 
+
 /*----------- defined in video/trs80.c -----------*/
 
 VIDEO_START( trs80 );
@@ -48,5 +53,5 @@ VIDEO_UPDATE( trs80 );
 
 WRITE8_HANDLER( trs80_videoram_w );
 
-#endif	/* TRS80_H */
 
+#endif	/* TRS80_H_ */

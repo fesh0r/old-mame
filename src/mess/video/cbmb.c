@@ -5,11 +5,10 @@
 ***************************************************************************/
 
 #include "driver.h"
-
-#include "video/generic.h"
-#include "video/crtc6845.h"
-#include "mscommon.h"
+#include "deprecat.h"
 #include "includes/cbmb.h"
+#include "video/crtc6845.h"
+
 
 static int cbmb_font=0;
 
@@ -54,7 +53,7 @@ VIDEO_START( cbm700 )
 		}
 	}
 
-	video_start_generic(machine);
+	VIDEO_START_CALL(generic);
 }
 
 void cbmb_vh_set_font(int font)

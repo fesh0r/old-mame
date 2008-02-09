@@ -1,22 +1,21 @@
 /*
 
-	TODO:
+    TODO:
 
-	- pcb layout guru-style readme
-	- tape interface
-	- discrete sound from NE555
-	- artwork
-	- VP-550/551 Super Sound Board
-	- VP-590 Color Board
-	- VP-595 Simple Sound Board
-	- VP-601/611 ASCII Keyboard
-	- VP-700 Expanded Tiny Basic Board
+    - pcb layout guru-style readme
+    - tape interface
+    - discrete sound from NE555
+    - artwork
+    - VP-550/551 Super Sound Board
+    - VP-590 Color Board
+    - VP-595 Simple Sound Board
+    - VP-601/611 ASCII Keyboard
+    - VP-700 Expanded Tiny Basic Board
 
 */
 
 #include "driver.h"
-#include "image.h"
-#include "inputx.h"
+#include "deprecat.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "devices/cassette.h"
 #include "devices/snapquik.h"
@@ -52,7 +51,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( vip_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_READWRITE(cdp1861_dispon_r, cdp1861_dispoff_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
-//	AM_RANGE(0x03, 0x03) AM_READWRITE(io_r, io_w)
+//  AM_RANGE(0x03, 0x03) AM_READWRITE(io_r, io_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(bankswitch_w)
 ADDRESS_MAP_END
 
@@ -162,7 +161,7 @@ static MACHINE_START( vip )
 
 	for (addr = 0; addr < mess_ram_size; addr++)
 	{
-		ram[addr] = mame_rand(Machine) & 0xff;
+		ram[addr] = mame_rand(machine) & 0xff;
 	}
 
 	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU1), 0x8000);
@@ -170,16 +169,14 @@ static MACHINE_START( vip )
 
 static MACHINE_RESET( vip )
 {
-	machine_reset_cdp1861(machine);
+	MACHINE_RESET_CALL(cdp1861);
 	memory_set_bank(1, 1);
 }
 
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( vip )
-
-	// basic machine hardware
-
+	/* basic machine hardware */
 	MDRV_CPU_ADD(CDP1802, XTAL/2)
 	MDRV_CPU_PROGRAM_MAP(vip_map, 0)
 	MDRV_CPU_IO_MAP(vip_io_map, 0)
@@ -188,8 +185,7 @@ static MACHINE_DRIVER_START( vip )
 	MDRV_MACHINE_START(vip)
 	MDRV_MACHINE_RESET(vip)
 
-    // video hardware
-
+    /* video hardware */
 	MDRV_SCREEN_ADD("main", 0)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(XTAL/2, CDP1861_SCREEN_WIDTH, CDP1861_HBLANK_END, CDP1861_HBLANK_START, CDP1861_TOTAL_SCANLINES, CDP1861_SCANLINE_VBLANK_END, CDP1861_SCANLINE_VBLANK_START)
@@ -199,8 +195,7 @@ static MACHINE_DRIVER_START( vip )
 	MDRV_VIDEO_START(cdp1861)
 	MDRV_VIDEO_UPDATE(cdp1861)
 
-	// sound hardware
-
+	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
@@ -283,5 +278,5 @@ static DRIVER_INIT( vip )
 
 /* System Drivers */
 
-//    YEAR	NAME		PARENT	COMPAT	MACHINE		INPUT		INIT		CONFIG      COMPANY FULLNAME
+//    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY FULLNAME
 COMP(1977,	vip,		0,		0,		vip,		vip,		vip,		vip,		"RCA",	"Cosmac VIP (VP-711)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

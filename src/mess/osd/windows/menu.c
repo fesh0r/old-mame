@@ -21,7 +21,8 @@
 #include "windows/input.h"
 #include "dialog.h"
 #include "opcntrl.h"
-#include "uitext.h"
+#include "deprecat.h"
+#include "mslegacy.h"
 #include "strconv.h"
 #include "utils.h"
 #include "tapedlg.h"
@@ -31,6 +32,7 @@
 #include "devices/cassette.h"
 #include "windows/window.h"
 #include "uimess.h"
+#include "mslegacy.h"
 #include "winutf8.h"
 
 #ifdef UNDER_CE
@@ -79,12 +81,15 @@ enum
 	DEVOPTION_MAX
 };
 
-#ifdef MAME_DEBUG
-#define HAS_PROFILER	1
+#ifdef ENABLE_DEBUGGER
 #define HAS_DEBUGGER	1
 #else
-#define HAS_PROFILER	0
 #define HAS_DEBUGGER	0
+#endif
+#ifdef MAME_PROFILER
+#define HAS_PROFILER	1
+#else
+#define HAS_PROFILER	0
 #endif
 
 #ifdef UNDER_CE
@@ -470,7 +475,7 @@ static void state_dialog(HWND wnd, win_file_dialog_type dlgtype,
 	else
 	{
 		snprintf(state_filename, sizeof(state_filename) / sizeof(state_filename[0]),
-			"%s State.sta", Machine->gamedrv->description);
+			"%s State.sta", machine->gamedrv->description);
 		dir = NULL;
 
 		src = state_filename;
@@ -643,7 +648,7 @@ static dialog_box *build_option_dialog(const struct IODevice *dev, char *filter,
 	char buf[256];
 	struct file_dialog_params *params;
 	struct storeval_optres_params *storeval_params;
-	const struct dialog_layout filedialog_layout = { 44, 220 };
+	static const struct dialog_layout filedialog_layout = { 44, 220 };
 
 	// make the filter
 	pos = 0;

@@ -183,8 +183,6 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
 ***************************************************************************/
 
 #include "driver.h"
-#include "inputx.h"
-#include "video/generic.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
 #include "devices/appldriv.h"
@@ -657,10 +655,10 @@ static MACHINE_DRIVER_START( apple2_common )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD_TAG("A2DAC", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MDRV_SOUND_ADD(AY8910, 1022727)
+	MDRV_SOUND_ADD(AY8913, 1022727)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MDRV_SOUND_ADD(AY8910, 1022727)
+	MDRV_SOUND_ADD(AY8913, 1022727)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
@@ -925,7 +923,7 @@ SYSTEM_CONFIG_END
 
 
 
-/*    YEAR  NAME      PARENT    COMPAT		MACHINE   INPUT     INIT CONFIG		COMPANY            FULLNAME */
+/*    YEAR  NAME      PARENT    COMPAT      MACHINE   INPUT     INIT CONFIG     COMPANY            FULLNAME */
 COMP( 1977, apple2,   0,        0,			apple2,   apple2,   0,   apple2,	"Apple Computer", "Apple ][" , 0)
 COMP( 1979, apple2p,  apple2,   0,			apple2p,  apple2p,  0,   apple2p,	"Apple Computer", "Apple ][+" , 0)
 COMP( 1980, apple2jp, apple2,   0,			apple2p,  apple2p,  0,   apple2p,	"Apple Computer", "Apple ][j+" , 0)

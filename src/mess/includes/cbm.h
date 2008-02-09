@@ -1,18 +1,22 @@
-#ifndef __CBM_H_
-#define __CBM_H_
+/*****************************************************************************
+ *
+ * includes/cbm.h
+ *
+ ****************************************************************************/
 
-#include <stdlib.h>
+#ifndef CBM_H_
+#define CBM_H_
 
-#include "driver.h"
-#include "devices/cartslot.h"
 #include "devices/snapquik.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+
 /* must be defined until some driver init problems are solved */
 #define NEW_GAMEDRIVER
+
 
 /*----------- defined in machine/cbm.c -----------*/
 
@@ -27,14 +31,14 @@ void cbmcartslot_device_getinfo(const device_class *devclass, UINT32 state, unio
 
 /**************************************************************************
  * Logging
- * call the XXX_LOG with XXX_LOG("info",(errorlog,"%fmt\n",args));
+ * call the XXX_LOG with XXX_LOG("info",("%fmt\n",args));
  * where "info" can also be 0 to append .."%fmt",args to a line.
  **************************************************************************/
 #define LOG(LEVEL,N,M,A)  \
         { \
 	  if(LEVEL>=N) { \
 	    if( M ) \
-              logerror("%11.6f: %-24s",timer_get_time(), (char*)M );\
+              logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()), (char*)M );\
 	    logerror A; \
 	  } \
         }
@@ -53,11 +57,7 @@ void cbmcartslot_device_getinfo(const device_class *devclass, UINT32 state, unio
 # define PET_TEST_CODE
 #endif
 
-#if VERBOSE_DBG
 #define DBG_LOG(n,m,a) LOG(VERBOSE_DBG,n,m,a)
-#else
-#define DBG_LOG(n,m,a)
-#endif
 
 QUICKLOAD_LOAD( cbm_pet1 );
 QUICKLOAD_LOAD( cbm_pet );
@@ -97,8 +97,9 @@ extern CBM_ROM cbm_rom[0x20];
  * 0x001a lsb 16bit address
  * 0x001c data */
 
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif /* CBM_H_ */

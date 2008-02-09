@@ -1,6 +1,10 @@
 // don't include this into the makefile
 // it is included in vic6567.c yet
 
+#include "driver.h"
+#include "vic4567.h"
+#include "deprecat.h"
+
 #define OPTIMIZE
 
 #define VIC3_BITPLANES_MASK (vic2.reg[0x32])
@@ -78,8 +82,8 @@ WRITE8_HANDLER ( vic3_port_w )
 		break;
 	case 0x31:
 		vic2.reg[offset] = data;
-		if (data&0x40) cpunum_set_clockscale(0,1.0);
-		else cpunum_set_clockscale(0, 1.0/3.5);
+		if (data&0x40) cpunum_set_clockscale(Machine, 0,1.0);
+		else cpunum_set_clockscale(Machine, 0, 1.0/3.5);
 		break;
 	case 0x32:
 	case 0x33:

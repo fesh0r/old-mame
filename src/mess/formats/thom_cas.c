@@ -9,12 +9,10 @@
 #include <math.h>
 
 #include "driver.h"
-#include "mame.h"
 #include "devices/cassette.h"
 #include "formats/cassimg.h"
-#include "machine/thomson.h"
+#include "includes/thomson.h"
 #include "formats/thom_cas.h"
-
 
 
 /***************************** configuration **************************/
@@ -36,16 +34,8 @@
 
 #define PRINT(x) mame_printf_info x
 
-#if VERBOSE > 1
-#define LOG(x)	logerror x
-#define VLOG(x)	logerror x
-#elif VERBOSE > 0
-#define LOG(x)	logerror x
-#define VLOG(x)
-#else
-#define LOG(x)
-#define VLOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE > 0) logerror x; } while (0)
+#define VLOG(x)	do { if (VERBOSE > 1) logerror x; } while (0)
 
 
 
@@ -626,7 +616,7 @@ static casserr_t to7_wav_save ( cassette_image *cass, const struct CassetteInfo 
 
 
 /* overloaded wav: dump info */
-const static struct CassetteFormat to7_wav =
+static const struct CassetteFormat to7_wav =
 { "wav", to7_wav_identify, to7_wav_load, to7_wav_save };
 
 
@@ -977,7 +967,7 @@ static casserr_t mo5_wav_save ( cassette_image *cass, const struct CassetteInfo 
 
 
 /* overloaded wav: dump info */
-const static struct CassetteFormat mo5_wav =
+static const struct CassetteFormat mo5_wav =
 { "wav", mo5_wav_identify, mo5_wav_load, mo5_wav_save };
 
 

@@ -73,6 +73,8 @@ CPUS += I8035
 CPUS += I8039
 CPUS += I8048
 #CPUS += N7751
+#CPUS += MB8884
+#CPUS += M58715
 #CPUS += I8X41
 #CPUS += I8051
 #CPUS += I8052
@@ -131,6 +133,7 @@ CPUS += ARM
 CPUS += ARM7
 CPUS += JAGUAR
 CPUS += R3000
+#CPUS += R3041
 CPUS += R4600
 #CPUS += R4650
 #CPUS += R4700
@@ -253,7 +256,15 @@ SOUNDS += ASTROCADE
 #SOUNDS += NAMCONA
 #SOUNDS += TMS36XX
 #SOUNDS += TMS3615
+#SOUNDS += TMS5100
 #SOUNDS += TMS5110
+#SOUNDS += TMS5110A
+#SOUNDS += CD2801
+#SOUNDS += TMC0281
+#SOUNDS += CD2802
+#SOUNDS += M58817
+#SOUNDS += TMC0285
+#SOUNDS += TMS5200
 SOUNDS += TMS5220
 #SOUNDS += VLM5030
 #SOUNDS += ADPCM
@@ -300,7 +311,6 @@ SOUNDS += CDDA
 SOUNDS += SPEAKER
 SOUNDS += CDP1869
 #SOUNDS += S14001A
-#SOUNDS += M58817
 SOUNDS += BEEP
 SOUNDS += WAVE
 SOUNDS += SID6581
@@ -366,7 +376,7 @@ DRVLIBS = \
 	$(MESSOBJ)/lviv.a \
 	$(MESSOBJ)/lynx.a \
 	$(MESSOBJ)/motorola.a \
-	$(MESSOBJ)/mtx.a \
+	$(MESSOBJ)/memotech.a \
 	$(MESSOBJ)/multitch.a \
 	$(MESSOBJ)/nascom1.a \
 	$(MESSOBJ)/nec.a \
@@ -801,7 +811,7 @@ $(MESSOBJ)/veb.a:      \
 	$(MESS_MACHINE)/kc.o	\
 
 $(MESSOBJ)/nec.a:	   \
-	$(MESS_VIDEO)/vdc.o	 \
+	$(MAME_VIDEO)/vdc.o	 \
 	$(MESS_MACHINE)/pce.o	 \
 	$(MESS_DRIVERS)/pce.o
 
@@ -889,11 +899,13 @@ $(MESSOBJ)/cpschngr.a: \
 	$(MESS_DRIVERS)/cpschngr.o \
 	$(MAME_VIDEO)/cps1.o
 
-$(MESSOBJ)/mtx.a:	   \
-	$(MESS_DRIVERS)/mtx.o
+$(MESSOBJ)/memotech.a:	   \
+	$(MESS_DRIVERS)/mtx.o \
+	$(MESS_MACHINE)/mtx.o
 
 $(MESSOBJ)/acorn.a:    \
 	$(MESS_DRIVERS)/acrnsys1.o \
+	$(MESS_MACHINE)/ins8154.o \
 	$(MESS_MACHINE)/i8271.o	 \
 	$(MESS_MACHINE)/upd7002.o  \
 	$(MESS_VIDEO)/saa505x.o	     \

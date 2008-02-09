@@ -6,27 +6,17 @@
 
 **********************************************************************/
 
-#include "math.h"
+#include <math.h>
 #include "driver.h"
-#include "timer.h"
-#include "state.h"
+#include "deprecat.h"
+#include "includes/thomson.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
 #include "machine/mc6846.h"
-#include "machine/thomson.h"
-#include "video/thomson.h"
 
 
 #define VERBOSE 0
-
-
-#if VERBOSE
-#define LOG(x)	logerror x
-#else
-#define LOG(x)
-#endif
-
-#define PRINT(x) mame_printf_info x
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 
 /* One GPL is what is drawn in 1 us by the video system in the active window.
@@ -1174,7 +1164,7 @@ VIDEO_START ( thom )
 	thom_init_cb = NULL;
 	thom_init_timer = timer_alloc( thom_set_init , NULL);
 
-	video_eof_thom(machine);
+	VIDEO_EOF_CALL(thom);
 
 	state_save_register_global( thom_bwidth );
 	state_save_register_global( thom_bheight );
@@ -1186,7 +1176,7 @@ VIDEO_START ( thom )
 
 PALETTE_INIT ( thom )
 {
-	float gamma = 0.6;
+	float gamma = 0.6f;
 	unsigned i;
 
 	LOG (( "thom: palette init called\n" ));

@@ -1,47 +1,46 @@
 /***************************************************************************
 Jupiter Ace memory map
 
-	CPU: Z80
-		0000-1fff ROM
-		2000-22ff unused
-		2300-23ff RAM (cassette buffer)
-		2400-26ff RAM (screen)
-		2700-27ff RAM (edit buffer)
-		2800-2bff unused
-		2c00-2fff RAM (char set)
-		3000-3bff unused
-		3c00-47ff RAM (standard)
-		4800-87ff RAM (16K expansion)
-		8800-ffff RAM (Expansion)
+    CPU: Z80
+        0000-1fff ROM
+        2000-22ff unused
+        2300-23ff RAM (cassette buffer)
+        2400-26ff RAM (screen)
+        2700-27ff RAM (edit buffer)
+        2800-2bff unused
+        2c00-2fff RAM (char set)
+        3000-3bff unused
+        3c00-47ff RAM (standard)
+        4800-87ff RAM (16K expansion)
+        8800-ffff RAM (Expansion)
 
 Interrupts:
 
-	IRQ:
-		50Hz vertical sync
+    IRQ:
+        50Hz vertical sync
 
 Ports:
 
-	Out 0xfe:
-		Tape and buzzer
+    Out 0xfe:
+        Tape and buzzer
 
-	In 0xfe:
-		Keyboard input and buzzer
+    In 0xfe:
+        Keyboard input and buzzer
 ***************************************************************************/
 
 #include "driver.h"
 #include "mslegacy.h"
 #include "cpu/z80/z80.h"
-#include "video/generic.h"
 #include "includes/jupiter.h"
 #include "devices/cartslot.h"
-#include "mslegacy.h"
+
 
 /* memory w/r functions */
 static ADDRESS_MAP_START( jupiter_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x22ff) AM_NOP
 	AM_RANGE(0x2300, 0x23ff) AM_RAM
-	AM_RANGE(0x2400, 0x26ff) AM_READWRITE(videoram_r, videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x2400, 0x26ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x2700, 0x27ff) AM_RAM
 	AM_RANGE(0x2800, 0x2bff) AM_NOP
 	AM_RANGE(0x2c00, 0x2fff) AM_READWRITE(MRA8_RAM, jupiter_vh_charram_w) AM_BASE(&jupiter_charram) AM_SIZE(&jupiter_charram_size)
@@ -66,7 +65,7 @@ ADDRESS_MAP_END
 
 /* graphics output */
 
-const gfx_layout jupiter_charlayout =
+static const gfx_layout jupiter_charlayout =
 {
 	8, 8,	/* 8x8 characters */
 	128,	/* 128 characters */
@@ -168,7 +167,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( jupiter_interrupt )
 {
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 /* machine definition */
@@ -254,5 +253,5 @@ SYSTEM_CONFIG_START(jupiter)
 	CONFIG_DEVICE(jupiter_cassette_getinfo)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    COMPAT	MACHINE   INPUT     INIT      CONFIG	COMPANY   FULLNAME */
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
 COMP( 1981, jupiter,  0,		0,		jupiter,  jupiter,	0,		  jupiter,	"Cantab",  "Jupiter Ace" , 0)

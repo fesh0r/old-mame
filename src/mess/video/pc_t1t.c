@@ -9,13 +9,16 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "video/generic.h"
+#include "deprecat.h"
+#include "pc_t1t.h"
+#include "pc_cga.h" // cga monitor palette
+#include "pc_aga.h" //europc charset
 
 #include "includes/crtc6845.h"
-#include "video/pc_cga.h" // cga monitor palette
-#include "video/pc_aga.h" //europc charset
-#include "video/pc_t1t.h"
-#include "mscommon.h"
+
+
+UINT8 *dirtybuffer;
+
 
 /***************************************************************************
 
@@ -219,6 +222,7 @@ static const struct mscrtc6845_config config= { 14318180 /*?*/, pc_t1t_cursor };
 
 static VIDEO_START( pc_t1t )
 {
+	dirtybuffer = auto_malloc(videoram_size);
 	pc_video_start(&config, pc_t1t_choosevideomode, 0x8000);
 }
 

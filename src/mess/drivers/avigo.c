@@ -15,53 +15,56 @@
         MEMORY MAP:
                 0x0000-0x03fff: flash 0 block 0
                 0x4000-0x07fff: flash x block y
-				0x8000-0x0bfff: ram block x, screen buffer, or flash x block y
+                0x8000-0x0bfff: ram block x, screen buffer, or flash x block y
                 0xc000-0x0ffff: ram block 0
 
-		Hardware:
-			- Z80 CPU
+        Hardware:
+            - Z80 CPU
             - 16c500c UART
-			-  amd29f080 flash-file memory x 3 (3mb)
-			- 128k ram
-			- stylus pen
-			- touch-pad screen
+            -  amd29f080 flash-file memory x 3 (3mb)
+            - 128k ram
+            - stylus pen
+            - touch-pad screen
         TODO:
                 Dissassemble the rom a bit and find out exactly
                 how memory paging works!
 
-			I don't have any documentation on the hardware, so a lot of this
-			driver has been written using educated guesswork and a lot of help
-			from an existing emulation written by Hans Pufal. Hans's emulator
-			is also written from educated guesswork.
+            I don't have any documentation on the hardware, so a lot of this
+            driver has been written using educated guesswork and a lot of help
+            from an existing emulation written by Hans Pufal. Hans's emulator
+            is also written from educated guesswork.
 
         Kevin Thacker [MESS driver]
 
  ******************************************************************************/
+
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/avigo.h"
 #include "machine/intelfsh.h"
-#include "includes/tc8521.h"
+#include "machine/tc8521.h"
 #include "machine/uart8250.h"
 #include "sound/speaker.h"
 
+
 static UINT8 avigo_key_line;
 /*
-	bit 7:						?? high priority. When it occurs, clear this bit.
-	bit 6: pen int
-	 An interrupt when pen is pressed against screen.
+    bit 7:                      ?? high priority. When it occurs, clear this bit.
+    bit 6: pen int
+     An interrupt when pen is pressed against screen.
 
-	bit 5: real time clock
-
-
-	bit 4:
+    bit 5: real time clock
 
 
-	bit 3: uart int
+    bit 4:
 
 
-	bit 2: synchronisation link interrupt???keyboard int			;; check bit 5 of port 1,
+    bit 3: uart int
 
-	bit 1: ???		(cleared in nmi, and then set again)
+
+    bit 2: synchronisation link interrupt???keyboard int            ;; check bit 5 of port 1,
+
+    bit 1: ???      (cleared in nmi, and then set again)
 
 */
 
@@ -152,9 +155,9 @@ static WRITE8_HANDLER(avigo_flash_0x8000_write_handler)
 static void avigo_refresh_ints(void)
 {
 	if (avigo_irq!=0)
-		cpunum_set_input_line(0,0, HOLD_LINE);
+		cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
 	else
-		cpunum_set_input_line(0,0, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 }
 
 
@@ -208,7 +211,7 @@ static TIMER_CALLBACK(avigo_dummy_timer_callback)
 		if ((current_input_port_data[3] & 0x02)!=0)
 		{
 			/* ????? causes a NMI */
-			cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 
@@ -237,7 +240,7 @@ static TIMER_CALLBACK(avigo_dummy_timer_callback)
 	avigo_vh_set_stylus_marker_position(stylus_marker_x, stylus_marker_y);
 #if 0
 	/* not sure if keyboard generates an interrupt, or if something
-	is plugged in for synchronisation! */
+    is plugged in for synchronisation! */
 	/* not sure if this is correct! */
 	for (i=0; i<2; i++)
 	{
@@ -250,7 +253,7 @@ static TIMER_CALLBACK(avigo_dummy_timer_callback)
 		if (changed!=0)
 		{
 			/* if there are 1 bits remaining, it means there is a bit
-			that has changed, the old state was off and new state is on */
+            that has changed, the old state was off and new state is on */
 			if (current & changed)
 			{
 				avigo_irq |= (1<<2);
@@ -396,7 +399,7 @@ static OPBASE_HANDLER( avigo_opbase_handler )
 	return address;
 }
 
-static void avigo_machine_reset(running_machine *machine)
+static MACHINE_RESET( avigo )
 {
 	int i;
 	unsigned char *addr;
@@ -454,8 +457,6 @@ static MACHINE_START( avigo )
 	/* a timer used to check status of pen */
 	/* an interrupt is generated when the pen is pressed to the screen */
 	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, avigo_dummy_timer_callback);
-
-	add_reset_callback(machine, avigo_machine_reset);
 }
 
 
@@ -512,7 +513,7 @@ static  READ8_HANDLER(avigo_irq_r)
 
 static WRITE8_HANDLER(avigo_irq_w)
 {
-        avigo_irq &= ~data;
+	avigo_irq &= ~data;
 
 	avigo_refresh_ints();
 }
@@ -614,7 +615,7 @@ static WRITE8_HANDLER(avigo_ad_control_status_w)
 			if (stylus_press_x!=0)
 			{
 				/* this might not be totally accurate because hitable screen
-				area may include the border around the screen! */
+                area may include the border around the screen! */
 				avigo_ad_value = ((int)(stylus_press_x * 5.2f))+0x060;
 				avigo_ad_value &= 0x03fc;
 			}
@@ -631,13 +632,13 @@ static WRITE8_HANDLER(avigo_ad_control_status_w)
 		{
 			/* in the avigo rom, the y coordinate is inverted! */
 			/* therefore a low value would be near the bottom of the display,
-			and a high value at the top */
+            and a high value at the top */
 
 			/* total valid range 0x044->0x036a */
 			/* 0x0350 is also checked */
 
 			/* assumption 0x044->0x0350 is screen area and
-			0x0350->0x036a is panel at bottom */
+            0x0350->0x036a is panel at bottom */
 
 			/* 780 is therefore on-screen range */
 			/* 3.25 a/d units per pixel */
@@ -673,8 +674,8 @@ static  READ8_HANDLER(avigo_ad_data_r)
 
 	/* original */
 
-	/* status AND	11110111 */
-	/* status OR	01110000 -> C20F */
+	/* status AND   11110111 */
+	/* status OR    01110000 -> C20F */
 
 	switch (avigo_ad_control_status & 0x078)
 	{
@@ -793,7 +794,7 @@ static  READ8_HANDLER(avigo_unmapped_r)
   bit 7: ??? if set, does a write 0x00 to 0x02e */
 
   /* port 0x029:
-	port 0x02e */
+    port 0x02e */
 static  READ8_HANDLER(avigo_04_r)
 {
 	/* must be both 0 for it to boot! */
@@ -870,6 +871,7 @@ static MACHINE_DRIVER_START( avigo )
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( avigo )
+	MDRV_MACHINE_RESET( avigo )
 	MDRV_NVRAM_HANDLER( avigo )
 
     /* video hardware */
@@ -908,6 +910,6 @@ SYSTEM_CONFIG_START( avigo )
 SYSTEM_CONFIG_END
 
 
-/*	  YEAR	NAME	PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY   FULLNAME */
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY   FULLNAME */
 COMP(1997,	avigo,	0,		0,		avigo,	avigo,	0,		avigo,	"Texas Instruments", "TI Avigo 100 PDA",GAME_NOT_WORKING)
 

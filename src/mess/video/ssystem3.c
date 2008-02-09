@@ -3,7 +3,7 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "video/generic.h"
+#include "deprecat.h"
 #include "mslegacy.h"
 
 #include "includes/ssystem3.h"
@@ -42,7 +42,7 @@ VIDEO_START( ssystem3 )
 	}
 #endif
 
-	video_start_generic(machine);
+	VIDEO_START_CALL(generic);
 }
 
 static const char led[]={
@@ -113,7 +113,7 @@ static const struct {
 	{125,123},
 };
 
-static const char* single_led=
+static const char single_led[]=
 "          c                                                                                                           1 1\r"
 "   bb   ccccc   bb                                                                                                    1 1\r"
 "   bb     c     bb                                                                                                    1 1\r"

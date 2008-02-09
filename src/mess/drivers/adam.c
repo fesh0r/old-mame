@@ -185,7 +185,6 @@ TO DO:
 
 
 #include "driver.h"
-#include "inputx.h"
 #include "sound/sn76496.h"
 #include "video/tms9928a.h"
 #include "includes/adam.h"
@@ -193,6 +192,7 @@ TO DO:
 #include "devices/cartslot.h"
 #include "devices/mflopimg.h"
 #include "formats/adam_dsk.h"
+#include "deprecat.h"
 
 static ADDRESS_MAP_START( adam_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x00000, 0x01fff) AM_READWRITE( MRA8_BANK1, MWA8_BANK6 )
@@ -433,9 +433,9 @@ static void adam_vdp_interrupt (int state)
 
     /* only if it goes up */
 	if (state && !last_state)
-	    {
-	        cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
-	    }
+    {
+        cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+    }
 	last_state = state;
 }
 
@@ -459,7 +459,7 @@ static TIMER_CALLBACK(adam_paddle_callback)
 		adam_joy_stat[1] = 1;
 
 	if (adam_joy_stat[0] || adam_joy_stat[1])
-		cpunum_set_input_line (0, 0, HOLD_LINE);
+		cpunum_set_input_line (machine, 0, 0, HOLD_LINE);
 }
 
 void set_memory_banks(void)
@@ -725,6 +725,6 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME    PARENT	COMPAT	MACHINE INPUT   INIT	CONFIG	COMPANY FULLNAME */
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY FULLNAME */
 COMP( 1982, adam,   0,		coleco,	adam,   adam,   0,		adam,	"Coleco", "Adam" , 0)
 

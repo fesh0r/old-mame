@@ -15,13 +15,13 @@
 
 ***************************************************************************/
 
-#include "mscommon.h"
 #include "driver.h"
-#include "timer.h"
+#include "deprecat.h"
 #include "includes/pc8801.h"
 #include "machine/8255ppi.h"
 #include "machine/nec765.h"
 #include "sound/beep.h"
+
 
 static int ROMmode,RAMmode,maptvram;
 static int no4throm,no4throm2,port71_save;
@@ -123,7 +123,7 @@ static void pc8801_update_interrupt(void)
 	}
 	if (level >= 0 && level<interrupt_level_reg)
 	{
-		cpunum_set_input_line (0, 0, HOLD_LINE);
+		cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
 	}
 }
 
@@ -794,7 +794,7 @@ static const ppi8255_interface pc8801_8255_config =
 /* callback for /INT output from FDC */
 static void pc8801_fdc_interrupt(int state)
 {
-    cpunum_set_input_line (1, 0, state ? HOLD_LINE : CLEAR_LINE);
+    cpunum_set_input_line(Machine, 1, 0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 /* callback for /DRQ output from FDC */

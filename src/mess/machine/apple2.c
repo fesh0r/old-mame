@@ -12,8 +12,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "state.h"
-#include "video/generic.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
@@ -26,10 +25,12 @@
 #include "profiler.h"
 
 #ifdef MAME_DEBUG
-#define LOG(x)	logerror x
+#define VERBOSE 1
 #else
-#define LOG(x)
+#define VERBOSE 0
 #endif /* MAME_DEBUG */
+
+#define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
 
 #define PROFILER_C00X	PROFILER_USER2
 #define PROFILER_C01X	PROFILER_USER2
@@ -721,15 +722,15 @@ static void apple2_reset(running_machine *machine)
 {
 	int need_intcxrom, i;
 
-	need_intcxrom = !strcmp(Machine->gamedrv->name, "apple2c")
-		|| !strcmp(Machine->gamedrv->name, "apple2c0")
-		|| !strcmp(Machine->gamedrv->name, "apple2c3")
-		|| !strcmp(Machine->gamedrv->name, "apple2cp")
-		|| !strncmp(Machine->gamedrv->name, "apple2g", 7);
+	need_intcxrom = !strcmp(machine->gamedrv->name, "apple2c")
+		|| !strcmp(machine->gamedrv->name, "apple2c0")
+		|| !strcmp(machine->gamedrv->name, "apple2c3")
+		|| !strcmp(machine->gamedrv->name, "apple2cp")
+		|| !strncmp(machine->gamedrv->name, "apple2g", 7);
 	apple2_setvar(need_intcxrom ? VAR_INTCXROM : 0, ~0);
 
 	// ROM 0 cannot boot unless language card bank 2 is write-enabled (but read ROM) on startup
-	if (!strncmp(Machine->gamedrv->name, "apple2g", 7))
+	if (!strncmp(machine->gamedrv->name, "apple2g", 7))
 	{
 		apple2_setvar(VAR_LCWRITE|VAR_LCRAM2, VAR_LCWRITE | VAR_LCRAM | VAR_LCRAM2);
 	}
@@ -756,7 +757,7 @@ static void apple2_reset(running_machine *machine)
  * Apple II interrupt; used to force partial updates
  * ----------------------------------------------------------------------- */
 
-void apple2_interrupt(void)
+INTERRUPT_GEN( apple2_interrupt )
 {
 	int irq_freq = 1;
 	int scanline;
@@ -772,7 +773,7 @@ void apple2_interrupt(void)
 			irq_freq = 1;
 
 		if (irq_freq)
-			cpunum_set_input_line(0, M6502_IRQ_LINE, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, PULSE_LINE);
 	}
 
 	video_screen_update_partial(0, scanline);

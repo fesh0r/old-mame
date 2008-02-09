@@ -9,19 +9,8 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "video/generic.h"
 
 #include "includes/mekd2.h"
-
-#ifndef VERBOSE
-#define VERBOSE 1
-#endif
-
-#if VERBOSE
-#define LOG(x)	logerror(x)
-#else
-#define LOG(x)	/* x */
-#endif
 
 PALETTE_INIT( mekd2 )
 {
@@ -70,7 +59,7 @@ VIDEO_START( mekd2 )
 	}
 #endif
 
-	video_start_generic(machine);
+	VIDEO_START_CALL(generic);
 }
 
 VIDEO_UPDATE( mekd2 )
@@ -93,7 +82,7 @@ VIDEO_UPDATE( mekd2 )
 
         for (x = 0; x < 4; x++)
         {
-            static int layout[6][4] =
+            static const int layout[6][4] =
             {
                 {22, 19, 21, 23},
                 {16, 17, 20, 18},

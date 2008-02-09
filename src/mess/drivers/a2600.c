@@ -12,7 +12,7 @@
 #include "devices/cassette.h"
 #include "formats/a26_cas.h"
 #include "video/tia.h"
-#include "inputx.h"
+#include "deprecat.h"
 
 #define CART memory_region(REGION_USER1)
 
@@ -149,7 +149,7 @@ static unsigned long detect_2600controllers(void)
 
 	unsigned int left,right;
 	int i,j,foundkeypad = 0;
-	unsigned char signatures[][5] =  {
+	static const unsigned char signatures[][5] =  {
 									{ 0x55, 0xa5, 0x3c, 0x29, 0}, // star raiders
 									{ 0xf9, 0xff, 0xa5, 0x80, 1}, // sentinel
 									{ 0x81, 0x02, 0xe8, 0x86, 1}, // shooting arcade
@@ -165,7 +165,7 @@ static unsigned long detect_2600controllers(void)
 									{ 0xff, 0x8d, 0x81, 0x02, 4},
 									{ 0xa9, 0x03, 0x8d, 0x81, 5},
 									{ 0xa9, 0x73, 0x8d, 0x80, 6},
-//									{ 0x82, 0x02, 0x85, 0x8f, 7}, // Mind Maze (really Mind Link??)
+//                                  { 0x82, 0x02, 0x85, 0x8f, 7}, // Mind Maze (really Mind Link??)
 									{ 0xa9, 0x30, 0x8d, 0x80, 7}, // Bionic Breakthrough
 									{ 0x02, 0x8e, 0x81, 0x02, 7}, // Telepathy
 									{ 0x41, 0x6d, 0x69, 0x67, 9}, // Missile Command Amiga Mouse
@@ -210,7 +210,7 @@ static int detect_modeDC(void)
 {
 	int i,numfound = 0;
 	// signature is also in 'video reflex'.. maybe figure out that controller port someday...
-	unsigned char signature[3] = { 0x8d, 0xf0, 0xff };
+	static const unsigned char signature[3] = { 0x8d, 0xf0, 0xff };
 	if (cart_size == 0x10000)
 	{
 		for (i = 0; i < cart_size - sizeof signature; i++)
@@ -228,7 +228,7 @@ static int detect_modeDC(void)
 static int detect_modef6(void)
 {
 	int i,numfound = 0;
-	unsigned char signature[3] = { 0x8d, 0xf6, 0xff };
+	static const unsigned char signature[3] = { 0x8d, 0xf6, 0xff };
 	if (cart_size == 0x4000)
 	{
 		for (i = 0; i < cart_size - sizeof signature; i++)
@@ -250,7 +250,7 @@ static int detect_mode3E(void)
 	// Would have used STA $3e, but 'Alien' and 'Star Raiders' do that for unknown reasons
 
 	int i,numfound = 0;
-	unsigned char signature[3] = { 0x84, 0x3e, 0x9d };
+	static const unsigned char signature[3] = { 0x84, 0x3e, 0x9d };
 	if (cart_size == 0x0800 || cart_size == 0x1000)
 	{
 		for (i = 0; i < cart_size - sizeof signature; i++)
@@ -268,7 +268,7 @@ static int detect_mode3E(void)
 static int detect_modeSS(void)
 {
 	int i,numfound = 0;
-	unsigned char signature[5] = { 0xbd, 0xe5, 0xff, 0x95, 0x81 };
+	static const unsigned char signature[5] = { 0xbd, 0xe5, 0xff, 0x95, 0x81 };
 	if (cart_size == 0x0800 || cart_size == 0x1000)
 	{
 		for (i = 0; i < cart_size - sizeof signature; i++)
@@ -286,7 +286,7 @@ static int detect_modeSS(void)
 static int detect_modeFE(void)
 {
 	int i,j,numfound = 0;
-	unsigned char signatures[][5] =  {
+	static const unsigned char signatures[][5] =  {
 									{ 0x20, 0x00, 0xd0, 0xc6, 0xc5 },
 									{ 0x20, 0xc3, 0xf8, 0xa5, 0x82 },
 									{ 0xd0, 0xfb, 0x20, 0x73, 0xfe },
@@ -311,7 +311,7 @@ static int detect_modeFE(void)
 static int detect_modeE0(void)
 {
 	int i,j,numfound = 0;
-	unsigned char signatures[][3] =  {
+	static const unsigned char signatures[][3] =  {
 									{ 0x8d, 0xe0, 0x1f },
 									{ 0x8d, 0xe0, 0x5f },
 									{ 0x8d, 0xe9, 0xff },
@@ -338,7 +338,7 @@ static int detect_modeE0(void)
 static int detect_modeCV(void)
 {
 	int i,j,numfound = 0;
-	unsigned char signatures[][3] = {
+	static const unsigned char signatures[][3] = {
 									{ 0x9d, 0xff, 0xf3 },
 									{ 0x99, 0x00, 0xf4 }};
 	if (cart_size == 0x0800 || cart_size == 0x1000)
@@ -361,7 +361,7 @@ static int detect_modeCV(void)
 static int detect_modeFV(void)
 {
 	int i,j,numfound = 0;
-	unsigned char signatures[][3] = {
+	static const unsigned char signatures[][3] = {
 									{ 0x2c, 0xd0, 0xff }};
 	if (cart_size == 0x2000)
 	{
@@ -384,7 +384,7 @@ static int detect_modeFV(void)
 static int detect_modeJVP(void)
 {
 	int i,j,numfound = 0;
-	unsigned char signatures[][4] = {
+	static const unsigned char signatures[][4] = {
 									{ 0x2c, 0xc0, 0xef, 0x60 },
 									{ 0x8d, 0xa0, 0x0f, 0xf0 }};
 	if (cart_size == 0x4000 || cart_size == 0x2000)
@@ -407,7 +407,7 @@ static int detect_modeJVP(void)
 static int detect_modeE7(void)
 {
 	int i,j,numfound = 0;
-	unsigned char signatures[][3] = {
+	static const unsigned char signatures[][3] = {
 									{ 0xad, 0xe5, 0xff },
 									{ 0x8d, 0xe7, 0xff }};
 	if (cart_size == 0x2000 || cart_size == 0x4000)
@@ -430,7 +430,7 @@ static int detect_modeE7(void)
 static int detect_modeUA(void)
 {
 	int i,numfound = 0;
-	unsigned char signature[3] = { 0x8d, 0x40, 0x02 };
+	static const unsigned char signature[3] = { 0x8d, 0x40, 0x02 };
 	if (cart_size == 0x2000)
 	{
 		for (i = 0; i < cart_size - sizeof signature; i++)
@@ -448,8 +448,8 @@ static int detect_modeUA(void)
 static int detect_8K_mode3F(void)
 {
 	int i,numfound = 0;
-	unsigned char signature1[4] = { 0xa9, 0x01, 0x85, 0x3f };
-	unsigned char signature2[4] = { 0xa9, 0x02, 0x85, 0x3f };
+	static const unsigned char signature1[4] = { 0xa9, 0x01, 0x85, 0x3f };
+	static const unsigned char signature2[4] = { 0xa9, 0x02, 0x85, 0x3f };
 	// have to look for two signatures because 'not boulderdash' gives false positive otherwise
 	if (cart_size == 0x2000)
 	{
@@ -472,7 +472,7 @@ static int detect_8K_mode3F(void)
 static int detect_32K_mode3F(void)
 {
 	int i,numfound = 0;
-	unsigned char signature[4] = { 0xa9, 0x0e, 0x85, 0x3f };
+	static const unsigned char signature[4] = { 0xa9, 0x0e, 0x85, 0x3f };
 	if (cart_size >= 0x8000)
 	{
 		for (i = 0; i < cart_size - sizeof signature; i++)
@@ -490,7 +490,7 @@ static int detect_32K_mode3F(void)
 static int detect_super_chip(void)
 {
 	int i,j;
-	unsigned char signatures[][5] = {
+	static const unsigned char signatures[][5] = {
 									{ 0xa2, 0x7f, 0x9d, 0x00, 0xf0 }, // dig dug
 									{ 0xae, 0xf6, 0xff, 0x4c, 0x00 }}; // off the wall
 
@@ -1018,8 +1018,8 @@ static OPBASE_HANDLER(modeFE_opbase_handler)
 	if ( ! FETimer )
 	{
 		/* Still cheating a bit here by looking bit 13 of the address..., but the high byte of the
-		   cpu should be the last byte that was on the data bus and so should determine the bank
-		   we should switch in. */
+           cpu should be the last byte that was on the data bus and so should determine the bank
+           we should switch in. */
 		bank_base[1] = CART + 0x1000 * ( ( address & 0x2000 ) ? 0 : 1 );
 		memory_set_bankptr( 1, bank_base[1] );
 		/* and restore old opbase handler */
@@ -1036,8 +1036,8 @@ static OPBASE_HANDLER(modeFE_opbase_handler)
 static void modeFE_switch(UINT16 offset, UINT8 data)
 {
 	/* Retrieve last byte read by the cpu (for this mapping scheme this
-	   should be the last byte that was on the data bus
-	*/
+       should be the last byte that was on the data bus
+    */
 	FETimer = 1;
 	FE_old_opbase_handler = memory_set_opbase_handler(0, modeFE_opbase_handler);
 	catch_nextBranch();
@@ -1372,7 +1372,7 @@ static WRITE16_HANDLER( a2600_tia_vsync_callback ) {
 		if ( data >= supported_screen_heights[i] - 3 && data <= supported_screen_heights[i] + 3 ) {
 			if ( supported_screen_heights[i] != current_screen_height ) {
 				current_screen_height = supported_screen_heights[i];
-//				video_screen_configure( 0, 228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_NTSC ) * 228 * current_screen_height );
+//              video_screen_configure( 0, 228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_NTSC ) * 228 * current_screen_height );
 			}
 		}
 	}
@@ -1385,7 +1385,7 @@ static WRITE16_HANDLER( a2600_tia_vsync_callback_pal ) {
 		if ( data >= supported_screen_heights[i] - 3 && data <= supported_screen_heights[i] + 3 ) {
 			if ( supported_screen_heights[i] != current_screen_height ) {
 				current_screen_height = supported_screen_heights[i];
-//				video_screen_configure( 0, 228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_PAL ) * 228 * current_screen_height );
+//              video_screen_configure( 0, 228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_PAL ) * 228 * current_screen_height );
 			}
 		}
 	}
@@ -1470,7 +1470,7 @@ static MACHINE_RESET( a2600 )
 
 	int chip = 0xFF;
 	unsigned long controltemp;
-	unsigned char snowwhite[] = { 0x10, 0xd0, 0xff, 0xff }; // Snow White Proto
+	static const unsigned char snowwhite[] = { 0x10, 0xd0, 0xff, 0xff }; // Snow White Proto
 
 	current_reset_bank_counter++;
 
@@ -1538,10 +1538,10 @@ static MACHINE_RESET( a2600 )
 	}
 
 	/* Super chip games:
-	   dig dig, crystal castles, millipede, stargate, defender ii, jr. Pac Man,
-	   desert falcon, dark chambers, super football, sprintmaster, fatal run,
-	   off the wall, shooting arcade, secret quest, radar lock, save mary, klax
-	*/
+       dig dig, crystal castles, millipede, stargate, defender ii, jr. Pac Man,
+       desert falcon, dark chambers, super football, sprintmaster, fatal run,
+       off the wall, shooting arcade, secret quest, radar lock, save mary, klax
+    */
 
 	/* set up ROM banks */
 
@@ -1796,8 +1796,8 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(21) PORT_PLAYER(4) PORT_REVERSE PORT_CODE_DEC(KEYCODE_4_PAD) PORT_CODE_INC(KEYCODE_6_PAD)
 
 	PORT_START /* [4] left port button(s) */
-//	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(15) PORT_PLAYER(1)
-//	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(15) PORT_PLAYER(1)
+//  PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(15) PORT_PLAYER(1)
+//  PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(15) PORT_PLAYER(1)
 	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(15) PORT_PLAYER(1)
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(12) PORT_PLAYER(1)
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(10) PORT_PLAYER(1)
@@ -1805,8 +1805,8 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(10) PORT_PLAYER(1)
 
 	PORT_START /* [5] right port button(s) */
-//	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(25) PORT_PLAYER(2)
-//	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(25) PORT_PLAYER(2)
+//  PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(25) PORT_PLAYER(2)
+//  PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(25) PORT_PLAYER(2)
 	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(25) PORT_PLAYER(2)
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(22) PORT_PLAYER(2)
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(20) PORT_PLAYER(2)
@@ -1910,16 +1910,16 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(22) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
 	PORT_START	/* [14] left light gun X */
-//	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CATEGORY(14) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
+//  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CATEGORY(14) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	PORT_START	/* [15] left light gun Y */
-//	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CATEGORY(14) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
+//  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CATEGORY(14) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 	PORT_START	/* [16] right light gun X */
-//	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CATEGORY(24) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
+//  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CATEGORY(24) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
 	PORT_START	/* [17] right light gun Y */
-//	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CATEGORY(24) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
+//  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CATEGORY(24) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
 	PORT_START	/* [18] left trak ball X */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(15) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(1)
@@ -1927,7 +1927,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_START	/* [19] left trak ball Y */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_CATEGORY(15) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(1)
 
-	PORT_START	/* [20]	right trak ball X */
+	PORT_START	/* [20] right trak ball X */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(25) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
 	PORT_START	/* [21] right trak ball Y */
@@ -2049,6 +2049,6 @@ SYSTEM_CONFIG_START(a2600)
 SYSTEM_CONFIG_END
 
 
-/*    YEAR	NAME	PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY		FULLNAME */
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY     FULLNAME */
 CONS( 1977,	a2600,	0,		0,		a2600,	a2600,	0,		a2600,	"Atari",	"Atari 2600 (NTSC)" , 0)
 CONS( 1978,	a2600p,	a2600,	0,		a2600p,	a2600,	0,		a2600,  "Atari",    "Atari 2600 (PAL)", 0)

@@ -58,10 +58,10 @@
 #include <assert.h>
 
 #include "driver.h"
-#include "video/generic.h"
-#include "mscommon.h"
+#include "deprecat.h"
+#include "vic6567.h"
+#include "vic4567.h"
 #include "utils.h"
-#include "mslegacy.h"
 
 #define VERBOSE_DBG 1
 #include "includes/cbm.h"
@@ -69,8 +69,7 @@
 /* lightpen values */
 #include "includes/c64.h"
 
-#include "includes/vic4567.h"
-#include "includes/vic6567.h"
+#include "mslegacy.h"
 
 /*#define GFX */
 
@@ -1333,7 +1332,7 @@ INTERRUPT_GEN( vic2_raster_irq )
 VIDEO_UPDATE( vic2 )
 {
 	if (vic2.on)
-		copybitmap(bitmap, vic2.bitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
+		copybitmap(bitmap, vic2.bitmap, 0, 0, 0, 0, cliprect);
 	return 0;
 }
 

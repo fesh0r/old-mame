@@ -9,7 +9,6 @@ Bruce Tomlin (hardware info)
 *****************************************************************/
 
 #include "driver.h"
-#include "inputx.h"
 #include "video/vector.h"
 #include "machine/6522via.h"
 #include "includes/vectrex.h"
@@ -115,7 +114,7 @@ static MACHINE_DRIVER_START( vectrex )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD(AY8912, 1500000)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 MACHINE_DRIVER_END
@@ -232,6 +231,6 @@ ROM_END
 
 ***************************************************************************/
 
-/*	  YEAR	NAME	  PARENT	COMPAT	MACHINE   INPUT 	INIT		CONFIG		COMPANY	FULLNAME */
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT        CONFIG      COMPANY FULLNAME */
 CONS( 1982, vectrex,  0, 		0,		vectrex,  vectrex,	vectrex,	vectrex,	"General Consumer Electronics",   "Vectrex" , ROT270)
 CONS( 1984, raaspec,  vectrex,	0,		raaspec,  raaspec,	0,			NULL,		"Roy Abel & Associates",   "Spectrum I+" , ROT270)

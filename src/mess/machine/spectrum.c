@@ -25,6 +25,7 @@
 
 #include <stdarg.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "includes/spectrum.h"
 #include "eventlst.h"
@@ -32,12 +33,8 @@
 #include "devices/cassette.h"
 #include "devices/cartslot.h"
 #include "sound/ay8910.h"
-#include "image.h"
 #include "utils.h"
 
-#ifndef MIN
-#define MIN(x,y) ((x)<(y)?(x):(y))
-#endif
 
 static unsigned long TapePosition = 0;
 static void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize);
@@ -492,9 +489,9 @@ void spectrum_setup_sp(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	}
 
 	data = (status & 0x10)>>4;
-	cpunum_set_input_line(0, 0, data);
-	cpunum_set_input_line(0, INPUT_LINE_NMI, data);
-	cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
+	cpunum_set_input_line(Machine, 0, 0, data);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, data);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, 0);
 
 	spectrum_page_basicrom();
 
@@ -595,9 +592,9 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	set_last_border_color(pSnapshot[26] & 0x07);
 	force_border_redraw();
 
-	cpunum_set_input_line(0, 0, data);
-	cpunum_set_input_line(0, INPUT_LINE_NMI, data);
-	cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
+	cpunum_set_input_line(Machine, 0, 0, data);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, data);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, 0);
 
 	if (SnapshotSize == 49179)
 		/* 48K Snapshot */
@@ -903,9 +900,9 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		/* cpunum_set_reg(0, Z80_IRQ_STATE, 1); */
 	}
 
-	cpunum_set_input_line(0, 0, data);
-	cpunum_set_input_line(0, INPUT_LINE_NMI, data);
-	cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
+	cpunum_set_input_line(Machine, 0, 0, data);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, data);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, 0);
 
 	/* IFF2 */
 	if (pSnapshot[28] != 0)

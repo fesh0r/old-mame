@@ -14,23 +14,23 @@
 
 #include <ctype.h>
 #include "driver.h"
+
 #include "cpu/m6502/m6502.h"
 #include "cpu/z80/z80.h"
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
+#include "deprecat.h"
 
 #define VERBOSE_DBG 1
 #include "includes/cbm.h"
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vc20tape.h"
-#include "includes/vic6567.h"
-#include "includes/vdc8563.h"
-#include "mscommon.h"
+#include "video/vic6567.h"
+#include "video/vdc8563.h"
 
 #include "includes/c128.h"
 #include "includes/c65.h"
-
 #include "includes/c64.h"
 
 static void c64_driver_shutdown (running_machine *machine);
@@ -102,16 +102,16 @@ static void c64_nmi(void)
 			if (cpu_getactivecpu()==0)
 			{
 				/* z80 */
-				cpunum_set_input_line(0, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
 			}
 			else
 			{
-				cpunum_set_input_line(1, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
+				cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
 			}
 		}
 		else
 		{
-			cpunum_set_input_line(0, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
+			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
 		}
 		nmilevel = KEY_RESTORE||cia1irq;
 	}
@@ -303,16 +303,16 @@ static void c64_irq (int level)
 		{
 			if (0&&(cpu_getactivecpu()==0))
 			{
-				cpunum_set_input_line (0, 0, level);
+				cpunum_set_input_line(Machine, 0, 0, level);
 			}
 			else
 			{
-				cpunum_set_input_line (1, M6510_IRQ_LINE, level);
+				cpunum_set_input_line(Machine, 1, M6510_IRQ_LINE, level);
 			}
 		}
 		else
 		{
-			cpunum_set_input_line (0, M6510_IRQ_LINE, level);
+			cpunum_set_input_line(Machine, 0, M6510_IRQ_LINE, level);
 		}
 		old_level = level;
 	}
@@ -375,7 +375,7 @@ static UINT8 c64_cia1_port_a_r (void)
 
 static void c64_cia1_port_a_w (UINT8 data)
 {
-	static int helper[4] = {0xc000, 0x8000, 0x4000, 0x0000};
+	static const int helper[4] = {0xc000, 0x8000, 0x4000, 0x0000};
 
 	cbm_serial_clock_write (serial_clock = !(data & 0x10));
 	cbm_serial_data_write (serial_data = !(data & 0x20));
@@ -1486,7 +1486,7 @@ INTERRUPT_GEN( c64_frame_interrupt )
 		c65_keyline = value;
 	}
 
-	vic2_frame_interrupt ();
+	vic2_frame_interrupt (machine, cpunum);
 
 	if (c64_tape_on) {
 		vc20_tape_config (DATASSETTE, DATASSETTE_TONE);

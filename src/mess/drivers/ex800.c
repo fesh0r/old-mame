@@ -127,6 +127,7 @@ TODO:  - The UPD7810 core is missing analog port emulation
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/upd7810/upd7810.h"
 #include "sound/beep.h"
 
@@ -170,7 +171,7 @@ static void online_switch(void *param, UINT32 oldvalue, UINT32 newvalue)
 
 	if (newvalue)
 	{
-		cpunum_set_input_line(0, UPD7810_INTF1, state);
+		cpunum_set_input_line(Machine, 0, UPD7810_INTF1, state);
 		state = (state == ASSERT_LINE) ? CLEAR_LINE : ASSERT_LINE;
 	}
 }
@@ -264,7 +265,7 @@ static WRITE8_HANDLER(ex800_portb_w)
 	else
 		logerror("PB3 Paper empty LED off @%x\n", activecpu_get_pc());
 
-//	logerror("PB W %x @%x\n", data, activecpu_get_pc());
+//  logerror("PB W %x @%x\n", data, activecpu_get_pc());
 }
 
 static WRITE8_HANDLER(ex800_portc_w)
@@ -435,7 +436,7 @@ INPUT_PORTS_END
 ******************************************************************************/
 
 
-static UPD7810_CONFIG ex800_cpu_config =
+static const UPD7810_CONFIG ex800_cpu_config =
 {
     TYPE_7810,
     0
@@ -460,14 +461,14 @@ static MACHINE_DRIVER_START(ex800)
 	/* "video" hardware */
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-//	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-//	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-//	MDRV_SCREEN_SIZE(480, 640)
-//	MDRV_SCREEN_VISIBLE_AREA(0, 479, 0, 639)
-//	MDRV_PALETTE_LENGTH(4)
+//  MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+//  MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+//  MDRV_SCREEN_SIZE(480, 640)
+//  MDRV_SCREEN_VISIBLE_AREA(0, 479, 0, 639)
+//  MDRV_PALETTE_LENGTH(4)
 
-//	MDRV_VIDEO_START(ex800)
-//	MDRV_VIDEO_UPDATE(ex800)
+//  MDRV_VIDEO_START(ex800)
+//  MDRV_VIDEO_UPDATE(ex800)
 
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

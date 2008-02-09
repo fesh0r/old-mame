@@ -9,9 +9,9 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/svi318.h"
 #include "cpu/z80/z80.h"
-#include "video/generic.h"
 #include "video/crtc6845.h"
 #include "video/tms9928a.h"
 #include "machine/8255ppi.h"
@@ -23,7 +23,7 @@
 #include "formats/svi_cas.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
-#include "image.h"
+
 
 enum {
 	SVI_INTERNAL	= 0,
@@ -66,7 +66,7 @@ static void svi318_set_banks (void);
 
 static void svi318_uart8250_interrupt(int nr, int state)
 {
-	cpunum_set_input_line(0, 0, (state ? HOLD_LINE : CLEAR_LINE));
+	cpunum_set_input_line(Machine, 0, 0, (state ? HOLD_LINE : CLEAR_LINE));
 }
 
 static const uart8250_interface svi318_uart8250_interface[1] =
@@ -514,15 +514,16 @@ WRITE8_HANDLER( svi806_ram_enable_w )
 VIDEO_UPDATE( svi328_806 )
 {
 	if ( screen == 0 )
-		video_update_tms9928a(machine, screen, bitmap, cliprect);
+		VIDEO_UPDATE_CALL(tms9928a);
 	if ( screen == 1 )
-		video_update_crtc6845(machine, screen, bitmap, cliprect);
+		VIDEO_UPDATE_CALL(crtc6845);
 	return 0;
 }
 
 MACHINE_RESET( svi328_806 )
 {
-	machine_reset_svi318(machine);
+	MACHINE_RESET_CALL(svi318);
+
 	svi318_80col_init();
 	svi.svi806_present = 1;
 	svi318_set_banks();
@@ -536,7 +537,7 @@ MACHINE_RESET( svi328_806 )
 
 void svi318_vdp_interrupt(int i)
 {
-	cpunum_set_input_line(0, 0, (i ? HOLD_LINE : CLEAR_LINE));
+	cpunum_set_input_line(Machine, 0, 0, (i ? HOLD_LINE : CLEAR_LINE));
 }
 
 DRIVER_INIT( svi318 )
@@ -544,7 +545,7 @@ DRIVER_INIT( svi318 )
 	int i, n;
 
 	/* z80 stuff */
-	static int z80_cycle_table[] =
+	static const int z80_cycle_table[] =
 	{
 		Z80_TABLE_op, Z80_TABLE_cb, Z80_TABLE_xy,
         	Z80_TABLE_ed, Z80_TABLE_xycb, Z80_TABLE_ex

@@ -9,15 +9,21 @@
 
 *******************************************************************************/
 
-#include <stdarg.h>
+/* Core includes */
 #include "driver.h"
+#include "deprecat.h"
+#include "includes/primo.h"
+
+/* Components */
 #include "cpu/z80/z80.h"
+#include "includes/cbmserb.h"
+#include "sound/speaker.h"
+
+/* Devices */
 #include "devices/cassette.h"
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
-#include "includes/cbmserb.h"
-#include "includes/primo.h"
-#include "sound/speaker.h"
+
 
 static UINT8 primo_port_FD = 0x00;
 static int primo_nmi = 0;
@@ -32,7 +38,7 @@ static int serial_atn = 1, serial_clock = 1, serial_data = 1;
 INTERRUPT_GEN( primo_vblank_interrupt )
 {
 	if (primo_nmi)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /*******************************************************************************
@@ -46,11 +52,11 @@ static void primo_update_memory (void)
 	switch (primo_port_FD & 0x03)
 	{
 		case 0x00:	/* Original ROM */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
 			memory_set_bankptr(1, memory_region(REGION_CPU1)+0x10000);
 			break;
 		case 0x01:	/* EPROM extension 1 */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
 			memory_set_bankptr(1, memory_region(REGION_CPU1)+0x14000);
 			break;
 		case 0x02:	/* RAM */
@@ -58,7 +64,7 @@ static void primo_update_memory (void)
 			memory_set_bankptr(1, memory_region(REGION_CPU1));
 			break;
 		case 0x03:	/* EPROM extension 2 */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
 			memory_set_bankptr(1, memory_region(REGION_CPU1)+0x18000);
 			break;
 	}
@@ -238,7 +244,7 @@ static void primo_common_machine_init (void)
 	if (readinputport(6))
 		primo_port_FD = 0x00;
 	primo_update_memory();
-	cpunum_set_clockscale(0, readinputport(5) ? 1.5 : 1.0);
+	cpunum_set_clockscale(Machine, 0, readinputport(5) ? 1.5 : 1.0);
 }
 
 MACHINE_RESET( primoa )

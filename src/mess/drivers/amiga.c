@@ -1,5 +1,5 @@
 /***************************************************************************
-Commodore Amiga - (c) 1985, Commodore Bussines Machines Co.
+Commodore Amiga - (c) 1985, Commodore Business Machines Co.
 
 Preliminary driver by:
 
@@ -16,18 +16,22 @@ would commence ($C00000).
 
 ***************************************************************************/
 
+/* Core includes */
 #include "driver.h"
-#include "video/generic.h"
-#include "sound/custom.h"
 #include "includes/amiga.h"
+
+/* Components */
+#include "sound/custom.h"
 #include "machine/amigafdc.h"
 #include "machine/amigakbd.h"
 #include "machine/amigacd.h"
 #include "machine/amigacrt.h"
 #include "machine/msm6242.h"
+
+/* Devices */
 #include "devices/chd_cd.h"
 #include "devices/cartslot.h"
-#include "inputx.h"
+
 
 /***************************************************************************
   Battery Backed-Up Clock (MSM6264)
@@ -287,7 +291,7 @@ static void amiga_cia_0_portA_w( UINT8 data )
 	}
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, amiga_chip_ram_size - 1, 0, 0, MWA16_ROM);
+		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, amiga_chip_ram_size - 1, 0, 0, MWA16_UNMAP);
 
 	set_led_status( 0, ( data & 2 ) ? 0 : 1 ); /* bit 2 = Power Led on Amiga */
 	output_set_value("power_led", ( data & 2 ) ? 0 : 1);
@@ -524,9 +528,9 @@ SYSTEM_CONFIG_END
   Game drivers
 ***************************************************************************/
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                             FULLNAME                            FLAGS */
-COMP( 1985, a1000n, 0,      0,      a1000n, amiga,  amiga,  a1000,  "Commodore Business Machines Co.",  "Commodore Amiga 1000 (NTSC-OCS)",  GAME_IMPERFECT_GRAPHICS )
-COMP( 1985, a1000p, a1000n, 0,      a1000p, amiga,  amiga,  a1000,  "Commodore Business Machines Co.",  "Commodore Amiga 1000 (PAL-OCS)",   GAME_IMPERFECT_GRAPHICS )
-COMP( 1987, a500n,  0,      0,      ntsc,   amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Commodore Amiga 500 (NTSC-OCS)",   GAME_IMPERFECT_GRAPHICS )
-COMP( 1987, a500p,  a500n,  0,      pal,    amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Commodore Amiga 500 (PAL-OCS)",    GAME_IMPERFECT_GRAPHICS )
-COMP( 1991, cdtv,   0,      0,      cdtv,   cdtv,   cdtv,   cdtv,   "Commodore Business Machines Co.",  "Commodore Amiga CDTV 1.0 (NTSC)",  GAME_IMPERFECT_GRAPHICS )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                             FULLNAME                 FLAGS */
+COMP( 1985, a1000n, 0,      0,      a1000n, amiga,  amiga,  a1000,  "Commodore Business Machines Co.",  "Amiga 1000 (NTSC)",     GAME_IMPERFECT_GRAPHICS )
+COMP( 1985, a1000p, a1000n, 0,      a1000p, amiga,  amiga,  a1000,  "Commodore Business Machines Co.",  "Amiga 1000 (PAL)",      GAME_IMPERFECT_GRAPHICS )
+COMP( 1987, a500n,  0,      0,      ntsc,   amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 500 (NTSC, OCS)", GAME_IMPERFECT_GRAPHICS )
+COMP( 1987, a500p,  a500n,  0,      pal,    amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 500 (PAL, OCS)",  GAME_IMPERFECT_GRAPHICS )
+COMP( 1991, cdtv,   0,      0,      cdtv,   cdtv,   cdtv,   cdtv,   "Commodore Business Machines Co.",  "CDTV (NTSC)",           GAME_IMPERFECT_GRAPHICS )

@@ -1,11 +1,11 @@
 /******************************************************************************
  Contributors:
 
-	Marat Fayzullin (MG source)
-	Charles Mac Donald
-	Mathis Rosenhauer
-	Brad Oliver
-	Michael Luong
+    Marat Fayzullin (MG source)
+    Charles Mac Donald
+    Mathis Rosenhauer
+    Brad Oliver
+    Michael Luong
 
  To do:
 
@@ -19,20 +19,20 @@
  placeholders in 'machine/sms.c'
 
  Changes:
-	Apr 02 - Added raster palette effects for SMS & GG (ML)
-				 - Added sprite collision (ML)
-				 - Added zoomed sprites (ML)
-	May 02 - Fixed paging bug (ML)
-				 - Fixed sprite and tile priority bug (ML)
-				 - Fixed bug #66 (ML)
-				 - Fixed bug #78 (ML)
-				 - try to implement LCD persistence emulation for GG (ML)
-	Jun 10, 02 - Added bios emulation (ML)
-	Jun 12, 02 - Added PAL & NTSC systems (ML)
-	Jun 25, 02 - Added border emulation (ML)
-	Jun 27, 02 - Version bits for Game Gear (bits 6 of port 00) (ML)
-	Nov-Dec, 05 - Numerous cleanups, fixes, updates (WP)
-	Mar, 07 - More cleanups, fixes, mapper additions, etc (WP)
+    Apr 02 - Added raster palette effects for SMS & GG (ML)
+                 - Added sprite collision (ML)
+                 - Added zoomed sprites (ML)
+    May 02 - Fixed paging bug (ML)
+                 - Fixed sprite and tile priority bug (ML)
+                 - Fixed bug #66 (ML)
+                 - Fixed bug #78 (ML)
+                 - try to implement LCD persistence emulation for GG (ML)
+    Jun 10, 02 - Added bios emulation (ML)
+    Jun 12, 02 - Added PAL & NTSC systems (ML)
+    Jun 25, 02 - Added border emulation (ML)
+    Jun 27, 02 - Version bits for Game Gear (bits 6 of port 00) (ML)
+    Nov-Dec, 05 - Numerous cleanups, fixes, updates (WP)
+    Mar, 07 - More cleanups, fixes, mapper additions, etc (WP)
 
 SMS Store Unit memory map for the second CPU:
 
@@ -63,12 +63,10 @@ DC00      - Selection buttons #2, 9-16 (R)
 #include "driver.h"
 #include "sound/sn76496.h"
 #include "sound/2413intf.h"
-#include "video/generic.h"
 #include "includes/sms.h"
 #include "video/smsvdp.h"
 #include "devices/cartslot.h"
 
-#define MASTER_CLOCK_NTSC	53693175
 #define MASTER_CLOCK_PAL	53203400	/* This might be a tiny bit too low */
 
 static ADDRESS_MAP_START( sms_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -152,8 +150,8 @@ static INPUT_PORTS_START( sms )
 	PORT_START	/* IN1 */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CATEGORY(20) PORT_PLAYER(2) PORT_8WAY
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_CATEGORY(20) PORT_PLAYER(2) PORT_8WAY
-	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(21) PORT_PLAYER(2)
-	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(21) PORT_PLAYER(2)
+	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(20) PORT_PLAYER(2)
+	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(20) PORT_PLAYER(2)
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_UNUSED ) /* Software Reset bit */
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -170,16 +168,16 @@ static INPUT_PORTS_START( sms )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_START ) /* Game Gear START */
 
 	PORT_START	/* IN3 - Light phaser X - player 1 */
-//	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_CATEGORY(11) PORT_PLAYER(1)
+//  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_CATEGORY(11) PORT_PLAYER(1)
 
 	PORT_START	/* IN4 - Light phaser Y - player 1 */
-//	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_CATEGORY(11) PORT_PLAYER(1)
+//  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_CATEGORY(11) PORT_PLAYER(1)
 
 	PORT_START	/* IN5 - Light phaser X - player 2 */
-//	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEUDELTA(15) PORT_CATEGORY(21) PORT_PLAYER(2)
+//  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEUDELTA(15) PORT_CATEGORY(21) PORT_PLAYER(2)
 
 	PORT_START	/* IN6 - Light phaser Y - player 2 */
-//	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(25) PORT_CATEGORY(21) PORT_PLAYER(2)
+//  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(25) PORT_CATEGORY(21) PORT_PLAYER(2)
 
 	PORT_START	/* IN7 - Rapid Fire Unit */
 	PORT_DIPNAME( 0x03, 0x00, "Rapid Fire Unit - Player 1" )
@@ -212,12 +210,12 @@ static INPUT_PORTS_START( sms )
 	PORT_START	/* IN11 - Controller selection */
 	PORT_CATEGORY_CLASS( 0x0F, 0x00, "Player 1 Controller" )
 	PORT_CATEGORY_ITEM( 0x00, DEF_STR( Joystick ), 10 )
-//	PORT_CATEGORY_ITEM( 0x01, "Light Phaser", 11 )
+//  PORT_CATEGORY_ITEM( 0x01, "Light Phaser", 11 )
 	PORT_CATEGORY_ITEM( 0x02, "Sega Paddle Control", 12 )
 	PORT_CATEGORY_ITEM( 0x03, "Sega Sports Pad", 13 )
 	PORT_CATEGORY_CLASS( 0xF0, 0x00, "Player 2 Controller" )
 	PORT_CATEGORY_ITEM( 0x00, DEF_STR( Joystick ), 20 )
-//	PORT_CATEGORY_ITEM( 0x10, "Light Phaser", 21 )
+//  PORT_CATEGORY_ITEM( 0x10, "Light Phaser", 21 )
 	PORT_CATEGORY_ITEM( 0x20, "Sega Paddle Control", 22 )
 	PORT_CATEGORY_ITEM( 0x30, "Sega Sports Pad", 23 )
 
@@ -295,7 +293,7 @@ static VIDEO_START(sega_store_315_5124) {
 
 static MACHINE_DRIVER_START(sms1ntsc)
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", Z80, MASTER_CLOCK_NTSC/15)
+	MDRV_CPU_ADD_TAG("main", Z80, XTAL_53_693175MHz/15)
 	MDRV_CPU_PROGRAM_MAP(sms_mem, 0)
 	MDRV_CPU_IO_MAP(sms_io, 0)
 
@@ -308,7 +306,7 @@ static MACHINE_DRIVER_START(sms1ntsc)
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_ADD("main",0)
-	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK_NTSC/10, SMS_X_PIXELS, LBORDER_START + LBORDER_X_PIXELS - 2, LBORDER_START + LBORDER_X_PIXELS + 256 + 10, NTSC_Y_PIXELS, TBORDER_START + NTSC_224_TBORDER_Y_PIXELS, TBORDER_START + NTSC_224_TBORDER_Y_PIXELS + 224)
+	MDRV_SCREEN_RAW_PARAMS(XTAL_53_693175MHz/10, SMS_X_PIXELS, LBORDER_START + LBORDER_X_PIXELS - 2, LBORDER_START + LBORDER_X_PIXELS + 256 + 10, NTSC_Y_PIXELS, TBORDER_START + NTSC_224_TBORDER_Y_PIXELS, TBORDER_START + NTSC_224_TBORDER_Y_PIXELS + 224)
 
 	MDRV_PALETTE_LENGTH(64+16)
 	MDRV_COLORTABLE_LENGTH(0)
@@ -319,7 +317,7 @@ static MACHINE_DRIVER_START(sms1ntsc)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SMSIII, MASTER_CLOCK_NTSC/15)
+	MDRV_SOUND_ADD(SMSIII, XTAL_53_693175MHz/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
@@ -333,7 +331,7 @@ static MACHINE_DRIVER_START(smssdisp)
 
 	MDRV_VIDEO_START(sega_store_315_5124)
 
-	MDRV_CPU_ADD_TAG("control", Z80, MASTER_CLOCK_NTSC/15)
+	MDRV_CPU_ADD_TAG("control", Z80, XTAL_53_693175MHz/15)
 	MDRV_CPU_PROGRAM_MAP(sms_store_mem, 0)
 	/* Both CPUs seem to communicate with the VDP etc? */
 	MDRV_CPU_IO_MAP(sms_io, 0)
@@ -378,20 +376,20 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(smsfm)
 	MDRV_IMPORT_FROM(sms1ntsc)
 
-	MDRV_SOUND_ADD(YM2413, MASTER_CLOCK_NTSC/15)
+	MDRV_SOUND_ADD(YM2413, XTAL_53_693175MHz/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(sms2fm)
 	MDRV_IMPORT_FROM(sms2ntsc)
 
-	MDRV_SOUND_ADD(YM2413, MASTER_CLOCK_NTSC/15)
+	MDRV_SOUND_ADD(YM2413, XTAL_53_693175MHz/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(gamegear)
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", Z80, MASTER_CLOCK_NTSC/15)
+	MDRV_CPU_ADD_TAG("main", Z80, XTAL_53_693175MHz/15)
 	MDRV_CPU_PROGRAM_MAP(sms_mem, 0)
 	MDRV_CPU_IO_MAP(gg_io, 0)
 
@@ -404,7 +402,7 @@ static MACHINE_DRIVER_START(gamegear)
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_ADD("main",0)
-	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK_NTSC/10, SMS_X_PIXELS, LBORDER_START + LBORDER_X_PIXELS + 6*8, LBORDER_START + LBORDER_X_PIXELS + 26*8, NTSC_Y_PIXELS, TBORDER_START + NTSC_192_TBORDER_Y_PIXELS + 3*8, TBORDER_START + NTSC_192_TBORDER_Y_PIXELS + 21*8 )
+	MDRV_SCREEN_RAW_PARAMS(XTAL_53_693175MHz/10, SMS_X_PIXELS, LBORDER_START + LBORDER_X_PIXELS + 6*8, LBORDER_START + LBORDER_X_PIXELS + 26*8, NTSC_Y_PIXELS, TBORDER_START + NTSC_192_TBORDER_Y_PIXELS + 3*8, TBORDER_START + NTSC_192_TBORDER_Y_PIXELS + 21*8 )
 	MDRV_PALETTE_LENGTH(4096)
 	MDRV_COLORTABLE_LENGTH(0)
 	MDRV_PALETTE_INIT(gamegear)
@@ -414,7 +412,7 @@ static MACHINE_DRIVER_START(gamegear)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(GAMEGEAR, MASTER_CLOCK_NTSC/15)
+	MDRV_SOUND_ADD(GAMEGEAR, XTAL_53_693175MHz/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
@@ -617,17 +615,15 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT    CONFIG      COMPANY     FULLNAME                                FLAGS */
-CONS( 1990, sms,        0,          0,      sms2ntsc,   sms,    0,      sms,        "Sega",     "Sega Master System II",                FLAG_BIOS_FULL )
-CONS( 1986, sms1,       sms,        0,      sms1ntsc,   sms,    0,      sms,        "Sega",     "Sega Master System I",                 FLAG_BIOS_FULL )
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT    CONFIG      COMPANY     FULLNAME                            FLAGS */
+CONS( 1984, sg1000m3,   sms,        0,      smsfm,      sms,    0,      sg1000,     "Sega",     "SG-1000 Mark III",                 FLAG_REGION_JAPAN | FLAG_FM )
+CONS( 1986, sms1,       sms,        0,      sms1ntsc,   sms,    0,      sms,        "Sega",     "Master System I",                  FLAG_BIOS_FULL )
+CONS( 1986, sms1pal,    sms,        0,      sms1pal,    sms,    0,      sms,        "Sega",     "Master System I (PAL)" ,           FLAG_BIOS_FULL )
+CONS( 1986, smssdisp,   sms,        0,      smssdisp,   sms,    0,      smssdisp,   "Sega",     "Master System Store Display Unit", GAME_NOT_WORKING )
+CONS( 1987, smsj,       sms,        0,      smsfm,      sms,    0,      sms,        "Sega",     "Master System (Japan)",            FLAG_REGION_JAPAN | FLAG_BIOS_2000 | FLAG_FM )
+CONS( 1990, sms,        0,          0,      sms2ntsc,   sms,    0,      sms,        "Sega",     "Master System II",                 FLAG_BIOS_FULL )
+CONS( 1990, smspal,     sms,        0,      sms2pal,    sms,    0,      sms,        "Sega",     "Master System II (PAL)",           FLAG_BIOS_FULL )
+CONS( 1990, sms2kr,     sms,        0,      sms2fm,     sms,    0,      sms,        "Samsung",  "Gam*Boy II (Korea)",               FLAG_REGION_JAPAN | FLAG_BIOS_FULL | FLAG_FM )
 
-CONS( 1986, sms1pal,    sms,        0,      sms1pal,    sms,    0,      sms,        "Sega",     "Sega Master System I (PAL)" ,          FLAG_BIOS_FULL )
-CONS( 1990, smspal,     sms,        0,      sms2pal,    sms,    0,      sms,        "Sega",     "Sega Master System II (PAL)",          FLAG_BIOS_FULL )
-CONS( 1984, sg1000m3,   sms,        0,      smsfm,      sms,    0,      sg1000,     "Sega",     "Sega SG-1000 Mark III",                FLAG_REGION_JAPAN | FLAG_FM )
-CONS( 1987, smsj,       sms,        0,      smsfm,      sms,    0,      sms,        "Sega",     "Sega Master System (Japan)",           FLAG_REGION_JAPAN | FLAG_BIOS_2000 | FLAG_FM )
-CONS( 1990, sms2kr,     sms,        0,      sms2fm,     sms,    0,      sms,        "Samsung",  "Samsung Gam*Boy II (Korea)",           FLAG_REGION_JAPAN | FLAG_BIOS_FULL | FLAG_FM )
-
-CONS( 1986, smssdisp,   sms,        0,      smssdisp,   sms,    0,      smssdisp,   "Sega",     "Sega Master System Store Display",     GAME_NOT_WORKING )
-
-CONS( 1990, gamegear,   0,          sms,    gamegear,   sms,    0,      gamegear,   "Sega",     "Sega Game Gear - European/American",   FLAG_GAMEGEAR )
-CONS( 1990, gamegeaj,   gamegear,   0,      gamegear,   sms,    0,      gamegear,   "Sega",     "Sega Game Gear - Japanese",            FLAG_REGION_JAPAN | FLAG_GAMEGEAR | FLAG_BIOS_0400 )
+CONS( 1990, gamegear,   0,          sms,    gamegear,   sms,    0,      gamegear,   "Sega",     "Game Gear (Europe/America)",       FLAG_GAMEGEAR )
+CONS( 1990, gamegeaj,   gamegear,   0,      gamegear,   sms,    0,      gamegear,   "Sega",     "Game Gear (Japan)",                FLAG_REGION_JAPAN | FLAG_GAMEGEAR | FLAG_BIOS_0400 )

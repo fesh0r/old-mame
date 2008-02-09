@@ -15,16 +15,16 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
 #include "machine/z80sio.h"
-#include "video/generic.h"
 #include "machine/wd17xx.h"
 #include "includes/mbee.h"
 #include "devices/cassette.h"
 #include "cpu/z80/z80.h"
 #include "sound/speaker.h"
-#include "image.h"
+
 
 static UINT8 fdc_drv = 0;
 static UINT8 fdc_head = 0;
@@ -45,7 +45,7 @@ static const z80pio_interface pio_intf =
 
 static void pio_interrupt(int state)
 {
-	cpunum_set_input_line(0, 0, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, 0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*
@@ -64,7 +64,7 @@ READ8_HANDLER( mbee_lowram_r )
 	return mbee_workram[offset];
 }
 
-static offs_t mbee_opbase_handler(offs_t address)
+static OPBASE_HANDLER( mbee_opbase_handler )
 {
 	if (address > 0x7fff)
 	{
@@ -74,7 +74,7 @@ static offs_t mbee_opbase_handler(offs_t address)
 	return address;
 }
 
-static offs_t mbee56_opbase_handler(offs_t address)
+static OPBASE_HANDLER( mbee56_opbase_handler )
 {
 	if (address > 0xdfff)
 	{
@@ -153,11 +153,11 @@ static void mbee_fdc_callback(wd17xx_state_t state, void *param)
 	switch( state )
 	{
 	case WD17XX_IRQ_CLR:
-//		cpunum_set_input_line(0,0,CLEAR_LINE);
+//		cpunum_set_input_line(machine, 0,0,CLEAR_LINE);
 		fdc_status &= ~0x40;
         break;
 	case WD17XX_IRQ_SET:
-//		cpunum_set_input_line(0,0,HOLD_LINE);
+//		cpunum_set_input_line(machine, 0,0,HOLD_LINE);
 		fdc_status |= 0x40;
         break;
 	case WD17XX_DRQ_CLR:
@@ -200,7 +200,7 @@ WRITE8_HANDLER ( mbee_fdc_motor_w )
 
 }
 
-void mbee_interrupt(void)
+INTERRUPT_GEN( mbee_interrupt )
 {
     /* once per frame, pulse the PIO B bit 7 */
     logerror("mbee interrupt\n");

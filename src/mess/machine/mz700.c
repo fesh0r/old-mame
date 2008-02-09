@@ -9,20 +9,27 @@
  *
  *****************************************************************************/
 
+/* Core includes */
+#include "driver.h"
+#include "deprecat.h"
 #include "includes/mz700.h"
-#include "devices/cassette.h"
+
+/* Components */
+#include "cpu/z80/z80.h"
+#include "machine/pit8253.h"
+#include "machine/8255ppi.h"
 #include "sound/beep.h"
+
+/* Devices */
+#include "devices/cassette.h"
+
 
 #ifndef VERBOSE
 #define VERBOSE 0
 #endif
 
-#if VERBOSE
 #define LOG(N,M,A)	\
-	if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",timer_get_time(), (const char*)M ); logerror A; }
-#else
-#define LOG(N,M,A)
-#endif
+	if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()), (const char*)M ); logerror A; }
 
 typedef UINT32 data_t;
 
@@ -74,20 +81,20 @@ static TIMER_CALLBACK(ne556_callback)
 
 
 
-DRIVER_INIT(mz700)
+DRIVER_INIT( mz700 )
 {
 	ppi8255_init(&ppi8255);
-
 	pit8253_init(1, &pit8253);
 
-	videoram = memory_region(REGION_CPU1)+0x12000;videoram_size=0x800;
-	colorram = memory_region(REGION_CPU1)+0x12800;
+	videoram_size = 0x5000;
+	videoram = auto_malloc(videoram_size);
+	colorram = auto_malloc(0x800);
+
 	mz700_bank_w(4, 0);
 }
 
 
-
-MACHINE_RESET(mz700)
+MACHINE_RESET( mz700 )
 {
 	ne556_timer[0] = timer_alloc(ne556_callback, NULL);
 	timer_adjust(ne556_timer[0], ATTOTIME_IN_HZ(1.5), 0, ATTOTIME_IN_HZ(1.5));
@@ -119,7 +126,7 @@ static void pit_irq_2(int which)
 {
 	/* INTMSK: interrupt enabled? */
     if (pio_port_c_output & 0x04)
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
 }
 
 /************************ PIO ************************************************/
@@ -275,7 +282,7 @@ static void bank1_ROM(UINT8 *mem)
 {
 	memory_set_bankptr(1, &mem[0x10000]);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MRA8_BANK1);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MWA8_ROM);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MWA8_UNMAP);
 }
 
 
@@ -291,7 +298,7 @@ static void bank2_ROM(UINT8 *mem)
 {
 	memory_set_bankptr(2, &mem[0x11000]);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, MRA8_BANK2);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, MWA8_ROM);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, MWA8_UNMAP);
 }
 
 
@@ -305,9 +312,9 @@ static void bank3_RAM(UINT8 *mem)
 
 static void bank3_VID(UINT8 *mem)
 {
-	memory_set_bankptr(3, &mem[0x12000]);
+	memory_set_bankptr(3, videoram);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MRA8_BANK3);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, videoram0_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MWA8_BANK3);
 }
 
 
@@ -321,9 +328,9 @@ static void bank4_RAM(UINT8 *mem)
 
 static void bank4_VID(UINT8 *mem)
 {
-	memory_set_bankptr(4, &mem[0x14000]);
+	memory_set_bankptr(4, videoram + 0x2000);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA000, 0xBFFF, 0, 0, MRA8_BANK4);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA000, 0xBFFF, 0, 0, videoram2_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA000, 0xBFFF, 0, 0, MWA8_BANK4);
 }
 
 
@@ -353,9 +360,9 @@ static void bank6_RAM(UINT8 *mem)
 
 static void bank6_VIO(UINT8 *mem)
 {
-	memory_set_bankptr(6, &mem[0x12000]);
+	memory_set_bankptr(6, videoram);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xD000, 0xD7FF, 0, 0, MRA8_BANK6);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xD000, 0xD7FF, 0, 0, videoram_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xD000, 0xD7FF, 0, 0, MWA8_BANK6);
 }
 
 
@@ -376,9 +383,9 @@ static void bank7_RAM(UINT8 *mem)
 
 static void bank7_VIO(UINT8 *mem)
 {
-	memory_set_bankptr(7, &mem[0x12800]);
+	memory_set_bankptr(7, colorram);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xD800, 0xDFFF, 0, 0, MRA8_BANK7);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xD800, 0xDFFF, 0, 0, colorram_w);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xD800, 0xDFFF, 0, 0, MWA8_BANK7);
 }
 
 
@@ -531,27 +538,27 @@ static UINT8 mz800_palette_bank;
         bank2_ROM(mem);
 		if ((mz800_display_mode & 0x08) == 0)
 		{
-			LOG(1,0,("; 8000-9FFF videoram"));
+			if (VERBOSE>=1) logerror("; 8000-9FFF videoram");
             bank3_VID(mem);
 			if (mz800_display_mode & 0x04)
 			{
-				LOG(1,0,("; A000-BFFF videoram"));
+				if (VERBOSE>=1) logerror("; A000-BFFF videoram");
                 /* 640x480 mode so A000-BFFF is videoram too */
 				bank4_VID(mem);
             }
 			else
 			{
-				LOG(1,0,("; A000-BFFF RAM"));
+				if (VERBOSE>=1) logerror("; A000-BFFF RAM");
 				bank4_RAM(mem);
             }
 		}
 		else
 		{
-			LOG(1,0,("; C000-CFFF PCG RAM"));
+			if (VERBOSE>=1) logerror("; C000-CFFF PCG RAM");
             /* make C000-CFFF PCG RAM */
 			bank5_RAM(mem);
         }
-		LOG(1,0,("\n"));
+		if (VERBOSE>=1) logerror("\n");
         break;
 
     case 1: /* make 1000-1FFF and C000-CFFF RAM */
@@ -559,18 +566,18 @@ static UINT8 mz800_palette_bank;
         bank2_RAM(mem);
 		if ((mz800_display_mode & 0x08) == 0)
 		{
-			LOG(1,0,("; 8000-9FFF RAM; A000-BFFF RAM"));
+			if (VERBOSE>=1) logerror("; 8000-9FFF RAM; A000-BFFF RAM");
             /* make 8000-BFFF RAM */
             bank3_RAM(mem);
 			bank4_RAM(mem);
 		}
 		else
 		{
-			LOG(1,0,("; C000-CFFF RAM"));
+			if (VERBOSE>=1) logerror("; C000-CFFF RAM");
             /* make C000-CFFF RAM */
 			bank5_RAM(mem);
         }
-		LOG(1,0,("\n"));
+		if (VERBOSE>=1) logerror("\n");
         break;
 
     case 8: /* get MZ700 enable bit 7 ? */
@@ -753,19 +760,14 @@ WRITE8_HANDLER( mz800_palette_w )
 	}
 }
 
-/* videoram wrappers */
-WRITE8_HANDLER( videoram0_w ) { videoram_w(offset + 0x0000, data); }
-WRITE8_HANDLER( videoram1_w ) { videoram_w(offset + 0x1000, data); }
-WRITE8_HANDLER( videoram2_w ) { videoram_w(offset + 0x2000, data); }
-WRITE8_HANDLER( videoram3_w ) { videoram_w(offset + 0x3000, data); }
-WRITE8_HANDLER( pcgram_w ) { videoram_w(offset + 0x4000, data); }
 
 DRIVER_INIT( mz800 )
 {
 	UINT8 *mem = memory_region(REGION_CPU1);
 
-	videoram=memory_region(REGION_CPU1)+0x12000;videoram_size=0x5000;
-	colorram=memory_region(REGION_CPU1)+0x12800;
+	videoram_size = 0x5000;
+	videoram = auto_malloc(videoram_size);
+	colorram = auto_malloc(0x800);
 
     mem[0x10001] = 0x4a;
 	mem[0x10002] = 0x00;

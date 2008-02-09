@@ -18,10 +18,11 @@
 #include "video/generic.h"
 #include "render.h"
 #include "messopts.h"
+#include "deprecat.h"
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 #include "debug/debugcpu.h"
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 typedef enum
 {
@@ -261,7 +262,7 @@ static void messtest_output_error(void *param, const char *format, va_list argpt
 		{
 			nextpos = pos + strlen(&buffer[pos]);
 		}
-		report_message(MSG_FAILURE, &buffer[pos]);
+		report_message(MSG_FAILURE, "%s", &buffer[pos]);
 		pos = nextpos;
 	}
 }
@@ -902,7 +903,7 @@ static void command_verify_image(void)
 
 static void command_trace(void)
 {
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	int cpunum;
 	FILE *file;
 	char filename[256];
@@ -1011,7 +1012,7 @@ void osd_update(int skip_redraw)
 	if (attotime_compare(current_time, time_limit) > 0)
 	{
 		state = STATE_ABORTED;
-		report_message(MSG_FAILURE, "Time limit of %.2f seconds exceeded", time_limit);
+		report_message(MSG_FAILURE, "Time limit of %s attoseconds exceeded", attotime_string(time_limit, 9));
 		return;
 	}
 

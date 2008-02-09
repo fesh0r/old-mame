@@ -7,11 +7,7 @@
 **********************************************************************/
 
 #include "driver.h"
-#include "timer.h"
-#include "state.h"
-#include "device.h"
-#include "machine/thomson.h"
-#include "video/thomson.h"
+#include "includes/thomson.h"
 #include "machine/wd17xx.h"
 #include "devices/flopdrv.h"
 #include "devices/thomflop.h"
@@ -19,20 +15,13 @@
 #include "machine/mc6854.h"
 #include "machine/mc6843.h"
 
+
 #define VERBOSE 0 /* 0, 1 or 2 */
 
 #define PRINT(x) mame_printf_info x
 
-#if VERBOSE > 1
-#define LOG(x)	logerror x
-#define VLOG(x)	logerror x
-#elif VERBOSE
-#define LOG(x)	logerror x
-#define VLOG(x)
-#else
-#define LOG(x)
-#define VLOG(x)
-#endif
+#define LOG(x)	do { if (VERBOSE > 0) logerror x; } while (0)
+#define VLOG(x)	do { if (VERBOSE > 1) logerror x; } while (0)
 
 
 
@@ -790,7 +779,7 @@ static WRITE8_HANDLER( to7_qdd_w )
 			/* most of these are unused now */
 			static const int bit[8] = { 6, 6, 7, 8, 7, 7, 8, 8 };
 			static const int par[8] = { 2, 1, 0, 0, 2, 1, 2, 1 };
-			static const char* parname[3] = { "none", "odd", "even" };
+			static const char *const parname[3] = { "none", "odd", "even" };
 			int bits, parity;
 			bits   = bit[ (data >> 3) & 7 ];
 			parity = par[ (data >> 3) & 7 ];
@@ -977,7 +966,7 @@ static void thmfc_floppy_index_pulse_cb ( mess_image *img, int state )
 	if ( thmfc_floppy_is_qdd() )
 	{
 		/* pulse each time the whole-disk spiraling track ends */
-		floppy_drive_set_rpm( img, 423. / 25. );
+		floppy_drive_set_rpm( img, 16.92f /* 423/25 */ );
 		thmfc1->ipl = state;
 		if ( state )
 		{
@@ -1238,7 +1227,7 @@ static void thmfc_floppy_format_byte ( UINT8 data )
 	/* accumulate bytes to form an id field */
 	if ( thmfc1->data_idx || data==0xA1 )
 	{
-		UINT8 header[] = { 0xa1, 0xa1, 0xa1, 0xfe };
+		static const UINT8 header[] = { 0xa1, 0xa1, 0xa1, 0xfe };
 		thmfc1->data[ thmfc1->data_idx ] = data;
 		thmfc1->data_idx++;
 		if ( thmfc1->data_idx > 11 )

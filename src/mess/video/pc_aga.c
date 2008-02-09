@@ -1,11 +1,18 @@
+/*****************************************************************************
+ *
+ * video/pc_aga.c
+ *
+ ****************************************************************************/
+
+#include "driver.h"
+#include "memconv.h"
 #include "video/pc_aga.h"
 #include "video/pc_cga.h"
 #include "video/pc_mda.h"
 #include "includes/crtc6845.h"
 #include "includes/amstr_pc.h"
 #include "video/pc_video.h"
-#include "video/generic.h"
-#include "memconv.h"
+
 
 static pc_video_update_proc pc_aga_choosevideomode(int *width, int *height, struct mscrtc6845 *crtc);
 
@@ -239,7 +246,7 @@ VIDEO_START( pc200 )
 {
 	int buswidth;
 
-	video_start_pc_aga(machine);
+	VIDEO_START_CALL(pc_aga);
 
 	buswidth = cputype_databus_width(machine->drv->cpu[0].type, ADDRESS_SPACE_PROGRAM);
 	switch(buswidth)

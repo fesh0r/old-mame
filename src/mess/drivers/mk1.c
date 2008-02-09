@@ -40,6 +40,7 @@ TODO:
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
 #include "cpu/f8/f8.h"
 #include "cpu/f8/f3853.h"
@@ -185,7 +186,7 @@ ROM_END
 
 static void mk1_interrupt( UINT16 addr, int level ) {
     cpunum_set_input_line_vector( 0, 0, addr );
-    cpunum_set_input_line( 0, 0, level ? F8_INT_INTR : F8_INT_NONE );
+    cpunum_set_input_line( Machine, 0, 0, level ? F8_INT_INTR : F8_INT_NONE );
 }
 
 static const F3853_CONFIG mk1_config = {
@@ -204,6 +205,6 @@ static DRIVER_INIT( mk1 ) {
 ***************************************************************************/
 
 // seams to be developed by mostek (MK)
-/*     YEAR   NAME  PARENT  COMPAT	MACHINE INPUT   INIT	CONFIG	COMPANY                 FULLNAME */
+/*     YEAR   NAME  PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                 FULLNAME */
 CONS( 1979,  mk1,  0, 		0,		mk1,	mk1,	mk1,	NULL,	"Computer Electronic",  "Chess Champion MK I", 0 )
 

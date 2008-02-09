@@ -32,13 +32,12 @@
 
 **********************************************************************/
 
-#include "driver.h"
-#include "timer.h"
-#include "sound/dac.h"
-#include "state.h"
-#include "mea8000.h"
-
 #include <math.h>
+
+#include "driver.h"
+#include "mea8000.h"
+#include "sound/dac.h"
+#include "deprecat.h"
 
 
 #define VERBOSE 0
@@ -120,11 +119,7 @@ static struct
 
 
 
-#if VERBOSE
-#define LOG(x)  logerror x
-#else
-#define LOG(x)
-#endif
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 /* digital filters work at 8KHz */
 #define F0 8096

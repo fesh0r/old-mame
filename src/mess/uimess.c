@@ -7,7 +7,8 @@
 *********************************************************************/
 
 #include "mame.h"
-#include "uitext.h"
+#include "deprecat.h"
+#include "mslegacy.h"
 #include "uimenu.h"
 #include "uimess.h"
 #include "input.h"

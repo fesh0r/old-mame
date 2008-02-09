@@ -79,7 +79,6 @@
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
-#include "video/generic.h"
 #include "includes/kaypro.h"
 #include "mscommon.h"
 
@@ -456,7 +455,7 @@ static void kaypro_tab(void)
 
 static void kaypro_pixel(int x, int y, int set)
 {
-	static int attr_bits[4][2] = {
+	static const int attr_bits[4][2] = {
 		{	  0x002, 0x001},
 		{	  0x008, 0x004},
 		{	  0x020, 0x010},

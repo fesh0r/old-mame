@@ -6,9 +6,8 @@
 
 #include <assert.h>
 #include "driver.h"
-#include "image.h"
+#include "deprecat.h"
 #include "mslegacy.h"
-#include "video/generic.h"
 #include "cpu/m6502/m6502.h"
 
 #include "includes/svision.h"
@@ -80,7 +79,7 @@ void svision_irq(void)
 	int irq = svision.timer_shot && (BANK & 2);
 	irq = irq || (svision_dma.finished && (BANK & 4));
 
-	cpunum_set_input_line(0, M6502_IRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static TIMER_CALLBACK(svision_timer)
@@ -309,7 +308,7 @@ static const unsigned char svision_palette[] =
 #if 0
     /* greens grabbed from a scan of a handheld
      * in its best adjustment for contrast
-	 */
+     */
 	86, 121, 86,
 	81, 115, 90,
 	74, 107, 101,
@@ -420,7 +419,7 @@ static VIDEO_UPDATE( tvlink )
 static INTERRUPT_GEN( svision_frame_int )
 {
 	if (BANK&1)
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 
 	if (svision_channel->count)
 		svision_channel->count--;
@@ -444,7 +443,7 @@ static DRIVER_INIT( svisions )
 	svision.timer1 = timer_alloc(svision_timer, NULL);
 	svision_pet.on = TRUE;
 	svision_pet.timer = timer_alloc(svision_pet_timer, NULL);
-	timer_pulse(attotime_mul(ATTOTIME_IN_SEC(8), 256/machine->drv->cpu[0].clock), NULL, 0, svision_pet_timer);
+	timer_pulse(attotime_mul(ATTOTIME_IN_SEC(8), 256/cpunum_get_clock(0)), NULL, 0, svision_pet_timer);
 }
 
 static MACHINE_RESET( svision )
@@ -552,7 +551,7 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME		PARENT	COMPAT	MACHINE		INPUT		INIT		CONFIG		COMPANY		FULLNAME */
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY     FULLNAME */
 // marketed under a ton of firms and names
 CONS(1992,	svision,	0,	0,	svision,	svision,	svision,	svision,	"Watara",	"Supervision", 0)
 // svdual 2 connected via communication port

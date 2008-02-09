@@ -15,6 +15,7 @@ be written to RAM if RAM was switched in.
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "machine/6821pia.h"
 #include "machine/6850acia.h"
@@ -229,9 +230,9 @@ static void osborne1_update_irq_state(void) {
 	//logerror("Changing irq state; pia_0_irq_state = %s, pia_1_irq_state = %s\n", osborne1.pia_0_irq_state ? "SET" : "CLEARED", osborne1.pia_1_irq_state ? "SET" : "CLEARED" );
 
 	if ( osborne1.pia_1_irq_state ) {
-		cpunum_set_input_line( 0, 0, ASSERT_LINE );
+		cpunum_set_input_line(Machine, 0, 0, ASSERT_LINE );
 	} else {
-		cpunum_set_input_line( 0, 0, CLEAR_LINE );
+		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE );
 	}
 }
 

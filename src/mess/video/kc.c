@@ -7,9 +7,9 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "video/generic.h"
 #include "includes/kc.h"
 #include "eventlst.h"
+#include "deprecat.h"
 #include "mslegacy.h"
 
 /* KC85/4 and KC85/3 common graphics hardware */
@@ -165,10 +165,6 @@ static void kc85_draw_8_pixels(mame_bitmap *bitmap,int x,int y, unsigned char co
 }
 
 
-#ifndef MIN
-#define MIN(a,b) ((a<b) ? a : b)
-#endif /* MIN */
-
 /* height of screen in lines */
 #define KC85_SCREEN_HEIGHT 256
 /* width of display in pixels */
@@ -218,13 +214,13 @@ static void kc85_draw_8_pixels(mame_bitmap *bitmap,int x,int y, unsigned char co
 
 */
 
-static int horizontal_next_state_table[]=
+static const int horizontal_next_state_table[]=
 {
 	1,2,3,0
 };
 
 /* number of cycles for each state */
-static int horizontal_graphics_state_cycles[]=
+static const int horizontal_graphics_state_cycles[]=
 {
 	/* left border */
 	(KC85_LEFT_BORDER_SIZE*KC85_CYCLES_PER_PIXEL),
@@ -236,13 +232,13 @@ static int horizontal_graphics_state_cycles[]=
 	(KC85_RETRACE_SIZE*KC85_CYCLES_PER_PIXEL)
 };
 
-static int vertical_next_state_table[]=
+static const int vertical_next_state_table[]=
 {
 	1,2,3,0
 };
 
 /* number of lines for each state */
-static int vertical_graphics_state_lines[]=
+static const int vertical_graphics_state_lines[]=
 {
 	/* top border */
 	KC85_TOP_BORDER_SIZE*KC85_CYCLES_PER_LINE,

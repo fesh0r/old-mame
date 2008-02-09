@@ -12,11 +12,11 @@
  */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/msx_slot.h"
 #include "includes/msx.h"
-#include "video/generic.h"
 #include "machine/8255ppi.h"
-#include "includes/tc8521.h"
+#include "machine/tc8521.h"
 #include "machine/wd17xx.h"
 #include "devices/basicdsk.h"
 #include "video/tms9928a.h"
@@ -25,7 +25,6 @@
 #include "devices/printer.h"
 #include "devices/cassette.h"
 #include "utils.h"
-#include "image.h"
 #include "osdepend.h"
 #include "sound/ay8910.h"
 #include "sound/2413intf.h"
@@ -280,7 +279,7 @@ DEVICE_UNLOAD (msx_cart)
 
 void msx_vdp_interrupt(int i)
 {
-	cpunum_set_input_line (0, 0, (i ? HOLD_LINE : CLEAR_LINE));
+	cpunum_set_input_line (Machine, 0, 0, (i ? HOLD_LINE : CLEAR_LINE));
 }
 
 static void msx_ch_reset_core (void)
@@ -338,7 +337,7 @@ static void msx_init(void)
 	int i, n;
 
 	/* z80 stuff */
-	static int z80_cycle_table[] =
+	static const int z80_cycle_table[] =
 	{
 		Z80_TABLE_op, Z80_TABLE_cb, Z80_TABLE_xy,
         Z80_TABLE_ed, Z80_TABLE_xycb, Z80_TABLE_ex

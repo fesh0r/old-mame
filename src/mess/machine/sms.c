@@ -1,10 +1,14 @@
 #include <stdio.h>
 #include "driver.h"
 #include "image.h"
+#include "deprecat.h"
 #include "includes/sms.h"
 #include "video/smsvdp.h"
 #include "sound/2413intf.h"
 #include "machine/eeprom.h"
+
+#define VERBOSE 0
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 #define CF_CODEMASTERS_MAPPER	0x01
 #define CF_KOREAN_MAPPER	0x02
@@ -280,8 +284,8 @@ void sms_check_pause_button( void ) {
 	if ( ! IS_GAMEGEAR ) {
 		if ( ! (readinputport(2) & 0x80) ) {
 			if ( ! smsPaused ) {
-				cpunum_set_input_line( 0, INPUT_LINE_NMI, ASSERT_LINE );
-				cpunum_set_input_line( 0, INPUT_LINE_NMI, CLEAR_LINE );
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, ASSERT_LINE );
+				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE );
 			}
 			smsPaused = 1;
 		} else {
@@ -375,14 +379,10 @@ WRITE8_HANDLER(sms_mapper_w)
 			if (data & 0x08) { /* it's ram */
 				sms_cartridge[sms_current_cartridge].sram_save = 1;			/* SRAM should be saved on exit. */
 				if (data & 0x04) {
-#ifdef LOG_PAGING
-					logerror("ram 1 paged.\n");
-#endif
+					LOG(("ram 1 paged.\n"));
 					SOURCE = sms_cartridge[sms_current_cartridge].cartSRAM + 0x4000;
 				} else {
-#ifdef LOG_PAGING
-					logerror("ram 0 paged.\n");
-#endif
+					LOG(("ram 0 paged.\n"));
 					SOURCE = sms_cartridge[sms_current_cartridge].cartSRAM;
 				}
 				memory_set_bankptr( 4, SOURCE );
@@ -395,17 +395,13 @@ WRITE8_HANDLER(sms_mapper_w)
 					page = (smsBiosPageCount > 0) ? sms_mapper[3] % smsBiosPageCount : 0;
 					SOURCE = sms_banking_bios[4];
 				}
-#ifdef LOG_PAGING
-				logerror("rom 2 paged in %x.\n", page);
-#endif
+				LOG(("rom 2 paged in %x.\n", page));
 				memory_set_bankptr( 4, SOURCE );
 				memory_set_bankptr( 5, SOURCE + 0x2000 );
 			}
 			break;
 		case 1: /* Select 16k ROM bank for 0400-3FFF */
-#ifdef LOG_PAGING
-			logerror("rom 0 paged in %x.\n", page);
-#endif
+			LOG(("rom 0 paged in %x.\n", page));
 			sms_banking_bios[2] = SOURCE_BIOS + 0x0400;
 			sms_banking_cart[2] = SOURCE_CART + 0x0400;
 			if ( IS_GAMEGEAR ) {
@@ -414,9 +410,7 @@ WRITE8_HANDLER(sms_mapper_w)
 			memory_set_bankptr( 2, SOURCE + 0x0400 );
 			break;
 		case 2: /* Select 16k ROM bank for 4000-7FFF */
-#ifdef LOG_PAGING
-			logerror("rom 1 paged in %x.\n", page);
-#endif
+			LOG(("rom 1 paged in %x.\n", page));
 			sms_banking_bios[3] = SOURCE_BIOS;
 			sms_banking_cart[3] = SOURCE_CART;
 			if ( IS_GAMEGEAR ) {
@@ -437,9 +431,7 @@ WRITE8_HANDLER(sms_mapper_w)
 				sms_banking_cart[4] = SOURCE_CART;
 			}
 			if ( ! ( sms_mapper[0] & 0x08 ) ) { /* is RAM disabled? */
-#ifdef LOG_PAGING
-				logerror("rom 2 paged in %x.\n", page);
-#endif
+				LOG(("rom 2 paged in %x.\n", page));
 				memory_set_bankptr( 4, SOURCE );
 				memory_set_bankptr( 5, SOURCE + 0x2000 );
 			}
@@ -500,9 +492,7 @@ WRITE8_HANDLER(sms_cartram2_w) {
 		sms_banking_cart[4] = sms_cartridge[sms_current_cartridge].ROM + page * 0x4000;
 		memory_set_bankptr( 4, sms_banking_cart[4] );
 		memory_set_bankptr( 5, sms_banking_cart[4] + 0x2000 );
-#ifdef LOG_PAGING
-		logerror("rom 2 paged in %x dodgeball king.\n", page);
-#endif
+		LOG(("rom 2 paged in %x dodgeball king.\n", page));
 	}
 }
 
@@ -525,9 +515,7 @@ WRITE8_HANDLER(sms_cartram_w) {
 			sms_banking_cart[4] = sms_cartridge[sms_current_cartridge].ROM + page * 0x4000;
 			memory_set_bankptr( 4, sms_banking_cart[4] );
 			memory_set_bankptr( 5, sms_banking_cart[4] + 0x2000 );
-#ifdef LOG_PAGING
-			logerror("rom 2 paged in %x codemasters.\n", page);
-#endif
+			LOG(("rom 2 paged in %x codemasters.\n", page));
 		} else if ( sms_cartridge[sms_current_cartridge].features & CF_ONCART_RAM ) {
 			sms_cartridge[sms_current_cartridge].cartRAM[offset & ( sms_cartridge[sms_current_cartridge].ram_size - 1 ) ] = data;
 		} else {
@@ -719,7 +707,7 @@ static int sms_verify_cart(UINT8 *magic, int size) {
 The Korean game Jang Pung II also seems to use a codemasters style mapper.
  */
 static int detect_codemasters_mapper( UINT8 *rom ) {
-	UINT8	jang_pung2[16] = { 0x00, 0xBA, 0x38, 0x0D, 0x00, 0xB8, 0x38, 0x0C, 0x00, 0xB6, 0x38, 0x0B, 0x00, 0xB4, 0x38, 0x0A };
+	static const UINT8 jang_pung2[16] = { 0x00, 0xBA, 0x38, 0x0D, 0x00, 0xB8, 0x38, 0x0C, 0x00, 0xB6, 0x38, 0x0B, 0x00, 0xB4, 0x38, 0x0A };
 
 	if ( ( ( rom[0x7fe0] & 0x0F ) <= 9 ) &&
 	     ( rom[0x7fe3] == 0x93 || rom[0x7fe3] == 0x94 || rom[0x7fe3] == 0x95 ) &&
@@ -735,7 +723,7 @@ static int detect_codemasters_mapper( UINT8 *rom ) {
 }
 
 static int detect_korean_mapper( UINT8 *rom ) {
-	UINT8	signatures[2][16] = {
+	static const UINT8 signatures[2][16] = {
 		{ 0x3E, 0x11, 0x32, 0x00, 0xA0, 0x78, 0xCD, 0x84, 0x85, 0x3E, 0x02, 0x32, 0x00, 0xA0, 0xC9, 0xFF }, /* Dodgeball King */
 		{ 0x41, 0x48, 0x37, 0x37, 0x44, 0x37, 0x4E, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x20 },	/* Sangokushi 3 */
 	};
@@ -1016,10 +1004,10 @@ WRITE8_HANDLER(sms_store_control_w) {
 }
 
 void sms_int_callback( int state ) {
-	cpunum_set_input_line( 0, 0, state );
+	cpunum_set_input_line(Machine, 0, 0, state );
 }
 
 void sms_store_int_callback( int state ) {
-	cpunum_set_input_line( sms_store_control & 0x01 ? 1 : 0, 0, state );
+	cpunum_set_input_line(Machine, sms_store_control & 0x01 ? 1 : 0, 0, state );
 }
 

@@ -101,6 +101,7 @@ FF00-FFFF       Jump table, vectors
 #include <stdio.h>
 
 #include "driver.h"
+#include "deprecat.h"
 #include "image.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6522via.h"
@@ -108,7 +109,7 @@ FF00-FFFF       Jump table, vectors
 #define VERBOSE_DBG 1
 #include "includes/cbm.h"
 #include "includes/cbmdrive.h"
-#include "includes/tpi6525.h"
+#include "machine/tpi6525.h"
 
 #include "includes/vc1541.h"
 
@@ -175,7 +176,7 @@ typedef struct
 static CBM_Drive_Emu vc1541_static= { 0 }, *vc1541 = &vc1541_static;
 
 /* four different frequencies for the 4 different zones on the disk */
-static double vc1541_times[4]= {
+static const double vc1541_times[4]= {
 	13/16e6, 14/16e6, 15/16e6, 16/16e6
 };
 
@@ -204,14 +205,14 @@ static double vc1541_times[4]= {
  *
  * max 42 tracks, stepper resolution 84 tracks
  */
-static int bin_2_gcr[] =
+static const int bin_2_gcr[] =
 {
 	0xa, 0xb, 0x12, 0x13, 0xe, 0xf, 0x16, 0x17,
 	9, 0x19, 0x1a, 0x1b, 0xd, 0x1d, 0x1e, 0x15
 };
 
 #if 0
-static int gcr_2_bin[] = {
+static const int gcr_2_bin[] = {
 	-1, -1, -1, -1,
 	-1, -1, -1, -1,
 	-1, 8, 0, 1,
@@ -315,37 +316,25 @@ static void vc1541_sector_to_gcr(int track, int sector)
 	gcr_double_2_gcr(0, 0, 0, 0, vc1541->head.data+i);i+=5;
 }
 
-static ADDRESS_MAP_START( vc1541_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x07ff) AM_READ( MRA8_RAM)
-	AM_RANGE(0x1800, 0x180f) AM_READ( via_2_r)		   /* 0 and 1 used in vc20 */
+
+static ADDRESS_MAP_START( vc1541_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x07ff) AM_RAM
+	AM_RANGE(0x1800, 0x180f) AM_READWRITE(via_2_r, via_2_w)  /* 0 and 1 used in vc20 */
 	AM_RANGE(0x1810, 0x189f) AM_READ( MRA8_NOP) /* for debugger */
-	AM_RANGE(0x1c00, 0x1c0f) AM_READ( via_3_r)
+	AM_RANGE(0x1c00, 0x1c0f) AM_READWRITE(via_3_r, via_3_w)
 	AM_RANGE(0x1c10, 0x1c9f) AM_READ( MRA8_NOP) /* for debugger */
-	AM_RANGE(0xc000, 0xffff) AM_READ( MRA8_ROM)
+	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( vc1541_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE( MWA8_RAM)
-	AM_RANGE(0x1800, 0x180f) AM_WRITE( via_2_w)
-	AM_RANGE(0x1c00, 0x1c0f) AM_WRITE( via_3_w)
-	AM_RANGE(0xc000, 0xffff) AM_WRITE( MWA8_ROM)
+
+static ADDRESS_MAP_START( dolphin_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x07ff) AM_RAM
+	AM_RANGE(0x1800, 0x180f) AM_READWRITE(via_2_r, via_2_w)  /* 0 and 1 used in vc20 */
+	AM_RANGE(0x1c00, 0x1c0f) AM_READWRITE(via_3_r, via_3_w)
+	AM_RANGE(0x8000, 0x9fff) AM_RAM
+	AM_RANGE(0xa000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( dolphin_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x07ff) AM_READ( MRA8_RAM)
-	AM_RANGE(0x1800, 0x180f) AM_READ( via_2_r)		   /* 0 and 1 used in vc20 */
-	AM_RANGE(0x1c00, 0x1c0f) AM_READ( via_3_r)
-	AM_RANGE(0x8000, 0x9fff) AM_READ( MRA8_RAM)
-	AM_RANGE(0xa000, 0xffff) AM_READ( MRA8_ROM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( dolphin_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE( MWA8_RAM)
-	AM_RANGE(0x1800, 0x180f) AM_WRITE( via_2_w)
-	AM_RANGE(0x1c00, 0x1c0f) AM_WRITE( via_3_w)
-	AM_RANGE(0x8000, 0x9fff) AM_WRITE( MWA8_RAM)
-	AM_RANGE(0xa000, 0xffff) AM_WRITE( MWA8_ROM)
-ADDRESS_MAP_END
 
 #if 0
 INPUT_PORTS_START (vc1541)
@@ -365,7 +354,7 @@ static TIMER_CALLBACK(vc1541_timer)
 		vc1541->head.ready=0;
 		vc1541->head.sync=0;
 		if (vc1541->type==TypeVC1541) {
-			cpunum_set_input_line(vc1541->cpunumber, M6502_SET_OVERFLOW, 1);
+			cpunum_set_input_line(machine, vc1541->cpunumber, M6502_SET_OVERFLOW, 1);
 			via_3_ca1_w(0,1);
 		}
 		return;
@@ -389,7 +378,7 @@ static TIMER_CALLBACK(vc1541_timer)
 		vc1541->head.sync=0;
 	}
 	if (vc1541->type==TypeVC1541) {
-		cpunum_set_input_line(vc1541->cpunumber, M6502_SET_OVERFLOW, 0);
+		cpunum_set_input_line(machine, vc1541->cpunumber, M6502_SET_OVERFLOW, 0);
 		via_3_ca1_w(0,0);
 	}
 	vc1541->clock=0;
@@ -414,7 +403,7 @@ static void vc1541_via0_irq (int level)
 {
 	vc1541->via0irq = level;
 	DBG_LOG(2, "vc1541 via0 irq",("level %d %d\n",vc1541->via0irq,vc1541->via1irq));
-	cpunum_set_input_line (vc1541->cpunumber,
+	cpunum_set_input_line (Machine, vc1541->cpunumber,
 					  M6502_IRQ_LINE, vc1541->via1irq || vc1541->via0irq);
 }
 
@@ -513,7 +502,7 @@ static void vc1541_via1_irq (int level)
 {
 	vc1541->via1irq = level;
 	DBG_LOG(2, "vc1541 via1 irq",("level %d %d\n",vc1541->via0irq,vc1541->via1irq));
-	cpunum_set_input_line (vc1541->cpunumber,
+	cpunum_set_input_line (Machine, vc1541->cpunumber,
 					  M6502_IRQ_LINE, vc1541->via1irq || vc1541->via0irq);
 }
 
@@ -823,7 +812,7 @@ void vc1541_serial_request_write (int which, int level)
  */
 static TIMER_CALLBACK(c1551_timer)
 {
-	cpunum_set_input_line(vc1541->cpunumber, M6502_IRQ_LINE, PULSE_LINE);
+	cpunum_set_input_line(machine, vc1541->cpunumber, M6502_IRQ_LINE, PULSE_LINE);
 }
 
 /*
@@ -961,19 +950,14 @@ int c1551_config (int id, int mode, C1551_CONFIG *config)
 	return 0;
 }
 
-static ADDRESS_MAP_START( c1551_readmem , ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE(0x0000, 0x0001) AM_READ( c1551_port_r)
-	AM_RANGE(0x0002, 0x07ff) AM_READ( MRA8_RAM)
-    AM_RANGE(0x4000, 0x4007) AM_READ( tpi6525_0_port_r)
-	AM_RANGE(0xc000, 0xffff) AM_READ( MRA8_ROM)
+
+static ADDRESS_MAP_START( c1551_map, ADDRESS_SPACE_PROGRAM, 8 )
+    AM_RANGE(0x0000, 0x0001) AM_READWRITE(c1551_port_r, c1551_port_w)
+	AM_RANGE(0x0002, 0x07ff) AM_RAM
+    AM_RANGE(0x4000, 0x4007) AM_READWRITE(tpi6525_0_port_r, tpi6525_0_port_w)
+	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( c1551_writemem , ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE(0x0000, 0x0001) AM_WRITE( c1551_port_w)
-	AM_RANGE(0x0002, 0x07ff) AM_WRITE( MWA8_RAM)
-    AM_RANGE(0x4000, 0x4007) AM_WRITE( tpi6525_0_port_w)
-	AM_RANGE(0xc000, 0xffff) AM_WRITE( MWA8_ROM)
-ADDRESS_MAP_END
 
 static void c1551x_write_data (TPI6525 *This, int data)
 {
@@ -1058,29 +1042,29 @@ int c1551x_0_read_status (void)
 
 MACHINE_DRIVER_START( cpu_vc1540 )
 	MDRV_CPU_ADD_TAG("cpu_vc1540", M6502, 1000000)
-	MDRV_CPU_PROGRAM_MAP(vc1541_readmem,vc1541_writemem)
+	MDRV_CPU_PROGRAM_MAP(vc1541_map, 0)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( cpu_vc1541 )
-	MDRV_IMPORT_FROM( cpu_vc1540 )
+	MDRV_IMPORT_FROM(cpu_vc1540)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( cpu_c2031 )
-	MDRV_IMPORT_FROM( cpu_vc1540 )
+	MDRV_IMPORT_FROM(cpu_vc1540)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( cpu_dolphin )
 	MDRV_CPU_ADD_TAG("cpu_dolphin", M6502, 1000000)
-	MDRV_CPU_PROGRAM_MAP(dolphin_readmem,dolphin_writemem)
+	MDRV_CPU_PROGRAM_MAP(dolphin_map, 0)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( cpu_c1551 )
 	MDRV_CPU_ADD_TAG("cpu_c1551", M6510T, 2000000)
-	MDRV_CPU_PROGRAM_MAP(c1551_readmem,c1551_writemem)
+	MDRV_CPU_PROGRAM_MAP(c1551_map, 0)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( cpu_c1571 )
-	MDRV_IMPORT_FROM( cpu_vc1541 )
+	MDRV_IMPORT_FROM(cpu_vc1541)
 MACHINE_DRIVER_END
 
 

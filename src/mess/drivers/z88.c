@@ -13,6 +13,7 @@
 
  ******************************************************************************/
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/z88.h"
 #include "sound/speaker.h"
 
@@ -44,13 +45,13 @@ static void z88_interrupt_refresh(void)
 			)
 		{
 			logerror("set int\n");
-			cpunum_set_input_line(0,0,HOLD_LINE);
+			cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
 			return;
 		}
 	}
 
 	logerror("clear int\n");
-	cpunum_set_input_line(0,0,CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
 }
 
 static void z88_update_rtc_interrupt(void)
@@ -99,7 +100,7 @@ static TIMER_CALLBACK(z88_rtc_timer_callback)
 			/* column has gone low in snooze/coma */
 			blink.sta |= STA_KEY;
 
-			cpu_trigger(Z88_SNOOZE_TRIGGER);
+			cpu_trigger(machine, Z88_SNOOZE_TRIGGER);
 
 			z88_interrupt_refresh();
 		}
@@ -180,7 +181,7 @@ static void z88_install_memory_handler_pair(offs_t start, offs_t size, int bank_
 	write8_handler write_handler;
 
 	read_handler  = read_addr  ? (read8_handler)  (STATIC_BANK1 + (FPTR)(bank_base - 1 + 0)) : MRA8_ROM;
-	write_handler = write_addr ? (write8_handler) (STATIC_BANK1 + (FPTR)(bank_base - 1 + 1)) : MWA8_ROM;
+	write_handler = write_addr ? (write8_handler) (STATIC_BANK1 + (FPTR)(bank_base - 1 + 1)) : MWA8_UNMAP;
 
 	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, 0, read_handler);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, 0, write_handler);
@@ -202,10 +203,10 @@ I wanted to handle all banks in the code below, and this
 explains why the extra checks are done
 
 
-	bank 0		0x0000-0x3FFF
-	bank 1		0x4000-0x7FFF
-	bank 2		0x8000-0xBFFF
-	bank 3		0xC000-0xFFFF
+    bank 0      0x0000-0x3FFF
+    bank 1      0x4000-0x7FFF
+    bank 2      0x8000-0xBFFF
+    bank 3      0xC000-0xFFFF
 */
 
 static void z88_refresh_memory_bank(int bank)
@@ -452,7 +453,7 @@ static WRITE8_HANDLER(z88_port_w)
 			else
 			{
 			   /* speaker under control of continuous tone,
-			   or txd */
+               or txd */
 
 
 			}
@@ -612,7 +613,7 @@ ADDRESS_MAP_END
 -------------------------------------------------------------------------
          | D7     D6      D5      D4      D3      D2      D1      D0
 -------------------------------------------------------------------------
-A15 (#7) | RSH    SQR     ESC     INDEX   CAPS    .       /       £
+A15 (#7) | RSH    SQR     ESC     INDEX   CAPS    .       /       ??
 A14 (#6) | HELP   LSH     TAB     DIA     MENU    ,       ;       '
 A13 (#5) | [      SPACE   1       Q       A       Z       L       0
 A12 (#4) | ]      LFT     2       W       S       X       M       P
@@ -753,6 +754,6 @@ SYSTEM_CONFIG_START( z88 )
 SYSTEM_CONFIG_END
 
 
-/*	   YEAR	    NAME	PARENT	COMPAT	MACHINE		INPUT		INIT	CONFIG	COMPANY					FULLNAME */
+/*     YEAR     NAME    PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG  COMPANY                 FULLNAME */
 COMP( 1988,	z88,	0,		0,		z88,		z88,		0,		z88,	"Cambridge Computers",	"Z88",GAME_NOT_WORKING)
 

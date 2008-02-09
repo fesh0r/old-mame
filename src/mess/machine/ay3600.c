@@ -20,10 +20,12 @@
 #include "includes/apple2.h"
 
 #ifdef MAME_DEBUG
-#define LOG(x)	logerror x
+#define VERBOSE 1
 #else
-#define LOG(x)
+#define VERBOSE 0
 #endif /* MAME_DEBUG */
+
+#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 static TIMER_CALLBACK(AY3600_poll);
 
@@ -426,15 +428,15 @@ static TIMER_CALLBACK(AY3600_poll)
 			if (!reset_flag) {
 				reset_flag = 1;
 				/* using PULSE_LINE does not allow us to press and hold key */
-				cpunum_set_input_line(0, INPUT_LINE_RESET, ASSERT_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, ASSERT_LINE);
 			}
 			return;
 	}
 	if (reset_flag)
 	{
 		reset_flag = 0;
-		cpunum_set_input_line(0, INPUT_LINE_RESET, CLEAR_LINE);
-		mame_schedule_soft_reset(Machine);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, CLEAR_LINE);
+		mame_schedule_soft_reset(machine);
 	}
 
 	/* run through real keys and see what's being pressed */

@@ -9,32 +9,11 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "mslegacy.h"
-#include "video/generic.h"
+#include "deprecat.h"
 #include "includes/primo.h"
 
 UINT16 primo_video_memory_base;
 
-const unsigned char primo_palette[2*3] =
-{
-	0x00, 0x00, 0x00,
-	0xff, 0xff, 0xff
-};
-
-const unsigned short primo_colortable[1][2] =
-{
-	{ 0, 1 }
-};
-
-PALETTE_INIT( primo )
-{
-	palette_set_colors_rgb(machine, 0, primo_palette, sizeof(primo_palette) / 3);
-	memcpy(colortable, primo_colortable, sizeof (primo_colortable));
-}
-
-VIDEO_START( primo )
-{
-}
 
 static void primo_draw_scanline(mame_bitmap *bitmap, int primo_scanline)
 {
@@ -56,6 +35,7 @@ static void primo_draw_scanline(mame_bitmap *bitmap, int primo_scanline)
 
 	}
 }
+
 
 VIDEO_UPDATE( primo )
 {

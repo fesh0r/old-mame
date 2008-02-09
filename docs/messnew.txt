@@ -1,3 +1,92 @@
+0.123
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Amstrad GX4000 [Barry Rodewald]
+- Aleste 520EX [Barry Rodewald]
+- Memotech MTX 500  [Dirk Best]
+- Memotech RS 128  [Dirk Best]
+
+
+System Driver Changes:
+----------------------
+- [APFM1000] Cartridge support, pads fixed and hooked up [PeT]
+
+- [APPLE2] Fixed lores graphics broken in 0.119.  (bug #1472) [Nate Woods]
+
+- [GAMEBOY] Small mode 0 stat bug triggering fixes.  [Wilbert Pol]
+
+- [GAMEBOY] Added partial support for MBC6.  [Wilbert Pol]
+
+- [GBCOLOR] Added locking of palette data registers.  [Wilbert Pol]
+
+- [GBPOCKET] Fixed video startup state to match that of a real unit.  [Wilbert
+  Pol]
+  
+- [GENEVE] Fixed memory mapping error that would cause an emulated crash on
+  reset.  [Michael Zapf]
+
+- [MTX] Rewrote keyboard emulation, added natural keyboard support and started
+  to cleanup the driver.  [Dirk Best]
+
+- [MTX] Rewrote memory banking and removed tape hack.  [Dirk Best]
+
+- [NASCOM] Improved keyboard layout, added natural keyboard support (not
+  working 100%), changed RAM size configuration to use the standard method
+  instead of dip switches and updated it to use the default black and white
+  palette.  [Dirk Best]
+
+- [NASCOM] Added snapshot loading support (.nas files)  [Dirk Best]
+
+- [NASCOM] Added preliminary floppy support.  [Dirk Best]
+
+- [NES] Added support for mappers 42, 43, 44, 45 (partial), 46, 47, 49,
+  51 (partial), 57, 58, 61, 62, 83 (partial), 112, 182, 188, 193 (not working),
+  200, 201, 202, 203, 206, 240, 241 (partial), 242, 244, 246, 248.
+  [Wilbert Pol]
+
+- [ORIC] Fixed tape loading.  (bug #241) [Wilbert Pol]
+
+- [SMS] Fixed buttons for player 2.  (bug #1377)  [Enik Land]
+
+- [SMS] Fixed some video mode 4 boundary checks. (bug #1454)  [Enik Land]
+
+- [TI99] Fixed Mechatronic Mouse axis swapping.  (bug #966)  [Miachel Zapf]
+
+- [TI99/GENEVE] More floppy cleanups; fixed TI99_8 regression and made the
+  floppy drive usable.  (bug #1450)  [Michael Zapf]
+
+
+
+User Interface Changes:
+-----------------------
+- [Windows] Fixed bug in state saving and loading.  (bug #1494) [Nate Woods]
+
+
+
+Imgtool Changes:
+----------------
+- [Windows Imgtool] Fixed a bug that could cause filenames to get mangled when
+  inserting files onto images with a directory structure.  (bug #1458) [Nate
+  Woods]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.123.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Miscellaneous cleanups (staticization, constification, conditional logging,
+  core callbacks).  [Atari Ace]
+
+- Greater use of ATTR_PRINTF.  [Oliver Stoeneberg]
+
+- Changed use of AY-3-8910A sound chip to AY-3-8912A or AY-3-8913A where
+  appropriate across all drivers.  [Justin Kerk]
+
+
+
 0.122
 
 New System Drivers Supported (in no particular order):

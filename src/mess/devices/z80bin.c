@@ -7,10 +7,9 @@
 
 *********************************************************************/
 
-#include "mame.h"
 #include "driver.h"
-#include "snapquik.h"
 #include "z80bin.h"
+#include "snapquik.h"
 
 
 static QUICKLOAD_LOAD( z80bin )

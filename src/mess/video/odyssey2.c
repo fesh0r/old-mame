@@ -6,9 +6,9 @@
 
 #include <assert.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "mslegacy.h"
 #include "cpu/i8039/i8039.h"
-#include "video/generic.h"
 #include "includes/odyssey2.h"
 
 /* character sprite colors
@@ -176,7 +176,7 @@ VIDEO_START( odyssey2 )
 INLINE int get_horiz_clock_beam_pos( void )
 {
     int h;
-    h = attotime_mul(attotime_sub(timer_get_time(), line_time), Machine->drv->cpu[0].clock * 8).seconds;
+    h = attotime_mul(attotime_sub(timer_get_time(), line_time), cpunum_get_clock(0) * 8).seconds;
 
     return h;
 }
@@ -184,7 +184,7 @@ INLINE int get_horiz_clock_beam_pos( void )
 INLINE int get_horiz_clock( void )
 {
     int h;
-    h = attotime_mul(attotime_sub(timer_get_time(), line_time), Machine->drv->cpu[0].clock).seconds;
+    h = attotime_mul(attotime_sub(timer_get_time(), line_time), cpunum_get_clock(0)).seconds;
 
     return h;
 }
@@ -323,10 +323,10 @@ INTERRUPT_GEN( odyssey2_line )
     switch (line)
     {
         case 252:
-            cpunum_set_input_line(0, 0, ASSERT_LINE); /* vsync?? */
+            cpunum_set_input_line(machine, 0, 0, ASSERT_LINE); /* vsync?? */
             break;
         case 253:
-            cpunum_set_input_line(0, 0, CLEAR_LINE); /* vsync?? */
+            cpunum_set_input_line(machine, 0, 0, CLEAR_LINE); /* vsync?? */
             break;
     }
 }
@@ -585,7 +585,7 @@ void odyssey2_sh_update( void *param,stream_sample_t **inputs, stream_sample_t *
 			/* Throw an interrupt if enabled */
 			if( o2_vdc.s.control & 0x4 )
 			{
-				cpunum_set_input_line(0, 1, HOLD_LINE); /* Is this right? */
+				cpunum_set_input_line(Machine, 0, 1, HOLD_LINE); /* Is this right? */
 			}
 
 			/* Adjust volume */

@@ -13,6 +13,7 @@
 #include "video/tms9928a.h"
 #include "machine/z80pio.h"
 #include "devices/cartslot.h"
+#include "deprecat.h"
 
 static ADDRESS_MAP_START( bbcbc_prg, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00000, 0x03fff) AM_ROM
@@ -29,7 +30,7 @@ ADDRESS_MAP_END
 
 static void tms_interrupt(int dummy)
 {
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( bbcbc_interrupt )

@@ -1,14 +1,13 @@
 #include <math.h>
 #include "driver.h"
+#include "deprecat.h"
+#include "includes/vectrex.h"
 #include "video/vector.h"
-#include "video/generic.h"
 #include "machine/6522via.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
-#include "mscommon.h"
 
-#include "includes/vectrex.h"
 
 #define RAMP_DELAY 6.333e-6
 #define SH_DELAY RAMP_DELAY
@@ -100,7 +99,7 @@ void vectrex_add_point (int x, int y, rgb_t color, int intensity)
 /*********************************************************************
   Lightpen
  *********************************************************************/
-static void lightpen_trigger(void)
+static void lightpen_trigger(running_machine *machine)
 {
 	if (vectrex_lightpen_port & 1)
 	{
@@ -109,13 +108,13 @@ static void lightpen_trigger(void)
 	}
 	if (vectrex_lightpen_port & 2)
 	{
-		cpunum_set_input_line(0, M6809_FIRQ_LINE, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, PULSE_LINE);
 	}
 }
 
 static TIMER_CALLBACK(lightpen_trigger_callback)
 {
-	lightpen_trigger();
+	lightpen_trigger(machine);
 }
 
 static int lightpen_check (void)
@@ -191,7 +190,7 @@ VIDEO_UPDATE( vectrex )
 		i = (i+1) % NVECT;
 	}
 
-	video_update_vector(machine, screen, bitmap, cliprect);
+	VIDEO_UPDATE_CALL(vector);
 	vector_clear_list();
 	return 0;
 }
@@ -279,7 +278,7 @@ VIDEO_START( vectrex )
 
 	lp_t = timer_alloc(lightpen_trigger_callback, NULL);
 
-	video_start_vector(machine);
+	VIDEO_START_CALL(vector);
 }
 
 
@@ -432,7 +431,7 @@ static WRITE8_HANDLER ( v_via_cb2_w )
 			start_time = time_now;
 		}
 		if (data & lightpen_check())
-			lightpen_trigger();
+			lightpen_trigger(Machine);
 
 		blank = data;
 	}
@@ -472,5 +471,6 @@ VIDEO_START( raaspec )
 	z_factor = 2;
 
 	raaspec_led_w (0, 0xff);
-	video_start_vector(machine);
+
+	VIDEO_START_CALL(vector);
 }

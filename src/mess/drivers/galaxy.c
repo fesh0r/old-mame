@@ -2,7 +2,7 @@
 Galaksija driver by Krzysztof Strzecha
 
 18/04/2005 Possibilty to disable ROM 2. 2k, 22k, 38k and 54k memory
-	   configurations added.
+       configurations added.
 13/03/2005 Memory mapping improved. Palette corrected. Supprort for newer
            version of snapshots added. Lot of cleanups. Keyboard mapping
            corrected.
@@ -24,9 +24,7 @@ To do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "inputx.h"
 #include "cpu/z80/z80.h"
-#include "video/generic.h"
 #include "includes/galaxy.h"
 #include "devices/snapquik.h"
 
@@ -38,7 +36,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START (galaxy_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(MRA8_ROM, MWA8_ROM)
+	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x2000, 0x2037) AM_MIRROR(0x07c0) AM_READ( galaxy_keyboard_r )
 	AM_RANGE(0x2038, 0x203f) AM_MIRROR(0x07c0) AM_READWRITE( galaxy_latch_r, galaxy_latch_w )
 ADDRESS_MAP_END
@@ -177,5 +175,5 @@ SYSTEM_CONFIG_START(galaxy)
 	CONFIG_DEVICE(galaxy_snapshot_getinfo)
 SYSTEM_CONFIG_END
 
-/*    YEAR	NAME	PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY	FULLNAME */
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY FULLNAME */
 COMP(1983,	galaxy,	0,	0,	galaxy,	galaxy,	galaxy,	galaxy,	"",	"Galaksija", 0)

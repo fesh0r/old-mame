@@ -18,7 +18,10 @@
 
 ***************************************************************************/
 
+#include "driver.h"
+#include "deprecat.h"
 #include "mm58274c.h"
+
 
 static TIMER_CALLBACK(rtc_interrupt_callback);
 static TIMER_CALLBACK(increment_rtc);

@@ -4,13 +4,11 @@
  PeT mess@utanet.at
 ***************************************************************************/
 
-#include <math.h>
-
-#include "mame.h"
-#include "timer.h"
+#include "driver.h"
 #include "streams.h"
-
+#include "deprecat.h"
 #include "includes/svision.h"
+
 
 static sound_stream *mixer_channel;
 
@@ -34,7 +32,7 @@ WRITE8_HANDLER( svision_sounddma_w )
 			svision_dma.size = (data ? data : 0x100) * 32;
 			break;
 		case 3:
-			svision_dma.step = Machine->drv->cpu[0].clock / (256.0 * Machine->sample_rate * (1 + (data & 3)));
+			svision_dma.step = cpunum_get_clock(0) / (256.0 * Machine->sample_rate * (1 + (data & 3)));
 			svision_dma.right = data & 4;
 			svision_dma.left = data & 8;
 			svision_dma.ca14to16 = ((data & 0x70) >> 4) << 14;
@@ -57,7 +55,7 @@ WRITE8_HANDLER( svision_noise_w )
 	{
 		case 0:
 			svision_noise.volume=data&0xf;
-			svision_noise.step=Machine->drv->cpu[0].clock/(256.0*Machine->sample_rate*(1+(data>>4)));
+			svision_noise.step= cpunum_get_clock(0) / (256.0*Machine->sample_rate*(1+(data>>4)));
 			break;
 		case 1:
 			svision_noise.count = data + 1;
@@ -89,7 +87,7 @@ void svision_soundport_w (SVISION_CHANNEL *channel, int offset, int data)
 			if (size)
 			{
 				//	channel->size=(int)(Machine->sample_rate*(size<<5)/4e6);
-				channel->size= (int) (Machine->sample_rate * (size << 5) / Machine->drv->cpu[0].clock);
+				channel->size= (int) (Machine->sample_rate * (size << 5) / cpunum_get_clock(0));
 			}
 			else
 			{

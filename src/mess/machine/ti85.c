@@ -8,6 +8,7 @@
 
 #include <stdarg.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "includes/ti85.h"
 #include "formats/ti85_ser.h"
@@ -114,7 +115,7 @@ static TIMER_CALLBACK(ti85_timer_callback)
 	{
 		if (ti85_ON_interrupt_mask && !ti85_ON_pressed)
 		{
-			cpunum_set_input_line(0, 0, HOLD_LINE);
+			cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 			ti85_ON_interrupt_status = 1;
 			if (!ti85_timer_interrupt_mask) ti85_timer_interrupt_mask = 1;
 		}
@@ -125,7 +126,7 @@ static TIMER_CALLBACK(ti85_timer_callback)
 		ti85_ON_pressed = 0;
 	if (ti85_timer_interrupt_mask)
 	{
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 		ti85_timer_interrupt_status = 1;
 	}
 }
@@ -148,7 +149,7 @@ static void update_ti86_memory (void)
 	else
 	{
 		memory_set_bankptr(2,memory_region(REGION_CPU1) + 0x010000 + 0x004000*(ti85_memory_page_0x4000&0x0f));
-		wh = MWA8_ROM;
+		wh = MWA8_UNMAP;
 	}
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, wh);
 
@@ -161,7 +162,7 @@ static void update_ti86_memory (void)
 	else
 	{
 		memory_set_bankptr(3,memory_region(REGION_CPU1) + 0x010000 + 0x004000*(ti86_memory_page_0x8000&0x0f));
-		wh = MWA8_ROM;
+		wh = MWA8_UNMAP;
 	}
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, wh);
 }
@@ -195,8 +196,8 @@ MACHINE_START( ti81 )
 
 	timer_pulse(ATTOTIME_IN_HZ(200), NULL, 0, ti85_timer_callback);
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MWA8_ROM);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MWA8_UNMAP);
 	memory_set_bankptr(1,memory_region(REGION_CPU1) + 0x010000);
 	memory_set_bankptr(2,memory_region(REGION_CPU1) + 0x014000);
 }
@@ -225,8 +226,8 @@ MACHINE_START( ti85 )
 
 	timer_pulse(ATTOTIME_IN_HZ(200), NULL, 0, ti85_timer_callback);
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MWA8_ROM);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MWA8_UNMAP);
 	memory_set_bankptr(1,memory_region(REGION_CPU1) + 0x010000);
 	memory_set_bankptr(2,memory_region(REGION_CPU1) + 0x014000);
 
@@ -254,7 +255,7 @@ MACHINE_START( ti86 )
 
 	ti86_ram = auto_malloc(128*1024);
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_ROM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
 
 		memory_set_bankptr(1,memory_region(REGION_CPU1) + 0x010000);
 		memory_set_bankptr(2,memory_region(REGION_CPU1) + 0x014000);
@@ -529,7 +530,7 @@ static void ti8x_snapshot_setup_registers (UINT8 * data)
 
 	activecpu_set_input_line(0, 0);
 	activecpu_set_input_line(INPUT_LINE_NMI, 0);
-	cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, 0);
 }
 
 static void ti85_setup_snapshot (UINT8 * data)

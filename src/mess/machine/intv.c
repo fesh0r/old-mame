@@ -156,7 +156,7 @@ READ8_HANDLER ( intvkbd_dualport8_msb_r )
 static int tape_interrupts_enabled;
 static int tape_unknown_write[6];
 static int tape_motor_mode;
-static const char *tape_motor_mode_desc[8] =
+static const char *const tape_motor_mode_desc[8] =
 {
 	"IDLE", "IDLE", "IDLE", "IDLE",
 	"EJECT", "PLAY/RECORD", "REWIND", "FF"
@@ -429,18 +429,18 @@ MACHINE_RESET( intv )
 
 static TIMER_CALLBACK(intv_interrupt_complete)
 {
-	cpunum_set_input_line(0, CP1610_INT_INTRM, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, CP1610_INT_INTRM, CLEAR_LINE);
 }
 
 INTERRUPT_GEN( intv_interrupt )
 {
-	cpunum_set_input_line(0, CP1610_INT_INTRM, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, CP1610_INT_INTRM, ASSERT_LINE);
 	sr1_int_pending = 1;
 	timer_set(ATTOTIME_IN_CYCLES(3791, 0), NULL, 0, intv_interrupt_complete);
 	stic_screenrefresh();
 }
 
-static UINT8 controller_table[] =
+static const UINT8 controller_table[] =
 {
 	0x81, 0x41, 0x21, 0x82, 0x42, 0x22, 0x84, 0x44,
 	0x24, 0x88, 0x48, 0x28, 0xa0, 0x60, 0xc0, 0x00,

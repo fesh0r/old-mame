@@ -207,9 +207,11 @@ TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 	DRIVER( cpc664 )	/* Amstrad (Schneider in Germany) 1985				*/
 	DRIVER( cpc6128 )	/* Amstrad (Schneider in Germany) 1985				*/
 	DRIVER( cpc6128f )	/* Amstrad (Schneider in Germany) 1985 (AZERTY)		*/
-	DRIVER( cpc464p )	/* Amstrad CPC464  Plus - 1987						*/
-	DRIVER( cpc6128p )	/* Amstrad CPC6128 Plus - 1987						*/
+	DRIVER( cpc464p )	/* Amstrad CPC464  Plus - 1990						*/
+	DRIVER( cpc6128p )	/* Amstrad CPC6128 Plus - 1990						*/
+	DRIVER( gx4000 )    /* Amstrad GX4000 - 1990                            */
 	DRIVER( kccomp )	/* VEB KC compact									*/
+	DRIVER( al520ex )   /* Patisonic Aleste 520EX (1993)                    */
 TESTDRIVER( pcw8256 )	/* 198? PCW8256										*/
 TESTDRIVER( pcw8512 )	/* 198? PCW8512										*/
 TESTDRIVER( pcw9256 )	/* 198? PCW9256										*/
@@ -695,7 +697,9 @@ TESTDRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
 	DRIVER( pdp1 )		/* 1961 DEC PDP1									*/
 
 	/* MEMOTECH */
-	DRIVER( mtx512 )	/* 1983 Memotech MTX512								*/
+	DRIVER( mtx512 )	/* 1983 Memotech MTX 512							*/
+	DRIVER( mtx500 )    /* 1983 Memotech MTX 500                            */
+	DRIVER( rs128 )     /* 1984 Memotech RS 128                             */
 
 	/* MATTEL */
 	DRIVER( intvkbd )	/* 1981 - Mattel Intellivision Keyboard Component	*/

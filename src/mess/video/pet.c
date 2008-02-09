@@ -7,11 +7,9 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "video/generic.h"
-#include "mscommon.h"
-
-#include "video/crtc6845.h"
+#include "deprecat.h"
 #include "includes/pet.h"
+
 
 void pet_vh_init (void)
 {

@@ -9,6 +9,8 @@
 #include "driver.h"
 #include "includes/mac.h"
 #include "streams.h"
+#include "deprecat.h"
+
 
 static sound_stream *mac_stream;
 static int sample_enable = 0;

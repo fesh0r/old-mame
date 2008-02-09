@@ -1,14 +1,13 @@
 /*
-	experimental LISA driver
+    experimental LISA driver
 
-	Raphael Nabet, 2000
+    Raphael Nabet, 2000
 */
 
 #include "driver.h"
-#include "video/generic.h"
+#include "includes/lisa.h"
 #include "devices/sonydriv.h"
 /*#include "machine/6522via.h"*/
-#include "machine/lisa.h"
 
 
 static ADDRESS_MAP_START(lisa_map, ADDRESS_SPACE_PROGRAM, 16)
@@ -32,14 +31,6 @@ static ADDRESS_MAP_START(lisa210_fdc_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x2000, 0xffff) AM_READWRITE(lisa_fdc_r, lisa_fdc_w)		/* handler for wrap-around */
 ADDRESS_MAP_END
 
-/* init with simple, fixed, B/W palette */
-static PALETTE_INIT( lisa )
-{
-	palette_set_color_rgb(machine, 0, 0xff, 0xff, 0xff);
-	palette_set_color_rgb(machine, 1, 0x00, 0x00, 0x00);
-}
-
-
 
 /* Lisa1 and Lisa 2 machine */
 static MACHINE_DRIVER_START( lisa )
@@ -61,8 +52,7 @@ static MACHINE_DRIVER_START( lisa )
 	MDRV_SCREEN_SIZE(880, 380)
 	MDRV_SCREEN_VISIBLE_AREA(0, 720-1, 0, 364-1)
 	MDRV_PALETTE_LENGTH(2)
-	MDRV_COLORTABLE_LENGTH(2)
-	MDRV_PALETTE_INIT(lisa)
+	MDRV_PALETTE_INIT(black_and_white)
 
 	MDRV_VIDEO_START(lisa)
 	MDRV_VIDEO_UPDATE(lisa)
@@ -218,9 +208,6 @@ ROM_START( lisa2 )
 
 	ROM_REGION(0x100,REGION_GFX1,0)		/* video ROM (includes S/N) */
 	ROM_LOAD( "vidstate.rom", 0x00, 0x100, CRC(75904783) SHA1(3b0023bd90f2ca1be0b099160a566b044856885d))
-
-	ROM_REGION(0x040000, REGION_USER1, 0)	/* 1 bit per byte of CPU RAM - used for parity check emulation */
-
 ROM_END
 
 ROM_START( lisa210 )
@@ -238,9 +225,6 @@ ROM_START( lisa210 )
 
 	ROM_REGION(0x100,REGION_GFX1, 0)		/* video ROM (includes S/N) */
 	ROM_LOAD( "vidstate.rom", 0x00, 0x100, CRC(75904783) SHA1(3b0023bd90f2ca1be0b099160a566b044856885d))
-
-	ROM_REGION(0x040000, REGION_USER1, 0)	/* 1 bit per byte of CPU RAM - used for parity check emulation */
-
 ROM_END
 
 ROM_START( macxl )
@@ -258,10 +242,8 @@ ROM_START( macxl )
 
 	ROM_REGION(0x100,REGION_GFX1, 0)		/* video ROM (includes S/N) ; no dump known, although Lisa ROM works fine at our level of emulation */
 	ROM_LOAD( "vidstate.rom", 0x00, 0x100, NO_DUMP)
-
-	ROM_REGION(0x040000, REGION_USER1, 0)	/* 1 bit per byte of CPU RAM - used for parity check emulation */
-
 ROM_END
+
 
 static void lisa_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -286,11 +268,10 @@ SYSTEM_CONFIG_START(lisa210)
 SYSTEM_CONFIG_END
 
 /*
-	Lisa drivers boot MacWorks, but do not boot the Lisa OS, which is why we set
-	the GAME_NOT_WORKING flag...
+    Lisa drivers boot MacWorks, but do not boot the Lisa OS, which is why we set
+    the GAME_NOT_WORKING flag...
 */
-/*	   YEAR  NAME	   PARENT	COMPAT	MACHINE   INPUT	 INIT	   CONFIG	COMPANY	 FULLNAME */
+/*     YEAR  NAME      PARENT   COMPAT  MACHINE   INPUT  INIT      CONFIG   COMPANY  FULLNAME */
 COMP( 1984, lisa2,    0,		0,		lisa,     lisa,	 lisa2,    lisa,	"Apple Computer",  "Lisa2", GAME_NOT_WORKING )
 COMP( 1984, lisa210,  lisa2,	0,		lisa210,  lisa,	 lisa210,  lisa210,	"Apple Computer",  "Lisa2/10", GAME_NOT_WORKING )
 COMP( 1985, macxl,    lisa2,	0,		macxl,    lisa,	 mac_xl,   lisa210,	"Apple Computer",  "Macintosh XL", /*GAME_NOT_WORKING*/0 )
-

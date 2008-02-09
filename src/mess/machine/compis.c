@@ -13,8 +13,8 @@
 /*-------------------------------------------------------------------------*/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/i86/i186intf.h"
-#include "video/generic.h"
 #include "video/i82720.h"
 #include "machine/8255ppi.h"
 #include "machine/mm58274c.h"
@@ -22,7 +22,7 @@
 #include "includes/compis.h"
 #include "machine/pit8253.h"
 #include "machine/nec765.h"
-#include "includes/msm8251.h"
+#include "machine/msm8251.h"
 #include "devices/basicdsk.h"
 #include "devices/printer.h"
 
@@ -187,7 +187,7 @@ static TYP_COMPIS compis;
 void compis_irq_set(UINT8 irq)
 {
 	cpunum_set_input_line_vector(0, 0, irq);
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 #endif
 
@@ -681,9 +681,9 @@ generate_int:
 	/* generate the appropriate interrupt */
 	i186.intr.poll_status = 0x8000 | new_vector;
 	if (!i186.intr.pending)
-		cpunum_set_input_line(2, 0, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 2, 0, ASSERT_LINE);
 	i186.intr.pending = 1;
-	cpu_trigger(CPU_RESUME_TRIGGER);
+	cpu_trigger(Machine, CPU_RESUME_TRIGGER);
 	if (LOG_OPTIMIZATION) logerror("  - trigger due to interrupt pending\n");
 	if (LOG_INTERRUPTS) logerror("(%f) **** Requesting interrupt vector %02X\n", attotime_to_double(timer_get_time()), new_vector);
 }
@@ -1542,7 +1542,7 @@ static void compis_pic_set_int_line(int which, int interrupt)
 	{
 		case 0:
 			/* Master */
-			cpunum_set_input_line(0, 0, interrupt ? HOLD_LINE : CLEAR_LINE);
+			cpunum_set_input_line(Machine, 0, 0, interrupt ? HOLD_LINE : CLEAR_LINE);
 			break;
 
 		case 1:

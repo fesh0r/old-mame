@@ -8,7 +8,6 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "video/generic.h"
 #include "includes/kim1.h"
 
 PALETTE_INIT( kim1 )
@@ -48,7 +47,7 @@ VIDEO_START( kim1 )
     videoram_size = 6 * 2 + 24;
     videoram = auto_malloc (videoram_size);
 
-	video_start_generic(machine);
+	VIDEO_START_CALL(generic);
 }
 
 VIDEO_UPDATE( kim1 )
@@ -72,7 +71,7 @@ VIDEO_UPDATE( kim1 )
 
         for (x = 0; x < 4; x++)
         {
-            static int layout[6][4] =
+            static const int layout[6][4] =
             {
                 {22, 19, 21, 23},
                 {16, 17, 20, 18},

@@ -37,10 +37,11 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
+#include "includes/lisa.h"
 #include "machine/6522via.h"
 #include "machine/applefdc.h"
 #include "devices/sonydriv.h"
-#include "machine/lisa.h"
 #include "cpu/m68000/m68k.h"
 #include "sound/speaker.h"
 
@@ -222,25 +223,25 @@ static void lisa_field_interrupts(void)
 
 	/*if (RSIR)
 		// serial interrupt
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_6, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_6, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int0)
 		// external interrupt
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int1)
 		// external interrupt
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int2)
 		// external interrupt
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_3, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_3, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else*/ if (KBIR)
 		/* COPS VIA interrupt */
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_2, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_2, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (FDIR || VTIR)
 		/* floppy disk or VBl */
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else
 		/* clear all interrupts */
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 static void set_parity_error_pending(int value)
@@ -250,18 +251,18 @@ static void set_parity_error_pending(int value)
 	parity_error_pending = value;
 	if (parity_error_pending)
 	{
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	}
 	else
 	{
-		cpunum_set_input_line(0, M68K_IRQ_7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, M68K_IRQ_7, CLEAR_LINE);
 	}
 #else
 	/* work-around... */
 	if ((! parity_error_pending) && value)
 	{
 		parity_error_pending = TRUE;
-		cpunum_set_input_line_and_vector(0, M68K_IRQ_7, PULSE_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpunum_set_input_line_and_vector(Machine, 0, M68K_IRQ_7, PULSE_LINE, M68K_INT_ACK_AUTOVECTOR);
 	}
 	else if (parity_error_pending && (! value))
 	{
@@ -349,7 +350,7 @@ INLINE void COPS_send_data_if_possible(void)
 }
 
 /* send data (queue it into the FIFO if needed) */
-static void COPS_queue_data(UINT8 *data, int len)
+static void COPS_queue_data(const UINT8 *data, int len)
 {
 #if 0
 	if (fifo_size + len <= 8)
@@ -420,7 +421,7 @@ static void scan_keyboard( void )
 #if 0
 						if (keycode == NMIcode)
 						{	/* generate NMI interrupt */
-							cpunum_set_input_line(0, M68K_IRQ_7, PULSE_LINE);
+							cpunum_set_input_line(machine, 0, M68K_IRQ_7, PULSE_LINE);
 							cpunum_set_input_line_vector(0, M68K_IRQ_7, M68K_INT_ACK_AUTOVECTOR);
 						}
 #endif
@@ -709,7 +710,7 @@ static void reset_COPS(void)
 
 static void unplug_keyboard(void)
 {
-	UINT8 cmd[2] =
+	static const UINT8 cmd[2] =
 	{
 		0x80,	/* RESET code */
 		0xFD	/* keyboard unplugged */
@@ -737,7 +738,7 @@ static void plug_keyboard(void)
 			unknown : spanish, US dvorak, italian & swedish
 	*/
 
-	UINT8 cmd[2] =
+	static const UINT8 cmd[2] =
 	{
 		0x80,	/* RESET code */
 		0x3f	/* keyboard ID - US for now */
@@ -914,7 +915,7 @@ VIDEO_UPDATE( lisa )
 	for (y = 0; y < resy; y++)
 	{
 		for (x = 0; x < resx; x++)
-			line_buffer[x] = (v[(x+y*resx)>>4] & (0x8000 >> ((x+y*resx) & 0xf))) ? 1 : 0;
+			line_buffer[x] = (v[(x+y*resx)>>4] & (0x8000 >> ((x+y*resx) & 0xf))) ? 0 : 1;
 		draw_scanline8(bitmap, 0, y, resx, line_buffer, machine->pens, -1);
 	}
 	return 0;
@@ -1087,6 +1088,8 @@ DRIVER_INIT( lisa2 )
 	lisa_features.floppy_hardware = sony_lisa2;
 	lisa_features.has_double_sided_floppy = 0;
 	lisa_features.has_mac_xl_video = 0;
+	
+	bad_parity_table = auto_malloc(0x40000);  /* 1 bit per byte of CPU RAM */
 }
 
 DRIVER_INIT( lisa210 )
@@ -1096,6 +1099,8 @@ DRIVER_INIT( lisa210 )
 	lisa_features.floppy_hardware = sony_lisa210;
 	lisa_features.has_double_sided_floppy = 0;
 	lisa_features.has_mac_xl_video = 0;
+	
+	bad_parity_table = auto_malloc(0x40000);  /* 1 bit per byte of CPU RAM */
 }
 
 DRIVER_INIT( mac_xl )
@@ -1105,6 +1110,8 @@ DRIVER_INIT( mac_xl )
 	lisa_features.floppy_hardware = sony_lisa210;
 	lisa_features.has_double_sided_floppy = 0;
 	lisa_features.has_mac_xl_video = 1;
+	
+	bad_parity_table = auto_malloc(0x40000);  /* 1 bit per byte of CPU RAM */
 }
 
 static void lisa2_set_iwm_enable_lines(int enable_mask)
@@ -1147,8 +1154,7 @@ MACHINE_RESET( lisa )
 	parity_error_pending = FALSE;
 
 	bad_parity_count = 0;
-	bad_parity_table = memory_region(REGION_USER1);
-	memset(bad_parity_table, 0, memory_region_length(REGION_USER1));	/* Clear */
+	memset(bad_parity_table, 0, 0x40000);	/* Clear */
 
 	/* init video */
 
@@ -1172,7 +1178,7 @@ MACHINE_RESET( lisa )
 
 	/* initialize floppy */
 	{
-		struct applefdc_interface intf =
+		static struct applefdc_interface intf =
 		{
 			APPLEFDC_IWM,
 			sony_set_lines,
@@ -1199,7 +1205,7 @@ MACHINE_RESET( lisa )
 	}
 }
 
-void lisa_interrupt(void)
+INTERRUPT_GEN( lisa_interrupt )
 {
 	static int frame_count = 0;
 
@@ -1218,7 +1224,7 @@ void lisa_interrupt(void)
 					if (clock_regs.alarm == 0)
 					{
 						/* generate reset (should cause a VIA interrupt...) */
-						UINT8 cmd[2] =
+						static const UINT8 cmd[2] =
 						{
 							0x80,	/* RESET code */
 							0xFC	/* timer time-out */

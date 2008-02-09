@@ -2,6 +2,7 @@
  PeT mess@utanet.at 2001
 ******************************************************************************/
 #include "driver.h"
+#include "deprecat.h"
 
 #include "includes/arcadia.h"
 
@@ -821,11 +822,11 @@ INTERRUPT_GEN( arcadia_video_line )
 	/* 7-Sep-2007 - whomever wrote this crap code was dynamically remapping
 	 * the color table, a vile gross hack.  Doesn't look like this is going
 	 * to survive the 0.118u5 transition */
-	/*Machine->gfx[0]->colortable[0]=Machine->pens[arcadia_video.reg.d.pal[1]&7];*/
+	/*machine->gfx[0]->colortable[0]=machine->pens[arcadia_video.reg.d.pal[1]&7];*/
 
 	if (arcadia_video.line<arcadia_video.ypos)
 	{
-		plot_box(arcadia_video.bitmap, 0, arcadia_video.line, Machine->screen[0].width, 1, Machine->remapped_colortable[Machine->gfx[0]->color_base + 0]);
+		plot_box(arcadia_video.bitmap, 0, arcadia_video.line, machine->screen[0].width, 1, machine->remapped_colortable[machine->gfx[0]->color_base + 0]);
 		memset(arcadia_video.bg[arcadia_video.line], 0, sizeof(arcadia_video.bg[0]));
 	}
 	else
@@ -853,7 +854,7 @@ INTERRUPT_GEN( arcadia_video_line )
 		else
 		{
 			arcadia_video.charline=0xd;
-			plot_box(arcadia_video.bitmap, 0, arcadia_video.line, Machine->screen[0].width, 1, Machine->remapped_colortable[Machine->gfx[0]->color_base + 0]);
+			plot_box(arcadia_video.bitmap, 0, arcadia_video.line, machine->screen[0].width, 1, machine->remapped_colortable[machine->gfx[0]->color_base + 0]);
 			memset(arcadia_video.bg[arcadia_video.line], 0, sizeof(arcadia_video.bg[0]));
 		}
 	}
@@ -868,6 +869,6 @@ READ8_HANDLER(arcadia_vsync_r)
 
 VIDEO_UPDATE( arcadia )
 {
-	copybitmap(bitmap, arcadia_video.bitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
+	copybitmap(bitmap, arcadia_video.bitmap, 0, 0, 0, 0, cliprect);
 	return 0;
 }

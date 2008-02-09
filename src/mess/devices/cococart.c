@@ -6,9 +6,9 @@
 
 *********************************************************************/
 
+#include "driver.h"
 #include "cococart.h"
-#include "cpuintrf.h"
-#include "sndintrf.h"
+#include "deprecat.h"
 
 
 struct _coco_cartridge

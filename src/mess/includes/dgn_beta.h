@@ -1,5 +1,12 @@
-#ifndef DGN_BETA
-#define DGN_BETA
+/*****************************************************************************
+ *
+ * includes/dgn_beta.h
+ *
+ ****************************************************************************/
+
+#ifndef DGN_BETA_H_
+#define DGN_BETA_H_
+
 
 #define DGNBETA_CPU_SPEED_HZ		2000000	/* 2MHz */
 #define DGNBETA_FRAMES_PER_SECOND	50
@@ -51,6 +58,9 @@ typedef enum
 	GRAPH_640x512x2					/* Graphics 640X512X2 */
 } BETA_VID_MODES;
 
+#define iosize	(0xfEFF-0xfc00)
+
+
 /*----------- defined in machine/dgn_beta.c -----------*/
 
 MACHINE_START( dgnbeta );
@@ -60,23 +70,23 @@ READ8_HANDLER( dgn_beta_page_r );
 WRITE8_HANDLER( dgn_beta_page_w );
 
 // Ram banking handlers.
-void dgnbeta_ram_b0_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_b1_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_b2_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_b3_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_b4_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_b5_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_b6_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_b7_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_b8_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_b9_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_bA_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_bB_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_bC_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_bD_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_bE_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_bF_w(offs_t offset, UINT8 data);
-void dgnbeta_ram_bG_w(offs_t offset, UINT8 data);
+WRITE8_HANDLER( dgnbeta_ram_b0_w );
+WRITE8_HANDLER( dgnbeta_ram_b1_w );
+WRITE8_HANDLER( dgnbeta_ram_b2_w );
+WRITE8_HANDLER( dgnbeta_ram_b3_w );
+WRITE8_HANDLER( dgnbeta_ram_b4_w );
+WRITE8_HANDLER( dgnbeta_ram_b5_w );
+WRITE8_HANDLER( dgnbeta_ram_b6_w );
+WRITE8_HANDLER( dgnbeta_ram_b7_w );
+WRITE8_HANDLER( dgnbeta_ram_b8_w );
+WRITE8_HANDLER( dgnbeta_ram_b9_w );
+WRITE8_HANDLER( dgnbeta_ram_bA_w );
+WRITE8_HANDLER( dgnbeta_ram_bB_w );
+WRITE8_HANDLER( dgnbeta_ram_bC_w );
+WRITE8_HANDLER( dgnbeta_ram_bD_w );
+WRITE8_HANDLER( dgnbeta_ram_bE_w );
+WRITE8_HANDLER( dgnbeta_ram_bF_w );
+WRITE8_HANDLER( dgnbeta_ram_bG_w );
 
 /*  WD2797 FDC */
 READ8_HANDLER(dgnbeta_wd2797_r);
@@ -90,7 +100,7 @@ void dgn_beta_line_interrupt (int data);
 /*----------- defined in video/dgn_beta.c -----------*/
 
 /* mc6845 video display generator */
-void init_video(void);
+void init_video(running_machine *machine);
 extern VIDEO_UPDATE( dgnbeta );
 void vid_set_gctrl(int data);
 
@@ -101,6 +111,4 @@ READ8_HANDLER(dgnbeta_6845_r);
 WRITE8_HANDLER(dgnbeta_6845_w);
 
 
-#define iosize	(0xfEFF-0xfc00)
-
-#endif
+#endif /* DGN_BETA_H_ */

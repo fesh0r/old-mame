@@ -87,7 +87,13 @@
 
 ***************************************************************************/
 
+/* Core includes */
+#include "driver.h"
+#include "memconv.h"
 #include "includes/bebox.h"
+#include "deprecat.h"
+
+/* Components */
 #include "video/pc_vga.h"
 #include "video/cirrus.h"
 #include "cpu/powerpc/ppc.h"
@@ -103,8 +109,7 @@
 #include "machine/intelfsh.h"
 #include "machine/8042kbdc.h"
 #include "machine/53c810.h"
-#include "memconv.h"
-#include "mslegacy.h"
+
 
 #define LOG_CPUIMASK	1
 #define LOG_UART		1
@@ -225,7 +230,7 @@ WRITE64_HANDLER( bebox_crossproc_interrupts_w )
 					(crossproc_map[i].inputline == PPC_INPUT_LINE_SMI) ? "SMI" : "TLBISYNC");
 			}
 
-			cpunum_set_input_line(crossproc_map[i].cpunum, crossproc_map[i].inputline, line);
+			cpunum_set_input_line(Machine, crossproc_map[i].cpunum, crossproc_map[i].inputline, line);
 		}
 	}
 }
@@ -236,7 +241,7 @@ WRITE64_HANDLER( bebox_processor_resets_w )
 
 	if (b & 0x20)
 	{
-		cpunum_set_input_line(1, INPUT_LINE_RESET, (b & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (b & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 	}
 }
 
@@ -256,14 +261,14 @@ static void bebox_update_interrupts(void)
 				bebox_interrupts, bebox_cpu_imask[cpunum], interrupt ? "on" : "off");
 		}
 
-		cpunum_set_input_line(cpunum, INPUT_LINE_IRQ0, interrupt ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(Machine, cpunum, INPUT_LINE_IRQ0, interrupt ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
 
 static void bebox_set_irq_bit(unsigned int interrupt_bit, int val)
 {
-	static const char *interrupt_names[32] =
+	static const char *const interrupt_names[32] =
 	{
 		NULL,
 		NULL,
@@ -968,9 +973,14 @@ NVRAM_HANDLER( bebox )
 
 MACHINE_RESET( bebox )
 {
-	cpunum_set_input_line(0, INPUT_LINE_RESET, CLEAR_LINE);
-	cpunum_set_input_line(1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 	ide_controller_reset(0);
+}
+
+static void bebox_exit(running_machine *machine)
+{
+	lsi53c810_exit(&scsi53c810_intf);
 }
 
 DRIVER_INIT( bebox )
@@ -1024,6 +1034,7 @@ DRIVER_INIT( bebox )
 
 	/* SCSI */
 	lsi53c810_init(&scsi53c810_intf);
+	add_exit_callback(machine, bebox_exit);
 
 	/* The following is a verrrry ugly hack put in to support NetBSD for
 	 * NetBSD.  When NetBSD/bebox it does most of its work on CPU #0 and then

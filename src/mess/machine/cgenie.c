@@ -9,16 +9,15 @@
 
 #include <stdarg.h>
 #include "driver.h"
-#include "timer.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
-#include "video/generic.h"
 #include "includes/cgenie.h"
 #include "machine/wd17xx.h"
 #include "devices/basicdsk.h"
 #include "devices/cartslot.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
-#include "image.h"
+
 
 #define AYWriteReg(chip,port,value) \
 	AY8910_control_port_0_w(0,port);  \
@@ -215,7 +214,7 @@ static OPBASE_HANDLER (opbaseoverride)
 
 static void cgenie_fdc_callback(wd17xx_state_t event, void *param);
 
-static void cgenie_machine_reset(running_machine *machine)
+MACHINE_RESET( cgenie )
 {
 	UINT8 *ROM = memory_region(REGION_CPU1);
 
@@ -252,8 +251,9 @@ static void cgenie_machine_reset(running_machine *machine)
 	{
 		if ( readinputport(0) & 0x080 )
 		{
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MRA8_ROM);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_ROM);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MRA8_BANK10);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_NOP);
+			memory_set_bankptr(10, &ROM[0x0c000]);
 			logerror("cgenie DOS enabled\n");
 			memcpy(&ROM[0x0c000],&ROM[0x10000], 0x2000);
 		}
@@ -319,7 +319,7 @@ MACHINE_START( cgenie )
 	 * Every fifth cycle is a wait cycle, so I reduced
 	 * the overlocking by one fitfth
 	 */
-	cpunum_set_clockscale(0, 0.80);
+	cpunum_set_clockscale(machine, 0, 0.80);
 
 	/* Initialize some patterns to be displayed in graphics mode */
 	for( i = 0; i < 256; i++ )
@@ -334,7 +334,6 @@ MACHINE_START( cgenie )
 	/* set up FDC */
 	wd17xx_init(WD_TYPE_179X, cgenie_fdc_callback, NULL);
 
-	add_reset_callback(machine, cgenie_machine_reset);
 	add_exit_callback(machine, tape_put_close);
 }
 
@@ -808,19 +807,11 @@ WRITE8_HANDLER( cgenie_port_ff_w )
 	{
 		cgenie_font_offset[2] = (data & FF_CHR0) ? 0x00 : 0x80;
 		cgenie_font_offset[3] = (data & FF_CHR1) ? 0x00 : 0x80;
-		if( (port_ff_changed & FF_CHR) == FF_CHR )
-			cgenie_invalidate_range(0x80, 0xff);
-		else
-		if( (port_ff_changed & FF_CHR) == FF_CHR0 )
-			cgenie_invalidate_range(0x80, 0xbf);
-		else
-			cgenie_invalidate_range(0xc0, 0xff);
 	}
 
 	/* graphics mode changed ? */
 	if( port_ff_changed & FF_FGR )
 	{
-		cgenie_invalidate_range(0x00, 0xff);
 		cgenie_mode_select(data & FF_FGR);
 	}
 
@@ -858,7 +849,7 @@ static UINT8 psg_b_inp = 0x00;
 	return psg_a_inp;
 }
 
-UINT8 cgenie_psg_port_b_r(offs_t port)
+ READ8_HANDLER( cgenie_psg_port_b_r )
 {
 	if( psg_a_out < 0xd0 )
 	{
@@ -980,7 +971,7 @@ INTERRUPT_GEN( cgenie_timer_interrupt )
 	if( (irq_status & IRQ_TIMER) == 0 )
 	{
 		irq_status |= IRQ_TIMER;
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 }
 
@@ -989,7 +980,7 @@ static INTERRUPT_GEN( cgenie_fdc_interrupt )
 	if( (irq_status & IRQ_FDC) == 0 )
 	{
 		irq_status |= IRQ_FDC;
-		cpunum_set_input_line(0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 }
 
@@ -1005,7 +996,7 @@ void cgenie_fdc_callback(wd17xx_state_t event, void *param)
 			irq_status &= ~IRQ_FDC;
 			break;
 		case WD17XX_IRQ_SET:
-			cgenie_fdc_interrupt();
+			cgenie_fdc_interrupt(Machine, 0);
 			break;
 		case WD17XX_DRQ_CLR:
 		case WD17XX_DRQ_SET:
@@ -1084,7 +1075,6 @@ WRITE8_HANDLER( cgenie_videoram_w )
 	if( data == videoram[offset] )
 		return; 			   /* no change */
 	videoram[offset] = data;
-	dirtybuffer[offset] = 1;
 }
 
  READ8_HANDLER( cgenie_colorram_r )
@@ -1094,21 +1084,16 @@ WRITE8_HANDLER( cgenie_videoram_w )
 
 WRITE8_HANDLER( cgenie_colorram_w )
 {
-	int a;
-
 	/* only bits 0 to 3 */
 	data &= 15;
 	/* nothing changed ? */
 	if( data == colorram[offset] )
 		return;
 
-/* set new value */
+	/* set new value */
 	colorram[offset] = data;
-/* make offset relative to video frame buffer offset */
+	/* make offset relative to video frame buffer offset */
 	offset = (offset + (cgenie_get_register(12) << 8) + cgenie_get_register(13)) & 0x3ff;
-/* mark every 1k of the frame buffer dirty */
-	for( a = offset; a < 0x4000; a += 0x400 )
-		dirtybuffer[a] = 1;
 }
 
  READ8_HANDLER( cgenie_fontram_r )
@@ -1119,7 +1104,6 @@ WRITE8_HANDLER( cgenie_colorram_w )
 WRITE8_HANDLER( cgenie_fontram_w )
 {
 	UINT8 *dp;
-	int code;
 
 	if( data == cgenie_fontram[offset] )
 		return; 			   /* no change */
@@ -1137,10 +1121,6 @@ WRITE8_HANDLER( cgenie_fontram_w )
 	dp[5] = (data & 0x04) ? 1 : 0;
 	dp[6] = (data & 0x02) ? 1 : 0;
 	dp[7] = (data & 0x01) ? 1 : 0;
-
-	/* invalidate related character */
-	code = 0x80 + offset / 8;
-	cgenie_invalidate_range(code, code);
 }
 
 /*************************************
@@ -1154,10 +1134,8 @@ INTERRUPT_GEN( cgenie_frame_interrupt )
 	if( cgenie_tv_mode != (readinputport(0) & 0x10) )
 	{
 		cgenie_tv_mode = input_port_0_r(0) & 0x10;
-		memset(dirtybuffer, 1, videoram_size);
 		/* force setting of background color */
 		port_ff ^= FF_BGD0;
 		cgenie_port_ff_w(0, port_ff ^ FF_BGD0);
 	}
 }
-

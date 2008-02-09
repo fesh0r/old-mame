@@ -1,59 +1,72 @@
 /******************************************************************************
 
-	amstrad.c
-	system driver
+    amstrad.c
+    system driver
 
-		Amstrad Hardware:
-			- 8255 connected to AY-3-8912 sound generator,
-				keyboard, cassette, printer, crtc vsync output,
-				and some PCB links
-			- 6845 (either HD6845S, UM6845R or M6845) crtc graphics display
-			  controller
-			- NEC765 floppy disc controller (CPC664,CPC6128)
-			- Z80 CPU running at 4Mhz (slowed by wait states on memory
-			  access)
-			- custom ASIC "Gate Array" controlling rom paging, ram paging,
-				current display mode and colour palette
+        Amstrad Hardware:
+            - 8255 connected to AY-3-8912 sound generator,
+                keyboard, cassette, printer, crtc vsync output,
+                and some PCB links
+            - 6845 (either HD6845S, UM6845R or M6845) crtc graphics display
+              controller
+            - NEC765 floppy disc controller (CPC664,CPC6128)
+            - Z80 CPU running at 4Mhz (slowed by wait states on memory
+              access)
+            - custom ASIC "Gate Array" controlling rom paging, ram paging,
+                current display mode and colour palette
 
-	Kevin Thacker [MESS driver]
+    Kevin Thacker [MESS driver]
 
-  May-June 2004 - Yoann Courtois (aka Papagayo/ex GMC/ex PARADOX) - rewritting some code with hardware documentation from http://www.cepece.info/amstrad/
+  May-June 2004 - Yoann Courtois (aka Papagayo/ex GMC/ex PARADOX) - rewriting some code with hardware documentation from http://www.cepece.info/amstrad/
 
   June 2006  - Very preliminary CPC+ support.  CPR cart image handling, secondary ROM register, ASIC unlock detection
                Supported:
-			   12-bit palette,
-			   12-bit hardware sprites (largely works from what I've seen, some games have display issues),
-			   Programmable Raster Interrupt (seems to work),
-			   Split screen registers,
-			   Soft scroll registers (only byte-by-byre horizontally for now),
-			   Analogue controls (may well be completely wrong, I have no idea on how these should work),
-			   Vectored interrupts for Z80 interrupt mode 2 (used by Pang),
-			   DMA sound channels (may still be some issues, noticable in Navy Seals and Copter 271)
-			   04/07/06:  Added interrupt vector support for IM 2.
-			              Added soft scroll register implementation.  Vertical adjustments are a bit shaky.
-			   05/07/06:  Fixed hardware sprite offsets
-			   14/07/06:  Added basic analogue control support.
-			   04/08/06:  Fixed PRI and Split screen scanline offsets (based on code in Arnold ;))
-			              Implemented DMA sound channels
-			   06/08/06:  Fixed CRTC palette if the ASIC was re-locked after already being unlocked and used.
-			              This fixes Klax, which is now playable.
-			   08/08/06:  Fixed up vertical soft scroll, now we just need to get a finer detail on horizontal soft scroll
-			              (Only works on a byte level for now)
-						  Fixed DMA pause function when the prescaler is set to 0.
+               12-bit palette,
+               12-bit hardware sprites (largely works from what I've seen, some games have display issues),
+               Programmable Raster Interrupt (seems to work),
+               Split screen registers,
+               Soft scroll registers (only byte-by-byre horizontally for now),
+               Analogue controls (may well be completely wrong, I have no idea on how these should work),
+               Vectored interrupts for Z80 interrupt mode 2 (used by Pang),
+               DMA sound channels (may still be some issues, noticable in Navy Seals and Copter 271)
+               04/07/06:  Added interrupt vector support for IM 2.
+                          Added soft scroll register implementation.  Vertical adjustments are a bit shaky.
+               05/07/06:  Fixed hardware sprite offsets
+               14/07/06:  Added basic analogue control support.
+               04/08/06:  Fixed PRI and Split screen scanline offsets (based on code in Arnold ;))
+                          Implemented DMA sound channels
+               06/08/06:  Fixed CRTC palette if the ASIC was re-locked after already being unlocked and used.
+                          This fixes Klax, which is now playable.
+               08/08/06:  Fixed up vertical soft scroll, now we just need to get a finer detail on horizontal soft scroll
+                          (Only works on a byte level for now)
+                          Fixed DMA pause function when the prescaler is set to 0.
 
-			   Tested with the Arnold 5 Diagnostic Cartridge.  Mostly works fine, but the soft scroll test is
-			   noticably wrong.
+               Tested with the Arnold 5 Diagnostic Cartridge.  Mostly works fine, but the soft scroll test is
+               noticably wrong.
 
-			   Known issues with some games (as at 08/08/06):
-			   Robocop 2:  playable, but sprites cut out for some reason (possibly IRQ related, I think) every now and then.
-			   Navy Seals:  Playable, but has similar problems to Robocop 2.
-			   Dick Tracy:  Sprite visibility issues
-			   Switchblade:  has some slowdown when numerous enemies are on screen (normal?)
-			   Epyx World of Sports: doesn't start at all.
-			   Tennis Cup II:  controls don't seem to work.
-			   Fire and Forget II:  playable, but the top half of the screen flickers
-			   Crazy Cars II:  playable, with slight shaking of horizon
-			   No Exit:  Display is wrong, but usable, uses demo-like techniques.
+               Known issues with some games (as at 12/01/08):
+               Robocop 2:  playable, but sprites should be cut off outside the playing area (partial updates should be able to fix this).
+               Navy Seals:  Playable, but sound effects cut out at times (probably DMA related).
+               Dick Tracy:  Sprite visibility issues
+               Switchblade:  has some slowdown when numerous enemies are on screen (normal?)
+               Epyx World of Sports: doesn't start at all.
+               Tennis Cup II:  controls don't seem to work.
+               Fire and Forget II:  playable, but the top half of the screen flickers
+               Crazy Cars II:  playable, with slight shaking of horizon
+               No Exit:  Display is wrong, but usable, uses demo-like techniques.
+
+
+   January 2008 - added preliminary Aleste 520EX support
+               The Aleste 520EX is a Russian clone of the CPC6128, that expands on existing video mode, and can run MSX-DOS.
+			   It also adds an MC146818 RTC/NVRAM, an Intel 8253 timer, and the "Magic Sound" board, a 4-channel DMA-based
+			   sample player.  Also includes a software emulation of the MSX2 VDP, used in the ports of MSX games.
+
+			   Known issues:
+			    - The RTC doesn't always update in setup.  It expects bit 4 of register C (Update End Interrupt) to be high.
+				- Title screens appear then disappear quickly (probably because the 8253 hasn't been plugged in yet).
+				- Some video modes display wrong (still needs some work here).
+				- Vampire Killer crashes after collecting a certain key part way through stage 1.
+				- Magic Sound isn't emulated.
 
 
 Some bugs left :
@@ -62,23 +75,32 @@ Some bugs left :
     - Gate Array and CRTC aren't synchronised. (The Gate Array can change the color every microseconds?) So the multi-rasters in one line aren't supported (see yao demo p007's part)!
     - Implement full Asic for CPC+ emulation.  Soft scroll is rather dodgy.  8-bit printer port (bit 3 of CRTC reg 12) not implemented.
  ******************************************************************************/
-#include "driver.h"
 
-#include "includes/centroni.h"
+/* Core includes */
+#include "driver.h"
+#include "includes/amstrad.h"
+
+/* Components */
+#include "machine/centroni.h"
 #include "machine/8255ppi.h"	/* for 8255 ppi */
 #include "cpu/z80/z80.h"		/* for cycle tables */
 #include "video/m6845.h"		/* CRTC display */
-#include "includes/amstrad.h"
 #include "machine/nec765.h"	/* for floppy disc controller */
+#include "sound/ay8910.h"
+#include "machine/mc146818.h"  /* Aleste RTC */
+
+/* Devices */
 #include "devices/dsk.h"		/* for CPCEMU style disk images */
+#include "devices/basicdsk.h"   /* for 720k MSX disk images (Aleste supports these) */
+#include "includes/msx_slot.h"  
+#include "includes/msx.h"  /* MSX floppy device load */
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
 #include "devices/printer.h"
 #include "devices/cassette.h"
-#include "inputx.h"
-#include "mslegacy.h"
-#include "sound/ay8910.h"
 #include "formats/tzx_cas.h"
+#include "deprecat.h"
+
 
 #ifdef AMSTRAD_VIDEO_EVENT_LIST
 /* for event list */
@@ -88,8 +110,9 @@ Some bugs left :
 #define MANUFACTURER_NAME 0x07
 #define TV_REFRESH_RATE 0x10
 
-#define SYSTEM_CPC 0
-#define SYSTEM_PLUS 1
+#define SYSTEM_CPC    0
+#define SYSTEM_PLUS   1
+#define SYSTEM_GX4000 2
 
 //int selected_m6845_address = 0;
 
@@ -103,6 +126,7 @@ static const unsigned char asic_unlock_seq[15] =
 };
 
 int amstrad_system_type;
+int aleste_mode;
 static int amstrad_plus_lower;  // CPC+/GX4000 cartridge bank loaded in lower ROM area
 static int amstrad_plus_lower_addr;  // CPC+/GX4000 lower ROM area address / ASIC register page enable
 static int amstrad_plus_lower_enabled;  // secondary lower ROM select in use?
@@ -147,6 +171,10 @@ static int amstrad_keyboard_line;
 
 static unsigned char previous_amstrad_UpperRom_data;
 static unsigned char previous_printer_data_byte;
+
+static int aleste_rtc_function;
+static int aleste_fdc_int;
+
 /*------------------
   - Ram Management -
   ------------------*/
@@ -211,19 +239,43 @@ static unsigned char amstrad_Psg_FunctionSelected;
 
 static void update_psg(void)
 {
-  switch (amstrad_Psg_FunctionSelected) {
-  	case 0: {/* Inactive */
-    } break;
-  	case 1: {/* b6 = 1 ? : Read from selected PSG register and make the register data available to PPI Port A */
-  		ppi_port_inputs[amstrad_ppi_PortA] = AY8910_read_port_0_r(0);
-  	} break;
-  	case 2: {/* b7 = 1 ? : Write to selected PSG register and write data to PPI Port A */
-  		AY8910_write_port_0_w(0, ppi_port_outputs[amstrad_ppi_PortA]);
-  	} break;
-  	case 3: {/* b6 and b7 = 1 ? : The register will now be selected and the user can read from or write to it.  The register will remain selected until another is chosen.*/
-  		AY8910_control_port_0_w(0, ppi_port_outputs[amstrad_ppi_PortA]);
-		prev_reg = ppi_port_outputs[amstrad_ppi_PortA];
-  	} break;
+	if(aleste_mode & 0x20)  // RTC selected
+	{
+		switch(aleste_rtc_function)
+		{
+		case 0x02:  // AS
+			mc146818_port_w(0,ppi_port_outputs[amstrad_ppi_PortA]);
+			break;
+		case 0x04:  // DS write
+			mc146818_port_w(1,ppi_port_outputs[amstrad_ppi_PortA]);
+			break;
+		case 0x05:  // DS read
+			ppi_port_inputs[amstrad_ppi_PortA] = mc146818_port_r(1);
+			break;
+		}
+		return;
+	}
+  switch (amstrad_Psg_FunctionSelected) 
+  {
+  	case 0: 
+		{/* Inactive */
+		} break;
+  	case 1: 
+		{/* b6 = 1 ? : Read from selected PSG register and make the register data available to PPI Port A */
+  			ppi_port_inputs[amstrad_ppi_PortA] = AY8910_read_port_0_r(0);
+  		} 
+		break;
+  	case 2: 
+		{/* b7 = 1 ? : Write to selected PSG register and write data to PPI Port A */
+  			AY8910_write_port_0_w(0, ppi_port_outputs[amstrad_ppi_PortA]);
+  		} 
+		break;
+  	case 3: 
+		{/* b6 and b7 = 1 ? : The register will now be selected and the user can read from or write to it.  The register will remain selected until another is chosen.*/
+  			AY8910_control_port_0_w(0, ppi_port_outputs[amstrad_ppi_PortA]);
+			prev_reg = ppi_port_outputs[amstrad_ppi_PortA];
+  		} 
+		break;
   	default: {
     } break;
 	}
@@ -233,13 +285,13 @@ static void update_psg(void)
 static READ8_HANDLER ( amstrad_ppi_porta_r )
 {
 	update_psg();
-  return ppi_port_inputs[amstrad_ppi_PortA];
+	return ppi_port_inputs[amstrad_ppi_PortA];
 }
 
 static WRITE8_HANDLER ( amstrad_ppi_porta_w )
 {
-  	ppi_port_outputs[amstrad_ppi_PortA] = data;
-    update_psg();
+	ppi_port_outputs[amstrad_ppi_PortA] = data;
+	update_psg();
 }
 
 /* - Read PPI Port B -
@@ -271,18 +323,32 @@ static READ8_HANDLER (amstrad_ppi_portb_r)
 {
 	int data = 0;
 /* Set b7 with cassette tape input */
-	if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.03) {
-		data |= (1<<7);
-  }
+	if(amstrad_system_type != SYSTEM_GX4000)
+	{
+		if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.03) {
+			data |= (1<<7);
+		}
+	}
 /* Set b6 with Parallel/Printer port ready */
-	if (printer_status(image_from_devtype_and_index(IO_PRINTER, 0), 0)==0 ) {
-		data |= (1<<6);
-  }
+	if(amstrad_system_type != SYSTEM_GX4000)
+	{
+		if (printer_status(image_from_devtype_and_index(IO_PRINTER, 0), 0)==0 ) {
+			data |= (1<<6);
+		}
+	}
 /* Set b4-b1 50hz/60hz state and manufacturer name defined by links on PCB */
 	data |= (ppi_port_inputs[amstrad_ppi_PortB] & 0x1e);
 
-/* 	Set b0 with VSync state from the CRTC */
+/*  Set b0 with VSync state from the CRTC */
 	data |= amstrad_CRTC_VS; // m6845_vertical_sync_r(0);
+
+	if(aleste_mode & 0x04)
+	{
+		if(aleste_fdc_int == 0)
+			data &= ~0x02;
+		else
+			data |= 0x02;
+	}
 
 	return data;
 }
@@ -315,20 +381,29 @@ static WRITE8_HANDLER ( amstrad_ppi_portc_w )
 /* get b7 and b6 (PSG Function Selected */
 	amstrad_Psg_FunctionSelected = ((data & 0xC0)>>6);
 
+	/* MC146818 function */
+	aleste_rtc_function = data & 0x07;
+
 /* Perform PSG function */
 	update_psg();
 
 /* b5 Cassette Write data */
-	if ((changed_data & 0x20) != 0) {
-		cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0),
-			((data & 0x20) ? -1.0 : +1.0));
+	if(amstrad_system_type != SYSTEM_GX4000)
+	{
+		if ((changed_data & 0x20) != 0) {
+			cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0),
+				((data & 0x20) ? -1.0 : +1.0));
+		}
 	}
 
 /* b4 Cassette Motor Control */
-	if ((changed_data & 0x10) != 0) {
-		cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0),
-			((data & 0x10) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED),
-			CASSETTE_MASK_MOTOR);
+	if(amstrad_system_type != SYSTEM_GX4000)
+	{
+		if ((changed_data & 0x10) != 0) {
+			cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0),
+				((data & 0x10) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED),
+				CASSETTE_MASK_MOTOR);
+		}
 	}
 
 /* b3-b0 Keyboard line Select keyboard line to be scanned */
@@ -349,6 +424,14 @@ static const ppi8255_interface amstrad_ppi8255_interface =
 	{amstrad_ppi_portc_w}    /* port C write */
 };
 
+static void aleste_interrupt(int state)
+{
+	if(state == CLEAR_LINE)
+		aleste_fdc_int = 0;
+	else
+		aleste_fdc_int = 1;
+}
+
 /* Amstrad NEC765 interface doesn't use interrupts or DMA! */
 static const nec765_interface amstrad_nec765_interface =
 {
@@ -356,9 +439,17 @@ static const nec765_interface amstrad_nec765_interface =
 	NULL
 };
 
+/* Aleste uses an 8272A, with the interrupt flag visible on PPI port B */
+static const nec765_interface aleste_8272_interface =
+{
+	aleste_interrupt,
+	NULL
+};
 
 /* pointers to current ram configuration selected for banks */
 static unsigned char *AmstradCPC_RamBanks[4];
+static unsigned char *Aleste_RamBanks[4];
+static int aleste_active_page[4];  // page mapped to CPU RAM (is readable?)
 
 /* pointer to RAM used for the CPC+ ASIC memory-mapped registers */
 unsigned char *amstrad_plus_asic_ram;
@@ -378,8 +469,12 @@ void amstrad_setLowerRom(void)
 	{
 		if ((amstrad_GateArray_ModeAndRomConfiguration & (1<<2)) == 0) {
 			BankBase = &memory_region(REGION_CPU1)[0x010000];
-		} else {
-			BankBase = AmstradCPC_RamBanks[0];
+		} else 
+		{
+			if(aleste_mode & 0x04)
+				BankBase = Aleste_RamBanks[0];
+			else
+				BankBase = AmstradCPC_RamBanks[0];
 		}
 		memory_set_bankptr(1, BankBase);
 		memory_set_bankptr(2, BankBase+0x02000);
@@ -408,29 +503,29 @@ void amstrad_setLowerRom(void)
 
 		if(amstrad_plus_lower_enabled == 1)
 		{  // ASIC secondary lower ROM selection (bit 5: 1 = enabled)
-//			logerror("L-ROM: Lower ROM enabled, cart bank %i\n",amstrad_plus_lower);
+//          logerror("L-ROM: Lower ROM enabled, cart bank %i\n",amstrad_plus_lower);
 			BankBase = &memory_region(REGION_CPU1)[0x4000 * amstrad_plus_lower];
 			if(BankBase != NULL)
 			{
 				switch(amstrad_plus_lower_addr)
 				{
 				case 0:
-//					logerror("L-ROM: located at &0000\n");
+//                  logerror("L-ROM: located at &0000\n");
 					memory_set_bankptr(1, BankBase);
 					memory_set_bankptr(2, BankBase+0x02000);
 					break;
 				case 1:
-//					logerror("L-ROM: located at &4000\n");
+//                  logerror("L-ROM: located at &4000\n");
 					memory_set_bankptr(3, BankBase);
 					memory_set_bankptr(4, BankBase+0x02000);
 					break;
 				case 2:
-//					logerror("L-ROM: located at &8000\n");
+//                  logerror("L-ROM: located at &8000\n");
 					memory_set_bankptr(5, BankBase);
 					memory_set_bankptr(6, BankBase+0x02000);
 					break;
 				case 3:
-//					logerror("L-ROM: located at &0000, ASIC registers enabled\n");
+//                  logerror("L-ROM: located at &0000, ASIC registers enabled\n");
 					memory_set_bankptr(1, BankBase);
 					memory_set_bankptr(2, BankBase+0x02000);
 					break;
@@ -446,10 +541,16 @@ void amstrad_setUpperRom(void)
 {
 	unsigned char *BankBase;
 /* b3 : "1" Upper rom area disable or "0" Upper rom area enable */
-	if ((amstrad_GateArray_ModeAndRomConfiguration & (1<<3)) == 0) {
+	if ((amstrad_GateArray_ModeAndRomConfiguration & (1<<3)) == 0) 
+	{
 		BankBase = Amstrad_UpperRom;
-	} else {
-		BankBase = AmstradCPC_RamBanks[3];
+	}
+	else 
+	{
+		if(aleste_mode & 0x04)
+			BankBase = Aleste_RamBanks[3];
+		else
+			BankBase = AmstradCPC_RamBanks[3];
 	}
 
 	if (BankBase)
@@ -481,86 +582,86 @@ static void AmstradCPC_SetLowerRom(int Data)
 			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_BANK12);
 			amstrad_plus_asic_regpage = 0;  // disable ASIC registers
 		}
-//		logerror("SYS: Secondary ROM select (lower ROM) - data = %02x - cart bank %i, addr %i\n",Data,amstrad_plus_lower,amstrad_plus_lower_addr);
+//      logerror("SYS: Secondary ROM select (lower ROM) - data = %02x - cart bank %i, addr %i\n",Data,amstrad_plus_lower,amstrad_plus_lower_addr);
 	}
 	else
 	{  // secondary ROM register not available if ASIC is locked
 		amstrad_plus_lower = 0;
 		amstrad_plus_lower_addr = 0;
 	}
-//	amstrad_setLowerRom();
+//  amstrad_setLowerRom();
 }
 
 void AmstradCPC_SetUpperRom(int Data)
 {
 	Amstrad_UpperRom = Amstrad_ROM_Table[Data & 0xFF];
-//	logerror("H-ROM: set to ROM bank %i\n",Data);
+//  logerror("H-ROM: set to ROM bank %i\n",Data);
 	amstrad_setUpperRom();
 }
 
 /* ASIC RAM */
 /*
-	ASIC RAM Layout.  Always is mapped to &4000-&7fff
+    ASIC RAM Layout.  Always is mapped to &4000-&7fff
 
-	Hardware sprites: 16 sprites, 16x16, basic zooming, 15 colour (12-bit palette)
-	Pixel data is 0 - 15 for sprite pen number, low 4 bits
-	&4000 - &400f Pixel data for first line of first sprite
-	&4010 - &401f Pixel data for second line of first sprite
-	  ...     ...
+    Hardware sprites: 16 sprites, 16x16, basic zooming, 15 colour (12-bit palette)
+    Pixel data is 0 - 15 for sprite pen number, low 4 bits
+    &4000 - &400f Pixel data for first line of first sprite
+    &4010 - &401f Pixel data for second line of first sprite
+      ...     ...
     &40f0 - &40ff Pixel data for last (16th) line of first sprite
-	  ...     ...
-	&4100 - &41ff Pixel data for second sprite
-	&4200 - &42ff Third sprite
-	  ...     ...
-	&4f00 - &4fff Pixel data for last (16th) sprite
+      ...     ...
+    &4100 - &41ff Pixel data for second sprite
+    &4200 - &42ff Third sprite
+      ...     ...
+    &4f00 - &4fff Pixel data for last (16th) sprite
 
-	&6000 - &607f Sprite properties (8 bytes each)
-	              +0 Sprite X position LSB
-				  +1 Sprite X position MSB
-				  +2 Sprite Y position LSB (scanline)
-				  +3 Sprite Y position MSB
-				  +4 Sprite zoom - bits 3,2 X magnification, bits 1,0 Y magnification
-				      Magnification: 00 = not displayed, 01 = x1, 10 = x2, 11 = x4
+    &6000 - &607f Sprite properties (8 bytes each)
+                  +0 Sprite X position LSB
+                  +1 Sprite X position MSB
+                  +2 Sprite Y position LSB (scanline)
+                  +3 Sprite Y position MSB
+                  +4 Sprite zoom - bits 3,2 X magnification, bits 1,0 Y magnification
+                      Magnification: 00 = not displayed, 01 = x1, 10 = x2, 11 = x4
 
-	Palette: LSB first, presumably GGGGBBBBxxxxRRRR
-	&6400 - &641f Pen palette (12bpp, 2 bytes each, 16 total)
-	&6420 - &6421 Border palette  (12bpp, 2 bytes)
-	&6422 - &643f Hardware sprite palette (12bpp, 2 bytes each, 15 total)
+    Palette: LSB first, presumably GGGGBBBBxxxxRRRR
+    &6400 - &641f Pen palette (12bpp, 2 bytes each, 16 total)
+    &6420 - &6421 Border palette  (12bpp, 2 bytes)
+    &6422 - &643f Hardware sprite palette (12bpp, 2 bytes each, 15 total)
 
-	Programmable Raster Interrupt:
-	&6800  Scanline for IRQ to be triggered after
-	       If 0, raster interrupts and DMA interrupts occur
-		   Otherwise, the PRI interrupt is triggered only
+    Programmable Raster Interrupt:
+    &6800  Scanline for IRQ to be triggered after
+           If 0, raster interrupts and DMA interrupts occur
+           Otherwise, the PRI interrupt is triggered only
 
-	Hardware split screen:
-	&6801  Scanline for split to occur at
-	&6802  LSB of screen address for split (like reg 12 of the 6845)
-	&6803  MSB of the above (like reg 13 of the 6845)
+    Hardware split screen:
+    &6801  Scanline for split to occur at
+    &6802  LSB of screen address for split (like reg 12 of the 6845)
+    &6803  MSB of the above (like reg 13 of the 6845)
 
-	Soft Scroll Control Register:
-	&6804  bits 3-0 - horizontal delay in mode 2 pixels (shifts display to the right)
-	       bits 6-4 - added to the 3 LSBs for the scanline address (shifts display up)
-		   bit 7    - extends the border by two bytes (16 mode 2 pixels), masking the bad data from the horizontal scroll
+    Soft Scroll Control Register:
+    &6804  bits 3-0 - horizontal delay in mode 2 pixels (shifts display to the right)
+           bits 6-4 - added to the 3 LSBs for the scanline address (shifts display up)
+           bit 7    - extends the border by two bytes (16 mode 2 pixels), masking the bad data from the horizontal scroll
 
-	Analogue paddle ports:
-	&6808 - &680f  Analogue input, read-only, 6 bit
+    Analogue paddle ports:
+    &6808 - &680f  Analogue input, read-only, 6 bit
 
-	PSG DMA channels:
-	&6c00  DMA channel 0 address LSB
-	&6c01  DMA channel 0 address MSB
-	&6c02  DMA channel 0 prescaler
-	&6c03  unused
-	&6c04-7  DMA channel 1
-	&6c08-b  DMA channel 2
-	&6c0f  Control and Status register
-	         bit 7 - raster interrupt
-			 bit 6 - DMA channel 0 interrupt
-			 bit 5 - DMA channel 1 interrupt
-			 bit 4 - DMA channel 2 interrupt
-			 bit 3 - unused (write 0)
-			 bit 2 - DMA channel 2 enable
-			 bit 1 - DMA channel 1 enable
-			 bit 0 - DMA channel 0 enable
+    PSG DMA channels:
+    &6c00  DMA channel 0 address LSB
+    &6c01  DMA channel 0 address MSB
+    &6c02  DMA channel 0 prescaler
+    &6c03  unused
+    &6c04-7  DMA channel 1
+    &6c08-b  DMA channel 2
+    &6c0f  Control and Status register
+             bit 7 - raster interrupt
+             bit 6 - DMA channel 0 interrupt
+             bit 5 - DMA channel 1 interrupt
+             bit 4 - DMA channel 2 interrupt
+             bit 3 - unused (write 0)
+             bit 2 - DMA channel 2 enable
+             bit 1 - DMA channel 1 enable
+             bit 0 - DMA channel 0 enable
 
  */
 
@@ -568,7 +669,7 @@ static WRITE8_HANDLER( amstrad_plus_asic_4000_w )
 {
 	if(amstrad_plus_asic_regpage != 0)
 	{
-//		logerror("ASIC: Write to register at &%04x\n",offset+0x4000);
+//      logerror("ASIC: Write to register at &%04x\n",offset+0x4000);
 		amstrad_plus_asic_ram[offset] = data;
 	}
 	else
@@ -603,7 +704,7 @@ static WRITE8_HANDLER( amstrad_plus_asic_6000_w )
 		}
 		if(offset == 0x0800)  // Programmable raster interrupt
 		{
-//			logerror("ASIC: Wrote %02x to PRI\n",data);
+//          logerror("ASIC: Wrote %02x to PRI\n",data);
 			amstrad_plus_pri = data;
 		}
 		if(offset >= 0x0801 && offset <= 0x0803)  // Split screen registers
@@ -671,21 +772,21 @@ static WRITE8_HANDLER( amstrad_plus_asic_6000_w )
 			if(data & 0x40)
 			{
 				logerror("ASIC: DMA 0 IRQ acknowledge\n");
-				cpunum_set_input_line(0,0,CLEAR_LINE);
+				cpunum_set_input_line(Machine, 0,0,CLEAR_LINE);
 				amstrad_plus_irq_cause = 0x06;
 				amstrad_plus_asic_ram[0x2c0f] &= ~0x40;
 			}
 			if(data & 0x20)
 			{
 				logerror("ASIC: DMA 1 IRQ acknowledge\n");
-				cpunum_set_input_line(0,0,CLEAR_LINE);
+				cpunum_set_input_line(Machine, 0,0,CLEAR_LINE);
 				amstrad_plus_irq_cause = 0x06;
 				amstrad_plus_asic_ram[0x2c0f] &= ~0x20;
 			}
 			if(data & 0x10)
 			{
 				logerror("ASIC: DMA 2 IRQ acknowledge\n");
-				cpunum_set_input_line(0,0,CLEAR_LINE);
+				cpunum_set_input_line(Machine, 0,0,CLEAR_LINE);
 				amstrad_plus_irq_cause = 0x06;
 				amstrad_plus_asic_ram[0x2c0f] &= ~0x10;
 			}
@@ -700,7 +801,7 @@ static WRITE8_HANDLER( amstrad_plus_asic_6000_w )
 
 static READ8_HANDLER( amstrad_plus_asic_4000_r )
 {
-//	logerror("RAM: read from &%04x, ASIC page = %i\n",offset+0x4000,amstrad_plus_asic_regpage);
+//  logerror("RAM: read from &%04x, ASIC page = %i\n",offset+0x4000,amstrad_plus_asic_regpage);
 	if(amstrad_plus_asic_regpage != 0)
 	{
 		return amstrad_plus_asic_ram[offset];
@@ -710,7 +811,7 @@ static READ8_HANDLER( amstrad_plus_asic_4000_r )
 
 static READ8_HANDLER( amstrad_plus_asic_6000_r )
 {
-//	logerror("RAM: read from &%04x, ASIC page = %i\n",offset+0x6000,amstrad_plus_asic_regpage);
+//  logerror("RAM: read from &%04x, ASIC page = %i\n",offset+0x6000,amstrad_plus_asic_regpage);
 	if(amstrad_plus_asic_regpage != 0)
 	{
 		// Analogue ports
@@ -738,19 +839,19 @@ static READ8_HANDLER( amstrad_plus_asic_6000_r )
 		{
 			return 0x00;
 		}
-/*		if(offset == 0x0c0f)  // DMA status and control
-		{
-			int result = 0;
-			if(amstrad_plus_irq_cause == 0x00)
-				result |= 0x40;
-			if(amstrad_plus_irq_cause == 0x02)
-				result |= 0x20;
-			if(amstrad_plus_irq_cause == 0x04)
-				result |= 0x10;
-			if(amstrad_plus_irq_cause == 0x06)
-				result |= 0x80;
-			return result;
-		}
+/*      if(offset == 0x0c0f)  // DMA status and control
+        {
+            int result = 0;
+            if(amstrad_plus_irq_cause == 0x00)
+                result |= 0x40;
+            if(amstrad_plus_irq_cause == 0x02)
+                result |= 0x20;
+            if(amstrad_plus_irq_cause == 0x04)
+                result |= 0x10;
+            if(amstrad_plus_irq_cause == 0x06)
+                result |= 0x80;
+            return result;
+        }
 */
 		return amstrad_plus_asic_ram[offset+0x2000];
 	}
@@ -764,31 +865,56 @@ static READ8_HANDLER( amstrad_plus_asic_6000_r )
 void amstrad_rethinkMemory(void)
 {
 	/* the following is used for banked memory read/writes and for setting up
-	 * opcode and opcode argument reads */
+     * opcode and opcode argument reads */
 /* bank 0 - 0x0000..0x03fff */
     amstrad_setLowerRom();
 /* bank 1 - 0x04000..0x07fff */
 	if(amstrad_system_type == SYSTEM_CPC || amstrad_plus_asic_enabled == 0)
 	{
-		memory_set_bankptr(3, AmstradCPC_RamBanks[1]);
-		memory_set_bankptr(4, AmstradCPC_RamBanks[1]+0x2000);
-/* bank 2 - 0x08000..0x0bfff */
-		memory_set_bankptr(5, AmstradCPC_RamBanks[2]);
-		memory_set_bankptr(6, AmstradCPC_RamBanks[2]+0x2000);
+		if(aleste_mode & 0x04)
+		{
+			memory_set_bankptr(3, Aleste_RamBanks[1]);
+			memory_set_bankptr(4, Aleste_RamBanks[1]+0x2000);
+			/* bank 2 - 0x08000..0x0bfff */
+			memory_set_bankptr(5, Aleste_RamBanks[2]);
+			memory_set_bankptr(6, Aleste_RamBanks[2]+0x2000);
+		}
+		else
+		{
+			memory_set_bankptr(3, AmstradCPC_RamBanks[1]);
+			memory_set_bankptr(4, AmstradCPC_RamBanks[1]+0x2000);
+			/* bank 2 - 0x08000..0x0bfff */
+			memory_set_bankptr(5, AmstradCPC_RamBanks[2]);
+			memory_set_bankptr(6, AmstradCPC_RamBanks[2]+0x2000);
+		}
 	}
 	else
 		amstrad_setLowerRom();
 /* bank 3 - 0x0c000..0x0ffff */
     amstrad_setUpperRom();
 /* other banks */
-		memory_set_bankptr(9, AmstradCPC_RamBanks[0]);
-		memory_set_bankptr(10, AmstradCPC_RamBanks[0]+0x2000);
-		memory_set_bankptr(11, AmstradCPC_RamBanks[1]);
-		memory_set_bankptr(12, AmstradCPC_RamBanks[1]+0x2000);
-		memory_set_bankptr(13, AmstradCPC_RamBanks[2]);
-		memory_set_bankptr(14, AmstradCPC_RamBanks[2]+0x2000);
-		memory_set_bankptr(15, AmstradCPC_RamBanks[3]);
-		memory_set_bankptr(16, AmstradCPC_RamBanks[3]+0x2000);
+		if(aleste_mode & 0x04)
+		{
+			memory_set_bankptr(9, Aleste_RamBanks[0]);
+			memory_set_bankptr(10, Aleste_RamBanks[0]+0x2000);
+			memory_set_bankptr(11, Aleste_RamBanks[1]);
+			memory_set_bankptr(12, Aleste_RamBanks[1]+0x2000);
+			memory_set_bankptr(13, Aleste_RamBanks[2]);
+			memory_set_bankptr(14, Aleste_RamBanks[2]+0x2000);
+			memory_set_bankptr(15, Aleste_RamBanks[3]);
+			memory_set_bankptr(16, Aleste_RamBanks[3]+0x2000);
+		}
+		else
+		{
+			memory_set_bankptr(9, AmstradCPC_RamBanks[0]);
+			memory_set_bankptr(10, AmstradCPC_RamBanks[0]+0x2000);
+			memory_set_bankptr(11, AmstradCPC_RamBanks[1]);
+			memory_set_bankptr(12, AmstradCPC_RamBanks[1]+0x2000);
+			memory_set_bankptr(13, AmstradCPC_RamBanks[2]);
+			memory_set_bankptr(14, AmstradCPC_RamBanks[2]+0x2000);
+			memory_set_bankptr(15, AmstradCPC_RamBanks[3]);
+			memory_set_bankptr(16, AmstradCPC_RamBanks[3]+0x2000);
+		}
 
 /* multiface hardware enabled? */
 		if (multiface_hardware_enabled()) {
@@ -821,6 +947,7 @@ static void AmstradCPC_GA_SetRamConfiguration(void)
     for (i=0;i<4;i++) {
     	BankIndex = RamConfigurations[(ConfigurationIndex << 2) + i];
     	BankAddr = mess_ram + (BankIndex << 14);
+		Aleste_RamBanks[i] = BankAddr;
     	AmstradCPC_RamBanks[i] = BankAddr;
     }
   } else {/* Need to add the ram expansion configuration here ! */
@@ -856,7 +983,7 @@ Bit Value Function        Bit Value Function
 5   x     not used        5   x     not used
 4   1     Select border   4   0     Select pen
 3   x     | ignored       3   x     | Pen Number
-2   x     |               2   x 	  |
+2   x     |               2   x       |
 1   x     |               1   x     |
 0   x     |               0   x     |
 */
@@ -917,9 +1044,9 @@ Bit 4 controls the interrupt generation. It can be used to delay interrupts.*/
   	case 0x02: {
       int Previous_GateArray_ModeAndRomConfiguration = amstrad_GateArray_ModeAndRomConfiguration;
 		/* If bit 5 is enabled on a CPC Plus/GX4000 when the ASIC is unlocked, sets the lower ROM position and cart bank
-		   b5 = 1, b4b3 = RAM position for lower ROM area and if the ASIC registers are visible at &4000,
-		   b2b1b0 = cartridge bank to read from lower ROM area (0-7 only) */
-		if(amstrad_system_type == SYSTEM_PLUS && amstrad_plus_asic_enabled != 0)
+           b5 = 1, b4b3 = RAM position for lower ROM area and if the ASIC registers are visible at &4000,
+           b2b1b0 = cartridge bank to read from lower ROM area (0-7 only) */
+		if(amstrad_system_type != SYSTEM_CPC && amstrad_plus_asic_enabled != 0)
 		{
 			if((dataToGateArray & 0x20) != 0)
 			{
@@ -942,7 +1069,7 @@ Bit 4 controls the interrupt generation. It can be used to delay interrupts.*/
  then the interrupt request is cleared and the 6-bit counter is reset to "0".  */
   			if ((amstrad_GateArray_ModeAndRomConfiguration & (1<<4)) != 0) {
             amstrad_CRTC_HS_Counter = 0;
-  			    cpunum_set_input_line(0,0, CLEAR_LINE);
+  			    cpunum_set_input_line(Machine, 0,0, CLEAR_LINE);
 
   			}
 /* b3b2 != 0 then change the state of upper or lower rom area and rethink memory */
@@ -960,7 +1087,7 @@ Bit 4 controls the interrupt generation. It can be used to delay interrupts.*/
   			}
       }  break;
 /* Ram Memory Management
-	 ---------------------
+     ---------------------
 This function is not available in the Gate-Array, but is performed by a device at the same I/O port address location.
 In the CPC464,CPC664 and KC compact, this function is performed in a memory-expansion (e.g. Dk'Tronics 64K Ram Expansion), if this expansion is not present then the function is not available.
 In the CPC6128, this function is performed by a PAL located on the main PCB, or a memory-expansion.
@@ -973,6 +1100,69 @@ In the 464+ and 6128+ this function is performed by the ASIC or a memory expansi
     default: {
     } break;
   }
+}
+
+static void aleste_msx_mapper(int offset, int data)
+{
+	int page = (offset & 0x0300) >> 8;
+	int ramptr = (data & 0x1f) * 0x4000;
+	int rampage = data & 0x1f;
+	int function = (data & 0xc0) >> 6;
+
+	// It is assumed that functions are all mapped to each port &7cff-&7fff, and b8 and b9 are only used for RAM bank location
+	switch(function)
+	{
+	case 0:  // Pen select (same as Gate Array?)
+		amstrad_GateArray_write(data);
+		break;
+	case 1:  // Colour select (6-bit palette)
+		aleste_vh_update_colour(amstrad_GateArray_PenSelected,data & 0x3f);
+		break;
+	case 2:  // Screen mode, Upper/Lower ROM select
+		amstrad_GateArray_write(data);
+		break;
+	case 3: // RAM banks
+		switch(page)
+		{
+		case 0:  /* 0x0000 - 0x3fff */
+			memory_set_bankptr(1,mess_ram+ramptr);
+			memory_set_bankptr(2,mess_ram+ramptr+0x2000);
+			memory_set_bankptr(9,mess_ram+ramptr);
+			memory_set_bankptr(10,mess_ram+ramptr+0x2000);
+			Aleste_RamBanks[0] = mess_ram+ramptr;
+			aleste_active_page[0] = data;
+			logerror("RAM: RAM location 0x%06x (page %02x) mapped to 0x0000\n",ramptr,rampage);
+			break;
+		case 1:  /* 0x4000 - 0x7fff */
+			memory_set_bankptr(3,mess_ram+ramptr);
+			memory_set_bankptr(4,mess_ram+ramptr+0x2000);
+			memory_set_bankptr(11,mess_ram+ramptr);
+			memory_set_bankptr(12,mess_ram+ramptr+0x2000);
+			Aleste_RamBanks[1] = mess_ram+ramptr;
+			aleste_active_page[1] = data;
+			logerror("RAM: RAM location 0x%06x (page %02x) mapped to 0x4000\n",ramptr,rampage);
+			break;
+		case 2:  /* 0x8000 - 0xbfff */
+			memory_set_bankptr(5,mess_ram+ramptr);
+			memory_set_bankptr(6,mess_ram+ramptr+0x2000);
+			memory_set_bankptr(13,mess_ram+ramptr);
+			memory_set_bankptr(14,mess_ram+ramptr+0x2000);
+			Aleste_RamBanks[2] = mess_ram+ramptr;
+			aleste_active_page[2] = data;
+			logerror("RAM: RAM location 0x%06x (page %02x) mapped to 0x8000\n",ramptr,rampage);
+			break;
+		case 3:  /* 0xc000 - 0xffff */
+			memory_set_bankptr(7,mess_ram+ramptr);
+			memory_set_bankptr(8,mess_ram+ramptr+0x2000);
+			memory_set_bankptr(15,mess_ram+ramptr);
+			memory_set_bankptr(16,mess_ram+ramptr+0x2000);
+			Aleste_RamBanks[3] = mess_ram+ramptr;
+			aleste_active_page[3] = data;
+			logerror("RAM: RAM location 0x%06x (page %02x) mapped to 0xc000\n",ramptr,rampage);
+			break;
+		}
+		break;
+	}
 }
 
 /* used for loading snapshot only ! */
@@ -1050,9 +1240,20 @@ static READ8_HANDLER ( AmstradCPC_ReadPortHandler )
 	unsigned char data = 0xFF;
 	unsigned int r1r0 = (unsigned int)((offset & 0x0300) >> 8);
 	m6845_personality_t crtc_type;
+	int page;
 
 	crtc_type = readinputportbytag_safe("crtc", 0);
 	m6845_set_personality(crtc_type);
+
+	if(aleste_mode & 0x04)
+	{
+		if ((offset & (1<<15)) == 0)  // Aleste Mapper is readable?
+		{
+			page = (offset & 0x0300) >> 8;
+			data = aleste_active_page[page];
+			return data;
+		}
+	}
 
 	/* if b14 = 0 : CRTC Read selected */
 	if ((offset & (1<<14)) == 0)
@@ -1060,7 +1261,7 @@ static READ8_HANDLER ( AmstradCPC_ReadPortHandler )
 		switch(r1r0) {
 		case 0x02:
 			/* CRTC Type 1 : Read Status Register
-			   CRTC Type 3 or 4 : Read from selected internal 6845 register */
+               CRTC Type 3 or 4 : Read from selected internal 6845 register */
 			switch(crtc_type) {
 			case M6845_PERSONALITY_UM6845R:
 				data = amstrad_CRTC_CR; /* Read Status Register */
@@ -1111,35 +1312,45 @@ b8 b0 Function Read/Write state
 If b10 is reset but none of b7-b5 are reset, user expansion peripherals are selected.
 The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which causes the expansion peripherals to reset.
  */
- 	if ((offset & (1<<10)) == 0)	{
-		if ((offset & (1<<10)) == 0) {
-			int b8b0 = ((offset & (1<<8)) >> (8 - 1)) | (offset & (0x01));
-			switch (b8b0) {
-  			case 0x02: {
-  					data = nec765_status_r(0);
-  			} break;
-  			case 0x03: {
-  					data = nec765_data_r(0);
-  			} break;
-  			default: {
-  			} break;
+	if(amstrad_system_type != SYSTEM_GX4000)
+	{
+ 		if ((offset & (1<<10)) == 0)	{
+			if ((offset & (1<<10)) == 0) {
+				int b8b0 = ((offset & (1<<8)) >> (8 - 1)) | (offset & (0x01));
+				switch (b8b0) {
+  				case 0x02: {
+  						data = nec765_status_r(0);
+  				} break;
+  				case 0x03: {
+  						data = nec765_data_r(0);
+  				} break;
+  				default: {
+  				} break;
+				}
 			}
 		}
 	}
-  return data;
+	return data;
 }
 
 /* Offset handler for write */
 static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
 {
-  if ((offset & (1<<15)) == 0) {
-/* if b15 = 0 and b14 = 1 : Gate-Array Write Selected*/
-    if ((offset & (1<<14)) != 0) {
-	   	amstrad_GateArray_write(data);
-    }
-/* if b15 = 0 : RAM Configuration Write Selected*/
-      AmstradCPC_GA_SetRamConfiguration();
-  }
+	if ((offset & (1<<15)) == 0) 
+	{
+		if(aleste_mode & 0x04) // Aleste mode
+		{
+			aleste_msx_mapper(offset,data);
+		}
+		else
+		{
+		/* if b15 = 0 and b14 = 1 : Gate-Array Write Selected*/
+		if ((offset & (1<<14)) != 0) 
+	   			amstrad_GateArray_write(data);
+		/* if b15 = 0 : RAM Configuration Write Selected*/
+		  AmstradCPC_GA_SetRamConfiguration();
+		}
+}
 /*The Gate-Array and CRTC can't be selected simultaneously, which would otherwise cause potential display corruption.*/
 /* if b14 = 0 : CRTC Write Selected*/
   if ((offset & (1<<14)) == 0) {
@@ -1149,7 +1360,7 @@ static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
   			EventList_AddItemOffset((EVENT_LIST_CODE_CRTC_INDEX_WRITE<<6), data, TIME_TO_CYCLES(0,video_screen_get_vpos(0)*video_screen_get_scan_period(0)));
 #endif
         m6845_address_w(0,data);
-		if(amstrad_system_type == SYSTEM_PLUS)
+		if(amstrad_system_type != SYSTEM_CPC)
 			amstrad_plus_seqcheck(data);
 //          selected_m6845_address = (data & 0x1F);
       } break;
@@ -1157,7 +1368,7 @@ static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
 #ifdef AMSTRAD_VIDEO_EVENT_LIST
 				EventList_AddItemOffset((EVENT_LIST_CODE_CRTC_WRITE<<6), data, TIME_TO_CYCLES(0,video_screen_get_vpos(0)*video_screen_get_scan_period(0)));
 #endif
-//       	  logerror("m6845 register (%02d : %04x)\n", selected_m6845_address, (data&0x3F));
+//            logerror("m6845 register (%02d : %04x)\n", selected_m6845_address, (data&0x3F));
         m6845_register_w(0,data);
   		} break;
   		default: {
@@ -1175,20 +1386,23 @@ static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
 		previous_amstrad_UpperRom_data = (data & 0xff);
 	}
 /* b12 = 0 : Printer port Write Selected*/
-	if ((offset & (1<<12)) == 0) {
-		/* on CPC, write to printer through LS chip */
-		/* the amstrad is crippled with a 7-bit port :( */
-		/* bit 7 of the data is the printer /strobe */
+	if(amstrad_system_type != SYSTEM_GX4000)
+	{
+		if ((offset & (1<<12)) == 0) {
+			/* on CPC, write to printer through LS chip */
+			/* the amstrad is crippled with a 7-bit port :( */
+			/* bit 7 of the data is the printer /strobe */
 
-		/* strobe state changed? */
-		if (((previous_printer_data_byte^data) & (1<<7)) !=0 ) {
-			/* check for only one transition */
-			if ((data & (1<<7)) == 0)  {
-				/* output data to printer */
-				printer_output(image_from_devtype_and_index(IO_PRINTER, 0), data & 0x07f);
+			/* strobe state changed? */
+			if (((previous_printer_data_byte^data) & (1<<7)) !=0 ) {
+				/* check for only one transition */
+				if ((data & (1<<7)) == 0)  {
+					/* output data to printer */
+					printer_output(image_from_devtype_and_index(IO_PRINTER, 0), data & 0x07f);
+				}
 			}
+			previous_printer_data_byte = data;
 		}
-		previous_printer_data_byte = data;
 	}
 /* if b11 = 0 : 8255 PPI Write selected - bits 9 and 8 then define the PPI function access as shown below:
 b9 b8 | PPI Function Read/Write status
@@ -1220,26 +1434,59 @@ b8 b0 Function Read/Write state
 If b10 is reset but none of b7-b5 are reset, user expansion peripherals are selected.
 The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which causes the expansion peripherals to reset.
 */
-    if ((offset & (1<<7)) == 0) {
+	if(amstrad_system_type != SYSTEM_GX4000)
+	{
+		if ((offset & (1<<7)) == 0) {
 			unsigned int b8b0 = ((offset & 0x0100) >> (8 - 1)) | (offset & 0x01);
 
-			switch (b8b0) {
-			case 0x00:
-        /* FDC Motor Control - Bit 0 defines the state of the FDD motor:
-         * "1" the FDD motor will be active.
-         * "0" the FDD motor will be in-active.*/
-				floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), (data & 0x01));
-				floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1), (data & 0x01));
-				floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1,1);
-				floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1,1);
-		  break;
+				switch (b8b0) {
+				case 0x00:
+			/* FDC Motor Control - Bit 0 defines the state of the FDD motor:
+			 * "1" the FDD motor will be active.
+			 * "0" the FDD motor will be in-active.*/
+					floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), (data & 0x01));
+					floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1), (data & 0x01));
+					floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1,1);
+					floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1,1);
+			  break;
 
-      case 0x03: /* Write Data register of FDC */
-				nec765_data_w(0,data);
-			break;
-			default:
-			break;
+		  case 0x03: /* Write Data register of FDC */
+					nec765_data_w(0,data);
+				break;
+				default:
+				break;
+				}
 			}
+		}
+	}
+
+/*	Aleste Extend Port:
+		D0 - VRAM Bank 0/1 (64K)
+		D1 - MODE 0-Norm ,1-High resolution
+		D2 - MAPMOD 0-Amstrad ,1-Yamaha mapper
+		D3 - MAP Page 0/1 (256K)
+		D4 - 580WI53
+		D5 - 0-AY8910 ,1-512WI1 */
+	if(offset == 0xfabf)
+	{
+		rectangle rect;
+		aleste_mode = data;
+		logerror("EXTEND: Port &FABF write 0x%02x\n",data);
+		if(data & 0x02)
+		{
+			// Aleste high resolution settings
+			rect.min_x = rect.min_y = 0;
+			rect.max_x = (ALESTE_SCREEN_WIDTH-32) - 1;
+			rect.max_y = (AMSTRAD_SCREEN_HEIGHT-40) - 1;
+			video_screen_configure(0,800,312,&rect,HZ_TO_ATTOSECONDS(AMSTRAD_FPS));
+		}
+		else
+		{
+			// Normal CPC video settings
+			rect.min_x = rect.min_y = 0;
+			rect.max_x = (AMSTRAD_SCREEN_WIDTH-32) - 1;
+			rect.max_y = (AMSTRAD_SCREEN_HEIGHT-40) - 1;
+			video_screen_configure(0,800,312,&rect,HZ_TO_ATTOSECONDS(AMSTRAD_FPS));
 		}
 	}
 	multiface_io_write(offset,data);
@@ -1272,7 +1519,7 @@ static void amstrad_plus_seqcheck(int data)
 }
 
 /******************************************************************************************
-	Multiface emulation
+    Multiface emulation
   ****************************************************************************************/
 
 static unsigned char *multiface_ram;
@@ -1290,7 +1537,7 @@ This address has a RET and so executes no code.
 
 It is believed that it is used to make multiface invisible to programs */
 
-/*#define MULTIFACE_0065_TOGGLE 				  0x0008*/
+/*#define MULTIFACE_0065_TOGGLE                   0x0008*/
 
 
 /* used to setup computer if a snapshot was specified */
@@ -1301,17 +1548,17 @@ static OPBASE_HANDLER( amstrad_multiface_opbaseoverride )
 		pc = activecpu_get_pc();
 
 		/* there are two places where CALL &0065 can be found
-		in the multiface rom. At this address there is a RET.
+        in the multiface rom. At this address there is a RET.
 
-		To disable the multiface from being detected, the multiface
-		stop button must be pressed, then the program that was stopped
-		must be returned to. When this is done, the multiface cannot
-		be detected and the out operations to page the multiface
-		ram/rom into the address space will not work! */
+        To disable the multiface from being detected, the multiface
+        stop button must be pressed, then the program that was stopped
+        must be returned to. When this is done, the multiface cannot
+        be detected and the out operations to page the multiface
+        ram/rom into the address space will not work! */
 
 		/* I assume that the hardware in the multiface detects
-		the PC set to 0x065 and uses this to enable/disable the multiface
-		*/
+        the PC set to 0x065 and uses this to enable/disable the multiface
+        */
 
 		/* I also use this to allow the stop button to be pressed again */
 		if (pc==0x0164)
@@ -1390,7 +1637,7 @@ void	multiface_stop(void)
 		multiface_rethink_memory();
 
 		/* pulse the nmi line */
-		cpunum_set_input_line(0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 
 		/* initialise 0065 override to monitor calls to 0065 */
 		memory_set_opbase_handler(0,amstrad_multiface_opbaseoverride);
@@ -1561,7 +1808,7 @@ static int 	amstrad_cpu_acknowledge_int(int cpu)
 		amstrad_plus_asic_ram[0x2c0f] &= ~0x80;  // not a raster interrupt, so this bit is reset
 		return (amstrad_plus_asic_ram[0x2805] & 0xf8) + amstrad_plus_irq_cause;
 	}
-	cpunum_set_input_line(0,0, CLEAR_LINE);
+	cpunum_set_input_line(Machine, 0,0, CLEAR_LINE);
 	amstrad_CRTC_HS_Counter &= 0x1F;
 	if(amstrad_plus_asic_enabled != 0)
 	{
@@ -1599,7 +1846,7 @@ void amstrad_reset_machine(void)
   // Get manufacturer name and TV refresh rate from PCB link (dipswitch for mess emulation)
 	ppi_port_inputs[amstrad_ppi_PortB] = (((readinputportbytag("solder_links")&MANUFACTURER_NAME)<<1) | (readinputportbytag("solder_links")&TV_REFRESH_RATE));
 
-	if(amstrad_system_type == SYSTEM_PLUS)
+	if(amstrad_system_type != SYSTEM_CPC)
 		memset(amstrad_plus_asic_ram,0,16384);  // clear ASIC RAM
 
 	multiface_reset();
@@ -1751,6 +1998,8 @@ static TIMER_CALLBACK(amstrad_vh_execute_crtc_cycles_callback)
 
 static void amstrad_common_init(void)
 {
+	aleste_mode = 0;
+
 	amstrad_GateArray_ModeAndRomConfiguration = 0;
 	amstrad_GateArray_RamConfiguration = 0;
 	amstrad_CRTC_HS_Counter = 2;
@@ -1758,16 +2007,10 @@ static void amstrad_common_init(void)
 
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, MRA8_BANK1);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MRA8_BANK2);
-//	if(amstrad_system_type == SYSTEM_CPC)
-//	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MRA8_BANK3);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK4);
-//	}
-//	else
-//	{
-//		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, amstrad_plus_asic_4000_r);
-//		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, amstrad_plus_asic_6000_r);
-//	}
+
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MRA8_BANK3);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK4);
+
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MRA8_BANK5);
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, MRA8_BANK6);
 
@@ -1776,18 +2019,13 @@ static void amstrad_common_init(void)
 
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, MWA8_BANK9);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MWA8_BANK10);
-//	if(amstrad_system_type == SYSTEM_CPC)
-//	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MWA8_BANK11);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_BANK12);
-//	}
-//	else
-//	{
-//		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, amstrad_plus_asic_4000_w);
-//		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, amstrad_plus_asic_6000_w);
-//	}
+
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MWA8_BANK11);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_BANK12);
+
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MWA8_BANK13);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, MWA8_BANK14);
+
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_BANK15);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MWA8_BANK16);
 
@@ -1797,30 +2035,32 @@ static void amstrad_common_init(void)
 	else
 		cpunum_set_input_line_vector(0, 0,0x00);
 
-	nec765_init(&amstrad_nec765_interface,NEC765A/*?*/);
 	ppi8255_init(&amstrad_ppi8255_interface);
 
-	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0),  FLOPPY_DRIVE_SS_40);
-	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1),  FLOPPY_DRIVE_SS_40);
-
+	if(amstrad_system_type != SYSTEM_GX4000)
+	{
+		nec765_init(&amstrad_nec765_interface,NEC765A/*?*/);
+		floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0),  FLOPPY_DRIVE_SS_40);
+		floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1),  FLOPPY_DRIVE_SS_40);
+	}
 /* Every microsecond:
 
 The CRTC generates a memory address using it's MA and RA signal outputs
 The Gate-Array fetches two bytes for each address*/
 
-//	timer_pulse(ATTOTIME_IN_USEC(AMSTRAD_US_PER_SCANLINE), NULL, 0, amstrad_vh_execute_crtc_cycles);
+//  timer_pulse(ATTOTIME_IN_USEC(AMSTRAD_US_PER_SCANLINE), NULL, 0, amstrad_vh_execute_crtc_cycles);
 	timer_pulse(ATTOTIME_IN_USEC(1), NULL, 0, amstrad_vh_execute_crtc_cycles_callback);
 
 	/* The opcode timing in the Amstrad is different to the opcode
-	timing in the core for the Z80 CPU.
+    timing in the core for the Z80 CPU.
 
-	The Amstrad hardware issues a HALT for each memory fetch.
-	This has the effect of stretching the timing for Z80 opcodes,
-	so that they are all multiple of 4 T states long. All opcode
-	timings are a multiple of 1us in length. */
+    The Amstrad hardware issues a HALT for each memory fetch.
+    This has the effect of stretching the timing for Z80 opcodes,
+    so that they are all multiple of 4 T states long. All opcode
+    timings are a multiple of 1us in length. */
 
 	/* Using the cool code Juergen has provided, I will override
-	the timing tables with the values for the amstrad */
+    the timing tables with the values for the amstrad */
 	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_op, (void*)amstrad_cycle_table_op);
 	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_cb, (void*)amstrad_cycle_table_cb);
 	cpunum_set_info_ptr(0,CPUINFO_PTR_Z80_CYCLE_TABLE+Z80_TABLE_ed, (void*)amstrad_cycle_table_ed);
@@ -1892,12 +2132,56 @@ static MACHINE_RESET( plus )
 	amstrad_plus_asic_ram[0x2805] = 0x01;  // interrupt vector is undefined at startup, except that bit 0 is always 1.
 	AmstradCPC_GA_SetRamConfiguration();
 	amstrad_plus_setsplitline(0,0);
-	//	multiface_init();
+	//  multiface_init();
 }
 
 static MACHINE_START( plus )
 {
 	amstrad_plus_asic_ram = memory_region(REGION_USER1);  // 16kB RAM for ASIC, memory-mapped registers.
+}
+
+static MACHINE_RESET( gx4000 )
+{
+	int i;
+
+	amstrad_system_type = SYSTEM_GX4000;
+
+	for (i=0; i<128; i++)  // fill ROM table
+	{
+		Amstrad_ROM_Table[i] = &memory_region(REGION_CPU1)[0x4000];
+	}
+	for(i=128;i<160;i++)
+	{
+		Amstrad_ROM_Table[i] = &memory_region(REGION_CPU1)[(i-128)*0x4000];
+	}
+	Amstrad_ROM_Table[7] = &memory_region(REGION_CPU1)[0xc000];
+
+	amstrad_plus_lower = 0;  // cart bank 0
+	amstrad_plus_lower_addr = 0;  // at 0x0000, reg page disabled by default
+	amstrad_plus_lower_enabled = 1; // lower ROM enabled by default (as per usual)
+	amstrad_plus_asic_enabled = 0;  // ASIC disabled
+	amstrad_plus_asic_regpage = 0;  // ASIC register page disabled
+	amstrad_plus_asic_seqptr = 0;
+	amstrad_plus_pri = 0;  // disable PRI
+	amstrad_plus_scroll_x = 0;
+	amstrad_plus_scroll_y = 0;
+	amstrad_plus_scroll_border = 0;  // disable soft scroll
+	amstrad_plus_dma_status = 0;  // disable all DMA channels
+	amstrad_plus_dma_0_addr = 0;
+	amstrad_plus_dma_prescaler[0] = 0;
+	amstrad_plus_dma_1_addr = 0;
+	amstrad_plus_dma_prescaler[1] = 0;
+	amstrad_plus_dma_2_addr = 0;
+	amstrad_plus_dma_prescaler[2] = 0;
+	amstrad_plus_dma_clear = 1;  // by default, DMA interrupts must be cleared by writing to the DSCR (&6c0f)
+	amstrad_plus_irq_cause = 6;
+
+	amstrad_common_init();
+	amstrad_reset_machine();
+	amstrad_plus_asic_ram[0x2805] = 0x01;  // interrupt vector is undefined at startup, except that bit 0 is always 1.
+	AmstradCPC_GA_SetRamConfiguration();
+	amstrad_plus_setsplitline(0,0);
+	//  multiface_init();
 }
 
 static MACHINE_RESET( kccomp )
@@ -1915,14 +2199,39 @@ static MACHINE_RESET( kccomp )
 	kccomp_reset_machine();
 
 	/* bit 1 = /TEST. When 0, KC compact will enter data transfer
-	sequence, where another system using the expansion port signals
-	DATA2,DATA1, /STROBE and DATA7 can transfer 256 bytes of program.
-	When the program has been transfered, it will be executed. This
-	is not supported in the driver */
+    sequence, where another system using the expansion port signals
+    DATA2,DATA1, /STROBE and DATA7 can transfer 256 bytes of program.
+    When the program has been transfered, it will be executed. This
+    is not supported in the driver */
 	/* bit 3,4 are tied to +5V, bit 2 is tied to 0V */
 	ppi_port_inputs[amstrad_ppi_PortB] = (1<<4) | (1<<3) | 2;
 }
 
+static DRIVER_INIT( aleste )
+{
+	mc146818_init(MC146818_IGNORE_CENTURY);
+}
+
+static MACHINE_RESET( aleste )
+{
+	int i;
+
+	amstrad_system_type = SYSTEM_CPC;
+
+	for (i=0; i<256; i++)
+	{
+		Amstrad_ROM_Table[i] = &memory_region(REGION_CPU1)[0x014000];
+	}
+
+	Amstrad_ROM_Table[3] = &memory_region(REGION_CPU1)[0x01c000];  // MSX-DOS / BIOS
+	Amstrad_ROM_Table[7] = &memory_region(REGION_CPU1)[0x018000];  // AMSDOS
+	amstrad_common_init();
+	amstrad_reset_machine();
+
+	nec765_init(&aleste_8272_interface,NEC765A);
+	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0),  FLOPPY_DRIVE_DS_80);
+	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1),  FLOPPY_DRIVE_DS_80);
+}
 
 /* Memory is banked in 16k blocks. However, the multiface
 pages the memory in 8k blocks! The ROM can
@@ -1959,14 +2268,27 @@ static READ8_HANDLER ( amstrad_psg_porta_read )
    If keyboard matrix line 11-14 are selected, the byte is always &ff.
    After testing on a real CPC, it is found that these never change, they always return &FF. */
 
-	if (amstrad_keyboard_line > 9) {
-    return 0xFF;
-  } else {
-    int amstrad_read_keyboard_line = amstrad_keyboard_line;
-    amstrad_keyboard_line = 0xFF;
-    return (readinputport(amstrad_read_keyboard_line) & 0xFF);
-  }
+	if (amstrad_keyboard_line > 10) 
+	{
+		return 0xFF;
+	} 
+	else 
+	{
+		int amstrad_read_keyboard_line = amstrad_keyboard_line;
+		if(aleste_mode == 0x08 && amstrad_keyboard_line == 10)
+			return 0xff;
+		amstrad_keyboard_line = 0xFF;
+		return (readinputport(amstrad_read_keyboard_line) & 0xFF);
+	}
 }
+
+
+
+/*************************************
+ *
+ *  Input ports
+ *
+ *************************************/
 
 static INPUT_PORTS_START( amstrad_keyboard )
 	/* keyboard row 0 */
@@ -2082,17 +2404,18 @@ static INPUT_PORTS_START( amstrad_keyboard )
    use only two buttons. The only device that reads this bit is the AMX mouse, which uses
    dedicated hardware to connect to the joystick port.
 */
-//	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON3)        PORT_PLAYER(1)
+//  PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON3)        PORT_PLAYER(1)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Del")                   PORT_CODE(KEYCODE_INSERT)     PORT_CHAR(8)
 
-/* Second joystick port need to be defined: the second joystick is daisy-chained on the back of the first one */
+/* Second joystick port need to be defined: the second joystick is daisy-chained on the back of the first one
+   Joystick 2 is mapped to keyboard line 6.  */
 
 /* The CPC supports at least two different brands of lightpens, probably connected to the expansion port */
 
 INPUT_PORTS_END
 
 
-/* Steph 2000-10-27	I remapped the 'Machine Name' Dip Switches (easier to understand) */
+/* Steph 2000-10-27 I remapped the 'Machine Name' Dip Switches (easier to understand) */
 
 static INPUT_PORTS_START( crtc_links )
 
@@ -2115,7 +2438,7 @@ lk4     Frequency
 0       60 Hz
 1       50 Hz
 */
-PORT_START_TAG("solder_links")
+	PORT_START_TAG("solder_links")
 	PORT_DIPNAME(0x07, 0x07, "Manufacturer Name")
 	PORT_DIPLOCATION("LK:3,2,1")
 	PORT_DIPSETTING(0x00, "Isp")
@@ -2155,7 +2478,7 @@ As far as I know, the KC compact used HD6845S only.
 	PORT_CONFSETTING(0x00, DEF_STR( Off) )
 	PORT_CONFSETTING(0x01, DEF_STR( On) )
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Multiface Two's Stop Button") PORT_CODE(KEYCODE_F1)
-//	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Multiface Two's Reset Button") PORT_CODE(KEYCODE_F3)  Not implemented
+//  PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Multiface Two's Reset Button") PORT_CODE(KEYCODE_F3)  Not implemented
 
 	PORT_START_TAG("green_display")
 	PORT_CONFNAME( 0x01, 0x00, "Monitor" )
@@ -2164,13 +2487,15 @@ As far as I know, the KC compact used HD6845S only.
 
 INPUT_PORTS_END
 
-static INPUT_PORTS_START(cpc464)
-	PORT_INCLUDE( amstrad_keyboard )
-	PORT_INCLUDE( crtc_links )
+
+static INPUT_PORTS_START( cpc464 )
+	PORT_INCLUDE(amstrad_keyboard)
+	PORT_INCLUDE(crtc_links)
 INPUT_PORTS_END
 
-static INPUT_PORTS_START(cpc664)
-	PORT_INCLUDE( amstrad_keyboard )
+
+static INPUT_PORTS_START( cpc664 )
+	PORT_INCLUDE(amstrad_keyboard)
 
 	PORT_MODIFY("keyboard_row_0")
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f9")             PORT_CODE(KEYCODE_9_PAD)      PORT_CHAR(UCHAR_MAMEKEY(9_PAD))
@@ -2190,11 +2515,12 @@ static INPUT_PORTS_START(cpc664)
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_BACKSLASH)  PORT_CHAR(']') PORT_CHAR('}')
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad f4")             PORT_CODE(KEYCODE_4_PAD)      PORT_CHAR(UCHAR_MAMEKEY(4_PAD))
 
-	PORT_INCLUDE( crtc_links )
+	PORT_INCLUDE(crtc_links)
 INPUT_PORTS_END
 
-static INPUT_PORTS_START(cpc6128)
-	PORT_INCLUDE( amstrad_keyboard )
+
+static INPUT_PORTS_START( cpc6128 )
+	PORT_INCLUDE(amstrad_keyboard)
 
 	PORT_MODIFY("keyboard_row_0")
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f9")                    PORT_CODE(KEYCODE_9_PAD)      PORT_CHAR(UCHAR_MAMEKEY(9_PAD))
@@ -2220,12 +2546,13 @@ static INPUT_PORTS_START(cpc6128)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_RCONTROL)   PORT_CHAR('\\') PORT_CHAR('`')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Control")               PORT_CODE(KEYCODE_LCONTROL)   PORT_CHAR(UCHAR_SHIFT_2)
 
-	PORT_INCLUDE( crtc_links )
+	PORT_INCLUDE(crtc_links)
 INPUT_PORTS_END
 
+
 /* This CPC6128 sold in France has the AZERTY layout. Reference: http://amstrad.cpc.free.fr/amstrad/cpc6128.htm */
-static INPUT_PORTS_START(cpc6128f)
-	PORT_INCLUDE( amstrad_keyboard )
+static INPUT_PORTS_START( cpc6128f )
+	PORT_INCLUDE(amstrad_keyboard)
 
 	PORT_MODIFY("keyboard_row_0")
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f9")                    PORT_CODE(KEYCODE_9_PAD)      PORT_CHAR(UCHAR_MAMEKEY(9_PAD))
@@ -2286,13 +2613,17 @@ static INPUT_PORTS_START(cpc6128f)
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_A)          PORT_CHAR('q') PORT_CHAR('Q')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_Z)          PORT_CHAR('w') PORT_CHAR('W')
 
-	PORT_INCLUDE( crtc_links )
+	PORT_INCLUDE(crtc_links)
 INPUT_PORTS_END
 
-static INPUT_PORTS_START(kccomp)
-// The BIOS of the KC Compact would be able to recognize the keypresses generated by f5-f9. Unfortunately
-// these keys are not present on the keyboard! Reference: http://www.cepece.info/amstrad/docs/kcc/kcc01.jpg
-	PORT_INCLUDE( amstrad_keyboard )
+/*
+ * The BIOS of the KC Compact would be able to recognize the keypresses
+ * generated by F5-F9. Unfortunately these keys are not present on the
+ * keyboard! Reference: http://www.cepece.info/amstrad/docs/kcc/kcc01.jpg
+ * 
+ */
+static INPUT_PORTS_START( kccomp )
+	PORT_INCLUDE(amstrad_keyboard)
 
 	PORT_MODIFY("keyboard_row_0")
 	PORT_BIT(0x08, 0x08, IPT_UNUSED)
@@ -2317,25 +2648,25 @@ static INPUT_PORTS_START(kccomp)
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f4")                    PORT_CODE(KEYCODE_4_PAD)      PORT_CHAR(UCHAR_MAMEKEY(4_PAD))
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_RCONTROL)   PORT_CHAR('\\') PORT_CHAR('`')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Control")               PORT_CODE(KEYCODE_LALT)       PORT_CHAR(UCHAR_SHIFT_2)
-
 INPUT_PORTS_END
 
-static INPUT_PORTS_START(plus)
-	PORT_INCLUDE( amstrad_keyboard )
-	PORT_INCLUDE( crtc_links )
+
+static INPUT_PORTS_START( plus )
+	PORT_INCLUDE(amstrad_keyboard)
+	PORT_INCLUDE(crtc_links)
 
 	/* The CPC+ and GX4000 adds support for analogue controllers.
-	   Up to two joysticks or four paddles can be used, although the ASIC supports twice that.
-	   Read at &6808-&680f in ASIC RAM
-	   I am unsure if these are even close to correct.
+       Up to two joysticks or four paddles can be used, although the ASIC supports twice that.
+       Read at &6808-&680f in ASIC RAM
+       I am unsure if these are even close to correct.
 
-	UPDATE: the analog port supports (probably with an Y-cable) up to two analog joysticks
-	with two buttons each or four paddles with one button each. The CPC+/GX4000 have also an
-	AUX port which supports a lightgun/lightpen with two buttons.
-	Since all these devices have their dedicated connector, two digital joystick, two analog joysticks
-	and one lightgun can be connected at the same moment.
+    UPDATE: the analog port supports (probably with an Y-cable) up to two analog joysticks
+    with two buttons each or four paddles with one button each. The CPC+/GX4000 have also an
+    AUX port which supports a lightgun/lightpen with two buttons.
+    Since all these devices have their dedicated connector, two digital joystick, two analog joysticks
+    and one lightgun can be connected at the same moment.
 
-	The connectors' description for both CPCs and CPC+'s can be found at http://www.hardwarebook.info/Category:Computer */
+    The connectors' description for both CPCs and CPC+'s can be found at http://www.hardwarebook.info/Category:Computer */
 
 	PORT_START_TAG("analog1")
 	PORT_BIT(0x3f , 0, IPT_TRACKBALL_X)
@@ -2385,8 +2716,130 @@ static INPUT_PORTS_START(plus)
 	PORT_SENSITIVITY(100)
 	PORT_KEYDELTA(10)
 	PORT_PLAYER(4)
-
 INPUT_PORTS_END
+
+
+static INPUT_PORTS_START( gx4000 )
+
+	// The GX4000 is a console, so no keyboard access other than the joysticks.
+	PORT_START_TAG("keyboard_row_0")
+	PORT_BIT(0xff, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	PORT_START_TAG("keyboard_row_1")
+	PORT_BIT(0xff, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	PORT_START_TAG("keyboard_row_2")
+	PORT_BIT(0xff, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	PORT_START_TAG("keyboard_row_3")
+	PORT_BIT(0xff, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	PORT_START_TAG("keyboard_row_4")
+	PORT_BIT(0xff, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	PORT_START_TAG("keyboard_row_5")
+	PORT_BIT(0xff, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	PORT_START_TAG("keyboard_row_6")  // Joystick 2
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP)    PORT_PLAYER(2) PORT_8WAY
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN)  PORT_PLAYER(2) PORT_8WAY
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT)  PORT_PLAYER(2) PORT_8WAY
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(2) PORT_8WAY
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_BUTTON1)        PORT_PLAYER(2)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON2)        PORT_PLAYER(2)
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_UNUSED)
+	
+	PORT_START_TAG("keyboard_row_7")
+	PORT_BIT(0xff, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	PORT_START_TAG("keyboard_row_8")
+	PORT_BIT(0xff, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	PORT_START_TAG("keyboard_row_9")  // Joystick 1
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP)    PORT_PLAYER(1) PORT_8WAY
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN)  PORT_PLAYER(1) PORT_8WAY
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT)  PORT_PLAYER(1) PORT_8WAY
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(1) PORT_8WAY
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_BUTTON1)        PORT_PLAYER(1)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON2)        PORT_PLAYER(1)
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	PORT_INCLUDE(crtc_links)  // included to keep the driver happy
+
+	PORT_START_TAG("analog1")
+	PORT_BIT(0x3f , 0, IPT_TRACKBALL_X)
+	PORT_SENSITIVITY(100)
+	PORT_KEYDELTA(10)
+	PORT_PLAYER(1)
+
+	PORT_START_TAG("analog2")
+	PORT_BIT(0x3f , 0, IPT_TRACKBALL_Y)
+	PORT_SENSITIVITY(100)
+	PORT_KEYDELTA(10)
+	PORT_PLAYER(1)
+
+	PORT_START_TAG("analog3")
+	PORT_BIT(0x3f , 0, IPT_TRACKBALL_X)
+	PORT_SENSITIVITY(100)
+	PORT_KEYDELTA(10)
+	PORT_PLAYER(2)
+
+	PORT_START_TAG("analog4")
+	PORT_BIT(0x3f , 0, IPT_TRACKBALL_Y)
+	PORT_SENSITIVITY(100)
+	PORT_KEYDELTA(10)
+	PORT_PLAYER(2)
+
+// Not used, but are here for completeness
+	PORT_START_TAG("analog5")
+	PORT_BIT(0x3f , 0, IPT_TRACKBALL_X)
+	PORT_SENSITIVITY(100)
+	PORT_KEYDELTA(10)
+	PORT_PLAYER(3)
+
+	PORT_START_TAG("analog6")
+	PORT_BIT(0x3f , 0, IPT_TRACKBALL_Y)
+	PORT_SENSITIVITY(100)
+	PORT_KEYDELTA(10)
+	PORT_PLAYER(3)
+
+	PORT_START_TAG("analog7")
+	PORT_BIT(0x3f , 0, IPT_TRACKBALL_X)
+	PORT_SENSITIVITY(100)
+	PORT_KEYDELTA(10)
+	PORT_PLAYER(4)
+
+	PORT_START_TAG("analog8")
+	PORT_BIT(0x3f , 0, IPT_TRACKBALL_Y)
+	PORT_SENSITIVITY(100)
+	PORT_KEYDELTA(10)
+	PORT_PLAYER(4)
+INPUT_PORTS_END
+
+
+static INPUT_PORTS_START( aleste )
+	PORT_INCLUDE(amstrad_keyboard)
+
+	PORT_MODIFY( "keyboard_row_9" )
+	/* Documentation marks this input as "R/L", it's purpose is unknown - I can't even find it on the keyboard */
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("R  L")       PORT_CODE(KEYCODE_PGUP)
+
+	PORT_START_TAG( "keyboard_row_10" )
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)  PORT_NAME("F1  F6")    PORT_CODE(KEYCODE_F1)
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)  PORT_NAME("F2  F7")    PORT_CODE(KEYCODE_F2)
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD)  PORT_NAME("F3  F8")    PORT_CODE(KEYCODE_F3)
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD)  PORT_NAME("F4  F9")    PORT_CODE(KEYCODE_F4)
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD)  PORT_NAME("F5  F10")   PORT_CODE(KEYCODE_F5)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD)  PORT_NAME("HELP")      PORT_CODE(KEYCODE_PGDN)
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)	 PORT_NAME("INS")       PORT_CODE(KEYCODE_DEL)
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)  PORT_NAME("Funny looking Russian symbol")     PORT_CODE(KEYCODE_END)
+
+	PORT_INCLUDE(crtc_links)
+	PORT_MODIFY("multiface")  // move Multiface II stop to F6, as the Aleste has it's own F1-F5 keys.
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Multiface Two's Stop Button") PORT_CODE(KEYCODE_F6)
+INPUT_PORTS_END
+
+
 /* --------------------
    - AY8910_interface -
    --------------------*/
@@ -2416,6 +2869,12 @@ GFXDECODE_END
 
 
 
+/*************************************
+ *
+ *  Machine drivers
+ *
+ *************************************/
+
 /* actual clock to CPU is 4Mhz, but it is slowed by memory
 accessess. A HALT is used for every memory access by the CPU.
 This stretches the timing for opcodes, and gives an effective
@@ -2423,9 +2882,9 @@ speed of 3.8Mhz */
 
 /* Info about structures below:
 
-	The Amstrad has a CPU running at 4Mhz, slowed with wait states.
-	I have measured 19968 NOP instructions per frame, which gives,
-	50.08 fps as the tv refresh rate.
+    The Amstrad has a CPU running at 4Mhz, slowed with wait states.
+    I have measured 19968 NOP instructions per frame, which gives,
+    50.08 fps as the tv refresh rate.
 
   There are 312 lines on a PAL screen, giving 64us per line.
 
@@ -2454,53 +2913,176 @@ static MACHINE_DRIVER_START( amstrad )
 	MDRV_SCREEN_VISIBLE_AREA(0, ((AMSTRAD_SCREEN_WIDTH-32) - 1), 0, ((AMSTRAD_SCREEN_HEIGHT-40) - 1))
 	MDRV_PALETTE_LENGTH(32)
 	MDRV_COLORTABLE_LENGTH(32)
-	MDRV_PALETTE_INIT( amstrad_cpc )
+	MDRV_PALETTE_INIT(amstrad_cpc)
 
-	MDRV_VIDEO_START( amstrad )
-	MDRV_VIDEO_UPDATE( amstrad )
-	MDRV_VIDEO_EOF( amstrad )
+	MDRV_VIDEO_START(amstrad)
+	MDRV_VIDEO_UPDATE(amstrad)
+	MDRV_VIDEO_EOF(amstrad)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(WAVE, 0)
+	MDRV_SOUND_ADD_TAG("tape", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD(AY8910, 1000000)
+	MDRV_SOUND_ADD_TAG("ay", AY8912, 1000000)
 	MDRV_SOUND_CONFIG(ay8912_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( kccomp )
-	MDRV_IMPORT_FROM( amstrad )
-	MDRV_SCREEN_REFRESH_RATE( AMSTRAD_FPS )
-	MDRV_MACHINE_RESET( kccomp )
+	MDRV_IMPORT_FROM(amstrad)
+	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
+	MDRV_MACHINE_RESET(kccomp)
 	MDRV_SCREEN_SIZE(800, 312)
-	MDRV_PALETTE_INIT( kccomp )
+	MDRV_PALETTE_INIT(kccomp)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( cpcplus )
-	MDRV_IMPORT_FROM( amstrad )
-	MDRV_SCREEN_REFRESH_RATE( AMSTRAD_FPS )
-	MDRV_GFXDECODE( asic_sprite )
-	MDRV_MACHINE_START( plus )
-	MDRV_MACHINE_RESET( plus )
+	MDRV_IMPORT_FROM(amstrad)
+	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
+	MDRV_GFXDECODE(asic_sprite)
+	MDRV_MACHINE_START(plus)
+	MDRV_MACHINE_RESET(plus)
 	MDRV_SCREEN_SIZE(800, 312)
 	MDRV_PALETTE_LENGTH(4096+48)  // extended 12-bit palette, and standard 32 colour palette
 	MDRV_COLORTABLE_LENGTH(4096+48)
-	MDRV_PALETTE_INIT( amstrad_plus )
+	MDRV_PALETTE_INIT(amstrad_plus)
 MACHINE_DRIVER_END
 
 
-/***************************************************************************
+static MACHINE_DRIVER_START( gx4000 )
+	MDRV_IMPORT_FROM(amstrad)
+	MDRV_SOUND_REMOVE("tape")
+	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
+	MDRV_GFXDECODE(asic_sprite)
+	MDRV_MACHINE_START(plus)
+	MDRV_MACHINE_RESET(gx4000)
+	MDRV_SCREEN_SIZE(800, 312)
+	MDRV_PALETTE_LENGTH(4096+48)  // extended 12-bit palette, and standard 32 colour palette
+	MDRV_COLORTABLE_LENGTH(4096+48)
+	MDRV_PALETTE_INIT(amstrad_plus)
+MACHINE_DRIVER_END
 
-  Game driver(s)
+static MACHINE_DRIVER_START( aleste )
+	MDRV_IMPORT_FROM(amstrad)
+	MDRV_MACHINE_RESET(aleste)
+	MDRV_SOUND_REPLACE("ay", AY8910, 1000000)
+	MDRV_SOUND_CONFIG(ay8912_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	MDRV_PALETTE_LENGTH(32+64)
+	MDRV_COLORTABLE_LENGTH(32+64)  // standard CPC palette, and 6-bit MSX palette
+	MDRV_PALETTE_INIT(aleste)
+	MDRV_NVRAM_HANDLER(mc146818)
+MACHINE_DRIVER_END
 
-***************************************************************************/
+
+
+/*************************************
+ *
+ *  ROM definitions
+ *
+ *************************************/
 
 /* cpc6128.rom contains OS in first 16k, BASIC in second 16k */
 /* cpcados.rom contains Amstrad DOS */
 
+/* I am loading the roms outside of the Z80 memory area, because they
+are banked. */
+ROM_START( cpc6128 )
+	/* this defines the total memory size - 64k ram, 16k OS, 16k BASIC, 16k DOS */
+	ROM_REGION(0x020000, REGION_CPU1, 0)
+	/* load the os to offset 0x01000 from memory base */
+	ROM_LOAD("cpc6128.rom", 0x10000, 0x8000, CRC(9e827fe1) SHA1(5977adbad3f7c1e0e082cd02fe76a700d9860c30))
+	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, CRC(1fe22ecd) SHA1(39102c8e9cb55fcc0b9b62098780ed4a3cb6a4bb))
+
+	/* optional Multiface hardware */
+	ROM_LOAD_OPTIONAL("multface.rom", 0x1c000, 0x2000, CRC(f36086de) SHA1(1431ec628d38f000715545dd2186b684c5fe5a6f))
+ROM_END
+
+
+ROM_START( cpc6128f )
+	/* this defines the total memory size (128kb))- 64k ram, 16k OS, 16k BASIC, 16k DOS +16k*/
+	ROM_REGION(0x020000, REGION_CPU1, 0)
+
+	/* load the os to offset 0x01000 from memory base */
+	ROM_LOAD("cpc6128f.rom", 0x10000, 0x8000, CRC(1574923b) SHA1(200d59076dfef36db061d6d7d21d80021cab1237))
+	ROM_LOAD("cpcados.rom",  0x18000, 0x4000, CRC(1fe22ecd) SHA1(39102c8e9cb55fcc0b9b62098780ed4a3cb6a4bb))
+
+	/* optional Multiface hardware */
+	ROM_LOAD_OPTIONAL("multface.rom", 0x01c000, 0x2000, CRC(f36086de) SHA1(1431ec628d38f000715545dd2186b684c5fe5a6f))
+ROM_END
+
+
+ROM_START( cpc464 )
+	/* this defines the total memory size - 64k ram, 16k OS, 16k BASIC, 16k DOS */
+	ROM_REGION(0x01c000, REGION_CPU1, 0)
+	/* load the os to offset 0x01000 from memory base */
+	ROM_LOAD("cpc464.rom",  0x10000, 0x8000, CRC(40852f25) SHA1(56d39c463da60968d93e58b4ba0e675829412a20))
+	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, CRC(1fe22ecd) SHA1(39102c8e9cb55fcc0b9b62098780ed4a3cb6a4bb))
+ROM_END
+
+
+ROM_START( cpc664 )
+	/* this defines the total memory size - 64k ram, 16k OS, 16k BASIC, 16k DOS */
+	ROM_REGION(0x01c000, REGION_CPU1, 0)
+	/* load the os to offset 0x01000 from memory base */
+	ROM_LOAD("cpc664.rom",  0x10000, 0x8000, CRC(9AB5A036) SHA1(073a7665527b5bd8a148747a3947dbd3328682c8))
+	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, CRC(1fe22ecd) SHA1(39102c8e9cb55fcc0b9b62098780ed4a3cb6a4bb))
+ROM_END
+
+
+ROM_START( kccomp )
+	ROM_REGION(0x018000, REGION_CPU1, 0)
+	ROM_LOAD("kccos.rom",  0x10000, 0x4000, CRC(7f9ab3f7) SHA1(f828045e98e767f737fd93df0af03917f936ad08))
+	ROM_LOAD("kccbas.rom", 0x14000, 0x4000, CRC(ca6af63d) SHA1(d7d03755099d0aff501fa5fffc9c0b14c0825448))
+
+	ROM_REGION(0x018000+0x0800, REGION_PROMS, 0)
+	ROM_LOAD("farben.rom", 0x18000, 0x0800, CRC(a50fa3cf) SHA1(2f229ac9f62d56973139dad9992c208421bc0f51))
+
+	/* fake region - required by graphics decode structure */
+	/*ROM_REGION(0x0c00, REGION_GFX1) */
+ROM_END
+
+
+/* this system must have a cartridge installed to run */
+ROM_START(cpc6128p)
+	ROM_REGION(0x80000, REGION_CPU1, 0)
+	ROM_REGION(0x04000, REGION_USER1, 0)
+ROM_END
+
+
+#define rom_cpc464p  rom_cpc6128p
+#define rom_gx4000  rom_cpc6128p
+
+
+ROM_START( al520ex )
+	ROM_REGION(0x80000, REGION_CPU1, 0)
+	ROM_LOAD("al512.bin", 0x10000, 0x10000, CRC(e8c2a9a1) SHA1(ad5827582cb19eaaae1b76e67df62d96da6ad96b))
+
+	ROM_REGION(0x20, REGION_USER2, 0)
+	ROM_LOAD("af.bin", 0x00, 0x20, CRC(c81fb524) SHA1(17738d0603915a67ec1fddc4cbf7d6b98cdeb8f6))
+
+	ROM_REGION(0x100, REGION_USER3, 0)  // RAM bank mappings
+	ROM_LOAD("mapper.bin", 0x00, 0x100, CRC(0daebd80) SHA1(8633073cba752c38c5dc912ff9f6a3c89357539b))
+
+	ROM_REGION(0x800, REGION_USER4, 0)  // Colour data
+	ROM_LOAD("rfcoldat.bin", 0x00, 0x800, CRC(c6ace0e6) SHA1(2f4c51fcfaacb8deed68f6ae9388b870bc962cef))
+
+	ROM_REGION(0x800, REGION_USER5, 0)  // Keyboard / Video
+	ROM_LOAD("rfvdkey.bin", 0x00, 0x800, CRC(cf2aa4b0) SHA1(20f37da3bc3c377b1c47ae4d9ab8d150faae19a0))
+
+	ROM_REGION(0x100, REGION_USER6, 0)
+	ROM_LOAD("romram.bin", 0x00, 0x100, CRC(b3ea95d7) SHA1(1252390737a7ead4ecec988c873181798fbc291b))
+ROM_END
+
+
+
+/*************************************
+ *
+ *  System configs
+ *
+ *************************************/
 
 static void cpc6128_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -2513,6 +3095,7 @@ static void cpc6128_floppy_getinfo(const device_class *devclass, UINT32 state, u
 		default:										legacydsk_device_getinfo(devclass, state, info); break;
 	}
 }
+
 
 static void cpc6128_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -2528,6 +3111,7 @@ static void cpc6128_cassette_getinfo(const device_class *devclass, UINT32 state,
 	}
 }
 
+
 static void cpc6128_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
@@ -2540,12 +3124,6 @@ static void cpc6128_printer_getinfo(const device_class *devclass, UINT32 state, 
 	}
 }
 
-SYSTEM_CONFIG_START(cpc6128)
-	CONFIG_RAM_DEFAULT(128 * 1024)
-	CONFIG_DEVICE(cpc6128_floppy_getinfo)
-	CONFIG_DEVICE(cpc6128_cassette_getinfo)
-	CONFIG_DEVICE(cpc6128_printer_getinfo)
-SYSTEM_CONFIG_END
 
 static void cpcplus_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -2566,6 +3144,7 @@ static void cpcplus_cartslot_getinfo(const device_class *devclass, UINT32 state,
 	}
 }
 
+
 static void cpcplus_snapshot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* snapshot */
@@ -2581,95 +3160,66 @@ static void cpcplus_snapshot_getinfo(const device_class *devclass, UINT32 state,
 	}
 }
 
-SYSTEM_CONFIG_START(cpcplus)
+
+static void aleste_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+{
+	/* floppy */
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case DEVINFO_PTR_LOAD:							info->load = device_load_msx_floppy; break;
+		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+
+		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+	}
+}
+
+
+SYSTEM_CONFIG_START( cpc6128 )
+	CONFIG_RAM_DEFAULT(128 * 1024)
+	CONFIG_DEVICE(cpc6128_floppy_getinfo)
+	CONFIG_DEVICE(cpc6128_cassette_getinfo)
+	CONFIG_DEVICE(cpc6128_printer_getinfo)
+SYSTEM_CONFIG_END
+
+
+SYSTEM_CONFIG_START( cpcplus )
 	CONFIG_IMPORT_FROM(cpc6128)
 	CONFIG_DEVICE(cpcplus_cartslot_getinfo)
 	CONFIG_DEVICE(cpcplus_snapshot_getinfo)
 SYSTEM_CONFIG_END
 
 
-/* ---------------------------------------------
-   - Rom definition for the ROM loading system -
-   ---------------------------------------------*/
-/* I am loading the roms outside of the Z80 memory area, because they
-are banked. */
-ROM_START(cpc6128)
-	/* this defines the total memory size - 64k ram, 16k OS, 16k BASIC, 16k DOS */
-	ROM_REGION(0x020000, REGION_CPU1,0)
-	/* load the os to offset 0x01000 from memory base */
-	ROM_LOAD("cpc6128.rom", 0x10000, 0x8000, CRC(9e827fe1) SHA1(5977adbad3f7c1e0e082cd02fe76a700d9860c30))
-	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, CRC(1fe22ecd) SHA1(39102c8e9cb55fcc0b9b62098780ed4a3cb6a4bb))
-
-	/* optional Multiface hardware */
-		ROM_LOAD_OPTIONAL("multface.rom", 0x01c000, 0x02000, CRC(f36086de) SHA1(1431ec628d38f000715545dd2186b684c5fe5a6f))
-ROM_END
-
-ROM_START(cpc6128f)
-
-/* this defines the total memory size (128kb))- 64k ram, 16k OS, 16k BASIC, 16k DOS +16k*/
-	ROM_REGION(0x020000, REGION_CPU1,0)
-
-/* load the os to offset 0x01000 from memory base */
-	ROM_LOAD("cpc6128f.rom", 0x10000, 0x8000, CRC(1574923b) SHA1(200d59076dfef36db061d6d7d21d80021cab1237))
-	ROM_LOAD("cpcados.rom", 0x018000, 0x4000, CRC(1fe22ecd) SHA1(39102c8e9cb55fcc0b9b62098780ed4a3cb6a4bb))
-
-	/* optional Multiface hardware */
-	ROM_LOAD_OPTIONAL("multface.rom", 0x01c000, 0x2000, CRC(f36086de) SHA1(1431ec628d38f000715545dd2186b684c5fe5a6f))
-ROM_END
-
-ROM_START(cpc464)
-	/* this defines the total memory size - 64k ram, 16k OS, 16k BASIC, 16k DOS */
-	ROM_REGION(0x01c000, REGION_CPU1,0)
-	/* load the os to offset 0x01000 from memory base */
-	ROM_LOAD("cpc464.rom", 0x10000, 0x8000, CRC(40852f25) SHA1(56d39c463da60968d93e58b4ba0e675829412a20))
-	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, CRC(1fe22ecd) SHA1(39102c8e9cb55fcc0b9b62098780ed4a3cb6a4bb))
-ROM_END
-
-ROM_START(cpc664)
-	/* this defines the total memory size - 64k ram, 16k OS, 16k BASIC, 16k DOS */
-	ROM_REGION(0x01c000, REGION_CPU1,0)
-	/* load the os to offset 0x01000 from memory base */
-	ROM_LOAD("cpc664.rom", 0x10000, 0x8000, CRC(9AB5A036) SHA1(073a7665527b5bd8a148747a3947dbd3328682c8))
-	ROM_LOAD("cpcados.rom", 0x18000, 0x4000, CRC(1fe22ecd) SHA1(39102c8e9cb55fcc0b9b62098780ed4a3cb6a4bb))
-ROM_END
+SYSTEM_CONFIG_START( gx4000 )
+	CONFIG_RAM_DEFAULT(64 * 1024)  // has 64k RAM
+	CONFIG_DEVICE(cpcplus_cartslot_getinfo)
+	CONFIG_DEVICE(cpcplus_snapshot_getinfo)
+SYSTEM_CONFIG_END
 
 
-ROM_START(kccomp)
-	ROM_REGION(0x018000, REGION_CPU1,0)
-	ROM_LOAD("kccos.rom", 0x10000, 0x04000, CRC(7f9ab3f7) SHA1(f828045e98e767f737fd93df0af03917f936ad08))
-	ROM_LOAD("kccbas.rom", 0x14000, 0x04000, CRC(ca6af63d) SHA1(d7d03755099d0aff501fa5fffc9c0b14c0825448))
-	ROM_REGION(0x018000+0x0800, REGION_PROMS, 0 )
-	ROM_LOAD("farben.rom", 0x018000, 0x0800, CRC(a50fa3cf) SHA1(2f229ac9f62d56973139dad9992c208421bc0f51))
-
-	/* fake region - required by graphics decode structure */
-	/*ROM_REGION(0x0c00, REGION_GFX1) */
-ROM_END
+SYSTEM_CONFIG_START( aleste )
+	CONFIG_DEVICE(aleste_floppy_getinfo)
+	CONFIG_DEVICE(cpc6128_cassette_getinfo)
+	CONFIG_DEVICE(cpc6128_printer_getinfo)
+	CONFIG_RAM_DEFAULT(2048 * 1024)  // has 2048k RAM
+SYSTEM_CONFIG_END
 
 
-/* this system must have a cartridge installed to run */
-ROM_START(cpc6128p)
-	ROM_REGION(0x80000, REGION_CPU1,0)
-	ROM_REGION(0x4000, REGION_USER1,0)
-ROM_END
 
-/* this system must have a cartridge installed to run */
-ROM_START(cpc464p)
-	ROM_REGION(0x80000, REGION_CPU1,0)
-	ROM_REGION(0x4000, REGION_USER1,0)
-ROM_END
+/*************************************
+ *
+ *  Driver definitions
+ *
+ *************************************/
 
-/* this system must have a cartridge installed to run */
-ROM_START(gx4000)
-	ROM_REGION(0x80000, REGION_CPU1,0)
-	ROM_REGION(0x4000, REGION_USER1,0)
-ROM_END
-
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE  INPUT     INIT CONFIG   COMPANY                FULLNAME */
-COMP( 1984, cpc464,   0,        0,      amstrad, cpc464,   0,   cpc6128, "Amstrad plc",         "Amstrad CPC464", 0)
-COMP( 1985, cpc664,   cpc464,   0,      amstrad, cpc664,   0,   cpc6128, "Amstrad plc",         "Amstrad CPC664", 0)
-COMP( 1985, cpc6128,  cpc464,   0,      amstrad, cpc6128,  0,   cpc6128, "Amstrad plc",         "Amstrad CPC6128", 0)
-COMP( 1985, cpc6128f, cpc464,   0,      amstrad, cpc6128f, 0,   cpc6128, "Amstrad plc",         "Amstrad CPC6128 (France, AZERTY Keyboard)", 0)
-COMP( 1990, cpc464p,  0,        0,      cpcplus, plus,     0,   cpcplus, "Amstrad plc",         "Amstrad CPC464+", 0)
-COMP( 1990, cpc6128p, 0,        0,      cpcplus, plus,     0,   cpcplus, "Amstrad plc",         "Amstrad CPC6128+", 0)
-COMP( 1989, kccomp,   cpc464,   0,      kccomp,  kccomp,   0,   cpc6128, "VEB Mikroelektronik", "KC Compact", 0)
-
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE  INPUT     INIT     CONFIG   COMPANY                FULLNAME                                     FLAGS */
+COMP( 1984, cpc464,   0,        0,      amstrad, cpc464,   0,       cpc6128, "Amstrad plc",         "Amstrad CPC464",                            0 )
+COMP( 1985, cpc664,   cpc464,   0,      amstrad, cpc664,   0,       cpc6128, "Amstrad plc",         "Amstrad CPC664",                            0 )
+COMP( 1985, cpc6128,  cpc464,   0,      amstrad, cpc6128,  0,       cpc6128, "Amstrad plc",         "Amstrad CPC6128",                           0 )
+COMP( 1985, cpc6128f, cpc464,   0,      amstrad, cpc6128f, 0,       cpc6128, "Amstrad plc",         "Amstrad CPC6128 (France, AZERTY Keyboard)", 0 )
+COMP( 1990, cpc464p,  0,        0,      cpcplus, plus,     0,       cpcplus, "Amstrad plc",         "Amstrad CPC464+",                           0 )
+COMP( 1990, cpc6128p, 0,        0,      cpcplus, plus,     0,       cpcplus, "Amstrad plc",         "Amstrad CPC6128+",                          0 )
+CONS( 1990, gx4000,   0,        0,      gx4000,  gx4000,   0,       gx4000,  "Amstrad plc",         "Amstrad GX4000",                            0 )
+COMP( 1989, kccomp,   cpc464,   0,      kccomp,  kccomp,   0,       cpc6128, "VEB Mikroelektronik", "KC Compact",                                0 )
+COMP( 1993, al520ex,  cpc464,   0,      aleste,  aleste,   aleste,  aleste,  "Patisonic",           "Aleste 520EX",                              GAME_IMPERFECT_SOUND )

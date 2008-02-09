@@ -65,9 +65,9 @@
 
 #include "driver.h"
 #include "m6847.h"
-#include "inputx.h"
+#include "deprecat.h"
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 #include "debug/debugcpu.h"
 #include "debug/debugcon.h"
 #endif
@@ -1173,7 +1173,7 @@ static void graphics_bw_256(UINT32 *RESTRICT line, const m6847_pixel *RESTRICT v
 
 
 
-static void (*graphics_modes[8])(UINT32 *line, const m6847_pixel *video_data) =
+static void (*const graphics_modes[8])(UINT32 *line, const m6847_pixel *video_data) =
 {
 	graphics_color_64,	graphics_bw_128,
 	graphics_color_128,	graphics_bw_128,
@@ -1456,7 +1456,7 @@ static int get_scanline(void)
 }
 
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 static int get_beamx(void)
 {
 	attotime scanline_time;
@@ -1679,7 +1679,7 @@ static TIMER_CALLBACK(fs_rise)
  *
  *************************************/
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 
 static void execute_dumpscanline(int ref, int params, const char **param)
 {
@@ -1705,7 +1705,7 @@ static void execute_dumpscanline(int ref, int params, const char **param)
 	}
 }
 
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -1873,7 +1873,7 @@ void m6847_init(const m6847_config *cfg)
 	if (cfg->cpu0_timing_factor > 0)
 	{
 		cpu0_clock_period = period * cfg->cpu0_timing_factor * GROSS_FACTOR;
-		cpunum_set_clock_period(0, cpu0_clock_period);
+		cpunum_set_clock(Machine, 0, ATTOSECONDS_PER_SECOND / cpu0_clock_period);
 	}
 
 	/* calculate timing */
@@ -1921,11 +1921,11 @@ void m6847_init(const m6847_config *cfg)
 		logerror("\n");
 	}
 
-#ifdef MAME_DEBUG
+#ifdef ENABLE_DEBUGGER
 	/* setup debug commands */
 	if (Machine->debug_mode)
 		debug_console_register_command("m6847_dumpscanline", CMDFLAG_NONE, 0, 0, 0, execute_dumpscanline);
-#endif /* MAME_DEBUG */
+#endif /* ENABLE_DEBUGGER */
 }
 
 

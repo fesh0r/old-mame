@@ -1,40 +1,41 @@
 /************************************************************************
 Philips P2000 1 Memory map
 
-	CPU: Z80
-		0000-0fff	ROM
-		1000-4fff	ROM (appl)
-		5000-57ff	RAM (Screen T ver)
-		5000-5fff	RAM (Screen M ver)
-		6000-9fff	RAM (system)
-		a000-ffff	RAM (extension)
+    CPU: Z80
+        0000-0fff   ROM
+        1000-4fff   ROM (appl)
+        5000-57ff   RAM (Screen T ver)
+        5000-5fff   RAM (Screen M ver)
+        6000-9fff   RAM (system)
+        a000-ffff   RAM (extension)
 
-	Interrupts:
+    Interrupts:
 
-	Ports:
-		00-09		Keyboard input
-		10-1f		Output ports
-		20-2f		Input ports
-		30-3f		Scroll reg (T ver)
-		50-5f		Beeper
-		70-7f		DISAS (M ver)
-		88-8B		CTC
-		8C-90		Floppy ctrl
-		94			RAM Bank select
+    Ports:
+        00-09       Keyboard input
+        10-1f       Output ports
+        20-2f       Input ports
+        30-3f       Scroll reg (T ver)
+        50-5f       Beeper
+        70-7f       DISAS (M ver)
+        88-8B       CTC
+        8C-90       Floppy ctrl
+        94          RAM Bank select
 
-	Display: SAA5050
+    Display: SAA5050
 
 ************************************************************************/
 
 #include "driver.h"
-#include "cpu/z80/z80.h"
-#include "video/generic.h"
-#include "includes/saa5050.h"
 #include "includes/p2000t.h"
+#include "cpu/z80/z80.h"
+#include "video/saa5050.h"
+
+/* TODO: Remove dependency on this */
 #include "mslegacy.h"
 
-/* port i/o functions */
 
+/* port i/o functions */
 static ADDRESS_MAP_START( p2000t_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x00, 0x0f) AM_READ( p2000t_port_000f_r)
@@ -53,7 +54,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( p2000t_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x1000, 0x4fff) AM_ROM
-	AM_RANGE(0x5000, 0x57ff) AM_READWRITE(videoram_r, videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x5000, 0x57ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x5800, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xffff) AM_NOP
 ADDRESS_MAP_END
@@ -61,7 +62,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( p2000m_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x1000, 0x4fff) AM_ROM
-	AM_RANGE(0x5000, 0x5fff) AM_READWRITE(videoram_r, videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x5000, 0x5fff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x6000, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xffff) AM_NOP
 ADDRESS_MAP_END
@@ -200,7 +201,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( p2000_interrupt )
 {
-	cpunum_set_input_line(0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 /* Machine definition */
@@ -268,7 +269,7 @@ ROM_START(p2000m)
 	ROM_LOAD("p2000.chr", 0x0140, 0x08c0, BAD_DUMP CRC(78c17e3e) SHA1(4e1c59dc484505de1dc0b1ba7e5f70a54b0d4ccc))
 ROM_END
 
-/*		YEAR	NAME		PARENT	COMPAT	MACHINE		INPUT		INIT	CONFIG  COMPANY		FULLNAME */
+/*      YEAR    NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG  COMPANY     FULLNAME */
 COMP (	1980,	p2000t,		0,		0,		p2000t,		p2000t,		0,		NULL,	"Philips",	"Philips P2000T" , 0)
 COMP (	1980,	p2000m,		p2000t,	0,		p2000m,		p2000t,		0,		NULL,	"Philips",	"Philips P2000M" , 0)
 

@@ -36,6 +36,7 @@
 *********************************************************************/
 
 #include "applefdc.h"
+#include "deprecat.h"
 
 /* logging */
 #define LOG_IWM			0
@@ -278,7 +279,7 @@ static TIMER_CALLBACK(iwm_turnmotor_onoff)
 
 static void iwm_access(int offset)
 {
-	static const char *lines[] =
+	static const char *const lines[] =
 	{
 		"PH0",
 		"PH1",
@@ -335,7 +336,7 @@ static void iwm_access(int offset)
 
 
 
-UINT8 applefdc_r(offs_t offset)
+READ8_HANDLER( applefdc_r )
 {
 	UINT8 result = 0;
 
@@ -388,7 +389,7 @@ UINT8 applefdc_r(offs_t offset)
 
 
 
-void applefdc_w(offs_t offset, UINT8 data)
+WRITE8_HANDLER( applefdc_w )
 {
 	offset &= 15;
 

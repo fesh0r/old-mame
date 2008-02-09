@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "driver.h"
+#include "deprecat.h"
 
 #include "includes/vc4000.h"
 #include "cpu/s2650/s2650.h"
@@ -416,7 +417,7 @@ INTERRUPT_GEN( vc4000_video_line )
 {
 	int x,y,i;
 	UINT8 collision[400]={0}; // better alloca or gcc feature of non constant long automatic arrays
-	assert(sizeof(collision)>=Machine->screen[0].width);
+	assert(sizeof(collision)>=machine->screen[0].width);
 
 	vc4000_video.line++;
 	vc4000_video.line%=312;
@@ -436,13 +437,13 @@ INTERRUPT_GEN( vc4000_video_line )
 		/* 7-Sep-2007 - whomever wrote this crap code was dynamically remapping
 		 * the color table, a vile gross hack.  Doesn't look like this is going
 		 * to survive the 0.118u5 transition */
-		/* Machine->gfx[0]->colortable[1]=Machine->pens[8|((vc4000_video.reg.d.sprite_colors[0]>>3)&7)]; */
+		/* machine->gfx[0]->colortable[1]=machine->pens[8|((vc4000_video.reg.d.sprite_colors[0]>>3)&7)]; */
 		vc4000_sprite_update(vc4000_video.bitmap, collision, &vc4000_video.sprites[0]);
-		/* Machine->gfx[0]->colortable[1]=Machine->pens[8|(vc4000_video.reg.d.sprite_colors[0]&7)]; */
+		/* machine->gfx[0]->colortable[1]=machine->pens[8|(vc4000_video.reg.d.sprite_colors[0]&7)]; */
 		vc4000_sprite_update(vc4000_video.bitmap, collision, &vc4000_video.sprites[1]);
-		/* Machine->gfx[0]->colortable[1]=Machine->pens[8|((vc4000_video.reg.d.sprite_colors[1]>>3)&7)]; */
+		/* machine->gfx[0]->colortable[1]=machine->pens[8|((vc4000_video.reg.d.sprite_colors[1]>>3)&7)]; */
 		vc4000_sprite_update(vc4000_video.bitmap, collision, &vc4000_video.sprites[2]);
-		/* Machine->gfx[0]->colortable[1]=Machine->pens[8|(vc4000_video.reg.d.sprite_colors[1]&7)]; */
+		/* machine->gfx[0]->colortable[1]=machine->pens[8|(vc4000_video.reg.d.sprite_colors[1]&7)]; */
 		vc4000_sprite_update(vc4000_video.bitmap, collision, &vc4000_video.sprites[3]);
 
 		for (i=0; i<256; i++)
@@ -474,12 +475,12 @@ INTERRUPT_GEN( vc4000_video_line )
 		(vc4000_video.sprites[0].finished_now))
 	{
 		cpunum_set_input_line_vector(0, 0, 3);
-		cpunum_set_input_line(0, 0, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, 0, PULSE_LINE);
 	}
 }
 
 VIDEO_UPDATE( vc4000 )
 {
-	copybitmap(bitmap, vc4000_video.bitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
+	copybitmap(bitmap, vc4000_video.bitmap, 0, 0, 0, 0, cliprect);
 	return 0;
 }

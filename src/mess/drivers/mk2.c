@@ -3,6 +3,7 @@
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
 #include "machine/rriot.h"
 #include "cpu/m6502/m6502.h"
@@ -16,7 +17,7 @@
 
    for the computer to start as white
     switch to black (h enter)
-	swap players (g enter)
+    swap players (g enter)
 */
 /*
 chess champion mk II
@@ -143,12 +144,12 @@ ROM_END
 
    port b
     0..5 outputs
-	0 speaker out
-	6 as chipselect used!?
-	7 interrupt out?
+    0 speaker out
+    6 as chipselect used!?
+    7 interrupt out?
 
- 	c4, c5, keyboard polling
-	c0, c1, c2, c3 led output
+    c4, c5, keyboard polling
+    c0, c1, c2, c3 led output
 
 */
 
@@ -209,7 +210,7 @@ static void mk2_write_b(int chip, int value)
 
 static void mk2_irq(int chip, int level)
 {
-	cpunum_set_input_line(0, M6502_IRQ_LINE, level);
+	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, level);
 }
 
 static const RRIOT_CONFIG riot={
@@ -224,6 +225,6 @@ static DRIVER_INIT( mk2 )
 	rriot_init(0,&riot);
 }
 
-/*    YEAR  NAME    PARENT	COMPAT	MACHINE INPUT   INIT    CONFIG    COMPANY   FULLNAME */
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG    COMPANY   FULLNAME */
 CONS( 1979,	mk2,	0,		0,		mk2,	mk2,	mk2,	NULL,	  "Quelle International",  "Chess Champion MK II", 0)
 // second design sold (same computer/program?)

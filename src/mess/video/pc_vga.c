@@ -29,14 +29,14 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "mslegacy.h"
+#include "deprecat.h"
+#include "pc_vga.h"
+#include "pc_video.h"
 
 #include "includes/crtc6845.h"
-#include "video/pc_vga.h"
-#include "video/pc_video.h"
-#include "mscommon.h"
-#include "mess.h"
 #include "memconv.h"
+
+#include "mslegacy.h"
 
 /***************************************************************************
 

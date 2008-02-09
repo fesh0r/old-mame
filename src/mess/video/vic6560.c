@@ -8,17 +8,19 @@
 #include <math.h>
 #include <stdio.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "utils.h"
 #include "sound/custom.h"
 
 #define VERBOSE_DBG 0
+#include "vic6560.h"
+
 #include "includes/cbm.h"
 #include "includes/vc20.h"
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vc20tape.h"
 
-#include "includes/vic6560.h"
 
 /* usage of GFX system for lightpenpointer drawing,
  * needs little more testing with working dipswitches */
@@ -176,7 +178,7 @@ VIDEO_START( vic6560 )
 
 WRITE8_HANDLER ( vic6560_port_w )
 {
-	DBG_LOG (1, "vic6560_port_w", (errorlog, "%.4x:%.2x\n", offset, data));
+	DBG_LOG (1, "vic6560_port_w", ("%.4x:%.2x\n", offset, data));
 	switch (offset)
 	{
 	case 0xa:
@@ -280,7 +282,7 @@ WRITE8_HANDLER ( vic6560_port_w )
 		val = vic6560[offset];
 		break;
 	}
-	DBG_LOG (3, "vic6560_port_r", (errorlog, "%.4x:%.2x\n", offset, val));
+	DBG_LOG (3, "vic6560_port_r", ("%.4x:%.2x\n", offset, val));
 	return val;
 }
 
@@ -351,9 +353,9 @@ INLINE void vic6560_draw_pointer (mame_bitmap *bitmap,
 {
 	/* this is a a static graphical object */
 	/* should be easy to convert to gfx_element!? */
-	static UINT8 blackmask[] =
+	static const UINT8 blackmask[] =
 	{0x00, 0x70, 0x60, 0x50, 0x08, 0x04, 0x00, 0x00};
-	static UINT8 whitemask[] =
+	static const UINT8 whitemask[] =
 	{0xf0, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00};
 	int i, j, y, x;
 
@@ -484,7 +486,7 @@ INTERRUPT_GEN( vic656x_raster_interrupt )
 			r.min_y = LIGHTPEN_Y_VALUE - 1 + VIC656X_MAME_YPOS;
 			r.max_y = r.min_y + 8 - 1;
 
-			if (DOCLIP (&r, &Machine->screen[0].visarea))
+			if (DOCLIP (&r, &machine->screen[0].visarea))
 			{
 #ifndef GFX
 				vic6560_draw_pointer (vic6560_bitmap, &r,
@@ -501,6 +503,6 @@ INTERRUPT_GEN( vic656x_raster_interrupt )
 
 VIDEO_UPDATE( vic6560 )
 {
-	copybitmap(bitmap, vic6560_bitmap, 0, 0, 0, 0, cliprect, TRANSPARENCY_NONE, 0);
+	copybitmap(bitmap, vic6560_bitmap, 0, 0, 0, 0, cliprect);
 	return 0;
 }

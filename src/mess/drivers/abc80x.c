@@ -1,88 +1,93 @@
 /*
-	abc800.c
+    abc800.c
 
-	MESS Driver by Curt Coder
+    MESS Driver by Curt Coder
 
-	Luxor ABC 800C
-	--------------
-	(c) 1981 Luxor Datorer AB, Sweden
+    Luxor ABC 800C
+    --------------
+    (c) 1981 Luxor Datorer AB, Sweden
 
-	CPU:			Z80 @ 3 MHz
-	ROM:			32 KB
-	RAM:			16 KB, 1 KB frame buffer, 16 KB high-resolution videoram (800C/HR)
-	CRTC:			6845
-	Resolution:		240x240
-	Colors:			8
+    CPU:            Z80 @ 3 MHz
+    ROM:            32 KB
+    RAM:            16 KB, 1 KB frame buffer, 16 KB high-resolution videoram (800C/HR)
+    CRTC:           6845
+    Resolution:     240x240
+    Colors:         8
 
-	Luxor ABC 800M
-	--------------
-	(c) 1981 Luxor Datorer AB, Sweden
+    Luxor ABC 800M
+    --------------
+    (c) 1981 Luxor Datorer AB, Sweden
 
-	CPU:			Z80 @ 3 MHz
-	ROM:			32 KB
-	RAM:			16 KB, 2 KB frame buffer, 16 KB high-resolution videoram (800M/HR)
-	CRTC:			6845
-	Resolution:		480x240, 240x240 (HR)
-	Colors:			2
+    CPU:            Z80 @ 3 MHz
+    ROM:            32 KB
+    RAM:            16 KB, 2 KB frame buffer, 16 KB high-resolution videoram (800M/HR)
+    CRTC:           6845
+    Resolution:     480x240, 240x240 (HR)
+    Colors:         2
 
-	Luxor ABC 802
-	-------------
-	(c) 1983 Luxor Datorer AB, Sweden
+    Luxor ABC 802
+    -------------
+    (c) 1983 Luxor Datorer AB, Sweden
 
-	CPU:			Z80 @ 3 MHz
-	ROM:			32 KB
-	RAM:			16 KB, 2 KB frame buffer, 16 KB ram-floppy
-	CRTC:			6845
-	Resolution:		480x240
-	Colors:			2
+    CPU:            Z80 @ 3 MHz
+    ROM:            32 KB
+    RAM:            16 KB, 2 KB frame buffer, 16 KB ram-floppy
+    CRTC:           6845
+    Resolution:     480x240
+    Colors:         2
 
-	Luxor ABC 806
-	-------------
-	(c) 1983 Luxor Datorer AB, Sweden
+    Luxor ABC 806
+    -------------
+    (c) 1983 Luxor Datorer AB, Sweden
 
-	CPU:			Z80 @ 3 MHz
-	ROM:			32 KB
-	RAM:			32 KB, 4 KB frame buffer, 128 KB scratch pad ram
-	CRTC:			6845
-	Resolution:		240x240, 256x240, 512x240
-	Colors:			8
+    CPU:            Z80 @ 3 MHz
+    ROM:            32 KB
+    RAM:            32 KB, 4 KB frame buffer, 128 KB scratch pad ram
+    CRTC:           6845
+    Resolution:     240x240, 256x240, 512x240
+    Colors:         8
 
-	http://www.devili.iki.fi/Computers/Luxor/
-	http://hem.passagen.se/mani/abc/
+    http://www.devili.iki.fi/Computers/Luxor/
+    http://hem.passagen.se/mani/abc/
 */
 
 /*
 
-	TODO:
+    TODO:
 
-	- keyboard ROM dump is needed!
-	- keyboard NE556 discrete beeper
-	- ABC806 memory banking
-	- proper port mirroring
-	- COM port DIP switch
-	- use MAME CRTC6845 implementation
-	- HR graphics board
-	- floppy controller board
-	- Facit DTC (recased ABC-800?)
-	- hard disks (ABC-850 10MB, ABC-852 20MB, ABC-856 60MB)
+    - keyboard ROM dump is needed!
+    - keyboard NE556 discrete beeper
+    - ABC806 memory banking
+    - proper port mirroring
+    - COM port DIP switch
+    - use MAME CRTC6845 implementation
+    - HR graphics board
+    - floppy controller board
+    - Facit DTC (recased ABC-800?)
+    - hard disks (ABC-850 10MB, ABC-852 20MB, ABC-856 60MB)
 
 */
 
+/* Core includes */
 #include "driver.h"
-#include "inputx.h"
-#include "video/generic.h"
-#include "includes/centroni.h"
-#include "includes/serial.h"
-#include "devices/basicdsk.h"
-#include "devices/cassette.h"
-#include "devices/printer.h"
+#include "includes/abc80x.h"
+
+/* Components */
 #include "cpu/z80/z80daisy.h"
 #include "cpu/i8039/i8039.h"
+#include "machine/centroni.h"
+#include "includes/serial.h"
 #include "machine/z80ctc.h"
 #include "machine/z80sio.h"
 #include "machine/z80dart.h"
 #include "machine/abcbus.h"
-#include "video/abc80x.h"
+#include "video/crtc6845.h"
+
+/* Devices */
+#include "devices/basicdsk.h"
+#include "devices/cassette.h"
+#include "devices/printer.h"
+
 
 static emu_timer *abc800_ctc_timer;
 
@@ -211,17 +216,17 @@ static WRITE8_HANDLER( dart_w )
 
 /*
 
-	Keyboard connector pinout
+    Keyboard connector pinout
 
-	pin		description		connected to
-	-------------------------------------------
-	1		TxD				i8035 pin 36 (P25)
-	2		GND
-	3		RxD				i8035 pin 6 (_INT)
-	4		CLOCK			i8035 pin 39 (T1)
-	5		_KEYDOWN		i8035 pin 37 (P26)
-	6		+12V
-	7		_RESET			NE556 pin 8 (2TRIG)
+    pin     description     connected to
+    -------------------------------------------
+    1       TxD             i8035 pin 36 (P25)
+    2       GND
+    3       RxD             i8035 pin 6 (_INT)
+    4       CLOCK           i8035 pin 39 (T1)
+    5       _KEYDOWN        i8035 pin 37 (P26)
+    6       +12V
+    7       _RESET          NE556 pin 8 (2TRIG)
 
 */
 
@@ -246,9 +251,9 @@ static WRITE8_HANDLER( abc77_data_w )
 		watchdog_reset_w(0, 0);
 	}
 
-//	abc77_beep = data & 0x10;
+//  abc77_beep = data & 0x10;
 	z80dart_set_dcd(0, 0, (data & 0x40) ? 0 : 1);
-//	abc77_hys = data & 0x80;
+//  abc77_hys = data & 0x80;
 }
 
 /* Memory Maps */
@@ -667,7 +672,7 @@ static INTERRUPT_GEN( abc802_vblank_interrupt )
 
 static MACHINE_START( abc802 )
 {
-	machine_start_abc800(machine);
+	MACHINE_START_CALL(abc800);
 
 	z80dart_init(0, &abc802_dart_intf);
 
@@ -682,7 +687,7 @@ static MACHINE_RESET( abc802 )
 
 static MACHINE_START( abc806 )
 {
-	machine_start_abc800(machine);
+	MACHINE_START_CALL(abc800);
 
 	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1), 0);
 	memory_configure_bank(1, 1, 1, mess_ram, 0);
@@ -765,15 +770,15 @@ MACHINE_DRIVER_END
 
 /*
 
-	ABC800 DOS ROMs
+    ABC800 DOS ROMs
 
-	Label		Drive Type
-	----------------------------
-	ABC 6-1X	ABC830,DD82,DD84
-	800 8"		DD88
-	ABC 6-2X	ABC832
-	ABC 6-3X	ABC838
-	UFD 6.XX	Winchester
+    Label       Drive Type
+    ----------------------------
+    ABC 6-1X    ABC830,DD82,DD84
+    800 8"      DD88
+    ABC 6-2X    ABC832
+    ABC 6-3X    ABC838
+    UFD 6.XX    Winchester
 
 */
 
@@ -1007,15 +1012,15 @@ SYSTEM_CONFIG_END
 
 /* Driver Initialization */
 
-static offs_t abc800_opbase_handler(offs_t pc)
+static OPBASE_HANDLER( abc800_opbase_handler )
 {
-	if (pc >= 0x7800 && pc < 0x8000)
+	if (address >= 0x7800 && address < 0x8000)
 	{
 		opcode_base = opcode_arg_base = memory_region(REGION_CPU1);
 		return ~0;
 	}
 
-	return pc;
+	return address;
 }
 
 static DRIVER_INIT( abc800 )

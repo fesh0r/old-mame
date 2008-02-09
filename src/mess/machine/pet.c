@@ -3,7 +3,9 @@
 
     peter.trauner@jk.uni-linz.ac.at
 ***************************************************************************/
+
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/m6809/m6809.h"
 
@@ -27,6 +29,7 @@ int pet_font=0;
 UINT8 *pet_memory;
 UINT8 *superpet_memory;
 UINT8 *pet_videoram;
+static UINT8 *pet80_bank1_base;
 
 /* pia at 0xe810
    port a
@@ -95,8 +98,8 @@ static void pet_irq (int level)
 	{
 		DBG_LOG (3, "mos6502", ("irq %s\n", level ? "start" : "end"));
 		if (superpet)
-			cpunum_set_input_line (1, M6809_IRQ_LINE, level);
-		cpunum_set_input_line (0, M6502_IRQ_LINE, level);
+			cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, level);
+		cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -270,6 +273,10 @@ static  READ8_HANDLER(cbm8096_io_r)
 	return data;
 }
 
+static WRITE8_HANDLER(pet80_bank1_w) {
+	pet80_bank1_base[offset] = data;
+}
+
 /*
 65520        8096 memory control register
         bit 0    1=write protect $8000-BFFF
@@ -310,8 +317,9 @@ WRITE8_HANDLER(cbm8096_w)
 
 		if (data&0x20)
 		{
-			memory_set_bankptr(1, pet_memory+0x8000);
-			wh = videoram_w;
+			pet80_bank1_base = pet_memory + 0x8000;
+			memory_set_bankptr(1, pet80_bank1_base);
+			wh = pet80_bank1_w;
 		}
 		else
 		{
@@ -329,14 +337,16 @@ WRITE8_HANDLER(cbm8096_w)
 
 		if (data&4) {
 			if (!(data&0x20)) {
-				memory_set_bankptr(1,pet_memory+0x14000);
+				pet80_bank1_base = pet_memory + 0x14000;
+				memory_set_bankptr(1,pet80_bank1_base);
 			}
 			memory_set_bankptr(2,pet_memory+0x15000);
 			memory_set_bankptr(3,pet_memory+0x16000);
 			memory_set_bankptr(4,pet_memory+0x17000);
 		} else {
 			if (!(data&0x20)) {
-				memory_set_bankptr(1,pet_memory+0x10000);
+				pet80_bank1_base = pet_memory + 0x10000;
+				memory_set_bankptr(1,pet80_bank1_base);
 			}
 			memory_set_bankptr(2,pet_memory+0x11000);
 			memory_set_bankptr(3,pet_memory+0x12000);
@@ -360,29 +370,30 @@ WRITE8_HANDLER(cbm8096_w)
 	}
 	else
 	{
-		memory_set_bankptr(1, pet_memory + 0x8000);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, videoram_w);
+		pet80_bank1_base = pet_memory + 0x8000;
+		memory_set_bankptr(1, pet80_bank1_base );
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, pet80_bank1_w);
 
 		memory_set_bankptr(2, pet_memory + 0x9000);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x9fff, 0, 0, MWA8_ROM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x9fff, 0, 0, MWA8_UNMAP);
 
 		memory_set_bankptr(3, pet_memory + 0xa000);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, 0, 0, MWA8_ROM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, 0, 0, MWA8_UNMAP);
 
 		memory_set_bankptr(4,pet_memory+0xb000);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, 0, 0, MWA8_ROM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, 0, 0, MWA8_UNMAP);
 
 		memory_set_bankptr(6,pet_memory+0xc000);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xe7ff, 0, 0, MWA8_ROM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xe7ff, 0, 0, MWA8_UNMAP);
 
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe800, 0xefff, 0, 0, cbm8096_io_r);
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe800, 0xefff, 0, 0, cbm8096_io_w);
 
 		memory_set_bankptr(8,pet_memory+0xf000);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffef, 0, 0, MWA8_ROM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffef, 0, 0, MWA8_UNMAP);
 
 		memory_set_bankptr(9,pet_memory+0xfff1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfff1, 0xffff, 0, 0, MWA8_ROM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfff1, 0xffff, 0, 0, MWA8_UNMAP);
 	}
 }
 
@@ -486,7 +497,7 @@ DRIVER_INIT( pet1 )
 static void pet_display_enable_changed(int display_enabled) {
 }
 
-const static crtc6845_interface crtc_pet40 = {
+static const crtc6845_interface crtc_pet40 = {
 	0,
 	800000 /*?*/,
 	8 /*?*/,
@@ -496,7 +507,7 @@ const static crtc6845_interface crtc_pet40 = {
 	pet_display_enable_changed
 };
 
-const static crtc6845_interface crtc_pet80 = {
+static const crtc6845_interface crtc_pet80 = {
 	0,
 	800000 /*?*/,
 	16 /*?*/,
@@ -552,14 +563,14 @@ MACHINE_RESET( pet )
 		spet.rom = 0;
 		if (M6809_SELECT)
 		{
-			cpunum_set_input_line(0, INPUT_LINE_HALT, 1);
-			cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 1);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 0);
 			pet_font = 2;
 		}
 		else
 		{
-			cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
-			cpunum_set_input_line(0, INPUT_LINE_HALT, 1);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 0);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 1);
 			pet_font = 0;
 		}
 	}
@@ -600,12 +611,12 @@ INTERRUPT_GEN( pet_frame_interrupt )
 	if (superpet)
 	{
 		if (M6809_SELECT) {
-			cpunum_set_input_line(0, INPUT_LINE_HALT,1);
-			cpunum_set_input_line(0, INPUT_LINE_HALT, 0);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT,1);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 0);
 			pet_font|=2;
 		} else {
-			cpunum_set_input_line(0, INPUT_LINE_HALT,0);
-			cpunum_set_input_line(0, INPUT_LINE_HALT, 1);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT,0);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 1);
 			pet_font&=~2;
 		}
 	}

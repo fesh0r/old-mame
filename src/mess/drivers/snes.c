@@ -24,10 +24,9 @@
 
 ***************************************************************************/
 #include "driver.h"
-#include "video/generic.h"
+#include "deprecat.h"
 #include "includes/snes.h"
 #include "devices/cartslot.h"
-#include "inputx.h"
 
 static ADDRESS_MAP_START( snes_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x000000, 0x2fffff) AM_READWRITE(snes_r_bank1, snes_w_bank1)	/* I/O and ROM (repeats for each bank) */
@@ -254,7 +253,7 @@ static void snes_machine_stop(running_machine *machine)
 static MACHINE_START( snes_mess )
 {
 	add_exit_callback(machine, snes_machine_stop);
-	machine_start_snes(machine);
+	MACHINE_START_CALL(snes);
 }
 
 static int device_load_snes_cart(mess_image *image)
@@ -266,7 +265,7 @@ static int device_load_snes_cart(mess_image *image)
 	UINT8 valid_mode20, valid_mode21;
 
 	/* Cart types */
-	static struct
+	static const struct
 	{
 		INT16 Code;
 		const char *Name;
@@ -323,13 +322,13 @@ static int device_load_snes_cart(mess_image *image)
 	else if( (header[0] | (header[1] << 8)) == (((image_length(image) - 512) / 1024) / 8) )
 	{
 		/* Some headers have the rom size at the start, if this matches with the
-		 * actual rom size, we probably have a header */
+         * actual rom size, we probably have a header */
 		logerror( "Found header(size) - Skipped\n" );
 	}
 	else if( (image_length(image) % 0x8000) == 512 )
 	{
 		/* As a last check we'll see if there's exactly 512 bytes extra to this
-		 * image. */
+         * image. */
 		logerror( "Found header(extra) - Skipped\n" );
 	}
 	else
@@ -366,14 +365,14 @@ static int device_load_snes_cart(mess_image *image)
 	if( snes_cart.mode == SNES_MODE_20 )
 	{
 		/* In mode 20, all blocks are 32kb. There are upto 96 blocks, giving a
-		 * total of 24mbit(3mb) of ROM.
-		 * The first 48 blocks are located in banks 0x00 to 0x2f at address
-		 * 0x8000.  They are mirrored in banks 0x80 to 0xaf.
-		 * The next 16 blocks are located in banks 0x30 to 0x3f at address
-		 * 0x8000.  They are mirrored in banks 0xb0 to 0xbf.
-		 * The final 32 blocks are located in banks 0x40 - 0x5f at address
-		 * 0x8000.  They are mirrored in banks 0xc0 to 0xdf.
-		 */
+         * total of 24mbit(3mb) of ROM.
+         * The first 48 blocks are located in banks 0x00 to 0x2f at address
+         * 0x8000.  They are mirrored in banks 0x80 to 0xaf.
+         * The next 16 blocks are located in banks 0x30 to 0x3f at address
+         * 0x8000.  They are mirrored in banks 0xb0 to 0xbf.
+         * The final 32 blocks are located in banks 0x40 - 0x5f at address
+         * 0x8000.  They are mirrored in banks 0xc0 to 0xdf.
+         */
 		i = 0;
 		while( i < 96 && readblocks <= totalblocks )
 		{
@@ -384,11 +383,11 @@ static int device_load_snes_cart(mess_image *image)
 	else	/* Mode 21 */
 	{
 		/* In mode 21, all blocks are 64kb. There are upto 96 blocks, giving a
-		 * total of 48mbit(6mb) of ROM.
-		 * The first 64 blocks are located in banks 0xc0 to 0xff. The top 32k of
-		 * each bank is mirrored in banks 0x00 to 0x3f.
-		 * The final 32 blocks are located in banks 0x40 to 0x5f.
-		 */
+         * total of 48mbit(6mb) of ROM.
+         * The first 64 blocks are located in banks 0xc0 to 0xff. The top 32k of
+         * each bank is mirrored in banks 0x00 to 0x3f.
+         * The final 32 blocks are located in banks 0x40 to 0x5f.
+         */
 
 		/* read first 64 blocks */
 		i = 0;

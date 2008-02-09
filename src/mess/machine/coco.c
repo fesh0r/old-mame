@@ -82,19 +82,18 @@ easier to manage.
 #include <assert.h>
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
 #include "includes/coco.h"
 #include "includes/cococart.h"
 #include "machine/6883sam.h"
-#include "includes/6551.h"
+#include "machine/6551.h"
 #include "video/m6847.h"
 #include "formats/cocopak.h"
 #include "devices/bitbngr.h"
 #include "devices/printer.h"
 #include "devices/cassette.h"
-#include "image.h"
-#include "state.h"
 #include "machine/wd17xx.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
@@ -712,9 +711,9 @@ static void d_recalc_irq(void)
 	UINT8 pia0_irq_b = pia_get_irq_b(0);
 
 	if (pia0_irq_a || pia0_irq_b)
-		cpunum_set_input_line(0, M6809_IRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, M6809_IRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, CLEAR_LINE);
 }
 
 static void d_recalc_firq(void)
@@ -725,15 +724,15 @@ static void d_recalc_firq(void)
 	UINT8 pia2_firq_b = pia_get_irq_b(2);
 
 	if (pia1_firq_a || pia1_firq_b || pia2_firq_a || pia2_firq_b)
-		cpunum_set_input_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
-		cpunum_set_input_line(0, M6809_FIRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
 static void coco3_recalc_irq(void)
 {
 	if ((coco3_gimereg[0] & 0x20) && gime_irq)
-		cpunum_set_input_line(0, M6809_IRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, ASSERT_LINE);
 	else
 		d_recalc_irq();
 }
@@ -741,7 +740,7 @@ static void coco3_recalc_irq(void)
 static void coco3_recalc_firq(void)
 {
 	if ((coco3_gimereg[0] & 0x10) && gime_firq)
-		cpunum_set_input_line(0, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
 		d_recalc_firq();
 }
@@ -873,7 +872,7 @@ static timer_callback recalc_interrupts;
 
 void coco_set_halt_line(int halt_line)
 {
-	cpunum_set_input_line(0, INPUT_LINE_HALT, halt_line);
+	cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, halt_line);
 	if (halt_line == CLEAR_LINE)
 		timer_set(ATTOTIME_IN_CYCLES(1,0), NULL, 0, recalc_interrupts);
 }
@@ -1582,7 +1581,7 @@ static void	dgnalpha_fdc_callback(wd17xx_state_t event, void *param)
 	switch(event)
 	{
 		case WD17XX_IRQ_CLR:
-			cpunum_set_input_line(0, INPUT_LINE_NMI, CLEAR_LINE);
+			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 			break;
 		case WD17XX_IRQ_SET:
 			if(dgnalpha_just_reset)
@@ -1592,7 +1591,7 @@ static void	dgnalpha_fdc_callback(wd17xx_state_t event, void *param)
 			else
 			{
 				if (pia_get_output_ca2(2))
-					cpunum_set_input_line(0, INPUT_LINE_NMI, ASSERT_LINE);
+					cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
 			}
 			break;
 		case WD17XX_DRQ_CLR:
@@ -1803,7 +1802,7 @@ static void d_sam_set_mpurate(int val)
 	 * TODO:  Make the overclock more accurate.  In dual speed, ROM was a fast
 	 * access but RAM was not.  I don't know how to simulate this.
 	 */
-    cpunum_set_clockscale(0, val ? 2 : 1);
+    cpunum_set_clockscale(Machine, 0, val ? 2 : 1);
 }
 
 READ8_HANDLER(dragon_alpha_mapped_irq_r)
@@ -1924,8 +1923,8 @@ static void setup_memory_map(void)
 			else
 				offset=&coco_rom[0x4000+(0x1000*(block_index-4))];
 
-			memory_set_bankptr(block_index+9,offset);
-			memory_install_write_handler(0, ADDRESS_SPACE_PROGRAM, memmap[block_index+8].start, memmap[block_index+8].end, 0, 0, STATIC_ROM);
+			memory_set_bankptr(block_index + 9,offset);
+			memory_install_write_handler(0, ADDRESS_SPACE_PROGRAM, memmap[block_index+8].start, memmap[block_index+8].end, 0, 0, STATIC_NOP);
 		}
 	}
 }
@@ -2211,7 +2210,7 @@ static void coco3_mmu_update(int lowblock, int hiblock)
 		{
 			/* an offset into the CoCo 3 ROM */
 			readbank = &coco_rom[offset & ~0x80000000];
-			writebank = STATIC_ROM;
+			writebank = STATIC_UNMAP;
 		}
 		else
 		{
@@ -2610,7 +2609,7 @@ static TIMER_CALLBACK(coco3_cart_timer_proc)
 static TIMER_CALLBACK(halt_timer_proc)
 {
 	int data = param;
-	cpunum_set_input_line(0, INPUT_LINE_HALT, (data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, (data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -2622,7 +2621,7 @@ static TIMER_CALLBACK(halt_timer_proc)
 static TIMER_CALLBACK(nmi_timer_proc)
 {
 	int data = param;
-	cpunum_set_input_line(0, INPUT_LINE_NMI, (data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, (data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -2731,6 +2730,7 @@ typedef struct _machine_init_interface machine_init_interface;
 struct _machine_init_interface
 {
 	const pia6821_interface *piaintf;			/* PIA initializer */
+	int	piaintf_count;							/* PIA count */
 	timer_callback recalc_interrupts_;			/* recalculate inturrupts callback */
 	void (*printer_out_)(int data);				/* printer output callback */
 	timer_callback cart_timer_proc;				/* cartridge timer proc */
@@ -2752,6 +2752,7 @@ static void generic_init_machine(running_machine *machine, const machine_init_in
 	mess_image *cart_image;
 	const char *extrainfo;
 	const char *cart_hardware;
+	int i;
 
 	/* clear static variables */
 	coco_hiresjoy_ca = 1;
@@ -2781,9 +2782,9 @@ static void generic_init_machine(running_machine *machine, const machine_init_in
 	/* setup printer output callback */
 	printer_out = init->printer_out_;
 
-	pia_config(0, &init->piaintf[0]);
-	pia_config(1, &init->piaintf[1]);
-	pia_config(2, &init->piaintf[2]); /* Dragon Alpha 3rd pia */
+	/* setup PIAs */
+	for (i = 0; i < init->piaintf_count; i++)
+		pia_config(i, &init->piaintf[i]);
 	pia_reset();
 
 	/* cartridge line timers */
@@ -2849,6 +2850,7 @@ MACHINE_START( dragon32 )
 	/* Setup machine initialization */
 	memset(&init, 0, sizeof(init));
 	init.piaintf			= dragon32_pia_intf;
+	init.piaintf_count		= ARRAY_LENGTH(dragon32_pia_intf);
 	init.recalc_interrupts_	= d_recalc_interrupts;
 	init.printer_out_		= printer_out_dragon;
 	init.cart_timer_proc	= coco_cart_timer_proc;
@@ -2865,6 +2867,7 @@ MACHINE_START( dragon64 )
 	/* Setup machine initialization */
 	memset(&init, 0, sizeof(init));
 	init.piaintf			= dragon64_pia_intf;
+	init.piaintf_count		= ARRAY_LENGTH(dragon64_pia_intf);
 	init.recalc_interrupts_	= d_recalc_interrupts;
 	init.printer_out_		= printer_out_dragon;
 	init.cart_timer_proc	= coco_cart_timer_proc;
@@ -2885,6 +2888,7 @@ MACHINE_START( d64plus )
 	/* Setup machine initialization */
 	memset(&init, 0, sizeof(init));
 	init.piaintf			= dragon64_pia_intf;
+	init.piaintf_count		= ARRAY_LENGTH(dragon64_pia_intf);
 	init.recalc_interrupts_	= d_recalc_interrupts;
 	init.printer_out_		= printer_out_dragon;
 	init.cart_timer_proc	= coco_cart_timer_proc;
@@ -2909,6 +2913,7 @@ MACHINE_START( tanodr64 )
 	/* Setup machine initialization */
 	memset(&init, 0, sizeof(init));
 	init.piaintf			= dragon64_pia_intf;
+	init.piaintf_count		= ARRAY_LENGTH(dragon64_pia_intf);
 	init.recalc_interrupts_	= d_recalc_interrupts;
 	init.printer_out_		= printer_out_dragon;
 	init.cart_timer_proc	= coco_cart_timer_proc;
@@ -2928,6 +2933,7 @@ MACHINE_START( dgnalpha )
 	/* Setup machine initialization */
 	memset(&init, 0, sizeof(init));
 	init.piaintf			= dgnalpha_pia_intf;
+	init.piaintf_count		= ARRAY_LENGTH(dgnalpha_pia_intf);
 	init.recalc_interrupts_	= d_recalc_interrupts;
 	init.printer_out_		= printer_out_dragon;
 	init.cart_timer_proc	= coco_cart_timer_proc;
@@ -2955,6 +2961,7 @@ MACHINE_START( coco )
 	/* Setup machine initialization */
 	memset(&init, 0, sizeof(init));
 	init.piaintf			= coco_pia_intf;
+	init.piaintf_count		= ARRAY_LENGTH(coco_pia_intf);
 	init.recalc_interrupts_	= d_recalc_interrupts;
 	init.printer_out_		= printer_out_coco;
 	init.cart_timer_proc	= coco_cart_timer_proc;
@@ -2971,6 +2978,7 @@ MACHINE_START( coco2 )
 	/* Setup machine initialization */
 	memset(&init, 0, sizeof(init));
 	init.piaintf			= coco2_pia_intf;
+	init.piaintf_count		= ARRAY_LENGTH(coco2_pia_intf);
 	init.recalc_interrupts_	= d_recalc_interrupts;
 	init.printer_out_		= printer_out_coco;
 	init.cart_timer_proc	= coco_cart_timer_proc;
@@ -2980,7 +2988,7 @@ MACHINE_START( coco2 )
 	generic_coco12_dragon_init(machine, &init);
 }
 
-static void coco3_machine_reset(running_machine *machine)
+MACHINE_RESET( coco3 )
 {
 	int i;
 
@@ -3013,6 +3021,7 @@ MACHINE_START( coco3 )
 	/* Setup machine initialization */
 	memset(&init, 0, sizeof(init));
 	init.piaintf			= coco3_pia_intf;
+	init.piaintf_count		= ARRAY_LENGTH(coco3_pia_intf);
 	init.recalc_interrupts_	= coco3_recalc_interrupts;
 	init.printer_out_		= printer_out_coco;
 	init.cart_timer_proc	= coco3_cart_timer_proc;
@@ -3040,9 +3049,6 @@ MACHINE_START( coco3 )
 	state_save_register_func_postload(coco3_state_postload);
 
 	video_crosshair_set_screenmask_callback(machine, crosshairs_get_screen);
-
-	/* add reset callback */
-	add_reset_callback(machine, coco3_machine_reset);
 }
 
 /***************************************************************************
